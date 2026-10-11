@@ -141,7 +141,7 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 	if err != nil || state.Watermark == 0 {
 		t.Fatalf("curation watermark = %+v, err=%v", state, err)
 	}
-	// Curated facts land as pending proposals awaiting review (not yet injected).
+
 	items, err := memory.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	if err != nil || len(items) != 2 {
 		t.Fatalf("curated items = (%+v, %v)", items, err)
@@ -211,8 +211,6 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 		t.Fatalf("durable pending ledger = (%+v, %v)", pending, err)
 	}
 
-	// Extraction is no longer eligible, but curation must still recover the
-	// durable backlog instead of waiting for another long conversation.
 	consolidator.minMsgs = 100
 	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err != nil {
 		t.Fatal(err)

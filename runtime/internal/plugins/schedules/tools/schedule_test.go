@@ -149,9 +149,6 @@ func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 	}
 }
 
-// A schedule command the Coordinator refuses before writing changed nothing, so
-// it fails the call. Left unclassified, the Host would settle the whole Run tree
-// as lost over a cron expression the model can simply rewrite.
 func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
 	tools, err := BuildSchedules(newTestScheduleCoordinator(reg))
@@ -173,8 +170,6 @@ func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
 	}
 }
 
-// Only the store knows whether a failed write landed, so its failure must stay
-// unclassified for the Host to settle.
 func TestScheduleStoreFailureStaysUnproven(t *testing.T) {
 	tools, err := BuildSchedules(newTestScheduleCoordinator(failingScheduleInsert{newMemoryScheduleRegistry()}))
 	if err != nil {

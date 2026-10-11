@@ -21,9 +21,7 @@ type ListInput struct {
 	Limit  pagination.RequestedLimit
 }
 
-// The store's complete target is domain-bounded. Management owns ordering and
-// continuation; a deleted anchor remains usable because the cursor carries its
-// sort position rather than requiring that item to remain in storage.
+// The cursor retains its sort position so deleting an anchor does not invalidate continuation.
 func (c *Coordinator) List(ctx context.Context, input ListInput) (pagination.Page[domain.Item], error) {
 	project, err := c.project(input.Scope, input.CWD)
 	if err != nil {

@@ -8,12 +8,9 @@ import (
 	"unicode"
 )
 
-// searchOverfetch widens each signal's candidate list before fusion so a
-// keyword-only or vector-only match still competes for the final top-k.
+// Widening each signal lets keyword-only and vector-only matches compete after fusion.
 const searchOverfetch = 3
 
-// Rank fuses keyword relevance with an optional query embedding by reciprocal
-// rank. An empty queryVector selects keyword-only ranking.
 func Rank(query string, queryVector []float32, items []Item, topK int) []Item {
 	if topK <= 0 || len(items) == 0 {
 		return nil
@@ -26,9 +23,6 @@ func Rank(query string, queryVector []float32, items []Item, topK int) []Item {
 	return fuseByRank(keyword, vector, topK)
 }
 
-// keywordRanked scores items by how many distinct query terms appear in their
-// content and returns the best matches, highest first. Items with no overlap
-// are dropped so the keyword signal stays precise.
 func keywordRanked(query string, items []Item, limit int) []Item {
 	terms := tokenize(query)
 	if len(terms) == 0 {
@@ -85,9 +79,7 @@ func capItems[T any](ranked []T, limit int, pick func(T) Item) []Item {
 	return out
 }
 
-// fuseByRank merges two ranked lists by reciprocal-rank fusion and returns the
-// top-k distinct items (by id). An item ranked by both signals accumulates both
-// contributions, so agreement wins.
+// Reciprocal ranks avoid comparing keyword counts with cosine scores; agreement contributes through both signals.
 func fuseByRank(keyword, vector []Item, topK int) []Item {
 	const rrfK = 60.0
 	score := make(map[ItemID]float64)
@@ -106,7 +98,7 @@ func fuseByRank(keyword, vector []Item, topK int) []Item {
 		if d := cmp.Compare(score[b], score[a]); d != 0 {
 			return d
 		}
-		return cmp.Compare(a.String(), b.String()) // deterministic tiebreak
+		return cmp.Compare(a.String(), b.String())
 	})
 	out := make([]Item, 0, min(topK, len(ids)))
 	for _, id := range ids {
@@ -126,8 +118,6 @@ func vectorNorm(v []float32) float64 {
 	return math.Sqrt(sum)
 }
 
-// cosineSim returns the cosine similarity of v against query (whose precomputed
-// norm is qn). 0 for a dimension mismatch or a zero vector.
 func cosineSim(query []float32, qn float64, v []float32) float64 {
 	if len(v) != len(query) {
 		return 0
@@ -144,8 +134,6 @@ func cosineSim(query []float32, qn float64, v []float32) float64 {
 	return dot / (qn * vn)
 }
 
-// tokenize lower-cases and splits text into distinct alphanumeric terms of at
-// least two runes, dropping punctuation and one-letter noise.
 func tokenize(text string) []string {
 	seen := make(map[string]struct{})
 	var terms []string

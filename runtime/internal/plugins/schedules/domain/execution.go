@@ -4,9 +4,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// Execution is the immutable instruction set captured by a firing. It is not a
-// partial Schedule: lifecycle timestamps, cursor, and revision deliberately do
-// not exist on this value.
+// Capturing instructions independently prevents later definition edits or deletion from changing pending work.
 type Execution struct {
 	title          string
 	instructions   string
@@ -14,7 +12,6 @@ type Execution struct {
 	modelSelection modelref.Selection
 }
 
-// ExecutionSnapshot is the persistence representation of [Execution].
 type ExecutionSnapshot struct {
 	Title          string
 	Instructions   string
@@ -22,7 +19,6 @@ type ExecutionSnapshot struct {
 	ModelSelection modelref.Selection
 }
 
-// Execution returns the immutable instructions a manual or cron firing runs.
 func (s Schedule) Execution() Execution {
 	return Execution{
 		title: s.title, instructions: s.instructions, cwd: s.cwd,
@@ -30,8 +26,6 @@ func (s Schedule) Execution() Execution {
 	}
 }
 
-// RestoreExecution reconstructs a durable firing snapshot without pretending
-// it is a complete Schedule aggregate.
 func RestoreExecution(snapshot ExecutionSnapshot) (Execution, error) {
 	value := Execution{
 		title: snapshot.Title, instructions: snapshot.Instructions, cwd: snapshot.CWD,
@@ -43,14 +37,10 @@ func RestoreExecution(snapshot ExecutionSnapshot) (Execution, error) {
 	return value, nil
 }
 
-// Validate checks the complete captured execution value. The trigger is not
-// part of it: a firing already exists, so the cron that produced it has no
-// further say over what runs.
 func (e Execution) Validate() error {
 	return validateInstructions(e.instructions)
 }
 
-// Snapshot returns the complete persistence representation.
 func (e Execution) Snapshot() ExecutionSnapshot {
 	return ExecutionSnapshot{
 		Title: e.title, Instructions: e.instructions, CWD: e.cwd,

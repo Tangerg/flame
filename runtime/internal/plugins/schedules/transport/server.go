@@ -74,7 +74,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			if err != nil {
 				return schedule.RunRequestSnapshot{}, err
 			}
-			request, err := schedule.ManualRunRequest(value, identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now())
+			request, err := value.ManualRun(identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now())
 			if err != nil {
 				return schedule.RunRequestSnapshot{}, err
 			}

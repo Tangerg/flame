@@ -1,13 +1,3 @@
-// Package agentmemory defines Flame's agent-maintained long-term memory: the
-// durable facts the agent mines from conversations, folded into addressable
-// memory items. It is distinct from the human-authored AGENTS.md cascade —
-// that stays a user-owned file the agent never writes; this is agent-owned,
-// curated from an append-only fact ledger into discrete, individually
-// addressable items.
-//
-// Which items get injected into an agent prompt, and in what order, is a prompt
-// composition policy. This domain owns the durable memory values, lifecycle,
-// and content invariants only.
 package agentmemory
 
 import (
@@ -26,41 +16,24 @@ import (
 )
 
 const (
-	// MaxContentCharacters is the one durable-item and ledger-fact content
-	// bound. It is expressed in Unicode code points because memory is durable
-	// text, not a byte payload. The model prompt's conservative token estimator
-	// charges every non-ASCII code point as one token, so one valid item can
-	// never exceed its 4096-token whole-item prompt budget.
+	// Unicode character admission keeps a whole item within the prompt's conservative token budget.
 	MaxContentCharacters = 4096
 
-	// MaxFactsPerBatch bounds one extraction result and therefore one ledger
-	// append transaction. Deduplication happens after this admission check: a
-	// provider cannot evade the request envelope with repeated output.
+	// Admission precedes deduplication so repeated output cannot evade the extraction envelope.
 	MaxFactsPerBatch = 32
 
-	// MaxCurationProposals bounds one curator generation. Approved memory is
-	// sticky, so this is the number of review proposals one fold may create,
-	// not the total durable target capacity.
+	// Approved facts survive curation, so a proposal limit cannot cap total stored memory.
 	MaxCurationProposals = 32
 
-	// MaxLedgerFoldFacts bounds the cursor page loaded for one curation pass.
-	// The byte envelope may choose a shorter prefix, but no configuration can
-	// turn the database read preceding that envelope into an unbounded query.
+	// The prompt envelope may shrink a page but must not authorize an unbounded preceding database read.
 	MaxLedgerFoldFacts = 128
 
-	// MaxVisiblePerTarget bounds complete-target storage and prompt reads.
-	// Management pages project this finite target. Active and pending items are
-	// visible; rejected tombstones have their own larger retention window below.
 	MaxVisiblePerTarget = 512
 
-	// MaxRejectedPerTarget bounds negative-history retention. Recent rejections
-	// still suppress repeated proposals without turning that suppression log
-	// into an unbounded durable collection.
+	// Recent rejections suppress repeated proposals without retaining unbounded history.
 	MaxRejectedPerTarget = 2048
 )
 
-// NormalizeContent returns the canonical representation accepted at every
-// Agent Memory write boundary.
 func NormalizeContent(content string) (string, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -78,51 +51,31 @@ func NormalizeContent(content string) (string, error) {
 	return content, nil
 }
 
-// Digest is a memory item's content identity: the same fact always hashes the
-// same, so the fold deduplicates across statuses and a reconcile keeps an
-// unchanged item's id and provenance. It is a domain concept — the persistence
-// layer stores it, but the meaning (content identity) lives here.
+// Content identity survives review so folds suppress rejected facts without changing item handles.
 func Digest(content string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(content)))
 	return hex.EncodeToString(sum[:])
 }
 
-// ErrNotFound is returned by the management operations when no item has the
-// given id.
 var ErrNotFound = errors.New("agentmemory: item not found")
 
-// ErrNotPending reports that a review targeted an item whose review boundary
-// has already been resolved or that was user-authored as active.
 var ErrNotPending = errors.New("agentmemory: item is not pending review")
 
-// ErrNotVisible reports that a hidden tombstone was targeted through the
-// active/pending management surface.
 var ErrNotVisible = errors.New("agentmemory: item is not visible")
 
-// ErrTargetFull reports that a new visible item would exceed the finite
-// complete-list capacity of its project or user target.
 var ErrTargetFull = errors.New("agentmemory: target is full")
 
-// Scope selects the breadth of a memory item.
 type Scope string
 
 const (
-	// ScopeProject — knowledge tied to one project directory: conventions,
-	// build/test commands, decisions, gotchas. Keyed by the project path.
 	ScopeProject Scope = "project"
-	// ScopeUser — cross-project knowledge about how the user works. Project is
-	// empty. The mining path populates it from a later batch; the model carries
-	// the scope from the start so storage and injection need no reshape then.
-	ScopeUser Scope = "user"
+	ScopeUser    Scope = "user"
 )
 
-// Valid reports whether s names one of the two memory scopes.
 func (s Scope) Valid() bool {
 	return s == ScopeProject || s == ScopeUser
 }
 
-// Validate rejects an unknown scope before it can select a project or user
-// memory partition.
 func (s Scope) Validate() error {
 	if !s.Valid() {
 		return fmt.Errorf("agentmemory: invalid scope %q", s)
@@ -132,15 +85,11 @@ func (s Scope) Validate() error {
 
 func (s Scope) String() string { return string(s) }
 
-// ParseScope maps a stored token back to the closed Scope vocabulary.
 func ParseScope(value string) (Scope, error) {
 	scope := Scope(value)
 	return scope, scope.Validate()
 }
 
-// ValidateTarget protects the exact partition selected by a memory use case.
-// Project paths are already admitted by the workspace owner, so this domain
-// rule only distinguishes project-scoped storage from the single user scope.
 func ValidateTarget(scope Scope, project string) error {
 	if err := scope.Validate(); err != nil {
 		return err
@@ -158,27 +107,18 @@ func ValidateTarget(scope Scope, project string) error {
 	return nil
 }
 
-// Status is a memory item's place in the human-in-the-loop review lifecycle.
 type Status string
 
 const (
-	// StatusActive — approved (or user-authored) memory: injected into the prompt
-	// and returned by search.
-	StatusActive Status = "active"
-	// StatusPending — proposed by the extractor, awaiting the user's review. Not
-	// injected or searched until approved.
-	StatusPending Status = "pending"
-	// StatusRejected — a tombstone for a proposal the user declined. Kept so the
-	// same fact is not proposed again; never injected, searched, or shown.
+	StatusActive   Status = "active"
+	StatusPending  Status = "pending"
 	StatusRejected Status = "rejected"
 )
 
-// Valid reports whether s is a state in the memory review lifecycle.
 func (s Status) Valid() bool {
 	return s == StatusActive || s == StatusPending || s == StatusRejected
 }
 
-// Validate rejects a state outside the memory review lifecycle.
 func (s Status) Validate() error {
 	if !s.Valid() {
 		return fmt.Errorf("agentmemory: invalid status %q", s)
@@ -188,30 +128,22 @@ func (s Status) Validate() error {
 
 func (s Status) String() string { return string(s) }
 
-// ParseStatus maps a stored token back to the closed Status vocabulary.
 func ParseStatus(value string) (Status, error) {
 	status := Status(value)
 	return status, status.Validate()
 }
 
-// Origin records how an item entered memory — its provenance for the review
-// surface and for auto-curation eligibility: only auto items are rewritten by
-// the extractor's fold; user items are never clobbered.
 type Origin string
 
 const (
-	// OriginAuto — mined by the extractor and folded by curation.
 	OriginAuto Origin = "auto"
-	// OriginUser — authored or edited by the user; auto-curation never touches it.
 	OriginUser Origin = "user"
 )
 
-// Valid reports whether o is a known memory provenance.
 func (o Origin) Valid() bool {
 	return o == OriginAuto || o == OriginUser
 }
 
-// Validate rejects provenance outside the closed Origin vocabulary.
 func (o Origin) Validate() error {
 	if !o.Valid() {
 		return fmt.Errorf("agentmemory: invalid origin %q", o)
@@ -221,15 +153,11 @@ func (o Origin) Validate() error {
 
 func (o Origin) String() string { return string(o) }
 
-// ParseOrigin maps a stored token back to the closed Origin vocabulary.
 func ParseOrigin(value string) (Origin, error) {
 	origin := Origin(value)
 	return origin, origin.Validate()
 }
 
-// ReviewDecision is the command applied to one pending proposal. It is not a
-// Status: callers decide approve or reject, while the domain owns which state
-// that decision produces.
 type ReviewDecision string
 
 const (
@@ -237,7 +165,6 @@ const (
 	ReviewReject  ReviewDecision = "reject"
 )
 
-// Result returns the terminal review status selected by r.
 func (r ReviewDecision) Result() (Status, error) {
 	switch r {
 	case ReviewApprove:
@@ -249,10 +176,7 @@ func (r ReviewDecision) Result() (Status, error) {
 	}
 }
 
-// Item is one addressable unit of agent-maintained memory. ID is a stable
-// handle that survives content edits; Content is the verbatim markdown injected
-// into (or retrieved for) the model. Pinned items are always injected — the L1
-// core — and are never auto-pruned. SessionID/Day carry provenance.
+// The handle survives content edits; curation cannot rewrite user-authored or approved content.
 type Item struct {
 	id        ItemID
 	scope     Scope
@@ -266,19 +190,15 @@ type Item struct {
 	createdAt time.Time
 	updatedAt time.Time
 
-	// embeddingSpace and embedding are a search-only cache pair. Space identifies
-	// the embedder that produced the vector; both are empty on ordinary reads and
-	// until semantic search has cached the current content.
+	// Vectors from different model configurations cannot share a coordinate system.
 	embeddingSpace string
 	embedding      []float32
 }
 
-// ItemSnapshot is the complete persistence representation of an Item.
-// RestoreItem validates every field; it is not a second mutation surface.
 type ItemSnapshot struct {
 	ID             ItemID
 	Scope          Scope
-	Project        string // "" for ScopeUser
+	Project        string
 	Content        string
 	Origin         Origin
 	Status         Status
@@ -291,9 +211,7 @@ type ItemSnapshot struct {
 	Embedding      []float32
 }
 
-// ItemChange carries the authoring transition and its effect on the search cache.
-// Ordinary reads omit cached vectors, so their absence cannot authorize clearing
-// the cache. Only a user-content transition discards it.
+// Ordinary reads omit vectors, so only content authoring can authorize discarding the persisted cache.
 type ItemChange struct {
 	item Item
 	kind itemChangeKind
@@ -311,7 +229,6 @@ func (c ItemChange) Item() Item              { return c.item }
 func (c ItemChange) Changed() bool           { return c.kind != itemUnchanged }
 func (c ItemChange) DiscardsEmbedding() bool { return c.kind == itemContentAuthored }
 
-// RestoreItem reconstructs a persisted item.
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 	item := Item{
 		id: snapshot.ID, scope: snapshot.Scope, project: snapshot.Project, content: snapshot.Content,
@@ -326,7 +243,6 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 	return item, nil
 }
 
-// Snapshot returns the complete persistence representation.
 func (i Item) Snapshot() ItemSnapshot {
 	return ItemSnapshot{
 		ID: i.id, Scope: i.scope, Project: i.project, Content: i.content,
@@ -348,8 +264,6 @@ func (i Item) Day() string          { return i.day }
 func (i Item) CreatedAt() time.Time { return i.createdAt }
 func (i Item) UpdatedAt() time.Time { return i.updatedAt }
 
-// Embedding returns the cached vector and the space that produced it, when
-// semantic search has cached the current content.
 func (i Item) Embedding() (string, []float32, bool) {
 	if i.embeddingSpace == "" {
 		return "", nil, false
@@ -357,10 +271,7 @@ func (i Item) Embedding() (string, []float32, bool) {
 	return i.embeddingSpace, slices.Clone(i.embedding), true
 }
 
-// EmbeddingUpdate conditionally caches one item's current-content vector.
-// ContentDigest prevents a late embedding result from being attached after the
-// item was edited, while Space prevents vectors from different models being
-// compared as though they shared one coordinate system.
+// Digest and space prevent late vectors from being compared with different content or models.
 type EmbeddingUpdate struct {
 	ItemID        ItemID
 	ContentDigest string
@@ -368,14 +279,11 @@ type EmbeddingUpdate struct {
 	Vector        []float32
 }
 
-// Clone returns an ownership-isolated cache update.
 func (e EmbeddingUpdate) Clone() EmbeddingUpdate {
 	e.Vector = slices.Clone(e.Vector)
 	return e
 }
 
-// NewEmbeddingUpdate binds a vector to the exact item content and embedding
-// space that produced it.
 func NewEmbeddingUpdate(item Item, space string, vector []float32) (EmbeddingUpdate, error) {
 	if err := validateEmbedding(space, vector); err != nil {
 		return EmbeddingUpdate{}, err
@@ -388,8 +296,6 @@ func NewEmbeddingUpdate(item Item, space string, vector []float32) (EmbeddingUpd
 	}, nil
 }
 
-// WithEmbedding caches a vector that NewEmbeddingUpdate bound to this item's
-// current content.
 func (i Item) WithEmbedding(update EmbeddingUpdate) (Item, error) {
 	if update.ItemID != i.id || update.ContentDigest != Digest(i.content) {
 		return Item{}, errors.New("agentmemory: embedding update belongs to other item content")
@@ -401,14 +307,11 @@ func (i Item) WithEmbedding(update EmbeddingUpdate) (Item, error) {
 	return i, nil
 }
 
-// WithoutEmbedding drops a cached vector that does not serve the current
-// embedding space.
 func (i Item) WithoutEmbedding() Item {
 	i.embeddingSpace, i.embedding = "", nil
 	return i
 }
 
-// Validate protects a cache update received at a persistence boundary.
 func (e EmbeddingUpdate) Validate() error {
 	if err := e.ItemID.Validate(); err != nil {
 		return err
@@ -426,8 +329,6 @@ func validateEmbedding(space string, vector []float32) error {
 	return ValidateEmbeddingVector(vector)
 }
 
-// ValidateEmbeddingVector rejects cache values that cannot participate in a
-// deterministic similarity calculation.
 func ValidateEmbeddingVector(vector []float32) error {
 	if len(vector) == 0 {
 		return errors.New("agentmemory: embedding vector is required")
@@ -440,21 +341,14 @@ func ValidateEmbeddingVector(vector []float32) error {
 	return nil
 }
 
-// NewProposal builds a mined memory item awaiting review: project-scoped, auto
-// origin, pending status. The caller supplies the id and the clock.
 func NewProposal(id ItemID, project, content string, now time.Time) (Item, error) {
 	return newItem(id, ScopeProject, project, content, OriginAuto, StatusPending, now)
 }
 
-// NewUserItem builds a user-authored memory item: active immediately (the user
-// is the author, so there is nothing to review).
 func NewUserItem(id ItemID, scope Scope, project, content string, now time.Time) (Item, error) {
 	return newItem(id, scope, project, content, OriginUser, StatusActive, now)
 }
 
-// ActivateFromUser replaces a pending or rejected proposal with explicit user
-// authorship while preserving its durable identity and creation time. The
-// user-authored content retires proposal provenance, pin, and derived embedding.
 func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error) {
 	if i.status == StatusActive {
 		return ItemChange{}, errors.New("agentmemory: active item cannot be activated again")
@@ -476,10 +370,7 @@ func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error
 	return ItemChange{item: i, kind: itemContentAuthored}, nil
 }
 
-// Edit applies a management-surface content and pin change while protecting
-// hidden tombstones. Changed content becomes active user-authored memory, so
-// automatic curation cannot remove the user's correction. Pinning alone leaves
-// authorship and review unchanged.
+// Content edits transfer authorship to the user so curation cannot undo the correction.
 func (i Item) Edit(content *string, pinned *bool, now time.Time) (ItemChange, error) {
 	if err := i.ValidateVisible(); err != nil {
 		return ItemChange{}, fmt.Errorf("agentmemory: edit existing item: %w", err)
@@ -527,8 +418,6 @@ func (i Item) withUserContent(content string, now time.Time) Item {
 	return i
 }
 
-// Review resolves a pending proposal while preserving its content, provenance,
-// and monotonic update time. A resolved proposal cannot be reviewed again.
 func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
 	status, err := decision.Result()
 	if err != nil {
@@ -549,8 +438,6 @@ func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
 	return i, nil
 }
 
-// ValidateVisible refuses a rejected tombstone: only active and pending memory
-// is a management target.
 func (i Item) ValidateVisible() error {
 	if i.status == StatusRejected {
 		return ErrNotVisible
@@ -574,9 +461,6 @@ func newItem(id ItemID, scope Scope, project, content string, origin Origin, sta
 	return item, nil
 }
 
-// validate protects the identity, partition, provenance, lifecycle, and time
-// invariants of one durable memory item. Construction and restore close on it;
-// transitions preserve it by touching only fields whose rules they enforce.
 func (i Item) validate() error {
 	if err := i.id.Validate(); err != nil {
 		return err
@@ -623,7 +507,6 @@ func (i Item) validate() error {
 	return nil
 }
 
-// FactBatch is one extraction boundary's project-scoped ledger append.
 type FactBatch struct {
 	Project    string
 	SessionID  string
@@ -632,9 +515,6 @@ type FactBatch struct {
 	CapturedAt time.Time
 }
 
-// Normalize validates the batch identity and canonicalizes already-parsed facts
-// into a unique, trimmed plain-text list while preserving first-seen order.
-// Parsing and rendering a model's Markdown response belong to the caller.
 func (f FactBatch) Normalize() (FactBatch, error) {
 	f.Project = strings.TrimSpace(f.Project)
 	if f.Project == "" {
@@ -660,8 +540,6 @@ func (f FactBatch) Normalize() (FactBatch, error) {
 	return f, nil
 }
 
-// LedgerFact is one immutable fact in a project's daily ledger. Sequence is the
-// durable ordering key and curation watermark.
 type LedgerFact struct {
 	Sequence   int64
 	Day        string
@@ -669,8 +547,6 @@ type LedgerFact struct {
 	CapturedAt time.Time
 }
 
-// Validate protects one ledger fact read back from durable storage before it
-// can enter the curation prompt.
 func (l LedgerFact) Validate() error {
 	if l.Sequence <= 0 {
 		return errors.New("agentmemory: ledger fact sequence must be positive")
@@ -692,16 +568,12 @@ func (l LedgerFact) Validate() error {
 	return instant.Validate(l.CapturedAt)
 }
 
-// State is the curation watermark for a project: the highest ledger sequence
-// already folded into the item set.
+// A zero watermark has no timestamp; an advanced watermark may legitimately use the Unix epoch.
 type State struct {
 	Watermark int64
 	UpdatedAt time.Time
 }
 
-// Validate reports whether the curation position and its transition time form
-// one coherent state. A zero watermark is the never-curated state; every
-// advanced watermark owns a timestamp, including the Unix epoch.
 func (s State) Validate() error {
 	if s.Watermark < 0 {
 		return errors.New("agentmemory: curation watermark must not be negative")

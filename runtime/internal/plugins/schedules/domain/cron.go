@@ -23,8 +23,7 @@ func ValidateCron(spec string) error {
 	return nil
 }
 
-// Cron uses UTC unless the expression names a timezone. Caller locations must
-// not change its meaning between creation, editing, and restart.
+// Caller locations must not change a cron's meaning between creation, editing and restart; UTC is the default.
 func NextRun(spec string, after time.Time) (time.Time, error) {
 	sched, err := cron.ParseStandard(spec)
 	if err != nil {

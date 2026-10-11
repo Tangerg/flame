@@ -138,7 +138,6 @@ func TestSearchDegradesWhenEmbedderFails(t *testing.T) {
 }
 
 func TestSearchFusesVectorMatchWithoutKeywordOverlap(t *testing.T) {
-	// "b" shares no query terms but is the nearest vector — fusion must surface it.
 	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "- unrelated note about tabs")
 	a = withEmbedding(t, a, "fake", []float32{0, 1})
 	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "- the build pipeline lives in ci")
@@ -164,10 +163,6 @@ func TestSearchFusesVectorMatchWithoutKeywordOverlap(t *testing.T) {
 }
 
 func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) {
-	// The persisted vectors were produced by the previous role and rank a first.
-	// The current role gives the same-dimensional space different semantics: b
-	// is now the nearest item. Reusing the unlabelled cache silently returns the
-	// wrong memory instead of refreshing it or degrading to keyword ranking.
 	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "alpha memory")
 	a = withEmbedding(t, a, "provider:old-space", []float32{1, 0})
 	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "beta memory")
@@ -310,9 +305,6 @@ func withEmbedding(t *testing.T, item domain.Item, space string, vector []float3
 	return cached
 }
 
-// TestReadModelItemsOrdersTiesLikeCuration proves the injected catalog and the
-// curation input share one order, so equally recent items cannot swap places
-// depending on how storage happened to return them.
 func TestReadModelItemsOrdersTiesLikeCuration(t *testing.T) {
 	first := readModelItem(t, '1', domain.ScopeProject, "/repo", "first")
 	second := readModelItem(t, '2', domain.ScopeProject, "/repo", "second")

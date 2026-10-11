@@ -187,3 +187,39 @@ func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
 		t.Fatal("refused grant retained model authority")
 	}
 }
+
+func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		edit func(*Prompt)
+	}{
+		{"unknown operation", func(p *Prompt) { p.Operation = "runtime.execute" }},
+		{"ungranted embedding", func(p *Prompt) { p.Operation = "memory.embed"; p.UserPrompt = `["fact"]` }},
+		{"unbounded input", func(p *Prompt) { p.MaxInputBytes = maximumModelInput + 1 }},
+		{"unbounded output", func(p *Prompt) { p.MaxOutputTokens = 2049 }},
+		{"input exceeds envelope", func(p *Prompt) { p.MaxInputBytes = len(p.UserPrompt) - 1 }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			broker := NewModels()
+			session := new(sdk.ClientSession)
+			broker.AdmitSession(session)
+			var calls atomic.Int32
+			grant, release, err := broker.Grant(t.Context(), session, func(context.Context, Prompt) (string, error) {
+				calls.Add(1)
+				return "fact", nil
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer release()
+			prompt := testPrompt()
+			test.edit(&prompt)
+			if _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), prompt); err == nil {
+				t.Fatal("operation outside captured authority succeeded")
+			}
+			if calls.Load() != 0 {
+				t.Fatal("refused operation reached the completion model")
+			}
+		})
+	}
+}

@@ -2,8 +2,6 @@ package sqlite
 
 import "fmt"
 
-// scheduleFiringState is the single codec for the private SQLite lifecycle of
-// a durable schedule occurrence.
 type scheduleFiringState string
 
 const (

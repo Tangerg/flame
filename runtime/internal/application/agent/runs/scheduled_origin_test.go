@@ -20,7 +20,7 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manual, err := schedule.ManualRunRequest(scheduled, "ses_owned", "run_owned", now.Add(time.Second))
+	manual, err := scheduled.ManualRun("ses_owned", "run_owned", now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}

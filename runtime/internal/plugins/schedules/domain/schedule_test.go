@@ -218,9 +218,9 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	if request.OccurrenceID() != occurrence.ID() || request.SessionID() != "ses_due" || request.RunID() != "run_due" {
 		t.Fatalf("durable RunRequest identities were not preserved")
 	}
-	manual, err := ManualRunRequest(edited, "ses_manual", "run_manual", dueAt)
+	manual, err := edited.ManualRun("ses_manual", "run_manual", dueAt)
 	if err != nil {
-		t.Fatalf("ManualRunRequest: %v", err)
+		t.Fatalf("ManualRun: %v", err)
 	}
 	if manual.OccurrenceID() != "" || manual.ScheduleID() != edited.ID() || manual.SessionID() != "ses_manual" || manual.RunID() != "run_manual" {
 		t.Fatalf("manual request durable identity = (%q, %q, %q)", manual.OccurrenceID(), manual.SessionID(), manual.RunID())
@@ -264,7 +264,7 @@ func TestScheduleValidate(t *testing.T) {
 	tests := []struct {
 		name string
 		mut  func(Draft) Draft
-		want error // nil = accept
+		want error
 	}{
 		{"valid, default model", func(s Draft) Draft { return s }, nil},
 		{"valid, paired model", func(s Draft) Draft {
@@ -391,10 +391,7 @@ func TestValidateCron(t *testing.T) {
 	}
 }
 
-// TestNextRun: the next firing is strictly after `after` and lands on the
-// scheduled minute (weekday 09:00 here).
 func TestNextRun(t *testing.T) {
-	// A Wednesday 10:00 — next "weekday 9am" is Thursday 09:00.
 	after := time.Date(2026, 6, 17, 10, 0, 0, 0, time.UTC)
 	next, err := NextRun("0 9 * * 1-5", after)
 	if err != nil {

@@ -97,7 +97,7 @@ func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
 			return errors.New("schedule: invalid manual dispatch state")
 		}
 		record, _ := request.ManualRecord()
-		// A durable manual dispatch survives definition deletion, just like cron.
+
 		if _, err := s.recordAcceptedRun(ctx, record.ScheduleID(), record.RanAt()); err != nil {
 			return err
 		}

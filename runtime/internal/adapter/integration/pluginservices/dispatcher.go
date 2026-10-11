@@ -67,11 +67,7 @@ func (d *Dispatcher) RunNow(ctx context.Context, id string) (runs.StartResult, e
 	if err != nil {
 		return runs.StartResult{}, rpc.DecodeError(err)
 	}
-	result, err := d.dispatch(ctx, binding, session, request)
-	if err != nil {
-		return runs.StartResult{}, err
-	}
-	return result, nil
+	return d.dispatch(ctx, binding, session, request)
 }
 func (d *Dispatcher) RunWorker(ctx context.Context) {
 	d.pass(ctx)

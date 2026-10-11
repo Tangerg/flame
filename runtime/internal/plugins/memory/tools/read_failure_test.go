@@ -12,8 +12,6 @@ import (
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
-// search_memory answers without reaching its store when no project is in
-// scope, so the read has to be given one before a store failure can happen.
 func projectScoped(t *testing.T) context.Context {
 	t.Helper()
 	return scopemcp.WithRequestMeta(t.Context(), map[string]any{managedmcp.ToolScopeKey: managedmcp.ToolScope{CWD: t.TempDir()}})
@@ -27,11 +25,6 @@ func (f failingMemorySearch) Search(
 	return nil, f.err
 }
 
-// TestReadToolServiceFailureIsDefinite covers what a failed read must settle as.
-// A search performs no external mutation, so its outcome is provable; an
-// unclassified error instead tells the Host the durable effect is unknown, and
-// the Host ends the root Run and every delegated child over a store that was
-// only being read.
 func TestReadToolServiceFailureIsDefinite(t *testing.T) {
 	executable, err := NewAgentMemorySearch(failingMemorySearch{
 		err: errors.New("memory index unavailable"),
@@ -52,8 +45,6 @@ func TestReadToolServiceFailureIsDefinite(t *testing.T) {
 	}
 }
 
-// TestReadToolCancellationStaysUnclassified is the other half: cancellation
-// belongs to whoever owns the execution, never to the model as feedback.
 func TestReadToolCancellationStaysUnclassified(t *testing.T) {
 	executable, err := NewAgentMemorySearch(failingMemorySearch{err: context.Canceled})
 	if err != nil {

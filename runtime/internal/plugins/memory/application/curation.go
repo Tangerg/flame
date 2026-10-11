@@ -11,10 +11,7 @@ import (
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
-// CurationStore is the persistence port for automatic memory maintenance. The
-// append-only ledger is internal implementation state; only a successful
-// Reconcile changes the public agent-memory generation. Calls borrow inputs
-// synchronously and transfer ownership of returned facts and items.
+// Ledger appends do not publish a generation; only a winning Reconcile invalidates public reads.
 type CurationStore interface {
 	AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error)
 	PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]domain.LedgerFact, error)
@@ -23,21 +20,16 @@ type CurationStore interface {
 	Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 }
 
-// CurationConfig bundles the automatic-maintenance ports.
 type CurationConfig struct {
 	Store         CurationStore
 	Invalidations invalidation.Publish
 }
 
-// Curation owns the append-ledger and generation-publication use cases. It is
-// deliberately separate from Coordinator so review consumers cannot invoke
-// background maintenance operations.
 type Curation struct {
 	store         CurationStore
 	invalidations invalidation.Publish
 }
 
-// NewCuration builds the automatic memory-maintenance use case.
 func NewCuration(cfg CurationConfig) (*Curation, error) {
 	if dependency.Missing(cfg.Store) {
 		return nil, errors.New("agentmemory: curation store is required")
@@ -45,8 +37,6 @@ func NewCuration(cfg CurationConfig) (*Curation, error) {
 	return &Curation{store: cfg.Store, invalidations: cfg.Invalidations}, nil
 }
 
-// AppendLedger records newly extracted facts. The ledger is not a public read
-// model, so appending it does not invalidate agentMemory.list.
 func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
 	normalized, err := batch.Normalize()
 	if err != nil {
@@ -58,9 +48,6 @@ func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]
 	return c.store.AppendLedger(ctx, normalized)
 }
 
-// PendingLedger returns facts not yet incorporated into the curated generation.
-// It reads from a curation State rather than a bare sequence so the position it
-// resumes at is the one State already proves coherent.
 func (c *Curation) PendingLedger(ctx context.Context, project string, state domain.State, limit int) ([]domain.LedgerFact, error) {
 	if err := validatePendingRead(project, state, limit); err != nil {
 		return nil, err
@@ -68,7 +55,6 @@ func (c *Curation) PendingLedger(ctx context.Context, project string, state doma
 	return c.store.PendingLedger(ctx, project, state.Watermark, limit)
 }
 
-// State returns the current curation watermark.
 func (c *Curation) State(ctx context.Context, project string) (domain.State, error) {
 	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
 		return domain.State{}, err
@@ -76,8 +62,6 @@ func (c *Curation) State(ctx context.Context, project string) (domain.State, err
 	return c.store.State(ctx, project)
 }
 
-// PublishGeneration publishes one compare-and-swap-protected curated
-// generation and invalidates the public projection only for the winning fold.
 func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Publication) (bool, error) {
 	if err := publication.Validate(); err != nil {
 		return false, err
@@ -92,8 +76,6 @@ func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Pub
 	return published, nil
 }
 
-// Items returns the valid active generation used as input to the next fold,
-// with pinned and newer values first and identity as the stable tie-breaker.
 func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	if err := domain.ValidateTarget(scope, project); err != nil {
 		return nil, err

@@ -9,9 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 )
 
-// OccurrenceSnapshot is the complete durable representation of one cron
-// firing after its schedule cursor claim has succeeded. Its ID names the
-// Schedule and the due cursor it consumed, so neither is stored beside it.
+// The ID already encodes Schedule and due cursor; storing either again would add a competing representation.
 type OccurrenceSnapshot struct {
 	ID        string
 	Execution ExecutionSnapshot
@@ -21,8 +19,6 @@ type OccurrenceSnapshot struct {
 	RunID     string
 }
 
-// Occurrence is one durable cron firing intent. It captures only the execution
-// value plus the Schedule CAS/cursor facts needed to claim exactly once.
 type Occurrence struct {
 	id        occurrenceIdentity
 	execution Execution
@@ -32,26 +28,20 @@ type Occurrence struct {
 	runID     string
 }
 
-// Claim binds a decided Schedule cursor/revision transition and its immutable
-// occurrence to the revision and due cursor it consumes. Pending occurrences
-// retain execution intent, not the Schedule transition's precondition.
+// The consumed revision is a claim precondition; pending work retains only the captured execution.
 type Claim struct {
 	occurrence       Occurrence
 	expectedRevision exactint.Counter
 	state            Schedule
 }
 
-// Acceptance identifies the exact durable occurrence and Run whose opening
-// committed together. Private fields prevent argument transposition and
-// partial ownership proofs at the persistence boundary.
+// Backend acknowledgement cannot depend on the Runtime Run still existing.
 type Acceptance struct {
 	occurrenceID occurrenceIdentity
 	runID        string
 }
 
-// Claim decides a due cursor's successor and advances the Schedule revision.
-// Stable Run identities are supplied before persistence so a crash/retry
-// cannot create a second Run.
+// Stable Session/Run identities are chosen before persistence so retry cannot open a second Run.
 func (s Schedule) Claim(sessionID, runID string, firedAt time.Time) (Claim, error) {
 	if !s.Enabled() {
 		return Claim{}, errors.New("schedule: only an enabled due schedule can form an occurrence")
@@ -83,7 +73,6 @@ func (s Schedule) Claim(sessionID, runID string, firedAt time.Time) (Claim, erro
 	return Claim{occurrence: occurrence, expectedRevision: s.revision, state: state}, nil
 }
 
-// Validate verifies the immutable durable firing value.
 func (o Occurrence) Validate() error {
 	if err := o.id.Validate(); err != nil {
 		return err
@@ -113,8 +102,6 @@ func (o Occurrence) Validate() error {
 	return nil
 }
 
-// Validate rejects an unattached claim. Private construction has already
-// decided its transition and validated the occurrence.
 func (c Claim) Validate() error {
 	if c.expectedRevision.IsZero() {
 		return ErrRevisionRequired
@@ -122,8 +109,6 @@ func (c Claim) Validate() error {
 	return nil
 }
 
-// RestoreOccurrence reconstructs a durable pending firing without exposing a
-// mutable half-aggregate to callers that reconstruct stored state.
 func RestoreOccurrence(snapshot OccurrenceSnapshot) (Occurrence, error) {
 	occurrenceID, err := parseOccurrenceIdentity(snapshot.ID)
 	if err != nil {
@@ -144,7 +129,6 @@ func RestoreOccurrence(snapshot OccurrenceSnapshot) (Occurrence, error) {
 	return value, nil
 }
 
-// Snapshot returns the complete durable occurrence representation.
 func (o Occurrence) Snapshot() OccurrenceSnapshot {
 	return OccurrenceSnapshot{
 		ID: o.id.String(), Execution: o.execution.Snapshot(),
@@ -162,16 +146,12 @@ func (o Occurrence) NextRunAt() time.Time { return o.nextRunAt }
 func (o Occurrence) SessionID() string    { return o.sessionID }
 func (o Occurrence) RunID() string        { return o.runID }
 
-// Occurrence returns the immutable firing produced if this claim commits.
 func (c Claim) Occurrence() Occurrence { return c.occurrence }
 
-// ExpectedRevision returns the exact Schedule revision this claim consumes.
 func (c Claim) ExpectedRevision() uint64 { return c.expectedRevision.Value() }
 
-// State returns the Schedule state decided with this occurrence.
 func (c Claim) State() Schedule { return c.state }
 
-// Validate rejects partial occurrence ownership.
 func (a Acceptance) Validate() error {
 	if err := a.occurrenceID.Validate(); err != nil {
 		return err

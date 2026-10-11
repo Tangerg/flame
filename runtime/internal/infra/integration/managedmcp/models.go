@@ -20,10 +20,10 @@ import (
 
 const maximumModelInput = 512 * 1024
 
-// Two active targets, with six bytes per code point for worst-case JSON escaping.
+// Six bytes per code point cover worst-case JSON escaping across both active targets.
 const maximumEmbeddingInput = memory.MaxVisiblePerTarget*2*(memory.MaxContentCharacters*6+3) + 1
 
-// The embedding JSON is itself encoded as a string inside the model envelope.
+// Embedding JSON is encoded again as a string, so the outer envelope needs its escaped size.
 const maximumModelEnvelope = maximumEmbeddingInput*2 + 64*1024
 const maximumModelResult = 64 * 1024 * 1024
 
@@ -48,15 +48,11 @@ type modelGrant struct {
 	complete  Completion
 	embed     Embeddings
 	remaining int
-	cancel    context.CancelFunc
 	pending   sync.WaitGroup
 	release   func()
 }
 
-// Models owns an invocation-scoped loopback capability. Only the selected
-// managed backend receives its unguessable URL. Closing the invocation or
-// retiring its MCP session revokes the listener and joins admitted calls.
-// This closed operation does not expose the Runtime protocol or provider secrets.
+// Revocation must cancel and join admitted calls before the owning invocation or MCP generation can end.
 type Models struct {
 	mu       sync.Mutex
 	grants   map[string]*modelGrant
@@ -67,8 +63,6 @@ func NewModels() *Models {
 	return &Models{grants: make(map[string]*modelGrant), sessions: make(map[*sdk.ClientSession]struct{})}
 }
 
-// AdmitSession delegates model-capability admission from the connection owner.
-// Retirement removes admission before joining grants, including when no grant existed.
 func (m *Models) AdmitSession(session *sdk.ClientSession) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -90,7 +84,7 @@ func (m *Models) Grant(ctx context.Context, session *sdk.ClientSession, complete
 	}
 	token := hex.EncodeToString(entropy[:])
 	lifetime, cancel := context.WithCancel(ctx)
-	grant := &modelGrant{session: session, context: lifetime, complete: complete, embed: embed, remaining: 2, cancel: cancel}
+	grant := &modelGrant{session: session, context: lifetime, complete: complete, embed: embed, remaining: 2}
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/"+token || r.URL.RawQuery != "" {
 			http.NotFound(w, r)
@@ -150,6 +144,7 @@ func (m *Models) Grant(ctx context.Context, session *sdk.ClientSession, complete
 	return "http://" + listener.Addr().String() + "/" + token, func() { stop(); release() }, nil
 }
 
+// Withdrawal precedes joining calls so retirement also refuses grants that arrive late.
 func (m *Models) RevokeSession(session *sdk.ClientSession) {
 	m.mu.Lock()
 	delete(m.sessions, session)
@@ -176,6 +171,10 @@ func (m *Models) complete(ctx context.Context, session *sdk.ClientSession, token
 	grant.pending.Add(1)
 	m.mu.Unlock()
 	defer grant.pending.Done()
+	return grant.invoke(ctx, prompt)
+}
+
+func (g *modelGrant) invoke(ctx context.Context, prompt Prompt) (string, error) {
 	limit := maximumModelInput
 	if prompt.Operation == "memory.embed" {
 		limit = maximumEmbeddingInput
@@ -184,37 +183,41 @@ func (m *Models) complete(ctx context.Context, session *sdk.ClientSession, token
 		return "", errors.New("managed plugin: model envelope refused")
 	}
 	lifetime, cancel := context.WithCancelCause(ctx)
-	stop := context.AfterFunc(grant.context, func() { cancel(context.Cause(grant.context)) })
+	stop := context.AfterFunc(g.context, func() { cancel(context.Cause(g.context)) })
 	defer func() { stop(); cancel(nil) }()
-	if err := grant.context.Err(); err != nil {
+	if err := g.context.Err(); err != nil {
 		return "", err
 	}
 	switch prompt.Operation {
 	case "memory.extract", "memory.curate":
-		if grant.complete == nil {
+		if g.complete == nil {
 			return "", errors.New("managed plugin: completion was not granted")
 		}
-		return grant.complete(lifetime, prompt)
+		return g.complete(lifetime, prompt)
 	case "memory.embed":
-		if grant.embed == nil {
-			return "", errors.New("managed plugin: embedding was not granted")
-		}
-		var texts []string
-		if err := json.Unmarshal([]byte(prompt.UserPrompt), &texts); err != nil {
-			return "", err
-		}
-		if len(texts) == 0 || len(texts) > memory.MaxVisiblePerTarget*2 {
-			return "", errors.New("managed plugin: embedding count refused")
-		}
-		vectors, err := grant.embed.Embed(lifetime, texts)
-		if err != nil {
-			return "", err
-		}
-		encoded, err := json.Marshal(vectors)
-		return string(encoded), err
+		return g.embedTexts(lifetime, prompt.UserPrompt)
 	default:
 		return "", errors.New("managed plugin: model operation refused")
 	}
+}
+
+func (g *modelGrant) embedTexts(ctx context.Context, input string) (string, error) {
+	if g.embed == nil {
+		return "", errors.New("managed plugin: embedding was not granted")
+	}
+	var texts []string
+	if err := json.Unmarshal([]byte(input), &texts); err != nil {
+		return "", err
+	}
+	if len(texts) == 0 || len(texts) > memory.MaxVisiblePerTarget*2 {
+		return "", errors.New("managed plugin: embedding count refused")
+	}
+	vectors, err := g.embed.Embed(ctx, texts)
+	if err != nil {
+		return "", err
+	}
+	encoded, err := json.Marshal(vectors)
+	return string(encoded), err
 }
 
 type RemoteModels struct{ Grant, Space string }

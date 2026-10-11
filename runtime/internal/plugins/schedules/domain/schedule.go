@@ -1,10 +1,3 @@
-// Package schedule is the scheduled-run domain: a Schedule fires saved instructions
-// on a cron trigger as a headless run (no client present). A firing claims
-// schedules whose time has come, starts a run, and records the occurrence.
-//
-// A Schedule stores the final instruction text, not a template reference — the
-// scheduler is deliberately decoupled from any authoring source, so deleting or
-// renaming that source cannot break a schedule.
 package schedule
 
 import (
@@ -17,35 +10,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 )
 
-// ErrNotFound is returned when a schedule lookup cannot find an id.
 var ErrNotFound = errors.New("schedule: not found")
 
-// ErrRevisionConflict reports that a conditional update targeted a stale
-// version of the schedule.
 var ErrRevisionConflict = errors.New("schedule: revision conflict")
 
-// ErrRevisionExhausted reports that a stored Schedule has consumed the final
-// exact revision and cannot be mutated without making client CAS identities
-// ambiguous.
+// Wrapping the final exact revision would make CAS identities ambiguous.
 var ErrRevisionExhausted = errors.New("schedule: revision exhausted")
 
-// Validation sentinels returned by [Schedule.Validate]; callers can classify
-// invalid fields without parsing error text.
 var (
-	// ErrIDRequired — an update target must identify a stored schedule.
-	ErrIDRequired = errors.New("schedule: id is required")
-	// ErrRevisionRequired — an external update must carry the version it read.
-	ErrRevisionRequired = errors.New("schedule: expected revision is required")
-	// ErrInstructionsRequired — a schedule with no instructions has nothing to fire.
+	ErrIDRequired           = errors.New("schedule: id is required")
+	ErrRevisionRequired     = errors.New("schedule: expected revision is required")
 	ErrInstructionsRequired = errors.New("schedule: instructions is required")
-	// ErrCronRequired — a schedule with no cron has no trigger.
-	ErrCronRequired = errors.New("schedule: cron is required")
-	// ErrInvalidCron — the cron expression is not a supported five-field spec.
-	ErrInvalidCron = errors.New("schedule: invalid cron")
+	ErrCronRequired         = errors.New("schedule: cron is required")
+	ErrInvalidCron          = errors.New("schedule: invalid cron")
 )
 
-// Draft is the admitted user-owned value from which a new Schedule is created.
-// Identity, lifecycle time, cursor, and revision are assigned by [New].
 type Draft struct {
 	Title          string
 	Instructions   string
@@ -55,8 +34,6 @@ type Draft struct {
 	Enabled        bool
 }
 
-// Validate checks user-owned schedule content before workspace resolution or
-// saving begins.
 func (d Draft) Validate() error {
 	if err := validateInstructions(d.Instructions); err != nil {
 		return err
@@ -67,7 +44,6 @@ func (d Draft) Validate() error {
 	return ValidateCron(d.Cron)
 }
 
-// Snapshot is the complete technical representation used by persistence.
 type Snapshot struct {
 	ID             string
 	Title          string
@@ -81,9 +57,6 @@ type Snapshot struct {
 	Revision       uint64
 }
 
-// Schedule is saved instructions fired on a cron trigger. Its state is private:
-// construction, edits, cursor changes, and revision advancement are aggregate
-// behavior rather than mutable bags shared with coordinating callers and stores.
 type Schedule struct {
 	id             resourceid.ScheduleID
 	title          string
@@ -92,16 +65,12 @@ type Schedule struct {
 	modelSelection modelref.Selection
 	cron           string
 	lastRunAt      time.Time
-	// nextRunAt is zero exactly when the schedule is disabled; it is the one
-	// record of whether the schedule fires.
-
+	// The cursor also determines enablement so a second enabled flag cannot drift from scheduling.
 	nextRunAt time.Time
 	createdAt time.Time
 	revision  exactint.Counter
 }
 
-// Patch is a partial update to a Schedule. Nil fields keep the existing value;
-// non-nil fields replace it, including replacing a string with "".
 type Patch struct {
 	Title        *string
 	Instructions *string
@@ -111,8 +80,6 @@ type Patch struct {
 	Enabled      *bool
 }
 
-// New creates revision one and derives the first cursor from the same canonical
-// creation instant stored on the aggregate.
 func New(id string, draft Draft, createdAt time.Time) (Schedule, error) {
 	parsedID, err := parseScheduleID(id)
 	if err != nil {
@@ -130,8 +97,6 @@ func New(id string, draft Draft, createdAt time.Time) (Schedule, error) {
 	return value.scheduledAfter(draft.Enabled, createdAt)
 }
 
-// Restore reconstructs a Schedule from durable state and rechecks every
-// aggregate invariant.
 func Restore(snapshot Snapshot) (Schedule, error) {
 	parsedID, err := parseScheduleID(snapshot.ID)
 	if err != nil {
@@ -154,9 +119,6 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 	return value, nil
 }
 
-// Edit applies one optimistic-concurrency checked replacement, derives its cron
-// cursor from after, and advances its exact revision once. No caller can observe
-// a replacement whose enabled state and cursor disagree.
 func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Schedule, error) {
 	if err := s.id.Validate(); err != nil {
 		return Schedule{}, err
@@ -205,8 +167,6 @@ func (s Schedule) advanceRevision() (Schedule, error) {
 	return s, nil
 }
 
-// Validate checks every aggregate invariant before a Schedule crosses a
-// boundary. The rule lives on the entity rather than only at an input edge.
 func (s Schedule) Validate() error {
 	if err := s.validateProduct(); err != nil {
 		return err
@@ -246,8 +206,6 @@ func validateInstructions(instructions string) error {
 	return nil
 }
 
-// scheduledAfter validates s and returns a copy whose cursor records enabled:
-// the next cron instant after after, or zero when disabled.
 func (s Schedule) scheduledAfter(enabled bool, after time.Time) (Schedule, error) {
 	if err := s.validateProduct(); err != nil {
 		return Schedule{}, err
@@ -264,7 +222,6 @@ func (s Schedule) scheduledAfter(enabled bool, after time.Time) (Schedule, error
 	return s, s.Validate()
 }
 
-// Snapshot returns the complete owned persistence value.
 func (s Schedule) Snapshot() Snapshot {
 	return Snapshot{
 		ID: s.id.String(), Title: s.title, Instructions: s.instructions, CWD: s.cwd,

@@ -1,5 +1,3 @@
-// Package agentmemory owns review, curation, and search use cases for
-// agent-maintained memory.
 package agentmemory
 
 import (
@@ -12,18 +10,11 @@ import (
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
-// RootResolver is the narrow workspace dependency this use case consumes.
-// Its implementation belongs to the workspace application component; the
-// agent-memory package does not learn filesystem or path-normalization details.
 type RootResolver interface {
 	ResolveRoot(cwd string) (string, error)
 }
 
-// Store is the review-oriented persistence port consumed by this coordinator.
-// List returns one complete target without presentation ordering; the
-// coordinator owns that cross-item policy. Extraction and search declare their
-// own narrower consumer views. Calls borrow inputs synchronously; returned items
-// and collections transfer ownership to the caller.
+// Returned items transfer ownership so read ordering cannot mutate store state.
 type Store interface {
 	List(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 	Review(ctx context.Context, id domain.ItemID, decision domain.ReviewDecision, now time.Time) error
@@ -32,7 +23,6 @@ type Store interface {
 	Add(ctx context.Context, scope domain.Scope, project, content string, now time.Time) (item domain.Item, changed bool, err error)
 }
 
-// Config supplies the persistence and workspace dependencies required for review.
 type Config struct {
 	Store         Store
 	Roots         RootResolver
@@ -40,7 +30,6 @@ type Config struct {
 	Invalidations invalidation.Publish
 }
 
-// Coordinator implements agent-memory review commands and queries.
 type Coordinator struct {
 	store         Store
 	roots         RootResolver
@@ -48,7 +37,6 @@ type Coordinator struct {
 	invalidations invalidation.Publish
 }
 
-// New constructs the complete review use case before it can accept requests.
 func New(cfg Config) (*Coordinator, error) {
 	if dependency.Missing(cfg.Store) {
 		return nil, errors.New("agentmemory: review store is required")
@@ -63,7 +51,6 @@ func New(cfg Config) (*Coordinator, error) {
 	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, invalidations: cfg.Invalidations}, nil
 }
 
-// Review accepts or rejects an extracted proposal.
 func (c *Coordinator) Review(ctx context.Context, id string, decision domain.ReviewDecision) error {
 	if _, err := decision.Result(); err != nil {
 		return err
@@ -79,8 +66,6 @@ func (c *Coordinator) Review(ctx context.Context, id string, decision domain.Rev
 	return nil
 }
 
-// Update applies the content/pin patch as one use case and returns the saved
-// item. The persistence port commits both requested fields atomically.
 func (c *Coordinator) Update(ctx context.Context, id string, content *string, pinned *bool) (domain.Item, error) {
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
@@ -101,7 +86,6 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	return item, nil
 }
 
-// Delete removes one memory item.
 func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
@@ -114,7 +98,6 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// Add creates an immediately-active user-authored memory item.
 func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content string) (domain.Item, error) {
 	project, err := c.project(scope, cwd)
 	if err != nil {

@@ -76,7 +76,7 @@ func testAcceptance(occurrence schedule.Occurrence) schedule.Acceptance {
 }
 
 func recordManual(ctx context.Context, store *sqlite.ScheduleStore, scheduled schedule.Schedule, ranAt time.Time) error {
-	request, err := schedule.ManualRunRequest(scheduled, "ses_"+uuid.NewString(), "run_"+uuid.NewString(), ranAt)
+	request, err := scheduled.ManualRun("ses_"+uuid.NewString(), "run_"+uuid.NewString(), ranAt)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,6 @@ func TestScheduleCRUD(t *testing.T) {
 		t.Errorf("LastRunAt = %v, want zero (never fired)", got.LastRunAt())
 	}
 
-	// Due: the past nextRunAt is in (0, now], so it's returned.
 	due, err := s.Due(ctx, time.Now(), 100)
 	if err != nil {
 		t.Fatalf("due: %v", err)
@@ -135,7 +134,6 @@ func TestScheduleCRUD(t *testing.T) {
 		t.Fatalf("due = %+v, want the one past-due schedule", due)
 	}
 
-	// Update: disabling clears the due index (NextRunAt zero) → never due.
 	disabled := false
 	renamed := "renamed"
 	replacement, editErr := got.Edit(schedule.Patch{Title: &renamed, Enabled: &disabled}, got.Revision(), time.Now())
@@ -182,9 +180,6 @@ func TestScheduleStoreRejectsMalformedLookupIdentities(t *testing.T) {
 	}
 }
 
-// TestScheduleRecordRunLeavesCursor: a manual run-now (RecordRun) updates
-// LastRunAt but must NOT touch NextRunAt. Re-stamping a cursor value read before
-// the worker advanced it would rewind the schedule and re-fire it every tick.
 func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 	ctx := t.Context()
 	s, _ := newScheduleStores(t)
@@ -490,9 +485,6 @@ func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 		t.Fatalf("schedule cursor = (%v, %v), want %v", current.NextRunAt(), err, secondDueAt)
 	}
 
-	// The worker can observe the later cron slot while this first occurrence is
-	// still waiting for Run admission. It must not advance the cursor again or
-	// materialize a second recovery item for the same schedule.
 	secondClaim := testClaim(current, "ses_second", "run_second", secondDueAt)
 	second := secondClaim.Occurrence()
 	claimed, err = store.Claim(ctx, secondClaim)
@@ -551,7 +543,6 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	}
 }
 
-// TestScheduleUpdateNotFound: updating an unknown id reports ErrNotFound.
 func TestScheduleUpdateNotFound(t *testing.T) {
 	s := newScheduleStore(t)
 	expected, restoreErr := schedule.Restore(schedule.Snapshot{
@@ -578,8 +569,6 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 	}
 }
 
-// TestScheduleDueSkipsDisabled: a disabled schedule never shows as due even if
-// its NextRunAt is in the past.
 func TestScheduleDueSkipsDisabled(t *testing.T) {
 	ctx := context.Background()
 	s := newScheduleStore(t)
@@ -619,9 +608,6 @@ func TestScheduleReadsRejectNonPositiveLimits(t *testing.T) {
 	}
 }
 
-// TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen covers the durable
-// half of worker restart semantics. An occurrence that was never claimed must
-// remain discoverable through a fresh store after process restart.
 func TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "flame.db")

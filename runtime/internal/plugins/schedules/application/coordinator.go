@@ -1,5 +1,3 @@
-// Package schedules owns Schedule management and durable dispatch preparation.
-// Runtime accepts captured dispatch requests and owns their execution.
 package schedules
 
 import (
@@ -17,22 +15,16 @@ import (
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
-// ErrRefused matches an error from Create or Delete that the Coordinator raised
-// before it reached the store. Nothing changed, so a caller that must prove
-// that, such as a model's tool call, can settle the command as definite; a store
-// failure never matches, because only the store knows what it wrote.
+// Only a pre-store refusal proves that a failed command caused no write; store errors retain an unknown outcome.
 var ErrRefused = errors.New("schedules: refused before any change")
 
-// refusal keeps its cause's message and identity; it only adds ErrRefused.
 type refusal struct{ cause error }
 
 func (r refusal) Error() string      { return r.cause.Error() }
 func (r refusal) Unwrap() error      { return r.cause }
 func (refusal) Is(target error) bool { return target == ErrRefused }
 
-// ManagementStore is the editable-schedule persistence slice owned by this
-// use case. ListPage transfers ownership of its result slice to the caller.
-// Firing and worker cursor updates intentionally remain separate.
+// Management writes exclude cursor claims and acceptance transitions, which enter their own store boundary.
 type ManagementStore interface {
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
@@ -41,8 +33,6 @@ type ManagementStore interface {
 	Delete(ctx context.Context, id string) (bool, error)
 }
 
-// Coordinator owns editable scheduled-run management over its narrow store.
-// It is stateless beyond its dependencies and safe to share.
 type Coordinator struct {
 	store         ManagementStore
 	paths         CWDResolver
@@ -52,20 +42,14 @@ type Coordinator struct {
 	invalidations invalidation.Publish
 }
 
-// CWDResolver is the filesystem boundary used to admit a schedule's working
-// directory. Persisted schedules always hold either an empty cwd (the runtime
-// default) or a canonical existing directory.
 type CWDResolver interface {
 	ResolveExistingDir(path string) (string, error)
 }
 
-// ModelAdmitter validates an exact schedule-owned model choice before it is
-// persisted or captured by a firing.
 type ModelAdmitter interface {
 	AdmitSelection(selection modelref.Selection) error
 }
 
-// Dependencies is the collaborator set [New] wires into a Coordinator.
 type Dependencies struct {
 	Store         ManagementStore
 	Paths         CWDResolver
@@ -74,10 +58,7 @@ type Dependencies struct {
 	Invalidations invalidation.Publish
 }
 
-// Patch is the Application input for editing a Schedule. CWD and model fields
-// remain untrusted external spellings until Update admits them; the Domain
-// patch receives only their resolved values. Update borrows this input until
-// return; the resulting Schedule retains values rather than these pointers.
+// Untrusted CWD and model spellings must be resolved before they reach the Domain patch.
 type Patch struct {
 	Title          *string
 	Instructions   *string
@@ -87,14 +68,12 @@ type Patch struct {
 	Enabled        *bool
 }
 
-// UpdateCommand applies a partial edit to one stored schedule.
 type UpdateCommand struct {
 	ID               string
 	Patch            Patch
 	ExpectedRevision uint64
 }
 
-// New returns a fully wired Coordinator or rejects partial construction.
 func New(deps Dependencies) (*Coordinator, error) {
 	for _, required := range []struct {
 		name  string
@@ -119,15 +98,10 @@ func New(deps Dependencies) (*Coordinator, error) {
 	}, nil
 }
 
-// listPageNamespace binds cursors to this schedule read independently of other
-// paged reads.
 const listPageNamespace = "schedules-created-ms"
 
-// listPageLimit is the widest schedule page this read will serve.
 const listPageLimit = 100
 
-// ListPage returns one page of schedules, newest-created first, continuing after
-// cursor.
 func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
 	anchor, err := pagination.Decode(cursor, listPageNamespace, nil)
 	if err != nil {
@@ -162,10 +136,6 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 	})
 }
 
-// Create validates, normalizes, schedules, and persists a new schedule.
-// Create admits a draft's model selection, then lets the domain decide whether
-// the draft itself is a schedule. The draft is the Domain's own admitted input
-// value, so this use case takes it rather than restating its fields.
 func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedule.Schedule, error) {
 	created, err := c.admit(draft)
 	if err != nil {
@@ -193,8 +163,6 @@ func (c *Coordinator) admit(draft schedule.Draft) (schedule.Schedule, error) {
 	return schedule.New(c.newScheduleID(), draft, c.now())
 }
 
-// Update applies a patch to an existing schedule, preserving durable identity
-// and timestamps while recomputing its next due time.
 func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.Schedule, error) {
 	if err := schedule.ValidateID(cmd.ID); err != nil {
 		return schedule.Schedule{}, err
@@ -253,7 +221,6 @@ func (c *Coordinator) updateExisting(
 	return updated, nil
 }
 
-// Delete removes a schedule by id.
 func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	if err := schedule.ValidateID(id); err != nil {
 		return refusal{err}

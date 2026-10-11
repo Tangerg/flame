@@ -1,5 +1,3 @@
-// Agent memory search exposes search_memory over the curated memory visible
-// from the current project: exact-project facts plus user-scoped preferences.
 package tools
 
 import (
@@ -37,7 +35,6 @@ func (a agentMemorySearchRequest) normalized() (query string, limit int, err err
 	return query, optional.Value(a.Limit, agentMemorySearchDefaultLimit), nil
 }
 
-// AgentMemorySearch is the agent-memory search capability this tool consumes.
 type AgentMemorySearch interface {
 	Search(ctx context.Context, project, query string, topK int) ([]agentmemory.Item, error)
 }
@@ -46,7 +43,6 @@ type agentMemorySearcher struct {
 	search AgentMemorySearch
 }
 
-// NewAgentMemorySearch builds search_memory over the backend's required searcher.
 func NewAgentMemorySearch(search AgentMemorySearch) (toolcontract.Tool, error) {
 	if dependency.Missing(search) {
 		return nil, errors.New("memory: tool searcher is required")

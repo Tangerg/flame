@@ -12,9 +12,6 @@ import (
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
-// AppendLedger inserts facts that have not already appeared in project. Facts
-// are immutable and deduplicated independently, so a response containing one
-// repeated bullet never suppresses its genuinely new siblings.
 func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.FactBatch) ([]agentmemory.LedgerFact, error) {
 	normalized, err := batch.Normalize()
 	if err != nil {
@@ -66,8 +63,6 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 	return inserted, nil
 }
 
-// PendingLedger lists a project's facts strictly after watermark in sequence
-// order. limit must be positive so every curation call has an explicit bound.
 func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]agentmemory.LedgerFact, error) {
 	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
 		return nil, err
@@ -110,8 +105,6 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 	return facts, nil
 }
 
-// State returns the project's curation watermark. An unknown project has a zero
-// watermark.
 func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemory.State, error) {
 	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
 		return agentmemory.State{}, err
@@ -136,10 +129,7 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 	return st, nil
 }
 
-// Reconcile folds the project's ledger through `through` into its auto-origin
-// item set. The watermark advance is a compare-and-swap around the LLM curation
-// call: a concurrent winner returns published=false and leaves the item set
-// untouched, so a lost race never half-applies a stale generation.
+// Watermark CAS and item folding share a transaction so a losing publication cannot rewrite memory.
 func (a *AgentMemoryStore) Reconcile(
 	ctx context.Context,
 	publication agentmemory.Publication,
@@ -180,7 +170,7 @@ func (a *AgentMemoryStore) Reconcile(
 		}
 		if changed != 1 {
 			published = false
-			return nil // lost CAS — do not reconcile items against a stale fold
+			return nil
 		}
 		if reconcileItemsErr := a.reconcileItems(ctx, project, contents, state.UpdatedAt); reconcileItemsErr != nil {
 			return reconcileItemsErr

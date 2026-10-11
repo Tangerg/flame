@@ -14,19 +14,14 @@ import (
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
-// ScheduleStore is the SQLite persistence adapter for scheduled runs. The DB
-// must have been opened via [Open] so the schedules table exists.
 type ScheduleStore struct {
 	db *sql.DB
 }
 
-// NewScheduleStore wires the given *sql.DB to the schedule persistence surface.
 func NewScheduleStore(db *sql.DB) *ScheduleStore {
 	return &ScheduleStore{db: db}
 }
 
-// scheduleColumns is the schedules row in scan order. Every read shares it so
-// a column added to the table cannot reach one query and miss another.
 const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision`
 
 func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
@@ -93,10 +88,7 @@ func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, 
 	return sc, nil
 }
 
-// ListPage returns schedules newest-created first, bounded by the query. after is
-// the (creation time, id) position a previous page ended at; the id breaks ties,
-// so two schedules created in the same nanosecond cannot be dropped or repeated
-// across a page boundary.
+// The identity breaks creation-time ties so page boundaries do not repeat or drop schedules.
 func (s *ScheduleStore) ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error) {
 	if limit <= 0 {
 		return nil, errors.New("sqlite: schedule page limit must be positive")
@@ -133,11 +125,7 @@ func (s *ScheduleStore) Due(ctx context.Context, now time.Time, limit int) ([]sc
 		 LIMIT ?`, now.UnixMilli(), scheduleFiringPending.databaseValue(), limit)
 }
 
-// Claim atomically advances a due schedule's cursor and materializes its
-// immutable occurrence. The pending row is the durable work item a future
-// worker dispatches after a process crash; cursor advancement therefore cannot
-// produce either a duplicate accepted run or a silently lost occurrence.
-// LastRunAt remains an accepted-Run fact and is intentionally not touched here.
+// A claimed cursor needs a durable occurrence in the same transaction or restart loses due work.
 func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claimed bool, err error) {
 	if err := claim.Validate(); err != nil {
 		return false, fmt.Errorf("sqlite: invalid schedule claim: %w", err)
@@ -185,9 +173,6 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 	return claimed, err
 }
 
-// Pending lists durable occurrences whose Run opening has not committed. They
-// carry a captured execution value, so later schedule edits or deletion cannot
-// rewrite work that was already due.
 func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error) {
 	if limit <= 0 {
 		return nil, errors.New("sqlite: schedule pending limit must be positive")
@@ -221,10 +206,6 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 	return occurrences, nil
 }
 
-// Accept confirms the occurrence in the same transaction as its exact Run
-// opening. Repeating the confirmation while that Run is live is harmless; any
-// other or absent Run is an ownership violation. The accepted tombstone follows
-// the Run lifecycle and is pruned when that Run finishes or is deleted.
 func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptance) error {
 	if err := acceptance.Validate(); err != nil {
 		return fmt.Errorf("sqlite: invalid schedule acceptance: %w", err)
@@ -279,8 +260,7 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt time.Time) (bool, error) {
 	current, err := s.Get(ctx, id)
 	if errors.Is(err, schedule.ErrNotFound) {
-		// Captured dispatch survives definition deletion. Acceptance still
-		// settles its private queue record without recreating the definition.
+		// Acceptance settles captured work after definition deletion without recreating the definition.
 		return false, nil
 	}
 	if err != nil {

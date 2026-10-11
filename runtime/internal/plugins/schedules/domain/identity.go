@@ -12,17 +12,14 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-// IDPrefix is the server-generated Schedule resource namespace.
 const IDPrefix = runtimeidentity.SchedulePrefix
 
-// MaximumIDCharacters bounds public Schedule resource identities.
 const MaximumIDCharacters = runtimeidentity.MaximumResourceCharacters
 
 const (
 	occurrenceIDSeparator      = ":"
 	maximumInt64TextCharacters = len("-9223372036854775808")
-	// MaximumOccurrenceIDCharacters bounds the deterministic Schedule-firing key:
-	// one bounded Schedule identity, its separator, and a signed int64 timestamp.
+
 	MaximumOccurrenceIDCharacters = MaximumIDCharacters + len(occurrenceIDSeparator) + maximumInt64TextCharacters
 )
 
@@ -37,15 +34,12 @@ func parseScheduleID(text string) (resourceid.ScheduleID, error) {
 	return parsed, nil
 }
 
-// ValidateID validates one public Schedule resource identity exactly.
 func ValidateID(text string) error {
 	_, err := parseScheduleID(text)
 	return err
 }
 
-// occurrenceIdentity is one deterministic durable cron-firing identity. Its
-// structure is owned here because the Schedule and due cursor together define
-// occurrence uniqueness and recovery idempotency.
+// Schedule identity and due cursor make retries name the same occurrence.
 type occurrenceIdentity struct {
 	text       string
 	scheduleID resourceid.ScheduleID

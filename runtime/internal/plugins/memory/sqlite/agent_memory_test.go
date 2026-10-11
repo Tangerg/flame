@@ -94,8 +94,6 @@ func TestAgentMemoryPendingLedgerRequiresBoundedPage(t *testing.T) {
 	}
 }
 
-// TestAgentMemoryLedgerReadsRequireTheDomainsProject proves storage refuses
-// exactly the project targets the domain refuses, a blank one included.
 func TestAgentMemoryLedgerReadsRequireTheDomainsProject(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	for _, project := range []string{"", "   "} {
@@ -112,8 +110,7 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one", "two")
 	through := facts[len(facts)-1].Sequence
-	// Epoch is a valid update instant even though its Unix-nanosecond encoding is
-	// zero. The watermark, not a numeric timestamp sentinel, owns presence.
+
 	now := time.Unix(0, 0).UTC()
 	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, through, []string{"one", "two"}, now)
 	published, err := store.Reconcile(t.Context(), publication)
@@ -124,7 +121,7 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 	if err != nil || state.Watermark != through || !state.UpdatedAt.Equal(now) {
 		t.Fatalf("state = %+v, err=%v", state, err)
 	}
-	// Curated facts land as PENDING proposals — not injected until approved.
+
 	if active, itemsErr := store.Items(t.Context(), agentmemory.ScopeProject, "/repo"); itemsErr != nil || len(active) != 0 {
 		t.Fatalf("active items before approval = (%+v, %v), want none", active, itemsErr)
 	}
@@ -138,8 +135,6 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 		}
 	}
 
-	// A second reconcile that expects watermark 0 again has lost the CAS: it must
-	// neither advance the watermark nor rewrite the item set.
 	stalePublication := agentMemoryPublication(t, "/repo", agentmemory.State{}, through, []string{"three"}, now.Add(time.Hour))
 	stale, err := store.Reconcile(t.Context(), stalePublication)
 	if err != nil || stale {
@@ -167,7 +162,6 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 		idByContent[item.Content()] = item.ID()
 	}
 
-	// Drop "two", keep "one", add "three" — all still pending proposals.
 	expected := agentmemory.State{Watermark: facts[1].Sequence, UpdatedAt: now}
 	nextPublication := agentMemoryPublication(t, "/repo", expected, facts[2].Sequence, []string{"one", "three"}, now.Add(time.Hour))
 	if _, err := store.Reconcile(t.Context(), nextPublication); err != nil {
@@ -225,7 +219,6 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 		t.Fatalf("rejected update changed tombstone = (%+v, %t, %v)", tombstone, found, err)
 	}
 
-	// Only the approved item is injected; List hides the rejected tombstone.
 	active, _ := store.Items(t.Context(), agentmemory.ScopeProject, "/repo")
 	if len(active) != 1 || active[0].ID() != approve.ID() {
 		t.Fatalf("active = %+v, want just the approved item", active)
@@ -234,7 +227,6 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 		t.Fatalf("list should hide the rejected tombstone: %+v", listed)
 	}
 
-	// A later fold re-proposing the rejected fact must NOT resurrect it.
 	appendAgentFacts(t, store, "/repo", "2026-07-20", "three")
 	pending, _ := store.PendingLedger(t.Context(), "/repo", facts[1].Sequence, 10)
 	expected := agentmemory.State{Watermark: facts[1].Sequence, UpdatedAt: now}
@@ -510,7 +502,7 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	if err != nil || !ok || !got.Pinned() || got.Content() != "always run make lint before commit" {
 		t.Fatalf("after edit = (%+v, %v, %v)", got, ok, err)
 	}
-	// Editing content clears the now-stale embedding.
+
 	forSearch, _ := store.SearchCorpus(t.Context(), "/repo")
 	if len(forSearch) != 1 {
 		t.Fatalf("search corpus = %+v", forSearch)
@@ -518,8 +510,7 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	if _, _, cached := forSearch[0].Embedding(); cached {
 		t.Fatalf("edit did not clear the stale embedding: %+v", forSearch)
 	}
-	// A combined review update is all-or-nothing: invalid content must not leave
-	// a requested pin behind.
+
 	unpinned := false
 	if _, updateErr := store.Update(t.Context(), item.ID(), nil, &unpinned, now); updateErr != nil {
 		t.Fatal(updateErr)
@@ -745,7 +736,7 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 	if _, err := store.Reconcile(t.Context(), publication); err != nil {
 		t.Fatal(err)
 	}
-	// Only approved (active) items are embedded; approve the proposals first.
+
 	proposals, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	for _, item := range proposals {
 		if err := store.Review(t.Context(), item.ID(), agentmemory.ReviewApprove, now); err != nil {
@@ -753,7 +744,6 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 		}
 	}
 
-	// Approved items carry no embedding yet.
 	forSearch, err := store.SearchCorpus(t.Context(), "/repo")
 	if err != nil || len(forSearch) != 2 {
 		t.Fatalf("items for search = (%+v, %v), want 2", forSearch, err)
@@ -773,7 +763,6 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 		t.Fatal(setEmbeddingsErr)
 	}
 
-	// The search fetch decodes both the vector and its exact space identity.
 	forSearch, err = store.SearchCorpus(t.Context(), "/repo")
 	if err != nil || len(forSearch) != 2 {
 		t.Fatalf("items for search = (%+v, %v)", forSearch, err)

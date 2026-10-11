@@ -19,9 +19,6 @@ import (
 )
 
 const (
-	// defaultConsolidationMinMessages skips extracting facts from a conversation
-	// too short to hold any. It is unrelated to the skill miner's own floor,
-	// which asks a different question of a different conversation.
 	defaultConsolidationMinMessages = 4
 
 	defaultMemoryCurationMinPending = 8
@@ -29,16 +26,12 @@ const (
 	defaultMemoryCurationMaxTokens  = 2_048
 	defaultMemoryCurationMaxAge     = 24 * time.Hour
 
-	// The curation request reserves independent whole-entry allocations for
-	// existing memory and the ledger. A fact excluded by the ledger allocation
-	// is not covered by this fold's watermark and remains pending.
+	// Whole-entry allocations leave omitted ledger facts pending beyond this fold's watermark.
 	memoryCurationCurrentBytes = 96 * 1024
 	memoryCurationLedgerBytes  = 256 * 1024
 )
 
-// MemoryCurationPolicyValues is the construction boundary for the
-// ledger-to-memory fold. Nil selects a named default; present non-positive or
-// inconsistent values are rejected instead of silently rewritten.
+// Only absent limits select defaults; explicit invalid limits must fail construction.
 type MemoryCurationPolicyValues struct {
 	MinPendingFacts *int
 	MaxPendingFacts *int
@@ -105,21 +98,15 @@ type messageReader interface {
 	Read(ctx context.Context, sessionID string) (Conversation, error)
 }
 
-// MemoryConsolidator extracts durable facts into a daily append-only ledger,
-// then folds due ledger entries into curated memory items. Derived vectors
-// belong to semantic search, not this curation lifecycle.
 type MemoryConsolidator struct {
 	history messageReader
 	memory  agentMemory
 	client  completion
 	policy  memoryCurationPolicy
-	// minMsgs is the extraction floor; a test lowers it to reach the gate below.
 	minMsgs int
 	now     func() time.Time
 }
 
-// NewMemoryConsolidator builds a Run-boundary worker from its required history,
-// memory, and utility-model collaborators.
 func NewMemoryConsolidator(store messageReader, memory agentMemory, client completion, values MemoryCurationPolicyValues) (*MemoryConsolidator, error) {
 	if dependency.Missing(store) {
 		return nil, errors.New("memory consolidator: conversation reader is required")
@@ -144,10 +131,7 @@ func NewMemoryConsolidator(store messageReader, memory agentMemory, client compl
 	}, nil
 }
 
-// Consolidate reads post-compaction history, appends fresh facts to today's
-// project ledger, and publishes a curated generation when its watermark gate
-// is due. Short conversations skip extraction but still fold pending ledger
-// entries, so a previous provider failure can recover on a later Run.
+// Pending folds must run even when extraction is skipped so an earlier failed publication can recover.
 func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd string) error {
 	if sessionID == "" || cwd == "" {
 		return nil
@@ -225,9 +209,7 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 	return nil
 }
 
-// currentMemory renders the project's existing automatic items as the current
-// curated body, so each fold merges against the preceding generation rather
-// than starting from an empty page.
+// Each fold needs the preceding generation so new ledger facts cannot erase retained context.
 func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) (string, error) {
 	items, err := m.memory.Items(ctx, agentmemory.ScopeProject, project)
 	if err != nil {
@@ -254,10 +236,7 @@ func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) 
 	return b.String(), nil
 }
 
-// boundedLedgerPrefix keeps the oldest whole facts that fit the current fold.
-// Returning a prefix is essential: the caller advances the watermark only
-// through the final returned sequence, so omitted facts remain durable input
-// to the next curation pass.
+// Only a whole-fact prefix may advance the watermark, leaving every omitted fact pending.
 func boundedLedgerPrefix(facts []agentmemory.LedgerFact, budget int) []agentmemory.LedgerFact {
 	used := 0
 	for index, fact := range facts {
@@ -280,8 +259,6 @@ func (m *MemoryConsolidator) curationDue(state agentmemory.State, pending int, n
 	return !state.UpdatedAt.IsZero() && now.Sub(state.UpdatedAt) >= m.policy.maxAge
 }
 
-// askForFacts queries the utility model directly, outside conversation
-// middleware, and returns its raw bullet response.
 func (m *MemoryConsolidator) askForFacts(ctx context.Context, messages Conversation) (string, error) {
 	transcript := messages.Transcript
 	prompt := `You are mining a coding-agent conversation for durable facts.

@@ -10,35 +10,25 @@ import (
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
-// ReadStore supplies the active memory views used in model context. Search
-// combines the exact project with user memory; Items reads one exact target
-// without presentation ordering, which this package owns.
-// Returned items and collections transfer ownership to the caller. SetEmbeddings
-// borrows its updates synchronously; the cache remains conditional on exact content identity.
+// Returned items transfer ownership so read ordering cannot mutate store state.
 type ReadStore interface {
 	Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 	SearchCorpus(ctx context.Context, project string) ([]domain.Item, error)
 	SetEmbeddings(ctx context.Context, updates []domain.EmbeddingUpdate) error
 }
 
-// Embedder supplies an optional semantic signal. Embedding remains best-effort:
-// keyword ranking is still useful when the model is absent or unhealthy.
+// A failed optional embedding call cannot make keyword search unavailable.
 type Embedder interface {
-	// ID identifies the exact non-secret client configuration that selects the
-	// vector coordinate system, including any custom endpoint identity.
+	// Cache identity must include the model configuration because it selects the vector coordinate system.
 	ID() string
 	Embed(ctx context.Context, texts []string) ([][]float32, error)
 }
 
-// ReadModel is the sole Application boundary for Agent Memory entering model
-// context, whether pinned directly or recalled by search.
 type ReadModel struct {
 	store           ReadStore
 	resolveEmbedder func(context.Context) (Embedder, error)
 }
 
-// NewReadModel constructs model-context reads over a required store. A nil
-// resolver selects keyword-only search.
 func NewReadModel(store ReadStore, resolveEmbedder func(context.Context) (Embedder, error)) (*ReadModel, error) {
 	if dependency.Missing(store) {
 		return nil, errors.New("agentmemory: read store is required")
@@ -46,8 +36,6 @@ func NewReadModel(store ReadStore, resolveEmbedder func(context.Context) (Embedd
 	return &ReadModel{store: store, resolveEmbedder: resolveEmbedder}, nil
 }
 
-// Items returns the complete active catalog for one exact target, in the same
-// order curation folds it: pinned and newer first, identity breaking ties.
 func (r *ReadModel) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	if err := domain.ValidateTarget(scope, project); err != nil {
 		return nil, err
@@ -60,9 +48,7 @@ func (r *ReadModel) Items(ctx context.Context, scope domain.Scope, project strin
 	return items, nil
 }
 
-// Search returns up to topK relevant project- and user-scoped memory items for
-// one project context. Ranking happens over the combined corpus so neither
-// partition receives a separate top-k quota or query embedding.
+// Project and user items share one ranking pass so each partition cannot consume a separate quota.
 func (r *ReadModel) Search(ctx context.Context, project, query string, topK int) ([]domain.Item, error) {
 	if topK <= 0 {
 		return nil, nil
@@ -153,9 +139,7 @@ func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuer
 		}
 		items[index] = cached
 	}
-	// The cache is derived state: the current request already owns exact
-	// vectors, so a failed or losing conditional write must not turn a useful
-	// search into an application failure.
+	// Cache writes are best-effort because this search already owns exact vectors.
 	if err := r.store.SetEmbeddings(ctx, updates); err != nil {
 		slog.WarnContext(ctx, "agentmemory: cache corpus embeddings", "error", err)
 	}

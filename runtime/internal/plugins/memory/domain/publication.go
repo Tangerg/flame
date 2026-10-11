@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-// Publication is one exact curation-generation decision. It binds the target,
-// expected watermark, successor state, and complete canonical content set so
-// persistence cannot combine fields from different folds.
+// The target, watermark and contents stay bound so persistence cannot mix decisions from separate folds.
 type Publication struct {
 	project  string
 	expected State
@@ -17,7 +15,6 @@ type Publication struct {
 	contents []string
 }
 
-// NewPublication constructs one monotonic curation-generation publication.
 func NewPublication(
 	project string,
 	expected State,
@@ -40,20 +37,14 @@ func NewPublication(
 	return publication, nil
 }
 
-// Project returns the exact project partition this publication advances.
 func (p Publication) Project() string { return p.project }
 
-// ExpectedState returns the curation state this publication was derived from.
 func (p Publication) ExpectedState() State { return p.expected }
 
-// State returns the already-decided successor curation state.
 func (p Publication) State() State { return p.state }
 
-// Contents returns an owned copy of the complete curated generation.
 func (p Publication) Contents() []string { return slices.Clone(p.contents) }
 
-// Validate proves the publication advances one valid project state
-// monotonically and owns a canonical bounded generation.
 func (p Publication) Validate() error {
 	if err := ValidateTarget(ScopeProject, p.project); err != nil {
 		return err

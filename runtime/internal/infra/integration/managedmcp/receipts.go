@@ -16,8 +16,7 @@ import (
 
 const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_digest TEXT NOT NULL, result TEXT NOT NULL CHECK(json_valid(result)))`
 
-// Command commits a backend transition and its reply in the same private
-// transaction. The host redelivers identity; it does not persist an outcome.
+// Mutation and reply must commit together so redelivery cannot repeat a successful transition.
 func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input P, handler func(context.Context, P) (R, error)) (R, error) {
 	var zero R
 	if len(id) == 0 || len(id) > 256 {
@@ -64,12 +63,6 @@ func RegisterCommand[P, R any](server *sdk.Server, db *sql.DB, name string, clas
 			return nil, fmt.Errorf("%s: parameters are required", name)
 		}
 		value, err := Command(ctx, db, name, params.CommandID, params.Input, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
-		result := &Result[R]{}
-		if err == nil {
-			result.Value = &value
-		} else {
-			result.Failure = &Failure{Code: classify(err), Message: err.Error()}
-		}
-		return result, nil
+		return newResult(value, err, classify), nil
 	})
 }

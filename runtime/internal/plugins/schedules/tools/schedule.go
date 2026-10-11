@@ -1,4 +1,3 @@
-// Schedule tools expose recurring Agent Run management.
 package tools
 
 import (
@@ -64,8 +63,6 @@ type scheduleView struct {
 	CreatedAt       string `json:"created_at,omitempty"`
 }
 
-// ScheduleManagement is the schedule family's narrow application use case.
-// It intentionally excludes revisioned updates and firing operations.
 type ScheduleManagement interface {
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
 	Create(ctx context.Context, draft scheduledomain.Draft) (scheduledomain.Schedule, error)
@@ -74,8 +71,6 @@ type ScheduleManagement interface {
 
 type scheduleManagementTools struct{ coordinator ScheduleManagement }
 
-// BuildSchedules constructs one tool per schedule action. Each schema therefore contains
-// only fields that action can consume.
 func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error) {
 	if dependency.Missing(coordinator) {
 		return nil, errors.New("schedules: tool coordinator is required")
@@ -153,9 +148,6 @@ func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleA
 	return scheduleDeleteResponse(in), nil
 }
 
-// settleScheduleCommand fails only the call when the Coordinator refused it
-// before writing; a store failure stays unclassified because its outcome is
-// unproven.
 func settleScheduleCommand(err error) error {
 	if errors.Is(err, scheduleapp.ErrRefused) {
 		return toolfailure.Definite(err)

@@ -25,18 +25,13 @@ var ItemIDPattern = fmt.Sprintf(
 
 var ErrInvalidItemID = errors.New("agentmemory: invalid Item identity")
 
-// ItemID is one exact durable Agent Memory handle. It is intentionally
-// distinct from transcript Item identities: the two resources have unrelated
-// owners, persistence and public operations despite both being called items.
+// Memory and transcript Items have independent owners, so their identities cannot be interchanged.
 type ItemID struct{ text string }
 
-// NewItemID encodes a canonical memory identity from caller-supplied entropy.
-// The persistence boundary owns the cryptographically random source.
 func NewItemID(entropy [ItemIDEntropyBytes]byte) ItemID {
 	return ItemID{text: ItemIDPrefix + hex.EncodeToString(entropy[:])}
 }
 
-// ParseItemID admits only the canonical spelling emitted by [NewItemID].
 func ParseItemID(raw string) (ItemID, error) {
 	digest, ok := strings.CutPrefix(raw, ItemIDPrefix)
 	if !ok {
@@ -50,9 +45,6 @@ func ParseItemID(raw string) (ItemID, error) {
 
 func (i ItemID) String() string { return i.text }
 
-// Validate reports whether the identity was minted or parsed. Its canonical
-// spelling is established there, so an unconstructed item is all this can
-// reject.
 func (i ItemID) Validate() error {
 	if i.text == "" {
 		return ErrInvalidItemID

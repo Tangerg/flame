@@ -89,7 +89,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 		}
 	}
 	release()
-	// The owner retains the accepted generation when the next invocation has no compaction trigger.
+
 	_, err = managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4}})
 	if err != nil {
 		t.Fatal(err)

@@ -2,9 +2,6 @@ package maintenance
 
 import "strings"
 
-// parseMemoryFacts translates the utility model's Markdown response into the
-// structured fact vocabulary the memory domain accepts. Fences, list markers,
-// and sentinel tokens are properties of the extraction prompt contract.
 func parseMemoryFacts(markdown string) []string {
 	var facts []string
 	seen := make(map[string]struct{})

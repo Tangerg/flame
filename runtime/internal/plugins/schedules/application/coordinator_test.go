@@ -232,9 +232,6 @@ func (r *runNowStore) Pending(context.Context, time.Time, string, int) ([]schedu
 	return nil, nil
 }
 
-// pagedStore seeks the way the store does: newest created first, id last so the
-// order is total, and a zero anchor is the first page rather than a position before
-// every row.
 type pagedStore struct {
 	*runNowStore
 	rows []schedule.Schedule
@@ -271,11 +268,6 @@ func scheduleRows(t testing.TB, ids ...string) []schedule.Schedule {
 	return out
 }
 
-// TestListPagePagesNewestFirstAndRefusesAForeignCursor covers the schedules query
-// properties: the order is fixed (newest created first, id breaking ties), the
-// next page seeks strictly past the previous one, and a cursor from another query is
-// refused rather than quietly restarting — a schedule shown twice reads as a second
-// schedule that fires on the same cron.
 func TestListPagePagesNewestFirstAndRefusesAForeignCursor(t *testing.T) {
 	store := &pagedStore{runNowStore: &runNowStore{}, rows: scheduleRows(t, "sch_1", "sch_2", "sch_3")}
 	c := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})

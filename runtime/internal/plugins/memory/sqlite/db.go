@@ -12,10 +12,7 @@ import (
 
 func Open(ctx context.Context, path string) (*sql.DB, error) {
 	return sqlitedb.OpenSchema(ctx, path, []string{managedmcp.CommandsSchema,
-		// Append-only per-project fact ledger. day is the daily-ledger partition
-		// (YYYY-MM-DD); seq is both stable ordering and the curation watermark.
-		// A content digest deduplicates facts independently, so mixed old/new
-		// extraction batches never lose their new members.
+		// Digest uniqueness is independent of batch membership so re-extracting old facts cannot discard new ones.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_ledger (
 			seq         INTEGER PRIMARY KEY AUTOINCREMENT,
 			project     TEXT    NOT NULL,
@@ -28,12 +25,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 		)`, agentmemory.MaxContentCharacters),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_ledger_project
 			ON agent_memory_ledger(project, seq)`,
-		// Memory items retain human review and edits independently of extraction.
-		// digest is the content identity (a reconcile matches unchanged items by
-		// it to keep their id stable); the unique (scope, project, digest) index
-		// dedups a fact across auto/user/pinned rows. origin 'auto' | 'user',
-		// scope 'project' | 'user'. Pinned items are always injected and never
-		// auto-pruned. session_id/day carry provenance.
+		// Human review and edits outlive extraction; digest uniqueness prevents competing identities for the same fact.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_items (
 			id         TEXT    PRIMARY KEY CHECK (
 				length(id) = %[1]d AND
@@ -78,9 +70,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 		),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_items_scope
 			ON agent_memory_items(scope, project)`,
-		// Per-project curation watermark (the highest ledger seq already folded
-		// into items). Kept apart from the items so a reconcile advances it with a
-		// single compare-and-swap update.
+		// A separate watermark lets publication advance the complete generation with one compare-and-swap.
 		`CREATE TABLE IF NOT EXISTS agent_memory_state (
 			project    TEXT    PRIMARY KEY,
 			watermark  INTEGER NOT NULL DEFAULT 0,

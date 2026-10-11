@@ -7,15 +7,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 )
 
-// Replacement binds one management-edited Schedule to the exact aggregate it
-// follows. Operational cursor claims and accepted Run records use their own
-// domain values and cannot be smuggled through this management write.
+// Management edits cannot smuggle operational cursor claims or accepted Run records.
 type Replacement struct {
 	expected Schedule
 	state    Schedule
 }
 
-// NewReplacement constructs one exact Schedule management replacement.
 func NewReplacement(expected, state Schedule) (Replacement, error) {
 	replacement := Replacement{expected: expected, state: state}
 	if err := replacement.validate(); err != nil {
@@ -24,14 +21,10 @@ func NewReplacement(expected, state Schedule) (Replacement, error) {
 	return replacement, nil
 }
 
-// ExpectedRevision returns the exact revision this replacement follows.
 func (r Replacement) ExpectedRevision() uint64 { return r.expected.Revision() }
 
-// State returns the already-decided replacement Schedule.
 func (r Replacement) State() Schedule { return r.state }
 
-// validate proves that a management edit preserves identity and operational
-// lifecycle facts while advancing exactly one revision.
 func (r Replacement) validate() error {
 	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("schedule: replacement expected state: %w", err)

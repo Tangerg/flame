@@ -13,9 +13,7 @@ func TestFoldProposesNewAndRespectsStatuses(t *testing.T) {
 		{id: testItemID(t, 'b'), content: "- b", status: StatusActive},
 		{id: testItemID(t, 'c'), content: "- c", status: StatusRejected},
 	}
-	// The curator re-emits a/b/c and adds d (twice, plus a blank). Only the
-	// genuinely new fact d becomes a proposal: a/b/c are already present in some
-	// status, and a rejected tombstone (c) blocks re-proposal.
+
 	plan, err := Fold(existing, []string{"- a", "- b", "- c", "- d", "- d", "  "})
 	if err != nil {
 		t.Fatal(err)
@@ -34,8 +32,7 @@ func TestFoldPrunesStalePendingButKeepsActiveAndRejected(t *testing.T) {
 		{id: testItemID(t, 'b'), content: "- b", status: StatusActive},
 		{id: testItemID(t, 'c'), content: "- c", status: StatusRejected},
 	}
-	// The curator drops a, b, and c. Only the pending proposal a is pruned:
-	// active b is sticky (the user accepted it), rejected c stays a tombstone.
+
 	plan, err := Fold(existing, []string{"- e"})
 	if err != nil {
 		t.Fatal(err)

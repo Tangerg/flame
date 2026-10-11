@@ -43,11 +43,6 @@ func decodeVec(encoded []byte) ([]float32, error) {
 	return vector, nil
 }
 
-// reconcileItems applies the domain fold ([agentmemory.Fold]) to the project's
-// auto-origin items: prune the stale pending proposals it flags, insert the new
-// curated facts as pending proposals. The review invariants (tombstone,
-// active-sticky, pending-default, digest identity) live in the domain; this is
-// the persistence that carries the plan out.
 func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, contents []string, now time.Time) error {
 	existing, err := a.autoItems(ctx, project)
 	if err != nil {
@@ -86,8 +81,6 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, c
 	return nil
 }
 
-// autoItems fetches the project's auto-origin fold set: unpinned visible items
-// plus every retained rejected tombstone (id + content + status suffice).
 func (a *AgentMemoryStore) autoItems(ctx context.Context, project string) ([]agentmemory.Item, error) {
 	rows, err := sqlitedb.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items
@@ -123,9 +116,7 @@ func (a *AgentMemoryStore) autoItems(ctx context.Context, project string) ([]age
 	return items, nil
 }
 
-// insertItem writes a constructed item. OR IGNORE: a pinned or user item may
-// already hold this content under the unique (scope, project, digest) index —
-// keep it, don't duplicate.
+// Pinned and user-authored facts may already occupy the content identity; insertion must preserve them.
 func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item) (bool, error) {
 	result, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx,
 		`INSERT OR IGNORE INTO agent_memory_items(
@@ -146,8 +137,6 @@ func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item
 
 const agentMemoryItemColumns = `id, scope, project, content, origin, status, pinned, session_id, day, created_at, updated_at`
 
-// scanItem decodes one item's base columns (embedding excluded — see
-// [AgentMemoryStore.SearchCorpus] for the search path that reads it).
 func scanItem(row scanRow) (agentmemory.Item, error) {
 	var (
 		snapshot                          agentmemory.ItemSnapshot
@@ -166,9 +155,6 @@ func scanItem(row scanRow) (agentmemory.Item, error) {
 	return restoreItem(snapshot)
 }
 
-// decodeItemSnapshot is the single persistence boundary for a memory item's
-// closed vocabularies. Both ordinary reads and search reads pass through it and
-// then through the domain restore.
 func decodeItemSnapshot(
 	snapshot *agentmemory.ItemSnapshot,
 	rawID, scopeText, originText, statusText string,
@@ -206,9 +192,6 @@ func restoreItem(snapshot agentmemory.ItemSnapshot) (agentmemory.Item, error) {
 	return item, nil
 }
 
-// Items lists the complete active item set for (scope, project). Pending and
-// rejected items are excluded — only approved memory is injected into the
-// prompt. Application owns the order.
 func (a *AgentMemoryStore) Items(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error) {
 	token, err := memoryPartition(scope, project)
 	if err != nil {
@@ -221,9 +204,6 @@ func (a *AgentMemoryStore) Items(ctx context.Context, scope agentmemory.Scope, p
 		 LIMIT ?`, "agent memory items", agentmemory.MaxVisiblePerTarget, token, project)
 }
 
-// SearchCorpus lists the active exact-project and user-scoped items visible
-// from one project context, with their embedding cache decoded. Fetching both
-// partitions in one snapshot lets the application rank one combined corpus.
 func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]agentmemory.Item, error) {
 	if _, err := memoryPartition(agentmemory.ScopeProject, project); err != nil {
 		return nil, err
@@ -280,9 +260,6 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 	return items, nil
 }
 
-// List returns the complete bounded (scope, project) item set consumed by the
-// review use case. Rejected tombstones are hidden; Application owns the
-// management order.
 func (a *AgentMemoryStore) List(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error) {
 	token, err := memoryPartition(scope, project)
 	if err != nil {
@@ -326,7 +303,6 @@ func (a *AgentMemoryStore) listItems(
 	return items, nil
 }
 
-// Get returns one item by id.
 func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agentmemory.Item, bool, error) {
 	item, err := scanItem(sqlitedb.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE id = ?`, id.String()))
@@ -339,9 +315,6 @@ func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agen
 	return item, true, nil
 }
 
-// Update applies the review surface's content/pin patch atomically. Content
-// edits clear stale embeddings; either validation or persistence failure rolls
-// back every requested field, so callers never observe a half-applied update.
 func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	var updated agentmemory.Item
 	err := sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
@@ -372,8 +345,6 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, co
 	return updated, nil
 }
 
-// Review atomically resolves one pending proposal. A user-authored, already
-// reviewed, or rejected item cannot be rewritten through the review command.
 func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, decision agentmemory.ReviewDecision, now time.Time) error {
 	return sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.Get(ctx, id)
@@ -421,7 +392,6 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved age
 	return nil
 }
 
-// Delete removes one visible management item without exposing retained tombstones.
 func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) error {
 	return sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		item, found, err := a.Get(ctx, id)
@@ -443,9 +413,6 @@ func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) er
 	})
 }
 
-// Add stores a user-authored active item. An existing active digest is
-// idempotent; an explicit user addition promotes a matching pending or rejected
-// proposal while preserving its stable id.
 func (a *AgentMemoryStore) Add(ctx context.Context, scope agentmemory.Scope, project, content string, now time.Time) (agentmemory.Item, bool, error) {
 	content, err := agentmemory.NormalizeContent(content)
 	if err != nil {
@@ -626,7 +593,6 @@ func memoryPartition(scope agentmemory.Scope, project string) (string, error) {
 	return scope.String(), nil
 }
 
-// affectedOne maps a zero-row update/delete to [agentmemory.ErrNotFound].
 func affectedOne(result sql.Result, op string) error {
 	n, err := result.RowsAffected()
 	if err != nil {
@@ -638,9 +604,7 @@ func affectedOne(result sql.Result, op string) error {
 	return nil
 }
 
-// SetEmbeddings caches vectors only while the exact item content remains
-// active. A concurrent edit, review, or reconcile therefore makes the update a
-// no-op instead of attaching a late vector to different content.
+// A late vector must not attach to edited or inactive content, so cache writes match the exact digest.
 func (a *AgentMemoryStore) SetEmbeddings(ctx context.Context, updates []agentmemory.EmbeddingUpdate) error {
 	if len(updates) == 0 {
 		return nil

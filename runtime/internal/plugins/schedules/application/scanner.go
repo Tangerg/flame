@@ -10,8 +10,7 @@ import (
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
-// Scanner owns bounded due claiming and fair redelivery. Its cursor is process
-// state; every returned launch already has a durable identity in the plugin DB.
+// Claim must persist both cursor and occurrence so returned work survives restart.
 type WorkerStore interface {
 	Due(context.Context, time.Time, int) ([]schedule.Schedule, error)
 	Claim(context.Context, schedule.Claim) (bool, error)
@@ -22,6 +21,7 @@ type ManualQueue interface {
 	PendingManual(context.Context, string, int) ([]schedule.RunRequest, error)
 }
 
+// Process cursors rotate pending pages; losing a cursor cannot lose durably captured work.
 type Scanner struct {
 	mu                     sync.Mutex
 	store                  WorkerStore

@@ -1,5 +1,3 @@
-// Package managedmcp encodes the closed host integrations of managed plugin
-// backends over their existing MCP session. It grants no generic client tunnel.
 package managedmcp
 
 import (
@@ -26,6 +24,27 @@ type Failure struct {
 
 func (f *Failure) Error() string { return f.Message }
 
+func newResult[T any](value T, err error, classify func(error) string) *Result[T] {
+	if err != nil {
+		return &Result[T]{Failure: &Failure{Code: classify(err), Message: err.Error()}}
+	}
+	return &Result[T]{Value: &value}
+}
+
+func (r *Result[T]) value(name string) (T, error) {
+	var zero T
+	if r == nil {
+		return zero, fmt.Errorf("%s: missing result", name)
+	}
+	if (r.Value == nil) == (r.Failure == nil) {
+		return zero, fmt.Errorf("%s: result requires exactly one value or failure", name)
+	}
+	if r.Failure != nil {
+		return zero, r.Failure
+	}
+	return *r.Value, nil
+}
+
 func RegisterClient[P, R any](client *sdk.Client, name string) error {
 	return sdk.AddSendingCustomMethod[*Params[P], *Result[R]](client, name)
 }
@@ -35,32 +54,11 @@ func RegisterServer[P, R any](server *sdk.Server, name string, classify func(err
 			return nil, fmt.Errorf("%s: parameters are required", name)
 		}
 		value, err := handler(ctx, session, params.Input)
-		result := &Result[R]{}
-		if err == nil {
-			result.Value = &value
-		}
-		if err != nil {
-			result.Failure = &Failure{Code: classify(err), Message: err.Error()}
-		}
-		return result, nil
+		return newResult(value, err, classify), nil
 	})
 }
 func Call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, input P) (R, error) {
-	var zero R
-	result, err := sdk.CallCustomMethod[*Params[P], *Result[R]](ctx, session, name, &Params[P]{Input: input})
-	if err != nil {
-		return zero, err
-	}
-	if result == nil {
-		return zero, fmt.Errorf("%s: missing result", name)
-	}
-	if result.Failure != nil {
-		return zero, result.Failure
-	}
-	if result.Value == nil {
-		return zero, fmt.Errorf("%s: successful result is absent", name)
-	}
-	return *result.Value, nil
+	return call[P, R](ctx, session, name, &Params[P]{Input: input})
 }
 
 func CallCommand[P, R any](ctx context.Context, session *sdk.ClientSession, name, id string, input P) (R, error) {
@@ -68,18 +66,14 @@ func CallCommand[P, R any](ctx context.Context, session *sdk.ClientSession, name
 	if id == "" {
 		return zero, fmt.Errorf("%s: command identity is required", name)
 	}
-	result, err := sdk.CallCustomMethod[*Params[P], *Result[R]](ctx, session, name, &Params[P]{Input: input, CommandID: id})
+	return call[P, R](ctx, session, name, &Params[P]{Input: input, CommandID: id})
+}
+
+func call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, params *Params[P]) (R, error) {
+	var zero R
+	result, err := sdk.CallCustomMethod[*Params[P], *Result[R]](ctx, session, name, params)
 	if err != nil {
 		return zero, err
 	}
-	if result == nil {
-		return zero, fmt.Errorf("%s: missing result", name)
-	}
-	if result.Failure != nil {
-		return zero, result.Failure
-	}
-	if result.Value == nil {
-		return zero, fmt.Errorf("%s: successful result is absent", name)
-	}
-	return *result.Value, nil
+	return result.value(name)
 }
