@@ -42,6 +42,20 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-11.4
+
+`clientDiagnostics` and `static` are admitted graphical view kinds. Both read only
+an approved release resource through `plugins.readView`; neither admits Runtime
+trajectory, usage, memory, Skill or workspace queries. The trusted client projects its
+existing bounded telemetry buffer for Diagnostics. Collection and clearing retain
+that client's existing owner. Static pages receive no product data; the first consumer
+is an icon gallery generated from the canonical icon package's public exports.
+
+Rebuild Runtime, CLI and Desktop together for the new closed view enum. Install,
+approve and enable the optional packages explicitly. Compiled Diagnostics and icon
+showcases are removed; there is no implicit installation, legacy view ID or resource
+fallback. Persisted data needs no conversion.
+
 ## Protocol 2026-10-11.3
 
 `renderers` now admits exact, normalized file-extension selectors. The optional

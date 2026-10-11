@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.diagnostics",
+  "version": "1.0.0",
+  "description": "Read-only presentation of bounded current-client telemetry. Collection and clearing remain client-owned.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "views": [
+          {
+            "id": "diagnostics",
+            "title": "Diagnostics",
+            "type": "clientDiagnostics",
+            "entry": "views/diagnostics.html"
+          }
+        ]
+      }
+    }
+  }
+}

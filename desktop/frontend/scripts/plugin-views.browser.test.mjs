@@ -31,7 +31,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff, recorded result and captured file reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff, recorded result, captured file, current-client diagnostics and static content reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -821,6 +821,105 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     );
     await page.waitForFunction(() => window.viewStatus?.type === "failure");
     assert.match(await page.evaluate(() => window.failure), /Unsupported captured file format/);
+    assert.equal(await page.locator("iframe").count(), 0);
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    const diagnosticsHTML = await readFile(
+      new URL("../../../plugins/diagnostics/views/diagnostics.html", import.meta.url),
+      "utf8",
+    );
+    const observations = {
+      format: "flame.client-diagnostics.v1",
+      source: "currentClient",
+      spans: {
+        rows: [
+          {
+            id: "span",
+            name: "client.rpc",
+            durationMillis: 0,
+            status: "error",
+            attrs: { unsafe: "<img src=x onerror=alert(1)>" },
+          },
+        ],
+        omittedFromRead: 5,
+      },
+      metrics: {
+        rows: [
+          {
+            id: "metric",
+            name: "client.render",
+            kind: "histogram",
+            count: 3,
+            sum: 42,
+            p50: 10,
+            p95: 20,
+            avg: 14,
+            unit: "ms",
+            attrs: {},
+          },
+        ],
+        omittedFromRead: 0,
+      },
+      logs: {
+        rows: [{ id: "log", severity: "WARN", body: "Recorded local log", attrs: {} }],
+        omittedFromRead: 1,
+      },
+    };
+    await page.evaluate(({ html, initial }) => void window.mount(html, initial), {
+      html: diagnosticsHTML,
+      initial: observations,
+    });
+    await frame.getByRole("heading", { name: "Client diagnostics" }).waitFor();
+    await expect(frame.getByRole("status")).toContainText("5 omitted");
+    await frame.locator("summary").click();
+    assert.match(await frame.locator("pre").textContent(), /<img src=x/);
+    assert.equal(await frame.locator("img").count(), 0);
+    await frame.getByRole("combobox").selectOption("metrics");
+    assert.equal(await frame.locator("table tr").count(), 5);
+    await frame.getByRole("combobox").selectOption("logs");
+    await frame.getByText("WARN · Recorded local log", { exact: true }).waitFor();
+    await frame.getByRole("button", { name: "Refresh" }).click();
+    await page.waitForFunction(() => window.reads.length === 1);
+    assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
+    assert.equal(await frame.getByRole("button", { name: "Clear" }).count(), 0);
+    await page.evaluate(() => (window.readFailure = true));
+    await expect(frame.getByRole("button", { name: "Refresh" })).toBeEnabled();
+    await frame.getByRole("button", { name: "Refresh" }).click();
+    await frame.getByRole("alert").waitFor();
+    await frame.getByText("WARN · Recorded local log", { exact: true }).waitFor();
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    await page.evaluate(
+      ({ html, initial }) =>
+        void window.mount(html, {
+          ...initial,
+          spans: { rows: [null], omittedFromRead: 0 },
+        }),
+      { html: diagnosticsHTML, initial: observations },
+    );
+    await page.waitForFunction(() => window.viewStatus?.type === "failure");
+    assert.match(await page.evaluate(() => window.failure), /could not be displayed/);
+    assert.equal(await page.locator("iframe").count(), 0);
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    const galleryHTML = await readFile(
+      new URL("../../../plugins/icon-gallery/views/icon-gallery.html", import.meta.url),
+      "utf8",
+    );
+    await page.evaluate(
+      (html) => void window.mount(html, { format: "flame.static.v1" }),
+      galleryHTML,
+    );
+    await frame.getByRole("heading", { name: "Flame icon gallery" }).waitFor();
+    await frame.getByRole("searchbox", { name: "Filter icons" }).fill("file-diff");
+    await frame.getByText("FileDiff", { exact: true }).waitFor();
+    await expect(frame.getByText("FileText", { exact: true })).toBeHidden();
+    assert.ok((await frame.locator("article:visible svg path").count()) > 0);
+    await frame.getByRole("searchbox", { name: "Filter icons" }).fill("no-such-flame-glyph");
+    await expect(frame.getByRole("status")).toContainText(/0 of \d+ icons/);
+    assert.equal(await page.evaluate(() => window.reads.length), 0);
+    await page.evaluate(() => window.dispose());
     assert.equal(await page.locator("iframe").count(), 0);
     await page.reload();
     await page.waitForFunction(() => window.mount);

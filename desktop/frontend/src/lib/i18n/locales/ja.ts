@@ -281,7 +281,6 @@ export const ja: Record<string, string> = {
   "contextDock.group.workspace": "ワークスペース",
   "contextDock.group.run": "実行",
   "contextDock.group.session": "セッション",
-  "workspace.view.title.diagnostics": "診断",
   "settings.theme": "テーマ",
   "settings.theme.sub": "配色テーマを選択。プラグインで追加されたものも自動表示されます。",
   "settings.accent": "アクセント",
@@ -356,31 +355,6 @@ export const ja: Record<string, string> = {
   "settings.connection.status.server": "サーバー",
   "settings.connection.status.protocol": "プロトコル",
   "settings.connection.status.checks": "異常な検査",
-
-  "iconGallery.title": "Flame アイコン",
-  "iconGallery.filterLabel": "アイコン名で絞り込み",
-  "iconGallery.filterPlaceholder": "名前で絞り込み…",
-  "iconGallery.empty": '"{{q}}" に一致するアイコンはありません。',
-  "iconGallery.subtitle": "{{count}} 個のオリジナルアイコン · 16px と 24px の光学サイズ別原図",
-  "iconGallery.group.communication": "通信",
-  "iconGallery.group.data": "データ",
-  "iconGallery.group.development": "開発",
-  "iconGallery.group.devices": "デバイス",
-  "iconGallery.group.files": "ファイル",
-  "iconGallery.group.geometry": "図形",
-  "iconGallery.group.health": "健康",
-  "iconGallery.group.layout": "レイアウト",
-  "iconGallery.group.media": "メディア",
-  "iconGallery.group.nature": "自然",
-  "iconGallery.group.navigation": "ナビゲーション",
-  "iconGallery.group.objects": "物",
-  "iconGallery.group.people": "人物",
-  "iconGallery.group.security": "セキュリティ",
-  "iconGallery.group.status": "状態",
-  "iconGallery.group.travel": "旅行",
-  "iconGallery.group.typography": "文字",
-  "iconGallery.showcase":
-    "<code>{{pkg}}</code> の {{count}} 個のオリジナルアイコン。全体を見る：<em>{{combo}} → 表示：アイコンギャラリー</em>。",
 
   "approval.settled.approved": "承認済",
   "approval.settled.declined": "拒否",
@@ -488,8 +462,6 @@ export const ja: Record<string, string> = {
   "shortcuts.shortcut": "ショートカット",
   "shortcuts.empty": "一致するショートカットはありません",
 
-  "workspace.view.title.iconGallery": "アイコンギャラリー",
-  "settings.pane.icons": "アイコン",
   "agentSource.rpc": "ランタイムプロトコル (JSON-RPC)",
   "narrative.rail.turns": "あなたの質問",
   "role.user": "あなた",
@@ -560,13 +532,8 @@ export const ja: Record<string, string> = {
   "command.showShortcuts": "キーボードショートカット",
 
   "diagnostics.clear": "クリア",
-  "diagnostics.title": "診断",
   "diagnostics.clear.hint":
     "メモリ内のみ（上限あり）で、永続的な記録は OTLP 経由で送られます。「クリア」でバッファをリセットします。",
-  "diagnostics.signalAria": "テレメトリー信号",
-  "diagnostics.signal.traces": "トレース",
-  "diagnostics.signal.metrics": "メトリクス",
-  "diagnostics.signal.logs": "ログ",
   "reasoning.thinking": "考えています",
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "{{duration}} 思考",
@@ -995,11 +962,6 @@ export const ja: Record<string, string> = {
   "tool.group.run": "実行 {{count}}",
   "tool.group.fetch": "通信 {{count}}",
 
-  "diagnostics.empty.title": "まだデータがありません",
-  "diagnostics.empty.logs": "host.log.* の出力がここに流れ、span と対応づけられます。",
-  "diagnostics.empty.metrics":
-    "チャットを操作すると — reducer / レンダリングの計測がここに出ます。",
-  "diagnostics.empty.traces": "メッセージを送ると — run と RPC の span がここに出ます。",
   "tool.askUser.answerPrefix": "回答 · ",
   "tool.askUser.waiting": "回答を待っています…",
 
@@ -1100,7 +1062,6 @@ export const ja: Record<string, string> = {
   "model.effort.high": "高",
   "model.effort.xhigh": "非常に高い",
   "model.effort.max": "最大",
-  "common.clear": "クリア",
   "file.unsupported.image": "ここではまだ画像をプレビューできません",
   "file.unsupported.binary": "このファイルはテキストではありません",
   "file.unsupported.sub":

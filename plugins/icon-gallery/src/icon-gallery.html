@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Flame icon gallery</title>
+  <style>
+    :root {
+      font: 14px system-ui;
+      color-scheme: light dark;
+    }
+    body {
+      margin: 20px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      font-size: 22px;
+    }
+    input {
+      font: inherit;
+      padding: 8px 12px;
+    }
+    #status {
+      opacity: 0.7;
+    }
+    #icons {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    article {
+      border: 1px solid;
+      border-color: light-dark(#ddd, #444);
+      border-radius: 8px;
+      padding: 18px 12px;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    article[hidden] {
+      display: none;
+    }
+    svg {
+      display: block;
+      margin: 0 auto 12px;
+    }
+    code {
+      font-size: 12px;
+    }
+    small {
+      display: block;
+      opacity: 0.7;
+      margin-top: 6px;
+    }
+  </style>
+  <header>
+    <h1>Flame icon gallery</h1>
+    <input
+      id="filter"
+      type="search"
+      aria-label="Filter icons"
+      placeholder="Filter names, labels or categories"
+    />
+  </header>
+  <p>
+    Original Flame drawings, shown with their canonical 24 px optical masters.
+  </p>
+  <p id="status" role="status">Connecting…</p>
+  <main id="icons"><!-- ICONS --></main>
+  <script>
+    const filter = document.getElementById("filter");
+    const status = document.getElementById("status");
+    const cards = [...document.querySelectorAll("article")];
+    let port;
+    function render() {
+      const query = filter.value.trim().toLowerCase();
+      let count = 0;
+      for (const card of cards) {
+        card.hidden = !card.dataset.search.includes(query);
+        if (!card.hidden) count++;
+      }
+      status.textContent = `${count} of ${cards.length} icons. Immutable package content.`;
+    }
+    addEventListener("message", (event) => {
+      if (
+        event.source !== parent ||
+        port ||
+        event.data?.type !== "flame.view.connect.v2" ||
+        !["light", "dark"].includes(event.data.scheme) ||
+        event.ports.length !== 1
+      )
+        return;
+      document.documentElement.style.colorScheme = event.data.scheme;
+      port = event.ports[0];
+      port.start();
+      if (event.data.initial?.format !== "flame.static.v1") {
+        port.postMessage({
+          type: "failure",
+          reason: "Unsupported static view format.",
+        });
+        return;
+      }
+      render();
+    });
+    parent.postMessage("flame.view.ready.v2", "*");
+    filter.addEventListener("input", render);
+  </script>
+</html>

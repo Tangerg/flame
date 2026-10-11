@@ -21,6 +21,9 @@ import { UsagePackageView } from "./ui/UsagePackageView";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { MemoryPackageView } from "./ui/MemoryPackageView";
 import { DiffPackageView } from "./ui/DiffPackageView";
+import { PackageView } from "./ui/PackageView";
+import { ClientDiagnosticsPackageView } from "./ui/ClientDiagnosticsPackageView";
+import { createClientViewReads, readClientDiagnostics } from "./adapters/clientViewReads";
 import { SkillsPackageView } from "./ui/SkillsPackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
@@ -142,6 +145,40 @@ function createPackageReconciler(
         };
         const title = `${release.name} · ${view.title}`;
         switch (view.type) {
+          case "static": {
+            const reads = createClientViewReads(client.plugins, binding, () => ({
+              format: "flame.static.v1",
+            }));
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              dock: "workspace",
+              component: () => (
+                <PackageView reads={reads} title={title} lifetime={lifetime} carrier={carrier} />
+              ),
+            });
+            break;
+          }
+          case "clientDiagnostics": {
+            const reads = () =>
+              createClientViewReads(client.plugins, binding, readClientDiagnostics);
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              icon: "activity",
+              dock: "workspace",
+              material: "clientDiagnostics",
+              component: () => (
+                <ClientDiagnosticsPackageView
+                  reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            });
+            break;
+          }
           case "workspaceDiff": {
             const reads = (target: Parameters<typeof createDiffViewReads>[2]) =>
               createDiffViewReads(client.plugins, binding, target);

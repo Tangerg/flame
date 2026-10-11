@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.icon-gallery",
+  "version": "1.0.0",
+  "description": "Self-contained gallery generated from the canonical Flame icon package.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "views": [
+          {
+            "id": "icon-gallery",
+            "title": "Icon gallery",
+            "type": "static",
+            "entry": "views/icon-gallery.html"
+          }
+        ]
+      }
+    }
+  }
+}

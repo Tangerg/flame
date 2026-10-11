@@ -1,3 +1,11 @@
+import diagnosticsHTML from "../../../plugins/diagnostics/views/diagnostics.html?raw";
+import galleryHTML from "../../../plugins/icon-gallery/views/icon-gallery.html?raw";
+import { ClientDiagnosticsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/ClientDiagnosticsPackageView";
+import { PackageView } from "@/plugins/builtin/settings/plugins-pane/ui/PackageView";
+import {
+  createClientViewReads,
+  readClientDiagnostics,
+} from "@/plugins/builtin/settings/plugins-pane/adapters/clientViewReads";
 import diffHTML from "../../../plugins/diff/views/diff.html?raw";
 import { DiffPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/DiffPackageView";
 import type { DiffViewTarget } from "@/plugins/builtin/settings/plugins-pane/application/pluginView";
@@ -29,8 +37,6 @@ import { workbenchSettings } from "@/plugins/builtin/shell/workbench";
 import appearanceSettings from "@/plugins/builtin/settings/appearance";
 import { createProvidersPlugin } from "@/plugins/builtin/providers";
 import approvalsSettings from "@/plugins/builtin/settings/approvals";
-import iconsSettings from "@/plugins/builtin/settings/icon-gallery";
-import diagnosticsView from "@/plugins/builtin/workspace/diagnostics";
 import connectionSettings from "@/plugins/builtin/settings/connection-settings";
 import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
@@ -397,6 +403,45 @@ function workspaceDataPlugin(
     name: "flame.visual.workspace-data",
     setup(ctx) {
       ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
+      const diagnosticsLifetime = ctx.lifetime("visual-diagnostics");
+      const diagnosticsReads = () =>
+        createClientViewReads(
+          { readView: async () => ({ html: diagnosticsHTML }) },
+          { installationId: "visual", digest: "visual", viewId: "diagnostics" },
+          readClientDiagnostics,
+        );
+      diagnosticsLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:diagnostics",
+        title: "Diagnostics",
+        icon: "activity",
+        dock: "workspace",
+        material: "clientDiagnostics",
+        component: () =>
+          createElement(ClientDiagnosticsPackageView, {
+            reads: diagnosticsReads,
+            title: "Diagnostics",
+            lifetime: diagnosticsLifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
+      const galleryLifetime = ctx.lifetime("visual-icon-gallery");
+      const galleryReads = createClientViewReads(
+        { readView: async () => ({ html: galleryHTML }) },
+        { installationId: "visual", digest: "visual", viewId: "icon-gallery" },
+        () => ({ format: "flame.static.v1" }),
+      );
+      galleryLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:icon-gallery",
+        title: "Icon gallery",
+        dock: "workspace",
+        component: () =>
+          createElement(PackageView, {
+            reads: galleryReads,
+            title: "Icon gallery",
+            lifetime: galleryLifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
       const lifetime = ctx.lifetime("visual-trajectory");
       const read = async () => ({ data: visualTrajectory(snapshot) });
       const reads = () => ({
@@ -668,7 +713,7 @@ const VISUAL_USAGE: UsageSummary = {
 
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "subagents",
-  "diagnostics",
+  "package:visual:diagnostics",
   "package:visual:skills",
   "package:visual:memory",
   "package:visual:schedules",
@@ -760,14 +805,12 @@ export async function installVisualWorkspaceFixture(
 
   await loadVisualPlugins([
     fileView,
-    diagnosticsView,
     workbenchSettings,
     ...localePlugins,
     appearanceSettings,
     createProvidersPlugin(runtimeClient),
     shortcutsSettings,
     approvalsSettings,
-    iconsSettings,
     connectionSettings,
     createHooksPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),

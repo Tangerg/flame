@@ -181,3 +181,10 @@ export function useWorkspaceDiffMode(): DiffMode {
 export function selectWorkspaceDiffMode(diffMode: DiffMode): void {
   rememberWorkspaceView({ diffMode });
 }
+
+export function openWorkspaceClientDiagnostics(): void {
+  const views = lookupExtensionPoint(WORKSPACE_VIEW).filter(
+    (view) => view.material === "clientDiagnostics",
+  );
+  workspaceNavigation().openViewInDock(views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG);
+}

@@ -15,7 +15,6 @@ export const VISUAL_SETTINGS_PANES = [
   "hooks",
   "plugins",
   "connection",
-  "icons",
   "shortcuts",
 ] as const;
 
@@ -63,7 +62,7 @@ export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> =
   "dock-trajectory": "package:visual:trajectory",
   "dock-runs": "package:visual:trajectory",
   "dock-subagents": "subagents",
-  "dock-diagnostics": "diagnostics",
+  "dock-diagnostics": "package:visual:diagnostics",
   "dock-files": "file",
   "dock-skills": "package:visual:skills",
   "dock-agent-memory": "package:visual:memory",

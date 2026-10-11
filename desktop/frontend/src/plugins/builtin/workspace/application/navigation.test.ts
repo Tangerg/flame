@@ -22,6 +22,7 @@ import {
   showWorkspaceDock,
   toggleWorkspaceDock,
   openWorkspaceDiffForFile,
+  openWorkspaceClientDiagnostics,
 } from "./navigation";
 
 function reset() {
@@ -247,5 +248,32 @@ it("opens the contribution catalogue when Diff has no admitted renderer or sever
       });
   });
   openWorkspaceDiffForFile("b.ts");
+  expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+});
+
+it("opens only a unique admitted client diagnostics contribution", async () => {
+  openWorkspaceClientDiagnostics();
+  expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+  await contributeForTest((ctx) =>
+    ctx.contribute(WORKSPACE_VIEW, {
+      id: "package:first:diagnostics",
+      title: "Diagnostics",
+      material: "clientDiagnostics",
+      dock: "workspace",
+      component: () => null,
+    }),
+  );
+  openWorkspaceClientDiagnostics();
+  expect(navigator().get().dock).toBe("package:first:diagnostics");
+  await contributeForTest((ctx) =>
+    ctx.contribute(WORKSPACE_VIEW, {
+      id: "package:second:diagnostics",
+      title: "Other diagnostics",
+      material: "clientDiagnostics",
+      dock: "workspace",
+      component: () => null,
+    }),
+  );
+  openWorkspaceClientDiagnostics();
   expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
 });

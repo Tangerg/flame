@@ -6,4 +6,3 @@ export const MCP_SERVERS_PANE = "mcp-servers";
 export const HOOKS_PANE = "hooks";
 export const PLUGINS_PANE = "plugins";
 export const CONNECTION_PANE = "connection";
-export const ICONS_PANE = "icons";

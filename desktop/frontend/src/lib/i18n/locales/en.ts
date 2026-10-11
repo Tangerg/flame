@@ -430,7 +430,6 @@ export const en: Record<string, string> = {
   "contextDock.group.workspace": "Workspace",
   "contextDock.group.run": "Run",
   "contextDock.group.session": "Session",
-  "workspace.view.title.diagnostics": "Diagnostics",
   "settings.theme": "Theme",
   "settings.theme.system": "System",
   "settings.theme.sub":
@@ -507,31 +506,6 @@ export const en: Record<string, string> = {
   "settings.connection.status.server": "Server",
   "settings.connection.status.protocol": "Protocol",
   "settings.connection.status.checks": "Checks",
-
-  "iconGallery.title": "Flame icons",
-  "iconGallery.filterLabel": "Filter icons by name",
-  "iconGallery.filterPlaceholder": "Filter by name…",
-  "iconGallery.empty": 'No icons match "{{q}}".',
-  "iconGallery.subtitle": "{{count}} original icons · 16px and 24px optical masters",
-  "iconGallery.group.communication": "Communication",
-  "iconGallery.group.data": "Data",
-  "iconGallery.group.development": "Development",
-  "iconGallery.group.devices": "Devices",
-  "iconGallery.group.files": "Files",
-  "iconGallery.group.geometry": "Geometry",
-  "iconGallery.group.health": "Health",
-  "iconGallery.group.layout": "Layout",
-  "iconGallery.group.media": "Media",
-  "iconGallery.group.nature": "Nature",
-  "iconGallery.group.navigation": "Navigation",
-  "iconGallery.group.objects": "Objects",
-  "iconGallery.group.people": "People",
-  "iconGallery.group.security": "Security",
-  "iconGallery.group.status": "Status",
-  "iconGallery.group.travel": "Travel",
-  "iconGallery.group.typography": "Typography",
-  "iconGallery.showcase":
-    "{{count}} original glyphs from <code>{{pkg}}</code>. Browse the full collection: <em>{{combo}} → View: Icon Gallery</em>.",
 
   "approval.settled.approved": "Approved",
   "approval.settled.declined": "Declined",
@@ -704,10 +678,6 @@ export const en: Record<string, string> = {
   "shortcuts.shortcut": "Shortcut",
   "shortcuts.empty": "No shortcuts match",
 
-  "workspace.view.title.iconGallery": "Icon gallery",
-
-  "settings.pane.icons": "Icons",
-
   "agentSource.rpc": "Runtime Protocol (JSON-RPC)",
 
   "narrative.rail.turns": "Your questions",
@@ -796,13 +766,8 @@ export const en: Record<string, string> = {
   "command.showShortcuts": "Keyboard shortcuts",
 
   "diagnostics.clear": "Clear",
-  "diagnostics.title": "Diagnostics",
   "diagnostics.clear.hint":
     "In-memory only (bounded); the durable record leaves via OTLP. “Clear” resets the buffers.",
-  "diagnostics.signalAria": "Telemetry signal",
-  "diagnostics.signal.traces": "Traces",
-  "diagnostics.signal.metrics": "Metrics",
-  "diagnostics.signal.logs": "Logs",
 
   "reasoning.thinking": "Thinking",
   "reasoning.thought": "Thought",
@@ -1013,10 +978,6 @@ export const en: Record<string, string> = {
   "tool.group.run": "{{count}} run",
   "tool.group.fetch": "{{count}} fetch",
 
-  "diagnostics.empty.title": "No data yet",
-  "diagnostics.empty.logs": "host.log.* output streams here, span-correlated.",
-  "diagnostics.empty.metrics": "Interact with the chat — reducer / render timings appear here.",
-  "diagnostics.empty.traces": "Send a message — run + RPC spans appear here.",
   "tool.askUser.answerPrefix": "answer · ",
   "tool.askUser.waiting": "Waiting for your answer…",
 
@@ -1123,7 +1084,6 @@ export const en: Record<string, string> = {
   "model.effort.high": "High",
   "model.effort.xhigh": "Extra high",
   "model.effort.max": "Max",
-  "common.clear": "Clear",
   "file.unsupported.image": "No image preview here yet",
   "file.unsupported.binary": "This file isn't text",
   "file.unsupported.sub":

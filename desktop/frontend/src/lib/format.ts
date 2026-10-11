@@ -28,10 +28,8 @@ export function fmtCost(usd: number): string {
   return `$${decimal(usd, 2, true)}`;
 }
 
-export type DurationPrecision = "whole" | "tenths";
-
-export function fmtDuration(ms: number, precision: DurationPrecision = "whole"): string {
-  if (ms < 1000) return `${decimal(ms, precision === "tenths" ? 1 : 0)}ms`;
+export function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${decimal(ms, 0)}ms`;
   const seconds = ms / 1000;
   if (seconds < 10) return `${decimal(Math.round(seconds * 10) / 10, 1)}s`;
   const whole = Math.round(seconds);
@@ -40,10 +38,6 @@ export function fmtDuration(ms: number, precision: DurationPrecision = "whole"):
   if (minutes < 60) return `${minutes}m ${String(whole - minutes * 60).padStart(2, "0")}s`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
-}
-
-export function fmtMetric(value: number): string {
-  return value < 10 ? decimal(value, 1) : decimal(Math.round(value), 0);
 }
 
 export function durationText(t: Translate, start: number, end: number | null): string {

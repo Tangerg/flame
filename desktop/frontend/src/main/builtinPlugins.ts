@@ -25,7 +25,6 @@ import {
   defaultRoles,
   defaultTitle,
 } from "@/plugins/builtin/defaults";
-import diagnostics from "@/plugins/builtin/workspace/diagnostics";
 import { createWorkspaceBootstrapPlugin } from "@/plugins/builtin/workspace/bootstrap";
 import { workspaceService } from "@/plugins/builtin/workspace/adapters/workspaceService";
 import { createWorkspaceEventsPlugin } from "@/plugins/builtin/workspace/events";
@@ -35,7 +34,6 @@ import sessionSearch from "@/plugins/builtin/command/session-search";
 import commandMenu from "@/plugins/builtin/command/command-menu";
 import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
 import { createSchedulesPlugin } from "@/plugins/builtin/settings/schedules";
-import iconGallery from "@/plugins/builtin/settings/icon-gallery";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import { createRpcAgentPlugin } from "@/plugins/builtin/agent/rpcAgent";
 import {
@@ -140,7 +138,6 @@ export function createBuiltinPlugins(
     createSchedulesPlugin(runtimeClient),
     fileView,
     subagentsView,
-    diagnostics,
   ];
 
   const workbench: AnyPlugin[] = [workbenchSidebar, workbenchChat, workbenchSettings];
@@ -159,7 +156,6 @@ export function createBuiltinPlugins(
     shortcuts,
     sessionSearch,
     commandMenu,
-    iconGallery,
     narrativeRails,
     createGoalPlugin(runtimeClient),
     planProgress,

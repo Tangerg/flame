@@ -1,11 +1,11 @@
 import {
   openWorkspaceDiffForFile,
   openWorkspaceView,
-  openWorkspaceViewInDock,
+  openWorkspaceClientDiagnostics,
 } from "../application/navigation";
 
 export function openDiagnosticsView(): void {
-  openWorkspaceViewInDock("diagnostics");
+  openWorkspaceClientDiagnostics();
 }
 
 export function openSettingsView(): void {

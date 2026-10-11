@@ -2567,7 +2567,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   PluginViewResource: object({
     html: allOf([text(), maxLength(524288)]),
   }, ["html"]),
-  PluginViewType: enumOf(["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff"]),
+  PluginViewType: enumOf(["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"]),
   ProblemData: allOf([
     object({
       activeRun: ref(() => CHECKS.ActiveRunRef),

@@ -1404,7 +1404,7 @@ A deferred capability is unavailable, not a placeholder implementation returning
 ### 21.3 Recommended implementation slices
 
 The current implementation includes Slice 0, Slice A/B and optional Slice C trajectory,
-memory, schedules, usage, Skills and workspace Diff pages. Earlier action/view prototypes
+memory, schedules, usage, Skills, workspace Diff, client Diagnostics and static icon pages. Earlier action/view prototypes
 were withdrawn rather than retained as compatibility surfaces. The present view/resource
 contract was established from the qualified carrier
 gates. A bounded declarative `renameSession` action now uses trusted client forms and the
@@ -1459,6 +1459,21 @@ The captured projection retains Runtime workspace and range provenance. Partial 
 truncated content stays in source presentation, and competing file renderers remain
 ambiguous. Refresh never selects another path or observes a later file version. The
 same installation admission and isolated carrier own this presentation lifetime.
+
+Client Diagnostics consumes a bounded projection of the current client's existing
+telemetry buffer, with explicit read omissions and local source attribution. Runtime
+admits its immutable HTML but does not receive or query client observations. The
+trusted Clear control calls the existing telemetry owner and retires the old page;
+the guest can only renew admission and read. Static views receive no product data.
+The first static consumer is the icon gallery generated from the icon package's
+public catalog and SVG exports, which remain the only authored icon facts.
+
+The remaining compiled surfaces own trusted application interaction: conversation and
+subagent execution inspection, cancellation and recovery; Goal and Plan controls;
+composer, approvals, settings and native file transfer. Moving their controls into a
+guest would require the deferred general UI or execution contracts. Provider, file,
+process, Memory and scheduling semantics retain their existing owners; optional
+presentation packages do not relocate those semantics behind wrappers.
 
 **Slice E: durable host integrations, only as justified.** Validate MRTR, Tasks, delegated execution, or whole-subsystem extraction individually. These are not prerequisites for the base heterogeneous plugin model.
 

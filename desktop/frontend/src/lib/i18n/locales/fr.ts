@@ -293,7 +293,6 @@ export const fr: Record<string, string> = {
   "contextDock.group.workspace": "Espace",
   "contextDock.group.run": "Exécution",
   "contextDock.group.session": "Session",
-  "workspace.view.title.diagnostics": "Diagnostic",
   "settings.theme": "Thème",
   "settings.theme.sub":
     "Choisissez un thème. Les plugins peuvent en ajouter — ils apparaissent ici automatiquement.",
@@ -370,31 +369,6 @@ export const fr: Record<string, string> = {
   "settings.connection.status.server": "Serveur",
   "settings.connection.status.protocol": "Protocole",
   "settings.connection.status.checks": "Vérifications",
-
-  "iconGallery.title": "Icônes Flame",
-  "iconGallery.filterLabel": "Filtrer les icônes par nom",
-  "iconGallery.filterPlaceholder": "Filtrer par nom…",
-  "iconGallery.empty": 'Aucune icône ne correspond à "{{q}}".',
-  "iconGallery.subtitle": "{{count}} icônes originales · dessins optiques de 16px et 24px",
-  "iconGallery.group.communication": "Communication",
-  "iconGallery.group.data": "Données",
-  "iconGallery.group.development": "Développement",
-  "iconGallery.group.devices": "Appareils",
-  "iconGallery.group.files": "Fichiers",
-  "iconGallery.group.geometry": "Géométrie",
-  "iconGallery.group.health": "Santé",
-  "iconGallery.group.layout": "Disposition",
-  "iconGallery.group.media": "Médias",
-  "iconGallery.group.nature": "Nature",
-  "iconGallery.group.navigation": "Navigation",
-  "iconGallery.group.objects": "Objets",
-  "iconGallery.group.people": "Personnes",
-  "iconGallery.group.security": "Sécurité",
-  "iconGallery.group.status": "État",
-  "iconGallery.group.travel": "Voyage",
-  "iconGallery.group.typography": "Typographie",
-  "iconGallery.showcase":
-    "{{count}} icônes originales de <code>{{pkg}}</code>. Collection complète : <em>{{combo}} → Vue : Galerie d’icônes</em>.",
 
   "approval.settled.approved": "Approuvé",
   "approval.settled.declined": "Refusé",
@@ -510,8 +484,6 @@ export const fr: Record<string, string> = {
   "shortcuts.shortcut": "Raccourci",
   "shortcuts.empty": "Aucun raccourci trouvé",
 
-  "workspace.view.title.iconGallery": "Galerie d'icônes",
-  "settings.pane.icons": "Icônes",
   "agentSource.rpc": "Protocole d'exécution (JSON-RPC)",
   "narrative.rail.turns": "Vos questions",
   "role.user": "Vous",
@@ -586,13 +558,8 @@ export const fr: Record<string, string> = {
   "command.showShortcuts": "Raccourcis clavier",
 
   "diagnostics.clear": "Effacer",
-  "diagnostics.title": "Diagnostics",
   "diagnostics.clear.hint":
     "En mémoire uniquement (borné) ; l'enregistrement durable part via OTLP. « Effacer » réinitialise les tampons.",
-  "diagnostics.signalAria": "Signal de télémétrie",
-  "diagnostics.signal.traces": "Traces",
-  "diagnostics.signal.metrics": "Métriques",
-  "diagnostics.signal.logs": "Journaux",
   "reasoning.thinking": "Réflexion",
   "reasoning.thought": "Réflexion",
   "reasoning.thoughtFor": "Réflexion de {{duration}}",
@@ -1042,10 +1009,6 @@ export const fr: Record<string, string> = {
   "tool.group.run": "{{count}} exécution",
   "tool.group.fetch": "{{count}} requête web",
 
-  "diagnostics.empty.title": "Pas encore de données",
-  "diagnostics.empty.logs": "La sortie de host.log.* arrive ici, corrélée aux spans.",
-  "diagnostics.empty.metrics": "Utilise le chat — les temps de reducer / rendu apparaissent ici.",
-  "diagnostics.empty.traces": "Envoie un message — les spans run et RPC apparaissent ici.",
   "tool.askUser.answerPrefix": "réponse · ",
   "tool.askUser.waiting": "En attente de ta réponse…",
 
@@ -1156,7 +1119,6 @@ export const fr: Record<string, string> = {
   "model.effort.high": "Élevé",
   "model.effort.xhigh": "Très élevé",
   "model.effort.max": "Maximal",
-  "common.clear": "Effacer",
   "file.unsupported.image": "Pas encore d'aperçu d'image ici",
   "file.unsupported.binary": "Ce fichier n'est pas du texte",
   "file.unsupported.sub":

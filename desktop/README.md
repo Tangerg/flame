@@ -409,6 +409,19 @@ line navigation starts there. The package builds a closed DOM from Markdown toke
 authored HTML, MDX expressions, images and URLs remain text. Source and trusted file
 controls remain available through absence, failure and withdrawal.
 
+The optional [Diagnostics package](../plugins/diagnostics/plugin.json) receives bounded
+traces, metrics and logs from the current client's existing telemetry buffer. Refresh
+renews installation admission before another local read; the page cannot select a
+Runtime or clear observations. The trusted Clear button calls the existing store owner
+and retires the displayed page. Missing or competing Diagnostics contributions open
+the contribution catalogue from Run recovery controls.
+
+The optional [Icon gallery](../plugins/icon-gallery/plugin.json) is a static view generated
+from `@flame/icons` public catalog and SVG exports. It receives no product data and
+filters immutable local cards. The compiled gallery and advanced settings showcase
+are removed. The frontend resource check rejects stale generated HTML for both the
+Markdown renderer and icon gallery.
+
 An admitted `sessionTrajectory` view registers a Session dock contribution through the
 existing Dougong Host. Runtime owns package admission and canonical trajectory data.
 The trusted client captures installation, selected digest, view ID, active Session,
@@ -555,8 +568,14 @@ page, revokes the renderer and verifies physical retirement, generic record visi
 and unchanged canonical trajectory. The application exits and cleanup completes before
 the single terminal result. File renderers covers a captured remote Markdown file,
 read renewal, physical retirement and preserved canonical source after revocation.
+Diagnostics covers local reads and trusted buffer clearing without changing canonical
+Runtime usage; the static icon gallery covers SVG display, filtering and retirement.
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
+
+The latest result, file, Diagnostics and static-view workbench checks remain pending
+an unlocked macOS graphical session. Browser carrier and real Runtime package gates
+have passed; they do not qualify those new paths in the production native workbench.
 
 The qualified carrier and first-party page lifecycle were verified on macOS 26.5 with
 Wails v3 beta.28 at the shipping deployment floor. A run requires an unlocked graphical

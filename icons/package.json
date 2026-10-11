@@ -16,7 +16,7 @@
     },
     "./catalog": {
       "types": "./dist/catalog.d.ts",
-      "import": "./dist/catalog.js"
+      "default": "./dist/catalog.js"
     },
     "./svg/*": "./dist/svg/*"
   },

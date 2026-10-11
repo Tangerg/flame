@@ -110,6 +110,8 @@ const (
 	PluginViewUsageSummary      PluginViewType = "usageSummary"
 	PluginViewSkills            PluginViewType = "skills"
 	PluginViewWorkspaceDiff     PluginViewType = "workspaceDiff"
+	PluginViewClientDiagnostics PluginViewType = "clientDiagnostics"
+	PluginViewStatic            PluginViewType = "static"
 )
 
 type PluginView struct {

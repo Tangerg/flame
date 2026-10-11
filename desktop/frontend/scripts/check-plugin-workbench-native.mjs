@@ -349,7 +349,16 @@ try {
   );
   const discovery = await rpc("runtime.discover");
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
-  for (const name of ["trajectory", "memory", "schedules", "usage", "skills", "diff"]) {
+  for (const name of [
+    "trajectory",
+    "memory",
+    "schedules",
+    "usage",
+    "skills",
+    "diff",
+    "diagnostics",
+    "icon-gallery",
+  ]) {
     const installation = await rpc("plugins.install", { source: `/fixture/plugins/${name}` });
     assert.deepEqual(installation.selected.diagnostics, []);
     const view = installation.selected.views[0];
@@ -900,6 +909,46 @@ try {
   console.log(
     "File renderers: captured remote file, renewed admission, native retirement and preserved source passed",
   );
+
+  const diagnosticPage = await openPanel(installed.diagnostics.title, "Client diagnostics");
+  const canonicalUsage = await rpc("usage.summary");
+  await guest(diagnosticPage.id, 'document.querySelector("#refresh").click(); true');
+  await waitFor(
+    "local observation read",
+    () => readGuest(diagnosticPage.id, 'document.querySelector("#refresh").disabled'),
+    (value) => value.ready && JSON.parse(value.value) === false,
+  );
+  await clickText("Clear", "button");
+  await waitFor(
+    "cleared diagnostics page retirement",
+    pages,
+    (state) => !state.pages.some((page) => page.id === diagnosticPage.id),
+  );
+  const clearedPage = await pageWith("Client diagnostics");
+  assert.notEqual(clearedPage.id, diagnosticPage.id);
+  await assert.rejects(guest(diagnosticPage.id, "document.body.innerText"), /page is not ready/);
+  assert.deepEqual(await rpc("usage.summary"), canonicalUsage);
+  await rpc("plugins.revoke", { installationId: installed.diagnostics.installationId });
+  await noPages();
+  await closePanel(installed.diagnostics.title, clearedPage.id);
+  console.log(
+    "Client diagnostics: renewed read admission, trusted clear, retired page and unchanged Runtime usage passed",
+  );
+
+  const galleryPage = await openPanel(installed["icon-gallery"].title, "Flame icon gallery");
+  await guest(
+    galleryPage.id,
+    'const search = document.querySelector("#filter"); search.value = "file-diff"; search.dispatchEvent(new Event("input")); true',
+  );
+  assert.match(
+    await guest(galleryPage.id, 'document.querySelector("#icons").innerText'),
+    /FileDiff/,
+  );
+  await rpc("plugins.revoke", { installationId: installed["icon-gallery"].installationId });
+  await noPages();
+  await assert.rejects(guest(galleryPage.id, "document.body.innerText"), /page is not ready/);
+  await closePanel(installed["icon-gallery"].title, galleryPage.id);
+  console.log("Icon gallery: static released SVGs, local search and native retirement passed");
 
   for (const name of Object.keys(installed))
     await rpc("plugins.uninstall", { installationId: installed[name].installationId });

@@ -1,4 +1,4 @@
-import { TOOL_RESULT_RENDERER } from "@/plugins/sdk/kernelPoints";
+import { TOOL_RESULT_RENDERER, WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
 import { browserPluginCarrier } from "@/platform/browserPluginCarrier";
 import { cleanup, render, screen } from "@testing-library/react";
 import { configureNavigator } from "@/lib/navigation";
@@ -482,9 +482,12 @@ it("presents and retains only the contributions Runtime admits", async () => {
   admitted.selected.views = [
     { id: "trajectory", title: "Trajectory", type: "sessionTrajectory" },
     { id: "usage", title: "Usage", type: "usageSummary" },
+    { id: "diagnostics", title: "Diagnostics", type: "clientDiagnostics" },
+    { id: "icons", title: "Icons", type: "static" },
   ];
   admitted.selected.renderers = [
     { id: "search", title: "Search", selector: { type: "resultShape", name: "search" } },
+    { id: "markdown", title: "Markdown", selector: { type: "fileExtension", name: "md" } },
   ];
   withheld.selected.renderers = admitted.selected.renderers;
   withheld.selected.views = admitted.selected.views;
@@ -511,6 +514,14 @@ it("presents and retains only the contributions Runtime admits", async () => {
       title: "admitted · Trajectory",
     },
     { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:usage", title: "admitted · Usage" },
+    {
+      id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:diagnostics",
+      title: "admitted · Diagnostics",
+    },
+    { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:icons", title: "admitted · Icons" },
+  ]);
+  expect(contributionsTo(WORKSPACE_FILE_RENDERER).map((entry) => entry.item.extension)).toEqual([
+    "md",
   ]);
   expect(contributionsTo(TOOL_RESULT_RENDERER).map((entry) => entry.item.title)).toEqual([
     "admitted · Search",

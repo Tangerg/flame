@@ -290,7 +290,6 @@ export const es: Record<string, string> = {
   "contextDock.group.workspace": "Espacio",
   "contextDock.group.run": "Ejecución",
   "contextDock.group.session": "Sesión",
-  "workspace.view.title.diagnostics": "Diagnóstico",
   "settings.theme": "Tema",
   "settings.theme.sub":
     "Elige un tema. Los plugins pueden registrar más — aparecen aquí automáticamente.",
@@ -368,31 +367,6 @@ export const es: Record<string, string> = {
   "settings.connection.status.server": "Servidor",
   "settings.connection.status.protocol": "Protocolo",
   "settings.connection.status.checks": "Comprobaciones",
-
-  "iconGallery.title": "Iconos Flame",
-  "iconGallery.filterLabel": "Filtrar iconos por nombre",
-  "iconGallery.filterPlaceholder": "Filtrar por nombre…",
-  "iconGallery.empty": 'Ningún icono coincide con "{{q}}".',
-  "iconGallery.subtitle": "{{count}} iconos originales · diseños ópticos de 16px y 24px",
-  "iconGallery.group.communication": "Comunicación",
-  "iconGallery.group.data": "Datos",
-  "iconGallery.group.development": "Desarrollo",
-  "iconGallery.group.devices": "Dispositivos",
-  "iconGallery.group.files": "Archivos",
-  "iconGallery.group.geometry": "Geometría",
-  "iconGallery.group.health": "Salud",
-  "iconGallery.group.layout": "Diseño",
-  "iconGallery.group.media": "Medios",
-  "iconGallery.group.nature": "Naturaleza",
-  "iconGallery.group.navigation": "Navegación",
-  "iconGallery.group.objects": "Objetos",
-  "iconGallery.group.people": "Personas",
-  "iconGallery.group.security": "Seguridad",
-  "iconGallery.group.status": "Estado",
-  "iconGallery.group.travel": "Viajes",
-  "iconGallery.group.typography": "Tipografía",
-  "iconGallery.showcase":
-    "{{count}} iconos originales de <code>{{pkg}}</code>. Colección completa: <em>{{combo}} → Vista: Galería de iconos</em>.",
 
   "approval.settled.approved": "Aprobado",
   "approval.settled.declined": "Rechazado",
@@ -508,8 +482,6 @@ export const es: Record<string, string> = {
   "shortcuts.shortcut": "Atajo",
   "shortcuts.empty": "Sin atajos coincidentes",
 
-  "workspace.view.title.iconGallery": "Galería de iconos",
-  "settings.pane.icons": "Iconos",
   "agentSource.rpc": "Protocolo de ejecución (JSON-RPC)",
   "narrative.rail.turns": "Tus preguntas",
   "role.user": "Tú",
@@ -582,13 +554,8 @@ export const es: Record<string, string> = {
   "command.showShortcuts": "Atajos de teclado",
 
   "diagnostics.clear": "Limpiar",
-  "diagnostics.title": "Diagnóstico",
   "diagnostics.clear.hint":
     "Solo en memoria (con límite); el registro duradero sale por OTLP. «Borrar» reinicia los búferes.",
-  "diagnostics.signalAria": "Señal de telemetría",
-  "diagnostics.signal.traces": "Trazas",
-  "diagnostics.signal.metrics": "Métricas",
-  "diagnostics.signal.logs": "Registros",
   "reasoning.thinking": "Pensando",
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",
@@ -1033,10 +1000,6 @@ export const es: Record<string, string> = {
   "tool.group.run": "{{count}} ejecución",
   "tool.group.fetch": "{{count}} consulta web",
 
-  "diagnostics.empty.title": "Aún no hay datos",
-  "diagnostics.empty.logs": "La salida de host.log.* llega aquí, correlacionada por span.",
-  "diagnostics.empty.metrics": "Usa el chat — los tiempos de reducer / render aparecen aquí.",
-  "diagnostics.empty.traces": "Envía un mensaje — los spans de run y RPC aparecen aquí.",
   "tool.askUser.answerPrefix": "respuesta · ",
   "tool.askUser.waiting": "Esperando tu respuesta…",
 
@@ -1147,7 +1110,6 @@ export const es: Record<string, string> = {
   "model.effort.high": "Alto",
   "model.effort.xhigh": "Muy alto",
   "model.effort.max": "Máximo",
-  "common.clear": "Borrar",
   "file.unsupported.image": "Aún no hay vista previa de imágenes aquí",
   "file.unsupported.binary": "Este archivo no es texto",
   "file.unsupported.sub":

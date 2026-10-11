@@ -91,21 +91,18 @@ test("a full view sets its title in mono only when the title is a path", async (
 });
 
 test("the icon gallery searches Flame glyphs by name and concept", async ({ page }) => {
-  await openWorkspace(page, { state: "full-view", fullView: "icon-gallery" });
-  const search = page.getByRole("searchbox", { name: en["iconGallery.filterLabel"]! });
+  await openWorkspace(page, { state: "full-view", fullView: "package:visual:icon-gallery" });
+  const frame = page.locator("main").frameLocator("iframe").frameLocator("iframe");
+  const search = frame.getByRole("searchbox", { name: "Filter icons" });
   await expect(search).toBeVisible();
-  await expect(page.getByText(en["iconGallery.title"]!, { exact: true })).toBeVisible();
+  await expect(frame.getByRole("heading", { name: "Flame icon gallery" })).toBeVisible();
   await search.fill("file-diff");
-  await expect(page.getByText("FileDiff", { exact: true })).toBeVisible();
-  await expect(page.getByText("FileText", { exact: true })).toHaveCount(0);
+  await expect(frame.getByText("FileDiff", { exact: true })).toBeVisible();
+  await expect(frame.getByText("FileText", { exact: true })).toBeHidden();
   await search.fill("patch");
-  await expect(page.getByText("FileDiff", { exact: true })).toBeVisible();
+  await expect(frame.getByText("FileDiff", { exact: true })).toBeVisible();
   await search.fill("no-such-flame-glyph");
-  await expect(
-    page.getByText(en["iconGallery.empty"]!.replace("{{q}}", "no-such-flame-glyph"), {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(frame.getByRole("status")).toContainText(/0 of \d+ icons/);
 });
 
 async function starveTheRow(page: Page): Promise<void> {
@@ -189,9 +186,14 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
+  if (state === "dock-diagnostics") {
+    await expect(pluginViewFrame(page, "diagnostics").getByRole("status")).toContainText(
+      "observations shown",
+    );
+    return;
+  }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
     "dock-subagents": "Sub-agent 4 of 4",
-    "dock-diagnostics": "run + RPC spans appear here",
   };
   const catalogueReady = CATALOGUE_READY[state];
   if (catalogueReady !== undefined) {

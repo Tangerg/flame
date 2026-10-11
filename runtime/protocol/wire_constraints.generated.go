@@ -2685,7 +2685,7 @@ func (p PluginView) ValidateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("title", p.Title),
 		maxLength("title", p.Title, 128),
-		closedEnum("type", string(p.Type), []string{"sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff"}, false),
+		closedEnum("type", string(p.Type), []string{"sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"}, false),
 	)
 }
 
