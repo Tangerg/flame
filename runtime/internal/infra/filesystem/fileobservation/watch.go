@@ -386,9 +386,8 @@ func fingerprintPhysicalTarget(
 	return encoder.sum(), physical, nil
 }
 
-func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name string, limit int) error {
+func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name string, limit int) (err error) {
 	var directory *os.File
-	var err error
 	if root != nil {
 		directory, err = root.Open(name)
 	} else {
@@ -397,7 +396,7 @@ func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name strin
 	if err != nil {
 		return fmt.Errorf("observe files: open directory: %w", err)
 	}
-	defer directory.Close()
+	defer func() { err = errors.Join(err, directory.Close()) }()
 	entries, err := directory.ReadDir(limit + 1)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("observe files: read directory: %w", err)

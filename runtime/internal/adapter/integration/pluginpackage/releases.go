@@ -191,7 +191,7 @@ func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.
 // and entries that do not name a digest are not releases and are left alone.
 // The directory is read in bounded batches, so garbage of any size is
 // reclaimed without materializing the whole listing.
-func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) error {
+func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) (err error) {
 	r.publishMu.Lock()
 	defer r.publishMu.Unlock()
 	admitted, err := r.catalog.Digests(ctx)
@@ -202,7 +202,7 @@ func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) e
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open release directories: %w", err)
 	}
-	defer directory.Close()
+	defer func() { err = errors.Join(err, directory.Close()) }()
 	var failures error
 	reclaim := func(digest fingerprint.Digest) error {
 		if slices.Contains(retained, digest) {
