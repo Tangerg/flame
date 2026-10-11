@@ -7,6 +7,8 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -51,7 +53,7 @@ func (c *Connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	if c.closed {
 		return nil, ErrConnectionsClosed
 	}
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
 	target := c.find(name)
@@ -113,7 +115,7 @@ func (a *Attempt) execute() (err error) {
 	}()
 	select {
 	case <-a.ctx.Done():
-		return context.Cause(a.ctx)
+		return cancellation.Err(a.ctx)
 	case <-a.start:
 		return a.connect()
 	}
@@ -123,22 +125,20 @@ func (a *Attempt) connect() (err error) {
 	c := a.owner
 	var closeErr error
 	if a.withdrawn != nil {
-		select {
-		case <-a.withdrawn.done:
-			closeErr = a.withdrawn.err
-			c.mu.Lock()
-			delete(c.retirements, a.withdrawn)
-			c.mu.Unlock()
-		case <-a.ctx.Done():
-			return context.Cause(a.ctx)
+		if err := completion.Wait(a.ctx, a.withdrawn.done); err != nil {
+			return err
 		}
+		closeErr = a.withdrawn.err
+		c.mu.Lock()
+		delete(c.retirements, a.withdrawn)
+		c.mu.Unlock()
 	}
-	if err := a.ctx.Err(); err != nil {
+	if err := cancellation.Err(a.ctx); err != nil {
 		return errors.Join(closeErr, err)
 	}
 	input, err := a.resolve(a.ctx, a.target.name())
 	if err != nil {
-		return errors.Join(closeErr, err, context.Cause(a.ctx), input.Close())
+		return errors.Join(closeErr, err, cancellation.Err(a.ctx), input.Close())
 	}
 	prepared, err := input.take()
 	if err != nil {

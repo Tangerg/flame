@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 )
@@ -14,7 +15,7 @@ func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
 	c.mu.Lock()
 	if !c.currentAttempt(attempt) || attempt.ctx.Err() != nil {
 		c.mu.Unlock()
-		return errors.Join(errConnectionSuperseded, context.Cause(attempt.ctx))
+		return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx))
 	}
 	target := attempt.target
 	oauth := reusableOAuth(target.config, *cfg, target.oauth)
@@ -36,7 +37,7 @@ func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
 		c.mu.Lock()
 		if !c.currentAttempt(attempt) || attempt.ctx.Err() != nil {
 			c.mu.Unlock()
-			return errors.Join(errConnectionSuperseded, context.Cause(attempt.ctx))
+			return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx))
 		}
 		target.oauth = oauth
 		c.mu.Unlock()
@@ -70,7 +71,7 @@ func (c *Connections) authorize(attempt *Attempt, prepared *launch) (err error) 
 	c.mu.Lock()
 	if !c.currentAttempt(attempt) || attempt.ctx.Err() != nil {
 		c.mu.Unlock()
-		return errors.Join(errConnectionSuperseded, context.Cause(attempt.ctx))
+		return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx))
 	}
 	attempt.target.config = cfg.Clone()
 	attempt.target.oauth = nil
@@ -107,11 +108,9 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 		step = mcpserver.FailureToolDiscovery
 		verifiedTools, err = sourceTools(ctx, c, cfg, session)
 	}
-	if err == nil {
-		err = ctx.Err()
-	}
-
 	c.mu.Lock()
+	// Authorization may expire while waiting for the publication lock.
+	err = errors.Join(err, cancellation.Err(ctx))
 	c.ownSessionLocked(session, cleanupSession)
 	current := c.currentAttempt(attempt) && attempt.ctx.Err() == nil
 	closed := c.closed
@@ -123,9 +122,9 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 		c.mu.Unlock()
 		closeErr := c.closeSession(attempt.ctx, session)
 		if closed {
-			return errors.Join(ErrConnectionsClosed, context.Cause(attempt.ctx), err, closeErr)
+			return errors.Join(ErrConnectionsClosed, cancellation.Err(attempt.ctx), err, closeErr)
 		}
-		return errors.Join(errConnectionSuperseded, context.Cause(attempt.ctx), err, closeErr)
+		return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx), err, closeErr)
 	}
 	if err != nil {
 		state, failure := failedStatus(err, step)
@@ -177,7 +176,7 @@ func (c *Connections) Refuse(ctx context.Context, name mcpserver.ID, failure mcp
 		c.mu.Unlock()
 		return ErrConnectionsClosed
 	}
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		c.mu.Unlock()
 		return err
 	}

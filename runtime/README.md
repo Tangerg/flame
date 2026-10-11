@@ -1371,6 +1371,13 @@ publishes connecting from that same owner. Startup, reconnect and authorization
 share this lifecycle; supersession and shutdown cancel and join preparation as well
 as dialing. The application coordinates durable configuration, exposure and ordered
 identity-only invalidations without storing a second connection phase or tombstone.
+Canceled connection and authorization admission, configuration reads and retirement
+waits retain both the standard cancellation category and the owner's cause, alongside
+concurrent I/O failures. Preparation shares the completion join rule; canceling its
+waiter cannot cancel retirement or discard its eventual diagnostic.
+The supervisor checks the dial lifetime under its publication
+lock; an expired authorization cannot publish a verified session. An already published
+session retains its successful result if the caller later cancels.
 Plugin realization describes current release and backend availability separately.
 Server listing and startup enumerate desired definitions without realizing plugin resources;
 these reads cannot overwrite the state of an admitted connection.
