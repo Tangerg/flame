@@ -1,10 +1,11 @@
 import { useMemo, type ReactNode } from "react";
+import { useT } from "@/lib/i18n";
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk/types/tool";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import type { PluginViewReads } from "../application/pluginView";
-import type { ToolResultSnapshot } from "../adapters/toolRendererReads";
+import type { ToolResultSnapshot } from "../adapters/rendererReads";
 import { PackageView } from "./PackageView";
 
 const styles = stylex.create({
@@ -14,6 +15,7 @@ const styles = stylex.create({
 export function ToolResultPackage({
   tool,
   reads: createReads,
+  fallback,
   ...props
 }: ToolPreviewProps & {
   reads: (tool: ToolPreviewProps["tool"]) => PluginViewReads<ToolResultSnapshot>;
@@ -22,10 +24,15 @@ export function ToolResultPackage({
   carrier: PluginCarrier;
   fallback: ReactNode;
 }) {
+  const t = useT();
   const reads = useMemo(() => createReads(tool), [createReads, tool]);
   return (
     <div {...stylex.props(styles.page)}>
-      <PackageView {...props} reads={reads} />
+      <PackageView
+        {...props}
+        reads={reads}
+        fallback={{ label: t("toolInspector.recordedResult"), content: fallback }}
+      />
     </div>
   );
 }

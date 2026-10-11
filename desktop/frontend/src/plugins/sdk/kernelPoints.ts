@@ -21,7 +21,7 @@ import type {
   ToolViewOpenerSpec,
   WorkIndexItemSpec,
   WorkspaceViewSpec,
-  WorkspaceFileRenderer,
+  WorkspaceFileRendererSpec,
 } from "./types";
 import { defineExtensionPoint } from "./contracts";
 import { normalizeCombo } from "@/lib/combo";
@@ -93,7 +93,7 @@ export const SETTINGS_PANE = defineExtensionPoint<SettingsPaneSpec>({
   id: "flame.settingsPane",
   keying: "single",
 });
-export const WORKSPACE_FILE_RENDERER = defineExtensionPoint<WorkspaceFileRenderer>({
+export const WORKSPACE_FILE_RENDERER = defineExtensionPoint<WorkspaceFileRendererSpec>({
   id: "flame.workspace.fileRenderer",
   keying: "single",
 });

@@ -1,6 +1,7 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { ReadPluginRendererRequest } from "@flame/runtime-contract/wire";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
+import type { WorkspaceFileRendererProps } from "@/plugins/sdk/types/workspace";
 import type { PluginViewReads } from "../application/pluginView";
 
 export interface ToolResultSnapshot {
@@ -8,16 +9,18 @@ export interface ToolResultSnapshot {
   tool: ToolCall;
 }
 
-export function createToolRendererReads(
+export interface FileSnapshot {
+  format: "flame.file.v1";
+  file: Omit<WorkspaceFileRendererProps, "fallback">;
+}
+
+export function createRecordedRendererReads<T extends ToolResultSnapshot | FileSnapshot>(
   plugins: Pick<FlameClient["plugins"], "readRenderer">,
   binding: Readonly<ReadPluginRendererRequest>,
-  tool: Readonly<ToolCall>,
-): PluginViewReads<ToolResultSnapshot> {
+  record: T,
+): PluginViewReads<T> {
   const request = { ...binding };
-  const snapshot: ToolResultSnapshot = {
-    format: "flame.tool-result.v1",
-    tool: structuredClone(tool),
-  };
+  const snapshot = structuredClone(record);
   let admittedHTML: string | undefined;
   return {
     async load(signal) {
@@ -26,10 +29,10 @@ export function createToolRendererReads(
       return { html: resource.html, initial: structuredClone(snapshot) };
     },
     async read(cursor, signal) {
-      if (cursor !== undefined) throw new Error("Recorded tool results have no continuation");
+      if (cursor !== undefined) throw new Error("Captured renderer records have no continuation");
       const resource = await plugins.readRenderer(request, signal);
       if (resource.html !== admittedHTML)
-        throw new Error("The recorded result renderer resource changed");
+        throw new Error("The captured record renderer resource changed");
       return structuredClone(snapshot);
     },
   };

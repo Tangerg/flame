@@ -42,6 +42,17 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-11.3
+
+`renderers` now admits exact, normalized file-extension selectors. The optional
+[File renderers package](../plugins/file-renderers/plugin.json) replaces compiled
+Markdown file rendering. Runtime still owns file access; the trusted host supplies
+only an already captured complete read, with its workspace, path and bounds. Refresh
+reauthorizes the renderer resource and returns that snapshot. The page cannot select
+a new file. Ambiguity, truncation, failure and withdrawal preserve source presentation;
+line navigation begins in source mode. Rebuild Runtime and clients together, then
+install and approve File renderers 1.0.0 explicitly. Existing data needs no conversion.
+
 ## Protocol 2026-10-11.2
 
 The optional [Tool results package](../plugins/tool-results/plugin.json) replaces the

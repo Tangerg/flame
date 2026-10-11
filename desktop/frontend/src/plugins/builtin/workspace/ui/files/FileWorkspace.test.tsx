@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { configureLocalWorkspace } from "../../application/ports/localWorkspace";
 import { navigator } from "@/lib/navigation";
 import { openWorkspaceFile } from "../../application/navigation";
@@ -80,8 +80,15 @@ beforeEach(async () => {
         });
         ctx.contribute(
           WORKSPACE_FILE_RENDERER,
-          ({ content }) => <article data-testid="rendered-markdown">{content}</article>,
-          { key: "md" },
+          {
+            id: "markdown",
+            title: "Markdown",
+            extension: "md",
+            component: ({ content }) => (
+              <article data-testid="rendered-markdown">{content}</article>
+            ),
+          },
+          { key: "markdown" },
         );
       },
     }),
@@ -129,6 +136,37 @@ describe("workspace files panel", () => {
     mount(<FileWorkspace />);
 
     expect((await screen.findByTestId("rendered-markdown")).textContent).toBe("# Title");
+  });
+
+  it("keeps truncated files in their source presentation", async () => {
+    readFile.mockResolvedValue({
+      content: "# Truncated",
+      startLine: 1,
+      totalLines: 1,
+      truncated: true,
+    });
+    openWorkspaceFile("docs/README.md");
+    mount(<FileWorkspace />);
+    await screen.findByText("# Truncated");
+    expect(screen.queryByTestId("rendered-markdown")).toBeNull();
+  });
+
+  it("follows a line reference in source even when the whole file is available", async () => {
+    readFile.mockResolvedValue({ content: "# First\nSecond", startLine: 1, totalLines: 2 });
+    openWorkspaceFile("docs/README.md", 2);
+    mount(<FileWorkspace />);
+    await screen.findByText("Second");
+    expect(screen.queryByTestId("rendered-markdown")).toBeNull();
+  });
+
+  it("retires the file renderer without losing the captured source", async () => {
+    readFile.mockResolvedValue({ content: "# Captured", startLine: 1, totalLines: 1 });
+    openWorkspaceFile("docs/README.md");
+    mount(<FileWorkspace />);
+    await screen.findByTestId("rendered-markdown");
+    await resetKernelForTest();
+    expect(screen.queryByTestId("rendered-markdown")).toBeNull();
+    expect(screen.getByText("# Captured")).toBeTruthy();
   });
 
   it("waits for an unresolved Session workspace before following a line reference", async () => {

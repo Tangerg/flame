@@ -139,8 +139,9 @@ type PluginViewResource struct {
 type PluginRendererSelectorType string
 
 const (
-	PluginRendererToolName    PluginRendererSelectorType = "toolName"
-	PluginRendererResultShape PluginRendererSelectorType = "resultShape"
+	PluginRendererToolName      PluginRendererSelectorType = "toolName"
+	PluginRendererResultShape   PluginRendererSelectorType = "resultShape"
+	PluginRendererFileExtension PluginRendererSelectorType = "fileExtension"
 )
 
 // A renderer selector selects display only. It never resolves execution authority.

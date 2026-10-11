@@ -48,6 +48,7 @@ let runtimeModule;
 let failure;
 const installed = {};
 let resultPackage;
+let fileRendererPackage;
 const mcpToken = randomUUID();
 const manifest = JSON.parse(
   await readFile(join(repository, "runtime/contract/manifest.json"), "utf8"),
@@ -205,7 +206,7 @@ async function pageWith(text) {
   );
 }
 
-async function openPanel(panel, text) {
+async function choosePanel(panel) {
   await tool("window_control", { action: "focus" });
   await waitFor("focused workbench", () => evaluate("return !document.hidden"), Boolean);
   await clickLabel("Browse panels");
@@ -218,6 +219,10 @@ async function openPanel(panel, text) {
       ),
     (value) => value.popups.length === 0,
   );
+}
+
+async function openPanel(panel, text) {
+  await choosePanel(panel);
   const page = await pageWith(text);
   const isolation = await guest(
     page.id,
@@ -373,6 +378,13 @@ try {
     digest: resultPackage.selected.digest,
   });
   await rpc("plugins.setEnablement", { installationId: resultPackage.id, enabled: true });
+  fileRendererPackage = await rpc("plugins.install", { source: "/fixture/plugins/file-renderers" });
+  assert.deepEqual(fileRendererPackage.selected.diagnostics, []);
+  await rpc("plugins.approve", {
+    installationId: fileRendererPackage.id,
+    digest: fileRendererPackage.selected.digest,
+  });
+  await rpc("plugins.setEnablement", { installationId: fileRendererPackage.id, enabled: true });
   await command("docker", [
     "exec",
     containerName,
@@ -388,6 +400,13 @@ try {
     "sh",
     "-c",
     `printf 'baseline\n' > ${workspace}/native-diff.txt`,
+  ]);
+  await command("docker", [
+    "exec",
+    containerName,
+    "sh",
+    "-c",
+    `printf '# Native Markdown fixture\n\nRecorded **file** content.\n' > ${workspace}/native-file.md`,
   ]);
   await command("docker", ["exec", containerName, "git", "-C", workspace, "add", "."]);
   await command("docker", [
@@ -854,6 +873,34 @@ try {
     "Tool results: recorded Run output, renewed read admission, native retirement and generic fallback passed",
   );
 
+  await choosePanel("Files");
+  await clickText("native-file.md", '[role="treeitem"]');
+  const filePage = await pageWith("Native Markdown fixture");
+  const fileRequest = { workspace: { path: workspace }, path: "native-file.md" };
+  const canonicalFile = await rpc("workspace.files.read", fileRequest);
+  const originalFile = await guest(filePage.id, 'document.querySelector("#output").innerText');
+  assert.match(originalFile, /Recorded file content/);
+  await guest(filePage.id, 'document.querySelector("#refresh").click(); true');
+  await waitFor(
+    "same captured file",
+    () => readGuest(filePage.id, 'document.querySelector("#output").innerText'),
+    (value) => value.ready && JSON.parse(value.value) === originalFile,
+  );
+  await rpc("plugins.revoke", { installationId: fileRendererPackage.id });
+  await noPages();
+  await assert.rejects(guest(filePage.id, "document.body.innerText"), /page is not ready/);
+  await waitFor(
+    "generic file source",
+    () => evaluate('return document.body.innerText.includes("Recorded **file** content.")'),
+    Boolean,
+  );
+  assert.deepEqual(await rpc("workspace.files.read", fileRequest), canonicalFile);
+  await rpc("plugins.uninstall", { installationId: fileRendererPackage.id });
+  await closePanel("Files", filePage.id);
+  console.log(
+    "File renderers: captured remote file, renewed admission, native retirement and preserved source passed",
+  );
+
   for (const name of Object.keys(installed))
     await rpc("plugins.uninstall", { installationId: installed[name].installationId });
   const preservedMemory = (
@@ -932,6 +979,7 @@ console.log(
     result: "passed",
     views: Object.keys(installed).length,
     resultRendering: true,
+    fileRendering: true,
     remoteWorkspace: true,
     preservedRuntimeFacts: true,
     nativePages: 0,

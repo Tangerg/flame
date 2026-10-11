@@ -20,6 +20,9 @@ func TestRendererAdmissionAndReleaseCopies(t *testing.T) {
 		{"escaped entry", func(r *Renderer) { r.Entry = "../search.html" }},
 		{"script entry", func(r *Renderer) { r.Entry = "search.js" }},
 		{"long title", func(r *Renderer) { r.Title = strings.Repeat("x", MaxViewTitleBytes+1) }},
+		{"extension path", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererFileExtension, Name: "../md"} }},
+		{"extension wildcard", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererFileExtension, Name: "*"} }},
+		{"extension case", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererFileExtension, Name: "MD"} }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			b, err := NewBuilder("renderer-test", "1", "")
@@ -48,5 +51,16 @@ func TestRendererAdmissionAndReleaseCopies(t *testing.T) {
 	duplicate := Declaration{Name: "renderer-test", Renderers: []Renderer{valid, valid}}
 	if _, err := NewRelease(release.Digest(), duplicate); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("duplicate: %v", err)
+	}
+}
+
+func TestFileRendererIsOnlyADeclaration(t *testing.T) {
+	valid := Renderer{ID: "markdown", Title: "Markdown", Selector: RendererSelector{Kind: RendererFileExtension, Name: "md"}, Entry: "renderers/markdown.html"}
+	release, err := NewRelease(fingerprint.Strings("file-renderer"), Declaration{Name: "file-renderer", Renderers: []Renderer{valid}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := release.Declaration().Renderers[0]; got != valid {
+		t.Fatalf("renderer: %+v", got)
 	}
 }

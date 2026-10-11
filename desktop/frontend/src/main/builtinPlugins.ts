@@ -78,7 +78,6 @@ import { appearancePlugins } from "@/plugins/builtin/theme";
 import toaster from "@/plugins/builtin/shell/toaster";
 import { toolActions, toolIcons } from "@/plugins/builtin/chat/tools/toolMeta";
 import { subagentsView } from "@/plugins/builtin/chat/message/subagents";
-import { markdownFile } from "@/plugins/builtin/chat/message/markdownFile";
 import toolViewOpener from "@/plugins/builtin/workspace/tool-view-opener";
 import { fileView } from "@/plugins/builtin/workspace/views";
 
@@ -141,7 +140,6 @@ export function createBuiltinPlugins(
     createSchedulesPlugin(runtimeClient),
     fileView,
     subagentsView,
-    markdownFile,
     diagnostics,
   ];
 

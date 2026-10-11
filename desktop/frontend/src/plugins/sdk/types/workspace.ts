@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 export interface SettingsPaneSpec {
   id: string;
@@ -12,11 +12,21 @@ export interface SettingsPaneSpec {
 }
 
 export interface WorkspaceFileRendererProps {
+  cwd?: string;
   path: string;
   content: string;
+  startLine: number;
+  totalLines: number;
+  truncated?: boolean;
+  fallback: ReactNode;
 }
 
-export type WorkspaceFileRenderer = ComponentType<WorkspaceFileRendererProps>;
+export interface WorkspaceFileRendererSpec {
+  id: string;
+  title: string;
+  extension: string;
+  component: ComponentType<WorkspaceFileRendererProps>;
+}
 
 export type ContextDockDestinationScope = "workspace" | "session" | "run";
 

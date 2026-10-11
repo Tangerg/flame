@@ -31,7 +31,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff and recorded result reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff, recorded result and captured file reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -745,6 +745,82 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     );
     await page.waitForFunction(() => window.viewStatus?.type === "failure");
     assert.match(await page.evaluate(() => window.failure), /Unsupported recorded result format/);
+    assert.equal(await page.locator("iframe").count(), 0);
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    const fileHTML = await readFile(
+      new URL("../../../plugins/file-renderers/renderers/markdown.html", import.meta.url),
+      "utf8",
+    );
+    const fileContent = [
+      "# Captured Markdown",
+      "",
+      "**Strong text** and *emphasis* with `inline code`.",
+      "",
+      "- [x] Recorded task",
+      "- Other item",
+      "",
+      "> Quoted observation",
+      "",
+      "| Column | Value |",
+      "| --- | --- |",
+      "| Fact | Recorded |",
+      "",
+      "```html",
+      "<img onerror=escape()>",
+      "```",
+      "",
+      `<script>window.markdownEscape = true</script>`,
+      "",
+      `[Remote link](${origin}/__escape)`,
+      `![Image alternative](${origin}/__escape)`,
+    ].join("\n");
+    await page.evaluate(
+      ({ html, content }) =>
+        void window.mount(html, {
+          format: "flame.file.v1",
+          file: {
+            cwd: "/runtime/workspace",
+            path: "notes.md",
+            content,
+            startLine: 1,
+            totalLines: content.split("\n").length,
+          },
+        }),
+      { html: fileHTML, content: fileContent },
+    );
+    await page.waitForFunction(() => window.viewStatus?.type === "ready");
+    await frame.locator("article").getByRole("heading", { name: "Captured Markdown" }).waitFor();
+    assert.equal(await frame.locator("article strong").innerText(), "Strong text");
+    assert.equal(await frame.locator("article table tbody tr").count(), 1);
+    assert.equal(await frame.locator("article blockquote").innerText(), "Quoted observation");
+    assert.equal(await frame.locator("img, a, object, iframe, [onclick], [onerror]").count(), 0);
+    assert.equal(await frame.locator("html").evaluate(() => window.markdownEscape), undefined);
+    const capturedFile = await frame.locator("#output").innerText();
+    assert.match(capturedFile, /Image alternative/);
+    assert.match(capturedFile, /<script>window.markdownEscape/);
+    await frame.getByRole("button", { name: "Refresh captured file" }).click();
+    await page.waitForFunction(() => window.reads.length === 1);
+    await expect(frame.getByRole("button", { name: "Refresh captured file" })).toBeEnabled();
+    assert.equal(await frame.locator("#output").innerText(), capturedFile);
+    assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
+    await page.evaluate(() => (window.readFailure = true));
+    await frame.getByRole("button", { name: "Refresh captured file" }).click();
+    await frame.getByRole("alert").waitFor();
+    assert.equal(await frame.locator("#output").innerText(), capturedFile);
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    await page.evaluate(
+      (html) =>
+        void window.mount(html, {
+          format: "flame.file.v1",
+          file: { path: "partial.md", content: "partial", startLine: 41, totalLines: 100 },
+        }),
+      fileHTML,
+    );
+    await page.waitForFunction(() => window.viewStatus?.type === "failure");
+    assert.match(await page.evaluate(() => window.failure), /Unsupported captured file format/);
     assert.equal(await page.locator("iframe").count(), 0);
     await page.reload();
     await page.waitForFunction(() => window.mount);

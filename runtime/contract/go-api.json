@@ -2275,6 +2275,11 @@
           "value": "\"releaseUnavailable\""
         },
         {
+          "name": "PluginRendererFileExtension",
+          "type": "PluginRendererSelectorType",
+          "value": "\"fileExtension\""
+        },
+        {
           "name": "PluginRendererResultShape",
           "type": "PluginRendererSelectorType",
           "value": "\"resultShape\""
@@ -2402,7 +2407,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-11.2\""
+          "value": "\"2026-10-11.3\""
         },
         {
           "name": "ProviderAPIKeyOptional",

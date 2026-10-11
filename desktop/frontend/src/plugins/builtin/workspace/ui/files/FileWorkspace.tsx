@@ -4,7 +4,8 @@ import { copyText } from "@/lib/clipboard";
 import { fileExtension } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { isImeKey } from "@/lib/ime";
-import { lookupExtensionByKey } from "@/plugins/sdk";
+import { useExtensionPoint } from "@/plugins/sdk";
+import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
 import {
   Button,
@@ -36,6 +37,7 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import type { WorkspaceFileViewer } from "../../application/ports/navigationState";
 import { FileTree } from "./FileTree";
+import { selectFileRenderer } from "../../application/fileRenderer";
 
 const WINDOW_RADIUS = 200;
 
@@ -122,9 +124,15 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
   const moreBefore = firstShown > 1;
   const moreAfter = data !== undefined && lastShown < data.totalLines;
 
-  const renderer = lookupExtensionByKey(WORKSPACE_FILE_RENDERER, fileExtension(viewer.path));
-  const wholeFile = data !== undefined && !moreBefore && !moreAfter;
-  const [mode, setMode] = useState<"rendered" | "source">("rendered");
+  const renderers = useExtensionPoint(WORKSPACE_FILE_RENDERER);
+  const renderer = selectFileRenderer(renderers, fileExtension(viewer.path));
+  const wholeFile = data !== undefined && !data.truncated && !moreBefore && !moreAfter;
+  const [modeFor, setModeFor] = useState<{ intent: object; mode: "rendered" | "source" }>(() => ({
+    intent: viewer,
+    mode: targetLine > 0 ? "source" : "rendered",
+  }));
+  const mode = modeFor.intent === viewer ? modeFor.mode : targetLine > 0 ? "source" : "rendered";
+  const setMode = (mode: "rendered" | "source") => setModeFor({ intent: viewer, mode });
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const scrollPort = useRef<HTMLDivElement>(null);
@@ -236,8 +244,26 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
               )}
               {showRendered && renderer ? (
                 (() => {
-                  const Renderer = renderer;
-                  return <Renderer path={viewer.path} content={items[0]!.content} />;
+                  const Renderer = renderer.component;
+                  const recorded = (
+                    <FileView
+                      path={viewer.path}
+                      content={items[0]!.content}
+                      startLine={items[0]!.startLine}
+                      targetLine={targetLine}
+                      intent={viewer}
+                    />
+                  );
+                  return (
+                    <PluginBoundary
+                      key={renderer.id}
+                      plugin={renderer.id}
+                      label={renderer.title}
+                      fallback={recorded}
+                    >
+                      <Renderer cwd={cwd} path={viewer.path} {...items[0]!} fallback={recorded} />
+                    </PluginBoundary>
+                  );
                 })()
               ) : (
                 <FileView

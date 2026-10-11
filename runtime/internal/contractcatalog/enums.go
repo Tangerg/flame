@@ -20,7 +20,7 @@ import (
 // where the runtime accepts three words, which is a published contract that
 // permits frames the runtime rejects.
 var wireEnums = map[reflect.Type][]string{
-	reflect.TypeFor[protocol.PluginRendererSelectorType]():        {string(protocol.PluginRendererToolName), string(protocol.PluginRendererResultShape)},
+	reflect.TypeFor[protocol.PluginRendererSelectorType]():        {string(protocol.PluginRendererToolName), string(protocol.PluginRendererResultShape), string(protocol.PluginRendererFileExtension)},
 	reflect.TypeFor[protocol.PluginActionOperation]():             {string(protocol.PluginActionRenameSession)},
 	reflect.TypeFor[protocol.PluginViewType]():                    {string(protocol.PluginViewSessionTrajectory), string(protocol.PluginViewAgentMemory), string(protocol.PluginViewSchedules), string(protocol.PluginViewUsageSummary), string(protocol.PluginViewSkills), string(protocol.PluginViewWorkspaceDiff)},
 	reflect.TypeFor[protocol.ToolAttemptState]():                  {string(protocol.ToolAttemptStarted), string(protocol.ToolAttemptCompleted), string(protocol.ToolAttemptIncomplete)},

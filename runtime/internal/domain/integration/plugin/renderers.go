@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -9,13 +10,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
-const MaxRenderers = 32
+const (
+	MaxRenderers                 = 32
+	MaxRendererSelectorNameBytes = 256
+)
+
+var fileExtensionPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_+-]*$`)
 
 type RendererSelectorKind string
 
 const (
-	RendererToolName    RendererSelectorKind = "toolName"
-	RendererResultShape RendererSelectorKind = "resultShape"
+	RendererToolName      RendererSelectorKind = "toolName"
+	RendererResultShape   RendererSelectorKind = "resultShape"
+	RendererFileExtension RendererSelectorKind = "fileExtension"
 )
 
 // A selector chooses presentation, never an executable tool or authority.
@@ -42,14 +49,21 @@ func (b *Builder) AdmitRenderer(renderer Renderer) error {
 		return refuse(DiagnosticInvalidDeclaration, "renderer identity or title %q", renderer.ID)
 	}
 	selector := renderer.Selector
+	if selector.Name == "" || len(selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(selector.Name) {
+		return refuse(DiagnosticInvalidDeclaration, "renderer %q selector name", renderer.ID)
+	}
 	switch selector.Kind {
 	case RendererToolName:
-		if selector.Name == "" || len(selector.Name) > 256 || !utf8.ValidString(selector.Name) || strings.ContainsAny(selector.Name, " \t\r\n") {
+		if strings.ContainsAny(selector.Name, " \t\r\n") {
 			return refuse(DiagnosticInvalidDeclaration, "renderer %q tool name", renderer.ID)
 		}
 	case RendererResultShape:
 		if !slices.Contains([]string{"command", "search", "patch", "webSearch"}, selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "renderer %q result shape", renderer.ID)
+		}
+	case RendererFileExtension:
+		if !fileExtensionPattern.MatchString(selector.Name) {
+			return refuse(DiagnosticInvalidDeclaration, "renderer %q file extension", renderer.ID)
 		}
 	default:
 		return refuse(DiagnosticInvalidDeclaration, "renderer %q selector", renderer.ID)

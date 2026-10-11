@@ -400,6 +400,15 @@ a tool or advance an outcome. The generic recorded content remains available aft
 failure, revocation or uninstall. Rebuild Runtime and clients together for the generated
 renderer contract, then install and approve the package explicitly.
 
+File renderers is an optional package from `plugins/file-renderers`. Its normalized
+extension selectors consume complete file reads captured by the trusted Files dock.
+The isolated page receives workspace, path, content and read bounds. It cannot select
+another path, invoke a tool or edit a file. Refresh repeats that snapshot after renewed
+release admission. Partial, truncated and ambiguous content stays in source mode;
+line navigation starts there. The package builds a closed DOM from Markdown tokens;
+authored HTML, MDX expressions, images and URLs remain text. Source and trusted file
+controls remain available through absence, failure and withdrawal.
+
 An admitted `sessionTrajectory` view registers a Session dock contribution through the
 existing Dougong Host. Runtime owns package admission and canonical trajectory data.
 The trusted client captures installation, selected digest, view ID, active Session,
@@ -544,7 +553,9 @@ canonical trajectory, memory, schedules, usage, workspace diffs and Skill curati
 The Tool results check displays and refreshes a recorded Skill proposal in its isolated
 page, revokes the renderer and verifies physical retirement, generic record visibility
 and unchanged canonical trajectory. The application exits and cleanup completes before
-the single terminal result. The runner removes its container, network,
+the single terminal result. File renderers covers a captured remote Markdown file,
+read renewal, physical retirement and preserved canonical source after revocation.
+The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 
 The qualified carrier and first-party page lifecycle were verified on macOS 26.5 with

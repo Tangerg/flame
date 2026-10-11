@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createToolRendererReads } from "./toolRendererReads";
+import { createRecordedRendererReads } from "./rendererReads";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
 const binding = { installationId: "installation", digest: "digest", rendererId: "renderer" };
@@ -21,7 +21,10 @@ describe("the captured recorded result", () => {
     const readRenderer = vi.fn(async (_request: typeof binding, _signal?: AbortSignal) => ({
       html: "<html></html>",
     }));
-    const reads = createToolRendererReads({ readRenderer }, request, captured);
+    const reads = createRecordedRendererReads({ readRenderer }, request, {
+      format: "flame.tool-result.v1",
+      tool: captured,
+    });
     captured.result = "later bytes";
     captured.range!.start = 1;
     request.digest = "replacement";
@@ -36,7 +39,10 @@ describe("the captured recorded result", () => {
     const readRenderer = vi.fn(async (_request: typeof binding, _signal?: AbortSignal) => ({
       html: "<html></html>",
     }));
-    const reads = createToolRendererReads({ readRenderer }, binding, tool);
+    const reads = createRecordedRendererReads({ readRenderer }, binding, {
+      format: "flame.tool-result.v1",
+      tool,
+    });
     await reads.load(new AbortController().signal);
     readRenderer.mockRejectedValueOnce(new Error("withdrawn"));
     await expect(reads.read(undefined, new AbortController().signal)).rejects.toThrow("withdrawn");
@@ -47,11 +53,39 @@ describe("the captured recorded result", () => {
   });
   it("refuses a refresh whose release resource changed", async () => {
     const readRenderer = vi.fn(async () => ({ html: "<html>original</html>" }));
-    const reads = createToolRendererReads({ readRenderer }, binding, tool);
+    const reads = createRecordedRendererReads({ readRenderer }, binding, {
+      format: "flame.tool-result.v1",
+      tool,
+    });
     await reads.load(new AbortController().signal);
     readRenderer.mockResolvedValueOnce({ html: "<html>replacement</html>" });
     await expect(reads.read(undefined, new AbortController().signal)).rejects.toThrow(
       "renderer resource changed",
     );
+  });
+  it("refreshes only the captured file and Runtime workspace", async () => {
+    const file = {
+      cwd: "/runtime/workspace",
+      path: "notes.md",
+      content: "# Recorded",
+      startLine: 1,
+      totalLines: 1,
+    };
+    const readRenderer = vi.fn(async () => ({ html: "<html></html>" }));
+    const reads = createRecordedRendererReads({ readRenderer }, binding, {
+      format: "flame.file.v1",
+      file,
+    });
+    file.cwd = "/replacement";
+    file.content = "# Later";
+    const loaded = await reads.load(new AbortController().signal);
+    loaded.initial.file.content = "guest edit";
+    expect((await reads.read(undefined, new AbortController().signal)).file).toEqual({
+      cwd: "/runtime/workspace",
+      path: "notes.md",
+      content: "# Recorded",
+      startLine: 1,
+      totalLines: 1,
+    });
   });
 });

@@ -1453,6 +1453,13 @@ Generic recorded content remains available through absence, ambiguity, failure a
 withdrawal. [Runtime documentation](../runtime/README.md#protocol-2026-10-112) owns
 the implemented admission and migration requirements.
 
+The optional first-party File renderers package consumes complete file reads already
+selected by the trusted host. Its extension selector has no file-access authority.
+The captured projection retains Runtime workspace and range provenance. Partial and
+truncated content stays in source presentation, and competing file renderers remain
+ambiguous. Refresh never selects another path or observes a later file version. The
+same installation admission and isolated carrier own this presentation lifetime.
+
 **Slice E: durable host integrations, only as justified.** Validate MRTR, Tasks, delegated execution, or whole-subsystem extraction individually. These are not prerequisites for the base heterogeneous plugin model.
 
 Each slice is the smallest complete boundary repair. It includes affected callers, generated contracts, tests, and documentation. It is not an instruction to make commits, install packages, or modify the repository as part of this document-only request.

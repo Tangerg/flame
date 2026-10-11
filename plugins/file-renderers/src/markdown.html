@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Captured Markdown file</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          14px/1.7 system-ui,
+          sans-serif;
+        color: light-dark(#20242b, #eef0f4);
+        background: light-dark(#fafbfc, #181a1e);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      header h1 {
+        font: 600 13px/1.6 monospace;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid light-dark(#c9cfd9, #484e59);
+        border-radius: 4px;
+        padding: 4px 8px;
+      }
+      :focus-visible {
+        outline: 2px solid light-dark(#265cad, #91baff);
+        outline-offset: 2px;
+      }
+      #status,
+      #scope {
+        color: light-dark(#586170, #a3a8b2);
+        font-size: 12px;
+      }
+      #status[role="alert"] {
+        color: light-dark(#a62222, #ff9797);
+      }
+      article {
+        overflow-wrap: anywhere;
+      }
+      article h1 {
+        font-size: 24px;
+      }
+      article h2 {
+        font-size: 20px;
+      }
+      article h3 {
+        font-size: 17px;
+      }
+      article h4,
+      article h5,
+      article h6 {
+        font-size: 14px;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        padding: 12px;
+        background: light-dark(#e9edf3, #252933);
+      }
+      code {
+        font-family: monospace;
+      }
+      blockquote {
+        margin-inline: 0;
+        padding-inline: 12px;
+        border-left: 3px solid light-dark(#c9cfd9, #484e59);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        border: 1px solid light-dark(#c9cfd9, #484e59);
+        padding: 6px;
+      }
+      .reference {
+        color: light-dark(#586170, #a3a8b2);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Captured Markdown file</h1>
+      <button id="refresh" disabled>Refresh captured file</button>
+    </header>
+    <p id="scope"></p>
+    <p id="status" role="status">Waiting for the captured file…</p>
+    <article id="output" aria-label="Captured Markdown content"></article>
+    <!-- SCRIPT -->
+  </body>
+</html>

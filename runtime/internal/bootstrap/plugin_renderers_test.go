@@ -60,3 +60,35 @@ func TestOptionalRendererUsesApprovedImmutableBytes(t *testing.T) {
 	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-renderer")
 	refused(request, protocol.ErrPluginUnapproved)
 }
+
+func TestFileRendererUsesApprovedImmutableBytes(t *testing.T) {
+	r := poMCPOpen(t, poMCPConfig(t))
+	source, err := filepath.Abs("../../../plugins/file-renderers")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-file-renderer").(*protocol.PluginInstallation)
+	if len(installed.Selected.Diagnostics) != 0 {
+		t.Fatalf("admission: %+v", installed.Selected.Diagnostics)
+	}
+	request := protocol.ReadPluginRendererRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, RendererID: "markdown"}
+	r.must(delivery.PluginsApprove, request.PluginReleaseRequest, "approve-file-renderer")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-file-renderer")
+	resource := r.must(delivery.PluginsReadRenderer, request, "").(*protocol.PluginViewResource)
+	authored, err := os.ReadFile(filepath.Join(source, "renderers", "markdown.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resource.HTML != string(authored) {
+		t.Fatal("file renderer did not use the admitted bytes")
+	}
+	var found bool
+	for _, renderer := range installed.Selected.Renderers {
+		if renderer.ID == "markdown" {
+			found = renderer.Selector.Type == protocol.PluginRendererFileExtension && renderer.Selector.Name == "md"
+		}
+	}
+	if !found {
+		t.Fatal("file extension consumer was not admitted")
+	}
+}

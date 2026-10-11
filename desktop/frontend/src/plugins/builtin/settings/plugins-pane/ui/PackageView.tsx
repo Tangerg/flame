@@ -32,7 +32,7 @@ export function PackageView<T>({
   lifetime: ContributionLifetime;
   title: string;
   carrier: PluginCarrier;
-  fallback?: ReactNode;
+  fallback?: { label: string; content: ReactNode };
 }) {
   const t = useT();
   const scheme = useScheme();
@@ -79,15 +79,15 @@ export function PackageView<T>({
         (status.type === "ready" ? (
           <AgentActivityDisclosure
             icon="file-text"
-            label={t("toolInspector.recordedResult")}
+            label={fallback.label}
             shell="line"
             open={showRecorded}
             onToggle={() => setShowRecorded((value) => !value)}
           >
-            {fallback}
+            {fallback.content}
           </AgentActivityDisclosure>
         ) : (
-          fallback
+          fallback.content
         ))}
     </AgentWorkspaceView>
   );

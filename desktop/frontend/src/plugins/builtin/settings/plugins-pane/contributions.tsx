@@ -3,9 +3,19 @@ import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
-import { DATA_PROVIDER, WORKSPACE_VIEW, TOOL_RESULT_RENDERER } from "@/plugins/sdk/kernelPoints";
+import {
+  DATA_PROVIDER,
+  WORKSPACE_VIEW,
+  TOOL_RESULT_RENDERER,
+  WORKSPACE_FILE_RENDERER,
+} from "@/plugins/sdk/kernelPoints";
 import { ToolResultPackage } from "./ui/ToolResultPackage";
-import { createToolRendererReads } from "./adapters/toolRendererReads";
+import { FilePackageRenderer } from "./ui/FilePackageRenderer";
+import {
+  createRecordedRendererReads,
+  type ToolResultSnapshot,
+  type FileSnapshot,
+} from "./adapters/rendererReads";
 import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
 import { UsagePackageView } from "./ui/UsagePackageView";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
@@ -76,8 +86,34 @@ function createPackageReconciler(
         };
         const id = `package:${installation.id}:${renderer.id}`;
         const title = `${release.name} · ${renderer.title}`;
-        const reads = (tool: Parameters<typeof createToolRendererReads>[2]) =>
-          createToolRendererReads(client.plugins, binding, tool);
+        if (renderer.selector.type === "fileExtension") {
+          const reads = (file: FileSnapshot["file"]) =>
+            createRecordedRendererReads(client.plugins, binding, { format: "flame.file.v1", file });
+          lifetime.contribute(
+            WORKSPACE_FILE_RENDERER,
+            {
+              id,
+              title,
+              extension: renderer.selector.name,
+              component: (props) => (
+                <FilePackageRenderer
+                  {...props}
+                  reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            },
+            { key: id },
+          );
+          continue;
+        }
+        const reads = (tool: ToolResultSnapshot["tool"]) =>
+          createRecordedRendererReads(client.plugins, binding, {
+            format: "flame.tool-result.v1",
+            tool,
+          });
         lifetime.contribute(
           TOOL_RESULT_RENDERER,
           {

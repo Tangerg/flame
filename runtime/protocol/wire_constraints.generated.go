@@ -2661,7 +2661,7 @@ func (p PluginRendererSelector) ValidateWire() error {
 	return collectWireViolations("PluginRendererSelector",
 		requiredText("name", p.Name),
 		maxLength("name", p.Name, 256),
-		closedEnum("type", string(p.Type), []string{"toolName", "resultShape"}, false),
+		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
 	)
 }
 
