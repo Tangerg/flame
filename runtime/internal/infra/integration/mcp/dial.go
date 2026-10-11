@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"go.opentelemetry.io/otel"
@@ -27,13 +28,15 @@ var tracer = otel.Tracer("scope/flame/infra/integration/mcp")
 // FATAL (validated before any dial); a reachability failure is TOLERATED
 // (recorded "failed" and skipped). An empty config still yields a live,
 // initially-empty Connections so runtime configuration can add servers later.
+// Initialization cancellation rejects the handoff and settles all acquired
+// sessions before returning, preserving their retirement diagnostics.
 func Dial(
 	ctx context.Context,
 	lifetime context.Context,
 	servers []ServerConfig,
 	oauthSessions OAuthSessionStore,
 	configuration func(context.Context, mcpserver.ID) (*Launch, error),
-) (*Connections, error) {
+) (result *Connections, err error) {
 	if dependency.Missing(ctx) {
 		return nil, errors.New("mcp: startup context is required")
 	}
@@ -45,12 +48,6 @@ func Dial(
 	}
 	if oauthSessions != nil && dependency.Missing(oauthSessions) {
 		return nil, errors.New("mcp: supplied oauth session store is nil")
-	}
-	// An empty startup catalog retains a client for later connection admission.
-	if len(servers) == 0 {
-		return &Connections{
-			lifetime: lifetime, client: newClient(), oauthSessions: oauthSessions,
-		}, nil
 	}
 	servers = slices.Clone(servers)
 	for i := range servers {
@@ -71,24 +68,45 @@ func Dial(
 			return nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), verr)
 		}
 	}
+	cancellationErr := func() error {
+		return errors.Join(cancellation.Err(ctx), cancellation.Err(lifetime))
+	}
+	if err := cancellationErr(); err != nil {
+		return nil, err
+	}
+	operationCtx, cancelOperation := context.WithCancelCause(ctx)
+	defer cancelOperation(nil)
+	stopOwner := context.AfterFunc(lifetime, func() { cancelOperation(cancellation.Err(lifetime)) })
+	defer stopOwner()
 
 	// Servers share a client identity because no per-server handlers are needed.
 	client := newClient()
 	c := &Connections{lifetime: lifetime, client: client, oauthSessions: oauthSessions}
+	defer func() {
+		if result == nil {
+			err = errors.Join(err, c.Shutdown(context.WithoutCancel(ctx)))
+		}
+	}()
 
-	ctx, span := tracer.Start(ctx, "mcp.dial_servers",
+	operationCtx, span := tracer.Start(operationCtx, "mcp.dial_servers",
 		trace.WithAttributes(attribute.Int("mcp.server.count", len(servers))))
 	defer span.End()
 
 	toolCount := 0
 	failures := 0
 	for _, srv := range servers {
-		attempt, err := c.BeginConnect(ctx, srv.ID(), configuration)
+		if err := cancellationErr(); err != nil {
+			return nil, err
+		}
+		attempt, err := c.BeginConnect(operationCtx, srv.ID(), configuration)
 		if err == nil {
 			err = attempt.Run()
 		}
+		if stopped := cancellationErr(); stopped != nil {
+			return nil, errors.Join(err, stopped)
+		}
 		if err != nil {
-			slog.ErrorContext(ctx, "mcp: startup connection failed", "server.name", srv.ID().String(), "error", err)
+			slog.ErrorContext(operationCtx, "mcp: startup connection failed", "server.name", srv.ID().String(), "error", err)
 			failures++
 		}
 	}
@@ -102,6 +120,9 @@ func Dial(
 	)
 	if failures > 0 {
 		span.SetStatus(codes.Error, fmt.Sprintf("%d/%d MCP servers failed to connect", failures, len(servers)))
+	}
+	if err := cancellationErr(); err != nil {
+		return nil, err
 	}
 	return c, nil
 }

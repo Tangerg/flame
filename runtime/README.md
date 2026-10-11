@@ -1385,6 +1385,13 @@ the session owner's cancellation cause before cleanup cancels temporary contexts
 Only the returned release handle transfers the live lifetime to its session owner;
 failure and panic keep cleanup with the handshake. Cleanup never reclassifies an
 ordinary transport failure as caller cancellation.
+Startup owns acquired sessions until it returns a live connection pool. An expired
+startup request or stopped session owner rejects that handoff, cancels configuration
+I/O and prevents later reads. The initializer joins session and launch-resource
+retirement before returning, retaining cleanup failures with the cancellation cause.
+An independent server failure or handshake timeout remains a tolerated failed entry
+while both initialization owners are live; an empty catalog follows the same
+admission and handoff rules.
 Plugin realization describes current release and backend availability separately.
 Server listing and startup enumerate desired definitions without realizing plugin resources;
 these reads cannot overwrite the state of an admitted connection.
