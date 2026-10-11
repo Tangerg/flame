@@ -9,6 +9,8 @@ import (
 
 func tryFile(*os.File) (*Lease, error) { return nil, ErrUnsupported }
 
+func trySharedFile(*os.File) (*Lease, error) { return nil, ErrUnsupported }
+
 func tryDirectory(string) (*Lease, error) { return nil, ErrUnsupported }
 
 func acquireDirectory(context.Context, string) (*Lease, error) { return nil, ErrUnsupported }

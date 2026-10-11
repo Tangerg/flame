@@ -21,8 +21,8 @@ func TestDirectoryLeaseUsesPhysicalIdentityAndWaitsForRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := advisorylock.TryDirectory(alias); !errors.Is(err, advisorylock.ErrContended) {
-		t.Fatalf("alias contention = %v, want ErrContended", err)
+	if lease, err := advisorylock.TryDirectory(alias); lease != nil || err != nil {
+		t.Fatalf("alias contention = (%v, %v), want no lease or error", lease, err)
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)

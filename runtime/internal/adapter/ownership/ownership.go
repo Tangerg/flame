@@ -75,11 +75,11 @@ func (l *LeaseSet) TryGoalDrive(sessionID string) (goals.DriveLease, bool, error
 // TryRecoverySweep elects one Runtime to reconcile abandoned Runs before Goals.
 func (l *LeaseSet) TryRecoverySweep() (appownership.Lease, bool, error) {
 	lease, err := advisorylock.TryDirectory(l.recovery)
-	if errors.Is(err, advisorylock.ErrContended) {
-		return nil, false, nil
-	}
 	if err != nil {
 		return nil, false, fmt.Errorf("runtime ownership: recovery sweep: %w", err)
+	}
+	if lease == nil {
+		return nil, false, nil
 	}
 	return advisoryLease{lease: lease}, true, nil
 }
@@ -128,9 +128,9 @@ func tryLease(directory, identity string, shared bool) (appownership.Lease, bool
 	} else {
 		lease, err = advisorylock.TryFile(file)
 	}
-	if err != nil {
+	if err != nil || lease == nil {
 		closeErr := file.Close()
-		if errors.Is(err, advisorylock.ErrContended) && closeErr == nil {
+		if err == nil && closeErr == nil {
 			return nil, false, nil
 		}
 		return nil, false, fmt.Errorf("runtime ownership: acquire lease: %w", errors.Join(err, closeErr))

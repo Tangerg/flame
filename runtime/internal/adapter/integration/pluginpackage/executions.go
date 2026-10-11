@@ -86,11 +86,14 @@ func (r *Releases) ReclaimExecutions(ctx context.Context) (err error) {
 			}
 			path := filepath.Join(dir, entry.Name())
 			lease, err := advisorylock.TryDirectory(path)
-			if errors.Is(err, advisorylock.ErrContended) || errors.Is(err, os.ErrNotExist) {
+			if errors.Is(err, os.ErrNotExist) {
 				continue
 			}
 			if err != nil {
 				return err
+			}
+			if lease == nil {
+				continue
 			}
 			if err := errors.Join(removeSealed(path), lease.Release()); err != nil {
 				return err
@@ -217,6 +220,9 @@ func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest fi
 		return nil, errors.Join(err, namespace.Release())
 	}
 	lease, err := advisorylock.TryDirectory(staged.path)
+	if err == nil && lease == nil {
+		err = errors.New("pluginpackage: execution stage is already leased")
+	}
 	if err != nil {
 		return nil, errors.Join(err, staged.discard(), namespace.Release())
 	}

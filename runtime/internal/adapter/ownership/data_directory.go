@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
 )
@@ -15,10 +14,8 @@ import (
 // It is deliberately not a Runtime-lifetime lease: after setup, Runtime
 // processes may share Directory.
 type DataDirectorySetup struct {
-	mu        sync.Mutex
 	Directory string
 	lease     *advisorylock.Lease
-	released  bool
 }
 
 // PrepareDataDirectory canonicalizes and protects the shared data directory,
@@ -49,16 +46,10 @@ func PrepareDataDirectory(ctx context.Context, directory string) (*DataDirectory
 	return &DataDirectorySetup{Directory: canonical, lease: lease}, nil
 }
 
-// Release ends the setup window. It is retryable and idempotent.
+// Release ends the setup window through the lease's single cleanup owner.
 func (d *DataDirectorySetup) Release() error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.released {
-		return nil
-	}
 	if err := d.lease.Release(); err != nil {
 		return fmt.Errorf("runtime ownership: release data directory setup %q: %w", d.Directory, err)
 	}
-	d.released = true
 	return nil
 }

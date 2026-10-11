@@ -455,6 +455,15 @@ relocated paths and cannot launch installation stdio. Startup collects abandoned
 copies using directory leases, preserving copies held by another Runtime. This protects
 the launch from changes to published bytes; stdio still runs as trusted local code, without
 an OS sandbox.
+
+Advisory leases own their release attempt and settled cleanup result. Non-blocking
+contention returns no lease and no error; descriptor or handle cleanup failures remain
+errors and cannot be mistaken for contention. Owned Unix directory descriptors are closed
+once after attempting unlock, with both failures retained. Borrowed-file unlocks and
+Windows mutex releases remain retryable while their resource permits it. Repeated
+release calls return the settled result without more OS calls. Data-directory setup
+delegates release to its lease rather than maintaining a second release state.
+
 The registry resolves each server by its origin, realizing an installation
 server only as far as the read requires (desired definition, dispatch authority, or launch)
 and never its siblings. Ordinary tool dispatch reads admitted declarations and

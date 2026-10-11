@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"golang.org/x/sys/windows"
 )
@@ -36,13 +37,14 @@ func tryFileMode(file *os.File, exclusive bool) (*Lease, error) {
 	)
 	if err != nil {
 		if errors.Is(err, windows.ERROR_LOCK_VIOLATION) || errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
-			return nil, ErrContended
+			return nil, nil
 		}
 		return nil, err
 	}
-	return newLease(func() error {
+	return newLease(func() (bool, error) {
 		var overlapped windows.Overlapped
-		return windows.UnlockFileEx(windows.Handle(file.Fd()), 0, 1, 0, &overlapped)
+		err := windows.UnlockFileEx(windows.Handle(file.Fd()), 0, 1, 0, &overlapped)
+		return err == nil, err
 	}), nil
 }
 
@@ -64,24 +66,30 @@ func directoryLease(ctx context.Context, directory string, nonblocking bool) (*L
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
 		handle, err := acquireDirectoryHandle(ctx, directory, nonblocking)
-		if err != nil {
+		if err != nil || handle == 0 {
 			resultChannel <- result{err: err}
 			return
 		}
-		requests := make(chan chan error)
-		lease := newLease(func() error {
-			response := make(chan error, 1)
+		type releaseResult struct {
+			done bool
+			err  error
+		}
+		requests := make(chan chan releaseResult)
+		lease := newLease(func() (bool, error) {
+			response := make(chan releaseResult, 1)
 			requests <- response
-			return <-response
+			result := <-response
+			return result.done, result.err
 		})
 		resultChannel <- result{lease: lease}
 		for response := range requests {
 			err := windows.ReleaseMutex(handle)
-			response <- err
-			if err == nil {
-				_ = windows.CloseHandle(handle)
-				return
+			if err != nil {
+				response <- releaseResult{err: err}
+				continue
 			}
+			response <- releaseResult{done: true, err: windows.CloseHandle(handle)}
+			return
 		}
 	}()
 	acquired := <-resultChannel
@@ -110,39 +118,34 @@ func acquireDirectoryHandle(ctx context.Context, directory string, nonblocking b
 	handle, err := windows.CreateMutex(nil, false, nameUTF16)
 	if err != nil && !errors.Is(err, windows.ERROR_ALREADY_EXISTS) {
 		if handle != 0 {
-			_ = windows.CloseHandle(handle)
+			err = errors.Join(err, windows.CloseHandle(handle))
 		}
 		return 0, err
 	}
 	for {
 		if !nonblocking {
-			if err := context.Cause(ctx); err != nil {
-				_ = windows.CloseHandle(handle)
-				return 0, err
+			if err := cancellation.Err(ctx); err != nil {
+				return 0, errors.Join(err, windows.CloseHandle(handle))
 			}
 		}
 		result, err := windows.WaitForSingleObject(handle, directoryLockWaitMilliseconds)
 		if err != nil {
-			_ = windows.CloseHandle(handle)
-			return 0, err
+			return 0, errors.Join(err, windows.CloseHandle(handle))
 		}
 		switch result {
 		case windows.WAIT_OBJECT_0, windows.WAIT_ABANDONED:
 			return handle, nil
 		case uint32(windows.WAIT_TIMEOUT):
 			if nonblocking {
-				_ = windows.CloseHandle(handle)
-				return 0, ErrContended
+				return 0, windows.CloseHandle(handle)
 			}
 			select {
 			case <-ctx.Done():
-				_ = windows.CloseHandle(handle)
-				return 0, context.Cause(ctx)
+				return 0, errors.Join(cancellation.Err(ctx), windows.CloseHandle(handle))
 			default:
 			}
 		default:
-			_ = windows.CloseHandle(handle)
-			return 0, fmt.Errorf("advisory lock: unexpected wait result %d", result)
+			return 0, errors.Join(fmt.Errorf("advisory lock: unexpected wait result %d", result), windows.CloseHandle(handle))
 		}
 	}
 }
