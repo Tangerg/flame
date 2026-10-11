@@ -6,7 +6,6 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/capture"
 	"go/format"
 	"os"
 	"os/exec"
@@ -17,7 +16,10 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/capture"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -54,6 +56,9 @@ func withAutoFormat(inner toolcontract.Tool, root *filesystemRoot, executor *fs.
 }
 
 func formatPath(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string) error {
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
 	path, err := rootRelative(root.Name(), path)
 	if err != nil {
 		return err
@@ -74,8 +79,11 @@ func formatPath(ctx context.Context, root *filesystemRoot, executor *fs.LocalExe
 	case ".go", ".json":
 	case ".js", ".jsx", ".ts", ".tsx", ".css", ".scss", ".html", ".md", ".yaml", ".yml":
 		prettier, err = exec.LookPath("prettier")
-		if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
 			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("%s: locate prettier: %w", path, err)
 		}
 	default:
 		return nil
@@ -111,7 +119,7 @@ func formatPath(ctx context.Context, root *filesystemRoot, executor *fs.LocalExe
 	if len(formatted) > int(maxAutoFormatFileBytes) {
 		return fmt.Errorf("%s: %w: formatted output uses %d bytes", path, errAutoFormatFileTooLarge, len(formatted))
 	}
-	if err := context.Cause(ctx); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
 	if bytes.Equal(input, formatted) {
@@ -121,7 +129,7 @@ func formatPath(ctx context.Context, root *filesystemRoot, executor *fs.LocalExe
 }
 
 func runFormatter(ctx context.Context, input []byte, name string, args ...string) ([]byte, error) {
-	if err := context.Cause(ctx); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
@@ -131,18 +139,25 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	cmd.WaitDelay = autoFormatProcessWaitDelay
+	procgroup.Prepare(cmd)
+	cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 	runErr := cmd.Run()
-	if err := context.Cause(ctx); err != nil {
-		return nil, err
+	cleanupErr := procgroup.Stop(cmd)
+	if errors.Is(cleanupErr, os.ErrProcessDone) {
+		cleanupErr = nil
 	}
+	failure := errors.Join(runErr, cleanupErr, cancellation.Err(ctx))
 	target := name
 	if len(args) > 0 {
 		target = args[len(args)-1]
 	}
 	if stdout.Truncated() {
-		return nil, fmt.Errorf("%s: %s output exceeds %d MiB", target, name, maxAutoFormatFileBytes>>20)
+		failure = errors.Join(failure, fmt.Errorf("%s output: %w", name, errAutoFormatFileTooLarge))
 	}
-	if runErr == nil && !stderr.Truncated() {
+	if stderr.Truncated() {
+		failure = errors.Join(failure, fmt.Errorf("%s diagnostic output exceeded %d bytes", name, maxAutoFormatDiagnosticBytes))
+	}
+	if failure == nil {
 		return bytes.Clone(stdout.Bytes()), nil
 	}
 	msg := strings.TrimSpace(stderr.Diagnostic())
@@ -150,15 +165,9 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 		msg += "\n... [formatter diagnostic truncated] ..."
 	}
 	if msg == "" {
-		if runErr == nil {
-			return nil, fmt.Errorf("%s: %s diagnostic output was truncated", target, name)
-		}
-		return nil, fmt.Errorf("%s: run %s: %w", target, name, runErr)
+		return nil, fmt.Errorf("%s: run %s: %w", target, name, failure)
 	}
-	if runErr == nil {
-		return nil, fmt.Errorf("%s: %s", target, msg)
-	}
-	return nil, fmt.Errorf("%s: %s: %w", target, msg, runErr)
+	return nil, fmt.Errorf("%s: %s: %w", target, msg, failure)
 }
 
 type autoFormatSource struct {
@@ -167,7 +176,7 @@ type autoFormatSource struct {
 }
 
 func readAutoFormatFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string) (autoFormatSource, error) {
-	if err := context.Cause(ctx); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return autoFormatSource{}, err
 	}
 	before, err := root.Lstat(path)
@@ -182,14 +191,17 @@ func readAutoFormatFile(ctx context.Context, root *filesystemRoot, executor *fs.
 		MaxLineBytes: int(maxAutoFormatFileBytes), MaxOutputBytes: int(maxAutoFormatFileBytes),
 	})
 	if err != nil {
-		return autoFormatSource{}, err
+		return autoFormatSource{}, errors.Join(err, cancellation.Err(ctx))
 	}
 	if result.Truncated {
-		return autoFormatSource{}, errAutoFormatFileTooLarge
+		return autoFormatSource{}, errors.Join(errAutoFormatFileTooLarge, cancellation.Err(ctx))
 	}
 	after, err := root.Lstat(path)
 	if err != nil || !fileinput.SameVersion(before, after) {
-		return autoFormatSource{}, errors.New("file changed while reading for formatting")
+		return autoFormatSource{}, errors.Join(errors.New("file changed while reading for formatting"), err, cancellation.Err(ctx))
+	}
+	if err := cancellation.Err(ctx); err != nil {
+		return autoFormatSource{}, err
 	}
 	return autoFormatSource{content: result.Content, info: after}, nil
 }
@@ -208,10 +220,16 @@ func validateAutoFormatSource(info os.FileInfo) error {
 // BOM, line endings, and mode. Formatting supplies only an exact-text edit of
 // the complete, bounded source it observed.
 func applyFormattedFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string, data []byte, source autoFormatSource) error {
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
 	current, err := root.Lstat(path)
 	if err != nil || !fileinput.SameVersion(source.info, current) {
-		return errors.New("file changed while formatting")
+		return errors.Join(errors.New("file changed while formatting"), err, cancellation.Err(ctx))
 	}
 	_, err = executor.Edit(ctx, fs.EditRequest{Path: path, OldString: source.content, NewString: string(data)})
-	return err
+	if err != nil {
+		return errors.Join(err, cancellation.Err(ctx))
+	}
+	return nil
 }

@@ -128,8 +128,8 @@ func TestApplyFormattedFileDoesNotRecreateDeletedDirectory(t *testing.T) {
 	if err := os.RemoveAll(directory); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyFormattedFile(t.Context(), root, executor, "data.json", []byte("formatted"), autoFormatSource{content: "original", info: source}); err == nil {
-		t.Fatal("formatting a removed source succeeded")
+	if err := applyFormattedFile(t.Context(), root, executor, "data.json", []byte("formatted"), autoFormatSource{content: "original", info: source}); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("formatting a removed source error = %v, want filesystem cause", err)
 	}
 	if _, err := os.Lstat(directory); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("removed directory was recreated: %v", err)
@@ -180,11 +180,12 @@ func TestRunFormatterBoundsDiagnosticOutput(t *testing.T) {
 }
 
 func TestRunFormatterPreservesCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	cause := errors.New("formatting retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 	_, err := runFormatter(ctx, nil, "gofmt", "-w", filepath.Join(t.TempDir(), "file.go"))
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("formatter error = %v, want context.Canceled", err)
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("formatter error = %v, want cancellation category and owner cause", err)
 	}
 }
 
