@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
@@ -147,12 +148,15 @@ func verifyWorkspacePath(root *filesystemRoot) error {
 
 func withWorkspacePath(inner toolcontract.Tool, root *filesystemRoot) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		if cause := cancellation.Err(ctx); cause != nil {
+			return chat.ToolOutput{}, cause
+		}
 		if err := verifyWorkspacePath(root); err != nil {
 			return chat.ToolOutput{}, toolfailure.Definite(err)
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil {
-			return out, err
+			return out, errors.Join(err, cancellation.Err(ctx))
 		}
 		if err := verifyWorkspacePath(root); err != nil {
 			return chat.ToolOutput{}, toolfailure.Definite(err)

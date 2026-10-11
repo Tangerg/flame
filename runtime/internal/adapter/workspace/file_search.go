@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/scope/tools/textread"
 )
@@ -20,7 +21,7 @@ import (
 // cancellation, and exact-total semantics remain owned by this product port
 // instead of inheriting a subprocess executor's post-hoc result slicing.
 func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.GrepPlan) (_ workspaceapp.GrepResult, err error) {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return workspaceapp.GrepResult{}, cause
 	}
 	if input.Pattern == nil || input.Limit <= 0 || input.Limit > workspaceapp.MaxGrepLimit {
@@ -29,7 +30,7 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 	entries, err := SearchFiles(ctx, root, input.Path, "")
 	if err != nil {
 		if errors.Is(err, ErrListingTooLarge) {
-			return workspaceapp.GrepResult{}, workspaceapp.ErrGrepResultTooLarge
+			return workspaceapp.GrepResult{}, errors.Join(workspaceapp.ErrGrepResultTooLarge, err)
 		}
 		return workspaceapp.GrepResult{}, err
 	}
@@ -78,7 +79,7 @@ func (search *workspaceGrep) scanEntry(entry workspaceapp.FileEntry) error {
 	if entry.Kind != workspaceapp.FileEntryFile || entry.SizeBytes > workspaceapp.MaxGrepFileBytes {
 		return nil
 	}
-	if cause := context.Cause(search.ctx); cause != nil {
+	if cause := cancellation.Err(search.ctx); cause != nil {
 		return cause
 	}
 	source, usable, err := search.openSource(entry.Path)
@@ -119,14 +120,12 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 
 func (search *workspaceGrep) scanSource(source grepSource) error {
 	if search.remainingSource <= 0 {
-		_ = source.file.Close()
-		return workspaceapp.ErrGrepResultTooLarge
+		return errors.Join(workspaceapp.ErrGrepResultTooLarge, source.file.Close(), cancellation.Err(search.ctx))
 	}
-	counter := &searchByteCounter{reader: source.file}
 	matchLimit, resultBytes := search.retentionBudget()
 	fileResult, scanErr := grepFile(
 		search.ctx,
-		counter,
+		source.file,
 		source.path,
 		search.plan,
 		min(workspaceapp.MaxGrepFileBytes, search.remainingSource),
@@ -139,24 +138,20 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 		search.rootHandle,
 		filepath.FromSlash(source.path),
 	)
-	if err := source.file.Close(); err != nil {
-		return fmt.Errorf("workspace: close search file %q: %w", source.path, err)
-	}
-	search.remainingSource -= counter.bytes
-	if search.remainingSource < 0 {
-		return workspaceapp.ErrGrepResultTooLarge
-	}
-	if err := classifyGrepScanError(source.path, scanErr); err != nil {
-		return err
-	}
 	if verifyErr != nil {
-		return fmt.Errorf("workspace: verify search file %q after reading: %w", source.path, verifyErr)
+		verifyErr = fmt.Errorf("workspace: verify search file %q after reading: %w", source.path, verifyErr)
 	}
-	if scanErr != nil {
-		// Binary and pathological single-line files are not members of the
-		// searchable text corpus. Discard the whole file, including any rows
-		// observed before invalid material, just as a binary-aware grep does.
-		return nil
+	closeErr := source.file.Close()
+	if closeErr != nil {
+		closeErr = fmt.Errorf("workspace: close search file %q: %w", source.path, closeErr)
+	}
+	search.remainingSource -= fileResult.sourceBytes
+	var capacityErr error
+	if search.remainingSource < 0 {
+		capacityErr = workspaceapp.ErrGrepResultTooLarge
+	}
+	if err := errors.Join(scanErr, capacityErr, verifyErr, closeErr, cancellation.Err(search.ctx)); err != nil {
+		return err
 	}
 	return search.merge(fileResult)
 }
@@ -182,24 +177,12 @@ func (search *workspaceGrep) merge(fileResult grepFileResult) error {
 	return nil
 }
 
-func classifyGrepScanError(path string, err error) error {
-	switch {
-	case err == nil:
-		return nil
-	case errors.Is(err, textread.ErrInvalidText), errors.Is(err, textread.ErrLineTooLarge):
-		return nil
-	case errors.Is(err, textread.ErrInputTooLarge):
-		return workspaceapp.ErrGrepResultTooLarge
-	default:
-		return fmt.Errorf("workspace: scan search file %q: %w", path, err)
-	}
-}
-
 type grepFileResult struct {
 	matches       []workspaceapp.GrepMatch
 	total         int
 	materialBytes int
 	exhausted     bool
+	sourceBytes   int64
 }
 
 func grepFile(
@@ -212,7 +195,8 @@ func grepFile(
 	resultBytes int,
 ) (grepFileResult, error) {
 	result := grepFileResult{matches: []workspaceapp.GrepMatch{}}
-	err := textread.VisitLines(ctx, reader, textread.Limits{
+	counter := &fileScanInput{reader: reader}
+	err := textread.VisitLines(ctx, counter, textread.Limits{
 		InputBytes: inputBytes,
 		LineBytes:  workspaceapp.MaxGrepLineBytes,
 	}, func(number int, line []byte) error {
@@ -234,7 +218,22 @@ func grepFile(
 		result.materialBytes += rowBytes
 		return nil
 	})
-	return result, err
+	result.sourceBytes = counter.bytes
+	if errors.Is(err, textread.ErrInputTooLarge) {
+		err = errors.Join(workspaceapp.ErrGrepResultTooLarge, err)
+	}
+	if inputErr := errors.Join(counter.readErr, cancellation.Err(ctx)); inputErr != nil {
+		return result, fmt.Errorf("workspace: scan search file %q: %w", path, errors.Join(err, inputErr))
+	}
+	switch {
+	case errors.Is(err, textread.ErrInvalidText), errors.Is(err, textread.ErrLineTooLarge):
+		// Exclude the entire file only after ruling out input failure: the
+		// parser may diagnose buffered text before reaching a reader error.
+		return grepFileResult{sourceBytes: counter.bytes}, nil
+	case err != nil:
+		return result, fmt.Errorf("workspace: scan search file %q: %w", path, err)
+	}
+	return result, nil
 }
 
 // rootRelativeFilePath converts a host path into a confined slash-separated
@@ -259,13 +258,19 @@ func rootRelativeFilePath(root, canonicalRoot, candidate string) (string, error)
 	return filepath.ToSlash(rel), nil
 }
 
-type searchByteCounter struct {
-	reader io.Reader
-	bytes  int64
+// Buffered text admission can stop before delivering a pending reader error.
+// These observations belong to actual I/O, regardless of the parser's result.
+type fileScanInput struct {
+	reader  io.Reader
+	bytes   int64
+	readErr error
 }
 
-func (s *searchByteCounter) Read(buffer []byte) (int, error) {
+func (s *fileScanInput) Read(buffer []byte) (int, error) {
 	read, err := s.reader.Read(buffer)
 	s.bytes += int64(read)
+	if err != nil && err != io.EOF {
+		s.readErr = errors.Join(s.readErr, err)
+	}
 	return read, err
 }

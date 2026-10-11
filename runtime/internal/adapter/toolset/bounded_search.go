@@ -13,9 +13,9 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/optional"
@@ -30,8 +30,6 @@ const (
 	// every variable JSON string or row is charged exactly below.
 	runtimeSearchFramingBytes = 128
 )
-
-var errRuntimeSearchResultTooLarge = errors.New("toolset: search result exceeds its resource limit")
 
 // Model search deliberately exposes only composable local primitives. Regex
 // flags belong in the RE2 pattern, content context comes from read, and glob is
@@ -88,8 +86,7 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 				"Use grep to search file contents.",
 		},
 		func(ctx context.Context, request runtimeGlobRequest) (runtimePathSearchResponse, error) {
-			result, err := runtimeGlob(ctx, root, request)
-			return result, searchFailure(ctx, err)
+			return runtimeGlob(ctx, root, request)
 		},
 	)
 	grep := mustRuntimeSearchFunc(
@@ -99,24 +96,13 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 				"Use glob to choose files and read to inspect surrounding lines.",
 		},
 		func(ctx context.Context, request runtimeGrepRequest) (runtimeSearchResponse, error) {
-			result, err := runtimeGrep(ctx, root, request)
-			return result, searchFailure(ctx, err)
+			return runtimeGrep(ctx, root, request)
 		},
 	)
 	return runtimeSearchTools{
-		glob: concurrentSearchTool{Tool: glob},
-		grep: concurrentSearchTool{Tool: grep},
+		glob: concurrentSearchTool{Tool: withDefiniteOutcome(glob)},
+		grep: concurrentSearchTool{Tool: withDefiniteOutcome(grep)},
 	}
-}
-
-// These local searches perform no mutations. A returned search error is a
-// definite failed query, not an unacknowledged external operation. Cancellation
-// still belongs to the execution owner and must not become model feedback.
-func searchFailure(ctx context.Context, cause error) error {
-	if ctx.Err() != nil {
-		return cause
-	}
-	return toolfailure.Definite(cause)
 }
 
 func mustRuntimeSearchFunc[Input, Output any](
@@ -131,7 +117,7 @@ func mustRuntimeSearchFunc[Input, Output any](
 }
 
 func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (runtimePathSearchResponse, error) {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return runtimePathSearchResponse{}, cause
 	}
 	if err := validateRuntimeSearchText(request.Pattern, maxRuntimeGlobPatternBytes, "glob pattern"); err != nil {
@@ -144,9 +130,6 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	limit := optional.Value(request.MaxResults, workspaceapp.DefaultGrepLimit)
 	entries, err := workspaceadapter.SearchFiles(ctx, root, path, request.Pattern)
 	if err != nil {
-		if errors.Is(err, workspaceadapter.ErrListingTooLarge) {
-			return runtimePathSearchResponse{}, errRuntimeSearchResultTooLarge
-		}
 		return runtimePathSearchResponse{}, fmt.Errorf("toolset: glob workspace: %w", err)
 	}
 
@@ -181,7 +164,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 }
 
 func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (runtimeSearchResponse, error) {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return runtimeSearchResponse{}, cause
 	}
 	if err := validateRuntimeSearchText(request.Pattern, maxRuntimeSearchPatternBytes, "grep pattern"); err != nil {

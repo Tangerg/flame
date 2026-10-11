@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"regexp/syntax"
 	"strings"
 	"testing"
 )
@@ -98,8 +99,10 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		port := &fileReadPort{}
 		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
-		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "["}); err == nil {
-			t.Fatal("Grep accepted an invalid regular expression")
+		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "["}); !errors.Is(err, ErrInvalidGrepQuery) {
+			t.Fatalf("Grep error = %v, want invalid-query category", err)
+		} else if _, found := errors.AsType[*syntax.Error](err); !found {
+			t.Fatalf("Grep discarded the parser cause: %v", err)
 		}
 		if port.grepCalled {
 			t.Fatal("Grep called the filesystem port before validating the query")
@@ -130,6 +133,20 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		}
 	})
 
+}
+
+func TestFilesGrepPreservesCustomCancellationBeforeAdmission(t *testing.T) {
+	port := &fileReadPort{}
+	files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+	cause := errors.New("workspace query retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	if _, err := files.Grep(ctx, "", GrepInput{Query: "needle"}); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("Grep error = %v, want cancellation category and owner cause", err)
+	}
+	if port.grepCalled {
+		t.Fatal("canceled query reached the filesystem port")
+	}
 }
 
 func mustHeadLineLimit(t *testing.T, lines int) HeadLineLimit {

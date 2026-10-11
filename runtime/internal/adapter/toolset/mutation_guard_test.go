@@ -245,10 +245,11 @@ func TestFingerprintExistingFilePreservesCancellation(t *testing.T) {
 	if err := os.WriteFile(path, []byte("content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, _, err := fingerprintExistingFile(ctx, mustRoot(t, filepath.Dir(path)), filepath.Base(path)); !errors.Is(err, context.Canceled) {
-		t.Fatalf("fingerprintExistingFile error = %v, want context.Canceled", err)
+	cause := errors.New("file observation retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	if _, _, err := fingerprintExistingFile(ctx, mustRoot(t, filepath.Dir(path)), filepath.Base(path)); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("fingerprintExistingFile error = %v, want cancellation category and owner cause", err)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -215,13 +216,104 @@ func TestFileBrowserGrepSearchesOnlyCompleteAdmittedTextFiles(t *testing.T) {
 }
 
 func TestFileBrowserGrepHonorsPreCanceledContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	cause := errors.New("workspace search retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 	_, err := (FileBrowser{}).Grep(ctx, t.TempDir(), workspaceapp.GrepPlan{
 		Pattern: regexp.MustCompile("needle"), Limit: 10,
 	})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("Grep error = %v, want context.Canceled", err)
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("Grep error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestFileBrowserReadPreservesCustomCancellation(t *testing.T) {
+	cause := errors.New("workspace read retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	_, err := (FileBrowser{}).Read(ctx, t.TempDir(), workspaceapp.FileReadPlan{Path: "file.txt", MaxBytes: workspaceapp.DefaultFileReadBytes})
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("Read error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestGrepFilePreservesReadFailureBeforeTextExclusion(t *testing.T) {
+	readFailure := errors.New("search source failed")
+	_, err := grepFile(t.Context(), grepFailureReader{content: "needle\n\x00broken\n", err: readFailure}, "file.txt",
+		workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 100, 10, 100)
+	if !errors.Is(err, readFailure) || !errors.Is(err, textread.ErrInvalidText) {
+		t.Fatalf("grep scan error = %v, want read failure and invalid-text diagnosis", err)
+	}
+}
+
+func TestGrepFilePreservesCancellationDuringInvalidText(t *testing.T) {
+	cause := errors.New("workspace search retired during read")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	readFailure := errors.New("search source failed")
+	reader := grepFailureReader{content: "needle\n\x00broken\n", err: readFailure, onRead: func() { cancel(cause) }}
+	_, err := grepFile(ctx, reader, "file.txt", workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 100, 10, 100)
+	for _, want := range []error{readFailure, textread.ErrInvalidText, context.Canceled, cause} {
+		if !errors.Is(err, want) {
+			t.Errorf("grep scan error = %v, want retained cause %v", err, want)
+		}
+	}
+}
+
+func TestGrepFilePreservesCapacityAndCancellationCauses(t *testing.T) {
+	cause := errors.New("workspace search retired at its source limit")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	reader := grepFailureReader{content: "needle", err: io.EOF, onRead: func() { cancel(cause) }}
+	_, err := grepFile(ctx, reader, "file.txt", workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, 5, 10, 100)
+	for _, want := range []error{workspaceapp.ErrGrepResultTooLarge, textread.ErrInputTooLarge, context.Canceled, cause} {
+		if !errors.Is(err, want) {
+			t.Errorf("grep scan error = %v, want retained cause %v", err, want)
+		}
+	}
+}
+
+type grepFailureReader struct {
+	content string
+	err     error
+	onRead  func()
+}
+
+func (r grepFailureReader) Read(buffer []byte) (int, error) {
+	if r.onRead != nil {
+		r.onRead()
+	}
+	return copy(buffer, r.content), r.err
+}
+
+func TestGrepSourcePreservesReadVerificationAndCloseFailures(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(path, []byte("needle"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	file, opened, err := fileinput.OpenAt(root, "file.txt", workspaceapp.MaxGrepFileBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	search := workspaceGrep{ctx: t.Context(), rootHandle: root,
+		plan: workspaceapp.GrepPlan{Pattern: regexp.MustCompile("needle"), Limit: 10}, remainingSource: 100, collectMatches: true}
+	err = search.scanSource(grepSource{path: "file.txt", file: file, opened: opened})
+	if !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("closed source error = %v, want closed-file cause", err)
+	}
+	for _, operation := range []string{"read ", "stat ", "close "} {
+		if !strings.Contains(err.Error(), operation+path) {
+			t.Errorf("source failure discarded %s: %v", operation, err)
+		}
 	}
 }
 

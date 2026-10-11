@@ -156,6 +156,9 @@ type fingerprintObservation struct {
 }
 
 func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string, maxBytes int64) (_ fingerprintObservation, exists bool, err error) {
+	if cause := cancellation.Err(ctx); cause != nil {
+		return fingerprintObservation{}, false, cause
+	}
 	preflight, err := root.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return fingerprintObservation{}, false, nil
@@ -168,9 +171,6 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	}
 	if maxBytes > 0 && preflight.Size() > maxBytes {
 		return fingerprintObservation{}, false, fmt.Errorf("%w: file uses %d bytes", errRuntimeReadFileTooLarge, preflight.Size())
-	}
-	if cause := context.Cause(ctx); cause != nil {
-		return fingerprintObservation{}, false, cause
 	}
 	file, before, err := fileinput.OpenAtExpected(root.Root, path, preflight, maxBytes)
 	if err != nil {

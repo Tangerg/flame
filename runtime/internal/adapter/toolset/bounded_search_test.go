@@ -371,6 +371,9 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 			if context.Cause(ctx) != cause {
 				t.Fatalf("execution cancellation cause = %v, want original cause", context.Cause(ctx))
 			}
+			if !errors.Is(err, cause) {
+				t.Fatalf("search cancellation discarded the owner cause: %v", err)
+			}
 			if _, known := errors.AsType[*toolcontract.Failure](err); known {
 				t.Fatal("cancellation became model feedback")
 			}
@@ -387,4 +390,23 @@ func namedDirectTool(t *testing.T, root, name string) toolcontract.Tool {
 	}
 	t.Fatalf("direct tool %q is not registered", name)
 	return nil
+}
+
+func TestRuntimeSearchPreservesCancellationAtItsBoundary(t *testing.T) {
+	for _, name := range []string{"glob", "grep"} {
+		t.Run(name, func(t *testing.T) {
+			cause := errors.New("search request retired")
+			ctx, cancel := context.WithCancelCause(t.Context())
+			cancel(cause)
+			var err error
+			if name == "glob" {
+				_, err = runtimeGlob(ctx, t.TempDir(), runtimeGlobRequest{Pattern: "*"})
+			} else {
+				_, err = runtimeGrep(ctx, t.TempDir(), runtimeGrepRequest{Pattern: "x"})
+			}
+			if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+				t.Fatalf("search error = %v, want cancellation category and owner cause", err)
+			}
+		})
+	}
 }

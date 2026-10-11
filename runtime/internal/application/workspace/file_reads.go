@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
@@ -274,7 +275,7 @@ func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (
 // Grep searches a workspace root or an existing subdirectory. A truncated
 // search returns an honest total rather than silently under-reporting hits.
 func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResult, error) {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return GrepResult{}, cause
 	}
 	if input.Query == "" {
@@ -285,7 +286,7 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 	}
 	pattern, err := regexp.Compile(input.Query)
 	if err != nil {
-		return GrepResult{}, fmt.Errorf("%w: %v", ErrInvalidGrepQuery, err)
+		return GrepResult{}, fmt.Errorf("%w: %w", ErrInvalidGrepQuery, err)
 	}
 	root, err := f.scope.ResolveRoot(cwd)
 	if err != nil {

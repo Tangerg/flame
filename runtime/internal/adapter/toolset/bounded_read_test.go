@@ -67,11 +67,33 @@ func TestRuntimeReadPreservesPreCanceledContext(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	cause := errors.New("model read retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 	_, err := callTextTool(ctx, mustDirectTools(t, dir)[0], `{"path":"file.txt"}`)
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("read error = %v, want context.Canceled", err)
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("read error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestRuntimeReadExecutorPreservesCustomCancellation(t *testing.T) {
+	cause := errors.New("read request retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	executor := runtimeReadExecutor{next: mustLocalExecutor(t, t.TempDir())}
+	if _, err := executor.Read(ctx, fs.ReadInput{Path: "file.txt"}); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("read executor error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestRuntimeReadRetainsLineFailureIdentity(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("first\n"+strings.Repeat("x", maxRuntimeReadLineBytes+1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := callTextTool(t.Context(), namedDirectTool(t, dir, "read"), `{"path":"file.txt"}`)
+	if !errors.Is(err, fs.ErrLineTooLarge) || fs.LineNumber(err) != 2 {
+		t.Fatalf("read failure = %v, line %d; want the original second-line failure", err, fs.LineNumber(err))
 	}
 }
 
