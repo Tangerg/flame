@@ -46,8 +46,8 @@ func (l *Lease) Release() error {
 }
 
 // TryFile exclusively locks the first byte of an already-open regular file.
-// The caller retains ownership of the file descriptor and closes it after the
-// lease is released. A nil lease and nil error mean another owner holds the lock.
+// It consumes the descriptor: the lease closes it on release, or acquisition
+// closes it before returning no lease. A nil lease and nil error mean contention.
 func TryFile(file *os.File) (*Lease, error) {
 	if file == nil {
 		return nil, errors.New("advisory lock: file is required")
@@ -57,13 +57,22 @@ func TryFile(file *os.File) (*Lease, error) {
 
 // TrySharedFile shared-locks the first byte of an already-open regular file.
 // Multiple shared holders may coexist, while an exclusive [TryFile] holder
-// excludes them. The caller retains ownership of the file descriptor and
-// closes it after the lease is released. A nil lease and nil error mean contention.
+// excludes them. It consumes the descriptor under [TryFile]'s lifetime contract.
+// A nil lease and nil error mean contention.
 func TrySharedFile(file *os.File) (*Lease, error) {
 	if file == nil {
 		return nil, errors.New("advisory lock: file is required")
 	}
 	return trySharedFile(file)
+}
+
+// Closing the owned descriptor ends its usable lifetime even when Close fails.
+// Always attempt both release paths, preserving their diagnostics without retrying
+// a retired descriptor.
+func releaseOwnedFile(file *os.File, unlock func() error) error {
+	unlockErr := unlock()
+	closeErr := file.Close()
+	return errors.Join(unlockErr, closeErr)
 }
 
 // TryDirectory acquires a non-blocking exclusive lease for the physical

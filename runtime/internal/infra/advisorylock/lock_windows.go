@@ -37,14 +37,15 @@ func tryFileMode(file *os.File, exclusive bool) (*Lease, error) {
 	)
 	if err != nil {
 		if errors.Is(err, windows.ERROR_LOCK_VIOLATION) || errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
-			return nil, nil
+			return nil, file.Close()
 		}
-		return nil, err
+		return nil, errors.Join(err, file.Close())
 	}
 	return newLease(func() (bool, error) {
-		var overlapped windows.Overlapped
-		err := windows.UnlockFileEx(windows.Handle(file.Fd()), 0, 1, 0, &overlapped)
-		return err == nil, err
+		return true, releaseOwnedFile(file, func() error {
+			var overlapped windows.Overlapped
+			return windows.UnlockFileEx(windows.Handle(file.Fd()), 0, 1, 0, &overlapped)
+		})
 	}), nil
 }
 

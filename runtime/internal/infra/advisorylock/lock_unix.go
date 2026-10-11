@@ -25,12 +25,9 @@ func trySharedFile(file *os.File) (*Lease, error) {
 
 func tryFileMode(file *os.File, mode int) (*Lease, error) {
 	if acquired, err := lockFile(file, mode); err != nil || !acquired {
-		return nil, err
+		return nil, errors.Join(err, file.Close())
 	}
-	return newLease(func() (bool, error) {
-		err := unix.Flock(int(file.Fd()), unix.LOCK_UN)
-		return err == nil, err
-	}), nil
+	return newFileLease(file), nil
 }
 
 func lockFile(file *os.File, mode int) (bool, error) {
@@ -59,7 +56,7 @@ func acquireDirectory(ctx context.Context, directory string) (*Lease, error) {
 			return nil, errors.Join(err, file.Close())
 		}
 		if acquired {
-			return newDirectoryLease(file), nil
+			return newFileLease(file), nil
 		}
 		select {
 		case <-ctx.Done():
@@ -77,22 +74,13 @@ func tryDirectory(directory string) (*Lease, error) {
 	if acquired, err := lockFile(file, unix.LOCK_EX); err != nil || !acquired {
 		return nil, errors.Join(err, file.Close())
 	}
-	return newDirectoryLease(file), nil
+	return newFileLease(file), nil
 }
 
-func newDirectoryLease(file *os.File) *Lease {
+func newFileLease(file *os.File) *Lease {
 	return newLease(func() (bool, error) {
 		return true, releaseOwnedFile(file, func() error {
 			return unix.Flock(int(file.Fd()), unix.LOCK_UN)
 		})
 	})
-}
-
-// Closing the owned descriptor ends its usable lifetime even when Close fails.
-// Always attempt both release paths, preserving their diagnostics without retrying
-// a retired descriptor.
-func releaseOwnedFile(file *os.File, unlock func() error) error {
-	unlockErr := unlock()
-	closeErr := file.Close()
-	return errors.Join(unlockErr, closeErr)
 }

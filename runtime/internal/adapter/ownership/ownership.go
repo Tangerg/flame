@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -95,21 +96,10 @@ func (l *LeaseSet) AcquireRecoverySweep(ctx context.Context) (appownership.Lease
 
 type advisoryLease struct{ lease *advisorylock.Lease }
 
-func (a advisoryLease) Release() { _ = a.lease.Release() }
-
-type fileLease struct {
-	file  *os.File
-	lease *advisorylock.Lease
-}
-
-func (f *fileLease) Release() {
-	if f == nil {
-		return
+func (a advisoryLease) Release() {
+	if err := a.lease.Release(); err != nil {
+		slog.Error("runtime ownership: release lease", "error", err)
 	}
-	// The descriptor is an independent OS-level release path. Always close it:
-	// retaining it after an unlock error can retain ownership until process exit.
-	_ = f.lease.Release()
-	_ = f.file.Close()
 }
 
 func tryLease(directory, identity string, shared bool) (appownership.Lease, bool, error) {
@@ -128,14 +118,13 @@ func tryLease(directory, identity string, shared bool) (appownership.Lease, bool
 	} else {
 		lease, err = advisorylock.TryFile(file)
 	}
-	if err != nil || lease == nil {
-		closeErr := file.Close()
-		if err == nil && closeErr == nil {
-			return nil, false, nil
-		}
-		return nil, false, fmt.Errorf("runtime ownership: acquire lease: %w", errors.Join(err, closeErr))
+	if err != nil {
+		return nil, false, fmt.Errorf("runtime ownership: acquire lease: %w", err)
 	}
-	return &fileLease{file: file, lease: lease}, true, nil
+	if lease == nil {
+		return nil, false, nil
+	}
+	return advisoryLease{lease: lease}, true, nil
 }
 
 var (

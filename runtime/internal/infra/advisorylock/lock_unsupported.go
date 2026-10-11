@@ -4,12 +4,17 @@ package advisorylock
 
 import (
 	"context"
+	"errors"
 	"os"
 )
 
-func tryFile(*os.File) (*Lease, error) { return nil, ErrUnsupported }
+func tryFile(file *os.File) (*Lease, error) {
+	return nil, errors.Join(ErrUnsupported, file.Close())
+}
 
-func trySharedFile(*os.File) (*Lease, error) { return nil, ErrUnsupported }
+func trySharedFile(file *os.File) (*Lease, error) {
+	return nil, errors.Join(ErrUnsupported, file.Close())
+}
 
 func tryDirectory(string) (*Lease, error) { return nil, ErrUnsupported }
 

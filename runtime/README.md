@@ -796,6 +796,11 @@ ownership and before starting each phase, releases acquired ownership on every
 exit, and retains a failed phase's cause alongside concurrent cancellation.
 Cancellation stops unstarted phases; an already completed recovery retains its
 committed result.
+File advisory leases consume their opened descriptor. Acquisition failure or
+contention closes it immediately; an acquired lease owns both unlock and close,
+retains their combined diagnostic, and never retries a retired descriptor.
+Application ownership reports cleanup failures without discarding them or
+replacing a completed use case's result.
 
 ## Attach without owning the Runtime
 
