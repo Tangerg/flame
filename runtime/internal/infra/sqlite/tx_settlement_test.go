@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -221,6 +222,37 @@ func TestTransactionPreservesPanicAfterSuccessfulRollback(t *testing.T) {
 			t.Fatal("panic retained its transaction resource")
 		}
 	}
+}
+
+func TestTransactionSettlesBeforeGoroutineExit(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		faults := &transactionFaults{}
+		db := settlementDatabase(t, faults)
+		transaction := make(chan *sql.Tx, 1)
+		finished := make(chan struct{})
+		go func() {
+			defer close(finished)
+			_ = RunInTx(t.Context(), db, func(ctx context.Context) error {
+				transaction <- conn(ctx, db).(*sql.Tx)
+				runtime.Goexit()
+				return nil
+			})
+		}()
+		tx := <-transaction
+		synctest.Wait()
+		select {
+		case <-finished:
+		default:
+			t.Error("goroutine exit retained an unsettled transaction")
+			if err := tx.Rollback(); err != nil {
+				t.Fatal(err)
+			}
+			<-finished
+		}
+		if faults.rollbacks.Load() != 1 || faults.commits.Load() != 0 || db.Stats().InUse != 0 {
+			t.Fatalf("goroutine exit did not settle its transaction: rollback=%d, commit=%d, in-use=%d", faults.rollbacks.Load(), faults.commits.Load(), db.Stats().InUse)
+		}
+	})
 }
 
 func TestMissingInstallationReadRequiresAcceptedSettlement(t *testing.T) {

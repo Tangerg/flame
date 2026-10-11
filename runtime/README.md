@@ -1296,7 +1296,9 @@ rollback. Connection acquisition and statements retain the caller's context;
 transaction lifetime is independent so cancellation cannot start a competing
 background rollback or erase its settlement result. Nested write-sets join the
 outer owner. Schema admission and workspace intents enter the same boundary with
-their required independent transaction.
+their required independent transaction. Deferred rollback covers every exit,
+including goroutine termination, and consumed transactions require no further
+settlement.
 
 Unstarted phases reject cancellation. Failed operations retain the original,
 rollback and cancellation causes before returning their connection. Failed begin,

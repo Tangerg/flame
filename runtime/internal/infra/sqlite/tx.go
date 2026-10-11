@@ -94,9 +94,12 @@ func runTransaction(ctx context.Context, db *sql.DB, fn func(context.Context) er
 		return errors.Join(err, discardConnection(connection), cancellation.Err(ctx))
 	}
 	defer func() {
+		rollbackErr := rollbackTransaction(tx)
+		if rollbackErr != nil {
+			rollbackErr = errors.Join(rollbackErr, discardConnection(connection))
+		}
 		if recovered := recover(); recovered != nil {
-			if rollbackErr := rollbackTransaction(tx); rollbackErr != nil {
-				rollbackErr = errors.Join(rollbackErr, discardConnection(connection))
+			if rollbackErr != nil {
 				panicErr, ok := recovered.(error)
 				if !ok {
 					panicErr = fmt.Errorf("sqlite: transaction panicked: %v", recovered)
@@ -105,15 +108,13 @@ func runTransaction(ctx context.Context, db *sql.DB, fn func(context.Context) er
 			}
 			panic(recovered)
 		}
+		err = errors.Join(err, rollbackErr)
 	}()
 	if err = cancellation.Err(ctx); err == nil {
 		err = fn(context.WithValue(ctx, txKey{}, tx))
 	}
 	err = errors.Join(err, cancellation.Err(ctx))
 	if err != nil {
-		if rollbackErr := rollbackTransaction(tx); rollbackErr != nil {
-			err = errors.Join(err, rollbackErr, discardConnection(connection))
-		}
 		return err
 	}
 	if err := tx.Commit(); err != nil {
