@@ -92,6 +92,9 @@ func load(ctx context.Context, cwd, home string, includeProject bool) ([]domainh
 			}
 		}
 	}
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -115,38 +118,39 @@ func (h hookWire) domain() domainhooks.Hook {
 	}
 }
 
-func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
+func readHooksFile(ctx context.Context, path string) (file hooksFile, loaded bool, err error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return hooksFile{}, false, err
 	}
 	handle, opened, err := fileinput.Open(path, domainhooks.MaxConfigurationFileBytes)
 	if errors.Is(err, os.ErrNotExist) {
-		return hooksFile{}, false, nil
+		return hooksFile{}, false, cancellation.Err(ctx)
 	}
 	if errors.Is(err, fileinput.ErrTooLarge) {
-		return hooksFile{}, false, fmt.Errorf("%w: %w", domainhooks.ErrConfigurationTooLarge, err)
+		return hooksFile{}, false, fmt.Errorf("%w: %w", domainhooks.ErrConfigurationTooLarge, errors.Join(err, cancellation.Err(ctx)))
 	}
 	if err != nil {
-		return hooksFile{}, false, err
+		return hooksFile{}, false, errors.Join(err, cancellation.Err(ctx))
 	}
-	defer func() { _ = handle.Close() }()
-	data, err := io.ReadAll(io.LimitReader(
+	defer func() {
+		err = errors.Join(err, handle.Close())
+		if err != nil {
+			file = hooksFile{}
+			loaded = false
+		}
+	}()
+	data, readErr := io.ReadAll(io.LimitReader(
 		cancellation.Reader(ctx, handle),
 		domainhooks.MaxConfigurationFileBytes+1,
 	))
-	if err != nil {
-		return hooksFile{}, false, err
-	}
-	if err := domainhooks.ValidateConfigurationFileSize(int64(len(data))); err != nil {
-		return hooksFile{}, false, err
-	}
-	if err := fileinput.VerifyPathVersion(handle, opened, path); err != nil {
-		return hooksFile{}, false, fmt.Errorf("verify configuration after reading: %w", err)
+	capacityErr := domainhooks.ValidateConfigurationFileSize(int64(len(data)))
+	verifyErr := fileinput.VerifyPathVersion(handle, opened, path)
+	if err := errors.Join(readErr, capacityErr, verifyErr, cancellation.Err(ctx)); err != nil {
+		return hooksFile{}, false, fmt.Errorf("inspect configuration after reading: %w", err)
 	}
 	if len(data) == 0 {
 		return hooksFile{}, false, nil
 	}
-	var file hooksFile
 	if err := exactjson.UnmarshalNonNull(data, &file); err != nil {
 		return hooksFile{}, false, err
 	}

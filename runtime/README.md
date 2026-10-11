@@ -832,6 +832,8 @@ decisions reject explicit `null` at every depth; omit optional members instead.
 Empty command stdout or `{}` still means allow; a present `decision` must name
 `allow`, `deny` or `ask`. Unknown members, duplicate members,
 invalid Unicode and trailing documents are refused by the JSON decoder.
+Configuration admission retains simultaneous read, capacity, source-version,
+cancellation and close failures. A failed inspection publishes no Hook set.
 Command failure diagnostics retain process, cancellation, timeout and cleanup causes
 alongside bounded stderr. Non-Unicode stderr becomes bounded escaped-byte text.
 Broken commands remain observable non-blocking failures; exit 2 is an explicit deny.
