@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
@@ -313,6 +314,10 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 	}
 	for {
 		g.mu.Lock()
+		if err := cancellation.Err(ctx); err != nil {
+			g.mu.Unlock()
+			return err
+		}
 		_, treeMutation := g.treeMutations[cwd]
 		if !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation) {
 			g.mu.Unlock()
@@ -323,7 +328,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 
 		select {
 		case <-ctx.Done():
-			return context.Cause(ctx)
+			return cancellation.Err(ctx)
 		case <-changed:
 		}
 	}
@@ -333,10 +338,11 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 // recheck and reservation share that lock, so another probe cannot slip between them.
 func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) error {
 	for {
-		if err := ctx.Err(); err != nil {
-			return context.Cause(ctx)
-		}
 		g.mu.Lock()
+		if err := cancellation.Err(ctx); err != nil {
+			g.mu.Unlock()
+			return err
+		}
 		recovering := false
 		for claim := range g.claims[sessionID] {
 			if claim.kind == sessionRecovery {
@@ -351,7 +357,7 @@ func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) erro
 		g.mu.Unlock()
 		select {
 		case <-ctx.Done():
-			return context.Cause(ctx)
+			return cancellation.Err(ctx)
 		case <-changed:
 		}
 	}

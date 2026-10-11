@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -278,52 +279,51 @@ func TestFailedOwnershipDoesNotLeaveAdmissionHeld(t *testing.T) {
 }
 
 func TestForegroundAdmissionCanCancelWhileRecoveryHoldsSession(t *testing.T) {
-	gate := newTestGate(t)
-	release, ok, err := gate.AcquireRecoverySession("ses_1")
-	if err != nil || !ok {
-		t.Fatalf("recovery admission = %t, %v", ok, err)
-	}
-	defer release()
-	for _, acquire := range []func(context.Context) error{
-		func(ctx context.Context) error {
-			slot, _, err := gate.AcquireRun(ctx, "ses_1", "/repo")
-			slot.Release()
-			return err
-		},
-		func(ctx context.Context) error {
-			release, _, err := gate.AcquireSession(ctx, "ses_1")
-			if release != nil {
-				release()
+	synctest.Test(t, func(t *testing.T) {
+		gate := newTestGate(t)
+		release, ok, err := gate.AcquireRecoverySession("ses_1")
+		if err != nil || !ok {
+			t.Fatalf("recovery admission = %t, %v", ok, err)
+		}
+		defer release()
+		for _, acquire := range []func(context.Context) error{
+			func(ctx context.Context) error {
+				slot, _, err := gate.AcquireRun(ctx, "ses_1", "/repo")
+				slot.Release()
+				return err
+			},
+			func(ctx context.Context) error {
+				release, _, err := gate.AcquireSession(ctx, "ses_1")
+				if release != nil {
+					release()
+				}
+				return err
+			},
+		} {
+			ctx, cancel := context.WithCancelCause(t.Context())
+			defer cancel(nil)
+			cause := errors.New("caller stopped waiting")
+			result := make(chan error, 1)
+			go func() { result <- acquire(ctx) }()
+			synctest.Wait()
+			select {
+			case err := <-result:
+				t.Fatalf("foreground command did not wait for recovery: %v", err)
+			default:
 			}
-			return err
-		},
-	} {
-		ctx, cancel := context.WithCancelCause(t.Context())
-		cause := errors.New("caller stopped waiting")
-		result := make(chan error, 1)
-		go func() { result <- acquire(ctx) }()
-		select {
-		case err := <-result:
 			cancel(cause)
-			t.Fatalf("foreground command did not wait for recovery: %v", err)
-		case <-time.After(20 * time.Millisecond):
-		}
-		cancel(cause)
-		select {
-		case err := <-result:
-			if !errors.Is(err, cause) {
-				t.Fatalf("admission error = %v, want caller cancellation", err)
+			synctest.Wait()
+			if err := <-result; !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+				t.Fatalf("admission error = %v, want cancellation and cause", err)
 			}
-		case <-time.After(time.Second):
-			t.Fatal("foreground admission ignored cancellation")
 		}
-	}
-	release()
-	slot, ok, err := gate.AcquireRun(t.Context(), "ses_1", "/repo")
-	defer slot.Release()
-	if !ok || err != nil {
-		t.Fatalf("canceled waiter retained admission: %t, %v", ok, err)
-	}
+		release()
+		slot, ok, err := gate.AcquireRun(t.Context(), "ses_1", "/repo")
+		defer slot.Release()
+		if !ok || err != nil {
+			t.Fatalf("canceled waiter retained admission: %t, %v", ok, err)
+		}
+	})
 }
 
 type gatedReleaseBackend struct {

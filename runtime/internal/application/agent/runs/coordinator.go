@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -241,6 +242,7 @@ func (c *Coordinator) awaitSessionRunSettled(ctx context.Context, sessionID stri
 	changed, stopObserving := c.publications.changes.observe(sessionID)
 	defer stopObserving()
 	_, active, err := c.activeRuns.ActiveRun(ctx, sessionID)
+	err = errors.Join(err, cancellation.Err(ctx))
 	if err != nil {
 		return false, err
 	}
@@ -249,7 +251,7 @@ func (c *Coordinator) awaitSessionRunSettled(ctx context.Context, sessionID stri
 	}
 	select {
 	case <-ctx.Done():
-		return false, context.Cause(ctx)
+		return false, cancellation.Err(ctx)
 	case <-changed:
 		return false, nil
 	}

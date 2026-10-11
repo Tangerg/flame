@@ -532,8 +532,8 @@ func TestWaitSessionStartableCancellationReleasesDurableChangeObservation(t *tes
 
 	<-sessions.activeObserved
 	cancel(want)
-	if err := <-done; !errors.Is(err, want) {
-		t.Fatalf("WaitSessionStartable error = %v, want owner cause", err)
+	if err := <-done; !errors.Is(err, context.Canceled) || !errors.Is(err, want) {
+		t.Fatalf("WaitSessionStartable error = %v, want cancellation and owner cause", err)
 	}
 	if got := len(c.publications.changes.sessions); got != 0 {
 		t.Fatalf("retained canceled session change observations = %d, want 0", got)

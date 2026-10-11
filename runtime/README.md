@@ -780,6 +780,12 @@ An already observable completion still owns its result; canceling a waiter
 cannot change that result or cancel an admitted teardown generation. Keyed
 admission checks the waiting caller before granting a reservation and releases
 every earlier key if a multi-key admission cannot finish.
+Foreground Session and Run admission checks the caller's lifetime under the
+Gate lock before reserving resources. Startability waits reject an already
+canceled caller even when a reservation just released. Durable Run reads
+retain both their own failure and concurrent cancellation before permitting
+a continuation. Observation cleanup retires only that waiter's subscription;
+the next Start still acquires its own admission.
 
 ## Attach without owning the Runtime
 
