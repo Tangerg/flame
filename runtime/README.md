@@ -1106,6 +1106,12 @@ Unknown-effect termination closes every unfinished member in Run-tree postorder,
 
 Discovery publishes the subscription's total path budget, per-directory entry budget, and file hashing budget. Content up to that byte budget is hashed; larger files remain observable through size and modification metadata. Exceeding directory or registration bounds fails explicitly. Background content-observation failures, including those of the Hooks and Skills observations behind `hooks.changed` and `skills.changed`, end the subscription, and Git sampling failures retry with bounded backoff before ending it. Clients reopen the stream and revalidate their reads; this is an invalidation channel, not a durable filesystem log or atomic snapshot. Notifications retain workspace, watch, and path scope; overflow can widen them.
 
+Directory registrations follow the filesystem backend's current watch set.
+Automatic retirement and explicit removal may overlap; an already absent
+registration completes removal. Other registration failures remain explicit
+observation failures. Accepted application writes advance only their exact
+content identities, so later external writes and recreated paths stay observable.
+
 ## Workspace search outcomes
 
 `grep` and `glob` select either one regular file or a directory's file corpus. Selection, physical containment, ignore rules, and resource limits belong to the workspace catalog. Selecting a file never searches its siblings. Glob patterns match paths relative to a selected directory, or the basename of a selected file; returned paths remain workspace-relative. Git selection treats path names literally, including glob metacharacters.

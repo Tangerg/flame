@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"runtime/debug"
 	"sync"
@@ -158,7 +159,9 @@ func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
 		if _, keep := next[directory]; keep {
 			continue
 		}
-		if err := o.fsw.Remove(directory); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
+		// Automatic retirement may remove the kernel registration after Remove
+		// found it in the backend's map. Both absence errors settle the removal.
+		if err := o.fsw.Remove(directory); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("%s: unwatch directory %q: %w", o.label, directory, err)
 		}
 	}

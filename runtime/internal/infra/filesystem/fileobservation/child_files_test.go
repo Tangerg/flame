@@ -162,6 +162,60 @@ func TestWatchChildFilesAcceptsOnlyExactCommittedFiles(t *testing.T) {
 	}
 }
 
+func TestWatchChildFilesAcceptsRemovalAndObservesRecreation(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "lint", "SKILL.md")
+	if err := os.Mkdir(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte("before"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan []string, 4)
+	failures := make(chan error, 4)
+	watcher, err := WatchChildFiles([]ChildFileTarget{{
+		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
+		MaxEntries: 16, MaxBytes: testMaxBytes,
+	}}, func(keys []string) { events <- keys }, func(err error) { failures <- err })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := os.RemoveAll(filepath.Dir(file)); err != nil {
+		t.Fatal(err)
+	}
+	if err := watcher.Accept([]string{"skills"}, []string{file}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case keys := <-events:
+		t.Fatalf("accepted removal produced a duplicate callback: %v", keys)
+	case err := <-failures:
+		t.Fatalf("retired directory produced an observation failure: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if err := os.Mkdir(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte("recreated"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "skills")
+	if err := os.WriteFile(file, []byte("updated"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "skills")
+	select {
+	case err := <-failures:
+		t.Fatalf("recreated directory produced an observation failure: %v", err)
+	default:
+	}
+}
+
 func TestWatchChildFilesIgnoresNonProjectionFiles(t *testing.T) {
 	root := t.TempDir()
 	events := make(chan []string, 2)
