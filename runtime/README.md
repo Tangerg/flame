@@ -1120,6 +1120,12 @@ erase that capacity failure or its owner-supplied cause. Each invocation owns an
 stops its process group, including after a normal root exit. Ordinary nonzero
 exits remain observed data for Git's predicate and diff semantics.
 
+Checkpoint predicates accept exit codes only from admitted Git command results.
+A process failure carrying the same status remains a failed observation. Source
+index and alternate-file admission preserves cancellation and I/O failures;
+only opening an absent source permits an empty seed. Destination failures and
+source changes never become successful absence.
+
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,
 respect ignore rules for untracked paths, and exclude files larger than 2 MiB.

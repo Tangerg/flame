@@ -172,7 +172,7 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if err := os.WriteFile(oversizedAlternates, []byte(strings.Repeat("x", maxSourceAlternatesBytes+1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readSourceAlternates(oversizedAlternates); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+	if _, err := readSourceAlternates(t.Context(), oversizedAlternates); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
 		t.Fatalf("readSourceAlternates() lost its snapshot category or source cause: %v", err)
 	}
 	oversizedIdentity := strings.NewReader(strings.Repeat("x", maxWorkspaceIdentityBytes+1))
@@ -181,23 +181,73 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	}
 
 	source := filepath.Join(t.TempDir(), "index")
-	if err := os.WriteFile(source, []byte("12345"), 0o600); err != nil {
+	file, err := os.Create(source)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := copyFile(source, filepath.Join(t.TempDir(), "copy"), 4); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
-		t.Fatalf("copyFile() lost its snapshot category or source cause: %v", err)
+	truncateErr := file.Truncate(maxSourceIndexBytes + 1)
+	if err := errors.Join(truncateErr, file.Close()); err != nil {
+		t.Fatal(err)
+	}
+	if err := copySourceIndex(t.Context(), source, filepath.Join(t.TempDir(), "copy")); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+		t.Fatalf("copySourceIndex() lost its snapshot category or source cause: %v", err)
 	}
 
 	invalidSource := t.TempDir()
-	if _, err := readSourceAlternates(invalidSource); !errors.Is(err, fileinput.ErrNotRegular) {
+	if _, err := readSourceAlternates(t.Context(), invalidSource); !errors.Is(err, fileinput.ErrNotRegular) {
 		t.Fatalf("readSourceAlternates(directory) error = %v, want fileinput.ErrNotRegular", err)
 	}
 	invalidDestination := filepath.Join(t.TempDir(), "copy")
-	if err := copyFile(invalidSource, invalidDestination, maxSourceIndexBytes); !errors.Is(err, fileinput.ErrNotRegular) {
-		t.Fatalf("copyFile(directory) error = %v, want fileinput.ErrNotRegular", err)
+	if err := copySourceIndex(t.Context(), invalidSource, invalidDestination); !errors.Is(err, fileinput.ErrNotRegular) {
+		t.Fatalf("copySourceIndex(directory) error = %v, want fileinput.ErrNotRegular", err)
 	}
 	if _, err := os.Stat(invalidDestination); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("invalid copy destination stat error = %v, want os.ErrNotExist", err)
+	}
+}
+
+func TestCheckpointSourceAdmissionPreservesCancellationBeforeDestinationCreation(t *testing.T) {
+	cause := errors.New("checkpoint source inspection retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	source := filepath.Join(t.TempDir(), "index")
+	if err := os.WriteFile(source, []byte("source index"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destination := filepath.Join(t.TempDir(), "index")
+	if err := copySourceIndex(ctx, source, destination); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("source index copy error = %v, want cancellation category and owner cause", err)
+	}
+	if _, err := os.Stat(destination); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("canceled source copy created a destination: %v", err)
+	}
+	if _, err := readSourceAlternates(ctx, filepath.Join(t.TempDir(), "missing")); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("source alternates read error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestCheckpointSourceAdmissionAllowsMissingInputAndCopiesExactIndex(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	destination := filepath.Join(t.TempDir(), "index")
+	if err := copySourceIndex(t.Context(), missing, destination); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(destination); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing source created a destination: %v", err)
+	}
+	if data, err := readSourceAlternates(t.Context(), missing); err != nil || len(data) != 0 {
+		t.Fatalf("missing source alternates = %q, %v; want no borrowed stores", data, err)
+	}
+	source := filepath.Join(t.TempDir(), "index")
+	input := "index\x00\xff\n"
+	if err := os.WriteFile(source, []byte(input), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := copySourceIndex(t.Context(), source, destination); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(destination); err != nil || string(got) != input {
+		t.Fatalf("copied source index = %q, %v; want complete source", got, err)
 	}
 }
 
@@ -267,6 +317,17 @@ func gitCmd(t *testing.T, dir string, args ...string) {
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", args, err, out)
+	}
+}
+
+func TestSourceIndexCopyDoesNotConflateMissingDestinationWithMissingSource(t *testing.T) {
+	_, cwd := newTestStore(t)
+	gitCmd(t, cwd, "init", "-q")
+	write(t, cwd, "committed.txt", "source")
+	gitCmd(t, cwd, "add", ".")
+	seed := sourceRepositorySeed{ctx: t.Context(), cwd: cwd, gitDir: filepath.Join(t.TempDir(), "missing")}
+	if err := seed.copyIndex(); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source index copy error = %v, want failed destination creation", err)
 	}
 }
 

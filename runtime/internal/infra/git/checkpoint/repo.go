@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
@@ -199,14 +200,14 @@ func (seed sourceRepositorySeed) resolveAlternates(sourceObjects string) ([]stri
 	// stores that still exist so the chain resolves. Git interprets relative
 	// entries relative to the object database that owns the alternates file.
 	alternates := []string{sourceObjects}
-	data, err := readSourceAlternates(filepath.Join(sourceObjects, "info", "alternates"))
-	if errors.Is(err, os.ErrNotExist) {
-		return alternates, nil
-	}
+	data, err := readSourceAlternates(seed.ctx, filepath.Join(sourceObjects, "info", "alternates"))
 	if err != nil {
 		return nil, fmt.Errorf("checkpoint: read source alternates: %w", err)
 	}
 	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+		if err := cancellation.Err(seed.ctx); err != nil {
+			return nil, err
+		}
 		alternate, present, err := resolveSourceAlternate(sourceObjects, line)
 		if err != nil {
 			return nil, err
@@ -245,6 +246,9 @@ func resolveSourceAlternate(sourceObjects, line string) (string, bool, error) {
 }
 
 func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
+	if err := cancellation.Err(seed.ctx); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Join(seed.gitDir, "objects", "info"), 0o755); err != nil {
 		return fmt.Errorf("checkpoint: create alternates directory: %w", err)
 	}
@@ -266,34 +270,83 @@ func (seed sourceRepositorySeed) copyIndex() error {
 	if err != nil {
 		return fmt.Errorf("checkpoint: discover source index: %w", err)
 	}
-	if err := copyFile(sourceIndex, filepath.Join(seed.gitDir, "index"), maxSourceIndexBytes); errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
+	if err := copySourceIndex(seed.ctx, sourceIndex, filepath.Join(seed.gitDir, "index")); err != nil {
 		return fmt.Errorf("checkpoint: copy source index: %w", err)
 	}
 	return nil
 }
 
-func readSourceAlternates(path string) ([]byte, error) {
-	file, opened, err := fileinput.Open(path, maxSourceAlternatesBytes)
-	if err != nil {
-		return nil, checkpointSourceError(err)
+func copySourceIndex(ctx context.Context, src, dst string) (err error) {
+	if err := cancellation.Err(ctx); err != nil {
+		return err
 	}
-	defer func() { _ = file.Close() }()
-	data, err := io.ReadAll(io.LimitReader(file, maxSourceAlternatesBytes+1))
+	in, opened, err := fileinput.Open(src, maxSourceIndexBytes)
+	// A new source repository may have no index. Only opening that source can
+	// establish its absence; destination and verification failures cannot.
+	if errors.Is(err, os.ErrNotExist) {
+		return cancellation.Err(ctx)
+	}
 	if err != nil {
+		return errors.Join(checkpointSourceError(err), cancellation.Err(ctx))
+	}
+	defer func() { err = errors.Join(err, in.Close()) }()
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return errors.Join(err, cancellation.Err(ctx))
+	}
+	defer func() { err = errors.Join(err, out.Close()) }()
+	written, copyErr := io.CopyN(out, cancellation.Reader(ctx, in), maxSourceIndexBytes+1)
+	if copyErr == io.EOF {
+		copyErr = nil
+	}
+	var capacityErr error
+	if written > maxSourceIndexBytes {
+		capacityErr = fmt.Errorf("%w: source index exceeds %d bytes", ErrSnapshotTooLarge, maxSourceIndexBytes)
+	}
+	verifyErr := checkpointSourceError(fileinput.VerifyPathVersion(in, opened, src))
+	return errors.Join(copyErr, capacityErr, verifyErr, cancellation.Err(ctx))
+}
+
+func readSourceAlternates(ctx context.Context, path string) (data []byte, err error) {
+	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
+	file, opened, err := fileinput.Open(path, maxSourceAlternatesBytes)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, cancellation.Err(ctx)
+	}
+	if err != nil {
+		return nil, errors.Join(checkpointSourceError(err), cancellation.Err(ctx))
+	}
+	defer func() {
+		err = errors.Join(err, file.Close())
+		if err != nil {
+			data = nil
+		}
+	}()
+	data, readErr := io.ReadAll(io.LimitReader(cancellation.Reader(ctx, file), maxSourceAlternatesBytes+1))
+	var capacityErr error
 	if len(data) > maxSourceAlternatesBytes {
-		return nil, fmt.Errorf(
+		capacityErr = fmt.Errorf(
 			"%w: source alternates exceed %d bytes",
 			ErrSnapshotTooLarge, maxSourceAlternatesBytes,
 		)
 	}
-	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
+	if err := errors.Join(readErr, capacityErr, verifyErr, cancellation.Err(ctx)); err != nil {
 		return nil, err
 	}
 	return data, nil
+}
+
+func checkpointSourceError(err error) error {
+	if errors.Is(err, fileinput.ErrTooLarge) {
+		return fmt.Errorf("%w: %w", ErrSnapshotTooLarge, err)
+	}
+	return err
 }
 
 func repoExists(gitDir string) (bool, error) {

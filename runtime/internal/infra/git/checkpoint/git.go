@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
@@ -62,11 +60,9 @@ func (g *gitCommandError) Error() string {
 func (g *gitCommandError) ExitCode() int { return g.exitCode }
 
 func gitExitCode(err error) int {
-	type exitCoder interface {
-		error
-		ExitCode() int
-	}
-	if exited, ok := errors.AsType[exitCoder](err); ok {
+	// A raw process exit may accompany failed output admission or cancellation;
+	// only an admitted Git result can decide a repository predicate.
+	if exited, ok := errors.AsType[*gitCommandError](err); ok {
 		return exited.ExitCode()
 	}
 	return -1
@@ -85,35 +81,4 @@ func gitIn(ctx context.Context, cwd string, args ...string) (string, error) {
 		}
 	}
 	return strings.TrimSpace(string(result.Stdout)), nil
-}
-
-func copyFile(src, dst string, maxBytes int64) (err error) {
-	in, opened, err := fileinput.Open(src, maxBytes)
-	if err != nil {
-		return checkpointSourceError(err)
-	}
-	defer func() { err = errors.Join(err, in.Close()) }()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, out.Close()) }()
-	written, err := io.CopyN(out, in, maxBytes+1)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return err
-	}
-	if written > maxBytes {
-		return fmt.Errorf("%w: source index exceeds %d bytes", ErrSnapshotTooLarge, maxBytes)
-	}
-	if err := fileinput.VerifyPathVersion(in, opened, src); err != nil {
-		return checkpointSourceError(err)
-	}
-	return nil
-}
-
-func checkpointSourceError(err error) error {
-	if errors.Is(err, fileinput.ErrTooLarge) {
-		return fmt.Errorf("%w: %w", ErrSnapshotTooLarge, err)
-	}
-	return err
 }
