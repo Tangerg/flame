@@ -168,6 +168,10 @@ func (r *Releases) verify(ctx context.Context, digest fingerprint.Digest) (relea
 func (r *Releases) verifyAfter(ctx context.Context, digest fingerprint.Digest, since uint64) (releaseIntegrity, error) {
 	for {
 		r.mu.Lock()
+		if err := cancellation.Err(ctx); err != nil {
+			r.mu.Unlock()
+			return releaseIntegrity{}, err
+		}
 		if cached, found := r.verified[digest]; found && cached.started >= since {
 			r.mu.Unlock()
 			return cached, nil
@@ -184,7 +188,10 @@ func (r *Releases) verifyAfter(ctx context.Context, digest fingerprint.Digest, s
 		select {
 		case <-current.done:
 		case <-ctx.Done():
-			return releaseIntegrity{}, context.Cause(ctx)
+			return releaseIntegrity{}, cancellation.Err(ctx)
+		}
+		if err := cancellation.Err(ctx); err != nil {
+			return releaseIntegrity{}, err
 		}
 		// A scan that ended with its own caller's cancellation says nothing
 		// about the bytes; this caller scans under its own context instead.
@@ -223,7 +230,7 @@ func (r *Releases) inspect(ctx context.Context, digest fingerprint.Digest) (rele
 }
 
 func (r *Releases) integrity(ctx context.Context, digest fingerprint.Digest) (releaseIntegrity, error) {
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return releaseIntegrity{}, err
 	}
 	integrity, err := r.verifyAfter(ctx, digest, 0)
@@ -254,6 +261,9 @@ func (r *Releases) verifiedRoot(ctx context.Context, digest fingerprint.Digest) 
 // after it saw the change, and still requires that proof to match the tree it
 // opens: a proof that no longer matches is withdrawn, never accepted.
 func (r *Releases) currentRoot(ctx context.Context, digest fingerprint.Digest) (*os.Root, error) {
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, err
+	}
 	var since uint64
 	if integrity, found := r.cached(digest); found {
 		if root, err := r.openRoot(digest, integrity); err == nil {
@@ -261,8 +271,9 @@ func (r *Releases) currentRoot(ctx context.Context, digest fingerprint.Digest) (
 			if err == nil && reusable {
 				return root, nil
 			}
-			if err := errors.Join(err, root.Close()); context.Cause(ctx) != nil {
-				return nil, errors.Join(context.Cause(ctx), err)
+			err = errors.Join(err, root.Close())
+			if cause := cancellation.Err(ctx); cause != nil {
+				return nil, errors.Join(cause, err)
 			}
 		}
 		since = r.observe()
@@ -283,7 +294,7 @@ func (r *Releases) currentRoot(ctx context.Context, digest fingerprint.Digest) (
 			}
 			err = errors.Join(err, root.Close())
 		}
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := cancellation.Err(ctx); cause != nil {
 			return nil, errors.Join(cause, err)
 		}
 		r.withdraw(digest, integrity)
@@ -317,6 +328,9 @@ func (r *Releases) openRoot(digest fingerprint.Digest, integrity releaseIntegrit
 }
 
 func verifyTree(ctx context.Context, dir string, digest fingerprint.Digest) (releaseIntegrity, error) {
+	if err := cancellation.Err(ctx); err != nil {
+		return releaseIntegrity{}, err
+	}
 	resolved, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		return releaseIntegrity{}, fmt.Errorf("pluginpackage: resolve release directory: %w", err)
@@ -354,6 +368,9 @@ func verifyTree(ctx context.Context, dir string, digest fingerprint.Digest) (rel
 // stamp away from the recorded one, unless the filesystem stamps both within
 // one tick of its clock; settled tells those entries apart.
 func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeContents, error) {
+	if err := cancellation.Err(ctx); err != nil {
+		return fingerprint.Digest{}, treeContents{}, err
+	}
 	scanned, stamped, err := changeClock(root)
 	if err != nil {
 		return fingerprint.Digest{}, treeContents{}, err
@@ -369,7 +386,7 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 		if walkErr != nil {
 			return walkErr
 		}
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := cancellation.Err(ctx); cause != nil {
 			return cause
 		}
 		if name == "." {
@@ -497,7 +514,7 @@ func (c treeContents) matches(ctx context.Context, root *os.Root) (bool, error) 
 		if err != nil {
 			return err
 		}
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return err
 		}
 		if name == "." {

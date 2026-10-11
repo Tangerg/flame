@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -33,7 +34,7 @@ func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installatio
 	}
 	var failures error
 	for _, server := range release.Declaration().Servers {
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return errors.Join(failures, err)
 		}
 		if !installation.ServerEnabled(server.Name) || server.Transport != mcpserver.TransportStdio {
@@ -71,8 +72,8 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	}
 	root, _, err := r.verifiedRoot(ctx, release.Digest())
 	if err != nil {
-		if cause := context.Cause(ctx); cause != nil {
-			return mcpserver.Server{}, false, cause
+		if cause := cancellation.Err(ctx); cause != nil {
+			return mcpserver.Server{}, false, errors.Join(err, cause)
 		}
 		return mcpserver.Server{}, false, fmt.Errorf("%w: verify release %s: %w", plugin.ErrUnavailable, release.Digest(), err)
 	}
@@ -140,7 +141,7 @@ func (r *Releases) Definitions(ctx context.Context, installation *plugin.Install
 	declaration := release.Declaration()
 	result := make([]mcpserver.Server, 0, len(declaration.Servers))
 	for _, declared := range declaration.Servers {
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return nil, err
 		}
 		server, err := descriptorServer(installation, release, declaration, declared, dir, data)
@@ -163,7 +164,8 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
 	root, verifyErr := r.currentRoot(ctx, release.Digest())
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
+		cause = errors.Join(cause, verifyErr)
 		if root != nil {
 			cause = errors.Join(cause, root.Close())
 		}
@@ -179,7 +181,7 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 	data := r.dataRoot(installation.ID())
 	declaration := release.Declaration()
 	for _, declared := range declaration.Servers {
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return plugins.Realization{}, err
 		}
 		server, err := descriptorServer(installation, release, declaration, declared, dir, data)

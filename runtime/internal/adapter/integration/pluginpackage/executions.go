@@ -13,6 +13,7 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -77,7 +78,7 @@ func (r *Releases) ReclaimExecutions(ctx context.Context) (err error) {
 	for {
 		entries, readErr := directory.ReadDir(reclaimBatch)
 		for _, entry := range entries {
-			if cause := context.Cause(ctx); cause != nil {
+			if cause := cancellation.Err(ctx); cause != nil {
 				return cause
 			}
 			if !entry.IsDir() || !strings.HasPrefix(entry.Name(), ".stage-") {
@@ -148,7 +149,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 
 func (r *Releases) execution(ctx context.Context, digest fingerprint.Digest, source *os.Root) (*executionLease, error) {
 	for {
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := cancellation.Err(ctx); cause != nil {
 			return nil, cause
 		}
 		r.executionMu.Lock()
@@ -175,10 +176,10 @@ func (r *Releases) execution(ctx context.Context, digest fingerprint.Digest, sou
 			select {
 			case <-content.ready:
 			case <-ctx.Done():
-				return nil, errors.Join(context.Cause(ctx), r.releaseExecution(digest, content))
+				return nil, errors.Join(cancellation.Err(ctx), r.releaseExecution(digest, content))
 			}
 		}
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := cancellation.Err(ctx); cause != nil {
 			return nil, errors.Join(cause, content.err, r.releaseExecution(digest, content))
 		}
 		if content.err != nil {

@@ -45,6 +45,20 @@ func TestPackageCopyCannotSucceedAfterReadCancellation(t *testing.T) {
 	}
 }
 
+func TestMaterializeRejectsCancellationBeforeStaging(t *testing.T) {
+	r := testReleases(t)
+	cause := errors.New("package admission retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	if candidate, err := r.Materialize(ctx, t.TempDir()); candidate != nil || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("materialize = %v, %v; want cancellation category and owner cause", candidate, err)
+	}
+	entries, err := os.ReadDir(r.directory)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("canceled admission left staging: %v, %v", entries, err)
+	}
+}
+
 func TestArchiveAdmissionRefusesAReplacedSource(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "package.zip")
 	if err := os.WriteFile(source, nil, 0600); err != nil {

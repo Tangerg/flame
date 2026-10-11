@@ -101,6 +101,86 @@ func TestColdVerificationIsSharedPerDigestAndIndependentAcrossDigests(t *testing
 	})
 }
 
+func TestCanceledVerificationLeaderDoesNotDecideALiveWaiter(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		r := testReleases(t)
+		release, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := release.Digest()
+		drop(r, digest)
+		running := &verification{done: make(chan struct{}), started: r.observe()}
+		r.mu.Lock()
+		r.verifying[digest] = running
+		r.mu.Unlock()
+		joined := make(chan error, 1)
+		go func() {
+			_, err := r.integrity(t.Context(), digest)
+			joined <- err
+		}()
+		synctest.Wait()
+		cause := errors.New("verification caller retired")
+		ctx, cancel := context.WithCancelCause(t.Context())
+		cancel(cause)
+		if _, err := r.lead(ctx, digest, running); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+			t.Errorf("verification leader error = %v, want cancellation category and owner cause", err)
+		}
+		if err := <-joined; err != nil {
+			t.Fatalf("a canceled leader decided a live waiter's outcome: %v", err)
+		}
+	})
+}
+
+func TestCanceledVerificationCannotUseCachedEvidence(t *testing.T) {
+	r := testReleases(t)
+	release, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("verification request retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	if _, err := r.verifyAfter(ctx, release.Digest(), 0); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("cached verification error = %v, want cancellation category and owner cause", err)
+	}
+}
+
+func TestWaitingVerificationPreservesItsOwnCancellation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		r := testReleases(t)
+		release, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := release.Digest()
+		drop(r, digest)
+		running := &verification{done: make(chan struct{})}
+		r.mu.Lock()
+		r.verifying[digest] = running
+		r.mu.Unlock()
+		defer func() {
+			r.mu.Lock()
+			delete(r.verifying, digest)
+			close(running.done)
+			r.mu.Unlock()
+		}()
+		cause := errors.New("verification waiter retired")
+		ctx, cancel := context.WithCancelCause(t.Context())
+		defer cancel(nil)
+		joined := make(chan error, 1)
+		go func() {
+			_, err := r.integrity(ctx, digest)
+			joined <- err
+		}()
+		synctest.Wait()
+		cancel(cause)
+		if err := <-joined; !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+			t.Fatalf("waiting verification error = %v, want cancellation category and owner cause", err)
+		}
+	})
+}
+
 func TestLeadershipRechecksTheCacheAndHandsOffToOneScan(t *testing.T) {
 	r := testReleases(t)
 	release, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest}))

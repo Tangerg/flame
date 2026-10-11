@@ -421,7 +421,11 @@ disable returns it to `approved`, revoke to `unapproved`. Approval always names 
 selected release. Package roots are
 read-only. Admission seals the staged tree before digesting it, and admission and cold
 loading scan an entire release once; concurrent cold loads of one digest share that scan
-while other digests load independently. Installation and MCP availability reads use the
+while other digests load independently. A scan canceled by its caller does not decide
+another live caller's outcome; the surviving caller verifies under its own lifetime.
+Cancellation retains both its standard category and owner-supplied cause, including
+before staging, on a cached proof and while waiting for shared work.
+Installation and MCP availability reads use the
 same current byte proof as connection launches, so tampered bytes withdraw presentation
 and availability on the next read, and repaired bytes restore both. Startup,
 configuration, reconnect and OAuth read the current source owner before creating a

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -93,7 +94,7 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 		limit = domainskills.MaxAuthoredSkillDocumentBytes
 	}
 	content, err := s.releases.readResource(ctx, installation, "skills/"+name+"/"+resource, limit)
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return nil, errors.Join(cause, err)
 	}
 	if errors.Is(err, errResourceLimit) {

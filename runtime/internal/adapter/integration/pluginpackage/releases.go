@@ -108,6 +108,9 @@ func (c *Candidate) Discard() error { return c.staged.discard() }
 // change that references the release, so nothing is published outside the
 // admission point that also reclaims releases.
 func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Candidate, err error) {
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, err
+	}
 	if !filepath.IsAbs(source) {
 		return nil, fmt.Errorf("%w: source must be an absolute Runtime path", plugin.ErrInvalid)
 	}
@@ -159,7 +162,7 @@ func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.
 	}
 	r.publishMu.Lock()
 	defer r.publishMu.Unlock()
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return plugin.Release{}, err
 	}
 	if _, err := os.Stat(destination); err == nil {
@@ -208,7 +211,7 @@ func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) (
 		if slices.Contains(retained, digest) {
 			return nil
 		}
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return err
 		}
 		dir, err := r.Root(digest)
@@ -284,7 +287,7 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 }
 
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return nil, cause
 	}
 	f, _, err := fileinput.OpenAt(root, name, limit)
@@ -307,5 +310,5 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 	if int64(len(body)) > limit {
 		return nil, errResourceLimit
 	}
-	return body, context.Cause(ctx)
+	return body, cancellation.Err(ctx)
 }

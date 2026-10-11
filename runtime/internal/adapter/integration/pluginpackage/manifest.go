@@ -12,6 +12,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -108,11 +109,14 @@ func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugi
 	}
 	if raw, found := envelope["extensions"]; found {
 		parseExtensions(raw, release, ctx, root)
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return plugin.Release{}, err
 		}
 	}
 	if err = parseSkills(ctx, root, release); err != nil {
+		return plugin.Release{}, err
+	}
+	if err := cancellation.Err(ctx); err != nil {
 		return plugin.Release{}, err
 	}
 	return release.Release(digest)
@@ -241,8 +245,8 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) error
 		return nil
 	}
 	if err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
+		if cause := cancellation.Err(ctx); cause != nil {
+			return errors.Join(err, cause)
 		}
 		report(release, plugin.Component{Kind: plugin.ComponentMCP}, plugin.DiagnosticUnavailableComponent)
 		return nil
@@ -353,13 +357,19 @@ func inspectServerFiles(root *os.Root, s plugin.Server) error {
 }
 
 func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) error {
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
 	dir, err := fs.ReadDir(root.FS(), "skills")
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
 		report(release, plugin.Component{Kind: plugin.ComponentSkills}, plugin.DiagnosticUnavailableComponent)
-		return ctx.Err()
+		if cause := cancellation.Err(ctx); cause != nil {
+			return errors.Join(err, cause)
+		}
+		return nil
 	}
 	for _, entry := range dir {
 		if !entry.IsDir() {
@@ -370,16 +380,16 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 			continue
 		}
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if cause := cancellation.Err(ctx); cause != nil {
+				return errors.Join(err, cause)
 			}
 			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticUnavailableComponent)
 			continue
 		}
 		skill, err := skilldocument.Load(ctx, entry.Name(), content)
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if cause := cancellation.Err(ctx); cause != nil {
+				return errors.Join(err, cause)
 			}
 			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticInvalidDeclaration)
 			continue

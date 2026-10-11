@@ -82,7 +82,7 @@ func removeSealed(path string) error {
 }
 
 func (s *staging) extract(ctx context.Context, source string) error {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return cause
 	}
 	info, err := os.Stat(source)
@@ -109,7 +109,7 @@ func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := cancellation.Err(ctx); cause != nil {
 			return cause
 		}
 		if entry.IsDir() {
@@ -148,7 +148,7 @@ func (s *staging) extractArchive(ctx context.Context, source string, expected fs
 		return fmt.Errorf("pluginpackage: package archive: %w", err)
 	}
 	for _, entry := range archive.File {
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := cancellation.Err(ctx); cause != nil {
 			return cause
 		}
 		if entry.FileInfo().IsDir() {
@@ -222,7 +222,7 @@ func destinationKey(name string) string {
 }
 
 func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, input io.Reader) error {
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := cancellation.Err(ctx); cause != nil {
 		return cause
 	}
 	if mode&fs.ModeType != 0 {
