@@ -596,7 +596,11 @@ exited, so its retirement succeeded whatever the status. Only a session that cou
 stopped, or a process-group cleanup that failed, is a retirement failure; it is logged when
 it happens and still reported by Shutdown.
 Canceling a wait for session retirement leaves unreported close failures with Connections
-until shutdown consumes them.
+until shutdown captures them. MCP shutdown owns one terminal generation: all callers
+that observe completion receive its retained result, including later calls after a
+failed retirement. Canceling a waiter preserves its cancellation category and cause
+without changing the cleanup generation. An already observable completion retains
+precedence over that waiter's cancellation.
 OAuth target fingerprints encode the owner's exact fields and header bytes through the
 shared framed hash, independently of JSON serialization. Credentials recorded with the
 former JSON hash require a new OAuth authorization; no dual fingerprint reader is retained.

@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 )
@@ -90,6 +91,8 @@ func (c *Connections) publishToolsLocked() {
 // session still present in the ownership ledger. ClientSession.Close consumes
 // its transport closer even when it returns an error, so that diagnostic is
 // terminal and the session leaves the ledger after the attempt completes.
+// Every completed Shutdown returns the same aggregate result without repeating
+// cleanup; a caller's cancellation ends only its own wait.
 func (c *Connections) Shutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("mcp: shutdown context is required")
@@ -107,17 +110,6 @@ func (c *Connections) Shutdown(ctx context.Context) error {
 		c.publishToolsLocked()
 	}
 	attempt := c.shutdown
-	if attempt != nil {
-		select {
-		case <-attempt.done:
-			// Every session close owned by the completed shutdown attempt reached its
-			// terminal state. Its diagnostic was reported to callers that joined
-			// that attempt; repeating Shutdown is an idempotent no-op.
-			c.mu.Unlock()
-			return nil
-		default:
-		}
-	}
 	if attempt == nil {
 		attempt = &shutdownAttempt{done: make(chan struct{})}
 		c.shutdown = attempt
@@ -125,12 +117,10 @@ func (c *Connections) Shutdown(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 
-	select {
-	case <-attempt.done:
-		return attempt.err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := completion.Wait(ctx, attempt.done); err != nil {
+		return err
 	}
+	return attempt.err
 }
 
 func (c *Connections) closeAll(attempt *shutdownAttempt) {
@@ -165,9 +155,7 @@ func (c *Connections) closeAll(attempt *shutdownAttempt) {
 	}
 
 	c.mu.Lock()
-	// A racing Detach may register an attempt after the initial snapshot, but
-	// the session itself guaranteed that attempt was already in closeAttempts.
-	// Consume the diagnostic only after the joined attempt has completed.
+	// Transfer joined retirement diagnostics into the immutable shutdown result.
 	for closeAttempt := range seen {
 		delete(c.retirements, closeAttempt)
 	}
@@ -188,10 +176,7 @@ func (c *Connections) closeSession(ctx context.Context, session *sdkmcp.ClientSe
 		return nil
 	}
 
-	select {
-	case <-attempt.done:
-		return attempt.err
-	case <-ctx.Done():
+	if err := completion.Wait(ctx, attempt.done); err != nil {
 		c.mu.Lock()
 		select {
 		case <-attempt.done:
@@ -204,8 +189,9 @@ func (c *Connections) closeSession(ctx context.Context, session *sdkmcp.ClientSe
 			c.retirements[attempt] = struct{}{}
 		}
 		c.mu.Unlock()
-		return ctx.Err()
+		return err
 	}
+	return attempt.err
 }
 
 func (c *Connections) beginSessionClose(session *sdkmcp.ClientSession) *sessionCloseAttempt {

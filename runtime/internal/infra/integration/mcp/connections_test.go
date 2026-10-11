@@ -202,8 +202,8 @@ func TestConnectionsShutdownSettlesTerminalSessionCloseError(t *testing.T) {
 	if got := ownedSessionCount(c); got != 0 {
 		t.Fatalf("owned sessions after terminal close error = %d, want 0", got)
 	}
-	if err := c.Shutdown(t.Context()); err != nil {
-		t.Fatalf("second Shutdown = %v, want settled no-op", err)
+	if err := c.Shutdown(t.Context()); !errors.Is(err, closeErr) {
+		t.Fatalf("second Shutdown = %v, want retained close failure", err)
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("underlying session close calls = %d, want 1", got)
@@ -213,7 +213,7 @@ func TestConnectionsShutdownSettlesTerminalSessionCloseError(t *testing.T) {
 	}
 }
 
-func TestConnectionsShutdownReportsSettledAsyncRetirementDiagnosticOnce(t *testing.T) {
+func TestConnectionsShutdownRetainsSettledAsyncRetirementDiagnostic(t *testing.T) {
 	closeErr := errors.New("retired session close failed")
 	var calls atomic.Int32
 	session := new(sdkmcp.ClientSession)
@@ -254,8 +254,8 @@ func TestConnectionsShutdownReportsSettledAsyncRetirementDiagnosticOnce(t *testi
 	if err := c.Shutdown(t.Context()); !errors.Is(err, closeErr) {
 		t.Fatalf("first Shutdown = %v, want retirement diagnostic", err)
 	}
-	if err := c.Shutdown(t.Context()); err != nil {
-		t.Fatalf("second Shutdown = %v, want settled no-op", err)
+	if err := c.Shutdown(t.Context()); !errors.Is(err, closeErr) {
+		t.Fatalf("second Shutdown = %v, want retained retirement failure", err)
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("underlying session close calls = %d, want 1", got)
@@ -605,8 +605,8 @@ func TestCanceledSessionCloseRetainsFailureForShutdown(t *testing.T) {
 	if err := c.Shutdown(t.Context()); !errors.Is(err, closeErr) {
 		t.Errorf("Shutdown = %v, want unreported retirement error", err)
 	}
-	if err := c.Shutdown(t.Context()); err != nil {
-		t.Errorf("settled Shutdown = %v, want no-op", err)
+	if err := c.Shutdown(t.Context()); !errors.Is(err, closeErr) {
+		t.Errorf("settled Shutdown = %v, want retained retirement failure", err)
 	}
 }
 
