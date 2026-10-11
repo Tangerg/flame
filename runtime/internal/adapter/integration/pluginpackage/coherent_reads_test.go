@@ -30,12 +30,12 @@ func (s *afterReadStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	}
 	return values, err
 }
-func (s *afterReadStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
-	value, err := s.Store.Get(ctx, id)
+func (s *afterReadStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+	value, found, err := s.Store.Get(ctx, id)
 	if err == nil {
 		s.fire()
 	}
-	return value, err
+	return value, found, err
 }
 
 func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
@@ -80,8 +80,8 @@ func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			current, err := store.Get(t.Context(), id)
-			if err != nil {
+			current, found, err := store.Get(t.Context(), id)
+			if err != nil || !found {
 				t.Fatal(err)
 			}
 			serverID, err := current.Installation.ServerID(testsupport.ServerName("remote"))

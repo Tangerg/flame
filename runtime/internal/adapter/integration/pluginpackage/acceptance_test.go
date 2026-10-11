@@ -103,8 +103,8 @@ func TestReleaseUpdateRetainsPluginDataWithoutImplicitMigration(t *testing.T) {
 	if after := snapshotTree(t, data); !reflect.DeepEqual(after, before) {
 		t.Fatalf("release update changed private plugin data: before %v, after %v", before, after)
 	}
-	current, err := installations.Get(t.Context(), id)
-	if err != nil {
+	current, found, err := installations.Get(t.Context(), id)
+	if err != nil || !found {
 		t.Fatal(err)
 	}
 	servers, err := releases.Definitions(t.Context(), current.Installation, selected.Selected)

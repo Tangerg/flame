@@ -59,46 +59,43 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	if err := validateRunResource("record workspace mutation", m.ToRunID); err != nil {
 		return false, err
 	}
-	tx, err := w.db.BeginTx(ctx, nil)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: record workspace mutation: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
-	if err != nil {
-		return false, err
-	}
-	if recorded {
-		return false, nil
-	}
-	result, err := tx.ExecContext(ctx,
-		`INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
+	created := false
+	err := runTransaction(ctx, w.db, func(ctx context.Context) error {
+		tx := conn(ctx, w.db)
+		recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
+		if err != nil || recorded {
+			return err
+		}
+		result, err := tx.ExecContext(ctx,
+			`INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
 		 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?
 		   FROM sessions
 		   JOIN runs ON runs.run_id = ? AND runs.session_id = sessions.id
 		  WHERE sessions.id = ? AND sessions.workspace_path = ?`,
-		m.RestoreHistory,
-		m.ToRunID,
-		m.SessionID,
-		m.CWD)
+			m.RestoreHistory,
+			m.ToRunID,
+			m.SessionID,
+			m.CWD)
+		if err != nil {
+			return err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if changed != 1 {
+			return errors.New("sqlite: workspace mutation has no matching Run boundary")
+		}
+		created = true
+		return nil
+	})
 	if err != nil {
 		return false, fmt.Errorf("sqlite: record workspace mutation: %w", err)
 	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("sqlite: inspect workspace mutation record: %w", err)
-	}
-	if changed != 1 {
-		return false, errors.New("sqlite: workspace mutation has no matching Run boundary")
-	}
-	if err := tx.Commit(); err != nil {
-		return false, fmt.Errorf("sqlite: commit workspace mutation record: %w", err)
-	}
-	return true, nil
+	return created, nil
 }
 
-func ownsPendingWorkspaceMutation(ctx context.Context, tx *sql.Tx, m WorkspaceMutationRecord) (bool, error) {
+func ownsPendingWorkspaceMutation(ctx context.Context, tx execer, m WorkspaceMutationRecord) (bool, error) {
 	rows, err := tx.QueryContext(ctx,
 		`SELECT session_id, cwd, to_run_id, restore_history
 		   FROM pending_workspace_mutations

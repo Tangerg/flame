@@ -21,7 +21,7 @@ import (
 
 type skillInstallations interface {
 	List(context.Context) ([]plugin.Snapshot, error)
-	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, error)
+	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, bool, error)
 }
 type Skills struct {
 	releases      *Releases
@@ -71,12 +71,12 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 	if !fs.ValidPath(resource) || strings.ContainsRune(resource, '\\') {
 		return nil, fmt.Errorf("%w: Skill resource identity", plugin.ErrInvalid)
 	}
-	snapshot, err := s.installations.Get(ctx, dependency.InstallationID)
+	snapshot, found, err := s.installations.Get(ctx, dependency.InstallationID)
 	if err != nil {
-		if errors.Is(err, plugin.ErrNotFound) {
-			return nil, errors.Join(workspaceapp.ErrSkillUnavailable, err)
-		}
 		return nil, err
+	}
+	if !found {
+		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrNotFound)
 	}
 	installation, release := snapshot.Installation, snapshot.Selected
 	if installation.Dependency() != dependency {

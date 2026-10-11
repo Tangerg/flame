@@ -12,7 +12,7 @@ import (
 // product operation executes outside installation admission and remains owned
 // by its existing use case after acceptance, including after withdrawal.
 func (c *Coordinator) AuthorizeAction(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, actionID string, operation plugin.ActionOperation) error {
-	snapshot, err := c.store.Get(ctx, id)
+	snapshot, err := c.installationSnapshot(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func (c *Coordinator) AuthorizeAction(ctx context.Context, id resourceid.Install
 		return err
 	}
 	return c.dependencies.UnderAdmission(ctx, func(_ []plugin.Dependency) error {
-		current, err := c.store.Get(ctx, id)
+		current, err := c.installationSnapshot(ctx, id)
 		if err != nil {
 			return err
 		}

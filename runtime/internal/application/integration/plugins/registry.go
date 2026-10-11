@@ -16,7 +16,7 @@ import (
 
 type Store interface {
 	List(context.Context) ([]plugin.Snapshot, error)
-	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, error)
+	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, bool, error)
 	Save(context.Context, *plugin.Installation) error
 	Remove(context.Context, resourceid.InstallationID) error
 }
@@ -97,12 +97,12 @@ func (r *Registry) resolve(ctx context.Context, id mcpserver.ID, reach Reach) (m
 	if !installed {
 		return r.user.Get(ctx, id.Name())
 	}
-	snapshot, err := r.installations.Get(ctx, installationID)
-	if errors.Is(err, plugin.ErrNotFound) {
-		return mcpserver.Server{}, false, nil
-	}
+	snapshot, found, err := r.installations.Get(ctx, installationID)
 	if err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("plugins: read installation %s: %w", installationID, err)
+	}
+	if !found {
+		return mcpserver.Server{}, false, nil
 	}
 	return r.packages.Server(ctx, snapshot.Installation, snapshot.Selected, id.Name(), reach)
 }
@@ -125,12 +125,12 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 	var connection mcpapp.Launch
 	var found bool
 	if installationID, installed := id.Origin().Installation(); installed {
-		snapshot, readErr := r.installations.Get(ctx, installationID)
-		if errors.Is(readErr, plugin.ErrNotFound) {
-			return mcpapp.Launch{}, mcpapp.ErrUnknownServer
-		}
+		snapshot, exists, readErr := r.installations.Get(ctx, installationID)
 		if readErr != nil {
 			return mcpapp.Launch{}, fmt.Errorf("plugins: read installation %s: %w", installationID, readErr)
+		}
+		if !exists {
+			return mcpapp.Launch{}, mcpapp.ErrUnknownServer
 		}
 		connection, found, err = r.packages.Connection(ctx, snapshot.Installation, snapshot.Selected, id.Name())
 	} else {

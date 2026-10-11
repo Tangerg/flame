@@ -85,36 +85,36 @@ type singleInstallationStore struct {
 }
 
 func (s *singleInstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
-	installation, err := s.Get(ctx, resourceid.InstallationID{})
-	if errors.Is(err, plugin.ErrNotFound) {
-		return nil, nil
+	installation, found, err := s.Get(ctx, resourceid.InstallationID{})
+	if err != nil || !found {
+		return nil, err
 	}
 	return []plugin.Snapshot{installation}, err
 }
 
-func (s *singleInstallationStore) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, error) {
+func (s *singleInstallationStore) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.record == nil {
-		return plugin.Snapshot{}, plugin.ErrNotFound
+		return plugin.Snapshot{}, false, nil
 	}
 	selected, err := s.catalog.Get(ctx, s.record.Selected)
 	if err != nil {
-		return plugin.Snapshot{}, err
+		return plugin.Snapshot{}, false, err
 	}
 	var staged *plugin.Release
 	if s.record.Staged != nil {
 		candidate, err := s.catalog.Get(ctx, *s.record.Staged)
 		if err != nil {
-			return plugin.Snapshot{}, err
+			return plugin.Snapshot{}, false, err
 		}
 		staged = &candidate
 	}
 	installation, err := plugin.Restore(*s.record, selected, staged)
 	if err != nil {
-		return plugin.Snapshot{}, err
+		return plugin.Snapshot{}, false, err
 	}
-	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, nil
+	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, true, nil
 }
 
 func (s *singleInstallationStore) Save(_ context.Context, installation *plugin.Installation) error {

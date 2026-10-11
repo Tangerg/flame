@@ -76,7 +76,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err := rules.Put(t.Context(), rule); err == nil {
 		t.Fatal("source integrity admitted a removed installation")
 	}
-	if _, err := store.Get(t.Context(), i.ID()); !errors.Is(err, plugin.ErrNotFound) {
+	if _, found, err := store.Get(t.Context(), i.ID()); err != nil || found {
 		t.Fatal(err)
 	}
 }
@@ -201,8 +201,8 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 	if err := store.Save(t.Context(), i); err != nil {
 		t.Fatal(err)
 	}
-	restored, err := store.Get(t.Context(), i.ID())
-	if err != nil {
+	restored, found, err := store.Get(t.Context(), i.ID())
+	if err != nil || !found {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(restored.Installation.Snapshot(), i.Snapshot()) {
@@ -283,7 +283,7 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 			if _, err := db.ExecContext(t.Context(), test.statement, args...); err != nil {
 				t.Fatal(err)
 			}
-			if snapshot, err := store.Get(t.Context(), installation.ID()); !errors.Is(err, plugin.ErrInvalid) || snapshot.Installation != nil {
+			if snapshot, found, err := store.Get(t.Context(), installation.ID()); !errors.Is(err, plugin.ErrInvalid) || found || snapshot.Installation != nil {
 				t.Fatalf("invalid persisted state became an installation: %+v, %v", snapshot, err)
 			}
 			if _, err := store.List(t.Context()); !errors.Is(err, plugin.ErrInvalid) {

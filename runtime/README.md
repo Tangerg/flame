@@ -1289,6 +1289,28 @@ MCP OAuth credentials belong to one persisted authorization grant per MCP source
 
 Provider and MCP probes return a closed `outcome` without server-authored prose. `providers.test` reports `reachable`, `notConfigured`, `invalidCredentials`, `timedOut` or `failed`; `mcp.servers.test` reports `reachable`, `authorizationRequired`, `timedOut` or `failed`. Unknown integration failures are `failed`. Caller cancellation remains a call error. Clients render each outcome locally and reject any other value as a Runtime contract violation; they never branch on raw integration error strings.
 
+## SQLite transaction lifetime
+
+The SQLite transaction boundary owns connection admission, commit and joined
+rollback. Connection acquisition and statements retain the caller's context;
+transaction lifetime is independent so cancellation cannot start a competing
+background rollback or erase its settlement result. Nested write-sets join the
+outer owner. Schema admission and workspace intents enter the same boundary with
+their required independent transaction.
+
+Unstarted phases reject cancellation. Failed operations retain the original,
+rollback and cancellation causes before returning their connection. Failed begin,
+commit or rollback discards the connection because its reusable state is unproved.
+An accepted commit remains successful after late cancellation. Successful rollback
+rethrows the original panic; failed rollback rethrows an error retaining both the
+panic and cleanup failure.
+
+Installation lookup reports record presence separately from read failure, only
+after its transaction settles. Missing referenced releases, cancellation and
+cleanup failures cannot become an absent installation, withdrawn MCP source or
+unavailable Skill. The installation command owner maps admitted absence to its
+public not-found error. Storage and protocol formats are unchanged.
+
 ## Stored JSON integrity and snapshot cost
 
 Stored JSON uses the standard library's single-pass strict decoder. Columns require exact field names, valid UTF-8, one complete value, and no duplicate or unknown members, including inside nested values. The persisted representation is unchanged; data written by Runtime needs no migration. Manually edited records with mismatched field casing or invalid UTF-8 are rejected as corrupt rather than normalized.

@@ -105,6 +105,17 @@ type Inspection struct {
 	Presentation Presentation
 }
 
+func (c *Coordinator) installationSnapshot(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
+	snapshot, found, err := c.store.Get(ctx, id)
+	if err != nil {
+		return plugin.Snapshot{}, err
+	}
+	if !found {
+		return plugin.Snapshot{}, plugin.ErrNotFound
+	}
+	return snapshot, nil
+}
+
 // Presentation is whether the selected release's declarative presentation
 // contributions, such as themes, may be shown now. Runtime alone decides it, so
 // a client never rebuilds activation from desired state and observed bytes.
@@ -322,7 +333,7 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 	var reconcile []mcpserver.ID
 	var committed plugin.Snapshot
 	unreclaimed, err := c.commit(ctx, id, admission, func() (bool, error) {
-		snapshot, err := c.store.Get(ctx, id)
+		snapshot, err := c.installationSnapshot(ctx, id)
 		if err != nil {
 			return false, err
 		}
@@ -401,7 +412,7 @@ func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationI
 	// it requires quiescence; Revoke stays available to withdraw authority
 	// from work that is still in use.
 	unreclaimed, err := c.commit(ctx, id, RequireQuiescent, func() (bool, error) {
-		snapshot, err := c.store.Get(ctx, id)
+		snapshot, err := c.installationSnapshot(ctx, id)
 		if err != nil {
 			return false, err
 		}

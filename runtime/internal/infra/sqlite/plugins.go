@@ -39,7 +39,7 @@ func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error)
 	return result, err
 }
 
-func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
+func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
 	var result plugin.Snapshot
 	err := RunInTx(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,admission_state FROM plugin_installations WHERE id=?`, id.String())
@@ -47,12 +47,15 @@ func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationI
 			return err
 		}
 		if len(records) == 0 {
-			return plugin.ErrNotFound
+			return nil
 		}
 		result, err = s.restore(ctx, records[0])
 		return err
 	})
-	return result, err
+	if err != nil {
+		return plugin.Snapshot{}, false, err
+	}
+	return result, result.Installation != nil, nil
 }
 
 func (s *InstallationStore) records(ctx context.Context, query string, args ...any) ([]plugin.Record, error) {

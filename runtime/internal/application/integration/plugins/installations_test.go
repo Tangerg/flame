@@ -22,39 +22,43 @@ type installationMemory struct {
 	catalog   releaseMemory
 	saveErr   error
 	removeErr error
+	getErr    error
 }
 
 func (s *installationMemory) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	if s.record == nil {
 		return nil, nil
 	}
-	snapshot, err := s.Get(ctx, s.record.ID)
+	snapshot, _, err := s.Get(ctx, s.record.ID)
 	if err != nil {
 		return nil, err
 	}
 	return []plugin.Snapshot{snapshot}, nil
 }
-func (s *installationMemory) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, error) {
+func (s *installationMemory) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+	if s.getErr != nil {
+		return plugin.Snapshot{}, false, s.getErr
+	}
 	if s.record == nil {
-		return plugin.Snapshot{}, plugin.ErrNotFound
+		return plugin.Snapshot{}, false, nil
 	}
 	selected, err := s.catalog.Get(ctx, s.record.Selected)
 	if err != nil {
-		return plugin.Snapshot{}, err
+		return plugin.Snapshot{}, false, err
 	}
 	var staged *plugin.Release
 	if s.record.Staged != nil {
 		candidate, err := s.catalog.Get(ctx, *s.record.Staged)
 		if err != nil {
-			return plugin.Snapshot{}, err
+			return plugin.Snapshot{}, false, err
 		}
 		staged = &candidate
 	}
 	installation, err := plugin.Restore(*s.record, selected, staged)
 	if err != nil {
-		return plugin.Snapshot{}, err
+		return plugin.Snapshot{}, false, err
 	}
-	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, nil
+	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, true, nil
 }
 func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) error {
 	if s.saveErr != nil {
@@ -207,8 +211,8 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 		if dependencies.held {
 			t.Fatal("external reconcile retained executable admission")
 		}
-		current, err := store.Get(ctx, id)
-		if err != nil || !current.Installation.Active() {
+		current, found, err := store.Get(ctx, id)
+		if err != nil || !found || !current.Installation.Active() {
 			t.Fatal("realization preceded durable enablement")
 		}
 		return errors.New("supervisor is closing")
@@ -253,8 +257,8 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 				if dependencies.held {
 					t.Fatal("publication retained installation admission")
 				}
-				current, err := store.Get(t.Context(), id)
-				if err != nil || current.Installation.State() != test.state {
+				current, found, err := store.Get(t.Context(), id)
+				if err != nil || !found || current.Installation.State() != test.state {
 					t.Fatalf("publication preceded durable state: %+v, %v", current, err)
 				}
 				notices = append(notices, notice.Resource)
@@ -266,8 +270,8 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 			if _, err := coordinator.Enable(t.Context(), id); !errors.Is(err, test.wantErr) {
 				t.Fatalf("enable = %v, want %v", err, test.wantErr)
 			}
-			current, err := store.Get(t.Context(), id)
-			if err != nil || current.Installation.State() != test.state {
+			current, found, err := store.Get(t.Context(), id)
+			if err != nil || !found || current.Installation.State() != test.state {
 				t.Fatalf("durable state = %+v, %v; want %s", current, err, test.state)
 			}
 			if dependencies.executionChanged != test.changed {
@@ -304,7 +308,7 @@ func TestInstallationRemovalPublishesOnlyTheDurableChange(t *testing.T) {
 				if dependencies.held {
 					t.Fatal("publication retained installation admission")
 				}
-				if _, err := store.Get(t.Context(), id); !errors.Is(err, plugin.ErrNotFound) {
+				if _, found, err := store.Get(t.Context(), id); err != nil || found {
 					t.Fatalf("publication preceded durable removal: %v", err)
 				}
 				notices = append(notices, notice.Resource)
@@ -324,8 +328,8 @@ func TestInstallationRemovalPublishesOnlyTheDurableChange(t *testing.T) {
 			if err := coordinator.Uninstall(t.Context(), id); !errors.Is(err, wantErr) {
 				t.Fatalf("remove = %v, want %v", err, wantErr)
 			}
-			_, readErr := store.Get(t.Context(), id)
-			if test.removeErr != nil && readErr != nil || test.removeErr == nil && !errors.Is(readErr, plugin.ErrNotFound) {
+			_, found, readErr := store.Get(t.Context(), id)
+			if readErr != nil || found != (test.removeErr != nil) {
 				t.Fatalf("durable removal = %v", readErr)
 			}
 			var expected []invalidation.Resource
@@ -420,8 +424,8 @@ func TestPresentationIsAdmittedOnlyForAnActiveAvailableRelease(t *testing.T) {
 
 func TestStaleConfigurationNeverReachesPersistenceOrRealization(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
-	before, err := store.Get(t.Context(), id)
-	if err != nil {
+	before, found, err := store.Get(t.Context(), id)
+	if err != nil || !found {
 		t.Fatal(err)
 	}
 	c, err := New(t.Context(), store, catalog, installationPackages{prepare: func(context.Context, *plugin.Installation) error {
@@ -437,8 +441,8 @@ func TestStaleConfigurationNeverReachesPersistenceOrRealization(t *testing.T) {
 	if _, err := c.Configure(t.Context(), id, testsupport.Digest("2"), plugin.Configuration{Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("server"): plugin.DisableComponent}}); !errors.Is(err, plugin.ErrStale) {
 		t.Fatalf("stale configuration = %v", err)
 	}
-	after, err := store.Get(t.Context(), id)
-	if err != nil {
+	after, found, err := store.Get(t.Context(), id)
+	if err != nil || !found {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(before.Installation.Snapshot(), after.Installation.Snapshot()) {
@@ -459,8 +463,8 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 			if dependencies.held {
 				t.Fatal("package preparation retained executable admission")
 			}
-			current, err := store.Get(ctx, id)
-			if err != nil || !current.Installation.Active() || !installation.Active() {
+			current, found, err := store.Get(ctx, id)
+			if err != nil || !found || !current.Installation.Active() || !installation.Active() {
 				t.Fatal("package preparation preceded durable enablement")
 			}
 			return errors.New("backend directory could not be created")
@@ -495,7 +499,7 @@ func TestUninstallWithdrawsDurablyBeforeFailedCleanup(t *testing.T) {
 		if dependencies.held {
 			t.Fatal("cleanup retained executable admission")
 		}
-		if _, err := store.Get(ctx, id); !errors.Is(err, plugin.ErrNotFound) {
+		if _, found, err := store.Get(ctx, id); err != nil || found {
 			t.Fatalf("uninstalled source can be restored: %v", err)
 		}
 		return errors.New("retirement failed")
@@ -526,14 +530,14 @@ func TestChangedSourcesAreWithdrawnInsideAdmissionAfterTheCommit(t *testing.T) {
 					if !dependencies.held {
 						t.Fatal("withdrawal ran outside installation admission")
 					}
-					current, err := store.Get(t.Context(), id)
+					current, found, err := store.Get(t.Context(), id)
 					switch operation {
 					case "disable":
-						if err != nil || current.Installation.Active() {
+						if err != nil || !found || current.Installation.Active() {
 							t.Fatalf("withdrawal preceded the durable change: %+v, %v", current, err)
 						}
 					case "uninstall":
-						if !errors.Is(err, plugin.ErrNotFound) {
+						if err != nil || found {
 							t.Fatalf("withdrawal preceded the durable removal: %v", err)
 						}
 					}
@@ -594,8 +598,8 @@ func TestInstallationReconcileCanReenterTheOwner(t *testing.T) {
 	if _, err := c.Enable(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
-	current, err := store.Get(t.Context(), id)
-	if err != nil || current.Installation.Active() || calls != 2 {
+	current, found, err := store.Get(t.Context(), id)
+	if err != nil || !found || current.Installation.Active() || calls != 2 {
 		t.Fatalf("reentrant withdrawal: %+v, %v, calls=%d", current, err, calls)
 	}
 }
@@ -769,7 +773,7 @@ func TestUninstallRequiresQuiescenceButRevocationDoesNot(t *testing.T) {
 	if err := c.Uninstall(t.Context(), id); !errors.Is(err, plugin.ErrInUse) {
 		t.Fatalf("uninstall of a depended installation = %v, want in-use refusal", err)
 	}
-	if _, err := store.Get(t.Context(), id); err != nil {
+	if _, found, err := store.Get(t.Context(), id); err != nil || !found {
 		t.Fatalf("refused uninstall removed the installation: %v", err)
 	}
 	if _, err := c.Revoke(t.Context(), id); err != nil {

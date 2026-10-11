@@ -730,21 +730,20 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		)`,
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("sqlite: begin schema installation: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := requireCurrentSchema(ctx, tx, stmts); err != nil {
-		return err
-	}
-	for _, stmt := range stmts {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("sqlite: install current schema: %w", err)
+	err := runTransaction(ctx, db, func(ctx context.Context) error {
+		tx := conn(ctx, db)
+		if err := requireCurrentSchema(ctx, tx, stmts); err != nil {
+			return err
 		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("sqlite: commit schema installation: %w", err)
+		for _, stmt := range stmts {
+			if _, err := tx.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("sqlite: install current schema: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite: install current schema: %w", err)
 	}
 	return nil
 }
@@ -816,7 +815,7 @@ func executorCheckpointInstallationsSchema() string {
 // their definitions, and nothing else. The statements would only partly apply
 // to any other directory, so it is refused before one of them runs; there is
 // no migration path, and a former shape is never repaired in place.
-func requireCurrentSchema(ctx context.Context, tx *sql.Tx, stmts []string) error {
+func requireCurrentSchema(ctx context.Context, tx execer, stmts []string) error {
 	rows, err := tx.QueryContext(ctx,
 		`SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite\_%' ESCAPE '\'`)
 	if err != nil {

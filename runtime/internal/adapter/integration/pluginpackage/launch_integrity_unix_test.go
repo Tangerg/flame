@@ -60,8 +60,8 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				current, err := store.Get(t.Context(), id)
-				if err != nil {
+				current, found, err := store.Get(t.Context(), id)
+				if err != nil || !found {
 					t.Fatal(err)
 				}
 				serverID, err := current.Installation.ServerID(testsupport.ServerName("backend"))

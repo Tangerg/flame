@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -32,9 +33,9 @@ type identifiedInstallations struct {
 	id resourceid.InstallationID
 }
 
-func (s *identifiedInstallations) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
+func (s *identifiedInstallations) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
 	if id != s.id {
-		return plugin.Snapshot{}, plugin.ErrNotFound
+		return plugin.Snapshot{}, false, nil
 	}
 	return s.installationMemory.Get(ctx, id)
 }
@@ -42,6 +43,45 @@ func (s *identifiedInstallations) Get(ctx context.Context, id resourceid.Install
 type serverRead struct {
 	name  mcpserver.ServerName
 	reach Reach
+}
+
+func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
+	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := installation.ServerID(testsupport.ServerName("remote"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, failure := range []struct {
+		name string
+		err  error
+	}{
+		{"missing referenced release", fmt.Errorf("selected release: %w", plugin.ErrNotFound)},
+		{"failed transaction retirement", errors.Join(plugin.ErrNotFound, errors.New("rollback failed"))},
+	} {
+		for _, operation := range []string{"definition", "dispatchable", "connection"} {
+			t.Run(failure.name+"/"+operation, func(t *testing.T) {
+				registry, err := NewRegistry(userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				switch operation {
+				case "definition":
+					_, _, err = registry.Definition(t.Context(), id)
+				case "dispatchable":
+					_, _, err = registry.Dispatchable(t.Context(), id)
+				case "connection":
+					_, err = registry.Connection(t.Context(), id)
+				}
+				if !errors.Is(err, failure.err) || errors.Is(err, mcpapp.ErrUnknownServer) {
+					t.Fatalf("registry %s = %v, want retained read failure without source withdrawal", operation, err)
+				}
+			})
+		}
+	}
 }
 
 // singleServerPackages realizes declared servers from the descriptor alone and

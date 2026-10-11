@@ -33,7 +33,7 @@ func (c *Coordinator) withView(ctx context.Context, id resourceid.InstallationID
 	var installation *plugin.Installation
 	var view plugin.ViewDeclaration
 	err := c.dependencies.UnderAdmission(ctx, func(_ []plugin.Dependency) error {
-		snapshot, err := c.store.Get(ctx, id)
+		snapshot, err := c.installationSnapshot(ctx, id)
 		if err != nil {
 			return err
 		}
