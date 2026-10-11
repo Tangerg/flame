@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -44,51 +45,68 @@ func TestSequenceClosesEveryTerminalStepInReverseOrder(t *testing.T) {
 }
 
 func TestSequenceContinuesAfterCallerTimeout(t *testing.T) {
-	started := make(chan struct{})
-	release := make(chan struct{})
-	dependencyClosed := make(chan struct{})
-	var calls atomic.Int32
-	sequence := NewSequence([]*Step{
-		Terminal(func(context.Context) error {
-			close(dependencyClosed)
-			return nil
-		}),
-		Terminal(func(context.Context) error {
-			calls.Add(1)
-			close(started)
-			<-release
-			return nil
-		}),
+	synctest.Test(t, func(t *testing.T) {
+		started := make(chan struct{})
+		release := make(chan struct{})
+		dependencyClosed := make(chan struct{})
+		var calls atomic.Int32
+		sequence := NewSequence([]*Step{
+			Terminal(func(context.Context) error {
+				close(dependencyClosed)
+				return nil
+			}),
+			Terminal(func(context.Context) error {
+				calls.Add(1)
+				close(started)
+				<-release
+				return nil
+			}),
+		})
+
+		ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
+		defer cancel()
+		settled, err := sequence.Shutdown(ctx)
+		if settled || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("bounded Shutdown = (settled=%v, err=%v), want in-flight timeout", settled, err)
+		}
+		<-started
+		type shutdownResult struct {
+			settled bool
+			err     error
+		}
+		joined := make(chan shutdownResult, 1)
+		go func() {
+			settled, err := sequence.Shutdown(t.Context())
+			joined <- shutdownResult{settled: settled, err: err}
+		}()
+		close(release)
+		<-dependencyClosed
+
+		result := <-joined
+		if !result.settled || result.err != nil {
+			t.Fatalf("joined Shutdown = (settled=%v, err=%v), want completed graph", result.settled, result.err)
+		}
+		if got := calls.Load(); got != 1 {
+			t.Fatalf("blocking closer calls = %d, want 1", got)
+		}
 	})
+}
 
-	ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
-	defer cancel()
+func TestSequenceRejectsCanceledAdmissionWithoutStartingTeardown(t *testing.T) {
+	var calls atomic.Int32
+	sequence := NewSequence([]*Step{Terminal(func(context.Context) error {
+		calls.Add(1)
+		return nil
+	})})
+	cause := errors.New("shutdown caller retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 	settled, err := sequence.Shutdown(ctx)
-	if settled || !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("bounded Shutdown = (settled=%v, err=%v), want in-flight timeout", settled, err)
+	if settled || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) || calls.Load() != 0 {
+		t.Fatalf("canceled Shutdown = %v, %v; calls = %d", settled, err, calls.Load())
 	}
-	<-started
-	type shutdownResult struct {
-		settled bool
-		err     error
-	}
-	joined := make(chan shutdownResult, 1)
-	go func() {
-		settled, err := sequence.Shutdown(t.Context())
-		joined <- shutdownResult{settled: settled, err: err}
-	}()
-	close(release)
-	select {
-	case <-dependencyClosed:
-	case <-time.After(time.Second):
-		t.Fatal("Sequence abandoned its dependency graph after caller timeout")
-	}
-
-	result := <-joined
-	if !result.settled || result.err != nil {
-		t.Fatalf("joined Shutdown = (settled=%v, err=%v), want completed graph", result.settled, result.err)
-	}
-	if got := calls.Load(); got != 1 {
-		t.Fatalf("blocking closer calls = %d, want 1", got)
+	settled, err = sequence.Shutdown(t.Context())
+	if !settled || err != nil || calls.Load() != 1 {
+		t.Fatalf("live Shutdown = %v, %v; calls = %d", settled, err, calls.Load())
 	}
 }

@@ -5,11 +5,13 @@ package completion
 import (
 	"context"
 	"errors"
+
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 )
 
-// Wait joins done or returns the caller's cancellation cause. Completion has
-// precedence when it is already observable, including when cancellation and
-// completion become ready together.
+// Wait joins done or retains the caller's cancellation category and cause.
+// Completion has precedence when it is already observable, including when
+// cancellation and completion become ready together.
 func Wait(ctx context.Context, done <-chan struct{}) error {
 	if done == nil {
 		return nil
@@ -30,7 +32,7 @@ func Wait(ctx context.Context, done <-chan struct{}) error {
 		case <-done:
 			return nil
 		default:
-			return context.Cause(ctx)
+			return cancellation.Err(ctx)
 		}
 	}
 }

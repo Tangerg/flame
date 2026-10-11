@@ -766,6 +766,11 @@ resource teardown finishes, every call returns its retained diagnostic without
 repeating cleanup; a later call cannot turn a failed close into apparent success.
 Shutdown cancels accepted calls and component-owned work before joining delivery.
 Dependencies close only after their calls and components have returned.
+Waiting cancellation retains its standard category and caller-supplied cause.
+An already observable completion still owns its result; canceling a waiter
+cannot change that result or cancel an admitted teardown generation. Keyed
+admission checks the waiting caller before granting a reservation and releases
+every earlier key if a multi-key admission cannot finish.
 
 ## Attach without owning the Runtime
 

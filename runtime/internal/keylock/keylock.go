@@ -8,6 +8,8 @@ import (
 	"context"
 	"slices"
 	"sync"
+
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 )
 
 // Set owns one exclusion per key. The zero value is not usable; build one with
@@ -20,13 +22,15 @@ type Set struct {
 func NewSet() *Set { return &Set{held: make(map[string]chan struct{})} }
 
 // Acquire reserves key until the returned release runs. Release is idempotent.
-// A context that ends while waiting returns its cause and reserves nothing.
+// A context that ends while waiting retains its category and cause and
+// reserves nothing.
 func (s *Set) Acquire(ctx context.Context, key string) (func(), error) {
 	for {
-		if err := ctx.Err(); err != nil {
-			return nil, context.Cause(ctx)
-		}
 		s.mu.Lock()
+		if err := cancellation.Err(ctx); err != nil {
+			s.mu.Unlock()
+			return nil, err
+		}
 		held, busy := s.held[key]
 		if !busy {
 			released := make(chan struct{})
@@ -45,7 +49,7 @@ func (s *Set) Acquire(ctx context.Context, key string) (func(), error) {
 		s.mu.Unlock()
 		select {
 		case <-ctx.Done():
-			return nil, context.Cause(ctx)
+			return nil, cancellation.Err(ctx)
 		case <-held:
 		}
 	}

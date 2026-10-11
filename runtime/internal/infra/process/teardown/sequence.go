@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 )
 
@@ -43,7 +44,7 @@ func (s *Sequence) Shutdown(ctx context.Context) (settled bool, err error) {
 	s.mu.Lock()
 	attempt := s.attempt
 	if attempt == nil {
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			s.mu.Unlock()
 			return false, err
 		}
