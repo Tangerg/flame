@@ -4,16 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"fmt"
 	"reflect"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -21,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -811,167 +811,67 @@ func assertStoredRunState(t testing.TB, db *sql.DB, runID, want string) {
 	}
 }
 
-// TestCommitOpeningRollsBackScheduledSession proves the occurrence-owned
-// Session is not durable until every fresh-opening fact is accepted. In
-// particular, a rejected occurrence must not leave a session that can later be
-// mistaken for a user-created conversation.
-func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	ctx := t.Context()
-	sessions := sqlite.NewSessionStore(db)
-	state := sqlite.NewRunStore(db)
-	history := sqlite.NewTranscriptStore(db)
-	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
-		Sessions:  sessions,
-		Schedules: sqlite.NewScheduleStore(db),
-		State:     state,
-		Tx:        func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
-	})
-	created := time.Now().UTC()
-	draft := testsupport.RunDraft(run.Draft{RunID: "run_scheduled", SessionID: "ses_scheduled", SegmentID: "seg_open", CreatedAt: created})
-	scheduled := testsupport.MustRestoreSession(session.Snapshot{
-		ID: draft.SessionID, Title: "scheduled", Workspace: testsupport.MustWorkspace("/work"),
-		CreatedAt: created, UpdatedAt: created, Revision: 1,
-	})
-	// No firing is seeded: Accept fails after Insert and Admit, so the test
-	// exercises rollback rather than a preflight rejection.
-	missingFiring := testsupport.MustOccurrenceRunRequest("sch_missing", time.UnixMilli(1000), draft.SessionID, draft.RunID)
-	opening := mustAdmissionOpening(
-		t, testCommitID("run_commit_claimed_resume"), draft,
-		&scheduled, nil, &missingFiring, nil,
-	)
-	err = effects.CommitOpening(ctx, opening)
-	if err == nil {
-		t.Fatal("CommitOpening accepted an unknown scheduled occurrence")
-	}
-	if _, getErr := sessions.Get(ctx, draft.SessionID); !errors.Is(getErr, session.ErrNotFound) {
-		t.Fatalf("scheduled session survived rejected opening: %v", getErr)
-	}
-	if err := state.Admit(ctx, draft); err != nil {
-		t.Fatalf("rejected opening left run admission behind: %v", err)
-	}
-}
-
-// TestCommitOpeningOwnsManualScheduleRunFact proves run-now LastRunAt is part
-// of admission rather than a fallible post-accept write. Exact opening replay
-// must not charge the Schedule twice; absence or revision exhaustion rolls back
-// the new Session and Run together.
-func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	ctx := t.Context()
-	createdAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
-	schedules := sqlite.NewScheduleStore(db)
-	scheduled, err := schedule.New("sch_manual", schedule.Draft{
-		Instructions: "review", Cron: "@daily",
-	}, createdAt)
-	if err != nil {
-		t.Fatalf("new Schedule: %v", err)
-	}
-	if err := schedules.Insert(ctx, scheduled); err != nil {
-		t.Fatalf("insert Schedule: %v", err)
-	}
-	request, err := schedule.ManualRunRequest(scheduled, "ses_manual", "run_manual", createdAt.Add(time.Second))
-	if err != nil {
-		t.Fatalf("manual run request: %v", err)
-	}
-	record, _ := request.ManualRecord()
-
-	sessions := sqlite.NewSessionStore(db)
-	state := sqlite.NewRunStore(db)
-	effects := sqliteEffects(sqliteOpeningStores{}, Config{
-		Sessions:  sessions,
-		Schedules: schedules,
-		State:     state,
-		Tx:        func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
-	})
-	manualSession := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_manual", Workspace: testsupport.MustWorkspace("/work"),
-		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
-	})
-	manualDraft := run.Draft{
-		RunID: "run_manual", SessionID: manualSession.ID(), SegmentID: "seg_manual",
-		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
-	}
-	opening := mustAdmissionOpening(
-		t, testCommitID("run_commit_manual_schedule"), manualDraft,
-		&manualSession, nil, &request, nil,
-	)
-	if err := effects.CommitOpening(ctx, opening); err != nil {
-		t.Fatalf("commit manual schedule opening: %v", err)
-	}
-	committed, err := schedules.Get(ctx, scheduled.ID())
-	if err != nil || !committed.LastRunAt().Equal(record.RanAt()) || committed.Revision() != scheduled.Revision()+1 {
-		t.Fatalf("committed Schedule = (%+v, %v)", committed.Snapshot(), err)
-	}
-	if err := effects.CommitOpening(ctx, opening); err != nil {
-		t.Fatalf("replay manual schedule opening: %v", err)
-	}
-	replayed, err := schedules.Get(ctx, scheduled.ID())
-	if err != nil || replayed.Revision() != committed.Revision() {
-		t.Fatalf("replayed Schedule revision = (%d, %v), want %d", replayed.Revision(), err, committed.Revision())
-	}
-
-	for _, test := range []struct {
-		name string
-		want error
-	}{
-		{name: "missing", want: schedule.ErrNotFound},
-		{name: "exhausted", want: schedule.ErrRevisionExhausted},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			source, err := schedule.New("sch_"+test.name, schedule.Draft{Instructions: "review", Cron: "@daily"}, createdAt)
+func TestAutomationOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
+	for _, withdrawn := range []bool{false, true} {
+		t.Run(fmt.Sprint(withdrawn), func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), ":memory:")
 			if err != nil {
 				t.Fatal(err)
 			}
-			request, err := schedule.ManualRunRequest(source, "ses_manual_"+test.name, "run_manual_"+test.name, createdAt.Add(time.Second))
-			if err != nil {
+			defer db.Close()
+			sessions := sqlite.NewSessionStore(db)
+			state := sqlite.NewRunStore(db)
+			receipts := persistence.NewAutomationStartStore(db)
+			authority := automationAuthority{withdrawn: withdrawn}
+			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, AutomationStarts: receipts, AutomationAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }})
+			now := time.Now().UTC()
+			initial := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_automation", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: now, UpdatedAt: now, Revision: 1})
+			draft := testsupport.RunDraft(run.Draft{RunID: "run_automation", SessionID: initial.ID(), SegmentID: "seg_automation", CreatedAt: now})
+			request := runs.AutomationStart{Origin: runs.AutomationOrigin{InstallationID: "11111111-1111-4111-8111-111111111111", ReleaseDigest: testsupport.Digest("release").String(), ServerName: "schedules"}, SessionID: draft.SessionID, RunID: draft.RunID, Instructions: "review", CWD: "/work"}
+			opening := mustAdmissionOpening(t, testCommitID("run_commit_automation"), draft, &initial, nil, &request, nil)
+			err = effects.CommitOpening(t.Context(), opening)
+			receipt, found, readErr := receipts.Get(t.Context(), draft.RunID)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if withdrawn {
+				if !errors.Is(err, errAutomationWithdrawn) || found {
+					t.Fatalf("withdrawn opening: %v, receipt=%+v", err, receipt)
+				}
+				if _, err := sessions.Get(t.Context(), initial.ID()); !errors.Is(err, session.ErrNotFound) {
+					t.Fatalf("Session escaped rollback: %v", err)
+				}
+				if _, found, err := state.Run(t.Context(), draft.RunID); err != nil || found {
+					t.Fatalf("Run escaped rollback: %v %v", found, err)
+				}
+				return
+			}
+			digest, _ := request.Digest()
+			if err != nil || !found || receipt.RequestDigest != digest || receipt.SessionID != initial.ID() || receipt.SegmentID != draft.SegmentID {
+				t.Fatalf("accepted opening: %v, receipt=%+v", err, receipt)
+			}
+			if err := effects.CommitOpening(t.Context(), opening); err != nil {
+				t.Fatalf("opening replay: %v", err)
+			}
+			if err := state.Delete(t.Context(), draft.SessionID, draft.RunID); err != nil {
 				t.Fatal(err)
 			}
-			if test.name == "exhausted" {
-				if err := schedules.Insert(ctx, source); err != nil {
-					t.Fatal(err)
-				}
-				if _, err := db.ExecContext(ctx, `UPDATE schedules SET revision = ? WHERE id = ?`, exactint.Maximum, source.ID()); err != nil {
-					t.Fatal(err)
-				}
-			}
-			newSession := testsupport.MustRestoreSession(session.Snapshot{
-				ID: request.SessionID(), Workspace: testsupport.MustWorkspace("/work"),
-				CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
-			})
-			draft := run.Draft{
-				RunID: request.RunID(), SessionID: newSession.ID(), SegmentID: "seg_manual_" + test.name,
-				ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
-			}
-			opening := mustAdmissionOpening(
-				t, testCommitID("run_commit_manual_schedule_"+test.name), draft,
-				&newSession, nil, &request, nil,
-			)
-			if err := effects.CommitOpening(ctx, opening); !errors.Is(err, test.want) {
-				t.Fatalf("Schedule opening error = %v, want %v", err, test.want)
-			}
-			if _, getErr := sessions.Get(ctx, newSession.ID()); !errors.Is(getErr, session.ErrNotFound) {
-				t.Fatalf("Session survived rejected manual schedule opening: %v", getErr)
-			}
-			if _, found, getErr := state.Run(ctx, draft.RunID); getErr != nil || found {
-				t.Fatalf("Run survived rejected manual schedule opening: found=%t err=%v", found, getErr)
-			}
-			if test.name == "exhausted" {
-				unchanged, err := schedules.Get(ctx, source.ID())
-				if err != nil || unchanged.Revision() != exactint.Maximum || !unchanged.LastRunAt().IsZero() {
-					t.Fatalf("Schedule changed after rolled-back opening: (%+v, %v)", unchanged.Snapshot(), err)
-				}
+			if _, found, err := receipts.Get(t.Context(), draft.RunID); err != nil || !found {
+				t.Fatalf("acceptance lost after Run deletion: %v %v", found, err)
 			}
 		})
 	}
+}
+
+var errAutomationWithdrawn = errors.New("automation authority withdrawn")
+
+type automationAuthority struct{ withdrawn bool }
+
+func (a automationAuthority) Admit(context.Context, runs.AutomationStart) error {
+	if a.withdrawn {
+		return errAutomationWithdrawn
+	}
+	return nil
 }
 
 // TestCommitEventRecordsGoalRunWithTerminalRun proves usage accounting is a

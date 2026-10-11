@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

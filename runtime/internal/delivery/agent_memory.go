@@ -16,39 +16,39 @@ const (
 
 func registerAgentMemory(registry *Registry) {
 	registry.query(MethodMeta{
-		Name: AgentMemoryList, CapabilityRules: requires(protocol.FeatureAgentMemory),
+		Name: AgentMemoryList, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error)
 	}, ctx context.Context, request protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
 		return service.ListAgentMemory(ctx, request)
 	})
 
-	registry.commandAck(MethodMeta{
-		Name: AgentMemoryReview, CapabilityRules: requires(protocol.FeatureAgentMemory),
+	registry.commandAck(MethodMeta{Idempotency: IdempotencyOwnerResponse,
+		Name: AgentMemoryReview, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest) error
 	}, ctx context.Context, request protocol.AgentMemoryReviewRequest) error {
 		return service.ReviewAgentMemory(ctx, request)
 	})
 
-	registry.command(MethodMeta{
-		Name: AgentMemoryUpdate, CapabilityRules: requires(protocol.FeatureAgentMemory),
+	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
+		Name: AgentMemoryUpdate, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error)
 	}, ctx context.Context, request protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
 		return service.UpdateAgentMemory(ctx, request)
 	})
 
-	registry.commandAck(MethodMeta{
-		Name: AgentMemoryDelete, CapabilityRules: requires(protocol.FeatureAgentMemory),
+	registry.commandAck(MethodMeta{Idempotency: IdempotencyOwnerResponse,
+		Name: AgentMemoryDelete, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest) error
 	}, ctx context.Context, request protocol.AgentMemoryItemRequest) error {
 		return service.DeleteAgentMemory(ctx, request)
 	})
 
-	registry.command(MethodMeta{
-		Name: AgentMemoryAdd, CapabilityRules: requires(protocol.FeatureAgentMemory),
+	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
+		Name: AgentMemoryAdd, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error)
 	}, ctx context.Context, request protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error) {

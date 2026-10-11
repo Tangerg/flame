@@ -45,7 +45,7 @@ func (m *MessageStore) Read(ctx context.Context, conversationID history.Conversa
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return nil, err
 	}
-	rows, err := conn(ctx, m.db).QueryContext(ctx,
+	rows, err := Connection(ctx, m.db).QueryContext(ctx,
 		`SELECT seq, message FROM messages WHERE conversation_id = ? ORDER BY seq`, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read messages: %w", err)
@@ -100,7 +100,7 @@ func (m *MessageStore) Write(
 	// cross-store transaction (portable restore seeds history inside one) instead
 	// of opening its own — which would deadlock under MaxOpenConns(1).
 	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
-		q := conn(ctx, m.db)
+		q := Connection(ctx, m.db)
 		for _, msg := range messages {
 			data, err := encodeStoredJSON(msg)
 			if err != nil {
@@ -161,7 +161,7 @@ func (m *MessageStore) Truncate(ctx context.Context, conversationID history.Conv
 	if keepN < 0 {
 		return fmt.Errorf("sqlite: truncate messages: keep count %d is negative", keepN)
 	}
-	if _, err := conn(ctx, m.db).ExecContext(ctx,
+	if _, err := Connection(ctx, m.db).ExecContext(ctx,
 		`DELETE FROM messages
 		  WHERE conversation_id = ?
 		    AND seq IN (
@@ -185,7 +185,7 @@ func (m *MessageStore) Count(ctx context.Context, conversationID history.Convers
 		return 0, err
 	}
 	var n int
-	if err := conn(ctx, m.db).QueryRowContext(ctx,
+	if err := Connection(ctx, m.db).QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, conversationID,
 	).Scan(&n); err != nil {
 		return 0, fmt.Errorf("sqlite: count messages: %w", err)
@@ -199,7 +199,7 @@ func (m *MessageStore) Clear(ctx context.Context, conversationID history.Convers
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
-	if _, err := conn(ctx, m.db).ExecContext(ctx,
+	if _, err := Connection(ctx, m.db).ExecContext(ctx,
 		`DELETE FROM messages WHERE conversation_id = ?`, conversationID,
 	); err != nil {
 		return fmt.Errorf("sqlite: clear messages: %w", err)

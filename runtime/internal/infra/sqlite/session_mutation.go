@@ -16,7 +16,7 @@ func (s *SessionStore) Insert(ctx context.Context, value session.Session) error 
 	if value.Revision() != firstRevision {
 		return fmt.Errorf("sqlite: initial Session revision is %d, want %d: %w", value.Revision(), firstRevision, session.ErrInvalid)
 	}
-	if err := s.execInsert(ctx, conn(ctx, s.db), value); err != nil {
+	if err := s.execInsert(ctx, Connection(ctx, s.db), value); err != nil {
 		return err
 	}
 	return nil
@@ -43,7 +43,7 @@ func (s *SessionStore) Save(
 	if err != nil {
 		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
 	}
-	result, err := conn(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
+	result, err := Connection(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
 		title = ?, title_search = ?, workspace_path = ?, workspace_search = ?, parent_id = ?, created_at = ?, updated_at = ?,
 		provider = ?, model = ?, reasoning_effort = ?, favorite = ?, isolated = ?, revision = ?
 		WHERE id = ? AND revision = ?`,
@@ -71,12 +71,12 @@ func (s *SessionStore) Save(
 	return session.ErrRevisionConflict
 }
 
-// Delete is idempotent. It joins an ambient transaction through conn(ctx).
+// Delete is idempotent. It joins an ambient transaction through Connection(ctx).
 func (s *SessionStore) Delete(ctx context.Context, id string) error {
 	if err := validateSessionResource("delete Session", id); err != nil {
 		return err
 	}
-	if _, err := conn(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
+	if _, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("sqlite: delete Session: %w", err)
 	}
 	return nil

@@ -419,7 +419,7 @@ export function wireMethodReturnsValue(
 
 export type WireOperationKind = "query" | "command" | "subscription";
 export type WireResponseKind = "unary" | "stream";
-export type WireIdempotencyPolicy = "none" | "replayResponse" | "replayRunStream";
+export type WireIdempotencyPolicy = "none" | "replayResponse" | "ownerResponse" | "replayRunStream";
 export type WireReplayCursorPolicy = "none" | "run";
 export type WirePaginationKind = "none" | "cursor";
 
@@ -1009,28 +1009,28 @@ export const WIRE_METHOD_POLICY = {
   "schedules.create": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "schedules.update": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "schedules.delete": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "schedules.runNow": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1170,28 +1170,28 @@ export const WIRE_METHOD_POLICY = {
   "agentMemory.review": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "agentMemory.update": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "agentMemory.delete": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "agentMemory.add": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },

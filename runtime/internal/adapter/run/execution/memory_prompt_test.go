@@ -1,13 +1,13 @@
 package execution
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestPinnedMemoryPromptOrdersPinnedThenRecent(t *testing.T) {

@@ -151,6 +151,10 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 	}
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
+		if component == "services" {
+			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireService) error { return release.AdmitService(plugin.Service{Kind: w.Type, Server: w.Server}) })
+			continue
+		}
 		if component == "renderers" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireRenderer) error {
 				if !plugin.ValidResourcePath(w.Entry) {

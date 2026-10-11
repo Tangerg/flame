@@ -161,6 +161,13 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			detail:     "does not accept an idempotency key",
 		},
 		{
+			name:       "oversized backend command key",
+			method:     AgentMemoryAdd,
+			parameters: protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "fact"},
+			options:    Options{IdempotencyKey: strings.Repeat("x", 256)},
+			detail:     "must not exceed 255 bytes",
+		},
+		{
 			name:       "namespace without key",
 			method:     RuntimeDiscover,
 			parameters: struct{}{},

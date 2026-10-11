@@ -7,18 +7,26 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
 type Pool struct {
-	registry sourceRegistry
-	inner    *mcp.Connections
+	registry      sourceRegistry
+	inner         *mcp.Connections
+	memoryContext MemoryContext
+	publish       invalidation.Publish
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -31,6 +39,9 @@ func Open(
 	lifetime context.Context,
 	servers []mcpserver.Server,
 	oauthSessions mcp.OAuthSessionStore, registry sourceRegistry,
+	models *managedmcp.Models,
+	memoryContext MemoryContext,
+	publish invalidation.Publish,
 ) (*Pool, error) {
 	if dependency.Missing(registry) {
 		return nil, errors.New("mcp connection: source registry is required")
@@ -39,8 +50,12 @@ func Open(
 	for index, server := range servers {
 		configs[index] = mcp.ServerConfig{Server: server.Clone()}
 	}
-	pool := &Pool{registry: registry}
-	inner, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch)
+	pool := &Pool{registry: registry, memoryContext: memoryContext, publish: publish}
+	client := mcp.NewClient()
+	if err := errors.Join(memoryrpc.RegisterClient(client), schedulerpc.RegisterClient(client)); err != nil {
+		return nil, err
+	}
+	inner, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch, models, client)
 	if err != nil {
 		return nil, err
 	}
@@ -110,3 +125,16 @@ func (p *Pool) SetToolSink(sink func([]toolcontract.Tool)) {
 func (p *Pool) Shutdown(ctx context.Context) error {
 	return p.inner.Shutdown(ctx)
 }
+
+func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.ClientSession, error) {
+	descriptor, found, err := p.registry.Dispatchable(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !found || !descriptor.Enabled {
+		return nil, errors.New("managed plugin: source admission was withdrawn")
+	}
+	return p.inner.ServiceSession(ctx, descriptor)
+}
+
+type MemoryContext func(context.Context, mcp.Executable) (context.Context, func(), error)

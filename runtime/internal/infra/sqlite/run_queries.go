@@ -72,7 +72,7 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 		args = append(args, limit)
 	}
 
-	rows, err := conn(ctx, r.db).QueryContext(ctx, query, args...)
+	rows, err := Connection(ctx, r.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page runs: %w", err)
 	}
@@ -104,7 +104,7 @@ func (r *RunStore) readRun(
 	if err := validateRunResource(operation, runID); err != nil {
 		return rundomain.Run{}, false, err
 	}
-	row := conn(ctx, r.db).QueryRowContext(ctx,
+	row := Connection(ctx, r.db).QueryRowContext(ctx,
 		`SELECT `+runColumns+`
 		 FROM runs AS r
 		 `+runReadJoins+`
@@ -129,7 +129,7 @@ func (r *RunStore) Tree(ctx context.Context, runID string) ([]rundomain.Run, err
 	if err := validateRunResource("read Run tree", runID); err != nil {
 		return nil, err
 	}
-	rows, err := conn(ctx, r.db).QueryContext(ctx,
+	rows, err := Connection(ctx, r.db).QueryContext(ctx,
 		`WITH target AS (
 		    SELECT CASE WHEN root_run_id = '' THEN run_id ELSE root_run_id END AS tree_root_id
 		      FROM runs
@@ -174,7 +174,7 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []string) ([]ru
 		}
 		args = append(args, id)
 	}
-	rows, err := conn(ctx, r.db).QueryContext(ctx,
+	rows, err := Connection(ctx, r.db).QueryContext(ctx,
 		`WITH RECURSIVE lineage(run_id, parent_run_id) AS (
 			SELECT run_id, parent_run_id FROM runs
 			 WHERE run_id IN (`+placeholders(len(runIDs))+`)
@@ -212,7 +212,7 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.
 	if err := validateSessionResource("list Session Runs", sessionID); err != nil {
 		return nil, err
 	}
-	rows, err := conn(ctx, r.db).QueryContext(ctx,
+	rows, err := Connection(ctx, r.db).QueryContext(ctx,
 		`SELECT `+runColumns+`
 		 FROM runs AS r
 		 `+runReadJoins+`

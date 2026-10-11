@@ -1,3 +1,4 @@
+import { buildPlugins } from "../../../plugins/build.mjs";
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
@@ -307,6 +308,10 @@ try {
     { env: buildEnvironment },
   );
   await cp(join(repository, "plugins"), join(fixture, "plugins"), { recursive: true });
+  const builtPlugins = join(fixture, "managed-packages");
+  await buildPlugins({ os: "linux", arch: goarch, output: builtPlugins });
+  for (const feature of ["memory", "schedules"])
+    await cp(join(builtPlugins, feature), join(fixture, "plugins", feature), { recursive: true });
   await mkdir(join(fixture, "skills/native-user"), { recursive: true });
   await writeFile(
     join(fixture, "skills/native-user/SKILL.md"),
@@ -330,7 +335,7 @@ try {
     "--cap-drop=ALL",
     "--security-opt=no-new-privileges",
     "--tmpfs",
-    "/state:rw,size=256m",
+    "/state:rw,exec,size=256m",
     "--tmpfs",
     "/root:rw,size=32m",
     "--tmpfs",
@@ -403,6 +408,16 @@ try {
       await readFile(join(fixture, "plugins", name, "views", `${name}.html`), "utf8"),
     );
     installed[name] = { ...binding, title: `${installation.selected.name} · ${view.title}` };
+    if (["memory", "schedules"].includes(name)) {
+      await waitFor(
+        `${name} backend`,
+        () =>
+          rpc("mcp.tools.list", {
+            server: { origin: { type: "installation", installationId: installation.id }, name },
+          }),
+        (page) => page.data.length === (name === "memory" ? 1 : 3),
+      );
+    }
   }
   resultPackage = await rpc("plugins.install", { source: "/fixture/plugins/tool-results" });
   assert.deepEqual(resultPackage.selected.diagnostics, []);
@@ -485,6 +500,32 @@ try {
     expectedRevision: schedule.revision,
     enabled: false,
   });
+  for (const name of ["memory", "schedules"]) {
+    const method = name === "memory" ? "agentMemory.list" : "schedules.list";
+    const params = name === "memory" ? { scope: "project", workspace: { path: workspace } } : {};
+    const saved = await rpc(method, params);
+    await rpc("plugins.setEnablement", {
+      installationId: installed[name].installationId,
+      enabled: false,
+    });
+    await assert.rejects(rpc(method, params), /plugin_unavailable/);
+    await rpc("plugins.setEnablement", {
+      installationId: installed[name].installationId,
+      enabled: true,
+    });
+    await waitFor(
+      `${name} backend reenable`,
+      () =>
+        rpc("mcp.tools.list", {
+          server: {
+            origin: { type: "installation", installationId: installed[name].installationId },
+            name,
+          },
+        }),
+      (page) => page.data.length === (name === "memory" ? 1 : 3),
+    );
+    assert.deepEqual(await rpc(method, params), saved);
+  }
   const run = await rpc("runs.start", {
     sessionId: session.id,
     input: [{ type: "text", text: "Record one observation." }],
@@ -984,11 +1025,11 @@ try {
 
   for (const name of Object.keys(installed))
     await rpc("plugins.uninstall", { installationId: installed[name].installationId });
-  const preservedMemory = (
-    await rpc("agentMemory.list", { scope: "project", workspace: { path: workspace } })
-  ).data.map((item) => item.content);
-  assert.deepEqual(new Set(preservedMemory), new Set([memoryFact, refreshedMemoryFact]));
-  assert.equal((await rpc("schedules.list")).data[0].title, refreshedScheduleTitle);
+  await assert.rejects(
+    rpc("agentMemory.list", { scope: "project", workspace: { path: workspace } }),
+    /plugin_unavailable/,
+  );
+  await assert.rejects(rpc("schedules.list"), /plugin_unavailable/);
   assert.deepEqual(await rpc("usage.summary"), usage);
   assert.deepEqual(
     await rpc("workspace.diff.get", { workspace: { path: workspace }, format: "rows" }),

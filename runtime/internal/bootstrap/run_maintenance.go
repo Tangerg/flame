@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/maintenance"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
 
@@ -18,7 +17,7 @@ func buildRunMaintenance(
 	shells *exec.Shells,
 	skills *workspace.Skills,
 	skillMaintenance *workspace.SkillMaintenance,
-	memoryCuration *agentmemory.Curation,
+	memory maintenance.MemoryMaintenance,
 	resolveUtility modeladapter.AuxiliaryResolver,
 	contextState maintenance.SessionContextInvalidator,
 ) (executionadapter.RunMaintenance, executionadapter.ModelContextCompactor, error) {
@@ -34,15 +33,6 @@ func buildRunMaintenance(
 	}
 	if cfg.Maintenance != nil {
 		return cfg.Maintenance, compactor, nil
-	}
-	consolidator, err := maintenance.NewMemoryConsolidator(
-		conversationServices.store,
-		memoryCuration,
-		resolveUtility,
-		maintenance.MemoryCurationPolicyValues{},
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
 	}
 	skillSource, err := promptsource.NewSkillSource(cfg.SkillsUserDir, cfg.SkillsUserDir)
 	if err != nil {
@@ -62,7 +52,7 @@ func buildRunMaintenance(
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
 	}
-	pipeline, err := maintenance.NewPipeline(consolidator, skillMiner, skillArchiver)
+	pipeline, err := maintenance.NewPipeline(memory, skillMiner, skillArchiver)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build maintenance pipeline: %w", err)
 	}

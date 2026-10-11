@@ -59,7 +59,7 @@ func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationI
 }
 
 func (s *InstallationStore) records(ctx context.Context, query string, args ...any) ([]plugin.Record, error) {
-	rows, err := conn(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 
 func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (plugin.Snapshot, error) {
 	id := record.ID.String()
-	values, err := conn(ctx, s.db).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
+	values, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
 	if err != nil {
 		return plugin.Snapshot{}, err
 	}
@@ -109,7 +109,7 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	if err := values.Err(); err != nil {
 		return plugin.Snapshot{}, err
 	}
-	disabled, err := conn(ctx, s.db).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
+	disabled, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
 	if err != nil {
 		return plugin.Snapshot{}, err
 	}
@@ -167,7 +167,7 @@ func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Insta
 		staged = record.Staged.String()
 	}
 	return RunInTx(ctx, s.db, func(ctx context.Context) error {
-		db := conn(ctx, s.db)
+		db := Connection(ctx, s.db)
 		if _, err := db.ExecContext(ctx, `INSERT INTO plugin_installations(id,source,selected_digest,staged_digest,admission_state) VALUES(?,?,?,?,?)
 		 ON CONFLICT(id) DO UPDATE SET source=excluded.source,selected_digest=excluded.selected_digest,staged_digest=excluded.staged_digest,admission_state=excluded.admission_state`,
 			id, record.Source, record.Selected.String(), staged, string(record.State)); err != nil {
@@ -209,7 +209,7 @@ func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Insta
 // Remove deletes the installation; its state, MCP sources and everything that
 // references them follow by cascade.
 func (s *InstallationStore) Remove(ctx context.Context, id resourceid.InstallationID) error {
-	result, err := conn(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, id.String())
+	result, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, id.String())
 	if err != nil {
 		return err
 	}

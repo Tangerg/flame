@@ -23,7 +23,7 @@ func (r *RunStore) RecordRunCommit(
 	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 		return err
 	}
-	result, err := conn(ctx, r.db).ExecContext(ctx,
+	result, err := Connection(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET commit_segment_id = ?, commit_id = ?
 		  WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
 		segmentID,
@@ -58,7 +58,7 @@ func (r *RunStore) RecordWaitingRunCommit(
 	if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
 		return err
 	}
-	result, err := conn(ctx, r.db).ExecContext(ctx,
+	result, err := Connection(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET commit_segment_id = '', commit_id = ?
 		  WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ''`,
 		commitID.String(),
@@ -129,7 +129,7 @@ func (r *RunStore) RunCommitCommitted(
 		return false, err
 	}
 	var found int
-	err := conn(ctx, r.db).QueryRowContext(ctx,
+	err := Connection(ctx, r.db).QueryRowContext(ctx,
 		`SELECT count(*)
 		   FROM runs
 		  WHERE session_id = ? AND run_id = ?
@@ -193,7 +193,7 @@ func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, ru
 		return false, err
 	}
 	var storedSession, storedRun, storedSegment, storedDigest string
-	err := conn(ctx, r.db).QueryRowContext(ctx, `SELECT session_id, run_id, segment_id, digest FROM result_publications WHERE publication_id = ?`, publicationID).Scan(&storedSession, &storedRun, &storedSegment, &storedDigest)
+	err := Connection(ctx, r.db).QueryRowContext(ctx, `SELECT session_id, run_id, segment_id, digest FROM result_publications WHERE publication_id = ?`, publicationID).Scan(&storedSession, &storedRun, &storedSegment, &storedDigest)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -227,7 +227,7 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 	if err != nil {
 		return fmt.Errorf("sqlite: encode exact tool results: %w", err)
 	}
-	_, err = conn(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id, source_message_seq, model_results)
+	_, err = Connection(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id, source_message_seq, model_results)
  VALUES (?, ?, ?, ?, ?, (SELECT max(seq) FROM messages WHERE conversation_id = ?), ?)`, publicationID, digest, sessionID, runID, segmentID, sessionID, string(encoded))
 	if err != nil {
 		return fmt.Errorf("sqlite: record result publication: %w", err)
@@ -236,7 +236,7 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 }
 
 func (r *RunStore) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]chat.ToolResult, error) {
-	rows, err := conn(ctx, r.db).QueryContext(ctx, `SELECT model_results FROM result_publications
+	rows, err := Connection(ctx, r.db).QueryContext(ctx, `SELECT model_results FROM result_publications
  WHERE session_id = ? AND run_id = ? AND (model_results IS NULL OR source_message_seq = (SELECT max(seq) FROM messages WHERE conversation_id = ?))
  ORDER BY publication_id`, sessionID, runID, sessionID)
 	if err != nil {

@@ -78,23 +78,19 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	}
 	analyzer := newTestCodeIntel(t)
 	resolver, err := newResolver(resolverDeps{
-		Online:    []toolcontract.Tool{named(string(domaintool.WebFetch))},
-		A2A:       []toolcontract.Tool{named("remote_agent")},
-		LSP:       []toolcontract.Tool{named(string(domaintool.LSP))},
-		Shell:     []toolcontract.Tool{named(string(domaintool.Shell))},
-		AskUser:   named(string(domaintool.AskUser)),
-		EnterPlan: named(string(domaintool.EnterPlanMode)),
-		ExitPlan:  named(string(domaintool.ExitPlanMode)),
-		Plan:      named(string(domaintool.SetPlan)),
-		ScheduleTools: []toolcontract.Tool{
-			named(string(domaintool.ListSchedules)), named(string(domaintool.CreateSchedule)), named(string(domaintool.DeleteSchedule)),
-		},
-		ToolResult:        named(string(domaintool.ReadToolResult)),
-		AgentMemorySearch: named(string(domaintool.SearchMemory)),
-		GoalGet:           named(string(domaintool.GetGoal)),
-		ProposeSkill:      named(string(domaintool.ProposeSkill)),
-		CodeIntel:         analyzer,
-		ReadTracker:       newReadTracker(),
+		Online:       []toolcontract.Tool{named(string(domaintool.WebFetch))},
+		A2A:          []toolcontract.Tool{named("remote_agent")},
+		LSP:          []toolcontract.Tool{named(string(domaintool.LSP))},
+		Shell:        []toolcontract.Tool{named(string(domaintool.Shell))},
+		AskUser:      named(string(domaintool.AskUser)),
+		EnterPlan:    named(string(domaintool.EnterPlanMode)),
+		ExitPlan:     named(string(domaintool.ExitPlanMode)),
+		Plan:         named(string(domaintool.SetPlan)),
+		ToolResult:   named(string(domaintool.ReadToolResult)),
+		GoalGet:      named(string(domaintool.GetGoal)),
+		ProposeSkill: named(string(domaintool.ProposeSkill)),
+		CodeIntel:    analyzer,
+		ReadTracker:  newReadTracker(),
 	})
 	if err != nil {
 		t.Fatalf("newResolver: %v", err)
@@ -123,9 +119,8 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		}
 	}
 	for _, name := range []string{
-		"web_fetch", "remote_agent", "lsp", "linear_create_issue", "list_schedules",
-		"create_schedule", "delete_schedule",
-		"search_memory", "propose_skill",
+		"web_fetch", "remote_agent", "lsp", "linear_create_issue",
+		"propose_skill",
 	} {
 		if !registered[name] {
 			t.Errorf("deferred tool %q missing from Run registry: %v", name, registered)

@@ -32,7 +32,7 @@ func approvalDefaultModeSchema() string {
 // chosen.
 func (p *ModeStore) DefaultMode(ctx context.Context) (approval.Mode, bool, error) {
 	var stored string
-	err := conn(ctx, p.db).QueryRowContext(ctx,
+	err := Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT mode FROM approval_default_mode WHERE id = 1`,
 	).Scan(&stored)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -50,7 +50,7 @@ func (p *ModeStore) DefaultMode(ctx context.Context) (approval.Mode, bool, error
 
 // SetDefaultMode records the Runtime default a user chose.
 func (p *ModeStore) SetDefaultMode(ctx context.Context, mode approval.Mode) error {
-	if _, err := conn(ctx, p.db).ExecContext(ctx,
+	if _, err := Connection(ctx, p.db).ExecContext(ctx,
 		`INSERT INTO approval_default_mode(id, mode) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET mode = excluded.mode`,
 		string(mode),
 	); err != nil {
@@ -64,7 +64,7 @@ func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID string) (bool,
 		return false, err
 	}
 	var present int
-	err := conn(ctx, p.db).QueryRowContext(ctx,
+	err := Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT 1 FROM session_plan_modes WHERE session_id = ?`, sessionID,
 	).Scan(&present)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -81,7 +81,7 @@ func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID string) (bool, 
 	if err := validateSessionResource("enter Session Plan mode", sessionID); err != nil {
 		return false, err
 	}
-	result, err := conn(ctx, p.db).ExecContext(ctx,
+	result, err := Connection(ctx, p.db).ExecContext(ctx,
 		`INSERT INTO session_plan_modes(session_id) VALUES (?) ON CONFLICT(session_id) DO NOTHING`, sessionID,
 	)
 	if err != nil {
@@ -95,7 +95,7 @@ func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string) (bool, er
 	if err := validateSessionResource("leave Session Plan mode", sessionID); err != nil {
 		return false, err
 	}
-	result, err := conn(ctx, p.db).ExecContext(ctx,
+	result, err := Connection(ctx, p.db).ExecContext(ctx,
 		`DELETE FROM session_plan_modes WHERE session_id = ?`, sessionID,
 	)
 	if err != nil {

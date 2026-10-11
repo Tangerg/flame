@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -74,12 +75,12 @@ func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Se
 	return created, nil
 }
 
-// PrepareScheduled resolves a schedule-owned Session without writing it. When
+// PrepareAutomation resolves a schedule-owned Session without writing it. When
 // the identity already exists, it returns that durable aggregate and no initial
 // value. Otherwise it returns one initial aggregate for the Run opening write-set.
 // This makes a retried occurrence reuse its Session without asking persistence
 // to derive or normalize product state.
-func (c *Coordinator) PrepareScheduled(
+func (c *Coordinator) PrepareAutomation(
 	ctx context.Context,
 	id, title, cwd string,
 	selection modelref.Selection,

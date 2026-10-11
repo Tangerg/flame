@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -68,8 +67,11 @@ func mustNewEffects(cfg Config) *Effects {
 	if dependency.Missing(cfg.ExecutionTrees) {
 		cfg.ExecutionTrees = unusedExecutionTrees{}
 	}
-	if dependency.Missing(cfg.Schedules) {
-		cfg.Schedules = inertSchedules{}
+	if dependency.Missing(cfg.AutomationStarts) {
+		cfg.AutomationStarts = inertAutomationStarts{}
+	}
+	if dependency.Missing(cfg.AutomationAuthority) {
+		cfg.AutomationAuthority = inertAutomationAuthority{}
 	}
 	if dependency.Missing(cfg.GoalRuns) {
 		cfg.GoalRuns = inertGoalRuns{}
@@ -189,10 +191,13 @@ func (inertToolInvocations) MarkToolInvocationIncomplete(context.Context, string
 
 // The segment write-sets require every store; a test that does not exercise a
 // capability supplies an inert one rather than an absent one.
-type inertSchedules struct{}
+type inertAutomationStarts struct{}
 
-func (inertSchedules) Accept(context.Context, schedule.Acceptance) error   { return nil }
-func (inertSchedules) RecordRun(context.Context, schedule.RunRecord) error { return nil }
+func (inertAutomationStarts) Save(context.Context, runs.AutomationReceipt) error { return nil }
+
+type inertAutomationAuthority struct{}
+
+func (inertAutomationAuthority) Admit(context.Context, runs.AutomationStart) error { return nil }
 
 type inertGoalRuns struct{}
 

@@ -3,10 +3,11 @@ package toolset
 import (
 	jsonv1 "encoding/json"
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/tools/content"
@@ -29,8 +30,6 @@ func TestPresenterActivity(t *testing.T) {
 		{name: "set Plan", ref: testsupport.BuiltInTool(t, tool.SetPlan), arguments: `{}`, want: "Updating the Plan"},
 		{name: "exit Plan mode", ref: testsupport.BuiltInTool(t, tool.ExitPlanMode), arguments: `{}`, want: "Requesting Plan approval"},
 		{name: "create Goal", ref: testsupport.BuiltInTool(t, tool.CreateGoal), arguments: `{"objective":"finish the work"}`, want: "Starting an autonomous Goal"},
-		{name: "create titled schedule", ref: testsupport.BuiltInTool(t, tool.CreateSchedule), arguments: `{"title":"Daily review"}`, want: "Creating schedule: Daily review"},
-		{name: "create untitled schedule", ref: testsupport.BuiltInTool(t, tool.CreateSchedule), arguments: `{}`, want: "Creating a schedule"},
 		{name: "load Skill", ref: testsupport.BuiltInTool(t, tool.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
 		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
 		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},

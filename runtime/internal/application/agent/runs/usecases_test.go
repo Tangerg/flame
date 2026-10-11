@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -105,7 +105,7 @@ func (f *fakeRunSessions) setActive(value *run.Run) {
 	f.active = value
 }
 
-func (f *fakeRunSessions) PrepareScheduled(
+func (f *fakeRunSessions) PrepareAutomation(
 	_ context.Context,
 	id, title, cwd string,
 	selection modelref.Selection,
@@ -736,9 +736,7 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	coordinator := newUseCaseCoordinator(executor, control, sessions, effects)
 
 	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_1", "run_new")
-	result, err := coordinator.StartScheduled(t.Context(), ScheduledStart{
-		Request: request, DefaultWorkspacePath: "/work",
-	})
+	result, err := coordinator.StartAutomation(t.Context(), automationRequest(request, "/work"))
 	if err != nil {
 		t.Fatalf("Start scheduled: %v", err)
 	}
@@ -769,11 +767,9 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 	}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_scheduled", "run_new")
-	command := ScheduledStart{
-		Request: request, DefaultWorkspacePath: "/work",
-	}
+	command := automationRequest(request, "/work")
 
-	if _, err := coordinator.StartScheduled(t.Context(), command); !errors.Is(err, control.stageErr) {
+	if _, err := coordinator.StartAutomation(t.Context(), command); !errors.Is(err, control.stageErr) {
 		t.Fatalf("Start under staging failure = %v, want the staging cause", err)
 	}
 	if openings := effects.openingSnapshot(); len(openings) != 0 {
@@ -781,7 +777,7 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 	}
 
 	control.stageErr = nil
-	result, err := coordinator.StartScheduled(t.Context(), command)
+	result, err := coordinator.StartAutomation(t.Context(), command)
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -876,29 +872,23 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	if err != nil {
 		t.Fatalf("manual run request: %v", err)
 	}
-	record, _ := request.ManualRecord()
 	executor := &fakeExecutor{}
 	effects := &fakeEffects{}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_manual", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(executor, control, new(fakeRunSessions), effects)
 
-	result, err := coordinator.StartScheduled(t.Context(), ScheduledStart{
-		Request: request, DefaultWorkspacePath: "/work",
-	})
+	result, err := coordinator.StartAutomation(t.Context(), automationRequest(request, "/work"))
 	if err != nil {
 		t.Fatalf("Start manual schedule: %v", err)
 	}
 	consumeEvents(result.Events)
 	opening := effects.opening()
 	_, initialized := opening.InitialSession()
-	launched, present := opening.Schedule()
-	manualRun, manual := launched.ManualRecord()
-	_, accepted := launched.Acceptance()
-	if !initialized || !present || !manual || accepted ||
-		manualRun.ScheduleID() != scheduled.ID() ||
-		!manualRun.RanAt().Equal(record.RanAt()) {
-		t.Fatalf("manual schedule opening = %+v", opening)
+	launched, present := opening.Automation()
+	if !initialized || !present || launched != automationRequest(request, "/work") {
+		t.Fatalf("manual automation opening = %+v", opening)
 	}
+
 }
 
 func TestStartSeedsExecutorFromConversationAndCurrentUserMessage(t *testing.T) {
@@ -1050,16 +1040,16 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	}
 }
 
-func TestStartRejectsIncompleteScheduledRequestBeforeSideEffects(t *testing.T) {
+func TestStartRejectsIncompleteAutomationRequestBeforeSideEffects(t *testing.T) {
 	control := &fakeExecutionPorts{}
 	effects := &fakeEffects{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
-	_, err := coordinator.StartScheduled(t.Context(), ScheduledStart{})
-	if !errors.Is(err, ErrInvalidStart) || !errors.Is(err, schedule.ErrInstructionsRequired) {
-		t.Fatalf("StartScheduled error = %v, want invalid start with its request cause", err)
+	_, err := coordinator.StartAutomation(t.Context(), AutomationStart{})
+	if !errors.Is(err, ErrInvalidStart) {
+		t.Fatalf("StartAutomation error = %v, want invalid start with its request cause", err)
 	}
 	if control.started.SessionID != "" || len(effects.openings) != 0 {
-		t.Fatalf("partial scheduled identity reached side effects: execution=%+v openings=%d", control.started, len(effects.openings))
+		t.Fatalf("partial automation identity reached side effects: execution=%+v openings=%d", control.started, len(effects.openings))
 	}
 }
 

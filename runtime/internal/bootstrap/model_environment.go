@@ -3,9 +3,10 @@ package bootstrap
 import (
 	"context"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
@@ -19,7 +20,8 @@ type modelEnvironment struct {
 	utilityModel       modeladapter.AuxiliaryResolver
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
-	agentMemoryRead    *agentmemoryapp.ReadModel
+	liveEmbedder       *modeladapter.RoleEmbedder
+	modelBroker        *managedmcp.Models
 }
 
 func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
@@ -56,9 +58,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
 	}
-	environment.agentMemoryRead, err = agentmemoryapp.NewReadModel(cfg.Stores.AgentMemory, liveEmbedder.ResolveMemory)
-	if err != nil {
-		return modelEnvironment{}, err
-	}
+	environment.liveEmbedder = liveEmbedder
+	environment.modelBroker = managedmcp.NewModels()
 	return environment, nil
 }

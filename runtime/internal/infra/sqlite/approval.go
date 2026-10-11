@@ -29,7 +29,7 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 	if err := r.Validate(); err != nil {
 		return fmt.Errorf("sqlite: put approval rule: %w", err)
 	}
-	_, err := conn(ctx, a.db).ExecContext(ctx, putApprovalRuleSQL, approvalRuleArgs(r)...)
+	_, err := Connection(ctx, a.db).ExecContext(ctx, putApprovalRuleSQL, approvalRuleArgs(r)...)
 	if err != nil {
 		return fmt.Errorf("sqlite: put approval rule: %w", err)
 	}
@@ -46,7 +46,7 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 	// Scope predicate expressed as a WHERE clause — the mirror of approval's
 	// visible(): session rules for this session, project rules for this cwd
 	// (skipped entirely when the call has no cwd), and all global rules.
-	rows, err := conn(ctx, a.db).QueryContext(ctx,
+	rows, err := Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT r.id, r.scope, r.scope_key, r.tool_kind, r.tool_name, s.origin, s.installation_id, s.name,
 		        r.source_fingerprint, r.subject_type, r.subject, r.decision
 		   FROM approval_rules r LEFT JOIN mcp_sources s ON s.id = r.mcp_source
@@ -90,7 +90,7 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 }
 
 func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
-	if _, err := conn(ctx, a.db).ExecContext(ctx, `DELETE FROM approval_rules WHERE id = ?`, id); err != nil {
+	if _, err := Connection(ctx, a.db).ExecContext(ctx, `DELETE FROM approval_rules WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("sqlite: delete approval rule: %w", err)
 	}
 	return nil
@@ -100,7 +100,7 @@ func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID string)
 	if err := validateSessionResource("delete Session approval rules", sessionID); err != nil {
 		return err
 	}
-	if _, err := conn(ctx, a.db).ExecContext(ctx,
+	if _, err := Connection(ctx, a.db).ExecContext(ctx,
 		`DELETE FROM approval_rules WHERE scope = 'session' AND scope_key = ?`, sessionID); err != nil {
 		return fmt.Errorf("sqlite: delete session approval rules: %w", err)
 	}

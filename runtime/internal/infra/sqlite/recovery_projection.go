@@ -11,7 +11,7 @@ import (
 // recovery. Storage exposes facts only; it does not decide which Run tree may
 // survive a restart.
 func (r *RunStore) ListNonTerminalRuns(ctx context.Context) ([]run.Run, error) {
-	rows, err := conn(ctx, r.db).QueryContext(ctx,
+	rows, err := Connection(ctx, r.db).QueryContext(ctx,
 		`SELECT `+runColumns+`
 		   FROM runs AS r
 		   `+runReadJoins+`

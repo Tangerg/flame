@@ -3,8 +3,8 @@ package bootstrap
 import (
 	"context"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -23,7 +23,7 @@ type runtimeApplication struct {
 }
 
 type runtimeWorkers struct {
-	scheduler     *schedules.Firing
+	scheduler     *pluginservices.Dispatcher
 	recovery      *ownership.RecoveryCoordinator
 	invalidations invalidation.Publish
 }

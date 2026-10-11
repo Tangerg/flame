@@ -20,7 +20,7 @@ import (
 // TestRunInTx_AtomicAcrossStores is the guarantee sessions.import / rollback
 // rely on: a write-set spanning several stores (session row + chat messages,
 // which live in different tables behind different store types) commits or rolls
-// back as one. It also proves the conn(ctx) threading works — the two stores'
+// back as one. It also proves the Connection(ctx) threading works — the two stores'
 // writes join the SAME transaction rather than each opening its own (which
 // would deadlock under MaxOpenConns(1)).
 func TestRunInTx_AtomicAcrossStores(t *testing.T) {

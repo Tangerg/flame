@@ -38,7 +38,7 @@ func (t *ToolInvocationStore) ListStartedToolInvocations(
 	if yield == nil {
 		return errors.New("sqlite: Tool invocation reader is required")
 	}
-	rows, err := conn(ctx, t.db).QueryContext(ctx, `
+	rows, err := Connection(ctx, t.db).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, item_id, started_at
 		  FROM tool_invocations
 		 WHERE state = ?
@@ -81,7 +81,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation start time: %w", err)
 	}
-	result, err := conn(ctx, t.db).ExecContext(ctx,
+	result, err := Connection(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_invocations(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		 SELECT ?, ?, session_id, run_id, ?, ?, ?, NULL
@@ -123,7 +123,7 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
 	}
-	result, err := conn(ctx, t.db).ExecContext(ctx, `
+	result, err := Connection(ctx, t.db).ExecContext(ctx, `
 		INSERT INTO tool_invocations(call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		SELECT ?, ?, session_id, run_id, ?, ?, ?, ? FROM runs
 		WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?
@@ -175,7 +175,7 @@ func (t *ToolInvocationStore) finish(
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
 	}
-	result, err := conn(ctx, t.db).ExecContext(ctx,
+	result, err := Connection(ctx, t.db).ExecContext(ctx,
 		`UPDATE tool_invocations
 		    SET state = ?, finished_at = ?
 		  WHERE call_id = ? AND item_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
@@ -232,7 +232,7 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string)
 	if err := validateSessionResource("tool invocation", sessionID); err != nil {
 		return nil, err
 	}
-	rows, err := conn(ctx, t.db).QueryContext(ctx, `
+	rows, err := Connection(ctx, t.db).QueryContext(ctx, `
 		SELECT attempt.call_id, attempt.item_id, attempt.run_id, attempt.segment_id,
 		       attempt.state, attempt.started_at, attempt.finished_at, owner.session_id
 		  FROM tool_invocations attempt

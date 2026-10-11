@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
 // MustOccurrenceRunRequest returns the launch input of one durable cron

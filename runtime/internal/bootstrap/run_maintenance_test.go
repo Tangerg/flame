@@ -83,7 +83,7 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 			}
 			model := &skillRevisionModel{}
 			resolve := modeladapter.AuxiliaryResolver(func(context.Context) (chat.Model, error) { return model, nil })
-			pipeline, _, err := buildRunMaintenance(cfg, conversation, nil, workspace.skills, workspace.skillMaintenance, workspace.memoryCuration, resolve, unusedMaintenanceContext{})
+			pipeline, _, err := buildRunMaintenance(cfg, conversation, nil, workspace.skills, workspace.skillMaintenance, noMemoryMaintenance{}, resolve, unusedMaintenanceContext{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -155,4 +155,10 @@ func (s *skillRevisionModel) Call(context.Context, *chat.Request) (*chat.Respons
 
 func (s *skillRevisionModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return testsupport.StreamResponse(s.Call(ctx, request))
+}
+
+type noMemoryMaintenance struct{}
+
+func (noMemoryMaintenance) MaintainMemory(context.Context, executionadapter.RunMaintenanceInput) error {
+	return nil
 }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.memory",
-  "version": "2.0.0",
-  "description": "Optional first-party memory presentation over canonical Runtime items. Review and mutation remain trusted Host commands.",
+  "version": "3.0.0",
+  "description": "Owns durable memory, review, mining, curation and retrieval in a private backend. Host commands and model tools use the same owner.",
   "extensions": {
     "io.github.tangerg.flame": {
       "apiVersion": 1,
@@ -13,6 +13,12 @@
             "title": "Agent memory",
             "type": "agentMemory",
             "entry": "views/memory.html"
+          }
+        ],
+        "services": [
+          {
+            "type": "memory",
+            "server": "memory"
           }
         ]
       }

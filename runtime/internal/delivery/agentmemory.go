@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	memoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	memoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -122,6 +124,9 @@ func agentMemoryTargetFromWire(scope protocol.AgentMemoryScope, workspace *proto
 }
 
 func mapAgentMemoryErr(err error) error {
+	if errors.Is(err, plugin.ErrUnavailable) {
+		return errors.Join(protocol.ErrPluginUnavailable, err)
+	}
 	switch {
 	case err == nil:
 		return nil

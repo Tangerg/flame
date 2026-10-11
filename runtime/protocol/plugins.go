@@ -72,6 +72,7 @@ type PluginRelease struct {
 	Name        string                    `json:"name"`
 	Version     string                    `json:"version,omitempty"`
 	Description string                    `json:"description,omitempty"`
+	Services    []PluginService           `json:"services"`
 	Servers     []PluginServerDeclaration `json:"servers"`
 	Inputs      []PluginInput             `json:"inputs"`
 	Themes      []PluginTheme             `json:"themes"`
@@ -345,4 +346,16 @@ const (
 type PluginValueChange struct {
 	Type  PluginValueChangeType `json:"type"`
 	Value *string               `json:"value,omitzero"`
+}
+
+type PluginServiceType string
+
+const (
+	PluginServiceMemory    PluginServiceType = "memory"
+	PluginServiceSchedules PluginServiceType = "schedules"
+)
+
+type PluginService struct {
+	Type   PluginServiceType `json:"type"`
+	Server string            `json:"server"`
 }

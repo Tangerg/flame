@@ -1363,7 +1363,7 @@ func (t ToolRef) ValidateWire() error {
 		requiredWhen(wireFieldEquals(t, "type", "builtIn"), "name", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "server", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "endpoint", t),
-		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "create_schedule", "delete_schedule", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "http_request", "list_schedules", "list_skills", "load_skill", "lsp", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_memory", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"}),
+		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "http_request", "list_skills", "load_skill", "lsp", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"}),
 		requiredWhen(wireFieldEquals(t, "type", "mcp"), "server", t),
 		requiredWhen(wireFieldEquals(t, "type", "mcp"), "name", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "mcp"), "endpoint", t),
@@ -2646,6 +2646,13 @@ func (m MCPTool) ValidateWire() error {
 	return collectWireViolations("MCPTool",
 		requiredTextPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
 		requiredTextPattern("modelName", m.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
+	)
+}
+
+func (p PluginService) ValidateWire() error {
+	return collectWireViolations("PluginService",
+		requiredTextPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		closedEnum("type", string(p.Type), []string{"memory", "schedules"}, false),
 	)
 }
 

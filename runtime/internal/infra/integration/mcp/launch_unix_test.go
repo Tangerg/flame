@@ -40,7 +40,7 @@ func TestStdioLaunchResourceRetiresAfterTheProcessGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &Connections{lifetime: t.Context(), client: newClient()}
+	c := &Connections{lifetime: t.Context(), client: NewClient()}
 	t.Cleanup(func() { _ = c.Shutdown(context.WithoutCancel(t.Context())) })
 	if err := connectLaunch(c, t.Context(), input); err != nil {
 		t.Fatal(err)

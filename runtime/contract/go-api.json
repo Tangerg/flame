@@ -2290,6 +2290,16 @@
           "value": "\"toolName\""
         },
         {
+          "name": "PluginServiceMemory",
+          "type": "PluginServiceType",
+          "value": "\"memory\""
+        },
+        {
+          "name": "PluginServiceSchedules",
+          "type": "PluginServiceType",
+          "value": "\"schedules\""
+        },
+        {
           "name": "PluginThemeDark",
           "type": "PluginThemeScheme",
           "value": "\"dark\""
@@ -2417,7 +2427,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-11.4\""
+          "value": "\"2026-10-12.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7472,6 +7482,11 @@
               "tag": "json:\"description,omitempty\""
             },
             {
+              "name": "Services",
+              "type": "[]PluginService",
+              "tag": "json:\"services\""
+            },
+            {
               "name": "Servers",
               "type": "[]PluginServerDeclaration",
               "tag": "json:\"servers\""
@@ -7683,6 +7698,33 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "PluginService",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "PluginServiceType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Server",
+              "type": "string",
+              "tag": "json:\"server\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginServiceType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "PluginSkill",

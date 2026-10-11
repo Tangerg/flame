@@ -38,17 +38,11 @@ type BuildConfig struct {
 	Plan           builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
 	PlanMode       builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
 	Interrupt      runs.InterruptFunc
-	Schedules      builtin.ScheduleManagement     // backs schedule management tools; nil → omitted
 	ToolResults    builtin.ToolResultStore        // backs read_tool_result (reads offloaded tool output); nil → omitted
 	SkillUsage     builtin.SkillUsageRecorder     // records skill loads for the idle-lifecycle curator; nil → use recording off
 	SkillProposals builtin.SkillProposalSubmitter // backs root-only propose_skill; nil → omitted
 	GoalReader     GoalReader                     // backs get_goal; nil → omitted
 	GoalReporter   builtin.GoalOutcomeReporter    // backs report_goal_outcome; nil → omitted
-
-	// AgentMemorySearch backs search_memory (keyword + semantic search over the
-	// agent's curated memory visible from the current project context). nil omits
-	// the tool.
-	AgentMemorySearch builtin.AgentMemorySearch
 
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
 	// runtime updates the underlying policy after every registry change.
@@ -157,24 +151,12 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build Plan family: %w", err)
 	}
-	scheduleTools, err := builtin.BuildSchedules(config.Schedules)
-	if err != nil {
-		return Built{}, fmt.Errorf("toolset: build schedule tools: %w", err)
-	}
 	// read_tool_result reads back a tool output the runtime offloaded on
 	// eviction. Working-directory independent (keys off the session id), so built
 	// once and given to both roles. nil store → nil tool, simply omitted.
 	toolResultTool, err := builtin.NewToolResultReader(config.ToolResults)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build read_tool_result: %w", err)
-	}
-	// search_memory reads back exact-project and user-scoped curated memory
-	// (keyword + semantic). Working-directory independent (searches the Run's
-	// project), so built once for both roles. nil searcher → nil tool, simply
-	// omitted.
-	agentMemorySearchTool, err := builtin.NewAgentMemorySearch(config.AgentMemorySearch)
-	if err != nil {
-		return Built{}, fmt.Errorf("toolset: build search_memory: %w", err)
 	}
 	// Goal state is working-directory independent and keyed by session. get_goal
 	// is always useful to the root Agent; report_goal_outcome is exposed only to
@@ -213,23 +195,21 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:    config.SkillUsage,
 		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
-		Online:            online,
-		A2A:               a2aExecutables,
-		LSP:               lspTools,
-		Shell:             shellTools,
-		AskUser:           askUserTool,
-		EnterPlan:         planFamily.Enter,
-		ExitPlan:          planFamily.Exit,
-		Plan:              planFamily.Set,
-		ScheduleTools:     scheduleTools,
-		ToolResult:        toolResultTool,
-		AgentMemorySearch: agentMemorySearchTool,
-		GoalGet:           goalGetTool,
-		GoalReport:        goalReportTool,
-		ProposeSkill:      proposeSkillTool,
-		CodeIntel:         codeIntel,
-		ReadTracker:       tracker,
-		MCPToolDisabled:   config.MCPToolDisabled,
+		Online:          online,
+		A2A:             a2aExecutables,
+		LSP:             lspTools,
+		Shell:           shellTools,
+		AskUser:         askUserTool,
+		EnterPlan:       planFamily.Enter,
+		ExitPlan:        planFamily.Exit,
+		Plan:            planFamily.Set,
+		ToolResult:      toolResultTool,
+		GoalGet:         goalGetTool,
+		GoalReport:      goalReportTool,
+		ProposeSkill:    proposeSkillTool,
+		CodeIntel:       codeIntel,
+		ReadTracker:     tracker,
+		MCPToolDisabled: config.MCPToolDisabled,
 	})
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build resolver: %w", err)

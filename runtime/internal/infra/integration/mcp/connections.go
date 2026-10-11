@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
@@ -69,6 +71,7 @@ type ownedSession struct {
 // status whose tools the sink has not received, or the reverse.
 type Connections struct {
 	lifetime context.Context
+	models   *managedmcp.Models
 	mu       sync.Mutex
 	servers  []*server
 	client   *sdkmcp.Client
@@ -107,9 +110,9 @@ func (c *Connections) SetToolSink(sink func([]Executable)) {
 	c.publishToolsLocked()
 }
 
-// newClient builds the shared MCP client identity used for every server's
+// NewClient builds the shared MCP client identity used for every server's
 // session (and re-dials). No per-server handlers are needed, so one suffices.
-func newClient() *sdkmcp.Client {
+func NewClient() *sdkmcp.Client {
 	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: runtimeidentity.ProductName, Version: "v0.1.0"}, nil)
 }
 
@@ -142,7 +145,13 @@ func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 		c.sessions = make(map[*sdkmcp.ClientSession]*ownedSession)
 	}
 	if c.sessions[session] == nil {
+		if c.models != nil {
+			c.models.AdmitSession(session)
+		}
 		c.sessions[session] = &ownedSession{closeFn: func() error {
+			if c.models != nil {
+				c.models.RevokeSession(session)
+			}
 			return retireSession(session, cleanup)
 		}}
 	}
@@ -156,8 +165,26 @@ func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) (err error) {
 	defer func() { err = errors.Join(err, cleanup()) }()
 	err = session.Close()
+	// A canceled command that exits cleanly makes exec.Cmd.Wait return
+	// context.Canceled. Cleanup still verifies process-group termination.
+	if err == context.Canceled {
+		err = nil
+	}
 	if _, exited := errors.AsType[*exec.ExitError](err); exited {
 		err = nil
 	}
 	return err
+}
+
+func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err := c.cancellationErr(ctx); err != nil {
+		return nil, err
+	}
+	configured := c.find(current.ID())
+	if c.closed || configured == nil || configured.session == nil || !configured.config.Server.SameConnection(current) {
+		return nil, errors.New("managed plugin: exact backend connection is unavailable")
+	}
+	return configured.session, nil
 }

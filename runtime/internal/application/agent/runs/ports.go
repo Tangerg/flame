@@ -204,12 +204,12 @@ type SessionReader interface {
 }
 
 // SessionCreator owns the one Session creation path consumed by Run start: a
-// schedule occurrence whose Session may not exist yet. It returns the resolved
+// automation request whose Session may not exist yet. It returns the resolved
 // Session and, when that Session is not durable, the initial aggregate the
 // opening write-set inserts with the Run, so a retried occurrence reuses its
 // Session and an unaccepted one leaves none.
 type SessionCreator interface {
-	PrepareScheduled(
+	PrepareAutomation(
 		ctx context.Context,
 		id, title, cwd string,
 		selection modelref.Selection,

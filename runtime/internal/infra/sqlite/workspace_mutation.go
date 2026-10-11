@@ -24,7 +24,7 @@ type WorkspaceMutationRecord struct {
 // WorkspaceMutationStore is the recoverable operation log for file rollbacks,
 // backed by the pending_workspace_mutations table. Unlike the write-set
 // stores, its writes deliberately do NOT join an ambient transaction (they use
-// the *sql.DB directly, never conn(ctx)): the intent must commit on its own
+// the *sql.DB directly, never Connection(ctx)): the intent must commit on its own
 // before the working tree is touched, and the completion on its own after the
 // requested effects commit. The row protects a non-atomic multi-path Git checkout
 // and, when requested, the separate SQLite history transaction.
@@ -61,7 +61,7 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	}
 	created := false
 	err := runTransaction(ctx, w.db, func(ctx context.Context) error {
-		tx := conn(ctx, w.db)
+		tx := Connection(ctx, w.db)
 		recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
 		if err != nil || recorded {
 			return err

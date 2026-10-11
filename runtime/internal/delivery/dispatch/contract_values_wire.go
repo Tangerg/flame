@@ -16,9 +16,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -1048,6 +1048,7 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginService](), Constraints: mcpServerName("server")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginRendererRequest](), Constraints: []FieldConstraint{{Field: "rendererId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRenderer](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxViewTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: plugin.MaxRendererSelectorNameBytes}}})

@@ -2,11 +2,11 @@ package execution
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type fakeAgentMemorySearcher struct {

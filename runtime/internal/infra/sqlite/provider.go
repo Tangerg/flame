@@ -56,7 +56,7 @@ func scanProvider(row scanRow) (provider.Provider, error) {
 }
 
 func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
-	rows, err := conn(ctx, p.db).QueryContext(ctx,
+	rows, err := Connection(ctx, p.db).QueryContext(ctx,
 		`SELECT id, api_key, base_url FROM providers ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list providers: %w", err)
@@ -78,7 +78,7 @@ func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
 }
 
 func (p *ProviderStore) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
-	entry, err := scanProvider(conn(ctx, p.db).QueryRowContext(ctx,
+	entry, err := scanProvider(Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT id, api_key, base_url FROM providers WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return provider.Provider{}, false, nil
@@ -122,7 +122,7 @@ func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Pa
 			return applyErr
 		}
 		apiKey, baseURL := storedProviderValues(updated)
-		_, writeErr := conn(txCtx, p.db).ExecContext(txCtx,
+		_, writeErr := Connection(txCtx, p.db).ExecContext(txCtx,
 			`INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET
 			   api_key = excluded.api_key,

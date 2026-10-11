@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
@@ -19,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -142,7 +144,7 @@ func buildAssemblyCore(
 		TransientState:        execution.transientSessions,
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
-		Models:                modelCapabilities,
+		Models:                modelcatalog.Selections{},
 		DefaultModelSelection: execution.models.defaultSelection,
 		Checkpoints:           workspaceServices.checkpoints,
 		Admissions:            admissionGate,
@@ -191,7 +193,11 @@ func buildAssemblyCore(
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
-	runSegmentConfig.Schedules = cfg.Stores.Schedules
+	runSegmentConfig.AutomationStarts = cfg.Stores.AutomationStarts
+	runSegmentConfig.AutomationAuthority, err = plugins.NewAutomationAdmission(cfg.Stores.Installations)
+	if err != nil {
+		return nil, err
+	}
 	runSegmentConfig.GoalRuns = goalRuns
 	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
 	runSegmentEffects, err := segment.New(runSegmentConfig)
@@ -211,12 +217,13 @@ func buildAssemblyCore(
 	}
 	workspaceNotifier := segment.NewWorkspaceNotifier(fileChanges.Publish)
 	runDependencies := runs.Dependencies{
+		AutomationStarts:                   cfg.Stores.AutomationStarts,
 		RootStarts:                         execution.executor,
 		Observations:                       execution.executor,
 		Releases:                           execution.executor,
 		RootCancellation:                   execution.executor,
 		Conversation:                       execution.conversation.messages,
-		Models:                             modelCapabilities,
+		Models:                             modelcatalog.Selections{},
 		Continuation:                       execution.executor,
 		WaitingRestorer:                    execution.executor,
 		Steering:                           execution.executor,
@@ -259,19 +266,9 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
-	scheduleLauncher, err := schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath)
+	scheduleFiring, err := pluginservices.NewDispatcher(execution.tools.schedules, runCoordinator, policy.invalidations.Publish)
 	if err != nil {
-		return nil, fmt.Errorf("runtime: construct scheduled run launcher: %w", err)
-	}
-	scheduleFiring, err := schedules.NewFiring(schedules.FiringDependencies{
-		Store:         cfg.Stores.Schedules,
-		RunStarter:    scheduleLauncher,
-		NewSessionID:  newSessionID,
-		NewRunID:      newRunID,
-		Invalidations: policy.invalidations.Publish,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("runtime: construct Schedule firing: %w", err)
+		return nil, err
 	}
 
 	approvalCoordinator, err := approvals.New(policy.approvals, sessionCoordinator)
@@ -454,10 +451,10 @@ func buildAssemblyCore(
 				Hooks:                  workspaceServices.hooks,
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
-				Schedules:              policy.schedules,
+				Schedules:              execution.tools.schedules,
 				ScheduleFiring:         scheduleFiring,
 				Goals:                  goalDriver,
-				AgentMemory:            workspaceServices.agentMemory,
+				AgentMemory:            execution.tools.memory,
 				GitAvailable:           git.Available(),
 				IsolationAvailable:     sandbox.Available(),
 			},

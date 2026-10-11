@@ -34,7 +34,7 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 	}
 	current := unwritten
 	err = RunInTx(ctx, g.db, func(ctx context.Context) error {
-		row := conn(ctx, g.db).QueryRowContext(ctx,
+		row := Connection(ctx, g.db).QueryRowContext(ctx,
 			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at
 			 FROM goals WHERE session_id = ?`, sessionID)
 		snapshot, err := scanGoal(row)
@@ -73,7 +73,7 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 		return false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
 	}
 	if expected.IsUnwritten() {
-		res, execContextErr := conn(ctx, g.db).ExecContext(ctx,
+		res, execContextErr := Connection(ctx, g.db).ExecContext(ctx,
 			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(session_id) DO NOTHING`,
@@ -93,7 +93,7 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	if !committed || !revisionCommitted {
 		return false, errors.New("sqlite: committed Goal version lost identity")
 	}
-	res, err := conn(ctx, g.db).ExecContext(ctx,
+	res, err := Connection(ctx, g.db).ExecContext(ctx,
 		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
 		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`,
 		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
@@ -123,7 +123,7 @@ func (g *GoalStore) Clear(ctx context.Context, sessionID string) error {
 	if err := validateSessionResource("clear Goal", sessionID); err != nil {
 		return err
 	}
-	if _, err := conn(ctx, g.db).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ?`, sessionID); err != nil {
+	if _, err := Connection(ctx, g.db).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ?`, sessionID); err != nil {
 		return fmt.Errorf("sqlite: clear goal: %w", err)
 	}
 	return nil
@@ -140,7 +140,7 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 	if err := expected.Validate(); err != nil || !committed || !revisionCommitted || expected.SessionID() != sessionID {
 		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", errors.Join(err, goal.ErrInvalid))
 	}
-	res, err := conn(ctx, g.db).ExecContext(ctx,
+	res, err := Connection(ctx, g.db).ExecContext(ctx,
 		`DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, incarnationID, revision)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: clear goal (cas): %w", err)
@@ -152,7 +152,7 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 	var out []goal.Goal
 	err := RunInTx(ctx, g.db, func(ctx context.Context) error {
-		rows, err := conn(ctx, g.db).QueryContext(ctx,
+		rows, err := Connection(ctx, g.db).QueryContext(ctx,
 			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at FROM goals`)
 		if err != nil {
 			return fmt.Errorf("sqlite: list goals: %w", err)
@@ -224,7 +224,7 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 }
 
 func (g *GoalStore) restore(ctx context.Context, snapshot goal.Snapshot) (goal.Goal, error) {
-	rows, err := conn(ctx, g.db).QueryContext(ctx,
+	rows, err := Connection(ctx, g.db).QueryContext(ctx,
 		`SELECT `+runColumns+` FROM runs AS r `+runReadJoins+`
 		   JOIN runs AS root ON root.run_id = CASE
 		        WHEN r.root_run_id = '' THEN r.run_id ELSE r.root_run_id END

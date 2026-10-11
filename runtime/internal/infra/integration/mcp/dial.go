@@ -7,8 +7,11 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -27,6 +30,8 @@ var tracer = otel.Tracer("scope/flame/infra/integration/mcp")
 // FATAL (validated before any dial); a reachability failure is TOLERATED
 // (recorded "failed" and skipped). An empty config still yields a live,
 // initially-empty Connections so runtime configuration can add servers later.
+// The caller registers custom protocol methods on client before dialing;
+// every admitted session retains that one client.
 // Initialization cancellation rejects the handoff and settles all acquired
 // sessions before returning, preserving their retirement diagnostics.
 func Dial(
@@ -35,6 +40,8 @@ func Dial(
 	servers []ServerConfig,
 	oauthSessions OAuthSessionStore,
 	configuration func(context.Context, mcpserver.ID) (*Launch, error),
+	models *managedmcp.Models,
+	client *sdkmcp.Client,
 ) (result *Connections, err error) {
 	if dependency.Missing(ctx) {
 		return nil, errors.New("mcp: startup context is required")
@@ -44,6 +51,9 @@ func Dial(
 	}
 	if configuration == nil {
 		return nil, errors.New("mcp: connection configuration source is required")
+	}
+	if client == nil {
+		return nil, errors.New("mcp: client is required")
 	}
 	if oauthSessions != nil && dependency.Missing(oauthSessions) {
 		return nil, errors.New("mcp: supplied oauth session store is nil")
@@ -67,9 +77,7 @@ func Dial(
 			return nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), verr)
 		}
 	}
-	// Servers share a client identity because no per-server handlers are needed.
-	client := newClient()
-	c := &Connections{lifetime: lifetime, client: client, oauthSessions: oauthSessions}
+	c := &Connections{lifetime: lifetime, models: models, client: client, oauthSessions: oauthSessions}
 	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
 	}

@@ -3,13 +3,14 @@ package delivery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	memoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	memoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

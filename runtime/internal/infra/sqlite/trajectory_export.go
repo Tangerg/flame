@@ -42,7 +42,7 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 	for i := range args {
 		args[i] = sessionID
 	}
-	if err = conn(ctx, s.db).QueryRowContext(ctx, query, args...).Scan(&records, &bytes); err != nil {
+	if err = Connection(ctx, s.db).QueryRowContext(ctx, query, args...).Scan(&records, &bytes); err != nil {
 		err = fmt.Errorf("sqlite: measure trajectory export: %w", err)
 	}
 	return records, bytes, err
@@ -54,7 +54,7 @@ func (s *SessionStore) validateTrajectoryJournalOwnership(ctx context.Context, s
 			WHERE (attempt.session_id = ? OR owner.session_id = ?)
 			AND (owner.run_id IS NULL OR attempt.session_id != owner.session_id))`
 		var invalid bool
-		if err := conn(ctx, s.db).QueryRowContext(ctx, query, sessionID, sessionID).Scan(&invalid); err != nil {
+		if err := Connection(ctx, s.db).QueryRowContext(ctx, query, sessionID, sessionID).Scan(&invalid); err != nil {
 			return fmt.Errorf("sqlite: inspect trajectory journal ownership: %w", err)
 		}
 		if invalid {

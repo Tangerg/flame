@@ -16,7 +16,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 	for _, change := range []struct{ name, statement string }{
 		{"former column", `ALTER TABLE model_invocations DROP COLUMN usage`},
 		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},
-		{"missing table", `DROP TABLE agent_memory_state`},
+		{"missing table", `DROP TABLE automation_starts`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
 		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
 	} {

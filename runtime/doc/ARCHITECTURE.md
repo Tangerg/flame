@@ -117,7 +117,9 @@ DeploymentResolver or child-binding digest. Tree capacity uses Scope's
 `TreeLimits`, while cumulative work uses its unlimited default `Budget`.
 
 Tool manifests, deferred visibility, hook presence, and result-offload policy enter the
-Tool Deployment's configuration digest. Scope carries that exact child binding
+Tool Deployment's configuration digest. Deferred authority is encoded as a canonical
+set of source references, definitions and fingerprints; connection enumeration order
+does not change it. Scope carries that exact child binding
 into its parent's identity. Deployment configurations use Scope's canonical
 Payload encoding, so JSON object order is immaterial and numeric literals remain
 exact. Recovery probing and live restoration reconstruct
@@ -318,7 +320,7 @@ MCP OAuth persistence fences each authorization grant independently of the live 
 
 The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
 
-Plan, Goal, Schedule, agent-memory, and file-observation use cases are present in every complete Runtime. Discovery advertises them directly; Session snapshots include the current Plan and any current Goal, and portable import restores Plan as part of the atomic Session write. Git availability remains a host fact, and repository observation failures remain errors at registration. Capability negotiation still governs optional client behavior and host-dependent integrations.
+Plan, Goal and file-observation use cases are present in every complete Runtime. Memory and Schedule operations bind only to their enabled managed backend owner. Discovery advertises them directly; Session snapshots include the current Plan and any current Goal, and portable import restores Plan as part of the atomic Session write. Git availability remains a host fact, and repository observation failures remain errors at registration. Capability negotiation still governs optional client behavior and host-dependent integrations.
 
 The module-root Go binding and HTTP/JSON-RPC binding enter the same delivery endpoint before:
 
@@ -388,7 +390,7 @@ Goal lifecycle and incarnation-local usage are read in one storage transaction. 
 
 A value is validated where it enters the process, and read everywhere else. The boundaries that own that answer are the ones facing something untrusted: a use case turning caller input into a domain value, an adapter parsing a remote server's reply, and a store decoding its own persisted rows. An Application that re-checks identity, uniqueness or field agreement on the way back out of its own port is not defending the product — it is a second implementation of a rule the producer already owns, and it drifts. Uniqueness stated by a primary key, a lookup keyed by the identity it was asked for, and a projection whose contradictory states the producer clears at the transition are all facts to consume, not to reprove. A test that reaches this code through a fake port returning something the real one cannot produce is freezing the defense, not the contract.
 
-Production construction consumes the complete storage bundle opened by persistence. Plan, Goal, permission, Schedule, mutation recovery, role persistence, and agent-memory review and curation are always wired; absent user configuration is stored state, not a missing implementation. Agent-memory search may use keyword ranking without an embedding provider. Narrow use-case tests supply their own collaborators without adding partial production configurations. Hook execution and management share one resolver built from the user home and durable trust store. A project with no hooks or revoked trust still has complete inspection and trust-management use cases.
+Production construction consumes the complete storage bundle opened by persistence. Plan, Goal, permission, mutation recovery and role persistence are always wired; absent user configuration is stored state, not a missing implementation. Memory review, curation, ledger, watermark and search are owned by the optional Memory backend. Schedule definitions, claims, pending dispatch and acceptance are owned by the optional Schedules backend. Runtime owns the dispatch wake-up and atomically accepts Session/Run openings against current installation authority. Private backend command receipts and Runtime Run acceptance receipts record different facts. Memory search may use keyword ranking without an embedding provider. Narrow use-case tests supply their own collaborators without adding partial production configurations. Hook execution and management share one resolver built from the user home and durable trust store. A project with no hooks or revoked trust still has complete inspection and trust-management use cases.
 
 Skill discovery, library curation, and proposal review require complete implementations. Bootstrap requires an absolute user Skill directory and constructs its store, usage recorder, and maintenance workers even when the library is empty. A Skill store requires an absolute library root and a valid scope, and a maintenance component requires its sweeper at construction.
 
@@ -470,3 +472,25 @@ also cascades its persisted MCP rules and exposure rows.
 Exposure snapshots advance from acknowledged registry writes under the MCP
 mutation lock. No post-commit registry read can leave a disabled or deleted
 source exposed; a live-detachment failure still closes that exposure gate.
+
+## Managed feature lifecycles
+
+Memory and Schedules use the [first-party backend contracts](../../plugins/README.md).
+Each installation's private database is separate from the Runtime database. Human
+bindings and portable views are projections over that same backend; Scope Tool
+calls retain installation-qualified identity. The host has no parallel semantic
+implementation. Closing a view only retires its presentation.
+
+Installation changes admit at most one enabled owner for each closed service kind.
+Dispatch rechecks current enablement and the exact connection generation. Model
+capabilities are local, bounded and invocation-scoped; their retirement cancels
+and joins model work. Runtime never supplies its bearer or provider credentials.
+Schedule dispatch records Run acceptance in the opening transaction, and later
+source withdrawal cannot cancel that accepted Run. Pending captures remain private
+and are redelivered with stable identities after reenable or restart.
+
+All application builds use the repository workspace. Backend executable sources
+live under `internal/plugins` in this application module. Source folders
+must be built into target packages before installation. The pre-release schema
+policy refuses old stores; this boundary has no compatibility readers or migration
+fallbacks.

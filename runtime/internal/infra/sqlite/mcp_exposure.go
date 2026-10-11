@@ -9,7 +9,7 @@ import (
 )
 
 func (m *MCPServerStore) ListExposure(ctx context.Context) ([]tool.Ref, error) {
-	rows, err := conn(ctx, m.db).QueryContext(ctx,
+	rows, err := Connection(ctx, m.db).QueryContext(ctx,
 		`SELECT s.origin, s.installation_id, s.name, e.tool_name
 		   FROM mcp_tool_exposure e JOIN mcp_sources s ON s.id = e.source_id
 		  ORDER BY s.origin <> 'user', s.installation_id, s.name, e.tool_name`)
@@ -51,7 +51,7 @@ func (m *MCPServerStore) SetToolExposure(ctx context.Context, ref tool.Ref, disa
 		statement = `INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES (` + mcpSourceIDQuery + `, ?) ON CONFLICT DO NOTHING`
 	}
 	args := append(mcpSourceArgs(server), remote.String())
-	if _, err := conn(ctx, m.db).ExecContext(ctx, statement, args...); err != nil {
+	if _, err := Connection(ctx, m.db).ExecContext(ctx, statement, args...); err != nil {
 		return fmt.Errorf("sqlite: set mcp tool exposure: %w", err)
 	}
 	return nil

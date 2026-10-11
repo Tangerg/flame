@@ -17,7 +17,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -34,12 +33,12 @@ type SessionStore interface {
 	Save(ctx context.Context, replacement session.Replacement) error
 }
 
-// ScheduleStore commits the schedule fact owned by a Run opening. Cron
-// occurrences are accepted and manual LastRunAt records are advanced through
-// the same transaction as admission, so neither can diverge from its Run.
-type ScheduleStore interface {
-	Accept(ctx context.Context, acceptance schedule.Acceptance) error
-	RecordRun(ctx context.Context, record schedule.RunRecord) error
+type AutomationAuthority interface {
+	Admit(context.Context, runs.AutomationStart) error
+}
+
+type AutomationStartStore interface {
+	Save(context.Context, runs.AutomationReceipt) error
 }
 
 // GoalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
@@ -213,7 +212,8 @@ type Config struct {
 	Interrupts          InterruptStore
 	ResumeClaims        ResumeClaimStore
 	Sessions            SessionStore
-	Schedules           ScheduleStore
+	AutomationAuthority AutomationAuthority
+	AutomationStarts    AutomationStartStore
 	GoalRuns            GoalRunRecorder
 	Transcript          TranscriptStore
 	ItemReplacer        ItemReplacer
@@ -235,7 +235,8 @@ type Effects struct {
 	interrupts          InterruptStore
 	resumeClaims        ResumeClaimStore
 	sessions            SessionStore
-	schedules           ScheduleStore
+	automationAuthority AutomationAuthority
+	automationStarts    AutomationStartStore
 	goalRuns            GoalRunRecorder
 	transcript          TranscriptStore
 	itemReplacer        ItemReplacer
@@ -283,7 +284,8 @@ func New(cfg Config) (*Effects, error) {
 		{"executor checkpoint store", cfg.ExecutorCheckpoints},
 		{"execution tree store", cfg.ExecutionTrees},
 		{"child run start store", cfg.ChildRunStarts},
-		{"schedule store", cfg.Schedules},
+		{"automation authority", cfg.AutomationAuthority},
+		{"automation start store", cfg.AutomationStarts},
 		{"goal run recorder", cfg.GoalRuns},
 		{"tool result store", cfg.ToolResults},
 		{"transactor", cfg.Tx},
@@ -297,7 +299,8 @@ func New(cfg Config) (*Effects, error) {
 		interrupts:          cfg.Interrupts,
 		resumeClaims:        cfg.ResumeClaims,
 		sessions:            cfg.Sessions,
-		schedules:           cfg.Schedules,
+		automationAuthority: cfg.AutomationAuthority,
+		automationStarts:    cfg.AutomationStarts,
 		goalRuns:            cfg.GoalRuns,
 		transcript:          cfg.Transcript,
 		itemReplacer:        cfg.ItemReplacer,

@@ -1,7 +1,7 @@
 // Package goals owns autonomous Goal execution: given a
 // session's objective, it launches runs back-to-back until the model signals the
 // goal complete or blocked (through terminal outcome reporting), or the user
-// stops it. It mirrors application/automation/schedules — an
+// stops it. It is a Run-admission client with an
 // autonomous application component that drives the runs Coordinator — but is
 // event-driven per goal rather than cron-timed, and consumes each run's terminal
 // to decide whether to continue.

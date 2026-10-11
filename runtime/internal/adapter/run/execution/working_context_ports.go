@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

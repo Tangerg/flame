@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-11.4",
+  "protocolVersion": "2026-10-12.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -1301,6 +1301,7 @@
       "replayCursor": "none",
       "pagination": "cursor",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1311,10 +1312,11 @@
       "name": "schedules.create",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "workspace_unavailable",
         "capability_not_negotiated"
       ],
@@ -1326,10 +1328,11 @@
       "name": "schedules.update",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "schedule_not_found",
         "revision_conflict",
         "workspace_unavailable",
@@ -1343,10 +1346,11 @@
       "name": "schedules.delete",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1357,10 +1361,11 @@
       "name": "schedules.runNow",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "schedule_not_found",
         "prompt_source_too_large",
         "capability_not_negotiated"
@@ -1573,6 +1578,7 @@
       "replayCursor": "none",
       "pagination": "cursor",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1583,10 +1589,11 @@
       "name": "agentMemory.review",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1597,10 +1604,11 @@
       "name": "agentMemory.update",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1611,10 +1619,11 @@
       "name": "agentMemory.delete",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1625,10 +1634,11 @@
       "name": "agentMemory.add",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -2052,6 +2062,11 @@
         "code": -32045,
         "recoveryAction": "promptUser",
         "methods": [
+          "agentMemory.add",
+          "agentMemory.delete",
+          "agentMemory.list",
+          "agentMemory.review",
+          "agentMemory.update",
           "plugins.approve",
           "plugins.configure",
           "plugins.install",
@@ -2072,7 +2087,12 @@
           "plugins.select",
           "plugins.setEnablement",
           "plugins.stage",
-          "plugins.uninstall"
+          "plugins.uninstall",
+          "schedules.create",
+          "schedules.delete",
+          "schedules.list",
+          "schedules.runNow",
+          "schedules.update"
         ]
       },
       {
@@ -4384,8 +4404,6 @@
                 "apply_patch",
                 "ask_user",
                 "create_goal",
-                "create_schedule",
-                "delete_schedule",
                 "delegate_task",
                 "edit",
                 "enter_plan_mode",
@@ -4394,7 +4412,6 @@
                 "glob",
                 "grep",
                 "http_request",
-                "list_schedules",
                 "list_skills",
                 "load_skill",
                 "lsp",
@@ -4404,7 +4421,6 @@
                 "read_skill_resource",
                 "read_tool_result",
                 "report_goal_outcome",
-                "search_memory",
                 "search_tools",
                 "set_plan",
                 "shell",
@@ -9065,6 +9081,15 @@
       "rules": [
         {
           "field": "name",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "PluginService",
+      "rules": [
+        {
+          "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         }
       ]

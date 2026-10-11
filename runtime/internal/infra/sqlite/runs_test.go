@@ -202,7 +202,7 @@ func capabilitiesForInterrupts(values []transcript.Interrupt) run.Capabilities {
 // TestParkCommitsInterruptAndSuspendAtomically proves the pairing the
 // run-event committer relies on: opening the interrupt record and suspending the
 // run's admission row commit — or roll back — as ONE transaction (both writes
-// join the same conn(ctx)), so a crash can never leave a parked run with an
+// join the same Connection(ctx)), so a crash can never leave a parked run with an
 // interrupt but a still-running admission row, or vice versa.
 func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
@@ -218,7 +218,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	}
 
 	// park writes through the transaction's context so both statements join the
-	// SAME connection (conn(ctx)); using the outer ctx would open a second
+	// SAME connection (Connection(ctx)); using the outer ctx would open a second
 	// connection under MaxOpenConns(1) and deadlock.
 	park := func(ctx context.Context) error {
 		if err := ints.Open(ctx, pendingForRun(

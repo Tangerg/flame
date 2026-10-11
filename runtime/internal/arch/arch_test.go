@@ -279,8 +279,23 @@ func TestDomainHooksStayPure(t *testing.T) {
 // domain values at the boundary.
 func TestDomainStaysFrameworkFree(t *testing.T) {
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "internal", "domain"),
-		append(append([]string{"path/filepath"}, crossRingCapabilityImports...), frameworkImports...))
+	banned := append(append([]string{"path/filepath"}, crossRingCapabilityImports...), frameworkImports...)
+	checked := make(map[string]bool)
+	err := walkProductionGoFiles(filepath.Join(root, "internal"), func(path string, _ *ast.File) error {
+		directory := filepath.Dir(path)
+		relative, err := filepath.Rel(root, directory)
+		if err != nil {
+			return err
+		}
+		if layerOf(filepath.ToSlash(relative)) == ringDomain && !checked[directory] {
+			checked[directory] = true
+			forbidExternalImports(t, directory, banned)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan Domain boundaries: %v", err)
+	}
 }
 
 // TestDomainDoesNotRenderAgentOrToolPresentation keeps model/tool text and
@@ -290,7 +305,7 @@ func TestDomainStaysFrameworkFree(t *testing.T) {
 func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 	root := moduleRoot(t)
 	checks := map[string]map[string]string{
-		filepath.Join(root, "internal", "domain", "workspace", "agentmemory"): {
+		filepath.Join(root, "internal", "plugins", "memory", "domain"): {
 			"Render":         "memory prompt rendering belongs to adapter/run/execution",
 			"EstimateTokens": "model token approximation belongs to adapter/run/execution",
 			"NormalizeFacts": "LLM Markdown extraction belongs to adapter/maintenance",
@@ -540,12 +555,8 @@ func TestDeliveryDoesNotControlAgentExecutions(t *testing.T) {
 // a worker/launcher, or start the worker loop itself.
 func TestDeliveryDoesNotWireApplicationCollaborators(t *testing.T) {
 	forbidCalls(t, "./internal/delivery/...", map[string]string{
-		runtimeModule + "/internal/application/automation/schedules.New":                           "Bootstrap owns schedule coordinator construction",
-		runtimeModule + "/internal/application/automation/schedules.NewRunLauncher":                "Bootstrap owns scheduled-run launcher construction",
-		runtimeModule + "/internal/application/automation/schedules.RunLauncher.StartScheduledRun": "the schedule application owns scheduled Run starts",
-		runtimeModule + "/internal/application/automation/schedules.Firing.RunWorker":              "Bootstrap owns background worker lifetime",
-		runtimeModule + "/internal/application/ownership.RecoveryCoordinator.RunWorker":            "Bootstrap owns background worker lifetime",
-		runtimeModule + "/internal/application/workspace.NewScope":                                 "Bootstrap owns workspace use-case construction",
+		runtimeModule + "/internal/application/ownership.RecoveryCoordinator.RunWorker": "Bootstrap owns background worker lifetime",
+		runtimeModule + "/internal/application/workspace.NewScope":                      "Bootstrap owns workspace use-case construction",
 	})
 }
 
@@ -1866,6 +1877,28 @@ const (
 // ring; shared capabilities need an explicit policy instead of an unrestricted
 // internal/* escape hatch. Test fixtures are checked by their dedicated tests.
 func layerOf(rel string) string {
+	for _, feature := range []string{"memory", "schedules"} {
+		owner := "internal/plugins/" + feature
+		if rel == owner {
+			return ringComposition
+		}
+		prefix := owner + "/"
+		if strings.HasPrefix(rel, prefix) {
+			child := strings.TrimPrefix(rel, prefix)
+			switch {
+			case inPackageTree(child, "domain"):
+				return ringDomain
+			case inPackageTree(child, "application"):
+				return ringApplication
+			case inPackageTree(child, "rpc"):
+				return ringAdapter
+			case inPackageTree(child, "sqlite"):
+				return ringInfra
+			case inPackageTree(child, "maintenance"), inPackageTree(child, "tools"), inPackageTree(child, "transport"):
+				return ringAdapter
+			}
+		}
+	}
 	if strings.Contains("/"+rel+"/", "/testdata/") {
 		return ringTestSupport
 	}

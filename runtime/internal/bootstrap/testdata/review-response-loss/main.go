@@ -22,7 +22,7 @@ func main() {
 }
 
 func run() (err error) {
-	if len(os.Args) != 3 {
+	if len(os.Args) != 3 && len(os.Args) != 4 {
 		return fmt.Errorf("response loss probe requires an evidence path and backend executable")
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -63,7 +63,11 @@ func run() (err error) {
 				cancel()
 				return
 			}
-			if request.Method == "tools/call" && request.Params.Name == "update_review" {
+			matched := request.Method == "tools/call" && request.Params.Name == "update_review"
+			if len(os.Args) == 4 {
+				matched = request.Method == os.Args[3]
+			}
+			if matched {
 				updates.Store(string(request.ID), jsontext.Value(line))
 			}
 			if _, err := fmt.Fprintln(input, string(line)); err != nil {

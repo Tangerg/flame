@@ -24,7 +24,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createFlameClient, type FlameClient } from "@flame/runtime-contract/client/sdk";
 import { RpcError } from "@flame/runtime-contract/client/errors";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-contract/client/ids";
@@ -730,6 +730,37 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   let runtimeExecutable = "";
   let cliExecutable = "";
   let runtimePort = 0;
+  const managedOwners = new Map<
+    "memory" | "schedules",
+    Awaited<ReturnType<FlameClient["plugins"]["install"]>>
+  >();
+
+  const activateManagedOwner = async (feature: "memory" | "schedules") => {
+    if (!client) throw new Error("runtime client was not initialized");
+    let installation = managedOwners.get(feature);
+    if (!installation) {
+      installation = await client.plugins.install({
+        source: join(environmentRoot, "managed-packages", feature),
+      });
+      expect(installation.selected.diagnostics).toEqual([]);
+      managedOwners.set(feature, installation);
+    }
+    await client.plugins.approve({
+      installationId: installation.id,
+      digest: installation.selected.digest,
+    });
+    await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+    const server = {
+      origin: { type: "installation" as const, installationId: installation.id },
+      name: feature,
+    };
+    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
+    while ((await client.mcp.listTools(server)).data.length !== (feature === "memory" ? 1 : 3)) {
+      if (Date.now() >= deadline) throw new Error(`${feature} backend connection timed out`);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return installation;
+  };
 
   const runtimeEnvironment = () => ({
     ...process.env,
@@ -984,6 +1015,15 @@ for await (const line of lines) {
         cwd: resolve(runtimeDirectory, "../cli"),
         env: { ...process.env, GOWORK: resolve(runtimeDirectory, "../go.work") },
       }),
+      execFileAsync(process.execPath, [
+        resolve(runtimeDirectory, "../plugins/build.mjs"),
+        "--os",
+        process.platform === "win32" ? "windows" : process.platform,
+        "--arch",
+        process.arch === "x64" ? "amd64" : process.arch,
+        "--output",
+        join(environmentRoot, "managed-packages"),
+      ]),
     ]);
 
     runtimePort = await unusedLoopbackPort();
@@ -991,6 +1031,11 @@ for await (const line of lines) {
     await startRuntimeProcess();
     client = createRuntimeClient();
   }, 60_000);
+
+  beforeEach(async () => {
+    for (const feature of ["memory", "schedules"] as const)
+      if (!managedOwners.has(feature)) await activateManagedOwner(feature);
+  });
 
   afterAll(async () => {
     await client?.close();
@@ -1074,19 +1119,15 @@ for await (const line of lines) {
     }
   });
 
-  it("reads the shipped Memory page through the canonical target and preserves memory after withdrawal", async () => {
+  it("reads the shipped Memory backend page and resumes private facts after withdrawal", async () => {
     if (!client) throw new Error("runtime client was not initialized");
-    const installation = await client.plugins.install({
-      source: resolve(runtimeDirectory, "../plugins/memory"),
-    });
+    const installation = managedOwners.get("memory")!;
     const release = { installationId: installation.id, digest: installation.selected.digest };
     const view = { ...release, viewId: "memory" };
     const workspace = { path: root };
     let created: Awaited<ReturnType<typeof client.agentMemory.add>> | undefined;
     try {
       expect(installation.selected.diagnostics).toEqual([]);
-      await client.plugins.approve(release);
-      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
       created = await client
         .workspace(workspace)
         .agentMemory.add("Memory page canonical ownership fixture");
@@ -1115,12 +1156,18 @@ for await (const line of lines) {
       await expect(client.plugins.readMemory({ ...view, ...query })).rejects.toMatchObject({
         code: -32042,
       });
+      await expect(client.agentMemory.list(query)).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_unavailable",
+      );
+      await activateManagedOwner("memory");
       expect(
         await client.workspace(workspace).agentMemory.list().autoPagingToArray(),
       ).toContainEqual(created);
     } finally {
+      await activateManagedOwner("memory");
       if (created) await client.agentMemory.delete(created.id);
       await client.plugins.uninstall(installation.id);
+      managedOwners.delete("memory");
     }
   });
 
@@ -1171,20 +1218,15 @@ for await (const line of lines) {
     }
   });
 
-  it("reads shipped Schedule templates and canonical pages without owning Schedule persistence", async () => {
+  it("reads shipped Schedule backend templates and resumes private facts after withdrawal", async () => {
     if (!client) throw new Error("runtime client was not initialized");
-    const installation = await client.plugins.install({
-      source: resolve(runtimeDirectory, "../plugins/schedules"),
-    });
+    const installation = managedOwners.get("schedules")!;
     const release = { installationId: installation.id, digest: installation.selected.digest };
     const view = { ...release, viewId: "schedules" };
     const created: string[] = [];
-    let remainingInstallation: string | undefined = installation.id;
     try {
       expect(installation.selected.diagnostics).toEqual([]);
       const templates = installation.selected.views[0]!.scheduleTemplates!;
-      await client.plugins.approve(release);
-      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
       for (const template of templates.slice(0, 2)) {
         const schedule = await client.schedules.create({
           title: template.title,
@@ -1210,13 +1252,17 @@ for await (const line of lines) {
       );
       await client.plugins.revoke(installation.id);
       await expect(client.plugins.readSchedules(view)).rejects.toMatchObject({ code: -32042 });
-      await client.plugins.uninstall(installation.id);
-      remainingInstallation = undefined;
+      await expect(client.schedules.list()).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_unavailable",
+      );
+      await activateManagedOwner("schedules");
       const persisted = await client.schedules.list().autoPagingToArray();
       for (const id of created) expect(persisted.some((schedule) => schedule.id === id)).toBe(true);
     } finally {
+      await activateManagedOwner("schedules");
       for (const id of created) await client.schedules.delete(id);
-      if (remainingInstallation) await client.plugins.uninstall(remainingInstallation);
+      await client.plugins.uninstall(installation.id);
+      managedOwners.delete("schedules");
     }
   });
 
@@ -3163,6 +3209,18 @@ for await (const line of lines) {
     await startRuntimeProcess();
     client = createRuntimeClient();
 
+    const restored = await client.runs.get(runId);
+    expect(
+      restored.status,
+      `restart must retain the parked parallel approval: ${JSON.stringify(restored.outcome)}; ${processOutput
+        .split("\n")
+        .filter((line) => line.includes("waiting execution is not resumable"))
+        .join("\n")}`,
+    ).toBe("waiting");
+    expect((await client.interrupts.list({ rootRunId: runId })).data).toMatchObject([
+      { interrupts: [{ itemId: approval.itemId, type: "approval" }] },
+    ]);
+
     const resumed = await client.runs.resume({
       runId,
       responses: [
@@ -3757,9 +3815,9 @@ for await (const line of lines) {
       type: "mcp.changed",
       servers: [serverId],
     });
-    await expect(client.mcp.list()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: serverId, status: { type: "disabled" } })],
-    });
+    expect(
+      (await client.mcp.list()).data.filter((entry) => entry.id.origin.type === "user"),
+    ).toEqual([expect.objectContaining({ id: serverId, status: { type: "disabled" } })]);
 
     const updated = await client.mcp.update({
       server: serverId,
@@ -3780,7 +3838,9 @@ for await (const line of lines) {
       type: "mcp.changed",
       servers: [serverId],
     });
-    await expect(client.mcp.list()).resolves.toMatchObject({ data: [] });
+    expect(
+      (await client.mcp.list()).data.filter((entry) => entry.id.origin.type === "user"),
+    ).toEqual([]);
 
     streamController.abort();
     await runtimeEvents.return?.();
@@ -3855,16 +3915,14 @@ for await (const line of lines) {
       status: { type: "connected", toolCount: 1 },
     });
     const allTools = await client.mcp.listTools();
-    expect(allTools).toMatchObject({
-      data: [
-        {
-          server: serverId,
-          name: "ping",
-          description: "Returns pong for Runtime HTTP E2E.",
-          inputSchema: { type: "object", properties: {}, additionalProperties: false },
-        },
-      ],
-    });
+    expect(allTools.data.filter((entry) => entry.server.origin.type === "user")).toMatchObject([
+      {
+        server: serverId,
+        name: "ping",
+        description: "Returns pong for Runtime HTTP E2E.",
+        inputSchema: { type: "object", properties: {}, additionalProperties: false },
+      },
+    ]);
     await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
       data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });

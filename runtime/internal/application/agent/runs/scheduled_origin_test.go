@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -43,9 +43,7 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 			control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_owned", ExecutorID: "exec_owned"}}
 			effects := &fakeEffects{}
 			coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
-			result, err := coordinator.StartScheduled(t.Context(), ScheduledStart{
-				Request: test.request, DefaultWorkspacePath: "/default",
-			})
+			result, err := coordinator.StartAutomation(t.Context(), automationRequest(test.request, "/default"))
 			if err != nil {
 				t.Fatalf("start from captured request: %v", err)
 			}
@@ -63,8 +61,8 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 			opening := effects.opening()
 			initial, initialized := opening.InitialSession()
 			admission, admitted := opening.Admission()
-			captured, present := opening.Schedule()
-			if !initialized || !admitted || !present || captured != test.request ||
+			captured, present := opening.Automation()
+			if !initialized || !admitted || !present || captured != automationRequest(test.request, "/default") ||
 				initial.Title() != scheduled.Title() || initial.Workspace().Path() != "/captured" ||
 				initial.Selection() != selection || admission.ModelSelection != selection {
 				t.Fatalf("durable opening changed captured execution: %+v", opening)
@@ -82,4 +80,12 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 			}
 		})
 	}
+}
+
+func automationRequest(request schedule.RunRequest, cwd string) AutomationStart {
+	execution := request.Execution()
+	if execution.CWD() != "" {
+		cwd = execution.CWD()
+	}
+	return AutomationStart{Origin: AutomationOrigin{InstallationID: "11111111-1111-4111-8111-111111111111", ReleaseDigest: testsupport.Digest("release").String(), ServerName: "schedules"}, SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title(), Instructions: execution.Instructions(), CWD: cwd, ModelSelection: execution.ModelSelection()}
 }

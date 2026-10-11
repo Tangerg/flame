@@ -42,6 +42,29 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-12.1
+
+Memory and Schedules are optional, complete managed plugin backends. Their
+`services` declarations bind one enabled installation to each fact owner. Human
+commands and packaged views use the same backend as model Tools and maintenance.
+The host retains no Memory ledger or Schedule store. With no enabled owner, human
+operations return `plugin_unavailable`; optional Memory context is absent.
+
+These commands use `ownerResponse` idempotency: a key is scoped to the selected
+backend's installation and the Runtime store namespace. The backend persists its
+transition and reply together; the host redelivers identity after an unknown
+response instead of retaining a second outcome. Run acceptance remains a separate
+Runtime fact, recorded atomically with its opening. Already accepted automated
+Runs survive backend disable and can be reconciled after restart.
+
+Build target-specific backend packages from the repository's `go.work` using
+[the first-party package workflow](../plugins/README.md). Their executable sources
+share this application module; they require no published first-party module graph.
+Rebuild Runtime, CLI and Desktop together. This is an intentional pre-release
+schema break: use a fresh
+Runtime data directory and retain the old directory separately. No old Memory or
+Schedule tables are imported, decoded or maintained in parallel.
+
 ## Protocol 2026-10-11.4
 
 `clientDiagnostics` and `static` are admitted graphical view kinds. Both read only

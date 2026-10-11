@@ -3,13 +3,15 @@ package toolset_test
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
@@ -149,7 +151,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://example.invalid/"},
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://other.invalid/"},
-	}, nil, testSourceRegistry(nil))
+	}, nil, testSourceRegistry(nil), nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected duplicate-name error, got nil")
 	}
@@ -161,7 +163,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 func TestToolEnvironmentRejectsBadMCPEndpoint(t *testing.T) {
 	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("bad"), Transport: mcpserver.TransportStreamableHTTP}, // empty URL fails validation
-	}, nil, testSourceRegistry(nil))
+	}, nil, testSourceRegistry(nil), nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
 	}
@@ -218,7 +220,7 @@ func TestToolEnvironmentRejectsEmptyStdioCommand(t *testing.T) {
 		Source:    mcpserver.UserSource(),
 		Name:      testsupport.ServerName("bad"),
 		Transport: mcpserver.TransportStdio,
-	}}, nil, testSourceRegistry(nil))
+	}}, nil, testSourceRegistry(nil), nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
 	}
@@ -280,7 +282,7 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 
 func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.Built, *mcpconnection.Pool) {
 	t.Helper()
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers))
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Open MCP pool: %v", err)
 	}
@@ -417,4 +419,8 @@ func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver
 	}
 	defer attempt.Close()
 	return attempt.Run()
+}
+
+func (testSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
+	return "", false, nil
 }

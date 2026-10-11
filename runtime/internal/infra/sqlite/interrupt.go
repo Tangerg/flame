@@ -179,7 +179,7 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 	if err := i.requireTreeRuns(ctx, p); err != nil {
 		return err
 	}
-	result, err := conn(ctx, i.db).ExecContext(ctx,
+	result, err := Connection(ctx, i.db).ExecContext(ctx,
 		`INSERT INTO interrupts(root_run_id, executor_id, root_member_id, payload, continuations, interrupt_bindings, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(root_run_id) DO UPDATE SET
@@ -233,7 +233,7 @@ const interruptColumns = `root_run_id, executor_id,
 // are a root Run and that root's descendants.
 func (i *InterruptStore) requireTreeRuns(ctx context.Context, p InterruptRecord) error {
 	var members sql.NullString
-	err := conn(ctx, i.db).QueryRowContext(ctx,
+	err := Connection(ctx, i.db).QueryRowContext(ctx,
 		`SELECT (SELECT json_group_array(member.run_id)
 		           FROM runs AS member
 		          WHERE member.session_id = root.session_id
@@ -304,7 +304,7 @@ func (i *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 		args = append(args, limit)
 	}
 
-	rows, err := conn(ctx, i.db).QueryContext(ctx, query, args...)
+	rows, err := Connection(ctx, i.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list interrupts: %w", err)
 	}
@@ -328,7 +328,7 @@ func (i *InterruptStore) Get(ctx context.Context, runID string) (InterruptRecord
 	if err := validateRunResource("read interrupt", runID); err != nil {
 		return InterruptRecord{}, false, err
 	}
-	row := conn(ctx, i.db).QueryRowContext(ctx,
+	row := Connection(ctx, i.db).QueryRowContext(ctx,
 		`SELECT `+interruptColumns+` FROM interrupts WHERE root_run_id = ? AND state = ?`,
 		runID, interruptStateOpen.databaseValue())
 	p, err := scanPending(row)
@@ -350,7 +350,7 @@ func (i *InterruptStore) Consume(ctx context.Context, runID string) (InterruptRe
 	if err := resourceid.ValidateRun(runID); err != nil {
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: consume interrupt: %w", err)
 	}
-	row := conn(ctx, i.db).QueryRowContext(ctx,
+	row := Connection(ctx, i.db).QueryRowContext(ctx,
 		`DELETE FROM interrupts WHERE root_run_id = ? AND state = ?
 		 RETURNING `+interruptColumns,
 		runID, interruptStateOpen.databaseValue())
@@ -371,7 +371,7 @@ func (i *InterruptStore) ClaimResume(ctx context.Context, runID string) (Interru
 	if err := resourceid.ValidateRun(runID); err != nil {
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: claim resume: %w", err)
 	}
-	row := conn(ctx, i.db).QueryRowContext(ctx,
+	row := Connection(ctx, i.db).QueryRowContext(ctx,
 		`UPDATE interrupts
 		    SET state = ?
 		  WHERE root_run_id = ? AND state = ?
@@ -397,7 +397,7 @@ func (i *InterruptStore) RequireResumeClaim(ctx context.Context, runID string) e
 		return fmt.Errorf("sqlite: require resume claim: %w", err)
 	}
 	var state interruptState
-	err := conn(ctx, i.db).QueryRowContext(ctx,
+	err := Connection(ctx, i.db).QueryRowContext(ctx,
 		`SELECT state FROM interrupts WHERE root_run_id = ?`, runID,
 	).Scan(&state)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -416,7 +416,7 @@ func (i *InterruptStore) Delete(ctx context.Context, runID string) error {
 	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
 	}
-	if _, err := conn(ctx, i.db).ExecContext(ctx,
+	if _, err := Connection(ctx, i.db).ExecContext(ctx,
 		`DELETE FROM interrupts WHERE root_run_id = ?`, runID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
@@ -434,7 +434,7 @@ func (i *InterruptStore) DeleteResumeClaim(ctx context.Context, runID, rootMembe
 	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
 	}
-	result, err := conn(ctx, i.db).ExecContext(ctx,
+	result, err := Connection(ctx, i.db).ExecContext(ctx,
 		`DELETE FROM interrupts
 		  WHERE root_run_id = ? AND root_member_id = ? AND state = ?`,
 		runID, rootMemberID, interruptStateResuming.databaseValue(),

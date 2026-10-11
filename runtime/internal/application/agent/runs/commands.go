@@ -3,14 +3,14 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"iter"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/optional"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -111,15 +111,6 @@ type StartCommand struct {
 	// that launched it, so the Run's reported outcome only affects that Goal
 	// (see the goals application store's incarnation-and-revision CAS). Empty for ordinary runs.
 	GoalIncarnationID string
-}
-
-// ScheduledStart is a Schedule launch that opens its own Session. Request owns
-// the stable Session and Run identities, so re-dispatch after a crash resumes
-// the same logical Run, and the occurrence or manual record committed with the
-// opening.
-type ScheduledStart struct {
-	Request              schedule.RunRequest
-	DefaultWorkspacePath string
 }
 
 func (s StartCommand) clone() StartCommand {

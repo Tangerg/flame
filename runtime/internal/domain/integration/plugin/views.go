@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )

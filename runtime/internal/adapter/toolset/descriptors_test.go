@@ -3,28 +3,26 @@ package toolset
 import (
 	"context"
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"unicode"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -58,26 +56,10 @@ func wireCreateGoal(t *testing.T, resolver *Resolver) {
 // tool exist. They are not exercised: the guard below asks whether a classified
 // name can be reached at all, and a nil port answers "no" for a reason that has
 // nothing to do with drift.
-type allWiredSchedules struct{}
-
-func (allWiredSchedules) ListPage(context.Context, string, pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
-	return pagination.Page[schedule.Schedule]{}, nil
-}
-func (allWiredSchedules) Create(context.Context, schedule.Draft) (schedule.Schedule, error) {
-	return schedule.Schedule{}, nil
-}
-func (allWiredSchedules) Delete(context.Context, string) error { return nil }
-
 type allWiredToolResults struct{}
 
 func (allWiredToolResults) Fetch(context.Context, string, resultoffload.ID) (string, bool, error) {
 	return "", false, nil
-}
-
-type allWiredAgentMemorySearch struct{}
-
-func (allWiredAgentMemorySearch) Search(context.Context, string, string, int) ([]agentmemory.Item, error) {
-	return nil, nil
 }
 
 type allWiredSkillProposals struct{}
@@ -175,16 +157,14 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		UserHome:          t.TempDir(),
-		SkillsUserDir:     t.TempDir(), // backs skill
-		PlanMode:          policy,
-		Plan:              rolePlanStore{},
-		GoalReader:        activeGoalStub{},
-		GoalReporter:      activeGoalStub{},
-		Schedules:         allWiredSchedules{},   // backs schedule
-		ToolResults:       allWiredToolResults{}, // backs read_tool_result
-		AgentMemorySearch: allWiredAgentMemorySearch{},
-		SkillProposals:    allWiredSkillProposals{},
+		UserHome:       t.TempDir(),
+		SkillsUserDir:  t.TempDir(), // backs skill
+		PlanMode:       policy,
+		Plan:           rolePlanStore{},
+		GoalReader:     activeGoalStub{},
+		GoalReporter:   activeGoalStub{},
+		ToolResults:    allWiredToolResults{}, // backs read_tool_result
+		SkillProposals: allWiredSkillProposals{},
 		Online: OnlineConfig{
 			JinaAPIKey:       "test-jina",
 			TavilyAPIKey:     "test-tavily",

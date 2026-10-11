@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 )
 
 type constructionContext struct{ context.Context }
@@ -16,16 +17,18 @@ func TestDialRejectsTypedNilCollaborators(t *testing.T) {
 		ctx      context.Context
 		lifetime context.Context
 		oauth    OAuthSessionStore
+		client   *sdkmcp.Client
 	}{
-		{"startup", (*constructionContext)(nil), t.Context(), nil},
-		{"lifetime", t.Context(), (*constructionContext)(nil), nil},
-		{"supplied oauth store", t.Context(), t.Context(), (*memoryOAuthStore)(nil)},
+		{"startup", (*constructionContext)(nil), t.Context(), nil, NewClient()},
+		{"lifetime", t.Context(), (*constructionContext)(nil), nil, NewClient()},
+		{"supplied oauth store", t.Context(), t.Context(), (*memoryOAuthStore)(nil), NewClient()},
+		{"client", t.Context(), t.Context(), nil, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			connections, err := Dial(test.ctx, test.lifetime, nil, test.oauth, func(context.Context, mcpserver.ID) (*Launch, error) {
 				t.Error("invalid dial reached configuration reads")
 				return nil, errors.New("unexpected configuration read")
-			})
+			}, nil, test.client)
 			if connections != nil {
 				if closeErr := connections.Shutdown(context.WithoutCancel(t.Context())); closeErr != nil {
 					t.Error(closeErr)

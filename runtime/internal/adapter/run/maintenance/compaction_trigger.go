@@ -6,16 +6,13 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
 
 const (
-	// asciiBytesPerEstimatedToken is the text-only approximation shared by
-	// model-context maintenance. Non-ASCII runes are counted individually so
-	// CJK and emoji cannot inherit an English-only byte ratio.
-	asciiBytesPerEstimatedToken = 4
-
 	// The media placeholders are the smallest valid values for their Source
 	// variants. A provider prices image/audio/document content by modality, not
 	// by the size of its transport encoding, so raw payload bytes must not be
@@ -209,7 +206,7 @@ func estimateModelContextTokens(
 	if err != nil {
 		return 0, err
 	}
-	return estimateTextTokens(string(payload)), nil
+	return modeltext.EstimateTextTokens(string(payload)), nil
 }
 
 func modelContextEstimateMessages(messages []chat.Message) []chat.Message {
@@ -281,21 +278,4 @@ func cloneToolDefinitions(tools []chat.ToolDefinition) []chat.ToolDefinition {
 		cloned[index] = tools[index].Clone()
 	}
 	return cloned
-}
-
-func estimateTextTokens(text string) int {
-	ascii := 0
-	tokens := 0
-	for _, value := range text {
-		if value <= 0x7f {
-			ascii++
-		} else {
-			tokens++
-		}
-	}
-	asciiTokens := ascii / asciiBytesPerEstimatedToken
-	if ascii%asciiBytesPerEstimatedToken != 0 {
-		asciiTokens++
-	}
-	return saturatedAdd(tokens, asciiTokens)
 }

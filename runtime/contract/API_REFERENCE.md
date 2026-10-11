@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-11.4` · 110 methods
+Protocol `2026-10-12.1` · 110 methods
 
 ## Methods
 
@@ -92,11 +92,11 @@ Protocol `2026-10-11.4` · 110 methods
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
-| `schedules.list` | query | unary | none | none | cursor | — | `schedules` | `capability_not_negotiated` |
-| `schedules.create` | command | unary | replayResponse | none | none | — | `schedules` | `workspace_unavailable`, `capability_not_negotiated` |
-| `schedules.update` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
-| `schedules.delete` | command | unary | replayResponse | none | none | — | `schedules` | `capability_not_negotiated` |
-| `schedules.runNow` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `prompt_source_too_large`, `capability_not_negotiated` |
+| `schedules.list` | query | unary | none | none | cursor | — | `schedules` | `plugin_unavailable`, `capability_not_negotiated` |
+| `schedules.create` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `workspace_unavailable`, `capability_not_negotiated` |
+| `schedules.update` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
+| `schedules.delete` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `capability_not_negotiated` |
+| `schedules.runNow` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `schedule_not_found`, `prompt_source_too_large`, `capability_not_negotiated` |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
@@ -115,11 +115,11 @@ Protocol `2026-10-11.4` · 110 methods
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
 | `usage.summary` | query | unary | none | none | none | — | — | — |
-| `agentMemory.list` | query | unary | none | none | cursor | — | `agentMemory` | `capability_not_negotiated` |
-| `agentMemory.review` | command | unary | replayResponse | none | none | — | `agentMemory` | `capability_not_negotiated` |
-| `agentMemory.update` | command | unary | replayResponse | none | none | — | `agentMemory` | `capability_not_negotiated` |
-| `agentMemory.delete` | command | unary | replayResponse | none | none | — | `agentMemory` | `capability_not_negotiated` |
-| `agentMemory.add` | command | unary | replayResponse | none | none | — | `agentMemory` | `capability_not_negotiated` |
+| `agentMemory.list` | query | unary | none | none | cursor | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
+| `agentMemory.review` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
+| `agentMemory.update` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
+| `agentMemory.delete` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
+| `agentMemory.add` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `feedback.create` | command | unary | replayResponse | none | none | — | — | — |
 
 ## HTTP endpoints
@@ -942,6 +942,7 @@ TypeScript validator from this single registry projection.
 | `MCPHeadersChange` | `value` | `nonEmptyProperties` |
 | `MCPEnvironmentChange` | `value` | `nonEmptyProperties` |
 | `MCPServerCandidate` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `PluginService` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `ReadPluginRendererRequest` | `rendererId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginRenderer` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginRenderer` | `title` | `nonEmpty` |

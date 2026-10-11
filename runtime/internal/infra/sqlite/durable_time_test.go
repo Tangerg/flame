@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -21,7 +20,7 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			goals, plans, memory := sqlite.NewGoalStore(db), sqlite.NewPlanStore(db), sqlite.NewAgentMemoryStore(db)
+			goals, plans := sqlite.NewGoalStore(db), sqlite.NewPlanStore(db)
 			seedSession(t, sqlite.NewSessionStore(db), "session")
 			value, err := goal.New("session", "objective", modelref.Selection{}, run.Capabilities{}, "incarnation", at)
 			if err != nil {
@@ -48,32 +47,6 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			storedPlan, err := plans.State(t.Context(), "session")
 			if err != nil || !committedPlan(t, storedPlan).UpdatedAt().Equal(at) {
 				t.Fatalf("Plan time = %v, %v", committedPlan(t, storedPlan).UpdatedAt(), err)
-			}
-			item, added, err := memory.Add(t.Context(), agentmemory.ScopeUser, "", "user content", at)
-			if err != nil || !added {
-				t.Fatalf("Add = %v, %v", added, err)
-			}
-			storedItem, found, err := memory.Get(t.Context(), item.ID())
-			if err != nil || !found || !storedItem.CreatedAt().Equal(at) || !storedItem.UpdatedAt().Equal(at) {
-				t.Fatalf("Memory time = %+v, %v", storedItem.Snapshot(), err)
-			}
-			facts, err := memory.AppendLedger(t.Context(), agentmemory.FactBatch{
-				Project: "/repo", SessionID: "session", Day: at.Format(time.DateOnly), Facts: []string{"fact"}, CapturedAt: at,
-			})
-			if err != nil || len(facts) != 1 {
-				t.Fatalf("AppendLedger = %+v, %v", facts, err)
-			}
-			storedFacts, err := memory.PendingLedger(t.Context(), "/repo", 0, 1)
-			if err != nil || len(storedFacts) != 1 || !storedFacts[0].CapturedAt.Equal(at) {
-				t.Fatalf("Ledger time = %+v, %v", storedFacts, err)
-			}
-			published, err := memory.Reconcile(t.Context(), agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, nil, at))
-			if err != nil || !published {
-				t.Fatalf("Reconcile = %v, %v", published, err)
-			}
-			storedState, err := memory.State(t.Context(), "/repo")
-			if err != nil || !storedState.UpdatedAt.Equal(at) {
-				t.Fatalf("Curation time = %+v, %v", storedState, err)
 			}
 			draft := runDraft("run", "session")
 			draft.CreatedAt = at

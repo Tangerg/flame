@@ -72,7 +72,7 @@ func (s *SessionStore) list(
 		query += ` LIMIT ?`
 		args = append(args, limit)
 	}
-	rows, err := conn(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
 	}
@@ -104,7 +104,7 @@ func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	var one int
-	err := conn(ctx, s.db).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
+	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -118,7 +118,7 @@ func (s *SessionStore) Get(ctx context.Context, id string) (session.Session, err
 	if err := validateSessionResource("read Session", id); err != nil {
 		return session.Session{}, err
 	}
-	row := conn(ctx, s.db).QueryRowContext(ctx,
+	row := Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)
 	sess, err := rowToSession(row)
 	if errors.Is(err, sql.ErrNoRows) {

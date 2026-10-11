@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -20,7 +22,7 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 		want   string
 	}{
 		{"text", chat.NewTextToolOutput("visible"), "visible"},
-		{"media", mediaOutput, "image result " + transcriptMediaMarker},
+		{"media", mediaOutput, "image result " + modeltext.MediaMarker},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.output.Details = details
@@ -28,7 +30,7 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := renderToolOutput(tc.output); got != tc.want {
+			if got := modeltext.RenderToolOutput(tc.output); got != tc.want {
 				t.Errorf("transcript includes hidden details: %q", got)
 			}
 			trimmed, changed := trimToolOutput(tc.output)
@@ -48,7 +50,7 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 
 func TestToolOutputMaintenancePreservesDetailsOnlyFallback(t *testing.T) {
 	output := chat.ToolOutput{Details: jsontext.Value(`{"value":"visible"}`)}
-	if got := renderToolOutput(output); got != string(output.Details) {
+	if got := modeltext.RenderToolOutput(output); got != string(output.Details) {
 		t.Fatalf("details-only transcript = %q", got)
 	}
 	if trimmed, changed := trimToolOutput(output); changed || !reflect.DeepEqual(trimmed, output) {

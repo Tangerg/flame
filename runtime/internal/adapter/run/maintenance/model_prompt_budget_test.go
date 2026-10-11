@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -159,11 +161,11 @@ func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 		}))
 	}
 
-	transcript := renderTranscript(messages)
+	transcript := modeltext.RenderTranscript(messages)
 	if len(transcript) > maximumInputBytes {
 		t.Errorf("renderTranscript = %d bytes, want at most %d", len(transcript), maximumInputBytes)
 	}
-	if tokens := mustEstimateModelContextTokens(t, messages, nil, chat.Options{}); tokens <= len(transcript)/asciiBytesPerEstimatedToken {
+	if tokens := mustEstimateModelContextTokens(t, messages, nil, chat.Options{}); tokens <= len(transcript)/modeltext.ASCIIBytesPerEstimatedToken {
 		t.Fatalf("compaction estimate = %d, want raw footprint rather than bounded rendering", tokens)
 	}
 }

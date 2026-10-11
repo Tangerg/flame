@@ -36,6 +36,7 @@ function fixture(
       name: "Actions",
       digest: "1".repeat(64),
       actions: [{ id: "rename", title: "Name investigation", operation: "renameSession" }],
+      services: [],
       servers: [],
       inputs: [],
       themes: [],

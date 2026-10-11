@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/core/chat"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -51,12 +53,12 @@ const (
 // keeping the existing history is always preferable to losing it
 // behind a bad summary.
 func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string, error) {
-	transcript := renderTranscript(msgs)
+	transcript := modeltext.RenderTranscript(msgs)
 
 	text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		Operation:    "compaction",
 		SystemPrompt: compactionPrompt, UserPrompt: transcript,
-		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
+		MaxInputBytes: modeltext.ModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
 	})
 	if err != nil {
 		return "", err

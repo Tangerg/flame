@@ -3,14 +3,15 @@ package execution
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
 // TestComposeSystemPrompt_BaseOnly verifies empty context sources yield the

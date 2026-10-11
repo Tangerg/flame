@@ -78,7 +78,7 @@ The central constraint is **one behavior, one semantic owner**, not **one behavi
 | Updates | Stage releases and refuse unsafe activation while dependencies remain in use. | Initial support does not promise arbitrary live code replacement. |
 | Security | Separate provenance, approval of an exact release digest, and enforceable isolation; defer capability requests and grants until a host-brokered operation consumes them. | A valid package, signature, or tool annotation never grants authority by itself. |
 | Compatibility | Keep portable format, plugin API, UI bridge, and core protocol versions distinct. | Support is explicit; no guessing from client names or package version strings. |
-| Delivery scope | Repair tool identity and policy ownership first, then admit external packages through existing owners. | Existing first-party tools are not moved behind a process boundary to demonstrate the platform; Memory and scheduling are not extraction targets. |
+| Delivery scope | Repair tool identity and policy ownership first, then admit external packages through existing owners. | Memory and scheduling now move their complete fact ownership behind managed stdio backends; unrelated built-ins remain unchanged. |
 
 These decisions preserve the repository's product ownership, explicit composition, consumer-shaped interfaces, and preference for existing released dependencies. They do not import Cordis, Effect, an ambient service locator, or a general-purpose dependency-injection container into Go. [F1] [F2] [F3]
 
@@ -1149,14 +1149,16 @@ The table below is a proposed boundary selection, not an exhaustive capability i
 | Timeline/Usage/diagnostic views | Read-only view/action package | Runtime trajectory, invocation and accounting records | Queries remain shared, bounded, and source-attributed |
 | Enhanced Diff UI and exports | View and format renderer | Runtime mutation, checkpoint, import and restore semantics | Export does not acquire unsafe restore authority |
 | Language services and analysis | Config/adapter plus diagnostic view first | Existing workspace/process authority | Scoped process lifecycle, versioned inputs, safe mutation path |
-| Memory view and extraction strategy | UI and candidate-generation policy first | Current memory read/publish/curation owners | Candidate versus committed memory stays distinct |
+| Memory | Complete managed backend and view | Plugin ledger, watermark, review, publication and retrieval | Runtime supplies committed conversation, compaction fact and bounded model authority |
 | Skill mining and proposal UX | Suggestion strategy and interface | Proposal review and publication owner | No automatic mutation of installed content |
-| Schedules UI/templates/triggers | Product commands and presentation first | Schedule/Occurrence persistence and Run admission | No client-side scheduler or new replay identity |
+| Schedules | Complete managed backend and view | Plugin Schedule/Occurrence; Runtime Run acceptance | Durable captured work, acceptance reconciliation and fair redelivery |
 | Plan/Goal controls | Optional presentation and sanctioned actions | Existing Runtime Plan/Goal use cases | Exact execution provenance and authority |
 | Question/delegation/search control tools | Remain existing execution adapters initially | Scope/Runtime execution and Interrupt owners | Any future remote form proves equivalent recovery |
 | Provider implementations | Consider separately if deployment requires it | Released Scope provider contracts and Runtime selection | Do not disguise primary model invocation as an MCP tool |
 
-The current assembly, online integration, MCP configuration, Skill management, memory use cases, and scheduling worker support these ownership distinctions. [F14] [F15] [F24] [F25] [F26] [F27] [F28]
+The original assembly, online integration, MCP configuration, Skill management,
+memory use cases and scheduling worker established these ownership distinctions.
+The complete backends below replace their respective host feature owners. [F14] [F15] [F24] [F25] [F26] [F27] [F28]
 
 ### 19.2 First complete backend package: an external Agent Plugins package
 
@@ -1176,19 +1178,45 @@ Start by removing direct imports into the feature's private implementation and e
 
 ### 19.4 Memory extraction boundary
 
-The current memory read model combines project/user data and optional semantic signals; curation owns a ledger and compare-and-swap publication of a generation. Those are distinct responsibilities with existing authoritative transitions. [F25] [F26]
+The [Memory backend](../plugins/memory/README.md) now owns items, review, user
+edits, tombstones, ledger append, watermark compare-and-set publication and the
+derived embedding cache coherently. Runtime owns committed conversation,
+compaction and provider/model configuration. Its bounded request supplies those
+facts to the backend; the backend owns the extraction and curation gate. Human
+commands, views, Run-context consumption and `search_memory` use that one owner.
+An empty optional memory set remains distinguishable from an enabled backend's
+failed read. There is no second official memory in Runtime.
 
-Initial extensions may generate candidates, rank results through an explicit strategy seam, or render the current state. Commit/review/publish decisions remain with the existing owner. An empty memory set and a failed memory read must remain distinguishable.
-
-Whole-domain extraction requires moving ledger, watermark, generation publication, review, data migration, maintenance lifetime, and context-consumption contracts coherently. A plugin maintaining one “official memory” while Runtime maintains another is not an acceptable intermediate production design.
+The `memory` service declaration binds to a declared stdio server. Runtime admits
+one enabled installation per closed kind. A private command transaction saves its
+mutation and reply together. `ownerResponse` retries redeliver the same identity;
+the host does not cache an unknown response as a competing terminal outcome.
+Model operations use a bounded, invocation-scoped loopback capability issued only
+to the exact backend generation. It is not a Runtime bearer, provider credential
+or generic host tunnel. Retirement cancels and joins admitted model calls.
 
 ### 19.5 Scheduling extraction boundary
 
-The existing scheduling worker claims occurrences durably and retries pending dispatch using preserved Session/Run identity. It is not equivalent to a browser timer that resubmits a prompt. [F27]
+The [Schedules backend](../plugins/schedules/README.md) now owns definitions,
+revisions, cron cursor claims, durable Occurrences, pending manual work, captured
+execution and acknowledgement. Runtime owns the minute wake-up and Run admission.
+The bounded scanner rotates pending pages while leaving capacity for newly due
+work. Browser timers and view lifetimes have no scheduling authority.
 
-First extract UI and templates. A later scheduling module must own Schedule and Occurrence coherently and call Runtime's admitted run-start contract. It needs restart, duplicate-trigger, lost-acknowledgement, cancellation, disable/uninstall, and data-migration behavior before becoming optional.
+Before dispatch, the backend captures stable Session/Run identity and execution
+input in its private store. Runtime rechecks installation authority and commits its
+acceptance receipt atomically with Session/Run opening. The backend then settles
+its pending work once. Lost acknowledgement, terminal execution, restart and Run
+or Session deletion do not erase acceptance evidence or create another Run.
+Definition edits and deletion cannot rewrite captured pending work. Disabling the
+plugin withdraws new admission; accepted Runs continue under Runtime.
 
-A plugin-visible timer or event notification must not be allowed to pretend it supplies this durable scheduling contract. Keep the default first-party worker wired until a complete replacement is ready.
+The obsolete host worker and built-in model Tools are removed. Disable and
+uninstall retain private installation data; reenable and restart resume it. The
+pre-release Runtime schema is intentionally replaced and requires a fresh data
+directory. There are no compatibility readers, dual writes or implicit migration.
+Build packages for the target platform from the repository's local `go.work`;
+installation never compiles source or downloads runtime dependencies.
 
 ### 19.6 Implementation placement
 
@@ -1391,7 +1419,7 @@ These are bounded release decisions. They do not reopen the ownership model or r
 | Generic executable third-party Hook pipeline | A concrete extension not expressible by supported capabilities | Non-bypassable restrictions and immutable committed facts. |
 | Durable MCP MRTR/Tasks | A required backend with supported SDK behavior | Original invocation, Interrupt ownership, expiry and unknown-effect semantics. |
 | Multi-version live backends | Real requirement to update without draining work | Exact dependency pinning and bounded resource retention. |
-| Whole Memory or scheduling extraction | Stable plugin data and lifecycle contracts | Move the coherent semantic owner, not only its tool wrapper. |
+| General subsystem extraction | Stable plugin data and lifecycle contracts | Memory and Schedules establish complete owners; other extractions need their own proven boundary. |
 | Arbitrary plugin dependency graph | More than bundled self-contained releases are required | Deterministic resolution; no ambient shared services or hidden privilege inheritance. |
 | Native client-local plugin execution | A capability cannot run at the Runtime environment | Explicit execution location and client-specific authority. |
 | WASM/embedded JS runtime | Measured distribution or enforceable-isolation need | Reuse mature runtime; do not add a second agent framework. |
@@ -1472,8 +1500,9 @@ The remaining compiled surfaces own trusted application interaction: conversatio
 subagent execution inspection, cancellation and recovery; Goal and Plan controls;
 composer, approvals, settings and native file transfer. Moving their controls into a
 guest would require the deferred general UI or execution contracts. Provider, file,
-process, Memory and scheduling semantics retain their existing owners; optional
-presentation packages do not relocate those semantics behind wrappers.
+process semantics retain their existing owners. Memory and scheduling now have
+complete managed backend owners as described in Sections 19.4 and 19.5; optional
+presentation packages alone do not relocate semantics behind wrappers.
 
 **Slice E: durable host integrations, only as justified.** Validate MRTR, Tasks, delegated execution, or whole-subsystem extraction individually. These are not prerequisites for the base heterogeneous plugin model.
 

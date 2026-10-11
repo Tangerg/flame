@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -51,7 +53,7 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 	defer transport.Close()
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &heldLaunchRegistry{mutableSourceRegistry: &mutableSourceRegistry{server: server.Clone()}, guard: ctx, captured: make(chan struct{}), resume: make(chan struct{})}
-	pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,4 +99,8 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 	if !slices.Equal(before, after) {
 		t.Fatalf("superseded authorization destroyed replacement: before=%+v after=%+v", before, after)
 	}
+}
+
+func (heldLaunchRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
+	return "", false, nil
 }

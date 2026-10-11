@@ -1,0 +1,189 @@
+package managedmcp
+
+import (
+	"context"
+	"errors"
+	"net/url"
+	"strings"
+	"sync/atomic"
+	"testing"
+
+	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+)
+
+func testPrompt() Prompt {
+	return Prompt{Operation: "memory.extract", UserPrompt: "captured transcript", MaxInputBytes: 128, MaxOutputTokens: 64}
+}
+
+func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	token := strings.Repeat("a", 64)
+	_, err := (RemoteModels{Grant: "http://127.0.0.1:1/" + token}).Complete(ctx, testPrompt())
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled transport lost its cause: %v", err)
+	}
+	if strings.Contains(err.Error(), token) {
+		t.Fatal("transport failure exposed the model capability")
+	}
+}
+
+func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
+	broker := NewModels()
+	session := new(sdk.ClientSession)
+	broker.AdmitSession(session)
+	var calls atomic.Int32
+	grant, release, err := broker.Grant(t.Context(), session, func(context.Context, Prompt) (string, error) { calls.Add(1); return "fact", nil }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	endpoint, _ := url.Parse(grant)
+	if _, err := broker.complete(t.Context(), new(sdk.ClientSession), endpoint.Path[1:], testPrompt()); err == nil {
+		t.Fatal("another connection borrowed model authority")
+	}
+	remote := RemoteModels{Grant: grant}
+	for range 2 {
+		value, err := remote.Complete(t.Context(), testPrompt())
+		if err != nil || value != "fact" {
+			t.Fatalf("completion=%q %v", value, err)
+		}
+	}
+	if _, err := remote.Complete(t.Context(), testPrompt()); err == nil {
+		t.Fatal("model budget exceeded")
+	}
+	release()
+	release()
+	if _, err := remote.Complete(t.Context(), testPrompt()); err == nil {
+		t.Fatal("released grant accepted")
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("calls=%d", calls.Load())
+	}
+}
+func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
+	broker := NewModels()
+	session := new(sdk.ClientSession)
+	broker.AdmitSession(session)
+	entered := make(chan struct{})
+	settled := make(chan struct{})
+	grant, release, err := broker.Grant(t.Context(), session, func(ctx context.Context, _ Prompt) (string, error) {
+		close(entered)
+		<-ctx.Done()
+		close(settled)
+		return "", ctx.Err()
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	done := make(chan error, 1)
+	go func() { _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); done <- err }()
+	<-entered
+	broker.RevokeSession(session)
+	select {
+	case <-settled:
+	default:
+		t.Fatal("retirement returned before model call settled")
+	}
+	if err := <-done; err == nil {
+		t.Fatal("canceled completion succeeded")
+	}
+}
+func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
+	broker := NewModels()
+	server := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
+	if err := RegisterServer(server, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant string) (string, error) {
+		return (RemoteModels{Grant: grant}).Complete(ctx, testPrompt())
+	}); err != nil {
+		t.Fatal(err)
+	}
+	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
+	if err := RegisterClient[string, string](client, "flame.memory/test.v1"); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sdk.NewInMemoryTransports()
+	backend, err := server.Connect(t.Context(), a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer backend.Close()
+	session, err := client.Connect(t.Context(), b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	broker.AdmitSession(session)
+	grant, release, err := broker.Grant(t.Context(), session, func(context.Context, Prompt) (string, error) { return "durable fact", nil }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	value, err := Call[string, string](t.Context(), session, "flame.memory/test.v1", grant)
+	if err != nil || value != "durable fact" {
+		t.Fatalf("round trip=%q %v", value, err)
+	}
+}
+func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
+	broker := NewModels()
+	ctx, cancel := context.WithCancel(t.Context())
+	session := new(sdk.ClientSession)
+	broker.AdmitSession(session)
+	grant, release, err := broker.Grant(ctx, session, func(context.Context, Prompt) (string, error) { return "", errors.New("must not be called") }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	cancel()
+	if _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); err == nil {
+		t.Fatal("canceled invocation retained model authority")
+	}
+}
+
+type boundedEmbeddings struct{ calls int }
+
+func (*boundedEmbeddings) ID() string { return "fixture" }
+func (e *boundedEmbeddings) Embed(_ context.Context, texts []string) ([][]float32, error) {
+	e.calls++
+	vectors := make([][]float32, len(texts))
+	for i := range texts {
+		vectors[i] = []float32{1}
+	}
+	return vectors, nil
+}
+
+func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
+	broker := NewModels()
+	embedder := new(boundedEmbeddings)
+	session := new(sdk.ClientSession)
+	broker.AdmitSession(session)
+	grant, release, err := broker.Grant(t.Context(), session, nil, embedder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	texts := make([]string, memory.MaxVisiblePerTarget*2)
+	for i := range texts {
+		texts[i] = strings.Repeat("\x00", memory.MaxContentCharacters)
+	}
+	vectors, err := (RemoteModels{Grant: grant, Space: embedder.ID()}).Embed(t.Context(), texts)
+	if err != nil || len(vectors) != len(texts) || embedder.calls != 1 {
+		t.Fatalf("maximum corpus: vectors=%d calls=%d error=%v", len(vectors), embedder.calls, err)
+	}
+}
+
+func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
+	broker := NewModels()
+	session := new(sdk.ClientSession)
+	broker.AdmitSession(session)
+	broker.RevokeSession(session)
+	grant, release, err := broker.Grant(t.Context(), session, nil, nil)
+	if err == nil {
+		release()
+		t.Fatalf("retired connection issued model capability %q", grant)
+	}
+	if grant != "" || release != nil {
+		t.Fatal("refused grant retained model authority")
+	}
+}

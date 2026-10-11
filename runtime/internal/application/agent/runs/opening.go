@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -16,11 +15,11 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// Only the two start entry points form this projection. A scheduled request's
+// Only the two start entry points form this projection. An automation request's
 // execution input cannot be authored separately from its ownership proof.
 type rootStartCommand struct {
 	StartCommand
-	scheduled     *schedule.RunRequest
+	automation    *AutomationStart
 	workspacePath string
 }
 
@@ -44,7 +43,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 }
 
 // startRoot claims the Session and working tree, stages execution, and commits
-// the opening. A scheduled Session commits in the same write-set. Activation
+// the opening. An automation Session commits in the same write-set. Activation
 // continues under the lifecycle supervisor after that acceptance boundary.
 func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (result StartResult, err error) {
 	runAdmission, preparation, err := c.admitRootStart(ctx, cmd)
@@ -97,8 +96,8 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (resu
 
 	cmd = preparation.command
 	var runID string
-	if cmd.scheduled != nil {
-		runID = cmd.scheduled.RunID()
+	if cmd.automation != nil {
+		runID = cmd.automation.RunID
 	} else {
 		runID = c.newRunID()
 	}
@@ -124,7 +123,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (resu
 		GoalIncarnationID:  cmd.GoalIncarnationID,
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
-		Schedule:           cmd.scheduled,
+		Automation:         cmd.automation,
 		CreatedAt:          createdAt,
 		OpeningUserText:    preparation.openingUserText,
 		Input:              cmd.Input,
@@ -296,9 +295,9 @@ func (c *Coordinator) resolveSession(
 	cmd rootStartCommand,
 	selection modelref.Selection,
 ) (session.Session, *session.Session, error) {
-	if cmd.scheduled != nil {
-		return c.sessionCreator.PrepareScheduled(
-			ctx, cmd.scheduled.SessionID(), cmd.scheduled.Execution().Title(),
+	if cmd.automation != nil {
+		return c.sessionCreator.PrepareAutomation(
+			ctx, cmd.automation.SessionID, cmd.automation.Title,
 			cmd.workspacePath, selection,
 		)
 	}

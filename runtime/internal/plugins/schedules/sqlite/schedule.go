@@ -1,0 +1,405 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+)
+
+// ScheduleStore is the SQLite persistence adapter for scheduled runs. The DB
+// must have been opened via [Open] so the schedules table exists.
+type ScheduleStore struct {
+	db *sql.DB
+}
+
+// NewScheduleStore wires the given *sql.DB to the schedule persistence surface.
+func NewScheduleStore(db *sql.DB) *ScheduleStore {
+	return &ScheduleStore{db: db}
+}
+
+// scheduleColumns is the schedules row in scan order. Every read shares it so
+// a column added to the table cannot reach one query and miss another.
+const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision`
+
+func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
+	if err := scheduled.Validate(); err != nil {
+		return fmt.Errorf("sqlite: validate initial schedule: %w", err)
+	}
+	if scheduled.Revision() != exactint.First().Value() {
+		return fmt.Errorf("sqlite: initial schedule revision is %d: %w", scheduled.Revision(), schedule.ErrRevisionConflict)
+	}
+	snapshot := scheduled.Snapshot()
+	_, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
+		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
+		nullableMillis(snapshot.LastRunAt), nullableMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
+	if err != nil {
+		return fmt.Errorf("sqlite: create schedule: %w", err)
+	}
+	return nil
+}
+
+func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replacement) error {
+	expectedRevision := replacement.ExpectedRevision()
+	sc := replacement.State()
+	snapshot := sc.Snapshot()
+	res, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+		`UPDATE schedules
+		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, next_run_at = ?, revision = ?
+		 WHERE id = ? AND revision = ?`,
+		snapshot.Title, snapshot.Instructions, snapshot.CWD,
+		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
+		nullableMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
+	if err != nil {
+		return fmt.Errorf("sqlite: update schedule: %w", err)
+	}
+	changed, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect schedule update: %w", err)
+	}
+	if changed == 0 {
+		if _, getErr := s.Get(ctx, sc.ID()); getErr != nil {
+			return getErr
+		}
+		return schedule.ErrRevisionConflict
+	}
+	return nil
+}
+
+func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, error) {
+	if err := schedule.ValidateID(id); err != nil {
+		return schedule.Schedule{}, err
+	}
+	row := sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx,
+		`SELECT `+scheduleColumns+`
+		 FROM schedules WHERE id = ?`, id)
+	sc, err := scanSchedule(row.Scan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return schedule.Schedule{}, schedule.ErrNotFound
+	}
+	if err != nil {
+		return schedule.Schedule{}, fmt.Errorf("sqlite: get schedule: %w", err)
+	}
+	return sc, nil
+}
+
+// ListPage returns schedules newest-created first, bounded by the query. after is
+// the (creation time, id) position a previous page ended at; the id breaks ties,
+// so two schedules created in the same nanosecond cannot be dropped or repeated
+// across a page boundary.
+func (s *ScheduleStore) ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error) {
+	if limit <= 0 {
+		return nil, errors.New("sqlite: schedule page limit must be positive")
+	}
+	if afterID != "" {
+		if err := schedule.ValidateID(afterID); err != nil {
+			return nil, fmt.Errorf("sqlite: schedule page anchor: %w", err)
+		}
+	}
+	query := `SELECT ` + scheduleColumns + `
+		 FROM schedules`
+	var args []any
+	if !afterCreatedAt.IsZero() || afterID != "" {
+		query += ` WHERE created_at < ? OR (created_at = ? AND id < ?)`
+		afterMillis := afterCreatedAt.UnixMilli()
+		args = append(args, afterMillis, afterMillis, afterID)
+	}
+	query += ` ORDER BY created_at DESC, id DESC`
+	query += ` LIMIT ?`
+	args = append(args, limit)
+	return s.query(ctx, "list schedules", query, args...)
+}
+
+func (s *ScheduleStore) Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error) {
+	if limit <= 0 {
+		return nil, errors.New("sqlite: schedule due limit must be positive")
+	}
+	return s.query(ctx, "list due schedules",
+		`SELECT `+scheduleColumns+`
+		 FROM schedules
+		 WHERE next_run_at IS NOT NULL AND next_run_at <= ?
+		   AND NOT EXISTS (SELECT 1 FROM schedule_firings WHERE schedule_id = schedules.id AND state = ?)
+		 ORDER BY next_run_at, id
+		 LIMIT ?`, now.UnixMilli(), scheduleFiringPending.databaseValue(), limit)
+}
+
+// Claim atomically advances a due schedule's cursor and materializes its
+// immutable occurrence. The pending row is the durable work item a future
+// worker dispatches after a process crash; cursor advancement therefore cannot
+// produce either a duplicate accepted run or a silently lost occurrence.
+// LastRunAt remains an accepted-Run fact and is intentionally not touched here.
+func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claimed bool, err error) {
+	if err := claim.Validate(); err != nil {
+		return false, fmt.Errorf("sqlite: invalid schedule claim: %w", err)
+	}
+	occurrence := claim.Occurrence()
+	snapshot := occurrence.Snapshot()
+	expectedRevision := claim.ExpectedRevision()
+	state := claim.State()
+	execution := snapshot.Execution
+	err = sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		res, execContextErr := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+			`UPDATE schedules SET next_run_at = ?, revision = ?
+				 WHERE id = ? AND revision = ? AND next_run_at = ?
+				   AND NOT EXISTS (
+						SELECT 1 FROM schedule_firings
+						 WHERE schedule_id = ? AND state = ?
+				   )`,
+			state.NextRunAt().UnixMilli(), state.Revision(), state.ID(), expectedRevision,
+			occurrence.DueAt().UnixMilli(), occurrence.ScheduleID(), scheduleFiringPending.databaseValue())
+		if execContextErr != nil {
+			return fmt.Errorf("sqlite: claim schedule occurrence: %w", execContextErr)
+		}
+		changed, execContextErr := res.RowsAffected()
+		if execContextErr != nil {
+			return fmt.Errorf("sqlite: inspect schedule occurrence claim: %w", execContextErr)
+		}
+		if changed == 0 {
+			return nil
+		}
+		_, execContextErr = sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+			`INSERT INTO schedule_firings(
+				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort,
+				due_at, fired_at, next_run_at, session_id, run_id, state
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			snapshot.ID, occurrence.ScheduleID(), execution.Title, execution.Instructions,
+			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(),
+			occurrence.DueAt().UnixMilli(), snapshot.FiredAt.UnixMilli(), snapshot.NextRunAt.UnixMilli(), snapshot.SessionID, snapshot.RunID,
+			scheduleFiringPending.databaseValue())
+		if execContextErr != nil {
+			return fmt.Errorf("sqlite: persist schedule occurrence: %w", execContextErr)
+		}
+		claimed = true
+		return nil
+	})
+	return claimed, err
+}
+
+// Pending lists durable occurrences whose Run opening has not committed. They
+// carry a captured execution value, so later schedule edits or deletion cannot
+// rewrite work that was already due.
+func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error) {
+	if limit <= 0 {
+		return nil, errors.New("sqlite: schedule pending limit must be positive")
+	}
+	query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
+			fired_at, next_run_at, session_id, run_id
+		 FROM schedule_firings WHERE state = ?`
+	args := []any{scheduleFiringPending.databaseValue()}
+	if !afterDueAt.IsZero() || afterID != "" {
+		query += ` AND (due_at > ? OR (due_at = ? AND id > ?))`
+		args = append(args, afterDueAt.UnixMilli(), afterDueAt.UnixMilli(), afterID)
+	}
+	query += ` ORDER BY due_at, id LIMIT ?`
+	args = append(args, limit)
+	rows, err := sqlitedb.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var occurrences []schedule.Occurrence
+	for rows.Next() {
+		occurrence, err := scanOccurrence(rows.Scan)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: scan pending schedule occurrence: %w", err)
+		}
+		occurrences = append(occurrences, occurrence)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
+	}
+	return occurrences, nil
+}
+
+// Accept confirms the occurrence in the same transaction as its exact Run
+// opening. Repeating the confirmation while that Run is live is harmless; any
+// other or absent Run is an ownership violation. The accepted tombstone follows
+// the Run lifecycle and is pruned when that Run finishes or is deleted.
+func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptance) error {
+	if err := acceptance.Validate(); err != nil {
+		return fmt.Errorf("sqlite: invalid schedule acceptance: %w", err)
+	}
+	occurrenceID, runID := acceptance.OccurrenceID(), acceptance.RunID()
+	return sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		res, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+			`UPDATE schedule_firings SET state = ?
+			  WHERE id = ? AND run_id = ? AND state = ?`,
+			scheduleFiringAccepted.databaseValue(), occurrenceID, runID,
+			scheduleFiringPending.databaseValue())
+		if err != nil {
+			return fmt.Errorf("sqlite: accept schedule occurrence: %w", err)
+		}
+		changed, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect schedule occurrence acceptance: %w", err)
+		}
+		if changed != 0 {
+			var scheduleID string
+			var firedAt int64
+			if scanErr := sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx,
+				`SELECT schedule_id, fired_at FROM schedule_firings WHERE id = ? AND run_id = ?`, occurrenceID, runID).Scan(&scheduleID, &firedAt); scanErr != nil {
+				return fmt.Errorf("sqlite: load accepted schedule occurrence: %w", scanErr)
+			}
+			_, err := s.recordAcceptedRun(ctx, scheduleID, time.UnixMilli(firedAt).UTC())
+			return err
+		}
+		var storedRunID, rawState string
+		err = sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx,
+			`SELECT run_id, state FROM schedule_firings WHERE id = ?`, occurrenceID).Scan(&storedRunID, &rawState)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("sqlite: schedule occurrence not found")
+		}
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect schedule occurrence acceptance: %w", err)
+		}
+		state, restoreErr := restoreScheduleFiringState(rawState)
+		if restoreErr != nil {
+			return restoreErr
+		}
+		if storedRunID == runID && state == scheduleFiringAccepted {
+			return nil
+		}
+		if storedRunID != runID {
+			return errors.New("sqlite: schedule occurrence is owned by another run")
+		}
+		return errors.New("sqlite: schedule occurrence could not be accepted")
+	})
+}
+
+func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt time.Time) (bool, error) {
+	current, err := s.Get(ctx, id)
+	if errors.Is(err, schedule.ErrNotFound) {
+		// Captured dispatch survives definition deletion. Acceptance still
+		// settles its private queue record without recreating the definition.
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	next, err := current.AcceptRun(ranAt)
+	if err != nil {
+		return false, err
+	}
+	result, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+		`UPDATE schedules
+		 SET last_run_at = ?, revision = ?
+		 WHERE id = ? AND revision = ?`,
+		next.LastRunAt().UnixMilli(), next.Revision(), next.ID(), current.Revision())
+	if err != nil {
+		return false, fmt.Errorf("sqlite: persist accepted schedule run: %w", err)
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("sqlite: inspect accepted schedule run: %w", err)
+	}
+	if updated == 0 {
+		return false, schedule.ErrRevisionConflict
+	}
+	return true, nil
+}
+
+func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
+	if err := schedule.ValidateID(id); err != nil {
+		return false, err
+	}
+	result, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM schedules WHERE id = ?`, id)
+	if err != nil {
+		return false, fmt.Errorf("sqlite: delete schedule: %w", err)
+	}
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("sqlite: inspect deleted schedule: %w", err)
+	}
+	return deleted > 0, nil
+}
+
+func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...any) ([]schedule.Schedule, error) {
+	rows, err := sqlitedb.Connection(ctx, s.db).QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: %s: %w", operation, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []schedule.Schedule
+	for rows.Next() {
+		sc, err := scanSchedule(rows.Scan)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: scan schedule: %w", err)
+		}
+		out = append(out, sc)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: %s: %w", operation, err)
+	}
+	return out, nil
+}
+
+func nullableMillis(value time.Time) any {
+	if value.IsZero() {
+		return nil
+	}
+	return value.UnixMilli()
+}
+
+func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
+	var snapshot schedule.Snapshot
+	var provider, model, reasoningEffort string
+	var lastMillis, nextMillis sql.NullInt64
+	var createdMillis int64
+	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &provider, &model, &reasoningEffort, &snapshot.Cron,
+		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
+		return schedule.Schedule{}, err
+	}
+	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	if err != nil {
+		return schedule.Schedule{}, fmt.Errorf("sqlite: decode schedule model selection: %w", err)
+	}
+	snapshot.ModelSelection = selection
+	if lastMillis.Valid {
+		snapshot.LastRunAt = time.UnixMilli(lastMillis.Int64).UTC()
+	}
+	if nextMillis.Valid {
+		snapshot.NextRunAt = time.UnixMilli(nextMillis.Int64).UTC()
+	}
+	snapshot.CreatedAt = time.UnixMilli(createdMillis).UTC()
+	scheduled, err := schedule.Restore(snapshot)
+	if err != nil {
+		return schedule.Schedule{}, fmt.Errorf("sqlite: restore schedule: %w", err)
+	}
+	return scheduled, nil
+}
+
+func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
+	var snapshot schedule.OccurrenceSnapshot
+	var title, instructions, cwd, provider, model, reasoningEffort string
+	var firedAt, nextRunAt int64
+	if err := scan(&snapshot.ID, &title, &instructions,
+		&cwd, &provider, &model, &reasoningEffort,
+		&firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID); err != nil {
+		return schedule.Occurrence{}, err
+	}
+	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	if err != nil {
+		return schedule.Occurrence{}, fmt.Errorf("decode schedule occurrence model selection: %w", err)
+	}
+	snapshot.Execution = schedule.ExecutionSnapshot{
+		Title: title, Instructions: instructions, CWD: cwd,
+		ModelSelection: selection,
+	}
+	snapshot.FiredAt = time.UnixMilli(firedAt).UTC()
+	snapshot.NextRunAt = time.UnixMilli(nextRunAt).UTC()
+	occurrence, err := schedule.RestoreOccurrence(snapshot)
+	if err != nil {
+		return schedule.Occurrence{}, fmt.Errorf("decode schedule occurrence: %w", err)
+	}
+	return occurrence, nil
+}

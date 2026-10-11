@@ -22,10 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const (
-	maxIdempotencyKeyBytes       = 255
-	idempotencyStoreWriteTimeout = 5 * time.Second
-)
+const idempotencyStoreWriteTimeout = 5 * time.Second
 
 type replayStore struct {
 	store idempotency.Store
@@ -60,9 +57,6 @@ func (r *replayStore) invoke(
 	execute func() Result,
 	target any,
 ) Result {
-	if len(key) > maxIdempotencyKeyBytes {
-		return failed(NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes"))
-	}
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
 	if err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))

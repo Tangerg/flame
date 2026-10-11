@@ -7,7 +7,7 @@ import (
 
 func TestOpenRejectsMissingSourceRegistry(t *testing.T) {
 	for _, registry := range []sourceRegistry{nil, (*mutableSourceRegistry)(nil)} {
-		pool, err := Open(t.Context(), t.Context(), nil, nil, registry)
+		pool, err := Open(t.Context(), t.Context(), nil, nil, registry, nil, nil, nil)
 		if pool != nil {
 			if closeErr := pool.Shutdown(context.WithoutCancel(t.Context())); closeErr != nil {
 				t.Error(closeErr)

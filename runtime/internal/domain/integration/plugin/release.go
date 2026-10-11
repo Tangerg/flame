@@ -101,6 +101,7 @@ type Declaration struct {
 	Version     string
 	Description string
 	Servers     []Server
+	Services    []Service
 	Inputs      []Input
 	Themes      []Theme
 	Views       []ViewDeclaration
@@ -115,6 +116,7 @@ func (d Declaration) clone() Declaration {
 	for index := range d.Servers {
 		d.Servers[index] = d.Servers[index].clone()
 	}
+	d.Services = slices.Clone(d.Services)
 	d.Inputs = slices.Clone(d.Inputs)
 	d.Themes = slices.Clone(d.Themes)
 	d.Views = slices.Clone(d.Views)
@@ -151,6 +153,11 @@ func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, er
 	}
 	for _, server := range declaration.Servers {
 		if err := builder.AdmitServer(server); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, service := range declaration.Services {
+		if err := builder.AdmitService(service); err != nil {
 			return Release{}, err
 		}
 	}

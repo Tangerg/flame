@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-11.4",
+  "protocolVersion": "2026-10-12.1",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -6714,6 +6714,12 @@
             "$ref": "#/$defs/PluginServerDeclaration"
           }
         },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginService"
+          }
+        },
         "skills": {
           "type": "array",
           "items": {
@@ -6744,6 +6750,7 @@
         "name",
         "renderers",
         "servers",
+        "services",
         "skills",
         "themes",
         "views"
@@ -6917,6 +6924,29 @@
             "url"
           ]
         }
+      ]
+    },
+    "PluginService": {
+      "type": "object",
+      "properties": {
+        "server": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
+        },
+        "type": {
+          "$ref": "#/$defs/PluginServiceType"
+        }
+      },
+      "required": [
+        "server",
+        "type"
+      ]
+    },
+    "PluginServiceType": {
+      "type": "string",
+      "enum": [
+        "memory",
+        "schedules"
       ]
     },
     "PluginSkill": {
@@ -11671,8 +11701,6 @@
                 "apply_patch",
                 "ask_user",
                 "create_goal",
-                "create_schedule",
-                "delete_schedule",
                 "delegate_task",
                 "edit",
                 "enter_plan_mode",
@@ -11681,7 +11709,6 @@
                 "glob",
                 "grep",
                 "http_request",
-                "list_schedules",
                 "list_skills",
                 "load_skill",
                 "lsp",
@@ -11691,7 +11718,6 @@
                 "read_skill_resource",
                 "read_tool_result",
                 "report_goal_outcome",
-                "search_memory",
                 "search_tools",
                 "set_plan",
                 "shell",

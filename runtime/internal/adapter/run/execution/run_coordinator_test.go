@@ -3,8 +3,9 @@ package execution
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -27,6 +28,9 @@ func (acceptAllRunModelInputs) AdmitInput(modelref.Selection, []corechat.Message
 
 func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinator {
 	t.Helper()
+	if deps.AutomationStarts == nil {
+		deps.AutomationStarts = noAutomationStarts{}
+	}
 	starter := any(deps.RootStarts)
 	fillRunDependency(t, &deps.RootCancellation, starter, "root cancellation requester")
 	fillRunDependency(t, &deps.Continuation, starter, "waiting execution continuer")
@@ -102,4 +106,10 @@ func fillRunDependency[T any](t *testing.T, target *T, source any, name string) 
 		t.Fatalf("test fixture source does not implement %s", name)
 	}
 	*target = value
+}
+
+type noAutomationStarts struct{}
+
+func (noAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
+	return runs.AutomationReceipt{}, false, nil
 }

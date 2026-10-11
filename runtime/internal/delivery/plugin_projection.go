@@ -61,6 +61,10 @@ func presentPluginDiagnostic(v plugin.Diagnostic) (protocol.PluginDiagnostic, er
 func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error) {
 	v := release.Declaration()
 	result := protocol.PluginRelease{Digest: release.Digest().String(), Name: v.Name, Version: v.Version, Description: v.Description}
+	result.Services = make([]protocol.PluginService, 0, len(v.Services))
+	for _, service := range v.Services {
+		result.Services = append(result.Services, protocol.PluginService{Type: protocol.PluginServiceType(service.Kind), Server: service.Server.String()})
+	}
 	result.Servers = make([]protocol.PluginServerDeclaration, 0, len(v.Servers))
 	for _, item := range v.Servers {
 		server, err := presentPluginServerDeclaration(item)

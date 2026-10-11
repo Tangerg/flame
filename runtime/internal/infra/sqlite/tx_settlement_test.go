@@ -173,7 +173,7 @@ func TestTransactionRetainsAcceptedCommitAfterLateCancellation(t *testing.T) {
 	faults := &transactionFaults{beforeCommit: func() { stop(cause) }}
 	db := settlementDatabase(t, faults)
 	err := RunInTx(ctx, db, func(ctx context.Context) error {
-		_, err := conn(ctx, db).ExecContext(ctx, `CREATE TABLE accepted_commit (id INTEGER PRIMARY KEY)`)
+		_, err := Connection(ctx, db).ExecContext(ctx, `CREATE TABLE accepted_commit (id INTEGER PRIMARY KEY)`)
 		return err
 	})
 	if err != nil {
@@ -233,7 +233,7 @@ func TestTransactionSettlesBeforeGoroutineExit(t *testing.T) {
 		go func() {
 			defer close(finished)
 			_ = RunInTx(t.Context(), db, func(ctx context.Context) error {
-				transaction <- conn(ctx, db).(*sql.Tx)
+				transaction <- Connection(ctx, db).(*sql.Tx)
 				runtime.Goexit()
 				return nil
 			})
@@ -299,7 +299,7 @@ func TestSchemaRejectionRetainsRollbackFailure(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `CREATE TABLE obsolete_schema (id INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
-	err := installCurrentSchema(t.Context(), db)
+	err := InstallSchema(t.Context(), db, currentSchema())
 	if !errors.Is(err, retirement) || !strings.Contains(err.Error(), "incompatible schema") {
 		t.Fatalf("schema rejection = %v, want admission and rollback failures", err)
 	}

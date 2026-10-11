@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +15,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
@@ -107,7 +108,7 @@ func (catalogTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutp
 }
 
 func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
-	c := &Connections{lifetime: t.Context(), client: newClient()}
+	c := &Connections{lifetime: t.Context(), client: NewClient()}
 	if err := c.Shutdown(t.Context()); err != nil {
 		t.Fatalf("Shutdown: %v", err)
 	}
@@ -143,7 +144,7 @@ func TestDialRequiresStartupAndProcessLifetimes(t *testing.T) {
 	if connections, _, err := testDial(t.Context(), nil, nil, nil); err == nil || connections != nil {
 		t.Fatalf("Dial without process lifetime = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
-	if connections, err := Dial(t.Context(), t.Context(), nil, nil, nil); err == nil || connections != nil {
+	if connections, err := Dial(t.Context(), t.Context(), nil, nil, nil, nil, NewClient()); err == nil || connections != nil {
 		t.Fatalf("Dial without configuration source = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
 }
@@ -443,7 +444,7 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 		},
 	}
 	c := &Connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: NewClient(),
 		oauthSessions: &oauthLoadStore{load: func(context.Context, mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 			return nil, "", false, loadErr
 		}},
@@ -484,7 +485,7 @@ func TestShutdownCancelsAndJoinsOAuthRestore(t *testing.T) {
 	finishLoad := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(finishLoad)
 	c := &Connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: NewClient(),
 		oauthSessions: &oauthLoadStore{load: func(ctx context.Context, _ mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 			close(started)
 			<-ctx.Done()
@@ -586,7 +587,7 @@ func TestCanceledSessionCloseRetainsFailureForShutdown(t *testing.T) {
 	t.Cleanup(finishClose)
 	session := new(sdkmcp.ClientSession)
 	c := &Connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: NewClient(),
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
 			<-release
 			return closeErr
@@ -624,7 +625,7 @@ func TestDetachCancelsAuthorizationDuringSessionRetirement(t *testing.T) {
 		},
 	}
 	c := &Connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: NewClient(),
 		servers: []*server{{id: config.ID(), config: config, session: session, state: mcpserver.ConnectionConnected}},
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
 			close(started)
@@ -793,7 +794,7 @@ func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 					}
 				}
 				return nil, mcpserver.ErrUnknownServer
-			})
+			}, nil, NewClient())
 			if err != nil {
 				t.Fatalf("Dial: %v", err)
 			}
@@ -1027,7 +1028,7 @@ func testDial(ctx, lifetime context.Context, servers []ServerConfig, oauthSessio
 			}
 		}
 		return nil, mcpserver.ErrUnknownServer
-	})
+	}, nil, NewClient())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1087,7 +1088,7 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 // not re-add the server as a failed or connecting ghost.
 func TestSupersededConfigureNeverResurrectsADetachedServer(t *testing.T) {
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
-	c := &Connections{lifetime: t.Context(), client: newClient(), servers: []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}}
+	c := &Connections{lifetime: t.Context(), client: NewClient(), servers: []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}}
 	published := false
 	c.SetToolSink(func([]Executable) { published = true })
 	ctx, supersede := context.WithCancel(t.Context())

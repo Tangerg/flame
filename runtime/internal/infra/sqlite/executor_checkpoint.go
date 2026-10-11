@@ -74,14 +74,14 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 	}
 	return RunInTx(ctx, e.db, func(ctx context.Context) error {
 		var owner, buildID string
-		err := conn(ctx, e.db).QueryRowContext(ctx,
+		err := Connection(ctx, e.db).QueryRowContext(ctx,
 			`SELECT session_id, build_id
 			   FROM executor_checkpoints
 			  WHERE root_member_id = ?`,
 			checkpoint.RootMemberID,
 		).Scan(&owner, &buildID)
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = conn(ctx, e.db).ExecContext(ctx,
+			_, err = Connection(ctx, e.db).ExecContext(ctx,
 				`INSERT INTO executor_checkpoints(
 					root_member_id, session_id, build_id, payload
 				 ) VALUES (?, ?, ?, ?)`,
@@ -116,7 +116,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 				ErrInvalidExecutorCheckpointRecord,
 			)
 		}
-		result, err := conn(ctx, e.db).ExecContext(ctx,
+		result, err := Connection(ctx, e.db).ExecContext(ctx,
 			`UPDATE executor_checkpoints
 			    SET payload = ?
 			  WHERE root_member_id = ?`,
@@ -158,7 +158,7 @@ func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMember
 	}
 	var sessionID, buildID string
 	var payload []byte
-	err := conn(ctx, e.db).QueryRowContext(ctx,
+	err := Connection(ctx, e.db).QueryRowContext(ctx,
 		`SELECT session_id, build_id, payload
 		   FROM executor_checkpoints
 		  WHERE root_member_id = ?`,
@@ -241,7 +241,7 @@ func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 				return err
 			}
 		}
-		_, err = conn(ctx, e.db).ExecContext(ctx, `DELETE FROM execution_trees WHERE session_id = ?`, sessionID)
+		_, err = Connection(ctx, e.db).ExecContext(ctx, `DELETE FROM execution_trees WHERE session_id = ?`, sessionID)
 		return err
 	})
 }
@@ -250,7 +250,7 @@ func (e *ExecutorCheckpointStore) sessionCheckpointRootIDs(
 	ctx context.Context,
 	sessionID string,
 ) ([]string, error) {
-	rows, err := conn(ctx, e.db).QueryContext(ctx,
+	rows, err := Connection(ctx, e.db).QueryContext(ctx,
 		`SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`,
 		sessionID,
 	)
@@ -281,7 +281,7 @@ func (e *ExecutorCheckpointStore) deleteOwnedCheckpoint(
 	sessionID string,
 	rootMemberID string,
 ) error {
-	result, err := conn(ctx, e.db).ExecContext(ctx,
+	result, err := Connection(ctx, e.db).ExecContext(ctx,
 		`DELETE FROM executor_checkpoints WHERE root_member_id = ? AND session_id = ?`,
 		rootMemberID,
 		sessionID,
@@ -297,7 +297,7 @@ func (e *ExecutorCheckpointStore) deleteOwnedCheckpoint(
 		return nil
 	}
 	var owner string
-	err = conn(ctx, e.db).QueryRowContext(ctx,
+	err = Connection(ctx, e.db).QueryRowContext(ctx,
 		`SELECT session_id FROM executor_checkpoints WHERE root_member_id = ?`,
 		rootMemberID,
 	).Scan(&owner)

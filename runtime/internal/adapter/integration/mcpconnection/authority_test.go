@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,12 +11,72 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+type scheduleSourceRegistry struct{ *mutableSourceRegistry }
+
+func (scheduleSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
+	return plugin.SchedulesService, true, nil
+}
+
+func TestFailedScheduleToolInvalidatesReadsOnlyAfterAdmittedDispatch(t *testing.T) {
+	var calls atomic.Int32
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "schedule-owner"}, nil)
+	remote.AddTool(&sdkmcp.Tool{Name: "write", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+		calls.Add(1)
+		return nil, errors.New("reply failed after dispatch")
+	})
+	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
+	t.Cleanup(transport.Close)
+	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	registry := &mutableSourceRegistry{server: server.Clone()}
+	var notices []invalidation.Notice
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, scheduleSourceRegistry{registry}, nil, nil, func(notice invalidation.Notice) { notices = append(notices, notice) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := pool.Shutdown(context.WithoutCancel(t.Context())); err != nil {
+			t.Error(err)
+		}
+	})
+	var tools []toolcontract.Tool
+	pool.SetToolSink(func(current []toolcontract.Tool) { tools = current })
+	if len(tools) != 1 {
+		t.Fatalf("tools = %d, want one admitted remote tool", len(tools))
+	}
+	binding, err := toolcontract.Bind(tools[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "write", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := binding.Call(t.Context(), invocation); err == nil {
+		t.Fatal("failed reply appeared successful")
+	}
+	if calls.Load() != 1 || len(notices) != 1 || notices[0].Resource != invalidation.Schedules {
+		t.Fatalf("dispatch=%d invalidations=%+v, want a cold read after uncertain dispatch", calls.Load(), notices)
+	}
+	server.Enabled = false
+	registry.set(server)
+	if _, err := binding.Call(t.Context(), invocation); err == nil {
+		t.Fatal("withdrawn source dispatched")
+	}
+	if calls.Load() != 1 || len(notices) != 1 {
+		t.Fatal("withdrawn source produced remote work or a change notice")
+	}
+}
 
 func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T) {
 	for _, credential := range []string{"authorization", "header"} {
@@ -46,7 +105,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				server.Headers = map[string]string{"X-API-Key": "first"}
 			}
 			registry := &mutableSourceRegistry{server: server.Clone()}
-			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,7 +222,7 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 	t.Cleanup(transport.Close)
 	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +286,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	oldRemote, currentRemote := openRemote(&oldCalls), openRemote(&currentCalls)
 	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: oldRemote.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +334,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	t.Cleanup(transport.Close)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,4 +348,8 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	if err := authorizePool(pool, t.Context(), server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
 		t.Fatalf("authorization ignored the owner's static credentials: %v", err)
 	}
+}
+
+func (*mutableSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
+	return "", false, nil
 }

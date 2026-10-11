@@ -1,8 +1,6 @@
 // Package sqlite hosts the SQLite-backed implementations of Runtime's storage
-// ports. One SQLite file is the single
-// durable backend — sessions / executor checkpoints / interrupts / history /
-// providers each live in their own table, sharing one *sql.DB. Agent-extracted
-// ledger and curated memory are ordinary SQLite state.
+// ports. Sessions, executor checkpoints, interrupts, history and providers share
+// one host database. Managed plugins supply their own schemas and private files.
 //
 // Driver: modernc.org/sqlite (pure Go). No CGO, cross-compilation
 // works out of the box.
@@ -23,7 +21,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
@@ -62,6 +59,11 @@ const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results 
 //   - busy_timeout = 5000ms — survives brief contention from
 //     concurrent writers piling onto the same connection
 func Open(ctx context.Context, path string) (*sql.DB, error) {
+	return OpenSchema(ctx, path, currentSchema())
+}
+
+// OpenSchema admits an exact owner-supplied schema in its private database.
+func OpenSchema(ctx context.Context, path string, statements []string) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
 		"file:%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)",
 		url.PathEscape(filepath.ToSlash(path)),
@@ -75,15 +77,16 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	// concurrent transactions.
 	db.SetMaxOpenConns(1)
 
-	if err := installCurrentSchema(ctx, db); err != nil {
+	if err := InstallSchema(ctx, db, statements); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 	return db, nil
 }
 
-func installCurrentSchema(ctx context.Context, db *sql.DB) error {
+func currentSchema() []string {
 	firstExactInteger := exactint.First().Value()
 	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS automation_starts (run_id TEXT PRIMARY KEY, request_digest TEXT NOT NULL, session_id TEXT NOT NULL, segment_id TEXT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, sequence TEXT NOT NULL, commit_id TEXT NOT NULL, commit_digest TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS execution_tree_commits (root_id TEXT NOT NULL REFERENCES execution_trees(root_id) ON DELETE CASCADE, commit_id TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(root_id, commit_id))`,
 		`CREATE INDEX IF NOT EXISTS idx_execution_trees_session ON execution_trees(session_id)`,
@@ -529,65 +532,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS trusted_projects (
 			project_root TEXT PRIMARY KEY
 		)`,
-		// Scheduled runs (schedules.*): a saved instructions fired on a cron trigger as
-		// a headless run. last_run_at / next_run_at are nullable unix millis;
-		// next_run_at is the worker's due index and the one record of
-		// whether the schedule fires.
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedules (
-			id          TEXT    PRIMARY KEY,
-			title       TEXT    NOT NULL DEFAULT '',
-			instructions      TEXT    NOT NULL,
-			cwd         TEXT    NOT NULL DEFAULT '',
-			provider    TEXT    NOT NULL DEFAULT '',
-			model       TEXT    NOT NULL DEFAULT '',
-			reasoning_effort TEXT NOT NULL DEFAULT '',
-			cron        TEXT    NOT NULL,
-			last_run_at INTEGER,
-			next_run_at INTEGER,
-			created_at  INTEGER NOT NULL,
-			revision    INTEGER NOT NULL DEFAULT %d CHECK (revision BETWEEN %d AND %d)
-		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
-		`CREATE INDEX IF NOT EXISTS idx_schedules_due
-			ON schedules(next_run_at)`,
-		// A pending firing is a recoverable work item whose future Run does not
-		// exist yet. Acceptance requires that exact Run to have been admitted; the
-		// accepted row then acts only as a live-Run idempotency tombstone and follows
-		// the Run through terminalization or deletion.
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedule_firings (
-			id          TEXT    PRIMARY KEY,
-			schedule_id TEXT    NOT NULL,
-			title       TEXT    NOT NULL DEFAULT '',
-			instructions      TEXT    NOT NULL,
-			cwd         TEXT    NOT NULL DEFAULT '',
-			provider    TEXT    NOT NULL DEFAULT '',
-			model       TEXT    NOT NULL DEFAULT '',
-			reasoning_effort TEXT NOT NULL DEFAULT '',
-			due_at      INTEGER NOT NULL,
-			fired_at    INTEGER NOT NULL,
-			next_run_at INTEGER NOT NULL,
-			session_id  TEXT    NOT NULL UNIQUE,
-			run_id      TEXT    NOT NULL UNIQUE,
-			state       TEXT    NOT NULL CHECK(state IN ('%s', '%s')),
-			CHECK (id = schedule_id || ':' || CAST(due_at AS TEXT))
-		)`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue()),
-		`CREATE INDEX IF NOT EXISTS idx_schedule_firings_pending
-			ON schedule_firings(state, due_at, id)`,
-		// A schedule has one recoverable occurrence at a time. Keeping this as a
-		// partial uniqueness invariant prevents each later cron tick from adding
-		// another pending firing while Run admission is temporarily unavailable.
-		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_firings_schedule_pending
-			ON schedule_firings(schedule_id) WHERE state = '%s'`, scheduleFiringPending.databaseValue()),
-		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS prune_terminal_run_schedule_firing
-			AFTER UPDATE OF state ON runs
-			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
-			BEGIN
-				DELETE FROM schedule_firings WHERE run_id = NEW.run_id;
-			END`, runStateTerminal.databaseValue()),
-		`CREATE TRIGGER IF NOT EXISTS prune_deleted_run_schedule_firing
-			AFTER DELETE ON runs
-			BEGIN
-				DELETE FROM schedule_firings WHERE run_id = OLD.run_id;
-			END`,
 		// The namespace tells reconnecting clients whether a persisted
 		// Idempotency-Key belongs to this exact durable replay store. It is opaque,
 		// contains no path or credential, and survives process restarts while a
@@ -654,84 +598,14 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			text       TEXT    NOT NULL DEFAULT '',
 			created_at_ns INTEGER NOT NULL
 		)`,
-		// Append-only per-project fact ledger. day is the daily-ledger partition
-		// (YYYY-MM-DD); seq is both stable ordering and the curation watermark.
-		// A content digest deduplicates facts independently, so mixed old/new
-		// extraction batches never lose their new members.
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_ledger (
-			seq         INTEGER PRIMARY KEY AUTOINCREMENT,
-			project     TEXT    NOT NULL,
-			day         TEXT    NOT NULL,
-			session_id  TEXT    NOT NULL,
-			fact        TEXT    NOT NULL CHECK (length(fact) BETWEEN 1 AND %d),
-			digest      TEXT    NOT NULL,
-			captured_at INTEGER NOT NULL,
-			UNIQUE(project, digest)
-		)`, agentmemory.MaxContentCharacters),
-		`CREATE INDEX IF NOT EXISTS idx_agent_memory_ledger_project
-			ON agent_memory_ledger(project, seq)`,
-		// Curated memory items: the addressable projection folded from the ledger.
-		// digest is the content identity (a reconcile matches unchanged items by
-		// it to keep their id stable); the unique (scope, project, digest) index
-		// dedups a fact across auto/user/pinned rows. origin 'auto' | 'user',
-		// scope 'project' | 'user'. Pinned items are always injected and never
-		// auto-pruned. session_id/day carry provenance.
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_items (
-			id         TEXT    PRIMARY KEY CHECK (
-				length(id) = %[1]d AND
-				substr(id, 1, length('%[2]s')) = '%[2]s' AND
-				substr(id, length('%[2]s') + 1) NOT GLOB '*[^0-9a-f]*'
-			),
-			scope      TEXT    NOT NULL CHECK (scope IN ('%[4]s', '%[5]s')),
-			project    TEXT    NOT NULL DEFAULT '',
-			content    TEXT    NOT NULL CHECK (length(content) BETWEEN 1 AND %[3]d),
-			digest     TEXT    NOT NULL,
-			origin     TEXT    NOT NULL CHECK (origin IN ('%[6]s', '%[7]s')),
-			-- HITL review lifecycle: active (approved/injected/searched), pending
-			-- (proposed, awaiting review), rejected (tombstone that blocks the same
-			-- fact from being re-proposed).
-			status     TEXT    NOT NULL DEFAULT '%[8]s' CHECK (status IN ('%[8]s', '%[9]s', '%[10]s')),
-			pinned     INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1)),
-			session_id TEXT    NOT NULL DEFAULT '',
-			day        TEXT    NOT NULL DEFAULT '',
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			-- Search-owned derived cache. embedding_space identifies the exact
-			-- vector space that produced the content vector; both values are empty
-			-- until a configured embedder lazily fills them.
-			embedding_space TEXT NOT NULL DEFAULT '',
-			embedding       BLOB NOT NULL DEFAULT x'',
-			CHECK ((scope = '%[4]s' AND project <> '') OR (scope = '%[5]s' AND project = '')),
-			CHECK (origin <> '%[7]s' OR status = '%[8]s'),
-			CHECK ((embedding_space = '' AND length(embedding) = 0) OR
-			       (embedding_space <> '' AND length(embedding) > 0 AND length(embedding) %% 4 = 0)),
-			UNIQUE(scope, project, digest)
-		)`,
-			agentmemory.MaximumItemIDCharacters,
-			agentmemory.ItemIDPrefix,
-			agentmemory.MaxContentCharacters,
-			agentmemory.ScopeProject,
-			agentmemory.ScopeUser,
-			agentmemory.OriginAuto,
-			agentmemory.OriginUser,
-			agentmemory.StatusActive,
-			agentmemory.StatusPending,
-			agentmemory.StatusRejected,
-		),
-		`CREATE INDEX IF NOT EXISTS idx_agent_memory_items_scope
-			ON agent_memory_items(scope, project)`,
-		// Per-project curation watermark (the highest ledger seq already folded
-		// into items). Kept apart from the items so a reconcile advances it with a
-		// single compare-and-swap update.
-		`CREATE TABLE IF NOT EXISTS agent_memory_state (
-			project    TEXT    PRIMARY KEY,
-			watermark  INTEGER NOT NULL DEFAULT 0,
-			updated_at INTEGER NOT NULL DEFAULT 0
-		)`,
 	}
 
+	return stmts
+}
+
+func InstallSchema(ctx context.Context, db *sql.DB, stmts []string) error {
 	err := runTransaction(ctx, db, func(ctx context.Context) error {
-		tx := conn(ctx, db)
+		tx := Connection(ctx, db)
 		if err := requireCurrentSchema(ctx, tx, stmts); err != nil {
 			return err
 		}

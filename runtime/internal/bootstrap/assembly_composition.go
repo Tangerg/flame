@@ -7,7 +7,6 @@ import (
 	"time"
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -18,12 +17,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -44,7 +41,6 @@ type policyComposition struct {
 	goalReporter  *goals.OutcomeReporter
 	plans         *sessions.PlanCoordinator
 	mcp           mcpEnvironment
-	schedules     *schedules.Coordinator
 }
 
 func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition, error) {
@@ -84,16 +80,6 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: build goal outcome reporter: %w", err)
 	}
-	scheduleCoordinator, err := schedules.New(schedules.Dependencies{
-		Store:         cfg.Stores.Schedules,
-		Paths:         workspaceadapter.Resolver{},
-		Models:        modeladapter.Capabilities{},
-		NewScheduleID: newScheduleID,
-		Invalidations: invalidations.Publish,
-	})
-	if err != nil {
-		return policyComposition{}, fmt.Errorf("runtime: construct Schedule coordinator: %w", err)
-	}
 	plans, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{
 		Store: cfg.Stores.Plan, Now: time.Now, Invalidations: invalidations.Publish,
 	})
@@ -109,7 +95,6 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		goalReporter:  goalReporter,
 		plans:         plans,
 		mcp:           mcpSettings,
-		schedules:     scheduleCoordinator,
 	}, nil
 }
 
@@ -119,8 +104,6 @@ type workspaceComposition struct {
 	scope            *workspace.Scope
 	hookResolver     *adapterhooks.Resolver
 	hooks            *apphooks.Catalog
-	agentMemory      *agentmemoryapp.Coordinator
-	memoryCuration   *agentmemoryapp.Curation
 	authoredWatch    *workspace.AuthoredWatch
 	skills           *workspace.Skills
 	skillMaintenance *workspace.SkillMaintenance
@@ -176,24 +159,10 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build skills: %w", err)
 	}
-	memoryReview, err := agentmemoryapp.New(agentmemoryapp.Config{
-		Store: cfg.Stores.AgentMemory, Roots: scope, Invalidations: publish,
-	})
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build memory review: %w", err)
-	}
-	memoryCuration, err := agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{
-		Store: cfg.Stores.AgentMemory, Invalidations: publish,
-	})
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build memory curation: %w", err)
-	}
 	return workspaceComposition{
 		scope:            scope,
 		hookResolver:     hookResolver,
 		hooks:            hooks,
-		agentMemory:      memoryReview,
-		memoryCuration:   memoryCuration,
 		authoredWatch:    authoredWatch,
 		skills:           workspaceSkills,
 		skillMaintenance: skillMaintenance,
@@ -259,17 +228,19 @@ func buildExecutionComposition(
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		registry: policy.registry, packageSkills: policy.packageSkills,
-		lifetime:          lifetime.context,
-		config:            cfg,
-		approvalPolicy:    policy.approvals,
-		mcp:               policy.mcp,
-		agentMemoryReader: modelServices.agentMemoryRead,
-		schedules:         policy.schedules,
-		goalReader:        policy.goalReader,
-		goalReporter:      policy.goalReporter,
-		plan:              policy.plans,
-		skillStore:        workspaceServices.skillStore,
-		skillProposals:    workspaceServices.skills,
+		lifetime:       lifetime.context,
+		config:         cfg,
+		approvalPolicy: policy.approvals,
+		mcp:            policy.mcp,
+		modelServices:  modelServices,
+		workspaceScope: workspaceServices.scope,
+		conversation:   conversation.store,
+		publish:        policy.invalidations.Publish,
+		goalReader:     policy.goalReader,
+		goalReporter:   policy.goalReporter,
+		plan:           policy.plans,
+		skillStore:     workspaceServices.skillStore,
+		skillProposals: workspaceServices.skills,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
@@ -277,8 +248,8 @@ func buildExecutionComposition(
 	}
 	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
-		AgentMemory:       modelServices.agentMemoryRead,
-		AgentMemorySearch: modelServices.agentMemoryRead,
+		AgentMemory:       toolRuntime.memory,
+		AgentMemorySearch: toolRuntime.memory,
 		Plan:              cfg.Stores.Plan,
 		Goal:              policy.goalReader,
 		Hooks:             workspaceServices.hookResolver,
@@ -305,7 +276,7 @@ func buildExecutionComposition(
 		toolRuntime.tools.Shells,
 		workspaceServices.skills,
 		workspaceServices.skillMaintenance,
-		workspaceServices.memoryCuration,
+		toolRuntime.memory,
 		modelServices.utilityModel,
 		transientSessions,
 	)

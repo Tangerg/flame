@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	schedules "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -24,13 +26,6 @@ type fakeScheduleRegistry struct {
 	created []schedule.Schedule
 	updated []schedule.Schedule
 	deleted []string
-}
-
-type unexpectedScheduledRunStarter struct{ test testing.TB }
-
-func (s unexpectedScheduledRunStarter) StartScheduledRun(context.Context, schedule.RunRequest) error {
-	s.test.Error("unexpected scheduled Run admission")
-	return errors.New("unexpected scheduled run")
 }
 
 func (f *fakeScheduleRegistry) ListPage(ctx context.Context, _ time.Time, _ string, _ int) ([]schedule.Schedule, error) {
@@ -60,21 +55,8 @@ func (f *fakeScheduleRegistry) Delete(_ context.Context, id string) (bool, error
 	return true, nil
 }
 
-func (f *fakeScheduleRegistry) RecordRun(context.Context, schedule.RunRecord) error { return nil }
-
-func (f *fakeScheduleRegistry) Due(context.Context, time.Time, int) ([]schedule.Schedule, error) {
-	return nil, nil
-}
-
-func (f *fakeScheduleRegistry) Claim(context.Context, schedule.Claim) (bool, error) {
-	return false, nil
-}
-func (f *fakeScheduleRegistry) Pending(context.Context, time.Time, string, int) ([]schedule.Occurrence, error) {
-	return nil, nil
-}
-
 // handlerWithSchedules builds a test Handler whose schedules coordinator is backed
-// by reg (used as both the CRUD registry and the worker store).
+// by reg for command and projection mapping.
 func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	t.Helper()
 	s := newTestHandler(&stubRuntime{})
@@ -88,15 +70,7 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 		t.Fatalf("construct Schedule coordinator: %v", err)
 	}
 	s.schedules = coordinator
-	firing, err := schedules.NewFiring(schedules.FiringDependencies{
-		Store: reg, RunStarter: unexpectedScheduledRunStarter{test: t},
-		NewSessionID: func() string { return "ses_schedule" },
-		NewRunID:     func() string { return "run_schedule" },
-	})
-	if err != nil {
-		t.Fatalf("construct Schedule firing: %v", err)
-	}
-	s.scheduleFiring = firing
+	s.scheduleFiring = unexpectedScheduleFiring{test: t, store: reg}
 	return s
 }
 
@@ -306,4 +280,17 @@ func TestScheduleStorageFailurePreservesCause(t *testing.T) {
 	if !errors.Is(err, cause) {
 		t.Fatalf("list error = %v, want storage cause", err)
 	}
+}
+
+type unexpectedScheduleFiring struct {
+	test  testing.TB
+	store *fakeScheduleRegistry
+}
+
+func (s unexpectedScheduleFiring) RunNow(ctx context.Context, id string) (runs.StartResult, error) {
+	if _, err := s.store.Get(ctx, id); err != nil {
+		return runs.StartResult{}, err
+	}
+	s.test.Error("unexpected schedule Run dispatch")
+	return runs.StartResult{}, errors.New("unexpected schedule dispatch")
 }

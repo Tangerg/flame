@@ -16,24 +16,24 @@ const (
 
 func registerSchedules(registry *Registry) {
 	registry.query(MethodMeta{
-		Name: SchedulesList, CapabilityRules: requires(protocol.FeatureSchedules),
+		Name: SchedulesList, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		ListSchedules(context.Context, protocol.PageQuery) (*protocol.Page[protocol.Schedule], error)
 	}, ctx context.Context, request protocol.PageQuery) (*protocol.Page[protocol.Schedule], error) {
 		return service.ListSchedules(ctx, request)
 	})
 
-	registry.command(MethodMeta{
+	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
 		Name: SchedulesCreate, CapabilityRules: requires(protocol.FeatureSchedules),
-		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
+		Errors: []string{protocol.ErrPluginUnavailable.Error(), protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
 		CreateSchedule(context.Context, protocol.CreateScheduleRequest) (*protocol.Schedule, error)
 	}, ctx context.Context, request protocol.CreateScheduleRequest) (*protocol.Schedule, error) {
 		return service.CreateSchedule(ctx, request)
 	})
 
-	registry.command(MethodMeta{
-		Name: SchedulesUpdate, Errors: []string{protocol.ErrScheduleNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrWorkspaceUnavailable.Error()},
+	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
+		Name: SchedulesUpdate, Errors: []string{protocol.ErrPluginUnavailable.Error(), protocol.ErrScheduleNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrWorkspaceUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		UpdateSchedule(context.Context, protocol.UpdateScheduleRequest) (*protocol.Schedule, error)
@@ -41,17 +41,17 @@ func registerSchedules(registry *Registry) {
 		return service.UpdateSchedule(ctx, request)
 	})
 
-	registry.commandAck(MethodMeta{
-		Name: SchedulesDelete, CapabilityRules: requires(protocol.FeatureSchedules),
+	registry.commandAck(MethodMeta{Idempotency: IdempotencyOwnerResponse,
+		Name: SchedulesDelete, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		DeleteSchedule(context.Context, protocol.DeleteScheduleRequest) error
 	}, ctx context.Context, request protocol.DeleteScheduleRequest) error {
 		return service.DeleteSchedule(ctx, request)
 	})
 
-	registry.command(MethodMeta{
+	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
 		Name: SchedulesRunNow, CapabilityRules: requires(protocol.FeatureSchedules),
-		Errors: []string{protocol.ErrScheduleNotFound.Error(), protocol.ErrPromptSourceTooLarge.Error()},
+		Errors: []string{protocol.ErrPluginUnavailable.Error(), protocol.ErrScheduleNotFound.Error(), protocol.ErrPromptSourceTooLarge.Error()},
 	}, func(service interface {
 		RunScheduleNow(context.Context, protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error)
 	}, ctx context.Context, request protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
 type failingMemoryPartition struct {

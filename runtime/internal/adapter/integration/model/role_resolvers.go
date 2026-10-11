@@ -9,9 +9,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 )
 
 // RoleSource is the read view a live specialized-model resolver needs. The

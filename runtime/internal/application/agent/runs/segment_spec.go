@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -37,7 +36,7 @@ type segmentSpec struct {
 	GoalIncarnationID  string
 	InitialSession     *session.Session
 	SessionReplacement *session.Replacement
-	Schedule           *schedule.RunRequest
+	Automation         *AutomationStart
 	CreatedAt          time.Time
 	OpeningUserText    string
 	Input              []transcript.ContentBlock

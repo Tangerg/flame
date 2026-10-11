@@ -27,7 +27,7 @@ func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error 
 	if err := entry.Validate(); err != nil {
 		return err
 	}
-	if _, err := conn(ctx, f.db).ExecContext(ctx,
+	if _, err := Connection(ctx, f.db).ExecContext(ctx,
 		`INSERT INTO feedback_entries(session_id, run_id, item_id, rating, text, created_at_ns)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		entry.SessionID, entry.RunID, entry.ItemID, entry.Rating, entry.Text, entry.CreatedAt.UnixNano()); err != nil {
@@ -39,7 +39,7 @@ func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error 
 // ListSession includes observations whose optional references name the Session
 // or its retained Runs and Items. References remain user claims, not foreign keys.
 func (f *FeedbackStore) ListSession(ctx context.Context, sessionID string) ([]feedback.Entry, error) {
-	rows, err := conn(ctx, f.db).QueryContext(ctx,
+	rows, err := Connection(ctx, f.db).QueryContext(ctx,
 		`SELECT session_id, run_id, item_id, rating, text, created_at_ns FROM feedback_entries WHERE `+
 			sessionFeedbackPredicate+` ORDER BY created_at_ns, id`, sessionID, sessionID, sessionID)
 	if err != nil {

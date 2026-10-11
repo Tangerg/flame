@@ -73,14 +73,6 @@ func delegationActivity(arguments tool.Arguments) string {
 	return "Delegating to a sub-agent"
 }
 
-func createScheduleActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[scheduleActivityArguments](arguments, "title"); ok &&
-		isConciseActivityText(args.Title, 120) {
-		return "Creating schedule: " + args.Title
-	}
-	return "Creating a schedule"
-}
-
 func loadSkillActivity(arguments tool.Arguments) string {
 	if args, ok := decodeArguments[skillActivityArguments](arguments, "name"); ok &&
 		isConciseActivityText(args.Name, 80) {
@@ -121,10 +113,6 @@ type shellActivityArguments struct {
 
 type delegationActivityArguments struct {
 	Summary string `json:"summary"`
-}
-
-type scheduleActivityArguments struct {
-	Title string `json:"title"`
 }
 
 type skillActivityArguments struct {

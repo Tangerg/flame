@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -105,6 +107,9 @@ func scheduleWorkspacePathPatch(ref *protocol.WorkspaceRef, mode protocol.Schedu
 func mapScheduleErr(err error, id string) error {
 	if err == nil {
 		return nil
+	}
+	if errors.Is(err, plugin.ErrUnavailable) {
+		return errors.Join(protocol.ErrPluginUnavailable, err)
 	}
 	if errors.Is(err, schedule.ErrNotFound) {
 		return NewFailure(errors.Join(protocol.ErrScheduleNotFound, err), fmt.Sprintf("schedule %q no longer exists; refresh the schedule list", id))

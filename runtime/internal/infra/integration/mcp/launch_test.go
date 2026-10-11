@@ -22,7 +22,7 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 			var retired atomic.Int32
 			retirementErr := errors.New("retirement failed")
 			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}
-			c := &Connections{lifetime: t.Context(), client: newClient()}
+			c := &Connections{lifetime: t.Context(), client: NewClient()}
 			ctx := t.Context()
 			if refusal == "invalid configuration" {
 				config.Command = ""
@@ -73,7 +73,7 @@ func TestSessionLedgerOwnsLaunchResourceThroughDetachAndShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &Connections{lifetime: t.Context(), client: newClient()}
+	c := &Connections{lifetime: t.Context(), client: NewClient()}
 	t.Cleanup(func() { _ = c.Shutdown(context.WithoutCancel(t.Context())) })
 	if err := connectLaunch(c, t.Context(), input); err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestStartupAdmissionFailureRetiresTheUnlaunchedResource(t *testing.T) {
 		other := config.Clone()
 		other.Name = testsupport.ServerName("other")
 		return NewLaunch(other, nil, func() error { retired.Add(1); return nil })
-	})
+	}, nil, NewClient())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestCopyingALaunchDoesNotDuplicateItsClaim(t *testing.T) {
 	if err := input.Close(); err != nil {
 		t.Fatal(err)
 	}
-	c := &Connections{lifetime: t.Context(), client: newClient()}
+	c := &Connections{lifetime: t.Context(), client: NewClient()}
 	if err := connectLaunch(c, t.Context(), &copied); err == nil {
 		t.Fatal("a copied launch originated a competing claim")
 	}

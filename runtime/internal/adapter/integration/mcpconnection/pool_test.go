@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -35,7 +36,7 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 			t.Cleanup(transport.Close)
 			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 			registry := &mutableSourceRegistry{server: server.Clone()}
-			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +82,7 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 func TestSupersededRefusalRecordsNothing(t *testing.T) {
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/tools"}
 	registry := &mutableSourceRegistry{server: server.Clone(), refusal: errors.New("unreadable source")}
-	pool, err := Open(t.Context(), t.Context(), nil, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), nil, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

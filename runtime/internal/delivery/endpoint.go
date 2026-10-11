@@ -7,11 +7,14 @@ import (
 	"iter"
 	"reflect"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+const maxIdempotencyKeyBytes = 255
 
 // Options carries binding-neutral per-call metadata. Bindings translate their
 // native representation into this value before invoking the Endpoint.
@@ -134,7 +137,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 		return failed(ProjectError(err))
 	}
 
-	ctx = context.WithValue(ctx, commandKeyContext{}, options.IdempotencyKey)
+	ctx = operation.Bind(ctx, e.idempotencyNamespace.String(), options.IdempotencyKey)
 	ctx = WithRequestMeta(ctx, options.RequestMeta)
 	ctx = withAfterEventID(ctx, options.AfterEventID)
 	// Capability admission belongs to this request, not to the operation's stored
@@ -146,7 +149,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	}
 	execute := func() Result { return e.execute(ctx, method, parameters) }
 	var result Result
-	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() {
+	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() || method.Meta.Idempotency == IdempotencyOwnerResponse {
 		result = execute()
 	} else {
 		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute, e.target)
@@ -232,6 +235,9 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 	if options.IdempotencyKey != "" && !method.Idempotency.Replays() {
 		return NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
 	}
+	if len(options.IdempotencyKey) > maxIdempotencyKeyBytes {
+		return NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes")
+	}
 	if options.IdempotencyNamespace != "" && options.IdempotencyKey == "" {
 		return NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
 	}
@@ -277,5 +283,3 @@ func (e *Endpoint) Call[Params, Response any](
 	}
 	return value, nil
 }
-
-type commandKeyContext struct{}

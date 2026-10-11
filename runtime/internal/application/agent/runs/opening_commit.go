@@ -3,10 +3,10 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	"github.com/Tangerg/flame/runtime/internal/optional"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -20,25 +20,25 @@ type OpeningCommit struct {
 	resume             *run.TreeResumeDraft
 	initialSession     *session.Session
 	sessionReplacement *session.Replacement
-	schedule           *schedule.RunRequest
+	automation         *AutomationStart
 	events             []EventCommit
 }
 
 // NewAdmissionOpeningCommit binds a fresh Run admission to every root-owned
-// Session or Schedule fact and opening projection written in its transaction.
+// Session or Automation fact and opening projection written in its transaction.
 func NewAdmissionOpeningCommit(
 	commitID runtimeidentity.CommitID,
 	admit run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
-	scheduled *schedule.RunRequest,
+	automation *AutomationStart,
 	events []EventCommit,
 ) (OpeningCommit, error) {
 	admit = cloneOpeningAdmission(admit)
 	opening := OpeningCommit{commitID: commitID, admit: &admit, events: cloneEventCommits(events)}
 	opening.initialSession = optional.Clone(initialSession)
 	opening.sessionReplacement = optional.Clone(sessionReplacement)
-	opening.schedule = optional.Clone(scheduled)
+	opening.automation = optional.Clone(automation)
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
 	}
@@ -94,7 +94,7 @@ func (o OpeningCommit) Validate() error {
 		if err := o.resume.Validate(); err != nil {
 			return fmt.Errorf("runs: opening resume: %w", err)
 		}
-		if o.initialSession != nil || o.sessionReplacement != nil || o.schedule != nil {
+		if o.initialSession != nil || o.sessionReplacement != nil || o.automation != nil {
 			return errors.New("runs: resumed opening carries fresh-run facts")
 		}
 	}
@@ -106,7 +106,7 @@ func (o OpeningCommit) validateAdmission() error {
 		return fmt.Errorf("runs: opening admission: %w", err)
 	}
 	if o.admit.Lineage().IsChild() &&
-		(o.initialSession != nil || o.sessionReplacement != nil || o.schedule != nil) {
+		(o.initialSession != nil || o.sessionReplacement != nil || o.automation != nil) {
 		return errors.New("runs: child opening carries root admission facts")
 	}
 	if o.initialSession != nil {
@@ -126,12 +126,12 @@ func (o OpeningCommit) validateAdmission() error {
 	if o.initialSession != nil && o.sessionReplacement != nil {
 		return errors.New("runs: opening cannot insert and replace the same Session")
 	}
-	if o.schedule != nil {
+	if o.automation != nil {
 		if o.initialSession == nil {
-			return errors.New("runs: schedule opening has no initial Session")
+			return errors.New("runs: automation opening has no initial Session")
 		}
-		if o.schedule.RunID() != o.admit.RunID || o.schedule.SessionID() != o.admit.SessionID {
-			return errors.New("runs: schedule opening differs from admitted Run")
+		if o.automation.RunID != o.admit.RunID || o.automation.SessionID != o.admit.SessionID {
+			return errors.New("runs: automation opening differs from admitted Run")
 		}
 	}
 	return nil
@@ -232,10 +232,10 @@ func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
 	return optional.Present(o.sessionReplacement)
 }
 
-// Schedule returns the Schedule launch whose occurrence acceptance or manual
+// Automation returns the automated Run request whose acceptance
 // record commits with this admission.
-func (o OpeningCommit) Schedule() (schedule.RunRequest, bool) {
-	return optional.Present(o.schedule)
+func (o OpeningCommit) Automation() (AutomationStart, bool) {
+	return optional.Present(o.automation)
 }
 
 // Events returns isolated opening projections in their canonical order.

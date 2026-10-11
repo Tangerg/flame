@@ -30,7 +30,7 @@ func TestStartupRejectsCanceledAdmission(t *testing.T) {
 				connections, err := Dial(ctx, lifetime, configs, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
 					t.Error("canceled initialization read configuration")
 					return nil, errors.New("unexpected configuration read")
-				})
+				}, nil, NewClient())
 				if connections != nil {
 					defer connections.Shutdown(context.WithoutCancel(t.Context()))
 				}
@@ -64,7 +64,7 @@ func TestStartupCancellationAbortsConfiguration(t *testing.T) {
 						case <-forceExit:
 						}
 						return nil, readFailure
-					})
+					}, nil, NewClient())
 					done <- outcome{connections, err}
 				}()
 				<-entered
@@ -115,7 +115,7 @@ func TestStartupCancellationSettlesAcquiredSessionsBeforeReturning(t *testing.T)
 					unexpectedReads.Add(1)
 					return nil, errors.New("unexpected configuration read")
 				}
-			})
+			}, nil, NewClient())
 			if connections != nil {
 				defer connections.Shutdown(context.WithoutCancel(t.Context()))
 			}
@@ -153,7 +153,7 @@ func TestStartupToleratesIndependentHandshakeTimeout(t *testing.T) {
 			return NewLaunch(timedOut, nil, nil)
 		}
 		return NewLaunch(healthy, nil, nil)
-	})
+	}, nil, NewClient())
 	if err != nil {
 		t.Fatal(err)
 	}

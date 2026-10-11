@@ -19,11 +19,11 @@ func (e *ExecutorCheckpointStore) replaceReferences(ctx context.Context, checkpo
 // The dependency rows advance in the transaction that advances the payload, so
 // a checkpoint whose dependencies are unknown cannot exist.
 func (e *ExecutorCheckpointStore) replaceInstallationDependencies(ctx context.Context, checkpoint ExecutorCheckpointRecord) error {
-	if _, err := conn(ctx, e.db).ExecContext(ctx, `DELETE FROM executor_checkpoint_installations WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
+	if _, err := Connection(ctx, e.db).ExecContext(ctx, `DELETE FROM executor_checkpoint_installations WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
 		return fmt.Errorf("sqlite: replace executor checkpoint %q dependencies: %w", checkpoint.RootMemberID, err)
 	}
 	for _, dependency := range checkpoint.Installations {
-		if _, err := conn(ctx, e.db).ExecContext(ctx,
+		if _, err := Connection(ctx, e.db).ExecContext(ctx,
 			`INSERT INTO executor_checkpoint_installations(root_member_id, installation_id, digest) VALUES (?, ?, ?)`,
 			checkpoint.RootMemberID, dependency.InstallationID.String(), dependency.Digest.String(),
 		); err != nil {
@@ -34,7 +34,7 @@ func (e *ExecutorCheckpointStore) replaceInstallationDependencies(ctx context.Co
 }
 
 func (e *ExecutorCheckpointStore) installationDependencies(ctx context.Context, rootID string) ([]plugin.Dependency, error) {
-	rows, err := conn(ctx, e.db).QueryContext(ctx,
+	rows, err := Connection(ctx, e.db).QueryContext(ctx,
 		`SELECT installation_id, digest FROM executor_checkpoint_installations WHERE root_member_id = ? ORDER BY installation_id, digest`,
 		rootID,
 	)
@@ -64,7 +64,7 @@ func (e *ExecutorCheckpointStore) installationDependencies(ctx context.Context, 
 // checkpoint holds. It answers from the dependency projection alone and never
 // reads a continuation payload.
 func (e *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	rows, err := conn(ctx, e.db).QueryContext(ctx,
+	rows, err := Connection(ctx, e.db).QueryContext(ctx,
 		`SELECT DISTINCT dependency.installation_id, dependency.digest
 		   FROM executor_checkpoint_installations dependency
 		   JOIN executor_checkpoints checkpoint ON checkpoint.root_member_id = dependency.root_member_id

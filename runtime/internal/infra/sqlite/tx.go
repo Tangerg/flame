@@ -42,7 +42,7 @@ type txKey struct{}
 // conn returns the transaction carried on ctx by [RunInTx] if one is live,
 // else the shared pool db. A store method MUST route through this (not the bare
 // s.db) for any statement that should join a caller's cross-store transaction.
-func conn(ctx context.Context, db *sql.DB) execer {
+func Connection(ctx context.Context, db *sql.DB) execer {
 	if tx, ok := ctx.Value(txKey{}).(*sql.Tx); ok {
 		return tx
 	}

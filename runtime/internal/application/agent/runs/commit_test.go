@@ -234,7 +234,7 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	scheduled := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, root.RunID)
+	scheduled := automationRequest(testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, root.RunID), "/work")
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_schedule_without_session"), root,
 		nil, nil, &scheduled, nil,
@@ -251,7 +251,7 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 	); err != nil {
 		t.Fatalf("schedule admission with its initial Session: %v", err)
 	}
-	foreign := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, "run_other")
+	foreign := automationRequest(testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, "run_other"), "/work")
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_schedule_foreign_run"), root,
 		&scheduledSession, nil, &foreign, nil,

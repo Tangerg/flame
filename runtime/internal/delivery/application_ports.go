@@ -9,13 +9,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -25,6 +23,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	schedules "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
 // Every interface below is defined by Delivery — the consuming side. They keep
@@ -125,7 +125,7 @@ type scheduleManagementUseCases interface {
 }
 
 type scheduleFiringUseCases interface {
-	RunNow(ctx context.Context, id string) (schedules.StartedRun, error)
+	RunNow(ctx context.Context, id string) (runs.StartResult, error)
 }
 
 type workspaceFileUseCases interface {

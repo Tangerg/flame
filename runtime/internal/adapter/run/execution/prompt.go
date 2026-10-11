@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-11.4";
+export const PROTOCOL_VERSION = "2026-10-12.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1220,6 +1220,7 @@ export interface PluginRelease {
   name: string;
   renderers: PluginRenderer[];
   servers: PluginServerDeclaration[];
+  services: PluginService[];
   skills: PluginSkill[];
   themes: PluginTheme[];
   version?: string;
@@ -1258,6 +1259,13 @@ export interface PluginScheduleTemplate {
 export type PluginServerDeclaration =
   | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: Record<string, string>; name: string }
   | { type: "streamableHttp"; headers?: Record<string, string>; name: string; url: string };
+
+export interface PluginService {
+  server: string;
+  type: PluginServiceType;
+}
+
+export type PluginServiceType = "memory" | "schedules";
 
 export interface PluginSkill {
   description: string;
@@ -2002,7 +2010,7 @@ export interface ToolInvocation {
 }
 
 export type ToolRef =
-  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "create_schedule" | "delete_schedule" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "http_request" | "list_schedules" | "list_skills" | "load_skill" | "lsp" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_memory" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
+  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "http_request" | "list_skills" | "load_skill" | "lsp" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
   | { type: "mcp"; name: string; server: MCPServerID }
   | { type: "a2a"; endpoint: string };
 
@@ -2229,6 +2237,7 @@ export const WIRE_ENUMS = {
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
+  PluginServiceType: ["memory", "schedules"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
   PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"],

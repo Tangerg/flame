@@ -4,6 +4,8 @@ import (
 	"errors"
 	"math"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -83,7 +85,7 @@ func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat
 		window := tokenLimitInt(contextWindow)
 		whole := window / percentageScale * windowTriggerPct
 		fraction := window % percentageScale * windowTriggerPct / percentageScale
-		trigger = max(1, saturatedAdd(whole, fraction))
+		trigger = max(1, modeltext.SaturatedAdd(whole, fraction))
 	}
 	if inputLimitKnown {
 		trigger = min(trigger, tokenLimitInt(inputLimit))

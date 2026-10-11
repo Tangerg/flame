@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -373,6 +372,7 @@ func newTestHandler(rt testRuntime) *Handler {
 	workspaceNotifier := segment.NewWorkspaceNotifier(nil)
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
+		AutomationStarts:                   noDeliveryAutomationStarts{},
 		Observations:                       rt,
 		Releases:                           rt,
 		RootCancellation:                   inertRunControl{},
@@ -1316,10 +1316,10 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		ExecutorCheckpoints: stores,
 		ExecutionTrees:      stores,
 		ChildRunStarts:      stores,
-		Schedules:           inertSegmentSchedules{},
-		GoalRuns:            inertSegmentGoalRuns{},
-		ToolResults:         inertSegmentToolResults{},
-		Tx:                  s.RunInTx,
+		AutomationStarts:    inertSegmentAutomation{}, AutomationAuthority: inertSegmentAutomation{},
+		GoalRuns:    inertSegmentGoalRuns{},
+		ToolResults: inertSegmentToolResults{},
+		Tx:          s.RunInTx,
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults
@@ -1513,10 +1513,10 @@ func (inertEmbeddingRoles) SaveEmbeddingRole(context.Context, modelref.Role) err
 
 // The segment write-sets require every store; delivery fixtures that do not
 // exercise a capability supply an inert one rather than an absent one.
-type inertSegmentSchedules struct{}
+type inertSegmentAutomation struct{}
 
-func (inertSegmentSchedules) Accept(context.Context, schedule.Acceptance) error   { return nil }
-func (inertSegmentSchedules) RecordRun(context.Context, schedule.RunRecord) error { return nil }
+func (inertSegmentAutomation) Save(context.Context, runs.AutomationReceipt) error { return nil }
+func (inertSegmentAutomation) Admit(context.Context, runs.AutomationStart) error  { return nil }
 
 type inertSegmentGoalRuns struct{}
 
@@ -1550,4 +1550,10 @@ func (stubRunState) UnpublishedToolResults(context.Context, string, string) ([]c
 }
 func (s stubMessageCounter) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
 	return s.rt.ReadHistory(ctx, sessionID)
+}
+
+type noDeliveryAutomationStarts struct{}
+
+func (noDeliveryAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
+	return runs.AutomationReceipt{}, false, nil
 }

@@ -354,20 +354,20 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}
-	scheduled, present := opening.Schedule()
-	if !present {
-		return nil
-	}
-	if record, manual := scheduled.ManualRecord(); manual {
-		if err := e.schedules.RecordRun(ctx, record); err != nil {
-			return fmt.Errorf("segment: record manual schedule Run: %w", err)
+	automation, present := opening.Automation()
+	if present {
+		if err := e.automationAuthority.Admit(ctx, automation); err != nil {
+			return err
 		}
-		return nil
+		receipt, err := runs.AcceptAutomation(automation, opening)
+		if err != nil {
+			return err
+		}
+		if err := e.automationStarts.Save(ctx, receipt); err != nil {
+			return fmt.Errorf("segment: record automated Run admission: %w", err)
+		}
 	}
-	acceptance, _ := scheduled.Acceptance()
-	if err := e.schedules.Accept(ctx, acceptance); err != nil {
-		return fmt.Errorf("segment: accept scheduled occurrence: %w", err)
-	}
+
 	return nil
 }
 

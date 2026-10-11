@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 
@@ -302,7 +304,7 @@ description: <what the skill does and WHEN to use it, one or two sentences>
 // outside conversation middleware. It returns "" for NO_SKILL, a "REVISE: <name>"
 // directive, or a new-skill SKILL.md; the caller interprets which.
 func (s *SkillProposalMiner) askForSkill(ctx context.Context, messages []chat.Message) (string, error) {
-	return s.mineDocument(ctx, skillMinerPrompt, renderTranscript(messages))
+	return s.mineDocument(ctx, skillMinerPrompt, modeltext.RenderTranscript(messages))
 }
 
 // noSkillSentinel is the exact answer both mining prompts ask for when the
@@ -317,7 +319,7 @@ func (s *SkillProposalMiner) mineDocument(ctx context.Context, system, user stri
 	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		Operation:    "skill.mine",
 		SystemPrompt: system, UserPrompt: user,
-		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
+		MaxInputBytes: modeltext.ModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})
 	if err != nil {
 		return "", err
@@ -356,7 +358,7 @@ func (s *SkillProposalMiner) askForRevision(ctx context.Context, current *skills
 	input.WriteString("\n\n")
 	input.WriteString(current.Instructions)
 	input.WriteString("\n\nCONVERSATION\n---\n")
-	input.WriteString(renderTranscript(messages))
+	input.WriteString(modeltext.RenderTranscript(messages))
 	return s.mineDocument(ctx, skillRevisePrompt, input.String())
 }
 
@@ -373,4 +375,8 @@ func unfence(s string) string {
 	s = strings.TrimRight(s, "\n")
 	s = strings.TrimSuffix(s, "```")
 	return strings.TrimSpace(s)
+}
+
+type messageReader interface {
+	Read(context.Context, string) ([]chat.Message, error)
 }

@@ -15,7 +15,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -108,7 +107,7 @@ func mustAdmissionOpening(
 	admission run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
-	scheduled *schedule.RunRequest,
+	scheduled *runs.AutomationStart,
 	events []runs.EventCommit,
 ) runs.OpeningCommit {
 	t.Helper()

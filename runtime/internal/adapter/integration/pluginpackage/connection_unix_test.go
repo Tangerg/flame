@@ -89,7 +89,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("source definition = %v, %v", found, err)
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 	if err != nil || len(sources) != 1 {
 		t.Fatalf("sources = %v, %v", sources, err)
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry)
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 		})
 	}
 	t.Run("startup", func(t *testing.T) {
-		pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry)
+		pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry, nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

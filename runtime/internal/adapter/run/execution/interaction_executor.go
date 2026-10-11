@@ -7,6 +7,7 @@ import (
 	"iter"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -329,6 +330,11 @@ func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Mani
 	if err != nil {
 		return nil, err
 	}
+	// Deferred authority is a set; discovery owns its presentation order.
+	// Reconnection order must not change a waiting execution's identity.
+	slices.SortFunc(deferred, func(a, b toolConfigurationIdentity) int {
+		return strings.Compare(a.Reference, b.Reference)
+	})
 	configuration, err := agent.EncodePayload(struct {
 		Installations     []installationDependencyWire `json:"installations"`
 		ToolResultOffload *toolResultOffloadIdentity   `json:"toolResultOffload,omitzero"`

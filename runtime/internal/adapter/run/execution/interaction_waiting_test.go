@@ -188,6 +188,21 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	catalog := &staticInteractionTools{
+		identities: []domaintool.Ref{testsupport.BuiltInTool(t, "ask_user")},
+		manifest:   toolset.Manifest{Visible: []toolcontract.Tool{ask}},
+	}
+	for _, server := range []string{"memory", "schedules"} {
+		ref := testsupport.MCPTool(testsupport.UserMCPServer(server), "read")
+		executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: ref.ModelName()}, func(context.Context, struct{}) (string, error) {
+			return "unused", nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		catalog.identities = append(catalog.identities, ref)
+		catalog.manifest.Deferred = append(catalog.manifest.Deferred, executable)
+	}
 	arguments := `{"questions":[{"question":"Which value?"}]}`
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
@@ -196,7 +211,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		interactionUsageTextResponse("continued after the answer", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "ask_user")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{ask}}},
+		ToolResolver:    catalog,
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	start := interactionTestStart()
@@ -219,6 +234,9 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	if releaseErr := executor.Release(t.Context(), ref); releaseErr != nil {
 		t.Fatal(releaseErr)
 	}
+	// Reconnected sources may be enumerated in a different order. Their exact
+	// authority is unchanged, so a waiting execution must remain restorable.
+	catalog.manifest.Deferred[0], catalog.manifest.Deferred[1] = catalog.manifest.Deferred[1], catalog.manifest.Deferred[0]
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
 		workspace,

@@ -7,6 +7,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
+type wireService struct {
+	Type   plugin.ServiceKind   `json:"type"`
+	Server mcpserver.ServerName `json:"server"`
+}
+
 type wireInput struct {
 	ID       string               `json:"id"`
 	Secret   bool                 `json:"secret"`

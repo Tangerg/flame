@@ -53,6 +53,7 @@ const pluginThemeSchemas = [
           selected: {
             digest: "1".repeat(64),
             name: "sample",
+            services: [],
             servers: [],
             inputs: [],
             themes: [theme],

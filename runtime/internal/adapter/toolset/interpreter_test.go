@@ -3,9 +3,10 @@ package toolset
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -19,8 +20,6 @@ func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 		want tool.SafetyClass
 	}{
 		{ref: testsupport.BuiltInTool(t, tool.DelegateTask), want: tool.SafetyClassSafe},
-		{ref: testsupport.BuiltInTool(t, tool.ListSchedules), want: tool.SafetyClassSafe},
-		{ref: testsupport.BuiltInTool(t, tool.CreateSchedule), want: tool.SafetyClassWrite},
 		{ref: testsupport.BuiltInTool(t, tool.ApplyPatch), want: tool.SafetyClassWrite},
 		{ref: testsupport.BuiltInTool(t, tool.Shell), want: tool.SafetyClassExec},
 		{ref: testsupport.BuiltInTool(t, tool.ReadShellOutput), want: tool.SafetyClassSafe},

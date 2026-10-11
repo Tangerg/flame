@@ -118,7 +118,9 @@ func (r *Registry) command[Capability, Params, Response any](
 ) {
 	meta.Kind = KindUnary
 	meta.Operation = OperationCommand
-	meta.Idempotency = IdempotencyReplayResponse
+	if meta.Idempotency == "" {
+		meta.Idempotency = IdempotencyReplayResponse
+	}
 	meta.ReplayCursor = ReplayCursorNone
 	r.registerUnary(meta, call)
 }
@@ -155,7 +157,9 @@ func (r *Registry) commandAck[Capability, Params any](
 ) {
 	meta.Kind = KindUnary
 	meta.Operation = OperationCommand
-	meta.Idempotency = IdempotencyReplayResponse
+	if meta.Idempotency == "" {
+		meta.Idempotency = IdempotencyReplayResponse
+	}
 	meta.ReplayCursor = ReplayCursorNone
 	meta.Pagination = PaginationNone
 	meta.Params = reflect.TypeFor[Params]()

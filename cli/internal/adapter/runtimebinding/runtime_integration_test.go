@@ -51,6 +51,7 @@ func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 func TestRuntimeConnectionResourceFailures(t *testing.T) {
 	configureIntegrationRuntime(t)
 	runtime := openIntegrationRuntime(t, t.TempDir())
+	activateManagedPlugins(t, runtime, "schedules")
 	for _, tc := range []struct {
 		name string
 		kind error
@@ -91,6 +92,7 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtime := openIntegrationRuntime(t, workspace)
+	activateManagedPlugins(t, runtime, "memory", "schedules")
 	created := requireSessionCatalog(t, runtime, workspace)
 	requireWorkspaceInspection(t, runtime, workspace)
 	forked := requireSessionMutation(t, runtime, created, t.TempDir())
@@ -459,8 +461,9 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 
 func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Helper()
+	productRoot := t.TempDir()
 	owner := NewOwner(Config{
-		ProductRoot: t.TempDir(), DefaultWorkspacePath: workspace,
+		ProductRoot: productRoot, DefaultWorkspacePath: workspace,
 		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 	})
 	runtime, err := owner.Connection(t.Context(), "")
@@ -470,6 +473,14 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Cleanup(func() {
 		if err := owner.Close(); err != nil {
 			t.Errorf("close Runtime: %v", err)
+		}
+		if err := filepath.WalkDir(productRoot, func(path string, entry os.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				return os.Chmod(path, 0700)
+			}
+			return err
+		}); err != nil {
+			t.Errorf("restore fixture directory permissions: %v", err)
 		}
 	})
 	return runtime

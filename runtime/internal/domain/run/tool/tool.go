@@ -39,8 +39,6 @@ const (
 	ApplyPatch        BuiltInName = "apply_patch"
 	AskUser           BuiltInName = "ask_user"
 	CreateGoal        BuiltInName = "create_goal"
-	CreateSchedule    BuiltInName = "create_schedule"
-	DeleteSchedule    BuiltInName = "delete_schedule"
 	DelegateTask      BuiltInName = "delegate_task"
 	Edit              BuiltInName = "edit"
 	EnterPlanMode     BuiltInName = "enter_plan_mode"
@@ -49,7 +47,6 @@ const (
 	Glob              BuiltInName = "glob"
 	Grep              BuiltInName = "grep"
 	HTTPRequest       BuiltInName = "http_request"
-	ListSchedules     BuiltInName = "list_schedules"
 	ListSkills        BuiltInName = "list_skills"
 	LoadSkill         BuiltInName = "load_skill"
 	LSP               BuiltInName = "lsp"
@@ -59,7 +56,6 @@ const (
 	ReadSkillResource BuiltInName = "read_skill_resource"
 	ReadToolResult    BuiltInName = "read_tool_result"
 	ReportGoalOutcome BuiltInName = "report_goal_outcome"
-	SearchMemory      BuiltInName = "search_memory"
 	SearchTools       BuiltInName = "search_tools"
 	SetPlan           BuiltInName = "set_plan"
 	Shell             BuiltInName = "shell"
@@ -70,10 +66,10 @@ const (
 
 // builtInNames is the set's only enumeration.
 var builtInNames = []BuiltInName{
-	ApplyPatch, AskUser, CreateGoal, CreateSchedule, DeleteSchedule, DelegateTask, Edit,
-	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, HTTPRequest, ListSchedules, ListSkills,
+	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
+	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, HTTPRequest, ListSkills,
 	LoadSkill, LSP, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
-	ReportGoalOutcome, SearchMemory, SearchTools, SetPlan, Shell, StopShell, WebFetch, WebSearch,
+	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell, WebFetch, WebSearch,
 }
 
 func BuiltInNames() []BuiltInName { return slices.Clone(builtInNames) }

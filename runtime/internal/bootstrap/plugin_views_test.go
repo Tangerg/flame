@@ -148,10 +148,7 @@ func TestPluginViewReadsUseInstalledBytesAndExistingTrajectory(t *testing.T) {
 func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/memory")
-	if err != nil {
-		t.Fatal(err)
-	}
+	source := filepath.Join(firstPartyPackages, "memory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory").(*protocol.PluginInstallation)
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewAgentMemory {
 		t.Fatalf("memory admission: %+v", installed.Selected)
@@ -164,6 +161,7 @@ func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
 	if err != nil || html.HTML != string(authored) {
 		t.Fatalf("memory resource differs from admitted bytes: %v", err)
 	}
+	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	for _, content := range []string{"first fact", "second fact"} {
 		r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: content}, content)
 	}
@@ -185,18 +183,21 @@ func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
 		t.Fatalf("memory page admitted trajectory: %v", wrong.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
-	if page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem]); len(page.Data) != 2 {
-		t.Fatal("uninstall changed Runtime memory")
+	result := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
+		t.Fatalf("uninstalled Memory owner=%v", result.Failure)
 	}
+	retained := filepath.Join(cfg.Stores.DataDirectory, "plugins", "data", installed.ID, "memory.db")
+	if _, err := os.Stat(retained); err != nil {
+		t.Fatalf("uninstall discarded backend data: %v", err)
+	}
+
 }
 
-func TestScheduleViewUsesCanonicalPagesAndUninstallPreservesSchedules(t *testing.T) {
+func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/schedules")
-	if err != nil {
-		t.Fatal(err)
-	}
+	source := filepath.Join(firstPartyPackages, "schedules")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-schedules").(*protocol.PluginInstallation)
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewSchedules || len(installed.Selected.Views[0].ScheduleTemplates) != 4 {
 		t.Fatalf("schedule admission: %+v", installed.Selected)
@@ -209,6 +210,7 @@ func TestScheduleViewUsesCanonicalPagesAndUninstallPreservesSchedules(t *testing
 	if err != nil || html.HTML != string(authored) {
 		t.Fatalf("schedule resource differs from admitted bytes: %v", err)
 	}
+	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	for _, template := range installed.Selected.Views[0].ScheduleTemplates[:2] {
 		r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: template.Title, Instructions: template.Instructions, Cron: template.Cron}, template.ID)
 	}
@@ -240,9 +242,15 @@ func TestScheduleViewUsesCanonicalPagesAndUninstallPreservesSchedules(t *testing
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	if page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule]); len(page.Data) != 2 {
-		t.Fatal("uninstall changed Runtime schedules")
+	result := r.endpoint.Invoke(t.Context(), delivery.SchedulesList, protocol.PageQuery{}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
+		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
+	retained := filepath.Join(cfg.Stores.DataDirectory, "plugins", "data", installed.ID, "schedules.db")
+	if _, err := os.Stat(retained); err != nil {
+		t.Fatalf("uninstall discarded backend data: %v", err)
+	}
+
 }
 
 func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {

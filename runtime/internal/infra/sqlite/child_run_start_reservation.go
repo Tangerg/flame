@@ -105,7 +105,7 @@ func (c *ChildRunStartReservationStore) Reserve(
 	if err := record.validate(); err != nil {
 		return err
 	}
-	result, err := conn(ctx, c.db).ExecContext(ctx, `
+	result, err := Connection(ctx, c.db).ExecContext(ctx, `
 		INSERT INTO child_run_start_reservations(member_id, session_id, payload, created_at, state)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(member_id) DO NOTHING`,
@@ -165,7 +165,7 @@ func (c *ChildRunStartReservationStore) Conclude(
 	if state != childRunStartStateReserved {
 		return false, ErrChildRunStartReservationConflict
 	}
-	result, err := conn(ctx, c.db).ExecContext(ctx, `
+	result, err := Connection(ctx, c.db).ExecContext(ctx, `
 		UPDATE child_run_start_reservations
 		SET state = ?
 		WHERE member_id = ? AND state = ?`, concludedState.String(), record.MemberID, childRunStartStateReserved.String())
@@ -194,7 +194,7 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
-	if _, err := conn(ctx, c.db).ExecContext(ctx,
+	if _, err := Connection(ctx, c.db).ExecContext(ctx,
 		`DELETE FROM child_run_start_reservations WHERE session_id = ?`, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete Session child Run start reservations: %w", err)
@@ -209,7 +209,7 @@ func (c *ChildRunStartReservationStore) load(
 	var record ChildRunStartReservationRecord
 	var createdAt int64
 	var state string
-	err := conn(ctx, c.db).QueryRowContext(ctx, `
+	err := Connection(ctx, c.db).QueryRowContext(ctx, `
 		SELECT member_id, session_id, payload, created_at, state
 		FROM child_run_start_reservations
 		WHERE member_id = ?`, memberID,

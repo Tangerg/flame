@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+
 	"github.com/Tangerg/scope/models/catalog"
 
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -1246,7 +1248,7 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 	}
 	const marker = "per-request trailer"
 	trailer := []chat.Message{chat.NewUserMessage(chat.NewTextPart(
-		marker + strings.Repeat("y", (hardInput-estimate)*2*asciiBytesPerEstimatedToken),
+		marker + strings.Repeat("y", (hardInput-estimate)*2*modeltext.ASCIIBytesPerEstimatedToken),
 	))}
 	compact := func(sessionID string, trailer []chat.Message) (executionadapter.ModelContextCompactionResult, *compactionTestStore) {
 		t.Helper()

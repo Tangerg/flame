@@ -72,20 +72,21 @@ func directoryHasProductionGo(directory string) (bool, error) {
 // are usable without the Runtime module's internal-package privilege. Exact
 // operation coverage is enforced by the root binding's own surface test.
 func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
-	directory := t.TempDir()
+	directory, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	root := moduleRoot(t)
-	goMod := fmt.Sprintf(`module example.com/runtimeconsumer
+	goMod := `module example.com/runtimeconsumer
 
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0
+	github.com/Tangerg/flame/runtime v0.0.0-20261008063147-97d0c5c7e56e
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20261008063147-97d0c5c7e56e
 )
 
-replace github.com/Tangerg/flame/runtime => %s
-replace github.com/Tangerg/flame/runtime/localruntime => %s
-`, filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "localruntime")))
+`
 	source := `package runtimeconsumer
 
 import (
@@ -126,9 +127,11 @@ func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	command := exec.CommandContext(t.Context(), "go", "test", "-mod=mod", "./...")
+	workspace := fmt.Sprintf("go 1.27.0\n\nuse (\n%s\n%s\n%s\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "localruntime")))
+	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
+	command := exec.CommandContext(t.Context(), "go", "test", "./...")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK=off", "GOPROXY=off")
+	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("compile external Runtime consumer: %v\n%s", err, output)
 	}

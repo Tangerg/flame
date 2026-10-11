@@ -19,9 +19,8 @@ import (
 	"github.com/Tangerg/flame/runtime/localruntime"
 )
 
-// Bundle holds every persistence backend opened for one runtime process. All
-// durable stores share one SQLite database under DataDirectory. AgentMemory is
-// the separate SQLite fact ledger + curated memory items.
+// Bundle holds Runtime's host stores in one SQLite database under DataDirectory.
+// Managed plugin processes open their private stores separately.
 type Bundle struct {
 	db        *sql.DB
 	closeOnce sync.Once
@@ -35,8 +34,8 @@ type Bundle struct {
 
 	Sessions            *sqlitestore.SessionStore
 	Runs                *sqlitestore.RunStore
+	AutomationStarts    *AutomationStartStore
 	WorkspaceMutations  *WorkspaceMutationStore
-	AgentMemory         *sqlitestore.AgentMemoryStore
 	ExecutorCheckpoints *ExecutorCheckpointStore
 	Interrupts          *InterruptStore
 	Transcript          *sqlitestore.TranscriptStore
@@ -56,7 +55,6 @@ type Bundle struct {
 	ApprovalRules       *sqlitestore.ApprovalRuleStore
 	UtilityRole         *sqlitestore.UtilityRoleStore
 	Trust               *sqlitestore.TrustStore
-	Schedules           *sqlitestore.ScheduleStore
 	EmbeddingRole       *sqlitestore.EmbeddingRoleStore
 	ToolResults         *sqlitestore.ToolResultStore
 	Idempotency         *sqlitestore.IdempotencyStore
@@ -178,8 +176,8 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		},
 		Sessions:            sqlitestore.NewSessionStore(db),
 		Runs:                sqlitestore.NewRunStore(db),
+		AutomationStarts:    NewAutomationStartStore(db),
 		WorkspaceMutations:  NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
-		AgentMemory:         sqlitestore.NewAgentMemoryStore(db),
 		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),
 		Interrupts:          NewInterruptStore(sqlitestore.NewInterruptStore(db)),
 		Transcript:          sqlitestore.NewTranscriptStore(db),
@@ -199,7 +197,6 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ApprovalRules:       sqlitestore.NewApprovalRuleStore(db),
 		UtilityRole:         sqlitestore.NewUtilityRoleStore(db),
 		Trust:               sqlitestore.NewTrustStore(db),
-		Schedules:           sqlitestore.NewScheduleStore(db),
 		EmbeddingRole:       sqlitestore.NewEmbeddingRoleStore(db),
 		ToolResults:         sqlitestore.NewToolResultStore(db),
 		Idempotency:         sqlitestore.NewIdempotencyStore(db),

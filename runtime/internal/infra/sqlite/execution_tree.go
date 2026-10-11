@@ -23,7 +23,7 @@ type ExecutionTreeRecord struct {
 
 func (e *ExecutorCheckpointStore) ExecutionResultCommitted(ctx context.Context, sessionID, id, digest string) (bool, error) {
 	var owner, stored string
-	err := conn(ctx, e.db).QueryRowContext(ctx, `SELECT session_id,digest FROM result_publications WHERE publication_id = ?`, id).Scan(&owner, &stored)
+	err := Connection(ctx, e.db).QueryRowContext(ctx, `SELECT session_id,digest FROM result_publications WHERE publication_id = ?`, id).Scan(&owner, &stored)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -39,7 +39,7 @@ func (e *ExecutorCheckpointStore) ExecutionResultCommitted(ctx context.Context, 
 func (e *ExecutorCheckpointStore) LoadExecutionTree(ctx context.Context, sessionID, rootID string) (ExecutionTreeRecord, bool, error) {
 	record := ExecutionTreeRecord{SessionID: sessionID, RootID: rootID}
 	var sequence string
-	err := conn(ctx, e.db).QueryRowContext(ctx, `SELECT writer, digest, payload, sequence, commit_id, commit_digest FROM execution_trees WHERE session_id = ? AND root_id = ?`, sessionID, rootID).Scan(&record.Writer, &record.Digest, &record.Payload, &sequence, &record.CommitID, &record.CommitDigest)
+	err := Connection(ctx, e.db).QueryRowContext(ctx, `SELECT writer, digest, payload, sequence, commit_id, commit_digest FROM execution_trees WHERE session_id = ? AND root_id = ?`, sessionID, rootID).Scan(&record.Writer, &record.Digest, &record.Payload, &sequence, &record.CommitID, &record.CommitDigest)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ExecutionTreeRecord{}, false, nil
 	}
@@ -60,7 +60,7 @@ func (e *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, previou
 			return ErrExecutionTreeConflict
 		}
 		var committedDigest string
-		err = conn(ctx, e.db).QueryRowContext(ctx, `SELECT digest FROM execution_tree_commits WHERE root_id = ? AND commit_id = ?`, next.RootID, next.CommitID).Scan(&committedDigest)
+		err = Connection(ctx, e.db).QueryRowContext(ctx, `SELECT digest FROM execution_tree_commits WHERE root_id = ? AND commit_id = ?`, next.RootID, next.CommitID).Scan(&committedDigest)
 		if err == nil {
 			if found && committedDigest == next.CommitDigest && current.Writer == next.Writer && current.Sequence == next.Sequence && current.CommitID == next.CommitID && current.CommitDigest == next.CommitDigest && current.Digest == next.Digest && bytes.Equal(current.Payload, next.Payload) {
 				return nil
@@ -89,14 +89,14 @@ func (e *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, previou
 		}
 		sequence := strconv.FormatUint(next.Sequence, 10)
 		if !found {
-			_, err = conn(ctx, e.db).ExecContext(ctx, `INSERT INTO execution_trees(root_id,session_id,writer,digest,payload,sequence,commit_id,commit_digest) VALUES(?,?,?,?,?,?,?,?)`, next.RootID, next.SessionID, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest)
+			_, err = Connection(ctx, e.db).ExecContext(ctx, `INSERT INTO execution_trees(root_id,session_id,writer,digest,payload,sequence,commit_id,commit_digest) VALUES(?,?,?,?,?,?,?,?)`, next.RootID, next.SessionID, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest)
 		} else {
-			_, err = conn(ctx, e.db).ExecContext(ctx, `UPDATE execution_trees SET writer = ?, digest = ?, payload = ?, sequence = ?, commit_id = ?, commit_digest = ? WHERE root_id = ? AND session_id = ?`, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest, next.RootID, next.SessionID)
+			_, err = Connection(ctx, e.db).ExecContext(ctx, `UPDATE execution_trees SET writer = ?, digest = ?, payload = ?, sequence = ?, commit_id = ?, commit_digest = ? WHERE root_id = ? AND session_id = ?`, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest, next.RootID, next.SessionID)
 		}
 		if err != nil {
 			return err
 		}
-		_, err = conn(ctx, e.db).ExecContext(ctx, `INSERT INTO execution_tree_commits(root_id,commit_id,digest) VALUES(?,?,?)`, next.RootID, next.CommitID, next.CommitDigest)
+		_, err = Connection(ctx, e.db).ExecContext(ctx, `INSERT INTO execution_tree_commits(root_id,commit_id,digest) VALUES(?,?,?)`, next.RootID, next.CommitID, next.CommitDigest)
 		return err
 	})
 }

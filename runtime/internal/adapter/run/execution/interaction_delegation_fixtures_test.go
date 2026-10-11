@@ -162,7 +162,7 @@ func (d *delegateSessionStore) Get(_ context.Context, id string) (session.Sessio
 	return d.value, nil
 }
 
-func (d *delegateSessionStore) PrepareScheduled(
+func (d *delegateSessionStore) PrepareAutomation(
 	context.Context,
 	string,
 	string,

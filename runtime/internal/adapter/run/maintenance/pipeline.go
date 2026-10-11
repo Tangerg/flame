@@ -8,17 +8,20 @@ import (
 )
 
 // Pipeline composes the post-Run maintenance workers. It keeps the lifecycle
-// policy beside the concrete workers: mine the transcript for Skill proposals,
-// archive idle Skills, then consolidate memory only after the model-call path
-// actually summarized durable context.
+// host-owned Skill maintenance beside the committed Run boundary. The optional
+// Memory backend receives that boundary and owns its extraction/curation gate.
+type MemoryMaintenance interface {
+	MaintainMemory(context.Context, executionadapter.RunMaintenanceInput) error
+}
+
 type Pipeline struct {
-	consolidator  *MemoryConsolidator
+	consolidator  MemoryMaintenance
 	skillMiner    *SkillProposalMiner
 	skillArchiver *IdleSkillArchiver
 }
 
 // NewPipeline composes the default maintenance workers for clean Run endings.
-func NewPipeline(consolidator *MemoryConsolidator, skillMiner *SkillProposalMiner, skillArchiver *IdleSkillArchiver) (*Pipeline, error) {
+func NewPipeline(consolidator MemoryMaintenance, skillMiner *SkillProposalMiner, skillArchiver *IdleSkillArchiver) (*Pipeline, error) {
 	if consolidator == nil || skillMiner == nil || skillArchiver == nil {
 		return nil, errors.New("maintenance: all pipeline workers are required")
 	}
@@ -41,10 +44,7 @@ func (p *Pipeline) Maintain(ctx context.Context, input executionadapter.RunMaint
 	if err := p.skillArchiver.ArchiveIfDue(ctx); err != nil {
 		result.Errors = append(result.Errors, err)
 	}
-	if !input.DurableContextCompacted {
-		return result
-	}
-	if err := p.consolidator.Consolidate(ctx, input.SessionID, input.WorkspaceCWD); err != nil {
+	if err := p.consolidator.MaintainMemory(ctx, input); err != nil {
 		result.Errors = append(result.Errors, err)
 	}
 	return result

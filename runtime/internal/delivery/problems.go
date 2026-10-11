@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -126,6 +128,9 @@ func NewFailure(cause error, detail string) *Failure {
 // ProjectError maps an implementation error onto the binding-neutral problem
 // vocabulary without exposing arbitrary internal details for unknown failures.
 func ProjectError(err error) *Failure {
+	if errors.Is(err, idempotency.ErrKeyConflict) {
+		return NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key already binds a different command")
+	}
 	if err == nil {
 		return nil
 	}

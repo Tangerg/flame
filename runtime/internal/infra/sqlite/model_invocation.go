@@ -43,7 +43,7 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 	if yield == nil {
 		return errors.New("sqlite: model invocation reader is required")
 	}
-	rows, err := conn(ctx, m.db).QueryContext(ctx, `
+	rows, err := Connection(ctx, m.db).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, started_at
 		  FROM model_invocations
 		 WHERE state = ?
@@ -86,7 +86,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: model invocation start time: %w", err)
 	}
-	result, err := conn(ctx, m.db).ExecContext(ctx,
+	result, err := Connection(ctx, m.db).ExecContext(ctx,
 		`INSERT INTO model_invocations(
 		   call_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		 SELECT ?, session_id, run_id, ?, ?, ?, NULL
@@ -176,7 +176,7 @@ func (m *ModelInvocationStore) finish(
 	if err != nil {
 		return err
 	}
-	result, err := conn(ctx, m.db).ExecContext(ctx,
+	result, err := Connection(ctx, m.db).ExecContext(ctx,
 		`UPDATE model_invocations
 		    SET state = ?, finished_at = ?, first_output_latency_millis = ?, usage = ?
 		  WHERE call_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
@@ -240,7 +240,7 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 	}
 	query += ` ORDER BY started_at DESC, call_id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := conn(ctx, m.db).QueryContext(ctx, query, args...)
+	rows, err := Connection(ctx, m.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page model invocations: %w", err)
 	}
