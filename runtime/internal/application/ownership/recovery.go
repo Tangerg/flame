@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"log/slog"
 	"runtime/debug"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 const recoveryInterval = time.Second
@@ -55,12 +57,15 @@ func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend
 // another Runtime already owns the sweep; that process is responsible for the
 // current pass.
 func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err error) {
+	if err := recoveryContextError(ctx); err != nil {
+		return false, err
+	}
 	lease, ok, err := c.ownership.TryRecoverySweep()
 	if err != nil {
-		return false, fmt.Errorf("ownership recovery: acquire sweep: %w", err)
+		return false, fmt.Errorf("ownership recovery: acquire sweep: %w", errors.Join(err, cancellation.Err(ctx)))
 	}
 	if !ok {
-		return false, nil
+		return false, cancellation.Err(ctx)
 	}
 	return true, c.reconcileOwned(ctx, lease)
 }
@@ -69,9 +74,12 @@ func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err
 // own ordered pass before this Runtime begins serving requests. The second pass
 // is intentional: candidates may have appeared after the prior winner's read.
 func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
+	if err := recoveryContextError(ctx); err != nil {
+		return err
+	}
 	lease, err := c.ownership.AcquireRecoverySweep(ctx)
 	if err != nil {
-		return fmt.Errorf("ownership recovery: acquire startup sweep: %w", err)
+		return fmt.Errorf("ownership recovery: acquire startup sweep: %w", errors.Join(err, cancellation.Err(ctx)))
 	}
 	return c.reconcileOwned(ctx, lease)
 }
@@ -118,11 +126,24 @@ func (c *RecoveryCoordinator) sweep(ctx context.Context) (err error) {
 
 func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context, lease Lease) error {
 	defer lease.Release()
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
 	if _, err := c.runs.Reconcile(ctx); err != nil {
-		return fmt.Errorf("ownership recovery: reconcile Runs: %w", err)
+		return fmt.Errorf("ownership recovery: reconcile Runs: %w", errors.Join(err, cancellation.Err(ctx)))
+	}
+	if err := cancellation.Err(ctx); err != nil {
+		return err
 	}
 	if err := c.goals.Reconcile(ctx); err != nil {
-		return fmt.Errorf("ownership recovery: reconcile Goals: %w", err)
+		return fmt.Errorf("ownership recovery: reconcile Goals: %w", errors.Join(err, cancellation.Err(ctx)))
 	}
 	return nil
+}
+
+func recoveryContextError(ctx context.Context) error {
+	if dependency.Missing(ctx) {
+		return errors.New("ownership recovery: context is required")
+	}
+	return cancellation.Err(ctx)
 }

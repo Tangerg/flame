@@ -790,6 +790,12 @@ canceled caller even when a reservation just released. Durable Run reads
 retain both their own failure and concurrent cancellation before permitting
 a continuation. Observation cleanup retires only that waiter's subscription;
 the next Start still acquires its own admission.
+Startup and survivor recovery share one coordinator that acquires the sweep
+lease, then reconciles Runs before Goals. It checks its lifetime before taking
+ownership and before starting each phase, releases acquired ownership on every
+exit, and retains a failed phase's cause alongside concurrent cancellation.
+Cancellation stops unstarted phases; an already completed recovery retains its
+committed result.
 
 ## Attach without owning the Runtime
 
