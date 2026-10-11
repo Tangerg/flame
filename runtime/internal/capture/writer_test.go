@@ -1,10 +1,30 @@
 package capture
 
 import (
+	"bytes"
 	"io"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
+
+func TestDiagnosticKeepsPrintableTextAndBoundsBinaryEvidence(t *testing.T) {
+	for _, value := range []string{"", "reviewed failure", "路径不可用"} {
+		writer := NewWriter(64)
+		_, _ = writer.Write([]byte(value))
+		if got := writer.Diagnostic(); got != value {
+			t.Fatalf("text diagnostic = %q, want %q", got, value)
+		}
+	}
+	for _, limit := range []int{1, 5, 64} {
+		writer := NewWriter(limit)
+		_, _ = writer.Write(bytes.Repeat([]byte{0xff}, 64))
+		got := writer.Diagnostic()
+		if !utf8.ValidString(got) || len(got) > limit || !bytes.Equal(writer.Bytes(), bytes.Repeat([]byte{0xff}, limit)) {
+			t.Fatalf("binary diagnostic = %q, want bounded text without changing captured bytes", got)
+		}
+	}
+}
 
 func TestWriterKeepsThePrefixAndReportsTheRest(t *testing.T) {
 	writer := NewWriter(4)

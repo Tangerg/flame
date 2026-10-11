@@ -1,4 +1,4 @@
-package cancelread
+package cancellation
 
 import (
 	"context"
@@ -11,6 +11,17 @@ import (
 type readerFunc func([]byte) (int, error)
 
 func (f readerFunc) Read(buffer []byte) (int, error) { return f(buffer) }
+
+func TestErrPreservesOrdinaryCategoryWithoutDuplicatingIt(t *testing.T) {
+	if err := Err(t.Context()); err != nil {
+		t.Fatalf("active context = %v", err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := Err(ctx); err != context.Canceled {
+		t.Fatalf("ordinary cancellation = %v, want its original category", err)
+	}
+}
 
 func TestReaderReportsACancellationThatLandedDuringTheRead(t *testing.T) {
 	t.Parallel()

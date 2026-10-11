@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -39,7 +40,7 @@ func untrackedPaths(ctx context.Context, dir, relPath string) ([]string, error) 
 // untrackedFileStat streams one untracked regular file for its Git-facing line
 // count and binary bit. A symbolic link is one link-target line; its referent is
 // never read as workspace material.
-func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) {
+func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary bool, err error) {
 	path := filepath.Join(dir, rel)
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -58,17 +59,16 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 		}
 		return 0, false, fmt.Errorf("git: open untracked file %q: %w", rel, err)
 	}
-	defer func() { _ = file.Close() }()
+	defer func() { err = errors.Join(err, file.Close()) }()
+	source := cancellation.Reader(ctx, file)
 	buffer := make([]byte, 64<<10)
-	lines := 0
 	var last byte
 	nonempty := false
-	binary := false
 	for {
-		if err := ctx.Err(); err != nil {
-			return 0, false, err
+		count, readErr := source.Read(buffer)
+		if readErr != nil && readErr != io.EOF {
+			return 0, false, fmt.Errorf("git: read untracked file %q: %w", rel, readErr)
 		}
-		count, readErr := file.Read(buffer)
 		if count > 0 {
 			nonempty = true
 			chunk := buffer[:count]
@@ -79,11 +79,8 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 			lines += bytes.Count(chunk, []byte{'\n'})
 			last = chunk[len(chunk)-1]
 		}
-		if errors.Is(readErr, io.EOF) {
+		if readErr == io.EOF {
 			break
-		}
-		if readErr != nil {
-			return 0, false, fmt.Errorf("git: read untracked file %q: %w", rel, readErr)
 		}
 	}
 	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {

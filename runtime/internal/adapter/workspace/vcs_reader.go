@@ -114,11 +114,11 @@ func vcsError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
-		return workspaceapp.ErrVCSUnavailable
+		return errors.Join(workspaceapp.ErrVCSUnavailable, err)
 	case errors.Is(err, git.ErrNoBase):
-		return workspaceapp.ErrVCSBaseUnknown
+		return errors.Join(workspaceapp.ErrVCSBaseUnknown, err)
 	case errors.Is(err, git.ErrResultTooLarge):
-		return workspaceapp.ErrVCSResultTooLarge
+		return errors.Join(workspaceapp.ErrVCSResultTooLarge, err)
 	default:
 		return err
 	}

@@ -165,10 +165,11 @@ func TestLoadRejectsNonRegularConfiguration(t *testing.T) {
 }
 
 func TestLoadPreservesCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	cause := errors.New("hook inspection retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 
-	if _, err := Load(ctx, t.TempDir(), t.TempDir()); !errors.Is(err, context.Canceled) {
+	if _, err := Load(ctx, t.TempDir(), t.TempDir()); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 		t.Fatalf("Load error = %v, want context.Canceled", err)
 	}
 }

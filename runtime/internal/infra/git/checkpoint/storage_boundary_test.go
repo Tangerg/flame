@@ -1,11 +1,36 @@
 package checkpoint
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestStoreCancellationRetainsCategoryAndOwnerCauseBeforeWriting(t *testing.T) {
+	cause := errors.New("workspace retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	s := NewStore(t.TempDir())
+	cwd := t.TempDir()
+	for _, operation := range []struct {
+		name string
+		run  func() error
+	}{
+		{"snapshot", func() error { return s.Snapshot(ctx, "session", cwd, "boundary") }},
+		{"restore", func() error { return s.Restore(ctx, "session", cwd, "boundary") }},
+	} {
+		t.Run(operation.name, func(t *testing.T) {
+			if err := operation.run(); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+				t.Fatalf("checkpoint error = %v, want cancellation category and owner cause", err)
+			}
+		})
+	}
+	if _, err := os.Stat(s.sessionDir("session")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("canceled operation created checkpoint state: %v", err)
+	}
+}
 
 func TestStoreSnapshotRefusesStorageOverlapBeforeWriting(t *testing.T) {
 	for _, layout := range []string{"storage inside workspace", "workspace inside storage", "same directory", "storage alias inside workspace"} {

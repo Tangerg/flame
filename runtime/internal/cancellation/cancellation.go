@@ -1,11 +1,24 @@
-// Package cancelread observes cancellation across reads without hiding I/O failures.
-package cancelread
+// Package cancellation preserves lifetime cancellation and concurrent I/O failures.
+package cancellation
 
 import (
 	"context"
 	"errors"
 	"io"
 )
+
+// Err retains both the standard cancellation category and the owner's cause.
+func Err(ctx context.Context) error {
+	err := ctx.Err()
+	if err == nil {
+		return nil
+	}
+	cause := context.Cause(ctx)
+	if errors.Is(cause, err) {
+		return cause
+	}
+	return errors.Join(err, cause)
+}
 
 // Reader checks cancellation before and after each read; it cannot interrupt
 // a read blocked inside r. Errors retain the standard cancellation category,
@@ -20,24 +33,12 @@ type reader struct {
 }
 
 func (c reader) Read(buffer []byte) (int, error) {
-	if err := c.cancellation(); err != nil {
+	if err := Err(c.ctx); err != nil {
 		return 0, err
 	}
 	read, err := c.reader.Read(buffer)
-	if cancelErr := c.cancellation(); cancelErr != nil {
+	if cancelErr := Err(c.ctx); cancelErr != nil {
 		err = errors.Join(err, cancelErr)
 	}
 	return read, err
-}
-
-func (c reader) cancellation() error {
-	err := c.ctx.Err()
-	if err == nil {
-		return nil
-	}
-	cause := context.Cause(c.ctx)
-	if errors.Is(cause, err) {
-		return cause
-	}
-	return errors.Join(err, cause)
 }

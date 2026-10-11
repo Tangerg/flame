@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
@@ -13,8 +14,8 @@ import (
 // boundary precedes repository creation and pre-restore archiving, including
 // when storage is reached through an alias or has not been created yet.
 func (s *Store) checkStorageBoundary(ctx context.Context, cwd string) error {
-	if cause := context.Cause(ctx); cause != nil {
-		return cause
+	if err := cancellation.Err(ctx); err != nil {
+		return err
 	}
 	workspace, err := pathidentity.Resolve("", cwd)
 	if err != nil {

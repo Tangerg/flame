@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
@@ -41,12 +41,15 @@ func load(ctx context.Context, cwd, home string, includeProject bool) ([]domainh
 	if home != "" && !filepath.IsAbs(home) {
 		return nil, errors.New("hooks: home must be absolute")
 	}
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, err
+	}
 	cwd = filepath.Clean(cwd)
 
 	var out []domainhooks.Hook
 	seen := make(map[string]struct{})
 	add := func(path string, scope domainhooks.Scope) error {
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return err
 		}
 		abs := filepath.Clean(path)
@@ -113,8 +116,8 @@ func (h hookWire) domain() domainhooks.Hook {
 }
 
 func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
-	if cause := context.Cause(ctx); cause != nil {
-		return hooksFile{}, false, cause
+	if err := cancellation.Err(ctx); err != nil {
+		return hooksFile{}, false, err
 	}
 	handle, opened, err := fileinput.Open(path, domainhooks.MaxConfigurationFileBytes)
 	if errors.Is(err, os.ErrNotExist) {
@@ -128,7 +131,7 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	}
 	defer func() { _ = handle.Close() }()
 	data, err := io.ReadAll(io.LimitReader(
-		cancelread.Reader(ctx, handle),
+		cancellation.Reader(ctx, handle),
 		domainhooks.MaxConfigurationFileBytes+1,
 	))
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -184,7 +184,7 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	}()
 	hash := sha256.New()
 	buffer := make([]byte, 64<<10)
-	var source io.Reader = cancelread.Reader(ctx, file)
+	var source io.Reader = cancellation.Reader(ctx, file)
 	if maxBytes > 0 {
 		source = io.LimitReader(source, maxBytes+1)
 	}

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 )
 
 // Restore checks out the runID snapshot after archiving the currently admitted
@@ -117,8 +119,8 @@ func (s *Store) checkRestoreConflicts(ctx context.Context, gitDir, cwd, target s
 func checkTargetOwnership(ctx context.Context, root *os.Root, target string, archived map[string]struct{}) error {
 	var path string
 	for component := range strings.SplitSeq(target, "/") {
-		if cause := context.Cause(ctx); cause != nil {
-			return cause
+		if err := cancellation.Err(ctx); err != nil {
+			return err
 		}
 		if path != "" {
 			path += "/"
@@ -142,8 +144,8 @@ func checkTargetOwnership(ctx context.Context, root *os.Root, target string, arc
 		if err != nil {
 			return fmt.Errorf("checkpoint: inspect restore subtree %q: %w", path, err)
 		}
-		if cause := context.Cause(ctx); cause != nil {
-			return cause
+		if err := cancellation.Err(ctx); err != nil {
+			return err
 		}
 		if entry.IsDir() {
 			return nil

@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -300,7 +300,7 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 			body = nil
 		}
 	}()
-	body, err = io.ReadAll(io.LimitReader(cancelread.Reader(ctx, f), limit+1))
+	body, err = io.ReadAll(io.LimitReader(cancellation.Reader(ctx, f), limit+1))
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,8 @@ package capture
 
 import (
 	"bytes"
+	"strconv"
+	"unicode/utf8"
 )
 
 // Writer keeps at most limit bytes of what is written to it and remembers that
@@ -47,3 +49,14 @@ func (w *Writer) Bytes() []byte { return w.buffer.Bytes() }
 
 // String returns the captured prefix as text, without a truncation notice.
 func (w *Writer) String() string { return w.buffer.String() }
+
+// Diagnostic projects process bytes into valid Unicode within the capture
+// bound. Binary prefixes are escaped rather than passed into model-visible text.
+func (w *Writer) Diagnostic() string {
+	value := w.String()
+	if utf8.ValidString(value) {
+		return value
+	}
+	escaped := strconv.QuoteToASCII(value)
+	return escaped[:min(len(escaped), w.limit)]
+}

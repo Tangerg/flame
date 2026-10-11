@@ -10,7 +10,30 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
+
+func TestProcessFailureProjectionPreservesConcurrentEvidence(t *testing.T) {
+	cause := errors.New("workspace retired")
+	for _, test := range []struct {
+		name      string
+		mechanism error
+		category  error
+	}{
+		{"capacity", process.ErrOutputTooLarge, ErrResultTooLarge},
+		{"executable", exec.ErrNotFound, ErrUnavailable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := gitProcessError([]string{"status"}, errors.Join(test.mechanism, context.Canceled, cause))
+			for _, want := range []error{test.mechanism, test.category, context.Canceled, cause} {
+				if !errors.Is(err, want) {
+					t.Fatalf("Git failure projection lost %v: %v", want, err)
+				}
+			}
+		})
+	}
+}
 
 // initRepo creates a temp git repo with one committed file ("a.txt") and
 // returns its dir. Skips the test if git isn't installed.
@@ -58,8 +81,9 @@ func testDiff(ctx context.Context, dir, path string, mode Mode) ([]DiffFile, err
 
 func TestRepositoryReadsPreserveCancellation(t *testing.T) {
 	dir := initRepo(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	cause := errors.New("workspace observation retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 
 	reads := []struct {
 		name string
@@ -72,8 +96,8 @@ func TestRepositoryReadsPreserveCancellation(t *testing.T) {
 	}
 	for _, test := range reads {
 		t.Run(test.name, func(t *testing.T) {
-			if err := test.read(); !errors.Is(err, context.Canceled) {
-				t.Fatalf("repository read error = %v, want context.Canceled", err)
+			if err := test.read(); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+				t.Fatalf("repository read error = %v, want cancellation category and owner cause", err)
 			}
 		})
 	}
@@ -260,11 +284,12 @@ func TestRunPreservesContextCancellation(t *testing.T) {
 	if !Available() {
 		t.Skip("git not on PATH")
 	}
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	cause := errors.New("git observation retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 	_, err := run(ctx, t.TempDir(), "status", "--short")
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("run error = %v, want context.Canceled", err)
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("run error = %v, want cancellation category and owner cause", err)
 	}
 }
 

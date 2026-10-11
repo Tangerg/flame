@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/capture"
 	"io"
+	"os"
 	"os/exec"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/capture"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 
 const (
@@ -31,14 +35,14 @@ type Result struct {
 // Run executes Git with bounded stdout and a bounded-drain stderr. overrides
 // are command-owned environment entries such as a stable parsing locale.
 func Run(ctx context.Context, overrides []string, args ...string) (Result, error) {
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return Result{}, err
 	}
-	command := CommandContext(ctx, args...)
-	if len(overrides) > 0 {
-		command.Env = Environment(overrides...)
-	}
+	command := exec.CommandContext(ctx, "git", args...)
+	command.Env = Environment(overrides...)
 	command.WaitDelay = processWaitDelay
+	procgroup.Prepare(command)
+	command.Cancel = func() error { return procgroup.Stop(command) }
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return Result{}, fmt.Errorf("process: stdout pipe: %w", err)
@@ -46,30 +50,26 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	stderr := capture.NewWriter(maxErrorBytes)
 	command.Stderr = stderr
 	if err := command.Start(); err != nil {
-		return Result{}, fmt.Errorf("process: start: %w", err)
+		return Result{}, fmt.Errorf("process: start: %w", errors.Join(err, cancellation.Err(ctx)))
 	}
-	output, readErr := io.ReadAll(io.LimitReader(stdout, maxOutputBytes+1))
+	output, readErr := readOutput(ctx, stdout)
+	var stopErr error
 	if readErr != nil {
-		_ = command.Process.Kill()
-		_ = command.Wait()
-		if err := ctx.Err(); err != nil {
-			return Result{}, err
+		stopErr = procgroup.Stop(command)
+		if errors.Is(stopErr, os.ErrProcessDone) {
+			stopErr = nil
 		}
-		return Result{}, fmt.Errorf("process: read stdout: %w", readErr)
-	}
-	if len(output) > maxOutputBytes {
-		_ = command.Process.Kill()
-		_ = command.Wait()
-		if err := ctx.Err(); err != nil {
-			return Result{}, err
-		}
-		return Result{}, fmt.Errorf("%w: stdout exceeds %d bytes", ErrOutputTooLarge, maxOutputBytes)
 	}
 	waitErr := command.Wait()
-	if err := ctx.Err(); err != nil {
-		return Result{}, err
+	cleanupErr := procgroup.Stop(command)
+	if errors.Is(cleanupErr, os.ErrProcessDone) {
+		cleanupErr = nil
 	}
-	stderrText := stderr.String()
+	cancelErr := cancellation.Err(ctx)
+	if readErr != nil || stopErr != nil || cleanupErr != nil || cancelErr != nil {
+		return Result{}, errors.Join(readErr, stopErr, waitErr, cleanupErr, cancelErr)
+	}
+	stderrText := stderr.Diagnostic()
 	if stderr.Truncated() {
 		stderrText += "\n... [git stderr truncated] ..."
 	}
@@ -82,6 +82,17 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 		return result, nil
 	}
 	return Result{}, fmt.Errorf("process: wait: %w", waitErr)
+}
+
+func readOutput(ctx context.Context, source io.Reader) ([]byte, error) {
+	output, err := io.ReadAll(io.LimitReader(cancellation.Reader(ctx, source), maxOutputBytes+1))
+	if err != nil {
+		err = fmt.Errorf("process: read stdout: %w", err)
+	}
+	if len(output) > maxOutputBytes {
+		err = errors.Join(err, fmt.Errorf("%w: stdout exceeds %d bytes", ErrOutputTooLarge, maxOutputBytes))
+	}
+	return output, err
 }
 
 // parsingLocale keeps Git's diagnostics and its collation in one language, so a

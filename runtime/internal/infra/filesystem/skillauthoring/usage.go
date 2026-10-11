@@ -13,7 +13,7 @@ import (
 
 	skillspec "github.com/Tangerg/scope/skills"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
@@ -183,7 +183,7 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 		return nil, fmt.Errorf("skillauthoring: open usage: %w", err)
 	}
 	data, readErr := io.ReadAll(io.LimitReader(
-		cancelread.Reader(ctx, file),
+		cancellation.Reader(ctx, file),
 		maxUsageMetadataBytes+1,
 	))
 	verifyErr := fileinput.VerifyAtVersion(file, opened, root, usageFile)

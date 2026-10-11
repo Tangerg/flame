@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"time"
-	"unicode/utf8"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/capture"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/exactjson"
@@ -31,9 +30,9 @@ type Shell struct{}
 // RunHookCommand runs req.Command via the host shell, encoding the typed domain
 // input into the external hook JSON contract at this adapter boundary.
 func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) apphooks.CommandResult {
-	if err, timedOut := commandCancellation(ctx); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return apphooks.CommandResult{
-			Err: err, ExitCode: -1, TimedOut: timedOut,
+			Err: err, ExitCode: -1, TimedOut: ctx.Err() == context.DeadlineExceeded,
 		}
 	}
 	if err := req.Input.ValidateCommandMaterial(); err != nil {
@@ -73,13 +72,14 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 
 	runErr := cmd.Run()
-	cancellationErr, timedOut := commandCancellation(cctx)
+	cancellationErr := cancellation.Err(cctx)
+	timedOut := cctx.Err() == context.DeadlineExceeded
 	cleanupErr := procgroup.Stop(cmd)
 	if errors.Is(cleanupErr, os.ErrProcessDone) {
 		cleanupErr = nil
 	}
 	result := apphooks.CommandResult{
-		Stderr:   stderrDiagnostic(stderr.String()),
+		Stderr:   stderr.Diagnostic(),
 		ExitCode: exitCodeOf(runErr),
 		Err:      errors.Join(runErr, cancellationErr, cleanupErr),
 		TimedOut: timedOut,
@@ -94,27 +94,6 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	result.Decision, err = hookDecisionFromWire(stdout.Bytes())
 	result.Err = errors.Join(result.Err, err)
 	return result
-}
-
-// Stderr may contain process bytes that cannot enter model-visible text.
-func stderrDiagnostic(value string) string {
-	if utf8.ValidString(value) {
-		return value
-	}
-	escaped := strconv.QuoteToASCII(value)
-	return escaped[:min(len(escaped), maxHookCommandOutputBytes)]
-}
-
-func commandCancellation(ctx context.Context) (error, bool) {
-	err := ctx.Err()
-	if err == nil {
-		return nil, false
-	}
-	cause := context.Cause(ctx)
-	if !errors.Is(cause, err) {
-		cause = errors.Join(err, cause)
-	}
-	return cause, errors.Is(err, context.DeadlineExceeded)
 }
 
 type hookInputWire struct {

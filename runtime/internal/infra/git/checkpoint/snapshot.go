@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"syscall"
+
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 )
 
 // maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB
@@ -163,8 +165,8 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 	seen := make(map[string]struct{}, min(maxCheckpointPaths, len(output)/2))
 	var admittedBytes int64
 	for p := range strings.SplitSeq(string(output), gitPathRecordSeparator) {
-		if cause := context.Cause(ctx); cause != nil {
-			return nil, nil, cause
+		if err := cancellation.Err(ctx); err != nil {
+			return nil, nil, err
 		}
 		if p == "" {
 			continue

@@ -5,9 +5,7 @@
 package process
 
 import (
-	"context"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 )
@@ -50,12 +48,4 @@ func environmentKey(key string) string {
 		return strings.ToUpper(key)
 	}
 	return key
-}
-
-// CommandContext constructs a Git process that cannot inherit repository-local
-// state or behavior from its parent, and whose lifetime follows ctx.
-func CommandContext(ctx context.Context, args ...string) *exec.Cmd {
-	command := exec.CommandContext(ctx, "git", args...)
-	command.Env = Environment()
-	return command
 }

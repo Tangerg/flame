@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
@@ -414,7 +414,7 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 		}
 		fmt.Fprintf(h, "%d:%s:%o:%d:", len(name), name, info.Mode().Perm()&0111, info.Size())
 		fileHash := sha256.New()
-		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancelread.Reader(ctx, file), MaxFileBytes+1))
+		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancellation.Reader(ctx, file), MaxFileBytes+1))
 		err = errors.Join(err, fileinput.VerifyAtVersion(file, info, root, name))
 		if n != info.Size() {
 			return errors.Join(errors.New("pluginpackage: release changed during inspection"), err)

@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
@@ -239,7 +239,7 @@ func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, 
 		return err
 	}
 	limit := min(MaxFileBytes, MaxPackageBytes-s.copied)
-	n, copyErr := io.Copy(f, io.LimitReader(cancelread.Reader(ctx, input), limit+1))
+	n, copyErr := io.Copy(f, io.LimitReader(cancellation.Reader(ctx, input), limit+1))
 	closeErr := f.Close()
 	s.copied += n
 	if n > limit {

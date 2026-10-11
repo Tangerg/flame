@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
@@ -81,8 +82,8 @@ func SearchFiles(ctx context.Context, root, selected, glob string) ([]workspacea
 }
 
 func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListOptions) (_ []workspaceapp.FileEntry, err error) {
-	if cause := context.Cause(ctx); cause != nil {
-		return nil, cause
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, err
 	}
 	rootHandle, err := os.OpenRoot(scope.root)
 	if err != nil {
@@ -110,11 +111,13 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 		case err == nil:
 			repository = true
 			files = scope.project(files)
+		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+			return nil, err
 		case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
 			// Git-aware listing is unavailable for this workspace. The
 			// filesystem fallback below remains authoritative in this case.
 		case errors.Is(err, git.ErrResultTooLarge):
-			return nil, fmt.Errorf("%w: more than %d files", ErrListingTooLarge, maxListEntries)
+			return nil, fmt.Errorf("%w: %w", ErrListingTooLarge, err)
 		default:
 			return nil, err
 		}
@@ -259,7 +262,7 @@ func (scope fileSelection) inspect(logical string) (workspaceapp.FileEntry, bool
 }
 
 func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
 	children, err := readDirectoryEntries(scope.handle, scope.physical, maxListEntries)
@@ -268,7 +271,7 @@ func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgn
 	}
 	entries := make([]workspaceapp.FileEntry, 0, len(children))
 	for _, child := range children {
-		if err := ctx.Err(); err != nil {
+		if err := cancellation.Err(ctx); err != nil {
 			return nil, err
 		}
 		if child.Name() == ".git" || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
@@ -328,23 +331,20 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 	pendingDirectories := []string{scope.physical}
 	visitedEntries := 0
 	for len(pendingDirectories) > 0 {
-		if cause := context.Cause(ctx); cause != nil {
-			return nil, cause
+		if err := cancellation.Err(ctx); err != nil {
+			return nil, err
 		}
 		directory := pendingDirectories[0]
 		pendingDirectories[0] = ""
 		pendingDirectories = pendingDirectories[1:]
 		children, err := readDirectoryEntries(scope.handle, directory, maximumEntries-visitedEntries)
 		if err != nil {
-			if errors.Is(err, ErrListingTooLarge) {
-				err = fmt.Errorf("%w: more than %d entries", ErrListingTooLarge, maximumEntries)
-			}
 			return nil, fmt.Errorf("walk %q: %w", scope.physical, err)
 		}
 		visitedEntries += len(children)
 		for _, child := range children {
-			if cause := context.Cause(ctx); cause != nil {
-				return nil, cause
+			if err := cancellation.Err(ctx); err != nil {
+				return nil, err
 			}
 			if child.Name() == ".git" {
 				continue

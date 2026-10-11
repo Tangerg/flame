@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -264,7 +264,7 @@ func (t *treeCopier) copyFile(
 		return fmt.Errorf("create destination file %q: %w", portableName, errors.Join(err, source.Close()))
 	}
 
-	reader := io.LimitReader(cancelread.Reader(ctx, source), size+1)
+	reader := io.LimitReader(cancellation.Reader(ctx, source), size+1)
 	written, copyErr := io.CopyBuffer(writeOnly{writer: destination}, reader, t.buffer)
 	verifyErr := fileinput.VerifyAtVersion(source, openedInfo, t.source, localName)
 	closeErr := errors.Join(destination.Close(), source.Close())

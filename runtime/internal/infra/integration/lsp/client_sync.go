@@ -9,7 +9,7 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -123,7 +123,7 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	content, err := io.ReadAll(io.LimitReader(cancelread.Reader(ctx, file), maxDocumentBytes+1))
+	content, err := io.ReadAll(io.LimitReader(cancellation.Reader(ctx, file), maxDocumentBytes+1))
 	if err != nil {
 		return nil, err
 	}

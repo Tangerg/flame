@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
@@ -66,7 +67,7 @@ func Available() bool {
 // and request cancellation remain errors so callers can deliberately choose
 // fallback or termination instead of conflating both with a non-repository.
 func IsRepo(ctx context.Context, dir string) (bool, error) {
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return false, fmt.Errorf("git rev-parse --is-inside-work-tree: %w", err)
 	}
 	if !Available() {
@@ -123,16 +124,13 @@ func runAllowingExitCode(ctx context.Context, dir string, allowedExitCode int, a
 
 func gitProcessError(args []string, err error) error {
 	command := strings.Join(args, " ")
-	switch {
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return fmt.Errorf("git %s: %w", command, err)
-	case errors.Is(err, exec.ErrNotFound):
-		return ErrUnavailable
-	case errors.Is(err, process.ErrOutputTooLarge):
-		return fmt.Errorf("%w: git %s output exceeds 64 MiB", ErrResultTooLarge, command)
-	default:
-		return fmt.Errorf("git %s: %w", command, err)
+	if errors.Is(err, exec.ErrNotFound) {
+		err = errors.Join(ErrUnavailable, err)
 	}
+	if errors.Is(err, process.ErrOutputTooLarge) {
+		err = errors.Join(ErrResultTooLarge, err)
+	}
+	return fmt.Errorf("git %s: %w", command, err)
 }
 
 func gitExitError(args []string, exitCode int, diagnostic string) error {

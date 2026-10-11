@@ -391,11 +391,12 @@ func TestListFilesInspectsMetadataAndSymlinks(t *testing.T) {
 func TestListFilesHonorsCancellation(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	cause := errors.New("workspace listing retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
 	_, err := ListFiles(ctx, t.TempDir(), workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("ListFiles() error = %v, want context.Canceled", err)
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("ListFiles() error = %v, want cancellation category and owner cause", err)
 	}
 }
 

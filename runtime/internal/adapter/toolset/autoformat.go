@@ -145,7 +145,7 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 	if runErr == nil && !stderr.Truncated() {
 		return bytes.Clone(stdout.Bytes()), nil
 	}
-	msg := strings.TrimSpace(stderr.String())
+	msg := strings.TrimSpace(stderr.Diagnostic())
 	if msg != "" && stderr.Truncated() {
 		msg += "\n... [formatter diagnostic truncated] ..."
 	}

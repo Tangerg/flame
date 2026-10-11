@@ -13,7 +13,7 @@ import (
 	sdk "github.com/Tangerg/scope/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
@@ -193,7 +193,7 @@ func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, erro
 
 func readSkillDocument(ctx context.Context, name string, source *openedSkillDocument) ([]byte, error) {
 	content, readErr := io.ReadAll(io.LimitReader(
-		cancelread.Reader(ctx, source.file),
+		cancellation.Reader(ctx, source.file),
 		domainskills.MaxAuthoredSkillDocumentBytes+1,
 	))
 	verifyErr := fileinput.VerifyAtVersion(source.file, source.info, source.root, source.path)

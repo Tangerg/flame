@@ -1108,6 +1108,12 @@ One workspace checkpoint adapter owns snapshots, restoration and Session cleanup
 Restore projects storage refusals into application categories without replacing
 their causes; snapshot cancellation retains the inspection error chain.
 
+Git command observation retains simultaneous output-admission, process, cleanup
+and cancellation failures. Output above 64 MiB is refused; cancellation does not
+erase that capacity failure or its owner-supplied cause. Each invocation owns and
+stops its process group, including after a normal root exit. Ordinary nonzero
+exits remain observed data for Git's predicate and diff semantics.
+
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,
 respect ignore rules for untracked paths, and exclude files larger than 2 MiB.
