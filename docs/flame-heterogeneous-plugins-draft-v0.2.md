@@ -1331,21 +1331,21 @@ Not every test belongs in the first change. Each implementation slice must pass 
 
 ### 20.6 Repository verification commands
 
-When implementation is authorized, use the repository's actual gates from the owning modules. The following commands are documented by the current development workflow; this proposal has not run them. [F4]
+When implementation is authorized, use the repository's actual gates from the owning modules. [The development workflow](../DEVELOPMENT.md#verification) owns application verification. Flame uses the root `go.work` to verify Runtime and its clients together from local sources; independent module publication is not a prerequisite. This proposal has not run these gates.
 
 ```sh
 (cd runtime && \
-  GOWORK=off go test ./... && \
-  GOWORK=off go vet ./... && \
-  GOWORK=off go build ./...)
+  go test ./... && \
+  go vet ./... && \
+  go build ./...)
 
 (cd runtime/contract/typescript && npm run check)
 (cd desktop/frontend && npm run check)
 
 (cd cli && \
-  GOWORK=off go test ./... && \
-  GOWORK=off go vet ./... && \
-  GOWORK=off go build ./...)
+  go test ./... && \
+  go vet ./... && \
+  go build ./...)
 
 git diff --check
 ```

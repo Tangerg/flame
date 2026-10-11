@@ -738,7 +738,8 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"`, `"skills"` or `"workspaceDiff"`, and a portable
+`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"`, `"skills"`,
+`"workspaceDiff"`, `"clientDiagnostics"` or `"static"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
@@ -895,13 +896,17 @@ Go consumers use `ResolveProductRoot` followed by `DataDirectoryUnder`; the form
 ## Develop
 
 ```sh
-GOWORK=off go test ./...
-GOWORK=off go vet ./...
-GOWORK=off go build ./...
+go test ./...
+go vet ./...
+go build ./...
 go generate ./...
 ```
 
-The default suite is offline. Module rules live in [Module instructions](#module-instructions) below; current boundaries live in [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md).
+Application checks use the root `go.work`; Runtime and its clients resolve local
+sources together. The [development workflow](../DEVELOPMENT.md#verification) owns
+verification requirements. The default suite is offline. Module rules live in
+[Module instructions](#module-instructions) below; current boundaries live in
+[`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md).
 
 The source map follows responsibility within each ring: Run execution and input
 translation live in `internal/adapter/run`, model translation in
