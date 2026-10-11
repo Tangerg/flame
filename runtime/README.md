@@ -1345,6 +1345,10 @@ MCP identity follows Scope's capability chain through Tool decorators for discov
 ## Complete AGENTS guidance
 
 Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.
+Discovery and authored-file reads retain the standard cancellation category and
+the caller's cause. Complete reads share one document-size rule with retained
+cascade values. Input, admission, version and close failures remain identifiable
+together; a partial read can establish size but never document text validity.
 
 ## Tool authority
 

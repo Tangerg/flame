@@ -16,8 +16,8 @@ func TestReadAuthoredPromptFilePreservesCancellationCause(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 
-	if _, err := readAuthoredPromptFile(ctx, "unused"); !errors.Is(err, cause) {
-		t.Fatalf("readAuthoredPromptFile error = %v, want cancellation cause", err)
+	if _, err := readAuthoredPromptFile(ctx, "unused"); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("readAuthoredPromptFile error = %v, want cancellation category and owner cause", err)
 	}
 }
 

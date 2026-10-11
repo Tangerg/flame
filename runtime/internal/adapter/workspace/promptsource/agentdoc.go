@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
@@ -149,7 +150,7 @@ func (a *agentDocScan) try(ctx context.Context, path string, scope workspaceapp.
 }
 
 func resolveAgentDocCandidate(ctx context.Context, path string) (string, bool, error) {
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		return "", false, err
 	}
 	if path == "" {

@@ -142,13 +142,8 @@ func (s AgentDocScope) renderPhase() (int, bool) {
 }
 
 func validateAuthoredPromptString(document string) error {
-	if len(document) > MaxAuthoredPromptDocumentBytes {
-		return fmt.Errorf(
-			"%w: document uses %d bytes, maximum %d",
-			ErrPromptSourceTooLarge,
-			len(document),
-			MaxAuthoredPromptDocumentBytes,
-		)
+	if err := ValidateAuthoredPromptDocumentSize(int64(len(document))); err != nil {
+		return err
 	}
 	if !utf8.ValidString(document) {
 		return fmt.Errorf("%w: document must be valid UTF-8", ErrInvalidPromptSource)

@@ -60,6 +60,16 @@ func TestDiscoverAgentDocsWalksProjectTree(t *testing.T) {
 	}
 }
 
+func TestDiscoverAgentDocsPreservesCustomCancellation(t *testing.T) {
+	cause := errors.New("agent document discovery retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	files, err := promptsource.DiscoverAgentDocs(ctx, t.TempDir(), "")
+	if files != nil || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("DiscoverAgentDocs = %v, %v; want cancellation category and owner cause", files, err)
+	}
+}
+
 func TestDiscoverAgentDocsFallsBackToCWDWithoutGit(t *testing.T) {
 	dir := t.TempDir()
 	parent := filepath.Dir(dir)
