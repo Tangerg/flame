@@ -1104,6 +1104,9 @@ retained Run boundaries belong to that repository even when HEAD has no commit.
 Repository inspection and Git execution failures remain errors, preserving their
 causes. Only an absent repository or target ref reports a missing checkpoint;
 checkout failure retains the incomplete-restore classification for recovery.
+One workspace checkpoint adapter owns snapshots, restoration and Session cleanup.
+Restore projects storage refusals into application categories without replacing
+their causes; snapshot cancellation retains the inspection error chain.
 
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,

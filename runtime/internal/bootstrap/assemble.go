@@ -144,7 +144,7 @@ func buildAssemblyCore(
 		Paths:                 workspaceadapter.Resolver{},
 		Models:                modelCapabilities,
 		DefaultModelSelection: execution.models.defaultSelection,
-		Checkpoints:           workspaceadapter.NewSessionCheckpoints(workspaceServices.checkpoints),
+		Checkpoints:           workspaceServices.checkpoints,
 		Admissions:            admissionGate,
 		Invalidations:         policy.invalidations.Publish,
 		Now:                   time.Now,

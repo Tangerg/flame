@@ -4,23 +4,12 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/checkpoint"
-)
-
-var (
-	// ErrCheckpointUnavailable means the file-checkpoint store is disabled (git
-	// absent), holds no snapshot for the target run, or overlaps the workspace.
-	// Callers translate this sentinel at their own boundary.
-	ErrCheckpointUnavailable = checkpoint.ErrUnavailable
-	// ErrCheckpointConflict rejects a restore before checkout could overwrite
-	// working-tree material absent from the pre-restore archive.
-	ErrCheckpointConflict = checkpoint.ErrConflict
-	// ErrCheckpointRestoreIncomplete means Git started a work-tree checkout but did
-	// not finish; orchestration must keep its durable recovery intent.
-	ErrCheckpointRestoreIncomplete = checkpoint.ErrRestoreIncomplete
 )
 
 // Checkpoints owns the per-session file-checkpoint lifecycle over a shadow-git
@@ -63,11 +52,6 @@ func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string
 	// .gitignore scopes the work tree.
 	repository, err := git.IsRepo(ctx, cwd)
 	if err != nil {
-		// Snapshot failures are best-effort, but cancellation is the caller's
-		// control signal rather than a checkpoint diagnostic.
-		if contextErr := ctx.Err(); contextErr != nil {
-			return contextErr
-		}
 		return fmt.Errorf("checkpoints: inspect workspace: %w", err)
 	}
 	if !repository {
@@ -77,14 +61,24 @@ func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string
 }
 
 // Restore checks out sessionID's working tree (at cwd) to the runID snapshot. A
-// disabled store or missing snapshot surfaces as [ErrCheckpointUnavailable]; a
+// disabled store or missing snapshot surfaces as [sessions.ErrCheckpointUnavailable]; a
 // failed checkout that may have changed part of the tree surfaces as
-// [ErrCheckpointRestoreIncomplete].
+// [sessions.ErrCheckpointRestoreIncomplete].
 func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string) error {
 	if !c.CheckpointsEnabled() {
-		return ErrCheckpointUnavailable
+		return sessions.ErrCheckpointUnavailable
 	}
-	return c.store.Restore(ctx, sessionID, cwd, runID)
+	err := c.store.Restore(ctx, sessionID, cwd, runID)
+	switch {
+	case errors.Is(err, checkpoint.ErrUnavailable):
+		return fmt.Errorf("%w: %w", sessions.ErrCheckpointUnavailable, err)
+	case errors.Is(err, checkpoint.ErrConflict):
+		return fmt.Errorf("%w: %w", sessions.ErrCheckpointConflict, err)
+	case errors.Is(err, checkpoint.ErrRestoreIncomplete):
+		return fmt.Errorf("%w: %w", sessions.ErrCheckpointRestoreIncomplete, err)
+	default:
+		return err
+	}
 }
 
 // DropSession removes a session's shadow repo (on session delete).

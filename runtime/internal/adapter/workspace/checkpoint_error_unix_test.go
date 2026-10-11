@@ -7,11 +7,28 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/infra/git/checkpoint"
 )
+
+func TestSessionCheckpointUnavailableRetainsRefusalCause(t *testing.T) {
+	cwd := t.TempDir()
+	checkpoints := workspace.NewCheckpoints(cwd)
+	if !checkpoints.CheckpointsEnabled() {
+		t.Skip("git not installed; checkpoint restore requires git")
+	}
+	err := checkpoints.Restore(t.Context(), "session", cwd, "boundary")
+	if !errors.Is(err, sessions.ErrCheckpointUnavailable) || !errors.Is(err, checkpoint.ErrUnavailable) {
+		t.Fatalf("restore refused = %v, want application category and storage cause", err)
+	}
+	if !strings.Contains(err.Error(), "workspace overlaps checkpoint storage") {
+		t.Fatalf("restore refused = %v, want original boundary reason", err)
+	}
+}
 
 func TestSessionCheckpointRestorePreservesGitFailures(t *testing.T) {
 	for _, operation := range []string{"checkout", "rev-parse"} {
@@ -45,12 +62,12 @@ exec "$FLAME_CHECKPOINT_TEST_GIT" "$@"
 			t.Setenv("FLAME_CHECKPOINT_TEST_GIT", realGit)
 			t.Setenv("FLAME_CHECKPOINT_TEST_OPERATION", operation)
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-			err = workspace.NewSessionCheckpoints(checkpoints).Restore(t.Context(), "session", cwd, "boundary")
+			err = checkpoints.Restore(t.Context(), "session", cwd, "boundary")
 			incomplete := operation == "checkout"
-			if errors.Is(err, sessions.ErrCheckpointRestoreIncomplete) != incomplete || errors.Is(err, workspace.ErrCheckpointRestoreIncomplete) != incomplete {
+			if errors.Is(err, sessions.ErrCheckpointRestoreIncomplete) != incomplete || errors.Is(err, checkpoint.ErrRestoreIncomplete) != incomplete {
 				t.Fatalf("restore lost its incomplete classification: %v", err)
 			}
-			if errors.Is(err, sessions.ErrCheckpointUnavailable) || errors.Is(err, workspace.ErrCheckpointUnavailable) {
+			if errors.Is(err, sessions.ErrCheckpointUnavailable) || errors.Is(err, checkpoint.ErrUnavailable) {
 				t.Fatalf("restore disguised a git failure as a missing checkpoint: %v", err)
 			}
 			exited, found := errors.AsType[interface {

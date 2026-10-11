@@ -35,7 +35,7 @@ func checkpointHarness(t *testing.T) (*Handler, *stubRuntime, *workspace.Checkpo
 	cp := workspace.NewCheckpoints(t.TempDir())
 	// The restorer lives on the sessions coordinator now, so rebuild it over the
 	// real checkpoint store (newTestHandler wired a disabled one).
-	s.sessions = rt.sessionsCoordinatorWithRestorer(workspace.NewSessionCheckpoints(cp))
+	s.sessions = rt.sessionsCoordinatorWithRestorer(cp)
 	cwd := t.TempDir()
 	// Checkpoints only fire in a real git repo now (Checkpoints.Snapshot's gate,
 	// mirroring opencode): a repo's .gitignore is what bounds the whole-tree
