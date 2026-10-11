@@ -9,6 +9,7 @@ interface Props {
   plugin: string;
   label?: string;
   children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -30,12 +31,15 @@ export class PluginBoundary extends Component<Props, State> {
   override render(): ReactNode {
     if (!this.state.error) return this.props.children;
     return (
-      <PluginFailure
-        plugin={this.props.plugin}
-        label={this.props.label ?? this.props.plugin}
-        error={this.state.error}
-        onRetry={() => this.setState({ error: null })}
-      />
+      <>
+        <PluginFailure
+          plugin={this.props.plugin}
+          label={this.props.label ?? this.props.plugin}
+          error={this.state.error}
+          onRetry={() => this.setState({ error: null })}
+        />
+        {this.props.fallback}
+      </>
     );
   }
 }

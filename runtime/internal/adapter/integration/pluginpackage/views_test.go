@@ -40,7 +40,7 @@ func TestViewReadRejectsChangedBytesAndFilesystemEscape(t *testing.T) {
 				t.Fatal(err)
 			}
 			view := release.Declaration().Views[0]
-			if _, err := r.ReadView(t.Context(), i, view); err != nil {
+			if _, err := r.ReadPage(t.Context(), i, view.Entry); err != nil {
 				t.Fatal(err)
 			}
 			root, err := r.Root(release.Digest())
@@ -67,7 +67,7 @@ func TestViewReadRejectsChangedBytesAndFilesystemEscape(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			body, err := r.ReadView(t.Context(), i, view)
+			body, err := r.ReadPage(t.Context(), i, view.Entry)
 			if body != "" || !errors.Is(err, plugin.ErrUnavailable) {
 				t.Fatalf("changed resource leaked: %q, %v", body, err)
 			}

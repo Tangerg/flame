@@ -845,7 +845,10 @@ Every request is correlated with its view instance. Retiring a view closes the c
 | Update model context | Unavailable through the read-only view bridge. |
 | Resolve an approval | Not a normal plugin operation; the trusted host owns approval presentation and acceptance. |
 
-The bridge exposes bounded reads. It has no action submission, MCP tool-call, or backend mutation channel. A view that can read a Session is not thereby allowed to export every Session, read all credentials, or install packages.
+The bridge exposes bounded reads and a bounded page-failure report. A page-failure report
+retires only that page, cancels and joins its accepted reads, and reveals generic recorded
+content where the host has it. It cannot change Runtime installation or execution state.
+The bridge has no action submission, MCP tool-call, or backend mutation channel. A view that can read a Session is not thereby allowed to export every Session, read all credentials, or install packages.
 
 ### 13.5 CSP and rendering isolation
 
@@ -1440,6 +1443,15 @@ Session configuration fields cannot acquire action authority. Its result is the 
 the trusted form; CLI accepts the same generated request and retains command replay
 identity. The HTML page remains read-only. This boundary does not introduce a generic
 dispatcher, a plugin mutation journal or a second Session transition.
+
+The first result-renderer consumer is the optional first-party Tool results package.
+Its declaration selects display names or closed result shapes, never tool authority.
+The trusted host captures a settled transcript result and chooses only a unique
+matching contribution, preferring an exact name over a shape. The isolated page
+shares the read-only carrier and cannot invoke tools or advance stored outcomes.
+Generic recorded content remains available through absence, ambiguity, failure and
+withdrawal. [Runtime documentation](../runtime/README.md#protocol-2026-10-112) owns
+the implemented admission and migration requirements.
 
 **Slice E: durable host integrations, only as justified.** Validate MRTR, Tasks, delegated execution, or whole-subsystem extraction individually. These are not prerequisites for the base heterogeneous plugin model.
 

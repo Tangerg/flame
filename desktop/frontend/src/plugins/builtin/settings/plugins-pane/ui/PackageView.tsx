@@ -1,9 +1,9 @@
-import { AgentWorkspaceView } from "@/ui/agent";
+import { AgentActivityDisclosure, AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { useScheme } from "@/lib/appearance";
 import { asyncDisposeSymbol } from "dougong";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import type { PluginViewReads, PluginViewStatus } from "../application/pluginView";
@@ -26,16 +26,19 @@ export function PackageView<T>({
   lifetime,
   title,
   carrier,
+  fallback,
 }: {
   reads: PluginViewReads<T>;
   lifetime: ContributionLifetime;
   title: string;
   carrier: PluginCarrier;
+  fallback?: ReactNode;
 }) {
   const t = useT();
   const scheme = useScheme();
   const container = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<PluginViewStatus>({ type: "loading" });
+  const [showRecorded, setShowRecorded] = useState(false);
   useEffect(() => {
     const instance = lifetime.lifetime("page");
     const signal = instance.signal;
@@ -72,6 +75,20 @@ export function PackageView<T>({
         </p>
       )}
       <div ref={container} {...stylex.props(styles.carrier)} />
+      {fallback &&
+        (status.type === "ready" ? (
+          <AgentActivityDisclosure
+            icon="file-text"
+            label={t("toolInspector.recordedResult")}
+            shell="line"
+            open={showRecorded}
+            onToggle={() => setShowRecorded((value) => !value)}
+          >
+            {fallback}
+          </AgentActivityDisclosure>
+        ) : (
+          fallback
+        ))}
     </AgentWorkspaceView>
   );
 }

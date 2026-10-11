@@ -261,6 +261,7 @@ function PackageRow({
             inputs: installation.selected.inputs,
             skills: installation.selected.skills,
             views: installation.selected.views,
+            renderers: installation.selected.renderers,
             inputStates: installation.inputStates,
             disabledServers: installation.disabledServers,
             disabledSkills: installation.disabledSkills,

@@ -42,6 +42,26 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-11.2
+
+The optional [Tool results package](../plugins/tool-results/plugin.json) replaces the
+compiled Desktop tool previews. Releases declare bounded `renderers`, each with an
+exact display-name or closed result-shape selector. `plugins.readRenderer` authorizes
+an enabled, approved installation's exact release and returns its immutable HTML.
+It grants no Tool invocation or historical replay authority.
+
+The trusted client captures one settled transcript result. An isolated page receives
+that snapshot and may refresh only the same read after renewed installation admission.
+A unique exact-name renderer precedes a unique shape renderer. Equally ranked candidates
+remain ambiguous and use the generic inspector. Running or absent results stay generic.
+The inspector remains available with a renderer and appears automatically during loading
+or failure. Revocation, replacement and connection withdrawal retire the page while
+preserving recorded results and the host's trusted actions.
+
+Rebuild Runtime and clients together. Install and approve Tool results 1.0.0 to enable
+rich previews. There is no compiled preview adapter or automatic package installation.
+Existing durable results and admitted releases need no data conversion.
+
 ## Protocol 2026-10-11.1
 
 `usage.session` now returns `SessionUsage`: its `byModel` value is a list of

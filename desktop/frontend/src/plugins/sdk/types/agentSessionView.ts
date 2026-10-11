@@ -18,7 +18,7 @@ export interface AgentPlan {
 export type ToolCallStatus = "running" | "ok" | "err" | "denied";
 export type AgentSafetyClass = "safe" | "write" | "exec" | "network";
 
-export interface ToolFileChange {
+interface ToolFileChange {
   path: string;
   status: "added" | "deleted" | "modified" | "moved";
   from?: string;

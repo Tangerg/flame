@@ -1,10 +1,16 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
+import type { PluginRendererSelector } from "@flame/runtime-contract/wire";
 
 export interface ToolPreviewProps {
   tool: ToolCall;
 }
-export type ToolPreviewComponent = ComponentType<ToolPreviewProps>;
+export interface ToolResultRendererSpec {
+  id: string;
+  title: string;
+  selector: PluginRendererSelector;
+  component: ComponentType<ToolPreviewProps & { fallback: ReactNode }>;
+}
 
 export interface ToolActionSpec {
   id: string;

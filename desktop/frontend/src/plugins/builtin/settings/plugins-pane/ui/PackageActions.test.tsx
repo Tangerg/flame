@@ -40,6 +40,7 @@ function fixture(
       inputs: [],
       themes: [],
       views: [],
+      renderers: [],
       skills: [],
       diagnostics: [],
     },

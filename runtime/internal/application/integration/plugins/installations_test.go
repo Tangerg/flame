@@ -92,7 +92,7 @@ type installationPackages struct {
 	realize     func(context.Context, *plugin.Installation) (Realization, error)
 }
 
-func (installationPackages) ReadView(context.Context, *plugin.Installation, plugin.ViewDeclaration) (string, error) {
+func (installationPackages) ReadPage(context.Context, *plugin.Installation, string) (string, error) {
 	return "", errors.New("unexpected view read")
 }
 

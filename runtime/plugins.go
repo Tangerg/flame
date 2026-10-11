@@ -18,6 +18,10 @@ func (r *binding) ReadPluginView(ctx context.Context, request protocol.ReadPlugi
 	return r.invoke[protocol.ReadPluginViewRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadView, request, callOptions(options))
 }
 
+func (r *binding) ReadPluginRenderer(ctx context.Context, request protocol.ReadPluginRendererRequest, options CallOptions) (*protocol.PluginViewResource, error) {
+	return r.invoke[protocol.ReadPluginRendererRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadRenderer, request, callOptions(options))
+}
+
 func (r *binding) ReadPluginTrajectory(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error) {
 	return r.invoke[protocol.ReadPluginTrajectoryRequest, *protocol.Page[protocol.TrajectoryEntry]](ctx, delivery.PluginsReadTrajectory, request, callOptions(options))
 }

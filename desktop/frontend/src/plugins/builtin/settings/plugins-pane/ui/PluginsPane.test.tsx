@@ -47,6 +47,7 @@ function reviewedInstallation(): PluginInstallation {
       skills: [],
       themes: [],
       views: [],
+      renderers: [],
       actions: [],
       diagnostics: [],
     },

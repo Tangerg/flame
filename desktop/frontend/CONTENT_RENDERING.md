@@ -1601,7 +1601,7 @@ interface DelegateTaskArguments {
 type DelegateTaskResult = { reply: string } | string; // Reply on success; plain-text failure.
 ```
 
-The Item projection extracts `reply` once. The message context contributes the tool preview through `TOOL_PREVIEW`, reusing the conversation Markdown renderer. The existing disclosure contains the entire returned reply in a bounded, keyboard-scrollable region; it does not truncate lines or open a second reply panel.
+The Item projection extracts `reply` once. The optional Tool results package presents the recorded reply through an isolated read-only page. `TOOL_RESULT_RENDERER` carries accepted package contributions; the trusted host selects a unique display-name or result-shape match. The generic inspector remains available and takes over when a renderer is absent, ambiguous, loading or failed. Neither presentation path replays the child Run or changes its stored reply.
 
 **唯一会长出第二层内容的工具。** 审批时允许"改参数后批准"。
 

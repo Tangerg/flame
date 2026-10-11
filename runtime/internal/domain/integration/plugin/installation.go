@@ -474,6 +474,16 @@ func (i *Installation) ServerSource(release Release, server mcpserver.ServerName
 
 func (i *Installation) Active() bool { return i.record.State == Enabled }
 
+func (i *Installation) authorizePresentation(release Release, digest fingerprint.Digest) error {
+	if i.Selected() != digest || release.Digest() != digest {
+		return fmt.Errorf("%w: presentation release", ErrStale)
+	}
+	if !i.Active() {
+		return fmt.Errorf("%w: presentation requires an enabled approved release", ErrUnapproved)
+	}
+	return nil
+}
+
 func (i *Installation) ServerEnabled(name mcpserver.ServerName) bool {
 	return i.Active() && !slices.Contains(i.record.DisabledServers, name)
 }

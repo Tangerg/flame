@@ -1,27 +1,22 @@
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
-import {
-  TOOL_PREVIEW,
-  toolResultShape,
-  useExtensionByKey,
-  type ToolPreviewProps,
-} from "@/plugins/sdk";
+import { TOOL_RESULT_RENDERER, useExtensionPoint, type ToolPreviewProps } from "@/plugins/sdk";
 import { ToolInspector } from "./ToolInspector";
-import { toolRoutingKey, toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 import { createElement } from "react";
+import { selectToolResultRenderer } from "../application/toolResultRenderer";
 
 export function ToolPreview({ tool }: ToolPreviewProps) {
-  const name = toolRoutingKey(tool);
-  const shape = toolResultShape(tool.result);
-  const byName = useExtensionByKey(TOOL_PREVIEW, name);
-  const byShape = useExtensionByKey(TOOL_PREVIEW, shape ? toolShapeKey(shape) : "");
-  const Preview = byName ?? byShape;
-  if (!Preview) {
+  const renderers = useExtensionPoint(TOOL_RESULT_RENDERER);
+  const renderer = selectToolResultRenderer(renderers, tool);
+  if (!renderer) {
     return <ToolInspector tool={tool} />;
   }
-  const key = byName ? name : toolShapeKey(shape!);
   return (
-    <PluginBoundary plugin={key} label={`${tool.fn} preview`}>
-      {createElement(Preview, { tool })}
+    <PluginBoundary
+      plugin={renderer.id}
+      label={renderer.title}
+      fallback={<ToolInspector tool={tool} />}
+    >
+      {createElement(renderer.component, { tool, fallback: <ToolInspector tool={tool} /> })}
     </PluginBoundary>
   );
 }

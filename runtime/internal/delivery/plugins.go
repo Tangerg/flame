@@ -16,6 +16,7 @@ const (
 	PluginsRevoke             Name = "plugins.revoke"
 	PluginsUninstall          Name = "plugins.uninstall"
 	PluginsReadView           Name = "plugins.readView"
+	PluginsReadRenderer       Name = "plugins.readRenderer"
 	PluginsReadTrajectory     Name = "plugins.readTrajectory"
 	PluginsReadMemory         Name = "plugins.readMemory"
 	PluginsReadSchedules      Name = "plugins.readSchedules"
@@ -41,6 +42,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsReadRenderer, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ReadPluginRenderer(context.Context, protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error)
+	}, ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {
+		return s.ReadPluginRenderer(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsReadDiff, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureGit), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error(), protocol.ErrPathOutsideRoot.Error()), Materializes: []Name{WorkspaceDiffGet}}, func(s interface {
 		ReadPluginDiff(context.Context, protocol.ReadPluginDiffRequest) (*protocol.Diff, error)
 	}, ctx context.Context, in protocol.ReadPluginDiffRequest) (*protocol.Diff, error) {

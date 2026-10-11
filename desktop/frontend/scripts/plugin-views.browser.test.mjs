@@ -31,7 +31,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill and Diff reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff and recorded result reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -592,6 +592,160 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await frame.getByText("Workspace diff loaded.").waitFor();
     assert.equal(await frame.getByRole("button", { name: /Stage|Restore|Edit|Delete/ }).count(), 0);
     await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    const resultHTML = await readFile(
+      new URL("../../../plugins/tool-results/renderers/result.html", import.meta.url),
+      "utf8",
+    );
+    const resultFixtures = [
+      {
+        name: "read",
+        result: "recorded line\n<script>literal bytes</script>",
+        range: { start: 41, end: 42 },
+        expected: "literal bytes",
+      },
+      {
+        name: "grep",
+        result: JSON.stringify({
+          hits: [{ path: "src/a<script>.ts", lineNumber: 12, snippet: "needle" }],
+        }),
+        expected: "src/a<script>.ts:12",
+      },
+      {
+        name: "glob",
+        result: JSON.stringify({ hits: [{ path: "src/one.ts" }, { path: "src/two.ts" }] }),
+        expected: "src/one.ts",
+      },
+      {
+        name: "acme.command",
+        result: JSON.stringify({ output: "recorded command", exitCode: 0 }),
+        expected: "recorded command",
+      },
+      {
+        name: "apply_patch",
+        result: JSON.stringify({ changes: [{ status: "moved", from: "old.ts", path: "new.ts" }] }),
+        expected: "old.ts → new.ts",
+      },
+      {
+        name: "http_request",
+        result: JSON.stringify({
+          status: 404,
+          truncated: true,
+          headers: { test: "header" },
+          body: "recorded body",
+        }),
+        expected: "404",
+      },
+      {
+        name: "web_fetch",
+        result: JSON.stringify({ content: "<img src=escape>recorded page", format: "html" }),
+        expected: "recorded page",
+      },
+      {
+        name: "web_search",
+        result: JSON.stringify({
+          results: [
+            {
+              url: "https://example.invalid/reference",
+              title: "Recorded reference",
+              snippet: "source text",
+            },
+          ],
+        }),
+        expected: "Recorded reference",
+      },
+      {
+        name: "list_skills",
+        result: "<skill><name>inspect</name><description>Read recorded facts</description></skill>",
+        expected: "Read recorded facts",
+      },
+      { name: "delegate_task", result: "Recorded child reply", expected: "Recorded child reply" },
+      {
+        name: "ask_user",
+        result: JSON.stringify({ answer: "Accepted answer" }),
+        expected: "Accepted answer",
+      },
+      { name: "lsp", result: "error src/a.ts:12 missing name", expected: "missing name" },
+      { name: "search_memory", result: "1. Recorded memory", expected: "Recorded memory" },
+      {
+        name: "search_tools",
+        result: "[reviews] list_reviews, update_review",
+        expected: "list_reviews",
+      },
+    ];
+    for (const fixture of resultFixtures) {
+      await page.evaluate(
+        ({ html, fixture }) =>
+          void window.mount(html, {
+            format: "flame.tool-result.v1",
+            tool: {
+              id: "call",
+              runId: "run",
+              fn: fixture.name,
+              args: "{}",
+              status: "ok",
+              ...fixture,
+            },
+          }),
+        { html: resultHTML, fixture },
+      );
+      await frame.getByText(/ok · Recorded result/).waitFor();
+      assert.match(
+        await frame.locator("#output").textContent(),
+        new RegExp(fixture.expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      );
+      assert.equal(await frame.locator("img, a, script[src]").count(), 0);
+      if (fixture.name === "shell")
+        assert.equal(await frame.locator(".negative").textContent(), "Recorded failure");
+      if (fixture.name === "read")
+        assert.equal(await frame.locator(".number").first().textContent(), "41");
+      await frame.getByRole("button", { name: "Refresh recorded result" }).click();
+      await page.waitForFunction(() => window.reads.length === 1);
+      assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
+      await page.evaluate(() => window.dispose());
+      assert.equal(await page.locator("iframe").count(), 0);
+    }
+    await page.evaluate(
+      ({ html }) =>
+        void window.mount(html, {
+          format: "flame.tool-result.v1",
+          tool: {
+            id: "call",
+            runId: "run",
+            name: "read",
+            fn: "file",
+            args: "{}",
+            status: "ok",
+            result: Array.from({ length: 100 }, (_, i) => `recorded line ${i}`).join("\n"),
+          },
+        }),
+      { html: resultHTML },
+    );
+    await frame.getByText(/ok · Recorded result/).waitFor();
+    assert.equal(await frame.locator(".row").count(), 40);
+    await frame.getByRole("button", { name: /Show 40 more/ }).click();
+    assert.equal(await frame.locator(".row").count(), 80);
+    await frame.getByRole("searchbox").fill("line 99");
+    assert.equal(await frame.locator(".row").count(), 1);
+    await page.evaluate(() => (window.readFailure = true));
+    await frame.getByRole("button", { name: "Refresh recorded result" }).click();
+    await frame.getByRole("alert").waitFor();
+    assert.equal(await frame.locator(".row").count(), 1);
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    await page.evaluate(
+      (html) =>
+        void window.mount(html, {
+          format: "flame.tool-result.v999",
+          tool: { status: "ok", result: "unrecognized" },
+        }),
+      resultHTML,
+    );
+    await page.waitForFunction(() => window.viewStatus?.type === "failure");
+    assert.match(await page.evaluate(() => window.failure), /Unsupported recorded result format/);
+    assert.equal(await page.locator("iframe").count(), 0);
     await page.reload();
     await page.waitForFunction(() => window.mount);
     const malicious = `<!doctype html><script>addEventListener('message',async e=>{

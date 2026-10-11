@@ -104,6 +104,7 @@ type Declaration struct {
 	Inputs      []Input
 	Themes      []Theme
 	Views       []ViewDeclaration
+	Renderers   []Renderer
 	Actions     []Action
 	Skills      []Skill
 	Diagnostics []Diagnostic
@@ -121,6 +122,7 @@ func (d Declaration) clone() Declaration {
 		d.Views[index] = d.Views[index].clone()
 	}
 	d.Actions = slices.Clone(d.Actions)
+	d.Renderers = slices.Clone(d.Renderers)
 	d.Skills = slices.Clone(d.Skills)
 	d.Diagnostics = slices.Clone(d.Diagnostics)
 	return d
@@ -169,6 +171,11 @@ func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, er
 	}
 	for _, action := range declaration.Actions {
 		if err := builder.AdmitAction(action); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, renderer := range declaration.Renderers {
+		if err := builder.AdmitRenderer(renderer); err != nil {
 			return Release{}, err
 		}
 	}

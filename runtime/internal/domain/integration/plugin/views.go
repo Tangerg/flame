@@ -83,11 +83,8 @@ func (b *Builder) AdmitView(view ViewDeclaration) error {
 
 // AuthorizeView binds authority to the active installation's exact release.
 func (i *Installation) AuthorizeView(release Release, digest fingerprint.Digest, id string) (ViewDeclaration, error) {
-	if i.Selected() != digest || release.Digest() != digest {
-		return ViewDeclaration{}, fmt.Errorf("%w: view release", ErrStale)
-	}
-	if !i.Active() {
-		return ViewDeclaration{}, fmt.Errorf("%w: view requires an enabled approved release", ErrUnapproved)
+	if err := i.authorizePresentation(release, digest); err != nil {
+		return ViewDeclaration{}, err
 	}
 	for _, view := range release.declaration.Views {
 		if view.ID == id {

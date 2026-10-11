@@ -391,6 +391,15 @@ MCP declarations retain their existing admission and lifecycle.
 
 ### Optional first-party pages
 
+Tool results is an optional package from `plugins/tool-results`. Runtime admits its
+renderer declarations and authorizes the exact approved, enabled release. The workbench
+selects a unique display-name match before a unique result-shape match; ambiguity retains
+the generic inspector. The isolated page receives one captured, settled ToolCall read
+projection. Refresh reauthorizes the release and returns the same record. It cannot execute
+a tool or advance an outcome. The generic recorded content remains available after page
+failure, revocation or uninstall. Rebuild Runtime and clients together for the generated
+renderer contract, then install and approve the package explicitly.
+
 An admitted `sessionTrajectory` view registers a Session dock contribution through the
 existing Dougong Host. Runtime owns package admission and canonical trajectory data.
 The trusted client captures installation, selected digest, view ID, active Session,
@@ -531,11 +540,16 @@ checks withdrawal, reapproval and physical page retirement. Skills covers discov
 document inspection, library archive/restore and trusted publication of a proposal
 created through a normal Run. Diff covers remote Git evidence and trusted baseline
 replacement. Uninstall must preserve
-canonical trajectory, memory, schedules, usage, workspace diffs and Skill curation. The application exits and cleanup
-completes before the single terminal result. The runner removes its container, network,
+canonical trajectory, memory, schedules, usage, workspace diffs and Skill curation.
+The Tool results check displays and refreshes a recorded Skill proposal in its isolated
+page, revokes the renderer and verifies physical retirement, generic record visibility
+and unchanged canonical trajectory. The application exits and cleanup completes before
+the single terminal result. The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 
-This gate passes on macOS 26.5 with Wails v3 beta.28 at the shipping deployment floor.
+The qualified carrier and first-party page lifecycle were verified on macOS 26.5 with
+Wails v3 beta.28 at the shipping deployment floor. A run requires an unlocked graphical
+session; a hidden workbench fails before page acceptance.
 
 Manual acceptance of the full production React workbench also passed on this carrier
 at the shipping macOS 13.0 deployment floor. It retained the production entrypoint,

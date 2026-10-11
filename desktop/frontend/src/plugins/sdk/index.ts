@@ -115,7 +115,7 @@ export type {
   AccentSpec,
   VisualStyleSpec,
   ToolActionSpec,
-  ToolPreviewComponent,
+  ToolResultRendererSpec,
   ToolPreviewProps,
   ToolViewOpenerSpec,
   WorkIndexItemSpec,

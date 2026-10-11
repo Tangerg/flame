@@ -1,3 +1,4 @@
+import { TOOL_RESULT_RENDERER } from "@/plugins/sdk/kernelPoints";
 import { browserPluginCarrier } from "@/platform/browserPluginCarrier";
 import { cleanup, render, screen } from "@testing-library/react";
 import { configureNavigator } from "@/lib/navigation";
@@ -115,6 +116,7 @@ function installation(id: string, name: string): PluginInstallation {
       skills: [],
       diagnostics: [],
       views: [],
+      renderers: [],
       actions: [],
       themes: [{ id: "theme", title: name, scheme: "dark", colors: { background: "#181a1e" } }],
     },
@@ -481,6 +483,10 @@ it("presents and retains only the contributions Runtime admits", async () => {
     { id: "trajectory", title: "Trajectory", type: "sessionTrajectory" },
     { id: "usage", title: "Usage", type: "usageSummary" },
   ];
+  admitted.selected.renderers = [
+    { id: "search", title: "Search", selector: { type: "resultShape", name: "search" } },
+  ];
+  withheld.selected.renderers = admitted.selected.renderers;
   withheld.selected.views = admitted.selected.views;
   await loadPluginsForTest(
     runtimePlugin(),
@@ -505,6 +511,9 @@ it("presents and retains only the contributions Runtime admits", async () => {
       title: "admitted · Trajectory",
     },
     { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:usage", title: "admitted · Usage" },
+  ]);
+  expect(contributionsTo(TOOL_RESULT_RENDERER).map((entry) => entry.item.title)).toEqual([
+    "admitted · Search",
   ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(
     ["package:d3cbafab-ef30-4e20-9583-42f5316dc865:theme"],

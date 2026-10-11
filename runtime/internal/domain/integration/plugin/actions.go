@@ -38,11 +38,8 @@ func (b *Builder) AdmitAction(action Action) error {
 }
 
 func (i *Installation) AuthorizeAction(release Release, digest fingerprint.Digest, id string, operation ActionOperation) error {
-	if i.Selected() != digest || release.Digest() != digest {
-		return fmt.Errorf("%w: action release", ErrStale)
-	}
-	if !i.Active() {
-		return fmt.Errorf("%w: action requires an enabled approved release", ErrUnapproved)
+	if err := i.authorizePresentation(release, digest); err != nil {
+		return err
 	}
 	for _, action := range release.declaration.Actions {
 		if action.ID == id && action.Operation == operation {

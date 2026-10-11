@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-11.1",
+  "protocolVersion": "2026-10-11.2",
   "features": [
     "reasoning",
     "multimodal",
@@ -784,6 +784,25 @@
       ],
       "features": [
         "mcp"
+      ]
+    },
+    {
+      "name": "plugins.readRenderer",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
       ]
     },
     {
@@ -1728,6 +1747,7 @@
           "plugins.list",
           "plugins.readDiff",
           "plugins.readMemory",
+          "plugins.readRenderer",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -1926,6 +1946,7 @@
           "plugins.list",
           "plugins.readDiff",
           "plugins.readMemory",
+          "plugins.readRenderer",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -1953,6 +1974,7 @@
           "plugins.list",
           "plugins.readDiff",
           "plugins.readMemory",
+          "plugins.readRenderer",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -1980,6 +2002,7 @@
           "plugins.list",
           "plugins.readDiff",
           "plugins.readMemory",
+          "plugins.readRenderer",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2007,6 +2030,7 @@
           "plugins.list",
           "plugins.readDiff",
           "plugins.readMemory",
+          "plugins.readRenderer",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2034,6 +2058,7 @@
           "plugins.list",
           "plugins.readDiff",
           "plugins.readMemory",
+          "plugins.readRenderer",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2720,6 +2745,16 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readRenderer",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -9031,6 +9066,45 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "ReadPluginRendererRequest",
+      "rules": [
+        {
+          "field": "rendererId",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "PluginRenderer",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "title",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "title",
+          "constraint": "maxLength(128)"
+        }
+      ]
+    },
+    {
+      "type": "PluginRendererSelector",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "name",
+          "constraint": "maxLength(256)"
         }
       ]
     },

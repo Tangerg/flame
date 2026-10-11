@@ -144,7 +144,7 @@ func (c releaseCatalog) Get(_ context.Context, digest fingerprint.Digest) (plugi
 
 type preparedPackages struct{}
 
-func (preparedPackages) ReadView(context.Context, *plugin.Installation, plugin.ViewDeclaration) (string, error) {
+func (preparedPackages) ReadPage(context.Context, *plugin.Installation, string) (string, error) {
 	return "", errors.New("unexpected view read")
 }
 

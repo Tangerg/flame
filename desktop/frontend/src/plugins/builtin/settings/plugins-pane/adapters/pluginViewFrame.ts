@@ -10,13 +10,16 @@ const incoming = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("failure"), reason: z.string().max(1024) }),
   z.strictObject({
     type: z.literal("request"),
-    request: z.strictObject({
-      type: z.literal("read"),
-      cursor: z
-        .string()
-        .refine((cursor) => validateWire("PageQuery", { cursor }).length === 0)
-        .optional(),
-    }),
+    request: z.discriminatedUnion("type", [
+      z.strictObject({
+        type: z.literal("read"),
+        cursor: z
+          .string()
+          .refine((cursor) => validateWire("PageQuery", { cursor }).length === 0)
+          .optional(),
+      }),
+      z.strictObject({ type: z.literal("failure"), reason: z.string().max(1024) }),
+    ]),
   }),
 ]);
 
@@ -109,6 +112,11 @@ export function mountPluginViewFrame<T>({
         reject("The plugin requested data before initialization.");
         return;
       }
+      const request = message.request;
+      if (request.type === "failure") {
+        reject(request.reason);
+        return;
+      }
       if (reading) {
         reject("The plugin already has a pending read.");
         return;
@@ -117,8 +125,8 @@ export function mountPluginViewFrame<T>({
       reading = (async () => {
         let reply;
         try {
-          const result = await reads.read(message.request.cursor, owned);
-          reply = { type: "data", data: result, cursor: message.request.cursor };
+          const result = await reads.read(request.cursor, owned);
+          reply = { type: "data", data: result, cursor: request.cursor };
         } catch {
           reply = { type: "error", reason: "The plugin page read failed. Refresh to try again." };
         }

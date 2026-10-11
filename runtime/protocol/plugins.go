@@ -76,6 +76,7 @@ type PluginRelease struct {
 	Inputs      []PluginInput             `json:"inputs"`
 	Themes      []PluginTheme             `json:"themes"`
 	Views       []PluginView              `json:"views"`
+	Renderers   []PluginRenderer          `json:"renderers"`
 	Actions     []PluginAction            `json:"actions"`
 	Skills      []PluginSkill             `json:"skills"`
 	Diagnostics []PluginDiagnostic        `json:"diagnostics"`
@@ -133,6 +134,30 @@ type ReadPluginViewRequest struct {
 
 type PluginViewResource struct {
 	HTML string `json:"html"`
+}
+
+type PluginRendererSelectorType string
+
+const (
+	PluginRendererToolName    PluginRendererSelectorType = "toolName"
+	PluginRendererResultShape PluginRendererSelectorType = "resultShape"
+)
+
+// A renderer selector selects display only. It never resolves execution authority.
+type PluginRendererSelector struct {
+	Type PluginRendererSelectorType `json:"type"`
+	Name string                     `json:"name"`
+}
+
+type PluginRenderer struct {
+	ID       string                 `json:"id"`
+	Title    string                 `json:"title"`
+	Selector PluginRendererSelector `json:"selector"`
+}
+
+type ReadPluginRendererRequest struct {
+	PluginReleaseRequest
+	RendererID string `json:"rendererId"`
 }
 
 // ReadPluginTrajectoryRequest scopes the existing trajectory projection to

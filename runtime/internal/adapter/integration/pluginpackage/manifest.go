@@ -151,6 +151,22 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 	}
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
+		if component == "renderers" {
+			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireRenderer) error {
+				if !plugin.ValidResourcePath(w.Entry) {
+					return plugin.ErrInvalid
+				}
+				body, err := read(ctx, root, w.Entry, plugin.MaxViewBytes)
+				if err != nil {
+					return err
+				}
+				if err := validateViewHTML(body); err != nil {
+					return err
+				}
+				return release.AdmitRenderer(plugin.Renderer{ID: w.ID, Title: w.Title, Selector: plugin.RendererSelector{Kind: plugin.RendererSelectorKind(w.Selector.Type), Name: w.Selector.Name}, Entry: w.Entry})
+			})
+			continue
+		}
 		if component == "actions" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireAction) error {
 				return release.AdmitAction(plugin.Action{ID: w.ID, Title: w.Title, Operation: w.Operation})

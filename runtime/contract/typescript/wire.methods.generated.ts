@@ -99,6 +99,7 @@ import type {
   ReadFileRequest,
   ReadPluginDiffRequest,
   ReadPluginMemoryRequest,
+  ReadPluginRendererRequest,
   ReadPluginSchedulesRequest,
   ReadPluginSkillRequest,
   ReadPluginSkillsRequest,
@@ -233,6 +234,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readRenderer",
   "plugins.readDiff",
   "plugins.readSkills",
   "plugins.readSkill",
@@ -357,6 +359,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readRenderer",
   "plugins.readDiff",
   "plugins.readSkills",
   "plugins.readSkill",
@@ -794,6 +797,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readRenderer": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1348,6 +1358,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.readRenderer": [
+    { requires: ["plugins"] },
+  ],
   "plugins.readDiff": [
     { requires: ["plugins", "git"] },
   ],
@@ -1513,6 +1526,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };
   "plugins.readDiff": { params: ReadPluginDiffRequest; result: Diff };
   "plugins.readSkills": { params: ReadPluginSkillsRequest; result: SkillDiscovery };
   "plugins.readSkill": { params: ReadPluginSkillRequest; result: SkillDetail };

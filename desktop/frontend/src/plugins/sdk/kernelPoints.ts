@@ -17,7 +17,7 @@ import type {
   AccentSpec,
   VisualStyleSpec,
   ToolActionSpec,
-  ToolPreviewComponent,
+  ToolResultRendererSpec,
   ToolViewOpenerSpec,
   WorkIndexItemSpec,
   WorkspaceViewSpec,
@@ -129,8 +129,8 @@ export const TOOL_VIEW_OPENER = defineExtensionPoint<ToolViewOpenerSpec>({
   id: "flame.tool.viewOpener",
   keying: "single",
 });
-export const TOOL_PREVIEW = defineExtensionPoint<ToolPreviewComponent>({
-  id: "flame.tool.preview",
+export const TOOL_RESULT_RENDERER = defineExtensionPoint<ToolResultRendererSpec>({
+  id: "flame.tool.resultRenderer",
   keying: "single",
 });
 export const TOOL_ICON = defineExtensionPoint<string>({

@@ -18,8 +18,8 @@ func validateViewHTML(body []byte) error {
 	return nil
 }
 
-func (r *Releases) ReadView(ctx context.Context, installation *plugin.Installation, view plugin.ViewDeclaration) (string, error) {
-	body, err := r.readResource(ctx, installation, view.Entry, plugin.MaxViewBytes)
+func (r *Releases) ReadPage(ctx context.Context, installation *plugin.Installation, entry string) (string, error) {
+	body, err := r.readResource(ctx, installation, entry, plugin.MaxViewBytes)
 	if err != nil {
 		return "", errors.Join(plugin.ErrUnavailable, err)
 	}

@@ -226,3 +226,24 @@ it("joins resource loading and an allocated page when retired during startup", a
   expect(f.send).not.toHaveBeenCalled();
   expect(f.status).toHaveBeenLastCalledWith({ type: "loading" });
 });
+
+it("settles a renderer format failure and joins its admitted read", async () => {
+  const f = fixture();
+  const pending = Promise.withResolvers<{ data: [] }>();
+  f.reads.read.mockImplementation(() => pending.promise);
+  const dispose = await f.ready();
+  f.publish({ type: "request", request: { type: "read" } });
+  f.publish({
+    type: "request",
+    request: { type: "failure", reason: "Unsupported recorded result format." },
+  });
+  expect(f.status).toHaveBeenLastCalledWith({
+    type: "failure",
+    reason: "Unsupported recorded result format.",
+  });
+  expect(f.reads.read.mock.calls[0]?.[1].aborted).toBe(true);
+  pending.resolve({ data: [] });
+  await dispose();
+  expect(f.close).toHaveBeenCalledOnce();
+  expect(f.send).toHaveBeenCalledOnce();
+});

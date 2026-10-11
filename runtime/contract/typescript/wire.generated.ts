@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-11.1";
+export const PROTOCOL_VERSION = "2026-10-11.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1218,6 +1218,7 @@ export interface PluginRelease {
   digest: string;
   inputs: PluginInput[];
   name: string;
+  renderers: PluginRenderer[];
   servers: PluginServerDeclaration[];
   skills: PluginSkill[];
   themes: PluginTheme[];
@@ -1229,6 +1230,19 @@ export interface PluginReleaseRequest {
   digest: string;
   installationId: string;
 }
+
+export interface PluginRenderer {
+  id: string;
+  selector: PluginRendererSelector;
+  title: string;
+}
+
+export interface PluginRendererSelector {
+  name: string;
+  type: PluginRendererSelectorType;
+}
+
+export type PluginRendererSelectorType = "toolName" | "resultShape";
 
 export interface PluginRequest {
   installationId: string;
@@ -1421,6 +1435,12 @@ export interface ReadPluginMemoryRequest {
   scope: AgentMemoryScope;
   viewId: string;
   workspace?: WorkspaceRef;
+}
+
+export interface ReadPluginRendererRequest {
+  digest: string;
+  installationId: string;
+  rendererId: string;
 }
 
 export interface ReadPluginSchedulesRequest {
@@ -2208,6 +2228,7 @@ export const WIRE_ENUMS = {
   PluginInstallationState: ["unapproved", "approved", "enabled"],
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
+  PluginRendererSelectorType: ["toolName", "resultShape"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
   PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff"],

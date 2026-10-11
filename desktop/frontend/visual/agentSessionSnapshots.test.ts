@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
-import { lookupExtensionByKey, TOOL_PREVIEW } from "@/plugins/sdk";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
-import { toolPreviewPlugins } from "@/main/builtinPlugins";
-import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   RUNTIME_AGENT_SESSION_TAIL_EVENTS,
@@ -45,24 +41,6 @@ describe("the visual agent fixtures", () => {
     );
 
     expect(violations).toEqual([]);
-  });
-
-  it("calls every tool preview the product registers", async () => {
-    await loadPluginsForTest(...toolPreviewPlugins);
-
-    const called = new Set(
-      VISUAL_AGENT_STATES.flatMap((state) =>
-        RUNTIME_AGENT_SESSION_SNAPSHOTS[state].items.flatMap((item) =>
-          item.type === "toolCall" ? [item.tool.name] : [],
-        ),
-      ),
-    );
-    const uncalled = Object.keys(TOOL_ICON_BY_NAME).filter(
-      (name) => lookupExtensionByKey(TOOL_PREVIEW, name) !== undefined && !called.has(name),
-    );
-
-    expect(called.size, "the sweep has to be looking at real calls").toBeGreaterThan(10);
-    expect(uncalled, "tool previews no fixture ever renders").toEqual([]);
   });
 
   const DECLARED_RESULT_SHAPE: Record<

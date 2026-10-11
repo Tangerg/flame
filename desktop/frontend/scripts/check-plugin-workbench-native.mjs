@@ -47,6 +47,7 @@ let mcpEndpoint;
 let runtimeModule;
 let failure;
 const installed = {};
+let resultPackage;
 const mcpToken = randomUUID();
 const manifest = JSON.parse(
   await readFile(join(repository, "runtime/contract/manifest.json"), "utf8"),
@@ -365,6 +366,13 @@ try {
     );
     installed[name] = { ...binding, title: `${installation.selected.name} · ${view.title}` };
   }
+  resultPackage = await rpc("plugins.install", { source: "/fixture/plugins/tool-results" });
+  assert.deepEqual(resultPackage.selected.diagnostics, []);
+  await rpc("plugins.approve", {
+    installationId: resultPackage.id,
+    digest: resultPackage.selected.digest,
+  });
+  await rpc("plugins.setEnablement", { installationId: resultPackage.id, enabled: true });
   await command("docker", [
     "exec",
     containerName,
@@ -804,6 +812,48 @@ try {
     "Skills: canonical catalogs/documents, trusted archive/restore, proposal publication and page retirement passed",
   );
 
+  await clickText("Native proposal authoring");
+  await evaluate(
+    `for(const e of document.querySelectorAll('[data-slot="agent-activity-disclosure"]:not([data-tool]) > [data-slot="agent-activity-header"] button[aria-expanded="false"]'))e.click(); return true`,
+  );
+  await waitFor(
+    "recorded proposal tool",
+    () => evaluate('return !!document.querySelector("[data-tool=propose_skill]")'),
+    Boolean,
+  );
+  await evaluate(
+    'const root = document.querySelector("[data-tool=propose_skill]"); const e = root.matches("button") ? root : root.querySelector("[aria-expanded]"); root.scrollIntoView({block: "center"}); if(e.getAttribute("aria-expanded") !== "true")e.click(); return true',
+  );
+  const resultPage = await pageWith("propose_skill");
+  const originalResult = await guest(resultPage.id, 'document.querySelector("#output").innerText');
+  assert.match(originalResult, /native-proposal/);
+  await guest(resultPage.id, 'document.querySelector("#refresh").click(); true');
+  await waitFor(
+    "same recorded result",
+    () => readGuest(resultPage.id, 'document.querySelector("#output").innerText'),
+    (value) => value.ready && JSON.parse(value.value) === originalResult,
+  );
+  const canonicalResult = await rpc("sessions.trajectory", { sessionId: proposalSession.id });
+  await rpc("plugins.revoke", { installationId: resultPackage.id });
+  await noPages();
+  await assert.rejects(guest(resultPage.id, "document.body.innerText"), /page is not ready/);
+  await waitFor(
+    "generic recorded-result fallback",
+    () =>
+      evaluate(
+        'return !!document.querySelector("[data-tool=propose_skill]") && document.body.innerText.includes("native-proposal")',
+      ),
+    Boolean,
+  );
+  assert.deepEqual(
+    await rpc("sessions.trajectory", { sessionId: proposalSession.id }),
+    canonicalResult,
+  );
+  await rpc("plugins.uninstall", { installationId: resultPackage.id });
+  console.log(
+    "Tool results: recorded Run output, renewed read admission, native retirement and generic fallback passed",
+  );
+
   for (const name of Object.keys(installed))
     await rpc("plugins.uninstall", { installationId: installed[name].installationId });
   const preservedMemory = (
@@ -881,6 +931,7 @@ console.log(
   JSON.stringify({
     result: "passed",
     views: Object.keys(installed).length,
+    resultRendering: true,
     remoteWorkspace: true,
     preservedRuntimeFacts: true,
     nativePages: 0,

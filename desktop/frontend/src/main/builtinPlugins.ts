@@ -79,46 +79,10 @@ import toaster from "@/plugins/builtin/shell/toaster";
 import { toolActions, toolIcons } from "@/plugins/builtin/chat/tools/toolMeta";
 import { subagentsView } from "@/plugins/builtin/chat/message/subagents";
 import { markdownFile } from "@/plugins/builtin/chat/message/markdownFile";
-import { taskPreview } from "@/plugins/builtin/chat/message/taskPreview";
 import toolViewOpener from "@/plugins/builtin/workspace/tool-view-opener";
-import {
-  askUserPreview,
-  shellPreview,
-  applyPatchPreview,
-  file,
-  globPreview,
-  grep,
-  httpPreviews,
-  lspPreviews,
-  recallPreviews,
-  skillPreview,
-  toolSearchPreviewPlugin,
-  webSearchPreview,
-} from "@/plugins/builtin/chat/tools/previews";
 import { fileView } from "@/plugins/builtin/workspace/views";
 
-export const toolPreviewPlugins: AnyPlugin[] = [
-  shellPreview,
-  applyPatchPreview,
-  file,
-  grep,
-  globPreview,
-  lspPreviews,
-  skillPreview,
-  taskPreview,
-  askUserPreview,
-  webSearchPreview,
-  recallPreviews,
-  toolSearchPreviewPlugin,
-  httpPreviews,
-];
-
-export const toolRenderingPlugins: AnyPlugin[] = [
-  ...toolPreviewPlugins,
-  toolActions,
-  toolViewOpener,
-  toolIcons,
-];
+export const toolRenderingPlugins: AnyPlugin[] = [toolActions, toolViewOpener, toolIcons];
 
 export function createBuiltinPlugins(
   connection: ReturnType<typeof createRuntimeConnection>,

@@ -28,7 +28,7 @@ type Packages interface {
 	Reclaim(context.Context, []fingerprint.Digest) error
 	Prepare(context.Context, *plugin.Installation, plugin.Release) error
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
-	ReadView(context.Context, *plugin.Installation, plugin.ViewDeclaration) (string, error)
+	ReadPage(context.Context, *plugin.Installation, string) (string, error)
 }
 
 // Candidate is one package's admitted bytes awaiting publication. Only an

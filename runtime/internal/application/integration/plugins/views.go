@@ -12,10 +12,28 @@ import (
 func (c *Coordinator) ReadView(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, viewID string) (html string, err error) {
 	err = c.withView(ctx, id, digest, viewID, func(installation *plugin.Installation, view plugin.ViewDeclaration) error {
 		var err error
-		html, err = c.packages.ReadView(ctx, installation, view)
+		html, err = c.packages.ReadPage(ctx, installation, view.Entry)
 		return err
 	})
 	return html, err
+}
+
+func (c *Coordinator) ReadRenderer(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, rendererID string) (string, error) {
+	var installation *plugin.Installation
+	var renderer plugin.Renderer
+	err := c.dependencies.UnderAdmission(ctx, func(_ []plugin.Dependency) error {
+		snapshot, err := c.installationSnapshot(ctx, id)
+		if err != nil {
+			return err
+		}
+		renderer, err = snapshot.Installation.AuthorizeRenderer(snapshot.Selected, digest, rendererID)
+		installation = snapshot.Installation
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return c.packages.ReadPage(ctx, installation, renderer.Entry)
 }
 
 // Authorization shares installation admission; the accepted read runs outside

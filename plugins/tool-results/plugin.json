@@ -1,0 +1,231 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.tool-results",
+  "version": "1.0.0",
+  "description": "Optional read-only presentation of recorded tool results.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "renderers": [
+          {
+            "id": "shell",
+            "title": "Shell",
+            "selector": {
+              "type": "toolName",
+              "name": "shell"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "read-shell-output",
+            "title": "Read Shell Output",
+            "selector": {
+              "type": "toolName",
+              "name": "read_shell_output"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "stop-shell",
+            "title": "Stop Shell",
+            "selector": {
+              "type": "toolName",
+              "name": "stop_shell"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "read",
+            "title": "Read",
+            "selector": {
+              "type": "toolName",
+              "name": "read"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "grep",
+            "title": "Grep",
+            "selector": {
+              "type": "toolName",
+              "name": "grep"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "glob",
+            "title": "Glob",
+            "selector": {
+              "type": "toolName",
+              "name": "glob"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "lsp",
+            "title": "Lsp",
+            "selector": {
+              "type": "toolName",
+              "name": "lsp"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "list-skills",
+            "title": "List Skills",
+            "selector": {
+              "type": "toolName",
+              "name": "list_skills"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "load-skill",
+            "title": "Load Skill",
+            "selector": {
+              "type": "toolName",
+              "name": "load_skill"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "read-skill-resource",
+            "title": "Read Skill Resource",
+            "selector": {
+              "type": "toolName",
+              "name": "read_skill_resource"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "propose-skill",
+            "title": "Propose Skill",
+            "selector": {
+              "type": "toolName",
+              "name": "propose_skill"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "delegate-task",
+            "title": "Delegate Task",
+            "selector": {
+              "type": "toolName",
+              "name": "delegate_task"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "ask-user",
+            "title": "Ask User",
+            "selector": {
+              "type": "toolName",
+              "name": "ask_user"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "web-search",
+            "title": "Web Search",
+            "selector": {
+              "type": "toolName",
+              "name": "web_search"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "http-request",
+            "title": "Http Request",
+            "selector": {
+              "type": "toolName",
+              "name": "http_request"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "web-fetch",
+            "title": "Web Fetch",
+            "selector": {
+              "type": "toolName",
+              "name": "web_fetch"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "search-memory",
+            "title": "Search Memory",
+            "selector": {
+              "type": "toolName",
+              "name": "search_memory"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "read-tool-result",
+            "title": "Read Tool Result",
+            "selector": {
+              "type": "toolName",
+              "name": "read_tool_result"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "search-tools",
+            "title": "Search Tools",
+            "selector": {
+              "type": "toolName",
+              "name": "search_tools"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "apply-patch",
+            "title": "Apply Patch",
+            "selector": {
+              "type": "toolName",
+              "name": "apply_patch"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "shape-command",
+            "title": "command result",
+            "selector": {
+              "type": "resultShape",
+              "name": "command"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "shape-search",
+            "title": "search result",
+            "selector": {
+              "type": "resultShape",
+              "name": "search"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "shape-patch",
+            "title": "patch result",
+            "selector": {
+              "type": "resultShape",
+              "name": "patch"
+            },
+            "entry": "renderers/result.html"
+          },
+          {
+            "id": "shape-websearch",
+            "title": "webSearch result",
+            "selector": {
+              "type": "resultShape",
+              "name": "webSearch"
+            },
+            "entry": "renderers/result.html"
+          }
+        ]
+      }
+    }
+  }
+}

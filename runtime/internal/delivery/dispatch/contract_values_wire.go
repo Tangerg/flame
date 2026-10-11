@@ -1048,6 +1048,9 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginRendererRequest](), Constraints: []FieldConstraint{{Field: "rendererId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRenderer](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxViewTitleBytes}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: 256}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RenamePluginSessionRequest](), Constraints: []FieldConstraint{{Field: "actionId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginAction](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxActionTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginViewRequest](), Constraints: []FieldConstraint{{Field: "viewId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})

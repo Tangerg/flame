@@ -2,6 +2,7 @@ import type {
   PluginInstallation,
   PluginViewResource,
   ReadPluginViewRequest,
+  ReadPluginRendererRequest,
   ReadPluginTrajectoryRequest,
   ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
@@ -294,6 +295,10 @@ export interface Methods {
   plugins: {
     renameSession: (params: RenamePluginSessionRequest) => MutationPromise<Session>;
     readView: (params: ReadPluginViewRequest, signal?: AbortSignal) => Promise<PluginViewResource>;
+    readRenderer: (
+      params: ReadPluginRendererRequest,
+      signal?: AbortSignal,
+    ) => Promise<PluginViewResource>;
     readTrajectory: (
       params: ReadPluginTrajectoryRequest,
       signal?: AbortSignal,
@@ -582,6 +587,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     plugins: {
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),
+      readRenderer: (params, signal) => call("plugins.readRenderer", params, { signal }),
       readTrajectory: (params, signal) => call("plugins.readTrajectory", params, { signal }),
       readDiff: (params, signal) => call("plugins.readDiff", params, { signal }),
       readUsage: (params, signal) => call("plugins.readUsage", params, { signal }),

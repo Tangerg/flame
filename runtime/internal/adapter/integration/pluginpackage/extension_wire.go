@@ -40,6 +40,16 @@ type wireAction struct {
 	Title     string                 `json:"title"`
 	Operation plugin.ActionOperation `json:"operation"`
 }
+type wireRenderer struct {
+	ID       string               `json:"id"`
+	Title    string               `json:"title"`
+	Selector wireRendererSelector `json:"selector"`
+	Entry    string               `json:"entry"`
+}
+type wireRendererSelector struct {
+	Type string `json:"type"`
+	Name string `json:"name"`
+}
 type wireThemeColors struct {
 	Background *string `json:"background,omitempty"`
 	Foreground *string `json:"foreground,omitempty"`
