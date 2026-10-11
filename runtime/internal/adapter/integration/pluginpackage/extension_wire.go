@@ -1,32 +1,11 @@
 package pluginpackage
 
 import (
-	"bytes"
-	"encoding/json/jsontext"
-	json "encoding/json/v2"
 	"errors"
-	"io"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
-
-func decodeDeclaration(raw jsontext.Value, target any) error {
-	decoder := jsontext.NewDecoder(bytes.NewReader(raw))
-	for {
-		token, err := decoder.ReadToken()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		if token.Kind() == 'n' {
-			return errors.New("pluginpackage: null is not a declaration value")
-		}
-	}
-	return json.Unmarshal(raw, target, json.RejectUnknownMembers(true))
-}
 
 type wireInput struct {
 	ID       string               `json:"id"`

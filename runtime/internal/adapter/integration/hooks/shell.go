@@ -6,14 +6,16 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/capture"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 	"unicode/utf8"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/capture"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 
@@ -29,10 +31,9 @@ type Shell struct{}
 // RunHookCommand runs req.Command via the host shell, encoding the typed domain
 // input into the external hook JSON contract at this adapter boundary.
 func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) apphooks.CommandResult {
-	if err := ctx.Err(); err != nil {
+	if err, timedOut := commandCancellation(ctx); err != nil {
 		return apphooks.CommandResult{
-			Err: err, ExitCode: -1,
-			TimedOut: errors.Is(err, context.DeadlineExceeded),
+			Err: err, ExitCode: -1, TimedOut: timedOut,
 		}
 	}
 	if err := req.Input.ValidateCommandMaterial(); err != nil {
@@ -72,15 +73,16 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 
 	runErr := cmd.Run()
+	cancellationErr, timedOut := commandCancellation(cctx)
 	cleanupErr := procgroup.Stop(cmd)
 	if errors.Is(cleanupErr, os.ErrProcessDone) {
 		cleanupErr = nil
 	}
 	result := apphooks.CommandResult{
-		Stderr:   stderr.String(),
+		Stderr:   stderrDiagnostic(stderr.String()),
 		ExitCode: exitCodeOf(runErr),
-		Err:      errors.Join(runErr, cleanupErr),
-		TimedOut: cctx.Err() == context.DeadlineExceeded,
+		Err:      errors.Join(runErr, cancellationErr, cleanupErr),
+		TimedOut: timedOut,
 	}
 	if stdout.Truncated() {
 		result.Err = errors.Join(
@@ -92,6 +94,27 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	result.Decision, err = hookDecisionFromWire(stdout.Bytes())
 	result.Err = errors.Join(result.Err, err)
 	return result
+}
+
+// Stderr may contain process bytes that cannot enter model-visible text.
+func stderrDiagnostic(value string) string {
+	if utf8.ValidString(value) {
+		return value
+	}
+	escaped := strconv.QuoteToASCII(value)
+	return escaped[:min(len(escaped), maxHookCommandOutputBytes)]
+}
+
+func commandCancellation(ctx context.Context) (error, bool) {
+	err := ctx.Err()
+	if err == nil {
+		return nil, false
+	}
+	cause := context.Cause(ctx)
+	if !errors.Is(cause, err) {
+		cause = errors.Join(err, cause)
+	}
+	return cause, errors.Is(err, context.DeadlineExceeded)
 }
 
 type hookInputWire struct {
@@ -157,10 +180,10 @@ func hookInputMaterialWithinLimit(input domainhooks.Input, limit int) bool {
 }
 
 type hookDecisionWire struct {
-	Decision         apphooks.CommandVerdict `json:"decision,omitempty"`
-	Reason           string                  `json:"reason,omitempty"`
-	InjectContext    string                  `json:"injectContext,omitempty"`
-	RewriteArguments string                  `json:"rewriteArguments,omitempty"`
+	Decision         *apphooks.CommandVerdict `json:"decision,omitzero"`
+	Reason           string                   `json:"reason,omitempty"`
+	InjectContext    string                   `json:"injectContext,omitempty"`
+	RewriteArguments string                   `json:"rewriteArguments,omitempty"`
 }
 
 func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
@@ -168,14 +191,11 @@ func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
 	if len(trimmed) == 0 {
 		return apphooks.CommandDecision{Verdict: apphooks.CommandAllow}, nil
 	}
-	if !utf8.Valid(stdout) {
-		return apphooks.CommandDecision{}, errors.New("hooks: command decision is not valid UTF-8")
-	}
 	if trimmed[0] != '{' {
 		return apphooks.CommandDecision{}, errors.New("hooks: command decision must be a JSON object")
 	}
 	var wire hookDecisionWire
-	if err := json.Unmarshal(stdout, &wire, json.RejectUnknownMembers(true)); err != nil {
+	if err := exactjson.UnmarshalNonNull(stdout, &wire); err != nil {
 		return apphooks.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
 	}
 	verdict, err := hookVerdictFromWire(wire.Decision)
@@ -188,14 +208,14 @@ func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
 	}, nil
 }
 
-func hookVerdictFromWire(verdict apphooks.CommandVerdict) (apphooks.CommandVerdict, error) {
-	if verdict == "" {
+func hookVerdictFromWire(verdict *apphooks.CommandVerdict) (apphooks.CommandVerdict, error) {
+	if verdict == nil {
 		return apphooks.CommandAllow, nil
 	}
 	if !verdict.Valid() {
-		return "", fmt.Errorf("hooks: unsupported command decision %q", verdict)
+		return "", fmt.Errorf("hooks: unsupported command decision %q", *verdict)
 	}
-	return verdict, nil
+	return *verdict, nil
 }
 
 func exitCodeOf(err error) int {

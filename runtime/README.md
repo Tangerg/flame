@@ -826,6 +826,17 @@ translation live in `internal/adapter/run`, model translation in
 Application recorder because its lifetime is independent of Session cleanup.
 The architecture gate rejects unclassified production packages and imports.
 
+Lifecycle Hook configuration requires an explicit `hooks` array in every non-empty
+JSON document. Use `{"hooks":[]}` for an empty set. Hook configuration and command
+decisions reject explicit `null` at every depth; omit optional members instead.
+Empty command stdout or `{}` still means allow; a present `decision` must name
+`allow`, `deny` or `ask`. Unknown members, duplicate members,
+invalid Unicode and trailing documents are refused by the JSON decoder.
+Command failure diagnostics retain process, cancellation, timeout and cleanup causes
+alongside bounded stderr. Non-Unicode stderr becomes bounded escaped-byte text.
+Broken commands remain observable non-blocking failures; exit 2 is an explicit deny.
+Existing Hook producers must replace null fields with omission or valid typed values.
+
 Waiting executor checkpoints require the exact executable BuildID. A rebuilt
 binary can reject them after source-only changes, including directory moves.
 Finish or cancel waiting executions before replacing their owning build. This

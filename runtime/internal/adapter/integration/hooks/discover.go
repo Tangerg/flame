@@ -4,16 +4,15 @@ package hooks
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
@@ -144,12 +143,12 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	if len(data) == 0 {
 		return hooksFile{}, false, nil
 	}
-	if !utf8.Valid(data) {
-		return hooksFile{}, false, errors.New("configuration is not valid UTF-8")
-	}
 	var file hooksFile
-	if err := json.Unmarshal(data, &file, json.RejectUnknownMembers(true)); err != nil {
+	if err := exactjson.UnmarshalNonNull(data, &file); err != nil {
 		return hooksFile{}, false, err
+	}
+	if file.Hooks == nil {
+		return hooksFile{}, false, errors.New("hooks array is required")
 	}
 	if err := domainhooks.ValidateHooksPerFile(len(file.Hooks)); err != nil {
 		return hooksFile{}, false, err

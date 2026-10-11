@@ -92,6 +92,33 @@ func TestLoadRejectsUnknownPolicyFields(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsMissingAndNullConfigurationMaterial(t *testing.T) {
+	for _, body := range []string{
+		`null`,
+		`{}`,
+		`{"hooks":null}`,
+		`{"hooks":[null]}`,
+		`{"hooks":[{"event":"PreToolUse","command":"check","matcher":null}]}`,
+		`{"hooks":[{"event":"PreToolUse","command":"check","timeoutMillis":null}]}`,
+		`{"hooks":[{"event":"SessionStart","command":null,"inject":"context"}]}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			cwd := t.TempDir()
+			writeHooks(t, cwd, body)
+			if hooks, err := Load(t.Context(), cwd, ""); err == nil {
+				t.Fatalf("Load accepted missing or null material: %+v", hooks)
+			}
+		})
+	}
+	for _, body := range []string{"", `{"hooks":[]}`} {
+		cwd := t.TempDir()
+		writeHooks(t, cwd, body)
+		if hooks, err := Load(t.Context(), cwd, ""); err != nil || len(hooks) != 0 {
+			t.Fatalf("Load explicit empty configuration = %+v, %v", hooks, err)
+		}
+	}
+}
+
 func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 	tests := []struct {
 		name string

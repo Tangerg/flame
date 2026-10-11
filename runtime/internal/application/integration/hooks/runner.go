@@ -157,14 +157,21 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 		Timeout: timeout,
 	})
 	if result.TimedOut {
-		r.fail(ctx, h.Source, errors.New("hook timed out"))
+		r.fail(ctx, h.Source, errors.Join(errors.New("hook timed out"), result.Err))
 		return
 	}
 
 	out := result.Decision
 
 	switch {
-	case result.Err == nil:
+	case result.ExitCode == blockExitCode:
+		// Exit 2: block. Reason is the stdout JSON's, else stderr.
+		reason := out.Reason
+		if reason == "" {
+			reason = strings.TrimSpace(result.Stderr)
+		}
+		dec.Fold(domain.VerdictBlock, reason, strings.TrimSpace(out.InjectContext), "")
+	case result.Err == nil && result.ExitCode == 0:
 		// Exit 0 must carry a complete decoded decision. Treat a missing or
 		// future verdict as a broken hook instead of silently granting it.
 		if !out.Verdict.Valid() {
@@ -177,13 +184,6 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 			reason = strings.TrimSpace(result.Stderr)
 		}
 		dec.Fold(verdict, reason, strings.TrimSpace(out.InjectContext), strings.TrimSpace(out.RewriteArguments))
-	case result.ExitCode == blockExitCode:
-		// Exit 2: block. Reason is the stdout JSON's, else stderr.
-		reason := out.Reason
-		if reason == "" {
-			reason = strings.TrimSpace(result.Stderr)
-		}
-		dec.Fold(domain.VerdictBlock, reason, strings.TrimSpace(out.InjectContext), "")
 	default:
 		// Any other non-zero exit (or spawn failure): a broken hook. Non-blocking
 		// — the action proceeds — but surfaced via onError so it's observable.
@@ -200,7 +200,7 @@ func (r *Runner) fail(ctx context.Context, source string, err error) {
 // hookError builds a descriptive error for a non-blocking hook failure.
 func hookError(exit int, stderr string, runErr error) error {
 	if s := strings.TrimSpace(stderr); s != "" {
-		return errors.New(s)
+		return errors.Join(runErr, errors.New(s))
 	}
 	if runErr != nil {
 		return runErr

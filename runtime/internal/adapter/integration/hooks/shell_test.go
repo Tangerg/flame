@@ -2,9 +2,11 @@ package hooks
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
@@ -45,6 +47,42 @@ func TestShell_Timeout(t *testing.T) {
 	})
 	if !got.TimedOut {
 		t.Fatalf("TimedOut = false, err=%v", got.Err)
+	}
+	if !errors.Is(got.Err, context.DeadlineExceeded) {
+		t.Fatalf("timeout error = %v, want deadline cause", got.Err)
+	}
+}
+
+func TestShellPreservesParentCancellationCause(t *testing.T) {
+	cause := errors.New("owner retired")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	got := Shell{}.RunHookCommand(ctx, apphooks.CommandRequest{Command: ":", Timeout: time.Second})
+	if !errors.Is(got.Err, context.Canceled) || !errors.Is(got.Err, cause) {
+		t.Fatalf("canceled command error = %v, want cancellation and owner cause", got.Err)
+	}
+}
+
+func TestHookDecisionRejectsInvalidFields(t *testing.T) {
+	for _, output := range []string{
+		`{"decision":""}`,
+		`{"decision":null}`,
+		`{"reason":null}`,
+		`{"injectContext":null}`,
+		`{"rewriteArguments":null}`,
+	} {
+		t.Run(output, func(t *testing.T) {
+			decision, err := hookDecisionFromWire([]byte(output))
+			if err == nil || decision != (apphooks.CommandDecision{}) {
+				t.Fatalf("decision = %+v, %v; want refusal without admitted material", decision, err)
+			}
+		})
+	}
+	for _, output := range []string{"", `{}`, `{"decision":"allow"}`} {
+		decision, err := hookDecisionFromWire([]byte(output))
+		if err != nil || decision.Verdict != apphooks.CommandAllow {
+			t.Fatalf("explicit allow = %+v, %v", decision, err)
+		}
 	}
 }
 
@@ -196,6 +234,44 @@ func TestShellMalformedDecisionIsObservableAndNonBlocking(t *testing.T) {
 	})
 	if decision.Verdict == domainhooks.VerdictBlock || observed == nil {
 		t.Fatalf("malformed decision = %+v observed=%v, want observable non-blocking failure", decision, observed)
+	}
+}
+
+func TestShellDecisionsReachTheApplicationPolicy(t *testing.T) {
+	for _, test := range []struct {
+		output  string
+		verdict domainhooks.Verdict
+	}{
+		{`{"decision":"deny","reason":"reviewed policy"}`, domainhooks.VerdictBlock},
+		{`{"decision":"ask","reason":"reviewed policy"}`, domainhooks.VerdictAsk},
+	} {
+		t.Run(test.output, func(t *testing.T) {
+			var observed error
+			runner := apphooks.NewRunner(Shell{}, func(_ context.Context, _ string, err error) { observed = err })
+			decision := runner.Run(t.Context(), []domainhooks.Hook{{
+				Event: domainhooks.PreToolUse, Command: `printf '%s' ` + shellSingleQuote(test.output),
+			}}, domainhooks.Input{Event: domainhooks.PreToolUse, Tool: &domainhooks.ToolInput{Name: "shell"}})
+			if observed != nil || decision.Verdict != test.verdict || decision.Reason != "reviewed policy" {
+				t.Fatalf("command decision = %+v, %v", decision, observed)
+			}
+		})
+	}
+}
+
+func TestShellExitTwoKeepsBinaryStderrPrintable(t *testing.T) {
+	runner := apphooks.NewRunner(Shell{}, nil)
+	decision := runner.Run(t.Context(), []domainhooks.Hook{{
+		Event: domainhooks.PreToolUse, Command: `printf '\377' >&2; exit 2`,
+	}}, domainhooks.Input{Event: domainhooks.PreToolUse, Tool: &domainhooks.ToolInput{Name: "shell"}})
+	if decision.Verdict != domainhooks.VerdictBlock || !utf8.ValidString(decision.Reason) || !strings.Contains(decision.Reason, `\xff`) {
+		t.Fatalf("binary stderr decision = %+v, want printable explicit deny", decision)
+	}
+}
+
+func TestHookDecisionPreservesNullInsideOpaqueArguments(t *testing.T) {
+	decision, err := hookDecisionFromWire([]byte(`{"rewriteArguments":"{\"value\":null}"}`))
+	if err != nil || decision.Verdict != apphooks.CommandAllow || decision.RewriteArguments != `{"value":null}` {
+		t.Fatalf("opaque arguments = %+v, %v", decision, err)
 	}
 }
 

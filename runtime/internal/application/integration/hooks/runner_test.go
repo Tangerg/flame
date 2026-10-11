@@ -3,12 +3,12 @@ package hooks
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"sync"
 	"testing"
 
 	hookdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 func ctxBG() context.Context { return context.Background() }
@@ -160,6 +160,29 @@ func TestRunner_Exit2Blocks(t *testing.T) {
 	}
 }
 
+func TestRunnerAdmitsCommandMaterialFromTheProcessOutcome(t *testing.T) {
+	for _, test := range []struct {
+		exitCode int
+		verdict  hookdomain.Verdict
+		failure  bool
+	}{
+		{2, hookdomain.VerdictBlock, false},
+		{3, hookdomain.VerdictAllow, true},
+	} {
+		var observed error
+		runner := NewRunner(&commandStub{results: []CommandResult{{
+			ExitCode: test.exitCode, Stderr: "process diagnostic",
+			Decision: CommandDecision{Verdict: CommandAllow, RewriteArguments: `{"unadmitted":true}`},
+		}}}, func(_ context.Context, _ string, err error) { observed = err })
+		decision := runner.Run(t.Context(), []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook"}}, hookdomain.Input{
+			Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"},
+		})
+		if decision.Verdict != test.verdict || decision.RewriteArguments != "" || (observed != nil) != test.failure {
+			t.Fatalf("exit %d admitted decision = %+v, %v", test.exitCode, decision, observed)
+		}
+	}
+}
+
 func TestRunner_AskEscalates(t *testing.T) {
 	r := NewRunner(&commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandAsk, Reason: "review"}}}}, nil)
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook"}}
@@ -198,6 +221,36 @@ func TestRunner_NonBlockingErrorProceeds(t *testing.T) {
 	}
 	if len(errs) != 1 || !strings.Contains(errs[0], "boom") {
 		t.Fatalf("onError = %v, want one error mentioning boom", errs)
+	}
+}
+
+func TestRunnerPreservesCommandFailureEvidence(t *testing.T) {
+	processFailure := errors.New("process failed")
+	cleanupFailure := errors.New("cleanup failed")
+	for _, test := range []struct {
+		name   string
+		result CommandResult
+		causes []error
+	}{
+		{"stderr", CommandResult{ExitCode: 3, Stderr: "diagnostic", Err: errors.Join(processFailure, cleanupFailure)}, []error{processFailure, cleanupFailure}},
+		{"timeout", CommandResult{TimedOut: true, Err: errors.Join(context.DeadlineExceeded, cleanupFailure)}, []error{context.DeadlineExceeded, cleanupFailure}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.result.Decision = CommandDecision{Verdict: CommandAllow, InjectContext: "unadmitted", RewriteArguments: `{}`}
+			var observed error
+			runner := NewRunner(&commandStub{results: []CommandResult{test.result}}, func(_ context.Context, _ string, err error) { observed = err })
+			decision := runner.Run(t.Context(), []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook"}}, hookdomain.Input{
+				Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"},
+			})
+			for _, cause := range test.causes {
+				if !errors.Is(observed, cause) {
+					t.Fatalf("observed failure = %v, want retained cause %v", observed, cause)
+				}
+			}
+			if decision.Verdict == hookdomain.VerdictBlock || decision.InjectContext != "" || decision.RewriteArguments != "" {
+				t.Fatalf("failed command advanced decision material: %+v", decision)
+			}
+		})
 	}
 }
 

@@ -1,5 +1,5 @@
-// Package exactjson states how this Runtime decodes a JSON number that lands in
-// an any. Tool-call identifiers, schema bounds, and protocol ids routinely carry
+// Package exactjson protects authored JSON evidence at decoding boundaries.
+// Tool-call identifiers, schema bounds, and protocol ids routinely carry
 // integers past IEEE-754's exact range, and encoding/json/v2 represents a number
 // in an any as a float64, which rounds those silently and refuses magnitudes
 // outside float64 entirely.

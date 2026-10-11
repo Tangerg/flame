@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
@@ -52,7 +53,7 @@ func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugi
 		}
 		if key == "keywords" {
 			var v []string
-			if err = decodeDeclaration(raw, &v); err != nil {
+			if err = exactjson.UnmarshalNonNull(raw, &v); err != nil {
 				return plugin.Release{}, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
 			}
 			if v == nil {
@@ -206,7 +207,7 @@ func admitContributions[T any](raw jsontext.Value, release *plugin.Builder, comp
 	}
 	for _, raw := range values {
 		var wire T
-		if err := decodeDeclaration(raw, &wire); err != nil {
+		if err := exactjson.UnmarshalNonNull(raw, &wire); err != nil {
 			report(release, component, plugin.DiagnosticInvalidDeclaration)
 			continue
 		}
@@ -289,7 +290,7 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 		URL     string            `json:"url,omitempty"`
 		Headers map[string]string `json:"headers,omitempty"`
 	}
-	if err := decodeDeclaration(raw, &wire); err != nil {
+	if err := exactjson.UnmarshalNonNull(raw, &wire); err != nil {
 		return plugin.Server{}, fmt.Errorf("%w: server declaration: %w", plugin.ErrInvalid, err)
 	}
 	var members map[string]jsontext.Value
