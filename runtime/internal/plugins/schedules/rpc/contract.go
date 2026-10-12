@@ -45,6 +45,7 @@ type Ack struct{}
 
 func RegisterClient(client *sdk.Client) error {
 	return errors.Join(
+		pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](client, pluginsdk.ReceiptMethod),
 		pluginsdk.RegisterClient[ListInput, Page](client, List),
 		pluginsdk.RegisterClient[schedule.Draft, schedule.Snapshot](client, Create),
 		pluginsdk.RegisterClient[UpdateInput, schedule.Snapshot](client, Update),
@@ -58,6 +59,11 @@ func RegisterClient(client *sdk.Client) error {
 var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelref.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
 
 func Classify(err error) string {
+	if failure, ok := errors.AsType[*pluginsdk.Failure](err); ok {
+		if errorCodes[failure.Code] != nil {
+			return failure.Code
+		}
+	}
 	for code, cause := range errorCodes {
 		if errors.Is(err, cause) {
 			return code

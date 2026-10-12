@@ -124,6 +124,9 @@ func agentMemoryTargetFromWire(scope protocol.AgentMemoryScope, workspace *proto
 }
 
 func mapAgentMemoryErr(err error) error {
+	if errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		return err
+	}
 	if errors.Is(err, plugin.ErrUnavailable) {
 		return errors.Join(protocol.ErrPluginUnavailable, err)
 	}

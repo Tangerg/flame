@@ -105,6 +105,9 @@ func scheduleWorkspacePathPatch(ref *protocol.WorkspaceRef, mode protocol.Schedu
 }
 
 func mapScheduleErr(err error, id string) error {
+	if errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		return err
+	}
 	if err == nil {
 		return nil
 	}

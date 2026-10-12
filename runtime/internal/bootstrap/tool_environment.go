@@ -38,6 +38,7 @@ type toolEnvironment struct {
 	memory    *pluginservices.Memory
 	schedules *pluginservices.Schedules
 	closers   []*teardown.Step
+	admission *plugins.Admission
 }
 
 // toolEnvironmentDependencies is the complete construction contract for the
@@ -112,11 +113,20 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 			return mcpPool.Shutdown(context.WithoutCancel(ctx))
 		})},
 	}
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Models: deps.modelServices.modelBroker, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Invalidations: deps.publish})
+	environment.admission = plugins.NewAdmission()
+	commands, err := plugins.NewCommands(cfg.Stores.PluginCommands, environment.admission)
 	if err != nil {
 		return environment, err
 	}
-	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool, deps.publish)
+	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, mcpPool, commands)
+	if err != nil {
+		return environment, err
+	}
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Models: deps.modelServices.modelBroker, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Invalidations: deps.publish, Commands: commandCalls})
+	if err != nil {
+		return environment, err
+	}
+	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool, commandCalls, deps.publish)
 	if err != nil {
 		return environment, err
 	}

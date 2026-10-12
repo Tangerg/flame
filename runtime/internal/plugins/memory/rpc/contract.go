@@ -72,6 +72,7 @@ type Ack struct{}
 
 func RegisterClient(client *sdk.Client) error {
 	return errors.Join(
+		pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](client, pluginsdk.ReceiptMethod),
 		pluginsdk.RegisterClient[ListInput, Page](client, List),
 		pluginsdk.RegisterClient[AddInput, AddResult](client, Add),
 		pluginsdk.RegisterClient[UpdateInput, memory.ItemSnapshot](client, Update),
@@ -89,6 +90,11 @@ var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "
 }
 
 func Classify(err error) string {
+	if failure, ok := errors.AsType[*pluginsdk.Failure](err); ok {
+		if errorCodes[failure.Code] != nil {
+			return failure.Code
+		}
+	}
 	for code, cause := range errorCodes {
 		if errors.Is(err, cause) {
 			return code

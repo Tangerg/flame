@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"iter"
 	"os"
 	"slices"
@@ -50,6 +51,8 @@ type InteractionChatResolver interface {
 // changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
 	InstallationCheckpoints InstallationCheckpoints
+	Admission               *plugins.Admission
+	InstallationCommands    InstallationCommands
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
@@ -80,7 +83,7 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installations *installationAdmission
+	installations *plugins.Admission
 	lifetime      context.Context
 	config        InteractionExecutorConfig
 	policy        interactionExecutionPolicy
@@ -98,6 +101,12 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	}
 	if dependency.Missing(config.ChatResolver) {
 		return nil, errors.New("execution: Interaction requires a chat resolver")
+	}
+	if config.Admission == nil {
+		return nil, errors.New("execution: installation admission is required")
+	}
+	if dependency.Missing(config.InstallationCommands) {
+		return nil, errors.New("execution: installation command projection is required")
 	}
 	if dependency.Missing(config.ExecutionTrees) {
 		return nil, errors.New("execution: execution tree store is required")
@@ -141,7 +150,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		lifetime: lifetime, config: config, policy: policy,
 		buildID:       buildID,
 		sessions:      newInteractionSessions(),
-		installations: newInstallationAdmission(),
+		installations: config.Admission,
 	}, nil
 }
 
@@ -196,7 +205,7 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, err
 	}
 	defer finishAssembly()
-	assembly, abandon := i.installations.begin()
+	assembly, abandon := i.installations.Begin()
 	defer abandon()
 	start = start.Clone()
 	if err := resourceid.ValidateSession(start.SessionID); err != nil {
@@ -222,7 +231,7 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, fmt.Errorf("execution: encode Interaction input: %w", err)
 	}
 	session.input = input
-	if err := i.installations.publish(ctx, assembly, session.installationDependencies(), func() error {
+	if err := i.installations.Publish(ctx, assembly, session.installationDependencies(), func() error {
 		return i.sessions.register(session)
 	}); err != nil {
 		return runs.ExecutorRef{}, err
@@ -563,7 +572,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	defer finishAssembly()
-	assembly, abandon := i.installations.begin()
+	assembly, abandon := i.installations.Begin()
 	defer abandon()
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		return err
@@ -634,7 +643,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
-	if err := i.installations.publish(ctx, assembly, session.installationDependencies(), func() error {
+	if err := i.installations.Publish(ctx, assembly, session.installationDependencies(), func() error {
 		return i.sessions.register(session)
 	}); err != nil {
 		return err

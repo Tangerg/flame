@@ -12,7 +12,6 @@ import (
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -32,6 +31,7 @@ type Memory struct {
 	embedder      func(context.Context) (app.Embedder, error)
 	history       ConversationReader
 	publish       invalidation.Publish
+	commands      *CommandCalls
 }
 
 type ConversationReader interface {
@@ -45,6 +45,7 @@ type MemoryConfig struct {
 	Embeddings    func(context.Context) (app.Embedder, error)
 	Conversation  ConversationReader
 	Invalidations invalidation.Publish
+	Commands      *CommandCalls
 }
 
 func NewMemory(config MemoryConfig) (*Memory, error) {
@@ -56,7 +57,10 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 			return nil, fmt.Errorf("memory: %s is required", required.name)
 		}
 	}
-	return &Memory{installations: config.Installations, pool: config.Connections, models: config.Models, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations}, nil
+	if config.Commands == nil {
+		return nil, errors.New("memory: command routing is required")
+	}
+	return &Memory{installations: config.Installations, pool: config.Connections, models: config.Models, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
 }
 func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
 	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
@@ -71,50 +75,34 @@ func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page
 	return pagination.Page[memory.Item]{Rows: items, NextCursor: value.NextCursor}, err
 }
 func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content string) (memory.Item, error) {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
-	if err != nil {
-		return memory.Item{}, err
-	}
-	value, err := pluginsdk.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, operation.Identity(ctx), rpc.AddInput{Scope: scope, CWD: cwd, Content: content})
+	value, err := invokeCommand[rpc.AddInput, rpc.AddResult](ctx, m.commands, plugin.MemoryService, rpc.Add, rpc.AddInput{Scope: scope, CWD: cwd, Content: content}, func(value rpc.AddResult) error { _, err := memory.RestoreItem(value.Item); return err })
 	if err != nil {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
 	}
-	item, err := memory.RestoreItem(value.Item)
-	if value.Changed {
+	item, err := memory.RestoreItem(value.value.Item)
+	if value.value.Changed {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}
 	return item, err
 }
 func (m *Memory) Update(ctx context.Context, id string, content *string, pinned *bool) (memory.Item, error) {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
-	if err != nil {
-		return memory.Item{}, err
-	}
-	value, err := pluginsdk.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: id, Content: content, Pinned: pinned})
+	value, err := invokeCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, m.commands, plugin.MemoryService, rpc.Update, rpc.UpdateInput{ID: id, Content: content, Pinned: pinned}, func(value memory.ItemSnapshot) error { _, err := memory.RestoreItem(value); return err })
 	if err != nil {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
 	}
-	item, err := memory.RestoreItem(value)
+	item, err := memory.RestoreItem(value.value)
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return item, err
 }
 func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDecision) error {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
-	if err != nil {
-		return err
-	}
-	_, err = pluginsdk.CallCommand[rpc.ReviewInput, rpc.Ack](ctx, session, rpc.Review, operation.Identity(ctx), rpc.ReviewInput{ID: id, Decision: decision})
+	_, err := invokeCommand[rpc.ReviewInput, rpc.Ack](ctx, m.commands, plugin.MemoryService, rpc.Review, rpc.ReviewInput{ID: id, Decision: decision}, nil)
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Delete(ctx context.Context, id string) error {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
-	if err != nil {
-		return err
-	}
-	_, err = pluginsdk.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
+	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, m.commands, plugin.MemoryService, rpc.Delete, rpc.ItemInput{ID: id}, nil)
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }

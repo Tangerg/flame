@@ -18,6 +18,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former installation trust state", `ALTER TABLE plugin_installations RENAME COLUMN enabled TO admission_state`},
 		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},
 		{"missing table", `DROP TABLE automation_starts`},
+		{"former host without command routing", `DROP TABLE plugin_commands`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
 		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
 	} {

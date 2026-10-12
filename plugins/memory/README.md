@@ -21,10 +21,18 @@ invocation or backend generation ends. Standard MCP sampling is not used. A
 missing or failed optional embedder preserves keyword ranking; a storage failure
 remains an error.
 
-Human commands commit their mutation and reply in one private transaction. A
-same-key redelivery returns the original reply; changing the method or input is an
-idempotency conflict. Runtime stores no competing command outcome. An unavailable
-owner returns `plugin_unavailable` for human operations; Run context reads omit
+Human commands commit their mutation and reply in one private transaction. Known
+business refusals roll back mutation and commit the refusal receipt in that same
+transaction; unexpected failures leave no invented receipt. A same-key redelivery
+returns the original reply; changing the method or input is an idempotency conflict.
+Runtime retains immutable installation, release, method and input routing before
+dispatch, and stores no competing business outcome. An unresolved command pins
+its release against selection, configuration and uninstall, including after
+Runtime/database restart. Disable/re-enable keeps the original binding. After
+dispatch admission, retries only query that owner's receipt: a missing receipt
+never authorizes resubmission. An unavailable new owner returns
+`plugin_unavailable`; an unavailable original dispatched owner remains an unknown
+outcome and is never replaced by a current provider. Run context reads omit
 this optional feature when no owner is enabled. An enabled owner's failures remain
 explicit. An admitted command with an unconfirmed transport reply invalidates human
 reads without claiming success; the next read consults the backend. Disabled curation
@@ -35,6 +43,9 @@ Disable and uninstall withdraw the generation and its capabilities. They
 retain its private data. Reenable uses the same installation directory; a new
 installation receives a different directory. Restart restores private facts from
 the same database. Old Runtime memory tables are not read or migrated.
+The private command table now stores the typed value/refusal envelope in `reply`.
+A database with the former bare `result` column is refused without conversion;
+retain that directory separately and use a fresh directory for this breaking change.
 
 Build packages using [the local application workflow](../README.md). Backend
 source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugins/memory) as part

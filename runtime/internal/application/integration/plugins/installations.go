@@ -53,7 +53,7 @@ type Connections interface {
 // runs each change atomically with execution admission, so capacity, quiescence,
 // the durable write, the withdrawal of superseded tools and release reclamation
 // are decided against one consistent state. Each step receives the canonical
-// releases execution holds: those of live sessions and pending checkpoints.
+// held releases: live sessions, pending checkpoints and unresolved commands.
 // A change reports whether committed state invalidates unpublished execution,
 // independently of its quiescence requirement or a later withdrawal failure.
 type Dependencies interface {

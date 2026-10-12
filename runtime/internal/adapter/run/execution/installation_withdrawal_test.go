@@ -284,7 +284,7 @@ func TestAssemblyPublicationFollowsCommittedExecutionChanges(t *testing.T) {
 		} {
 			t.Run(fmt.Sprintf("%d/%s", admission, outcome.name), func(t *testing.T) {
 				executor := newInstallationTestExecutor(t, pendingInstallationCheckpoints{})
-				assembly, abandon := executor.installations.begin()
+				assembly, abandon := executor.installations.Begin()
 				defer abandon()
 				if err := executor.ChangeInstallation(t.Context(), dependedInstallation, admission, func([]plugin.Dependency) (bool, error) {
 					return outcome.changed, outcome.err
@@ -292,7 +292,7 @@ func TestAssemblyPublicationFollowsCommittedExecutionChanges(t *testing.T) {
 					t.Fatalf("change = %v, want %v", err, outcome.err)
 				}
 				published := false
-				err := executor.installations.publish(t.Context(), assembly, dependedRelease(), func() error {
+				err := executor.installations.Publish(t.Context(), assembly, dependedRelease(), func() error {
 					published = true
 					return nil
 				})

@@ -4,7 +4,7 @@
 
 Stage 1 complete: installation-owned selection and desired enablement.
 Stage 2a complete: public backend wire binding and refusal/uncertainty semantics implemented, verified and committed.
-Stage 2b is next: durable original operation binding before a generic host mutation entrance. The full proposal remains open.
+Stage 2b complete: existing Memory/Schedules human commands retain durable original binding and reconcile through owner receipt lookup. Local commit and incoming-main synchronization are being recorded. The generic host operation entrance and full proposal remain open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -45,15 +45,24 @@ Read-only design inputs:
 - Reviews now exposes typed list/update backend methods and its existing model Tools through the same private store. Tests prove shared receipt replay across entrances, typed revision/identity conflicts and preserved uncertainty for unexpected storage failure.
 - Verified an external Reviews author with GOWORK=off, no local replace and a temporary module archive containing only the public SDK files plus module metadata, without Runtime internal source. Tidy/test/vet/build all passed in that isolated offline fixture. This proves the backend binding subset, not the full future SDK or a published release.
 
+- Added immutable command routing in the plugin Domain and SQLite: identity, semantic method, input digest, original installation/release/server and preparation/dispatch-admission/observation evidence. Observation preserves routing and never stores a host business outcome.
+- Moved installation admission into the Application owner and injected the same boundary into command routing and execution. Quiescence/reclamation derive the union of unresolved commands, live execution and pending checkpoints; no refcount or competing held set was added.
+- Migrated actual Memory add/update/review/delete, Schedule create/update/delete and manual preparation from current-provider mutation calls to original-bound dispatch. After dispatch admission, redelivery only queries the original backend's receipt. Missing/malformed/unreachable evidence remains unknown; no resend or provider retargeting occurs.
+- Backends now atomically persist both known success and business refusal envelopes. Refusal rolls back mutation before saving its receipt in the same transaction; unknown storage/commit errors do not fabricate a receipt. Removed the former bare-result encoding and added non-mutating refusal coverage for that private schema.
+- Published the receipt lookup/fingerprint/reply primitives in the existing public backend binding. Strict request admission, nullable/missing outcome separation and zero/empty success round trips are covered.
+- Real-process regressions close and reopen the host database after response/request loss. They prove retained quiescence across restart, blocked release selection/configuration/uninstall, same-release disable/re-enable recovery, missing receipt without resubmission and old identity refusal after a replacement provider is enabled. Existing Schedules captured Run acceptance/replay remains intact.
+- Shared admission preserves standard cancellation plus custom cause and refuses inactive/foreign execution assemblies. Deterministic concurrency coverage proves an installation change cannot pass a pending command-binding write.
+- Removed speculative lifetime-count limits from both routing and private receipts before delivery. Retained history cannot silently evict an identity or permanently exhaust normal mutation usage after 4096 commands.
+
 ## In progress
 
-- The generic host operation entrance remains unopened until original-binding persistence, retention, quiescence and receipt reconciliation are implemented.
-- Next owner boundary: Runtime captures immutable routing/input/origin/parent/target evidence before backend dispatch; private backend receipts remain the sole business outcome. Derive held releases from unresolved commands at the same installation admission serialization point, rather than adding a refcount or a host business-result cache.
+- The generic typed installed-operation entrance, public descriptors, contract generation and plugin-defined points remain unopened; Stage 2b supplies the necessary routing/receipt boundary for the existing real consumers.
+- Origin and parent propagation, declared target/contract metadata and generic provider selection must use this same immutable command owner when the closed Memory/Schedules service declarations are removed.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
 ## Next
 
-1. Implement durable original command binding and typed installed-operation admission, including receipt-only reconciliation after response loss, Runtime restart, disable/re-enable, update, uninstall and provider replacement. Then finish the single-source Go/schema/TS authoring route. Re-read proposal sections 6-12 and 17-18 plus the review's two API-freeze gaps before implementation.
+1. Implement the single-source Go/schema/TS authoring route and generic typed installed-operation admission, reusing the verified original-binding/receipt owner. Include contract/target/origin/parent evidence, generic provider selection and independent Reviews receipt lookup; remove closed business service routing with its consumers. Re-read proposal sections 6-12 and 17-18 plus the review's API-freeze gaps before the next slice.
 2. Prove real managed callbacks and cancelable streaming decoration without a graphical relay.
 3. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 4. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
@@ -79,6 +88,9 @@ Read-only design inputs:
 | 2026-10-13 | Prove the current public backend subset through an isolated file-proxy SDK archive while its release metadata is still pending | Independent build evidence must not rely on Runtime internal source, workspace privilege or local replace; a temporary snapshot must not masquerade as a published artifact | Overwriting a cached published module, claiming an old release contains the new SDK, or publishing before the final authorization boundary |
 | 2026-10-13 | Run backend, contract, failure and relevant race checks; do not write/run frontend UI, E2E or screenshot checks | Explicit task verification constraint | Running the composite frontend gate without inspecting its test components |
 | 2026-10-13 | Merge current local main into the feature branch after each verified slice; do not push, publish, modify shared main history or use credentialed services during ordinary slices | The amended task explicitly requires incoming main synchronization; external/shared changes and credentials still require authorization | Deferring integration until final delivery or treating code-edit authorization as production authorization |
+| 2026-10-13 | Dispatch admission is durably recorded before the network call; subsequent retries only read the original receipt | Transport loss or process death cannot prove whether the effect happened; the original binding survives availability/provider changes | Resending on absent receipt or selecting the current provider |
+| 2026-10-13 | Store typed success and known refusal in the private receipt transaction; roll back refused mutation with a savepoint | A known refusal must replay the original decision while unknown commit/storage failures retain uncertainty | Bare success-only results or host business-result caching |
+| 2026-10-13 | Keep historical command identities without an arbitrary lifetime-count cap or automatic eviction | Existing private receipts did not cap total historical usage; adding 4096 as a permanent product quota would break ordinary use, while eviction permits identity retargeting | Unmeasured permanent history quotas or expiration into a new provider call |
 
 ## Review closure
 
@@ -94,17 +106,17 @@ Status is open until code and appropriate verification prove the requirement.
 | Public React/TS components and shared module instances | Open | public SDK and installed component loader |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Open | public point contracts and Reviews analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Open | managed link and real-process backend tests |
-| No-Run unresolved human command pins original binding and recovery evidence | Open; required before public mutation | delivery/persistence, release retention, owner receipt reconciliation |
+| No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules boundary verified; generic/public operation application open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go |
 | One executable contract generation source | Go source direction settled; public backend types/build verified; Go/schema/TS feature generation open | runtime/plugin; existing Go contract generator; independent archive fixture |
 | Typed business refusal versus transport uncertainty across entrances | Public Go/backend and Reviews typed/Tool semantics verified; generic host/CLI/TS projections open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
 | Strict public protocol requirements without internal revision coupling | Open | public SDK handshake and contract tests |
-| Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update semantics verified; generic provider and unresolved-command lifecycle open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
-| Reject old host encodings without data mutation | Installation shape covered; full plugin/public contract cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; runtime/README.md |
+| Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; generic provider selection open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
+| Reject old host encodings without data mutation | Installation/command-route host shapes and private bare-result receipt refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; runtime/README.md |
 | Preserve Memory ledger, watermark, curation and receipts | Open | public Memory capability and backend tests |
 | One Schedules wake/dispatch lifetime and retained Run acceptance | Open | public background role and Schedules tests |
 | Preserve package integrity, credentials, source identity and core authority checks | Open; baseline required | existing admission and policy regression checks |
-| New acceptance coverage for unresolved mutation/update/provider replacement | Open | real-process contract/regression tests |
+| New acceptance coverage for unresolved mutation/update/provider replacement | Existing real commands verified, including database reopening and distinct installation replacement; generic/UI coverage open | bootstrap/managed_services_test.go; plugin_command_recovery_test.go; application/integration/plugins/commands_test.go |
 | Standalone bundled/non-bundled author parity | Open | independent public consumer builds |
 | Deletion of replaced APIs, carriers, schemas, examples and documentation | Open; audit every slice | final source and generated-contract search |
 
@@ -122,6 +134,17 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 2b verification:
+
+- Passed: Runtime and CLI complete go test ./..., go vet ./... and go build ./..., including architecture/dependency gates. Independent Reviews complete go test -race ./..., go vet ./... and go build ./... passed.
+- Passed: public SDK outside the workspace with GOWORK=off GOPROXY=off GOSUMDB=off go test ./plugin.
+- Passed: focused public receipt/strict request/empty-success, atomic success/refusal rollback, immutable route/phase/history and former host/private schema tests. Real-process response-loss, absent-receipt and replacement-provider tests passed with actual host SQLite close/reopen.
+- Passed: targeted -race for SDK receipt, Application commands/shared admission, private receipts, SQLite routing/schema admission, execution dependency/assembly boundaries and real Memory recovery/replacement plus Schedule manual replay. Schedule create/dispatch-loss races also passed.
+- Resolved: private envelope encoding initially omitted empty Ack/zero values under JSON v2 omitempty. The shared Result uses omitzero and a zero-value regression; the formerly failing CLI lifecycle now passes. Removing speculative capacity left one Memory classifier reference; it was removed and full checks rerun successfully.
+- Initial Runtime default-initialization check exceeded its existing 10-second availability deadline during the earlier full run. The unchanged check passed standalone and in the final full suite; no timeout/expectation was weakened and no unproven cause is claimed.
+- Not run: frontend UI/E2E/screenshot checks, as explicitly excluded; frontend static/build checks were not repeated because this slice changes only Go/backend behavior and owning documentation. Runtime protocol catalog did not change, so go generate was unnecessary. The pre-existing frontend consumer gate and independent published SDK version remain open.
+
 
 Stage 2a verification:
 
@@ -148,6 +171,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 2b: all invoked verification processes returned terminal success after repairs. Test-owned temporary databases/packages and helper processes were closed/removed by their owning test cleanup. No task scratch script or verification log was saved. No UI build output, shared configuration, remote publication or user-data operation was introduced. The active worktree and necessary dependencies remain for the full refactor.
+
 - Stage 2a: the temporary SDK file proxy, independent author checkout and isolated module cache were removed by their owning temporary-directory lifetime. Backend/unit/integration checks have all returned; no task check process is running. No frontend build output was generated in this slice. The worktree is committed and clean after main synchronization; the active checkout and necessary development dependencies remain for Stage 2b.
 - Removed task-generated frontend/Icons/UI dist output, generated Icons/UI build sources and Runtime contract Vitest cache. Removed the task's offline-install debug log if present. All invoked checks have returned terminal success/failure; no task check process remains running.
 - Kept the active managed checkout, formal code/tests/docs and isolated development dependencies for the continuing refactor. Shared product source and Git configuration were not edited. Before the next frontend verification, rebuild Icons and UI to restore their generated prerequisites.
@@ -155,7 +180,7 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Define durable unresolved command binding/retention at the actual command owner before generic plugin mutation is exposed.
+- Extend the verified durable original-binding/retention owner to generic operation descriptors and public entrances before opening new plugin mutation. Current closed service binding is not the final contribution substrate.
 - Settle typed refusal/result and public contract generation details through the independent Reviews consumer.
 - Verify the selected MCP/SDK custom method and streaming primitives using real processes.
 - Select and implement actual module/resource loading for Web and Wails, including a management recovery entrance.
@@ -166,7 +191,7 @@ Stage 2a verification:
 
 - Public installation/protocol/storage changes break external compiled clients. Rebuild all in-repository consumers; report any externally used SDK/module contracts.
 - Protocol 2026-10-13.1 removes approve/revoke and replaces installation state with required enabled. All external compiled Runtime clients must rebuild. No externally deployed clients were inventoried or modified in this isolated task.
-- Existing incompatible user data is retained separately and refused; no conversion or deletion is authorized.
+- Existing incompatible user data is retained separately and refused; no conversion or deletion is authorized. Stage 2b adds plugin_commands to the exact host schema and replaces private Memory/Schedules commands.result with a value/refusal reply envelope. Existing directories must remain untouched and be replaced with fresh directories for this pre-release cutover.
 - Concurrent user work in main is outside this checkout. Final integration must revalidate the then-current shared branch.
 - The active worktree is required work, not disposable scratch space. Remove only owned scratch artifacts between slices; retire the checkout after safe final delivery.
 

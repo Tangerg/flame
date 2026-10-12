@@ -510,7 +510,7 @@ Explicit installation and release selection trust those package bytes; there is 
 separate release-approval operation. A new installation starts disabled. Configure
 declared required inputs, then enable it. Disablement withdraws future dispatch
 without discarding the selected release or standing tool decisions. Enabling the same
-selected code may restore availability while execution still holds that release;
+selected code may restore availability while execution or an unresolved command still holds that release;
 configuration, release selection and uninstall still require quiescence. Package roots are
 read-only. Admission seals the staged tree before digesting it, and admission and cold
 loading scan an entire release once; concurrent cold loads of one digest share that scan
@@ -563,8 +563,8 @@ and never its siblings. Ordinary tool dispatch reads admitted declarations and
 current installation authority for the called server alone. Resource and Skill reads verify their selected file
 against the admitted content index through a confined directory capability. `${PLUGIN_DATA}` is a private per-installation directory
 retained through updates and uninstall and is never collected automatically. A release
-is retained while an installation selects or stages it or a live session or pending
-checkpoint depends on it; every other release, its catalog row and its directory, is
+is retained while an installation selects or stages it or a live session, pending
+checkpoint or unresolved installed command depends on it; every other release, its catalog row and its directory, is
 reclaimed at the admission point when a change commits and at startup. A release whose
 removal fails stays admitted and is retried by the next reclamation.
 
@@ -593,14 +593,15 @@ the exact selected `digest` alongside `installationId`; a release switch rejects
 older configuration as `plugin_stale` before changing inputs or component enablement.
 An omitted digest is invalid. Rebuild clients together; old unbound commands are not
 upgraded or replayed against the latest release. Runtime derives quiescence
-from one execution-owned dependency projection: the canonical installation ID and
+from the canonical union of owner-provided dependency projections: the installation ID and
 release digest set of every owned executable manifest, covering package Skills and
 installation MCP tools, and the same set stored relationally with each pending
-execution checkpoint in the checkpoint's own transaction. Installation admission
+execution checkpoint in the checkpoint's own transaction, plus unresolved commands'
+durable original installation/release bindings. Installation admission
 queries only that projection by installation and never decodes a continuation, so
 an unrelated or unreadable checkpoint cannot block another installation's change.
 Installation changes, including the capacity check of a new install, and the
-publication of an assembled execution share one short serialization point. Run
+publication of an assembled execution and command binding/dispatch share one short serialization point. Run
 assembly, model resolution and package reads happen outside it, so a pending change
 never waits for, or holds back, an assembling Run. The live MCP tool catalog is a
 projection of committed installation state, not a second copy that catches up: the same
@@ -616,6 +617,20 @@ write preserves this invalidation; a rejected write cannot originate one.
 Plugin and Skill read invalidations likewise follow the durable write, outside admission
 and before realization. Withdrawal failure cannot suppress a committed change's notices;
 a refused write publishes none.
+
+Memory/Schedules human commands durably bind identity, method, input digest and
+original installation/release/server before network dispatch. The host records
+prepared, dispatch-admitted and observed evidence, never a business result. A
+dispatch admission is not proof that the backend received or committed the call.
+After admission, retries query the original backend's private receipt without
+resending the mutation. Missing, malformed or unavailable evidence remains unknown
+and holds the release. A valid original success or business refusal releases the
+hold; immutable routing remains retained so the same identity cannot adopt a new
+provider after update or uninstall. History is not evicted or capped by an arbitrary
+lifetime command count. This storage shape requires a fresh Runtime directory;
+the former private Memory/Schedules bare-result receipt shape is also refused.
+Retain old directories separately; opening them performs no conversion or deletion.
+
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
 person may send the same request again. Clients present it as retryable and never retry
@@ -655,7 +670,7 @@ installation is active and its release is available, otherwise `withheld`. Clien
 present admitted themes only and never rebuild that decision from `state` or
 `realization`. Uninstall requires
 the same quiescence as a release switch and returns `plugin_in_use` while an active or
-waiting execution depends on the installation; disablement remains available to withdraw its
+waiting execution or unresolved command depends on the installation; disablement remains available to withdraw its
 authority while in use. Uninstall is an acknowledgement without a result: it durably removes
 admission before asynchronous connection retirement, and leaves all retirement work in the
 existing Connections shutdown ownership graph.

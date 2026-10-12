@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
@@ -59,15 +58,11 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBindin
 	return result, nil
 }
 func (d *Dispatcher) RunNow(ctx context.Context, id string) (runs.StartResult, error) {
-	binding, session, err := serviceSession(ctx, d.service.installations, d.service.pool, plugin.SchedulesService)
-	if err != nil {
-		return runs.StartResult{}, err
-	}
-	request, err := pluginsdk.CallCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, session, rpc.PrepareManual, operation.Identity(ctx), rpc.ItemInput{ID: id})
+	request, err := invokeCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, d.service.commands, plugin.SchedulesService, rpc.PrepareManual, rpc.ItemInput{ID: id}, func(value schedule.RunRequestSnapshot) error { _, err := schedule.RestoreRunRequest(value); return err })
 	if err != nil {
 		return runs.StartResult{}, rpc.DecodeError(err)
 	}
-	return d.dispatch(ctx, binding, session, request)
+	return d.dispatch(ctx, request.binding, request.session, request.value)
 }
 func (d *Dispatcher) RunWorker(ctx context.Context) {
 	d.pass(ctx)

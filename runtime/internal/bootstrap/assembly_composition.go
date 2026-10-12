@@ -288,6 +288,8 @@ func buildExecutionComposition(
 		Lifetime:                lifetime.context,
 		ExecutionTrees:          cfg.Stores.ExecutorCheckpoints,
 		InstallationCheckpoints: cfg.Stores.ExecutorCheckpoints,
+		Admission:               toolRuntime.admission,
+		InstallationCommands:    cfg.Stores.PluginCommands,
 		BuildID:                 cfg.BuildID,
 		ChatResolver:            cfg.ChatResolver,
 		StreamModelResponses:    true,

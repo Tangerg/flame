@@ -148,6 +148,23 @@ func TestMethodWireRejectsUnknownInputAndOutputFields(t *testing.T) {
 }
 
 func TestMethodReplyPreservesExplicitNullableValue(t *testing.T) {
+	for _, value := range []any{struct{}{}, 0, false, "", []string{}} {
+		reply, err := Reply(value, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded, err := json.Marshal(reply)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded Result[any]
+		if err := json.Unmarshal(encoded, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := decoded.value("explicit empty outcome"); err != nil {
+			t.Fatalf("empty/zero value was omitted: %s, %v", encoded, err)
+		}
+	}
 	var nullable Result[[]string]
 	if err := json.Unmarshal([]byte(`{"value":null}`), &nullable); err != nil {
 		t.Fatal(err)

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 var testTreeStores sync.Map
@@ -32,10 +34,22 @@ func testTrees(t *testing.T) *testExecutionTrees {
 	return actual.(*testExecutionTrees)
 }
 func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
+	if config.Admission == nil {
+		config.Admission = plugins.NewAdmission()
+	}
+	if config.InstallationCommands == nil {
+		config.InstallationCommands = emptyInstallationCommands{}
+	}
 	if config.ExecutionTrees == nil {
 		config.ExecutionTrees = testTrees(t)
 	}
 	return NewInteractionExecutor(config)
+}
+
+type emptyInstallationCommands struct{}
+
+func (emptyInstallationCommands) PendingCommandDependencies(context.Context) ([]plugin.Dependency, error) {
+	return nil, nil
 }
 func (s *testExecutionTrees) LoadExecutionTree(_ context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
 	s.mu.Lock()

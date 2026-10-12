@@ -52,6 +52,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 		return err
 	}
 	return errors.Join(
+		managedmcp.RegisterReceipts(server, db),
 		pluginsdk.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {

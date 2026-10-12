@@ -43,6 +43,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		return err
 	}
 	return errors.Join(
+		managedmcp.RegisterReceipts(server, db),
 		pluginsdk.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
@@ -110,14 +111,14 @@ func (t toolCommands) ListPage(ctx context.Context, cursor string, limit paginat
 func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedule.Schedule, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
-		return schedule.Schedule{}, err
+		return schedule.Schedule{}, rpc.DecodeError(err)
 	}
-	value, err := managedmcp.Command(ctx, t.db, rpc.Create, id, input, func(ctx context.Context, input schedule.Draft) (schedule.Snapshot, error) {
+	value, err := managedmcp.Command(ctx, t.db, rpc.Create, id, input, rpc.Classify, func(ctx context.Context, input schedule.Draft) (schedule.Snapshot, error) {
 		value, err := t.coordinator.Create(ctx, input)
 		return value.Snapshot(), err
 	})
 	if err != nil {
-		return schedule.Schedule{}, err
+		return schedule.Schedule{}, rpc.DecodeError(err)
 	}
 	return schedule.Restore(value)
 }
@@ -126,8 +127,8 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = managedmcp.Command(ctx, t.db, rpc.Delete, invocation, rpc.ItemInput{ID: id}, func(ctx context.Context, input rpc.ItemInput) (rpc.Ack, error) {
+	_, err = managedmcp.Command(ctx, t.db, rpc.Delete, invocation, rpc.ItemInput{ID: id}, rpc.Classify, func(ctx context.Context, input rpc.ItemInput) (rpc.Ack, error) {
 		return rpc.Ack{}, t.coordinator.Delete(ctx, id)
 	})
-	return err
+	return rpc.DecodeError(err)
 }

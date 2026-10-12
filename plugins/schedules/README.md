@@ -13,6 +13,18 @@ owns the minute wake-up and dispatch lifecycle; the backend's bounded scanner
 claims due work and rotates pending pages fairly. Failed pending work cannot
 starve new due definitions.
 
+Human definition commands and manual preparation retain their original
+installation/release/method/input binding in Runtime before dispatch. Unresolved
+commands prevent replacement, configuration and uninstall, even after the host
+database is reopened. Disable/re-enable restores that same owner. Redelivery after
+dispatch admission queries the original private receipt; absence or unavailability
+does not authorize another mutation or a call to a replacement provider. The
+backend atomically stores successes and known refusals, rolling back refused
+mutations. Runtime's routing evidence contains no competing business outcome.
+The private receipt column is now `reply`, containing a typed value/refusal
+envelope. Former bare `result` databases are refused without mutation; retain the
+old directory separately and use a fresh directory for this breaking change.
+
 Before dispatch, the backend persists the exact instructions, title, workspace,
 model selection and stable Session/Run identities. Editing or deleting the
 original definition does not rewrite that captured work. Manual dispatch enters

@@ -203,19 +203,48 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("backend did not commit before response loss: %v", err)
 	}
 	requireManagedServiceChange(t, changed)
+	installed = stageCommandReplacement(t, r, installed, source)
+	assertUnresolvedInstallationIsHeld(t, r, installed)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-memory")
 	unavailable := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenCommandRuntime(t, r, &cfg)
+	assertUnresolvedInstallationIsHeld(t, r, installed)
+	pending := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryAdd, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if pending.Failure == nil || !errors.Is(pending.Failure, protocol.ErrInternalError) {
+		t.Fatalf("disabled original command became a definite result: %v", pending.Failure)
+	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	replay := r.must(delivery.AgentMemoryAdd, request, "lost").(*protocol.AgentMemoryItem)
 	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
+	}
+	r.must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "configure-after-receipt")
+}
+
+func assertUnresolvedInstallationIsHeld(t *testing.T, r *poMCPRuntime, installed *protocol.PluginInstallation) {
+	t.Helper()
+	for _, action := range []struct {
+		method delivery.Name
+		input  any
+	}{
+		{delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}},
+		{delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}},
+	} {
+		result := r.endpoint.Invoke(t.Context(), action.method, action.input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		if !errors.Is(result.Failure, protocol.ErrPluginInUse) {
+			t.Fatalf("unresolved command did not pin its installation for %s: %v", action.method, result.Failure)
+		}
+	}
+	if installed.Staged != nil {
+		result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		if !errors.Is(result.Failure, protocol.ErrPluginInUse) {
+			t.Fatalf("unresolved command did not pin its release: %v", result.Failure)
+		}
 	}
 }
 

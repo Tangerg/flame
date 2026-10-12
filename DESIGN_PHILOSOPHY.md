@@ -58,7 +58,12 @@ must not turn it into a definite business refusal. For a command without a Run,
 Runtime must durably capture the original provider and request binding before
 dispatch, derive retention and quiescence from unresolved bindings, and discharge
 that dependency only after observing the original owner's valid response. This
-routing evidence does not become another business result or receipt store.
+routing evidence does not become another business result or receipt store. Existing
+Memory/Schedules commands now use this boundary. Once dispatch has been admitted,
+receipt lookup is the only reconciliation path; absence cannot authorize another
+mutation. Retained identities do not expire into calls on a current provider.
+Generic operation descriptors, origin/parent propagation and public installed
+proxies still require the same guarantee when they replace the closed services.
 
 ## Evidence over symmetry
 

@@ -52,8 +52,8 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 
 type Result[T any] struct {
 	sdk.ResultBase
-	Value   *T       `json:"value,omitempty"`
-	Failure *Failure `json:"failure,omitempty"`
+	Value   *T       `json:"value,omitzero"`
+	Failure *Failure `json:"failure,omitzero"`
 }
 type Failure struct {
 	Code    string `json:"code"`
@@ -92,8 +92,12 @@ func (f *Failure) Error() string { return f.Message }
 // Only an explicitly classified business refusal is a known outcome. Storage,
 // transport and unrecognized failures remain protocol errors; encoding them as
 // refusals would falsely claim that a possibly committed effect did not happen.
-func newResult[T any](value T, err error, classify func(error) string) (*Result[T], error) {
+func Reply[T any](value T, err error, classify func(error) string) (*Result[T], error) {
 	if err != nil {
+		if failure, ok := errors.AsType[*Failure](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
+			copy := *failure
+			return &Result[T]{Failure: &copy}, nil
+		}
 		code := ""
 		if classify != nil {
 			code = classify(err)
@@ -141,7 +145,7 @@ func RegisterServer[P, R any](server *sdk.Server, name string, classify func(err
 			return nil, fmt.Errorf("%s: unkeyed method parameters are required", name)
 		}
 		value, err := handler(ctx, session, params.Input)
-		return newResult(value, err, classify)
+		return Reply(value, err, classify)
 	})
 }
 
@@ -157,7 +161,7 @@ func RegisterCommand[P, R any](server *sdk.Server, name string, classify func(er
 			return nil, err
 		}
 		value, err := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input})
-		return newResult(value, err, classify)
+		return Reply(value, err, classify)
 	})
 }
 func Call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, input P) (R, error) {

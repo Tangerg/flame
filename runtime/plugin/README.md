@@ -26,6 +26,18 @@ return the owner's original outcome according to that operation's contract;
 different input with the same identity must be refused. Retention, capacity and
 transaction boundaries belong to the business owner.
 
+`InputDigest` derives the immutable request fingerprint used by both caller and
+receipt owner. `Reply` encodes a success or explicitly classified refusal;
+`DecodeReply` validates the same outcome when it is read from private storage.
+An empty acknowledgement and other zero values remain present successes.
+
+`ReceiptMethod`, `ReceiptRequest` and `Receipt` define a read-only lookup by
+original command identity, method and input digest. `ReadReceipt` never dispatches
+the mutation. Missing, malformed or unreachable evidence remains unconfirmed;
+only a valid original response supplies a known outcome. A private backend must
+implement this lookup against its own receipt store and commit known refusals as
+well as successes. Unknown storage/commit failures do not become stored refusals.
+
 `RegisterTools` reuses Scope's frozen Tool schemas and execution. `InvocationID`
 reads Runtime's logical Tool call identity from MCP metadata, never from model
 arguments or transport IDs. `ToolCommandID` qualifies that identity for receipt
@@ -39,8 +51,9 @@ The current repository workspace builds the evolving SDK source. Independent
 published consumers need a Runtime version containing this package; the older
 version still named by application module metadata does not contain it.
 
-This package currently supplies backend wire primitives. Installed-provider
-resolution, durable original-binding retention, host callbacks, point descriptors,
+This package currently supplies backend wire primitives. Runtime's existing
+Memory/Schedules commands retain original installed routing before dispatch and
+reconcile through this lookup. Generic installed-provider proxies, host callbacks, point descriptors,
 Go/TypeScript contract generation and component bindings remain separate unfinished
 parts of the unified-plugin refactor. A direct backend session is not a public
 installed-provider proxy, and these primitives do not authorize core Runtime calls.
