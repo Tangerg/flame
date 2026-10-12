@@ -52,13 +52,7 @@ func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBindin
 }
 
 func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.ServiceKind, method string, input P, validate func(R) error) (commandReply[R], error) {
-	var zero commandReply[R]
-	id := operation.Identity(ctx)
-	admitted, err := jsoninput.Encode(input)
-	if err != nil {
-		return zero, err
-	}
-	command, err := c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ServiceBinding, error) {
+	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ServiceBinding, error) {
 		binding, found, err := plugins.ServiceOwner(ctx, c.installations, kind)
 		if err != nil {
 			return binding, err
@@ -68,6 +62,15 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.S
 		}
 		return binding, nil
 	})
+}
+func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ServiceBinding, error)) (commandReply[R], error) {
+	var zero commandReply[R]
+	id := operation.Identity(ctx)
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		return zero, err
+	}
+	command, err := c.routing.Bind(ctx, id, method, admitted, resolve)
 	if errors.Is(err, plugin.ErrCommandConflict) {
 		return zero, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, err))
 	}

@@ -167,42 +167,38 @@ func (r *Result[T]) value(name string) (T, error) {
 	return *r.Value, nil
 }
 
-func RegisterClient[P, R any](client *sdk.Client, name string) error {
-	if client == nil || name == "" || !utf8.ValidString(name) {
-		return errors.New("plugin: client and method name are required")
+func RegisterClient(client *sdk.Client) error {
+	if client == nil {
+		return errors.New("plugin: client is required")
 	}
-	return sdk.AddSendingCustomMethod[*Params[P], *Result[R]](client, name)
+	return errors.Join(
+		sdk.AddSendingCustomMethod[*invokeParams, *Result[jsontext.Value]](client, invokeMethod),
+		sdk.AddSendingCustomMethod[*describeParams, *Result[Description]](client, describeMethod),
+	)
 }
-func RegisterServer[P, R any](server *sdk.Server, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
-	if server == nil || handler == nil || name == "" || !utf8.ValidString(name) {
-		return errors.New("plugin: server, method name and handler are required")
+func RegisterServer[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+	if handler == nil {
+		return errors.New("plugin: method handler is required")
 	}
-	return sdk.AddReceivingCustomMethod(server, name, func(ctx context.Context, session *sdk.ServerSession, params *Params[P]) (*Result[R], error) {
-		if params == nil || params.CommandID != "" {
-			return nil, fmt.Errorf("%s: unkeyed method parameters are required", name)
-		}
-		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
-		value, err := handler(ctx, session, params.Input)
-		return Reply(value, err, classify)
+	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: Query, Target: "installation", Description: name})
+	if err != nil {
+		return err
+	}
+	return method.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command Command[P]) (R, error) {
+		return handler(ctx, session, command.Input)
 	})
+}
+func RegisterCommand[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
+	if handler == nil {
+		return errors.New("plugin: command handler is required")
+	}
+	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: Mutation, Target: "installation", Description: name})
+	if err != nil {
+		return err
+	}
+	return method.RegisterServer(backend, classify, handler)
 }
 
-func RegisterCommand[P, R any](server *sdk.Server, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
-	if server == nil || handler == nil || name == "" || !utf8.ValidString(name) {
-		return errors.New("plugin: server, method name and command handler are required")
-	}
-	return sdk.AddReceivingCustomMethod(server, name, func(ctx context.Context, session *sdk.ServerSession, params *Params[P]) (*Result[R], error) {
-		if params == nil {
-			return nil, fmt.Errorf("%s: command parameters are required", name)
-		}
-		if err := validateCommandID(params.CommandID); err != nil {
-			return nil, err
-		}
-		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
-		value, err := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input, inputJSON: params.inputJSON})
-		return Reply(value, err, classify)
-	})
-}
 func Call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, input P) (R, error) {
 	return call[P, R](ctx, session, name, &Params[P]{Input: input})
 }
@@ -215,12 +211,34 @@ func CallCommand[P, R any](ctx context.Context, session *sdk.ClientSession, name
 	return call[P, R](ctx, session, name, &Params[P]{Input: input, CommandID: id})
 }
 
+func callResult[P, R any](ctx context.Context, session *sdk.ClientSession, name string, params *Params[P]) (*Result[R], error) {
+	if session == nil {
+		return nil, errors.New("plugin: client session is required")
+	}
+	encoded, err := json.Marshal(params.Input)
+	if err != nil {
+		return nil, err
+	}
+	wire, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, session, invokeMethod, &invokeParams{ParamsBase: params.ParamsBase, Protocol: BackendProtocol, Method: name, Input: encoded, CommandID: params.CommandID})
+	if err != nil {
+		return nil, err
+	}
+	if wire == nil {
+		return nil, errors.New("plugin: missing operation result")
+	}
+	data, err := json.Marshal(wire)
+	if err != nil {
+		return nil, err
+	}
+	var result Result[R]
+	if err := json.Unmarshal(data, &result, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
 func call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, params *Params[P]) (R, error) {
 	var zero R
-	if session == nil {
-		return zero, errors.New("plugin: client session is required")
-	}
-	result, err := sdk.CallCustomMethod[*Params[P], *Result[R]](ctx, session, name, params)
+	result, err := callResult[P, R](ctx, session, name, params)
 	if err != nil {
 		return zero, err
 	}

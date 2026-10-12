@@ -67,7 +67,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 	return pluginsdk.DecodeReply[R](reply)
 }
 
-func RegisterCommand[P, R any](server *sdk.Server, db *sql.DB, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
 	return pluginsdk.RegisterCommand(server, name, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[P]) (R, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
@@ -78,7 +78,7 @@ func RegisterCommand[P, R any](server *sdk.Server, db *sql.DB, name string, clas
 	})
 }
 
-func RegisterReceipts(server *sdk.Server, db *sql.DB) error {
+func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
 	return pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
 		var method, encoded, reply string
 		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)

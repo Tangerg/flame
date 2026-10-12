@@ -1207,6 +1207,11 @@
       ],
       "constants": [
         {
+          "name": "BackendProtocol",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/backend/2026-10-13.1\""
+        },
+        {
           "name": "InvocationKey",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/invocationId\""
@@ -1241,8 +1246,16 @@
           "signature": "func[T any](data []byte) (T, error)"
         },
         {
+          "name": "Describe",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession) (Description, error)"
+        },
+        {
           "name": "InvocationID",
           "signature": "func(ctx context.Context) (string, error)"
+        },
+        {
+          "name": "NewBackend",
+          "signature": "func(server *mcp.Server) (*Backend, error)"
         },
         {
           "name": "NewMethod",
@@ -1254,15 +1267,15 @@
         },
         {
           "name": "RegisterClient",
-          "signature": "func[P, R any](client *mcp.Client, name string) error"
+          "signature": "func(client *mcp.Client) error"
         },
         {
           "name": "RegisterCommand",
-          "signature": "func[P, R any](server *mcp.Server, name string, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
+          "signature": "func[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
         },
         {
           "name": "RegisterServer",
-          "signature": "func[P, R any](server *mcp.Server, name string, classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
+          "signature": "func[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
         },
         {
           "name": "RegisterTools",
@@ -1283,6 +1296,16 @@
       ],
       "types": [
         {
+          "name": "Backend",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Publish",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "Command",
           "kind": "struct",
           "fields": [
@@ -1299,6 +1322,22 @@
             {
               "name": "RequestInput",
               "signature": "func() (jsoninput.Input, error)"
+            }
+          ]
+        },
+        {
+          "name": "Description",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Methods",
+              "type": "[]MethodDescriptor",
+              "tag": "json:\"methods\""
             }
           ]
         },
@@ -1345,12 +1384,8 @@
               "signature": "func() string"
             },
             {
-              "name": "RegisterClient",
-              "signature": "func(client *mcp.Client) error"
-            },
-            {
               "name": "RegisterServer",
-              "signature": "func(server *mcp.Server, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
+              "signature": "func(backend *Backend, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
             }
           ]
         },

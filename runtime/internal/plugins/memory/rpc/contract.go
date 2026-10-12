@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const (
@@ -25,7 +24,7 @@ const (
 type ListInput struct {
 	Scope       memory.Scope
 	CWD, Cursor string
-	Limit       *int
+	Limit       *int `json:"Limit,omitzero"`
 }
 type Page struct {
 	Rows       []memory.ItemSnapshot
@@ -41,8 +40,8 @@ type AddResult struct {
 }
 type UpdateInput struct {
 	ID      string
-	Content *string
-	Pinned  *bool
+	Content *string `json:"Content,omitzero"`
+	Pinned  *bool   `json:"Pinned,omitzero"`
 }
 type ItemInput struct{ ID string }
 type ReviewInput struct {
@@ -69,20 +68,6 @@ type MaintenanceInput struct {
 }
 type MaintenanceResult struct{ Published bool }
 type Ack struct{}
-
-func RegisterClient(client *sdk.Client) error {
-	return errors.Join(
-		pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](client, pluginsdk.ReceiptMethod),
-		pluginsdk.RegisterClient[ListInput, Page](client, List),
-		pluginsdk.RegisterClient[AddInput, AddResult](client, Add),
-		pluginsdk.RegisterClient[UpdateInput, memory.ItemSnapshot](client, Update),
-		pluginsdk.RegisterClient[ItemInput, Ack](client, Delete),
-		pluginsdk.RegisterClient[ReviewInput, Ack](client, Review),
-		pluginsdk.RegisterClient[ItemsInput, []memory.ItemSnapshot](client, Items),
-		pluginsdk.RegisterClient[SearchInput, []memory.ItemSnapshot](client, Search),
-		pluginsdk.RegisterClient[MaintenanceInput, MaintenanceResult](client, Maintain),
-	)
-}
 
 var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict,
 	"not_found": memory.ErrNotFound, "not_visible": memory.ErrNotVisible, "not_pending": memory.ErrNotPending,

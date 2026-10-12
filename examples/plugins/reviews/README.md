@@ -10,6 +10,11 @@ Its typed `reviews.list` and `reviews.update` MCP custom methods share the same
 private use cases and receipt owner as the model Tools. These are backend method
 bindings; a general installed-provider host operation entrance is still pending.
 
+The exports use the SDK's single invocation transport. Server setup binds both
+contracts and the read-only receipt query to one Backend, then publishes it before
+starting MCP. Discovery carries the current backend protocol and exact generated
+method schemas; the former per-operation MCP endpoints are not registered.
+
 `backend/contracts.go` owns the two method descriptions and typed bindings.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./...` projects the same methods into

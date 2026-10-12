@@ -66,7 +66,7 @@ func (s *Schedules) Create(ctx context.Context, input schedule.Draft) (schedule.
 	return saved, err
 }
 func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedule.Schedule, error) {
-	value, err := invokeCommand[rpc.UpdateInput, schedule.Snapshot](ctx, s.commands, plugin.SchedulesService, rpc.Update, rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: input.Patch.ModelSelection}, func(value schedule.Snapshot) error { _, err := schedule.Restore(value); return err })
+	value, err := invokeCommand[rpc.UpdateInput, schedule.Snapshot](ctx, s.commands, plugin.SchedulesService, rpc.Update, rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: rpc.EncodeModelPatch(input.Patch.ModelSelection)}, func(value schedule.Snapshot) error { _, err := schedule.Restore(value); return err })
 	if err != nil {
 		s.publish.Notify(invalidation.ForSchedules(input.ID))
 		return schedule.Schedule{}, rpc.DecodeError(err)

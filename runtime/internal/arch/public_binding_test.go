@@ -105,7 +105,7 @@ var _ = localruntime.ReadToken
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
 var _ = pluginsdk.RegisterTools
-var _ = pluginsdk.RegisterClient[string, string]
+var _ = pluginsdk.RegisterClient
 var _ = pluginsdk.CallCommand[string, string]
 var _ pluginsdk.Command[string]
 var _ = pluginsdk.NewMethod[struct{}, string]

@@ -41,7 +41,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "receipt-client"}, nil)
-	if err := pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](client, pluginsdk.ReceiptMethod); err != nil {
+	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()

@@ -27,20 +27,24 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	connect := func() (*sdk.ClientSession, *sdk.ServerSession) {
 		t.Helper()
 		server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-		if err := RegisterCommand(server, db, "update", nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
+		binding, err := pluginsdk.NewBackend(server)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := RegisterCommand(binding, db, "update", nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
 			_, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
 			return "saved", err
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if err := RegisterReceipts(server, db); err != nil {
+		if err := RegisterReceipts(binding, db); err != nil {
+			t.Fatal(err)
+		}
+		if err := binding.Publish(); err != nil {
 			t.Fatal(err)
 		}
 		client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-		if err := pluginsdk.RegisterClient[jsontext.Value, string](client, "update"); err != nil {
-			t.Fatal(err)
-		}
-		if err := pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](client, pluginsdk.ReceiptMethod); err != nil {
+		if err := pluginsdk.RegisterClient(client); err != nil {
 			t.Fatal(err)
 		}
 		a, b := sdk.NewInMemoryTransports()

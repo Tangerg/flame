@@ -19,8 +19,9 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
+	backend := testBackend(t, server)
 	var captured jsoninput.Input
-	if err := method.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[input]) (struct{}, error) {
+	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[input]) (struct{}, error) {
 		var err error
 		captured, err = command.RequestInput()
 		if err != nil {
@@ -35,10 +36,10 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := method.RegisterClient(client); err != nil {
+	if err := RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
-	session := connectMethodSessions(t, server, client)
+	session := connectPublishedBackend(t, backend, client)
 	for _, value := range []string{`{"n":1.0}`, `{"n":9007199254740993}`} {
 		if _, err := CallCommand[jsontext.Value, struct{}](t.Context(), session, method.Name(), value, jsontext.Value(value)); err != nil {
 			t.Fatal(err)

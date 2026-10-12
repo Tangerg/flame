@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -15,8 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -50,7 +49,7 @@ func Open(
 	}
 	pool := &Pool{registry: registry, memoryContext: memoryContext, publish: publish}
 	client := mcp.NewClient()
-	if err := errors.Join(memoryrpc.RegisterClient(client), schedulerpc.RegisterClient(client)); err != nil {
+	if err := pluginsdk.RegisterClient(client); err != nil {
 		return nil, err
 	}
 	inner, err := mcp.Open(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch, models, client)

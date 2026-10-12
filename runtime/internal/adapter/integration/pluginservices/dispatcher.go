@@ -9,10 +9,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/google/uuid"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -50,7 +53,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBindin
 	if err != nil {
 		return runs.StartResult{}, err
 	}
-	_, err = pluginsdk.Call[rpc.AcceptInput, rpc.Ack](ctx, session, rpc.Accept, rpc.AcceptInput{RunID: request.RunID()})
+	_, err = pluginsdk.CallCommand[rpc.AcceptInput, rpc.Ack](ctx, session, rpc.Accept, "accept:"+request.RunID(), rpc.AcceptInput{RunID: request.RunID()})
 	d.publish.Notify(invalidation.ForSchedules(request.ScheduleID()))
 	if err != nil {
 		return runs.StartResult{}, rpc.DecodeError(err)
@@ -86,11 +89,12 @@ func (d *Dispatcher) pass(ctx context.Context) {
 		slog.ErrorContext(ctx, "schedule: backend admission failed", "error", err)
 		return
 	}
-	requests, err := pluginsdk.Call[rpc.ScanInput, []schedule.RunRequestSnapshot](ctx, session, rpc.Scan, rpc.ScanInput{Now: time.Now()})
+	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil })
 	if err != nil {
 		slog.ErrorContext(ctx, "schedule: durable scan failed", "error", err)
 		return
 	}
+	requests := reply.value
 	if len(requests) > schedule.MaximumDispatchBatch {
 		slog.ErrorContext(ctx, "schedule: backend exceeded dispatch bound")
 		return

@@ -24,10 +24,19 @@ is introduced. Numeric/cross-field constraints remain in Schema and the business
 owner where TypeScript cannot express them. Output filenames are fixed; method
 identities never become filesystem paths.
 
-`RegisterServer[P, R]` binds an unkeyed method. `RegisterCommand[P, R]` passes the
-bounded logical command identity and typed input to the business owner.
-`RegisterClient[P, R]`, `Call[P, R]` and `CallCommand[P, R]` use those same wire
-types. Missing input, unknown envelope/input/result members and malformed command
+`NewBackend` assembles the method exports against one ordinary MCP server.
+Register typed methods against that backend, then `Publish` once before connecting
+the server. Missing or duplicate exports and later registration are refused.
+`Describe` returns immutable method/schema projections through the current public
+backend protocol. Semantic operation names are entries in that description;
+they are no longer separate MCP methods.
+
+`RegisterServer[P, R]` binds a query and `RegisterCommand[P, R]` binds a command
+against the same backend. `NewMethod.RegisterServer` preserves its declared kind,
+target and description. `RegisterClient` installs the one invocation/discovery
+transport, independent of the business schemas. `Call[P, R]` and
+`CallCommand[P, R]` decode concrete types through that transport. Missing input,
+unknown envelope/input/result members and malformed command
 identities are refused. A reply contains exactly one value or business refusal;
 an explicitly nullable value remains distinct from a missing reply.
 
@@ -73,6 +82,11 @@ reads Runtime's logical Tool call identity from MCP metadata, never from model
 arguments or transport IDs. `ToolCommandID` qualifies that identity for receipt
 owners that separate Tool and human command namespaces. These identities are not
 credentials or standing approval grants.
+
+The current SDK requires `BackendProtocol` on invocation and description. It is
+a public wire contract identity, separate from internal build or data-directory
+versions. Only this current protocol is interpreted. Installed declaration/token
+matching and activation-bound host callbacks remain part of the continuing refactor.
 
 The [Reviews backend](../../examples/plugins/reviews/backend/server.go) binds Tool
 and typed method entrances to the same private owner. Its tests prove shared

@@ -8,6 +8,7 @@ Stage 2b complete: existing Memory/Schedules human commands retain durable origi
 Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bindings and operation reference artifacts; Reviews consumes the same immutable contracts. Committed and synchronized with local main; independent author and regeneration-drift checks passed. The generic host operation entrance and full proposal remain open.
 Stage 2d complete: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. The slice is verified, committed and synchronized with local main; the full proposal remains open.
 Stage 2e complete: one immutable admitted JSON representation now supplies request identity to SDK methods/Tools, host routing and private Memory/Schedules/Reviews receipts. Struct/map ordering agrees and numeric lexemes survive typed conversion. Former digest/DTO formats are strictly refused. The verified slice is committed and synchronized with local main; generic declarations, installed operation entrances and the full proposal remain open.
+Stage 2f verified: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance. Commit and main synchronization are being recorded.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -83,10 +84,19 @@ Read-only design inputs:
 - Reviews now stores admitted input_json and verifies the typed business input against its received projection. Its original invocation outcome remains the sole private result. Added strict private-schema admission before schema/business writes; former arguments directories are retained and refused, not interpreted as raw requests.
 - Regression evidence covers struct/map/raw identity agreement, exact integers, numeric lexemes after method/Tool decoding, optional empty Tool arguments, private receipt recovery after a real DB close/reopen, changed input rejection without repeating mutation and non-mutating old-format refusal. Real installed Reviews loss recovery now uses the actual raw request without a duplicated Go DTO fixture.
 
+- Added one public Backend assembly/publication owner in the existing plugin package. It binds typed exports, refuses duplicates and post-publication mutation, and exposes independent schema/semantic descriptions. User handlers run outside its lock. Invocation/discovery accept only the one current BackendProtocol; former per-operation MCP handlers are not registered.
+- All backend Go callers decode their concrete result from that transport. Removed Memory/Schedules RegisterClient lists and connection-pool imports of those business RPC packages; the pool registers only the public transport. Removed the now-empty Method.RegisterClient forwarding API rather than retaining a compatibility wrapper.
+- All actual backend methods now use the shared Go-derived structural admission. Memory identity and model selection project their existing wire representations through pure schema aliases; optional RPC fields are omitted at their adapter-owned DTOs. The Schedules model patch wire DTO translates to its Domain owner, without introducing transport tags into Domain or weakening the architecture gate.
+- Schedules scan and settlement, and Memory maintenance, are declared commands rather than queries. Scan uses original-bound host command admission and private atomic receipts. Settlement retains the existing durable accepted-Run handoff identity (accept plus RunID) and private receipt, against the captured server generation.
+- Memory maintenance keeps model I/O outside database transactions and preserves concurrent human edit/curation CAS semantics. It now carries command identity and original host routing; its publication-owner receipt integration remains open. A missing maintenance receipt remains unknown and never authorizes another model call or provider retargeting.
+- Loss probes now match the semantic method inside the current invocation envelope while standard tools/call retains its own direction. Existing withheld-response/request, restart, known/unconfirmed and provider replacement assertions are retained.
+
 ## In progress
 
 - Generic installed-operation admission, contribution declarations, plugin-defined points, target/origin/parent capture and provider selection still need the verified method/routing owners. Generated backend metadata is not an installed capability or an alternate registration authority.
 - The verified request representation now fixes object-order and typed numeric rehashing at the backend boundary. Generic operation binding still must capture exact contribution/contract/target/origin/parent alongside that input, and handshake must reject incompatible public contracts before publication. This slice has not removed ServiceOwner/ServiceKind, apiVersion:1 or the old graphical carrier.
+- The backend's current protocol and immutable exports are verified, but package declaration/token/contract matching and activation binding are still missing. Public installed operations cannot be claimed ready from Backend.Describe alone.
+- Integrate Memory maintenance command receipt with the actual private ledger/publication transaction. Do not wrap model I/O in a receipt transaction or create a competing host maintenance result; until owner evidence exists, response loss remains unconfirmed.
 - Public TypeScript installed-call/component bindings, callbacks and decorators remain open. The generated TypeScript artifacts supply concrete data maps, not a completed host client SDK.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
@@ -127,6 +137,9 @@ Read-only design inputs:
 | 2026-10-13 | Carry one admitted raw invocation fingerprint to private receipt owners; preserve numeric lexemes and normalize object order at the common boundary | Struct/map encoding and raw/decoded numeric encoding do not agree today; recomputing from a DTO can change identity | Map-only ordering, float64 canonicalization, backend DTO rehashing, silent same-schema hash changes or a compatibility hash fallback |
 | 2026-10-13 | Persist immutable admitted JSON in host routes and private receipts; derive the digest instead of persisting a competing DTO hash | Original input must survive decoding, restart and receipt lookup; the actual input_json format change makes strict cutover enforceable | Changing hash semantics under the old schema, retaining only a re-encoded DTO, introducing a per-record epoch or keeping the former helper as an alias |
 | 2026-10-13 | Share the pure public jsoninput value across Domain and SDK authors | Domain cannot depend on the MCP/Scope transport package; independent authors need the same encoding owner without Runtime internal source | Duplicated canonicalization implementations, importing transport into Domain or creating a separate SDK module |
+| 2026-10-13 | Publish immutable typed exports through one public backend invocation/discovery transport | Installed operations need schema-bearing exports without connection code importing every feature's Go DTOs | Per-feature client registration, mutable published exports, former named-method aliases or a reflection/ambient service registry |
+| 2026-10-13 | Keep Schedules settlement as the existing convergent accepted-Run handoff with one captured backend and accept/RunID receipt identity | Runtime's durable acceptance and the private pending queue already own recovery; an absent host dispatch record must not prevent settling that proven Run | Treating acknowledgement as another Run creation, current-provider retargeting, or replacing handoff ownership with a host business result |
+| 2026-10-13 | Commit Memory maintenance receipt at its actual publication owner, with model I/O outside transactions | The new outer receipt transaction prevented concurrent human editing and rolled back required pending ledger evidence | Holding a database transaction through model calls, weakening the curation race test, or fabricating successful host maintenance evidence |
 | 2026-10-13 | Keep target meaning declared by the contract; capture concrete target/origin/parent at generic host admission next | Current Reviews uses installation-private facts; target metadata alone is not captured invocation authority | Pretending backend descriptors already implement installed provider/context binding |
 
 
@@ -172,6 +185,15 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 2f verification:
+
+- Passed: Runtime and CLI complete go test ./..., go vet ./... and go build ./..., including architecture/dependency and generated-contract gates. The final SDK forwarding-method deletion was additionally regenerated and checked with SDK -race, full Runtime vet/build.
+- Passed: SDK, managed receipt/model link and Memory transport full -race; Backend duplicate/frozen publication, exact current protocol, unknown export, descriptor independence, semantic kind enforcement and absence of former named RPC are covered.
+- Passed: real installed Reviews, Memory lost reply, Schedule create/prepare/settlement message loss, absent receipt and observed provider replacement with targeted bootstrap -race. Schedules accepted Run recovery and Memory concurrent edit/CAS tests retain their original assertions.
+- Passed: independent Reviews complete go test -race ./..., go vet ./... and go build ./.... The public-only offline SDK archive author also passed GOWORK=off/no replace tidy/test/vet/build without Runtime internal source. This snapshot is not a published release.
+- Resolved introduced failures: generic transport made the old loss probe miss its semantic method; it now intercepts the current envelope. Opaque IDs and model selections lacked their wire schema projection, nullable optional adapter fields emitted null, and Domain tags were rejected; owner aliases and adapter DTOs fix these without weakening checks. The attempted outer maintenance receipt transaction blocked human edits; it was removed in favor of the actual publication-owner integration requirement. Generic pending-command routing was inappropriate for the proven accepted-Run settlement handoff; its original captured owner/RunID receipt contract is preserved.
+- Not run: frontend UI/E2E/screenshot/composite frontend checks, explicitly excluded and no frontend or Runtime wire catalog change. Installed declaration/selection/origin/target/parent/callback/component completion and Memory maintenance receipt completion remain open.
 
 Stage 2e verification:
 
@@ -239,6 +261,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 2f: backend/module/race checks and independent author fixture returned terminal success after fixes. Existing cleanup retires test processes, sessions, temporary packages and databases; TemporaryDirectory removed the public SDK proxy/archive/cache/source. No production/user data, original proposal/review, shared configuration, remote service or credential was modified. The active checkout/dependencies remain for the full refactor.
+
 - Stage 2e: all verification handles returned terminal success after fixture repairs. Existing test cleanup retires process/session/database/temp-package ownership. TemporaryDirectory removed the independent author's SDK proxy/archive/cache/source. No user directory, original proposal/review, shared configuration, remote publication or credentialed service was changed. Original input hashes match the baseline. The slice is committed and incoming local main is already up to date; the active checkout and required development dependencies remain for the full refactor.
 
 - Stage 2d: all backend/module/race checks returned success. Test-owned processes, private databases and installed binaries were retired by their existing cleanup; TemporaryDirectory removed the input-fingerprint proof source. No generated binary, UI artifact, shared configuration change or user-data operation was kept. The current input hashes still match the read-only baselines. The slice is committed and incoming local main is already up to date; keep the active checkout and required dependencies for the continuing full refactor.
@@ -254,6 +278,7 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Complete Memory maintenance receipt at the private publication/ledger owner without holding model I/O inside a transaction. Unknown maintenance cannot be declared recovered merely because its host routing is durable.
 - Extend the verified immutable input to the complete generic binding: exact contract/contribution, captured target and adapter-established origin/parent, with current declaration and activation handshake. Existing raw JSON and old-format refusal do not prove the missing installed operation/proxy/component paths.
 - Extend the verified durable original-binding/retention owner to generic operation descriptors and public entrances before opening new plugin mutation. Current closed service binding is not the final contribution substrate.
 - Finish generic call/error projections and public TypeScript client/component bindings through Reviews; current Go-owned generation supplies structural contracts and preserves typed outcome vocabulary.
@@ -264,6 +289,7 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 2f changes SDK registration to explicit Backend assembly/publication, removes per-method client registration/Method.RegisterClient and removes former physical per-operation RPC handlers. External backend authors/compiled callers require rebuild and migration. BackendProtocol is the current public wire identity; declaration and activation matching still need the owning cutover before API freeze.
 - Stage 2e removes public plugin.InputDigest and adds unexported received input to Command; external unkeyed literals/old helper callers require migration. Host digest-only routes, Memory/Schedules digest-only receipts and Reviews re-encoded arguments directories are refused before conversion; retain them separately and use fresh directories. In-repository callers are migrated; independent published dependency metadata and exact public handshake remain open.
 - New schema-bound methods tighten feature input/output admission. Params and Result now retain unexported original wire evidence, so external unkeyed literals require migration; keyed usage and real consumers are updated. Separate Reviews ListMethod/UpdateMethod exports were removed without aliases.
 - Public installation/protocol/storage changes break external compiled clients. Rebuild all in-repository consumers; report any externally used SDK/module contracts.

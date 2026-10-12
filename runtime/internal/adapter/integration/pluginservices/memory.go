@@ -12,6 +12,7 @@ import (
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -21,6 +22,7 @@ import (
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/google/uuid"
 )
 
 type Memory struct {
@@ -170,7 +172,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	return items, nil
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
+	binding, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
 	if errors.Is(err, errInactive) {
 		return nil
 	}
@@ -188,8 +190,8 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	defer release()
-	result, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}})
-	if err != nil || result.Published {
+	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil })
+	if err != nil || result.value.Published {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}
 	return rpc.DecodeError(err)

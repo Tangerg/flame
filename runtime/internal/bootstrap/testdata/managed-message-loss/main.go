@@ -55,7 +55,8 @@ func run() (err error) {
 				ID     jsontext.Value `json:"id"`
 				Method string         `json:"method"`
 				Params struct {
-					Name string `json:"name"`
+					Name   string `json:"name"`
+					Method string `json:"method"`
 				} `json:"params"`
 			}
 			if err := json.Unmarshal(line, &request); err != nil {
@@ -63,7 +64,11 @@ func run() (err error) {
 				cancel()
 				return
 			}
-			matched := request.Method == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
+			semantic := request.Method
+			if semantic == "io.github.tangerg.flame/operations.invoke" {
+				semantic = request.Params.Method
+			}
+			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
 			if matched {
 				if os.Args[5] == "request" {
 					withheld, err := withhold(line, nil)

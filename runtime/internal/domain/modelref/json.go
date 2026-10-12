@@ -34,3 +34,5 @@ func (s *Selection) UnmarshalJSON(data []byte) error {
 	}
 	return err
 }
+
+func (Selection) JSONSchemaAlias() any { return map[string]string{} }

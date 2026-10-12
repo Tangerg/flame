@@ -61,26 +61,33 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame-review-example", Version: "1.0.0"}, nil)
+	backend, err := pluginsdk.NewBackend(server)
+	if err != nil {
+		return nil, err
+	}
 	if err := pluginsdk.RegisterTools(server, list, update); err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, request pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
+	if err := pluginsdk.RegisterServer(backend, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, request pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
 		return store.Receipt(ctx, request, contracts.Update.Name())
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.List.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (ListResult, error) {
+	if err := contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (ListResult, error) {
 		return read(ctx)
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.Update.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[Update]) (UpdateResult, error) {
+	if err := contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[Update]) (UpdateResult, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
 			return UpdateResult{}, err
 		}
 		return store.Update(ctx, command.ID, command.Input, admitted)
 	}); err != nil {
+		return nil, err
+	}
+	if err := backend.Publish(); err != nil {
 		return nil, err
 	}
 	return server, nil

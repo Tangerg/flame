@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"strings"
@@ -48,7 +49,7 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 	for _, command := range []bool{false, true} {
 		for _, cause := range []error{refused, storage} {
 			t.Run(cause.Error()+"/"+map[bool]string{false: "method", true: "command"}[command], func(t *testing.T) {
-				session := methodSession(t, func(server *sdk.Server) error {
+				session := methodSession(t, func(server *Backend) error {
 					classify := func(err error) string {
 						if errors.Is(err, refused) {
 							return "revisionConflict"
@@ -83,6 +84,8 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 
 type malformedParams struct {
 	sdk.ParamsBase
+	Protocol  string `json:"protocol"`
+	Method    string `json:"method"`
 	Input     any    `json:"input,omitzero"`
 	CommandID string `json:"commandId,omitzero"`
 	Extra     bool   `json:"extra,omitzero"`
@@ -91,17 +94,18 @@ type malformedParams struct {
 func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 	var calls atomic.Int64
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-	if err := RegisterCommand(server, "flame.test/admission", nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
+	backend := testBackend(t, server)
+	if err := RegisterCommand(backend, "flame.test/admission", nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
 		calls.Add(1)
 		return command.Input, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := sdk.AddSendingCustomMethod[*malformedParams, *Result[string]](client, "flame.test/admission"); err != nil {
+	if err := sdk.AddSendingCustomMethod[*malformedParams, *Result[jsontext.Value]](client, invokeMethod); err != nil {
 		t.Fatal(err)
 	}
-	session := connectMethodSessions(t, server, client)
+	session := connectPublishedBackend(t, backend, client)
 	for _, params := range []malformedParams{
 		{Input: "input"},
 		{CommandID: "command"},
@@ -109,7 +113,9 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		{Input: "input", CommandID: strings.Repeat("c", 257)},
 		{Input: "input", CommandID: "command", Extra: true},
 	} {
-		if result, err := sdk.CallCustomMethod[*malformedParams, *Result[string]](t.Context(), session, "flame.test/admission", &params); err == nil || result != nil {
+		params.Protocol = BackendProtocol
+		params.Method = "flame.test/admission"
+		if result, err := sdk.CallCustomMethod[*malformedParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &params); err == nil || result != nil {
 			t.Fatalf("malformed command reached a result: %+v, %v", result, err)
 		}
 	}
@@ -184,17 +190,18 @@ func TestMethodReplyPreservesExplicitNullableValue(t *testing.T) {
 	}
 }
 
-func methodSession(t *testing.T, register func(*sdk.Server) error, name string) *sdk.ClientSession {
+func methodSession(t *testing.T, register func(*Backend) error, name string) *sdk.ClientSession {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-	if err := register(server); err != nil {
+	backend := testBackend(t, server)
+	if err := register(backend); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := RegisterClient[string, string](client, name); err != nil {
+	if err := RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
-	return connectMethodSessions(t, server, client)
+	return connectPublishedBackend(t, backend, client)
 }
 
 func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client) *sdk.ClientSession {
@@ -225,13 +232,13 @@ func TestCallsPreserveBackendFailureClassification(t *testing.T) {
 func replySession(t *testing.T, result *Result[string]) *sdk.ClientSession {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "backend"}, nil)
-	if err := sdk.AddReceivingCustomMethod(server, "flame.test/reply.v1", func(context.Context, *sdk.ServerSession, *Params[string]) (*Result[string], error) {
+	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[string], error) {
 		return result, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "host"}, nil)
-	if err := RegisterClient[string, string](client, "flame.test/reply.v1"); err != nil {
+	if err := RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -246,4 +253,20 @@ func replySession(t *testing.T, result *Result[string]) *sdk.ClientSession {
 	}
 	t.Cleanup(func() { _ = session.Close() })
 	return session
+}
+
+func testBackend(t *testing.T, server *sdk.Server) *Backend {
+	t.Helper()
+	backend, err := NewBackend(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backend
+}
+func connectPublishedBackend(t *testing.T, backend *Backend, client *sdk.Client) *sdk.ClientSession {
+	t.Helper()
+	if err := backend.Publish(); err != nil {
+		t.Fatal(err)
+	}
+	return connectMethodSessions(t, backend.server, client)
 }

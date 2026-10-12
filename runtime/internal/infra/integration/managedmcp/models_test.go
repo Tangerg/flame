@@ -95,13 +95,20 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	broker := NewModels()
 	server := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
-	if err := pluginsdk.RegisterServer(server, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant string) (string, error) {
+	binding, err := pluginsdk.NewBackend(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pluginsdk.RegisterServer(binding, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant string) (string, error) {
 		return (RemoteModels{Grant: grant}).Complete(ctx, testPrompt())
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if err := binding.Publish(); err != nil {
+		t.Fatal(err)
+	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
-	if err := pluginsdk.RegisterClient[string, string](client, "flame.memory/test.v1"); err != nil {
+	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()

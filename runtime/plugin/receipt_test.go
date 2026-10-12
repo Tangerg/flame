@@ -30,7 +30,8 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-			if err := RegisterServer(server, ReceiptMethod, nil, func(_ context.Context, _ *sdk.ServerSession, input ReceiptRequest) (Receipt, error) {
+			backend := testBackend(t, server)
+			if err := RegisterServer(backend, ReceiptMethod, nil, func(_ context.Context, _ *sdk.ServerSession, input ReceiptRequest) (Receipt, error) {
 				digest, err := jsoninput.Encode("input")
 				if err != nil || input.ID != "original" || input.Method != "review.update" || input.InputDigest != digest.Digest() {
 					t.Fatalf("lookup changed original binding: %+v, %v", input, err)
@@ -39,17 +40,17 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := RegisterCommand(server, "review.update", nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
+			if err := RegisterCommand(backend, "review.update", nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
 				t.Error("receipt lookup executed mutation")
 				return "", nil
 			}); err != nil {
 				t.Fatal(err)
 			}
 			client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-			if err := RegisterClient[ReceiptRequest, Receipt](client, ReceiptMethod); err != nil {
+			if err := RegisterClient(client); err != nil {
 				t.Fatal(err)
 			}
-			session := connectMethodSessions(t, server, client)
+			session := connectPublishedBackend(t, backend, client)
 			value, found, err := ReadReceipt[string, string](t.Context(), session, "original", "review.update", "input")
 			if found != test.found || value != test.value {
 				t.Fatalf("receipt = %q, %t, %v", value, found, err)

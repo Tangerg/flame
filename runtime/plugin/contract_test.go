@@ -31,8 +31,9 @@ func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
 		t.Fatal("descriptor mutation changed method admission")
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
+	backend := testBackend(t, server)
 	calls := 0
-	if err := method.RegisterServer(server, nil, func(_ context.Context, _ *sdk.ServerSession, input Command[contractInput]) (contractInput, error) {
+	if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, input Command[contractInput]) (contractInput, error) {
 		calls++
 		if input.ID != "original" {
 			t.Fatal("logical identity changed")
@@ -42,10 +43,10 @@ func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := method.RegisterClient(client); err != nil {
+	if err := RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
-	session := connectMethodSessions(t, server, client)
+	session := connectPublishedBackend(t, backend, client)
 	input := contractInput{Status: "open", Revision: 1}
 	if result, err := method.CallCommand(t.Context(), session, "original", input); err != nil || result != input {
 		t.Fatalf("typed method = %+v, %v", result, err)
@@ -77,16 +78,17 @@ func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-	if err := method.RegisterServer(server, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (contractInput, error) {
+	backend := testBackend(t, server)
+	if err := method.RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[struct{}]) (contractInput, error) {
 		return contractInput{Status: "unknown", Revision: 1}, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := method.RegisterClient(client); err != nil {
+	if err := RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
-	session := connectMethodSessions(t, server, client)
+	session := connectPublishedBackend(t, backend, client)
 	if _, err := method.CallCommand(t.Context(), session, "command", struct{}{}); err == nil {
 		t.Fatal("query accepted mutation identity")
 	}
@@ -115,6 +117,8 @@ func TestMethodConstructionRefusesInvalidAndUnsupportedContracts(t *testing.T) {
 
 type rawContractParams struct {
 	sdk.ParamsBase
+	Protocol  string         `json:"protocol"`
+	Method    string         `json:"method"`
 	Input     jsontext.Value `json:"input"`
 	CommandID string         `json:"commandId"`
 }
@@ -125,19 +129,20 @@ func TestMethodServerRejectsOriginalMissingMembersBeforeBusinessExecution(t *tes
 		t.Fatal(err)
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-	if err := method.RegisterServer(server, nil, func(context.Context, *sdk.ServerSession, Command[contractInput]) (contractInput, error) {
+	backend := testBackend(t, server)
+	if err := method.RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[contractInput]) (contractInput, error) {
 		t.Error("malformed input reached business owner")
 		return contractInput{}, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := sdk.AddSendingCustomMethod[*rawContractParams, *Result[contractInput]](client, method.Name()); err != nil {
+	if err := sdk.AddSendingCustomMethod[*rawContractParams, *Result[jsontext.Value]](client, invokeMethod); err != nil {
 		t.Fatal(err)
 	}
-	session := connectMethodSessions(t, server, client)
+	session := connectPublishedBackend(t, backend, client)
 	for _, raw := range []string{`{"status":"open"}`, `{"status":"open","revision":null}`, `{"status":"unknown","revision":1}`} {
-		if _, err := sdk.CallCustomMethod[*rawContractParams, *Result[contractInput]](t.Context(), session, method.Name(), &rawContractParams{Input: []byte(raw), CommandID: "original"}); err == nil {
+		if _, err := sdk.CallCustomMethod[*rawContractParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &rawContractParams{Protocol: BackendProtocol, Method: method.Name(), Input: []byte(raw), CommandID: "original"}); err == nil {
 			t.Fatalf("malformed input admitted: %s", raw)
 		}
 	}

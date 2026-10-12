@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const (
@@ -24,15 +23,18 @@ const (
 )
 
 type UpdateInput struct {
-	ID                             string
-	ExpectedRevision               uint64
-	Title, Instructions, CWD, Cron *string
-	Enabled                        *bool
-	ModelSelection                 modelref.Patch
+	ID               string
+	ExpectedRevision uint64
+	Title            *string `json:"Title,omitzero"`
+	Instructions     *string `json:"Instructions,omitzero"`
+	CWD              *string `json:"CWD,omitzero"`
+	Cron             *string `json:"Cron,omitzero"`
+	Enabled          *bool   `json:"Enabled,omitzero"`
+	ModelSelection   ModelPatch
 }
 type ListInput struct {
 	Cursor string
-	Limit  *int
+	Limit  *int `json:"Limit,omitzero"`
 }
 type Page struct {
 	Rows       []schedule.Snapshot
@@ -42,19 +44,6 @@ type ItemInput struct{ ID string }
 type ScanInput struct{ Now time.Time }
 type AcceptInput struct{ RunID string }
 type Ack struct{}
-
-func RegisterClient(client *sdk.Client) error {
-	return errors.Join(
-		pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](client, pluginsdk.ReceiptMethod),
-		pluginsdk.RegisterClient[ListInput, Page](client, List),
-		pluginsdk.RegisterClient[schedule.Draft, schedule.Snapshot](client, Create),
-		pluginsdk.RegisterClient[UpdateInput, schedule.Snapshot](client, Update),
-		pluginsdk.RegisterClient[ItemInput, Ack](client, Delete),
-		pluginsdk.RegisterClient[ItemInput, schedule.RunRequestSnapshot](client, PrepareManual),
-		pluginsdk.RegisterClient[ScanInput, []schedule.RunRequestSnapshot](client, Scan),
-		pluginsdk.RegisterClient[AcceptInput, Ack](client, Accept),
-	)
-}
 
 var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelref.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
 
@@ -79,4 +68,17 @@ func DecodeError(err error) error {
 		}
 	}
 	return err
+}
+
+type ModelPatch struct {
+	Provider        *string `json:"Provider,omitzero"`
+	Model           *string `json:"Model,omitzero"`
+	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
+}
+
+func EncodeModelPatch(value modelref.Patch) ModelPatch {
+	return ModelPatch{Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort}
+}
+func (p ModelPatch) Patch() modelref.Patch {
+	return modelref.Patch{Provider: p.Provider, Model: p.Model, ReasoningEffort: p.ReasoningEffort}
 }

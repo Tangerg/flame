@@ -70,18 +70,26 @@ func (m *Method[P, R]) Descriptor() MethodDescriptor {
 	return MethodDescriptor{Name: m.config.Name, Kind: m.config.Kind, Target: m.config.Target, Description: m.config.Description, Input: m.input.JSON(), Output: m.output.JSON()}
 }
 
-func (m *Method[P, R]) RegisterClient(client *sdk.Client) error {
-	return RegisterClient[P, R](client, m.config.Name)
-}
-
 // Raw input admission precedes typed business execution. Re-encoding the decoded
 // value would erase missing required members by inserting their Go zero values.
-func (m *Method[P, R]) RegisterServer(server *sdk.Server, classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
-	if server == nil || handler == nil {
-		return errors.New("plugin: server and method handler are required")
+func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
+	if backend == nil || handler == nil {
+		return errors.New("plugin: backend and method handler are required")
 	}
-	return sdk.AddReceivingCustomMethod(server, m.config.Name, func(ctx context.Context, session *sdk.ServerSession, params *Params[P]) (*Result[R], error) {
-		if params == nil {
+	return backend.register(boundMethod{descriptor: m.Descriptor(), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
+		encoded, err := json.Marshal(struct {
+			sdk.ParamsBase
+			Input     jsontext.Value `json:"input"`
+			CommandID string         `json:"commandId,omitzero"`
+		}{wire.ParamsBase, wire.Input, wire.CommandID})
+		if err != nil {
+			return nil, err
+		}
+		var params Params[P]
+		if err := json.Unmarshal(encoded, &params, json.RejectUnknownMembers(true)); err != nil {
+			return nil, err
+		}
+		if params.inputJSON.Validate() != nil {
 			return nil, errors.New("plugin: method input is required")
 		}
 		if m.config.Kind == Query && params.CommandID != "" {
@@ -106,8 +114,20 @@ func (m *Method[P, R]) RegisterServer(server *sdk.Server, classify func(error) s
 				return nil, fmt.Errorf("plugin: %s output: %w", m.config.Name, err)
 			}
 		}
-		return Reply(value, operationErr, classify)
-	})
+		outcome, err := Reply(value, operationErr, classify)
+		if err != nil {
+			return nil, err
+		}
+		data, err := json.Marshal(outcome)
+		if err != nil {
+			return nil, err
+		}
+		var result Result[jsontext.Value]
+		if err := json.Unmarshal(data, &result, json.RejectUnknownMembers(true)); err != nil {
+			return nil, err
+		}
+		return &result, nil
+	}})
 }
 
 func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, input P) (R, error) {
@@ -141,7 +161,7 @@ func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, par
 	if err := m.input.Validate(encoded); err != nil {
 		return zero, fmt.Errorf("plugin: %s input: %w", m.config.Name, err)
 	}
-	result, err := sdk.CallCustomMethod[*Params[P], *Result[R]](ctx, session, m.config.Name, params)
+	result, err := callResult[P, R](ctx, session, m.config.Name, params)
 	if err != nil {
 		return zero, err
 	}

@@ -44,7 +44,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 		t.Fatal(err)
 	}
 	defer release()
-	_, err = pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
+	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "mine", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	}
 	release()
 
-	_, err = pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4}})
+	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "no-compaction", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func connectMemoryBackend(t *testing.T, path string) (*sqlite.AgentMemoryStore, 
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
-	if err := rpc.RegisterClient(client); err != nil {
+	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -147,7 +147,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	defer release()
 	result := make(chan error, 1)
 	go func() {
-		_, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
+		_, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
 		result <- err
 	}()
 	select {
@@ -189,7 +189,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	broker.AdmitSession(session)
-	_, err = pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant})
+	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "uncompacted", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant})
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
@@ -204,7 +204,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	}
 	defer releaseFresh()
 	input := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: fresh}
-	published, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, input)
+	published, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", input)
 	if err != nil || !published.Published {
 		t.Fatalf("pending recovery=%+v %v", published, err)
 	}
@@ -227,7 +227,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if !foundHuman || !foundProposal {
 		t.Fatalf("curation replaced human authority: %+v", page.Rows)
 	}
-	repeated, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, input)
+	repeated, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", input)
 	if err != nil || repeated.Published {
 		t.Fatalf("settled recovery repeated publication: %+v %v", repeated, err)
 	}

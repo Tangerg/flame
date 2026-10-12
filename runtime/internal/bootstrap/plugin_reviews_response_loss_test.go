@@ -192,7 +192,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	command := exec.CommandContext(ctx, filepath.Join(source, "bin", "reviews"))
 	command.Env = append(os.Environ(), "PLUGIN_DATA="+evidence.DataDirectory)
 	mcpClient := sdk.NewClient(&sdk.Implementation{Name: "receipt-recovery-test", Version: "1"}, nil)
-	if err := pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](mcpClient, pluginsdk.ReceiptMethod); err != nil {
+	if err := pluginsdk.RegisterClient(mcpClient); err != nil {
 		t.Fatal(err)
 	}
 	backend, err := mcpClient.Connect(ctx, &sdk.CommandTransport{Command: command}, nil)
