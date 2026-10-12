@@ -10,6 +10,15 @@ Its typed `reviews.list` and `reviews.update` MCP custom methods share the same
 private use cases and receipt owner as the model Tools. These are backend method
 bindings; a general installed-provider host operation entrance is still pending.
 
+`backend/contracts.go` owns the two method descriptions and typed bindings.
+The Status and Outcome types publish their closed vocabularies to Scope's schema
+derivation. From `backend`, `go generate ./...` projects the same methods into
+`package/io.github.tangerg.flame/contracts/{schema.json,methods.generated.json,API_REFERENCE.md}`
+and `client/methods.generated.ts` through Runtime's existing `contractgen`.
+Do not edit those generated files or maintain a second input/output schema.
+The generated references and data maps are contract artifacts; this package still
+does not declare a generic Flame capability or graphical component entry.
+
 The backend owns one example review in `PLUGIN_DATA/reviews.sqlite`. Runtime
 owns execution and approval; its stored Tool results are historical observations,
 not another review database. Read the backend again to observe its current state.

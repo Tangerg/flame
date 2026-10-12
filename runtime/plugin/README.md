@@ -6,6 +6,24 @@ It lives in the existing Runtime module and imports no Runtime internal package.
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle.
 
+`NewMethod[P, R]` is the authoring contract for typed feature methods. Its owner
+declares semantic identity, query/command kind, target meaning and description
+once. Scope derives immutable input/output schemas from the existing Go types.
+The method binds both client and server using those schemas; callers cannot
+relabel commands as queries. Server admission retains and validates original input before business execution,
+so typed decoding cannot hide missing fields. Invalid output remains a protocol failure,
+preserving uncertainty about an already committed effect.
+
+`Descriptor` is an independently owned discovery/build projection, not another
+method authority. Pipe descriptor JSON into the existing Runtime `contractgen`
+with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
+It emits standard self-contained Schema, operation descriptors, reference prose
+and TypeScript input/output maps from that same source. It reuses Scope schema
+derivation and Runtime's Schema-to-TypeScript emitter; no new IDL or Go DTO copy
+is introduced. Numeric/cross-field constraints remain in Schema and the business
+owner where TypeScript cannot express them. Output filenames are fixed; method
+identities never become filesystem paths.
+
 `RegisterServer[P, R]` binds an unkeyed method. `RegisterCommand[P, R]` passes the
 bounded logical command identity and typed input to the business owner.
 `RegisterClient[P, R]`, `Call[P, R]` and `CallCommand[P, R]` use those same wire
@@ -54,6 +72,6 @@ version still named by application module metadata does not contain it.
 This package currently supplies backend wire primitives. Runtime's existing
 Memory/Schedules commands retain original installed routing before dispatch and
 reconcile through this lookup. Generic installed-provider proxies, host callbacks, point descriptors,
-Go/TypeScript contract generation and component bindings remain separate unfinished
+generic contribution declaration and component bindings remain separate unfinished
 parts of the unified-plugin refactor. A direct backend session is not a public
 installed-provider proxy, and these primitives do not authorize core Runtime calls.

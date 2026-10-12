@@ -11,30 +11,25 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
-const (
-	ListMethod   = "io.github.tangerg.flame.examples/reviews.list"
-	UpdateMethod = "io.github.tangerg.flame.examples/reviews.update"
-)
-
-type ListResult struct {
-	Reviews []Snapshot `json:"reviews"`
-}
-
 func NewServer(store *Store) (*sdk.Server, error) {
 	if store == nil {
 		return nil, fmt.Errorf("reviews: store is required")
+	}
+	contracts, err := NewContracts()
+	if err != nil {
+		return nil, err
 	}
 	read := func(ctx context.Context) (ListResult, error) {
 		reviews, err := store.List(ctx)
 		return ListResult{Reviews: reviews}, err
 	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_reviews", Description: "Read the review backend's current review and revision."}, func(ctx context.Context, _ struct{}) (ListResult, error) {
+	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_reviews", Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) (ListResult, error) {
 		return read(ctx)
 	})
 	if err != nil {
 		return nil, err
 	}
-	update, err := tool.NewFunc(tool.FuncConfig{Name: "update_review", Description: "Change one review's status using its inspected revision. Runtime supplies the invocation identity; do not add a retry key to arguments."}, func(ctx context.Context, input Update) (UpdateResult, error) {
+	update, err := tool.NewFunc(tool.FuncConfig{Name: "update_review", Description: contracts.Update.Descriptor().Description + " Runtime supplies the invocation identity; do not add a retry key to arguments."}, func(ctx context.Context, input Update) (UpdateResult, error) {
 		id, err := pluginsdk.InvocationID(ctx)
 		if err != nil {
 			return UpdateResult{}, rejected("bounded invocation identity is required")
@@ -65,12 +60,12 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	if err := pluginsdk.RegisterTools(server, list, update); err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterServer(server, ListMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, _ struct{}) (ListResult, error) {
+	if err := contracts.List.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (ListResult, error) {
 		return read(ctx)
 	}); err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterCommand(server, UpdateMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[Update]) (UpdateResult, error) {
+	if err := contracts.Update.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[Update]) (UpdateResult, error) {
 		return store.Update(ctx, command.ID, command.Input)
 	}); err != nil {
 		return nil, err

@@ -101,16 +101,20 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 }
 
 func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
+	contracts, err := NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
 	store := openTestStore(t, t.TempDir())
 	server, err := NewServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "typed-review-client"}, nil)
-	if err := pluginsdk.RegisterClient[Update, UpdateResult](client, UpdateMethod); err != nil {
+	if err := contracts.Update.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
-	if err := pluginsdk.RegisterClient[struct{}, ListResult](client, ListMethod); err != nil {
+	if err := contracts.List.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -125,7 +129,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = session.Close() })
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	accepted, err := pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "shared-command", input)
+	accepted, err := contracts.Update.CallCommand(t.Context(), session, "shared-command", input)
 	if err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
 		t.Fatalf("typed update = %+v, %v", accepted, err)
 	}
@@ -141,24 +145,24 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err := json.Unmarshal(encoded, &observed); err != nil || observed.Type != accepted.Type || observed.Review == nil || *observed.Review != *accepted.Review {
 		t.Fatalf("Tool entrance created a different business result: %+v, %v", observed, err)
 	}
-	conflict, err := pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "second-command", input)
+	conflict, err := contracts.Update.CallCommand(t.Context(), session, "second-command", input)
 	if err != nil || conflict.Type != Conflict || conflict.Review == nil || conflict.Review.Revision != 2 {
 		t.Fatalf("typed business refusal lost its current-review evidence: %+v, %v", conflict, err)
 	}
 	changed := input
 	changed.Status = Open
-	identityConflict, err := pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "shared-command", changed)
+	identityConflict, err := contracts.Update.CallCommand(t.Context(), session, "shared-command", changed)
 	if err != nil || identityConflict.Type != IdentityConflict {
 		t.Fatalf("identity conflict = %+v, %v", identityConflict, err)
 	}
-	listed, err := pluginsdk.Call[struct{}, ListResult](t.Context(), session, ListMethod, struct{}{})
+	listed, err := contracts.List.Call(t.Context(), session, struct{}{})
 	if err != nil || len(listed.Reviews) != 1 || listed.Reviews[0] != *accepted.Review {
 		t.Fatalf("canonical typed read = %+v, %v", listed, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "unknown-command", changed)
+	_, err = contracts.Update.CallCommand(t.Context(), session, "unknown-command", changed)
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}

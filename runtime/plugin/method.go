@@ -16,6 +16,7 @@ type Params[T any] struct {
 	sdk.ParamsBase
 	Input     T      `json:"input"`
 	CommandID string `json:"commandId,omitempty"`
+	inputJSON jsontext.Value
 }
 
 // Command carries a caller's logical identity and input. Business admission and
@@ -46,14 +47,15 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(wire.Input, &input, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	*p = Params[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID}
+	*p = Params[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID, inputJSON: wire.Input}
 	return nil
 }
 
 type Result[T any] struct {
 	sdk.ResultBase
-	Value   *T       `json:"value,omitzero"`
-	Failure *Failure `json:"failure,omitzero"`
+	Value     *T       `json:"value,omitzero"`
+	Failure   *Failure `json:"failure,omitzero"`
+	valueJSON jsontext.Value
 }
 type Failure struct {
 	Code    string `json:"code"`
@@ -83,7 +85,7 @@ func (r *Result[T]) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	*r = Result[T]{ResultBase: decoded.ResultBase, Value: value, Failure: decoded.Failure}
+	*r = Result[T]{ResultBase: decoded.ResultBase, Value: value, Failure: decoded.Failure, valueJSON: decoded.Value}
 	return nil
 }
 

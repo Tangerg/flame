@@ -1,0 +1,18 @@
+[
+  {
+    "name": "io.github.tangerg.flame.examples/reviews.list",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the review backend's current review and revision.",
+    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistInput",
+    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistOutput"
+  },
+  {
+    "name": "io.github.tangerg.flame.examples/reviews.update",
+    "kind": "command",
+    "target": "installation",
+    "description": "Change one review's status using its inspected revision.",
+    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateInput",
+    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateOutput"
+  }
+]

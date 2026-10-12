@@ -107,6 +107,8 @@ var _ = pluginsdk.RegisterTools
 var _ = pluginsdk.RegisterClient[string, string]
 var _ = pluginsdk.CallCommand[string, string]
 var _ pluginsdk.Command[string]
+var _ = pluginsdk.NewMethod[struct{}, string]
+var _ pluginsdk.MethodDescriptor
 
 func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	if _, err := runtime.Discover(ctx, flameruntime.CallOptions{}); err != nil {

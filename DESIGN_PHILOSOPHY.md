@@ -65,6 +65,13 @@ mutation. Retained identities do not expire into calls on a current provider.
 Generic operation descriptors, origin/parent propagation and public installed
 proxies still require the same guarantee when they replace the closed services.
 
+Feature authoring keeps Go-owned types and method descriptions authoritative.
+Scope derives and compiles their structural schemas; the same immutable contract
+admits the backend wire call and publishes build/discovery descriptors. Runtime's
+existing generator projects those standard schemas into TypeScript and operation
+documentation. Generated files do not become another registration authority, and
+shape equivalence never selects a provider or proves behavioral substitutability.
+
 ## Evidence over symmetry
 
 Architecture is judged by real consumers, invariants, failure ordering, protocol behavior, persistence, and lifecycle tests. Package counts, file counts, private field inventories, and symmetric trees are not design evidence.

@@ -2,6 +2,7 @@ package reviews
 
 import (
 	"errors"
+	"slices"
 	"unicode/utf8"
 )
 
@@ -58,7 +59,9 @@ func (r Review) Change(expectedRevision int64, status Status) (Review, error) {
 	return r, nil
 }
 
-func validStatus(status Status) bool { return status == Open || status == Resolved }
+func (Status) JSONSchemaEnum() []string { return []string{string(Open), string(Resolved)} }
+
+func validStatus(status Status) bool { return slices.Contains(status.JSONSchemaEnum(), string(status)) }
 
 type Update struct {
 	ID               string `json:"id"`
@@ -84,6 +87,10 @@ const (
 	Capacity          Outcome = "receiptCapacity"
 	RevisionExhausted Outcome = "revisionExhausted"
 )
+
+func (Outcome) JSONSchemaEnum() []string {
+	return []string{string(Updated), string(Conflict), string(NotFound), string(Invalid), string(IdentityConflict), string(Capacity), string(RevisionExhausted)}
+}
 
 type UpdateResult struct {
 	Type   Outcome   `json:"type"`

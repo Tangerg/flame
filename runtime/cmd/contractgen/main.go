@@ -37,9 +37,20 @@ func main() {
 	out := flag.String("out", ".", "directory the Go-side artifacts are written to")
 	validators := flag.String("validators", "", "directory the generated Go wire validator is written to; skipped when empty")
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
+	feature := flag.String("feature", "", "typed feature descriptors file, or - for stdin; replaces Runtime registry generation")
 	flag.Parse()
 
-	if err := run(*out, *validators, *ts); err != nil {
+	var err error
+	if *feature != "" {
+		if *validators != "" {
+			err = fmt.Errorf("feature Go types are canonical inputs; validators flag is for Runtime generation")
+		} else {
+			err = runFeature(*feature, *out, *ts)
+		}
+	} else {
+		err = run(*out, *validators, *ts)
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "contractgen:", err)
 		os.Exit(1)
 	}

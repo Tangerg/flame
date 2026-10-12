@@ -335,13 +335,15 @@ func (t *tsEmitter) define(name string, node *schema) {
 	switch {
 	case len(node.Enum) > 0:
 		t.line("export type %s = %s;", name, unionOf(quoteAll(node.Enum)))
-	case len(node.OneOf) > 0:
+	case len(node.OneOf) > 0 && len(node.Properties) > 0:
 		t.line("export type %s =", name)
 		for _, branch := range node.OneOf {
 			t.line("  | %s", t.branch(node, branch))
 		}
 		t.trimTrailingNewline()
 		t.out.WriteString(";\n")
+	case node.Type != schemaTypeObject || len(node.AnyOf) > 0 || len(node.OneOf) > 0 || node.Ref != "" || node.TypeScriptType != "" || node.AdditionalProps != nil:
+		t.line("export type %s = %s;", name, t.typeOf(node))
 	default:
 		t.line("export interface %s {", name)
 		t.out.WriteString(t.objectBody(node, ""))
@@ -456,6 +458,13 @@ func (t tsTypes) typeOf(node *schema) string {
 		}
 		return unionOf(parts)
 	}
+	if len(node.OneOf) > 0 {
+		parts := make([]string, 0, len(node.OneOf))
+		for _, member := range node.OneOf {
+			parts = append(parts, t.typeOf(member))
+		}
+		return unionOf(parts)
+	}
 	if len(node.Enum) > 0 {
 		return unionOf(quoteAll(node.Enum))
 	}
@@ -492,10 +501,10 @@ func (t tsTypes) keyword(name schemaType, node *schema) string {
 		}
 		return element + "[]"
 	case schemaTypeObject:
-		if child, ok := node.AdditionalProps.(*schema); ok {
-			return "Record<string, " + t.typeOf(child) + ">"
-		}
 		if len(node.Properties) == 0 {
+			if child, ok := node.AdditionalProps.(*schema); ok {
+				return "Record<string, " + t.typeOf(child) + ">"
+			}
 			return "Record<string, never>"
 		}
 		var fields []string
@@ -506,7 +515,11 @@ func (t tsTypes) keyword(name schemaType, node *schema) string {
 			}
 			fields = append(fields, fmt.Sprintf("%s%s: %s", propertyKey(property), optionalMark(node, property), t.typeOf(child)))
 		}
-		return "{ " + strings.Join(fields, "; ") + " }"
+		object := "{ " + strings.Join(fields, "; ") + " }"
+		if child, ok := node.AdditionalProps.(*schema); ok {
+			return object + " & Record<string, " + t.typeOf(child) + ">"
+		}
+		return object
 	default:
 		panic("contractgen: no TypeScript type for JSON type " + string(name))
 	}

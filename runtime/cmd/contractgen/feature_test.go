@@ -1,0 +1,146 @@
+package main
+
+import (
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/scope/core/jsonschema"
+)
+
+type featureStatus string
+
+func (featureStatus) JSONSchemaEnum() []string { return []string{"open", "resolved"} }
+
+type featureInput struct {
+	Status   featureStatus `json:"status"`
+	Revision int64         `json:"revision"`
+}
+type featureOutput struct {
+	Accepted bool `json:"accepted"`
+}
+
+type featurePage[T any] struct {
+	Rows []T `json:"rows"`
+}
+
+func TestFeatureGenerationPreservesGenericOwnerReferences(t *testing.T) {
+	method, err := pluginsdk.NewMethod[struct{}, featurePage[featureOutput]](pluginsdk.MethodConfig{Name: "acme/read", Kind: pluginsdk.Query, Target: "installation", Description: "Read."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal([]pluginsdk.MethodDescriptor{method.Descriptor()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := buildFeature(data); err != nil {
+		t.Fatalf("generic owner references cannot be generated: %v", err)
+	}
+}
+
+func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
+	method, err := pluginsdk.NewMethod[featureInput, featureOutput](pluginsdk.MethodConfig{Name: "acme/reviews.update", Kind: pluginsdk.Mutation, Target: "installation", Description: "Update review."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor := method.Descriptor()
+	data, err := json.Marshal([]pluginsdk.MethodDescriptor{descriptor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := buildFeature(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(generated.methods) != 1 || generated.methods[0].Name != descriptor.Name || !strings.Contains(generated.typescript, `"open" | "resolved"`) || !strings.Contains(generated.typescript, "revision: number;") || !strings.Contains(generated.typescript, "accepted: boolean;") {
+		t.Fatalf("generated surface lost contract: %+v\n%s", generated.methods, generated.typescript)
+	}
+	original, err := jsonschema.Parse(descriptor.Input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := strings.TrimPrefix(generated.methods[0].Input, "schema.json")
+	bundle, err := json.Marshal(struct {
+		Schema string                    `json:"$schema"`
+		Ref    string                    `json:"$ref"`
+		Defs   map[string]jsontext.Value `json:"$defs"`
+	}{schemaDialect, root, generated.definitions})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected, err := jsonschema.Parse(bundle)
+	if err != nil {
+		t.Fatalf("generated Schema references are broken: %v", err)
+	}
+	for _, raw := range []string{`{"status":"open","revision":1}`, `{"status":"unknown","revision":1}`, `{"status":"open"}`, `{"status":"open","revision":null}`, `{"status":"open","revision":1,"extra":true}`} {
+		if (original.Validate([]byte(raw)) == nil) != (projected.Validate([]byte(raw)) == nil) {
+			t.Fatalf("generation changed admission for %s", raw)
+		}
+	}
+}
+
+func TestFeatureGenerationRefusesDuplicatesAndExternalSchemas(t *testing.T) {
+	method, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "acme/read", Kind: pluginsdk.Query, Target: "installation", Description: "Read."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor := method.Descriptor()
+	for _, descriptors := range [][]pluginsdk.MethodDescriptor{{descriptor, descriptor}, {{Name: "bad", Kind: pluginsdk.Query, Target: "installation", Description: "Read.", Input: []byte(`{"$ref":"https://example.invalid/schema"}`), Output: descriptor.Output}}} {
+		data, err := json.Marshal(descriptors)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := buildFeature(data); err == nil {
+			t.Fatalf("invalid feature contract admitted: %s", data)
+		}
+	}
+	if featureTypeName("a/b") == featureTypeName("a_2fb") {
+		t.Fatal("distinct semantic names share a generated identifier")
+	}
+}
+
+func TestFeatureTypesUseTheExistingEmitterForScalarAndNullableFrames(t *testing.T) {
+	for _, raw := range []string{`{"type":"string"}`, `{"oneOf":[{"type":"string"},{"type":"null"}]}`, `{"type":"boolean"}`, `{"type":"object","additionalProperties":{"type":"string"}}`} {
+		node, err := featureNode([]byte(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		emitter := &tsEmitter{tsTypes: tsTypes{set: &schemaSet{defs: map[string]*schema{"Value": node}}}}
+		emitter.define("Value", node)
+		if strings.Contains(emitter.out.String(), "interface") {
+			t.Fatalf("scalar/nullable frame was emitted as an object: %s", emitter.out.String())
+		}
+	}
+}
+
+func TestFeatureNullableObjectPreservesRequiredProperties(t *testing.T) {
+	node, err := featureNode([]byte(`{"type":["object","null"],"properties":{"revision":{"type":"integer"}},"required":["revision"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	emitter := tsTypes{set: &schemaSet{defs: make(map[string]*schema)}}
+	value := emitter.typeOf(node)
+	if !strings.Contains(value, "revision: number") || !strings.Contains(value, "null") {
+		t.Fatalf("nullable object lost its shape: %s", value)
+	}
+}
+
+func TestFeatureGenerationCannotOverwriteDescriptorSource(t *testing.T) {
+	directory := t.TempDir()
+	source := filepath.Join(directory, "methods.generated.json")
+	data := []byte(`[{"authored":"retained"}]`)
+	if err := os.WriteFile(source, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runFeature(source, directory, ""); err == nil {
+		t.Fatal("generator overwrote its descriptor input")
+	}
+	retained, err := os.ReadFile(source)
+	if err != nil || string(retained) != string(data) {
+		t.Fatalf("source changed: %s, %v", retained, err)
+	}
+}

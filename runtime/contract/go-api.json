@@ -1149,6 +1149,333 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/runtime/plugin",
+      "imports": [
+        "context",
+        "encoding/json/jsontext",
+        "github.com/Tangerg/go-sdk/mcp",
+        "github.com/Tangerg/scope/core/tool"
+      ],
+      "constants": [
+        {
+          "name": "InvocationKey",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/invocationId\""
+        },
+        {
+          "name": "Mutation",
+          "type": "MethodKind",
+          "value": "\"command\""
+        },
+        {
+          "name": "Query",
+          "type": "MethodKind",
+          "value": "\"query\""
+        },
+        {
+          "name": "ReceiptMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/commands.get\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "Call",
+          "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, name string, input P) (R, error)"
+        },
+        {
+          "name": "CallCommand",
+          "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, name string, id string, input P) (R, error)"
+        },
+        {
+          "name": "DecodeReply",
+          "signature": "func[T any](data []byte) (T, error)"
+        },
+        {
+          "name": "InputDigest",
+          "signature": "func[T any](input T) (string, error)"
+        },
+        {
+          "name": "InvocationID",
+          "signature": "func(ctx context.Context) (string, error)"
+        },
+        {
+          "name": "NewMethod",
+          "signature": "func[P, R any](config MethodConfig) (*Method[P, R], error)"
+        },
+        {
+          "name": "ReadReceipt",
+          "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, id string, method string, input P) (R, bool, error)"
+        },
+        {
+          "name": "RegisterClient",
+          "signature": "func[P, R any](client *mcp.Client, name string) error"
+        },
+        {
+          "name": "RegisterCommand",
+          "signature": "func[P, R any](server *mcp.Server, name string, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
+        },
+        {
+          "name": "RegisterServer",
+          "signature": "func[P, R any](server *mcp.Server, name string, classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
+        },
+        {
+          "name": "RegisterTools",
+          "signature": "func(server *mcp.Server, tools ...tool.Tool) error"
+        },
+        {
+          "name": "Reply",
+          "signature": "func[T any](value T, err error, classify func(error) string) (*Result[T], error)"
+        },
+        {
+          "name": "ToolCommandID",
+          "signature": "func(ctx context.Context) (string, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Command",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string"
+            },
+            {
+              "name": "Input",
+              "type": "T"
+            }
+          ]
+        },
+        {
+          "name": "Failure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Code",
+              "type": "string",
+              "tag": "json:\"code\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Method",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Call",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, input P) (R, error)"
+            },
+            {
+              "name": "CallCommand",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, id string, input P) (R, error)"
+            },
+            {
+              "name": "Descriptor",
+              "signature": "func() MethodDescriptor"
+            },
+            {
+              "name": "Name",
+              "signature": "func() string"
+            },
+            {
+              "name": "RegisterClient",
+              "signature": "func(client *mcp.Client) error"
+            },
+            {
+              "name": "RegisterServer",
+              "signature": "func(server *mcp.Server, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
+            }
+          ]
+        },
+        {
+          "name": "MethodConfig",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string"
+            },
+            {
+              "name": "Kind",
+              "type": "MethodKind"
+            },
+            {
+              "name": "Target",
+              "type": "string"
+            },
+            {
+              "name": "Description",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "MethodDescriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Kind",
+              "type": "MethodKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Target",
+              "type": "string",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "Input",
+              "type": "jsontext.Value",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "Output",
+              "type": "jsontext.Value",
+              "tag": "json:\"output\""
+            }
+          ]
+        },
+        {
+          "name": "MethodKind",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Params",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ParamsBase",
+              "type": "mcp.ParamsBase"
+            },
+            {
+              "name": "Input",
+              "type": "T",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "CommandID",
+              "type": "string",
+              "tag": "json:\"commandId,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "GetMeta",
+              "signature": "func() map[string]any"
+            },
+            {
+              "name": "SetMeta",
+              "signature": "func(x map[string]any)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
+        },
+        {
+          "name": "Receipt",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Found",
+              "type": "bool",
+              "tag": "json:\"found\""
+            },
+            {
+              "name": "Reply",
+              "type": "jsontext.Value",
+              "tag": "json:\"reply,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReceiptRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Method",
+              "type": "string",
+              "tag": "json:\"method\""
+            },
+            {
+              "name": "InputDigest",
+              "type": "string",
+              "tag": "json:\"inputDigest\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
+        },
+        {
+          "name": "Result",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ResultBase",
+              "type": "mcp.ResultBase"
+            },
+            {
+              "name": "Value",
+              "type": "*T",
+              "tag": "json:\"value,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "GetMeta",
+              "signature": "func() map[string]any"
+            },
+            {
+              "name": "SetMeta",
+              "signature": "func(x map[string]any)"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime/protocol",
       "imports": [
         "encoding/json/jsontext",
