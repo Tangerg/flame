@@ -27,7 +27,7 @@ const styles = stylex.create({
     overflowWrap: "anywhere",
     whiteSpace: "pre-wrap",
   },
-  meta: { color: color.fgMuted },
+  meta: { color: color.fgMuted, minWidth: 0, overflowWrap: "anywhere" },
 });
 
 export function Panel({

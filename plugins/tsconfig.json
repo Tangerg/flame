@@ -8,7 +8,9 @@
     "skipLibCheck": true,
     "noEmit": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node", "react", "react-dom"]
   },
-  "include": ["src"]
+  "include": ["src", "*/src/*.tsx", "test"]
 }

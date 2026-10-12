@@ -446,9 +446,10 @@ try {
   const builtPlugins = join(fixture, "managed-packages");
   await buildPlugins({ os: "linux", arch: goarch, output: builtPlugins });
   const managed = await readdir(builtPlugins);
-  const developmentPackages = new Set(
-    managed.map((feature) => join(repository, "plugins", feature)),
-  );
+  const developmentPackages = new Set([
+    ...managed.map((feature) => join(repository, "plugins", feature)),
+    join(repository, "plugins", "node_modules"),
+  ]);
   await cp(join(repository, "plugins"), join(fixture, "plugins"), {
     recursive: true,
     filter: (source) => !developmentPackages.has(source),
@@ -819,7 +820,7 @@ try {
   const trajectory = await openPanel(installed.trajectory.title, run.runId);
   await guest(
     trajectory.id,
-    "document.querySelectorAll('details').forEach(e => e.open = true); true",
+    "document.querySelectorAll('[data-trajectory-record] button[aria-expanded=false]').forEach(e => e.click()); true",
   );
   await pageWith("Native fixture observation");
   const refreshedRun = await rpc("runs.start", {
@@ -836,7 +837,7 @@ try {
   );
   await guest(
     trajectory.id,
-    "document.querySelectorAll('details').forEach(e => e.open = true); true",
+    "document.querySelectorAll('[data-trajectory-record] button[aria-expanded=false]').forEach(e => e.click()); true",
   );
   await pageWith("Refresh trajectory observation.");
   await closePanel(installed.trajectory.title, trajectory.id);

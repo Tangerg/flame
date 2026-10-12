@@ -375,11 +375,6 @@
 }
 
 html {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }
 img,
@@ -394,10 +389,7 @@ html.theme-dark .msg-content img:not([class]) {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 body {
-  font-size: var(--fs-ui-md);
-  font-weight: var(--fw-regular);
-  line-height: var(--leading-body);
-  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 @layer base {
   h1,
@@ -475,15 +467,6 @@ body {
   animation-iteration-count: 1 !important;
 }
 
-html.theme-light,
-html.theme-light body {
-  background: var(--color-bg);
-}
-
-html.theme-dark,
-html.theme-dark body {
-  background: var(--color-bg);
-}
 html.theme-dark {
   --wash-step: max(3%, calc(var(--depth-step) / 2));
 

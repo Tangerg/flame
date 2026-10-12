@@ -26,7 +26,7 @@ tasks:
     summary: Install frontend dependencies
     deps:
       - task: install:runtime-client:deps
-      - task: build:ui-library
+      - task: build:portable-views
     run: once
     dir: frontend
     sources:
@@ -101,6 +101,38 @@ tasks:
       - tsconfig.json
     generates:
       - dist/**/*
+    cmds:
+      - npm run build
+
+  install:portable-views:deps:
+    summary: Install the first-party page toolchain
+    run: once
+    dir: ../plugins
+    deps:
+      - task: build:ui-library
+      - task: install:runtime-client:deps
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm ci
+
+  build:portable-views:
+    summary: Build shared UI resources for first-party plugin pages
+    run: once
+    dir: ../plugins
+    deps:
+      - task: install:portable-views:deps
+    sources:
+      - src/**/*
+      - "*/src/*.tsx"
+      - "*/plugin.json"
+      - build-views.mjs
+      - ../ui/dist/**/*
+    generates:
+      - "*/views/*.html"
     cmds:
       - npm run build
 

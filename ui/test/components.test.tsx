@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Brain } from "@flame/icons/react";
 import {
   Button,
+  Disclosure,
   Checkbox,
   FontScaleProvider,
   IconButton,
@@ -32,6 +33,24 @@ describe("shared controls", () => {
     expect(screen.getByRole("button").className).toContain(
       Object.values(vocab.negative).find((value) => typeof value === "string"),
     );
+  });
+  it("keeps disclosure content lazy and exposes its expanded state", async () => {
+    const displayed = vi.fn();
+    function Evidence() {
+      displayed();
+      return <p>Recorded evidence</p>;
+    }
+    render(
+      <Disclosure title="Inspect observation">
+        <Evidence />
+      </Disclosure>,
+    );
+    const trigger = screen.getByRole("button", { name: "Inspect observation" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(displayed).not.toHaveBeenCalled();
+    fireEvent.click(trigger);
+    await screen.findByText("Recorded evidence");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
   });
   it("keeps checkbox changes at the controlled consumer", () => {
     const change = vi.fn();

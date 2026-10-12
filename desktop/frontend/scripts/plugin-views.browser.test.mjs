@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createSocket } from "node:dgram";
 import { once } from "node:events";
 import { createServer } from "vite";
 import { chromium, webkit, expect } from "@playwright/test";
+const reviewDirectory = await mkdtemp(join(tmpdir(), "flame-page-review-"));
+console.log("Review snapshots:", reviewDirectory);
+const axeSource = await readFile(fileURLToPath(import.meta.resolve("axe-core/axe.min.js")), "utf8");
+const uiStyles = `/@fs${fileURLToPath(import.meta.resolve("@flame/ui/styles.css"))}`;
 const themeModule = `/@fs${fileURLToPath(import.meta.resolve("@flame/ui/theme"))}`;
+async function choose(frame, label, option) {
+  await frame.getByRole("combobox", { name: label }).click();
+  await frame.getByRole("option", { name: option, exact: true }).click();
+}
 const html = await readFile(
   new URL("../../../plugins/trajectory/views/trajectory.html", import.meta.url),
   "utf8",
@@ -45,8 +55,11 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     const server = await createServer({
       configFile: false,
       root: process.cwd(),
-      resolve: { alias: { "@": new URL("../src", import.meta.url).pathname } },
-      optimizeDeps: { noDiscovery: true, include: ["react"] },
+      resolve: {
+        dedupe: ["react", "react-dom", "@base-ui/react"],
+        alias: { "@": new URL("../src", import.meta.url).pathname },
+      },
+      optimizeDeps: { noDiscovery: true, include: ["react", "react/jsx-runtime"] },
       server: {
         host: "127.0.0.1",
         port: 0,
@@ -73,9 +86,12 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
                 return;
               }
               response.setHeader("Content-Type", "text/html");
-              response.end(`<!doctype html>${csp}<link rel="stylesheet" href="/src/styles/globals.css"><style>html,body{min-width:0}</style><div id="frame" style="height:600px"></div><script type="module">
+              response.end(`<!doctype html>${csp}<link rel="stylesheet" href="${uiStyles}"><link rel="stylesheet" href="/src/styles/globals.css"><style>html,body{min-width:0}</style><div id="frame" style="height:600px"></div><script type="module">
       import {openPluginViewFrame} from '/src/plugins/builtin/settings/plugins-pane/adapters/pluginViewFrame.ts';
       import {captureTheme} from '${themeModule}'; window.captureTheme=captureTheme;
+      import {uiTypeLadderCssVariables} from '/src/plugins/builtin/theme/kit/typeLadder.ts';
+      import {productIconScaleCssVariables} from '/src/lib/productIconScale.ts';
+      window.projectFont=font=>Object.entries({...uiTypeLadderCssVariables(font),...productIconScaleCssVariables(font)}).forEach(([key,value])=>document.documentElement.style.setProperty(key,value));
       import {browserPluginCarrier} from '/src/platform/browserPluginCarrier.ts';
       window.mount=(html,initial,scheme="light")=>{
        window.reads=[];window.loads=0;window.failures=[];window.controller=new AbortController();
@@ -208,6 +224,91 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       return;
     }
     const frame = page.frameLocator("iframe").frameLocator("iframe");
+    async function reviewAppearance(label) {
+      const before = await page.evaluate(() => ({
+        loads: window.loads,
+        reads: window.reads.length,
+      }));
+      await frame.locator("html").evaluate((root, source) => {
+        const script = root.ownerDocument.createElement("script");
+        script.textContent = source;
+        root.ownerDocument.head.append(script);
+      }, axeSource);
+      for (const scheme of ["light", "dark"]) {
+        await page.setViewportSize({ width: 320, height: 720 });
+        await page.evaluate((scheme) => {
+          const root = document.documentElement;
+          root.classList.toggle("theme-dark", scheme === "dark");
+          window.projectFont(18);
+          window.frameController.updateTheme(window.captureTheme(root, scheme, 18));
+        }, scheme);
+        await expect(frame.locator("html")).toHaveAttribute("data-flame-ui-font-size", "18");
+        const extent = await frame.locator("html").evaluate((root) => ({
+          width: root.clientWidth,
+          scroll: root.scrollWidth,
+          boxes: [...root.querySelectorAll("*")]
+            .filter(
+              (el) =>
+                el.scrollWidth > el.clientWidth && getComputedStyle(el).overflowX === "visible",
+            )
+            .slice(0, 12)
+            .map((el) => ({
+              tag: el.tagName,
+              id: el.id,
+              width: el.clientWidth,
+              scroll: el.scrollWidth,
+              display: getComputedStyle(el).display,
+              text: el.textContent.slice(0, 60),
+            })),
+        }));
+        if (extent.scroll > extent.width) console.log(label, JSON.stringify(extent));
+        const preview = await frame.locator("html").evaluate((root) => {
+          const copy = root.cloneNode(true);
+          copy.querySelectorAll("script").forEach((script) => script.remove());
+          return "<!doctype html>" + copy.outerHTML;
+        });
+        await writeFile(join(reviewDirectory, `${label}-${scheme}.html`), preview);
+        assert.equal(extent.scroll <= extent.width, true, `${label} must reflow at 320px`);
+        const failures = await frame.locator("html").evaluate(async (root) => {
+          const result = await root.ownerDocument.defaultView.axe.run(root.ownerDocument, {
+            runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] },
+          });
+          return result.violations.map((issue) => ({
+            id: issue.id,
+            nodes: issue.nodes.map((node) => ({
+              target: node.target,
+              reason: node.failureSummary,
+            })),
+          }));
+        });
+        assert.deepEqual(failures, [], `${label} ${scheme} accessibility`);
+        await frame
+          .locator("html")
+          .evaluate((root) => root.ownerDocument.defaultView.scrollTo(0, 0));
+        await page.screenshot({ path: `/tmp/flame-${label}-${scheme}.png` });
+      }
+      await frame.locator("html").evaluate((root) => (root.dir = "rtl"));
+      assert.equal(
+        await frame.locator("html").evaluate((root) => root.scrollWidth <= root.clientWidth),
+        true,
+        `${label} RTL reflow`,
+      );
+      await frame.locator("html").evaluate((root) => (root.dir = "ltr"));
+      await page.setViewportSize({ width: 640, height: 720 });
+      await frame.locator("html").evaluate((root) => (root.style.zoom = "2"));
+      assert.equal(
+        await frame.locator("html").evaluate((root) => root.scrollWidth <= root.clientWidth),
+        true,
+        `${label} 200% zoom`,
+      );
+      await frame.locator("html").evaluate((root) => (root.style.zoom = ""));
+      assert.deepEqual(
+        await page.evaluate(() => ({ loads: window.loads, reads: window.reads.length })),
+        before,
+        "appearance cannot reload resources or business facts",
+      );
+    }
+
     await frame.getByText("5 recorded observations loaded on this page.").waitFor();
     assert.equal(
       await frame.locator("html").evaluate((element) => element.style.colorScheme),
@@ -218,11 +319,12 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assert.equal(await page.evaluate(() => window.loads), 1);
     assert.equal(await frame.locator("img").count(), 0);
     const unknown = frame.locator('[data-trajectory-record="model:call-1"]');
-    await unknown.locator("summary").click();
+    await unknown.getByRole("button").first().click();
     await unknown.getByText("Usage was not recorded for this call.").waitFor();
+    await reviewAppearance("trajectory");
     assert.equal(await unknown.getByText("Wall duration (ms)", { exact: true }).count(), 0);
     const zeros = frame.locator('[data-trajectory-record="model:zero-call"]');
-    await zeros.locator("summary").click();
+    await zeros.getByRole("button").first().click();
     await zeros.getByText("Input tokens", { exact: true }).waitFor();
     assert.deepEqual(await zeros.locator("dd").allTextContents(), [
       "run-2",
@@ -236,35 +338,42 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     ]);
     assert.equal(await zeros.getByText("Cache write tokens", { exact: true }).count(), 0);
     const tool = frame.locator('[data-trajectory-record="item:tool-1"]');
-    await tool.locator("summary").click();
+    await tool.getByRole("button").first().click();
     await tool.getByText("Execution duration (ms)", { exact: true }).waitFor();
     assert.equal(await tool.locator("dd").last().textContent(), "0");
     const reasoning = frame.locator('[data-trajectory-record="item:reasoning-1"]');
-    await reasoning.locator("summary").click();
+    await reasoning.getByRole("button").first().click();
     await reasoning.getByText("Reasoning was redacted.").waitFor();
     assert.doesNotMatch(await reasoning.textContent(), /must-never-render/);
     await frame.getByRole("searchbox").fill("must-never-render");
     await frame.getByText("No records on this page match this filter.").waitFor();
     await frame.getByRole("searchbox").fill("");
-    await frame.getByRole("combobox", { name: "Run filter" }).selectOption("run-2");
-    assert.equal(await frame.locator("details").count(), 1);
-    await frame.getByRole("combobox", { name: "Run filter" }).selectOption("");
-    await frame.getByRole("combobox", { name: "Observation type" }).selectOption("attention");
-    assert.equal(await frame.locator("details").count(), 1);
-    await frame.getByRole("combobox", { name: "Observation type" }).selectOption("all");
-    await frame.locator('[data-trajectory-record="item:image-1"] summary').click();
+    await choose(frame, "Run filter", "run-2");
+    assert.equal(await frame.locator("[data-trajectory-record]").count(), 1);
+    await choose(frame, "Run filter", "All Runs");
+    await choose(frame, "Observation type", "Needs attention");
+    assert.equal(await frame.locator("[data-trajectory-record]").count(), 1);
+    await choose(frame, "Observation type", "All observations");
+    await frame.locator('[data-trajectory-record="item:image-1"] button[aria-expanded]').click();
     await frame.locator("img").waitFor();
     await frame.locator("img").evaluate((element) => {
       if (element.complete) return;
       return new Promise((resolve) => (element.onload = element.onerror = resolve));
     });
     assert.equal(await frame.locator("img").evaluate((element) => element.naturalWidth), 1);
-    assert.equal(await frame.getByRole("button").count(), 3);
+    assert.equal(
+      await frame.getByRole("button", { name: /^(Refresh|Newer records|Older records)$/ }).count(),
+      3,
+    );
+    assert.equal(
+      await frame.getByRole("button", { name: /^(Stop|Resume|Steer|Continue)$/ }).count(),
+      0,
+    );
     await frame.getByRole("button", { name: "Older records" }).click();
     await page.waitForFunction(() => window.reads.length === 1);
     assert.equal(await page.evaluate(() => window.reads[0].cursor), "next-fixture");
     await frame.getByText("1 recorded observations loaded on this page.").waitFor();
-    assert.equal(await frame.locator("details").count(), 1);
+    assert.equal(await frame.locator("[data-trajectory-record]").count(), 1);
     assert.equal(await frame.locator('[data-trajectory-record="model:call-1"]').count(), 0);
     await page.evaluate(() => (window.readFailure = true));
     await frame.getByRole("button", { name: "Newer records" }).click();
@@ -353,6 +462,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
     await frame.getByRole("searchbox").fill("");
     assert.equal(await page.evaluate(() => window.reads.length), 0);
+    await reviewAppearance("memory");
     const loads = await page.evaluate(() => window.loads);
     await page.evaluate(() => {
       document.documentElement.style.setProperty("--color-accent", "#7344aa");
@@ -402,7 +512,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       initial: usage,
     });
     await frame.getByText("Recorded usage loaded.").waitFor();
-    await page.setViewportSize({ width: 640, height: 720 });
+    await page.setViewportSize({ width: 320, height: 720 });
     const scrollable = frame.getByRole("region", { name: "Scrollable usage breakdown" });
     await scrollable.focus();
     await scrollable.press("ArrowRight");
@@ -422,7 +532,8 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       "provider <script> injectedNot reported100000",
     );
     assert.equal(await frame.locator("script").count(), 2);
-    await frame.getByRole("combobox", { name: "Group by" }).selectOption("byModel");
+    await reviewAppearance("usage");
+    await choose(frame, "Group by", "Model");
     assert.equal(await frame.locator("tbody tr").count(), 1);
     assert.equal(await frame.locator("tbody td").first().textContent(), "0.00");
     await frame.getByRole("searchbox", { name: "Filter" }).fill("absent");
@@ -505,6 +616,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
         await frame.getByText("Release", { exact: true }).waitFor();
         await frame.getByText("broken: Invalid document", { exact: true }).waitFor();
       }
+      await reviewAppearance(`skills-${initial.type}`);
       if (initial.type === "detail") {
         await frame.getByText("Read instructions").click();
         await frame.getByText(initial.data.instructions, { exact: true }).waitFor();
@@ -563,11 +675,12 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       await frame.locator("html").evaluate((element) => element.style.colorScheme),
       "dark",
     );
-    await frame.getByRole("combobox", { name: "Schedule status" }).selectOption("disabled");
+    await reviewAppearance("schedules");
+    await choose(frame, "Schedule status", "Disabled");
     assert.equal(await frame.locator("article").count(), 1);
     assert.equal(await frame.getByText("Not scheduled", { exact: true }).count(), 1);
     assert.equal(await frame.getByText("Never fired", { exact: true }).count(), 1);
-    await frame.getByRole("combobox", { name: "Schedule status" }).selectOption("");
+    await choose(frame, "Schedule status", "All statuses");
     await page.evaluate(() => (window.readFailure = true));
     await frame.getByRole("button", { name: "Next page" }).click();
     await frame.getByRole("alert").waitFor();
@@ -613,31 +726,38 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       initial: diffInitial,
     });
     await frame.getByText("Workspace diff loaded.").waitFor();
-    assert.equal(await frame.locator(".focused").count(), 1);
+    assert.equal(await frame.locator('[data-focused="true"]').count(), 1);
     assert.equal(
-      await frame.locator(".text").first().textContent(),
+      await frame.locator("table code").first().textContent(),
       "<script> must render as text",
     );
     assert.match(
-      await frame.locator("summary").first().textContent(),
+      await frame.locator("[data-diff-file] button[aria-expanded]").first().textContent(),
       /old.ts → new<script>.ts.*renamed.*\+0 −0/,
     );
     await frame.getByText(/This is a partial diff/).waitFor();
-    assert.doesNotMatch(await frame.locator("summary").last().textContent(), /\+0|−0/);
+    assert.doesNotMatch(
+      await frame.locator("[data-diff-file] button[aria-expanded]").last().textContent(),
+      /\+0|−0/,
+    );
     await frame.getByText("Binary content is not displayed.").waitFor();
     const fitsFrame = () =>
       frame.locator("html").evaluate((node) => node.scrollWidth <= node.clientWidth);
     assert.equal(await fitsFrame(), true, "long rows scroll inside the file, not the page");
-    await frame.getByRole("combobox", { name: "Layout" }).selectOption("split");
-    assert.equal(await frame.locator("table.split tr").last().locator("td").count(), 4);
+    await reviewAppearance("diff");
+    await choose(frame, "Layout", "Side by side");
+    assert.equal(
+      await frame.locator('table[data-layout="split"] tbody tr').last().locator("td").count(),
+      4,
+    );
     assert.equal(await fitsFrame(), true);
     await frame.getByRole("searchbox").fill("binary");
-    assert.equal(await frame.locator("details").count(), 1);
+    assert.equal(await frame.locator("[data-diff-file]").count(), 1);
     await frame.getByRole("searchbox").fill("");
     await page.evaluate(() => (window.readFailure = true));
     await frame.getByRole("button", { name: "Refresh" }).click();
     await frame.getByRole("alert").waitFor();
-    assert.equal(await frame.locator("details").count(), 2);
+    assert.equal(await frame.locator("[data-diff-file]").count(), 2);
     assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
     await page.evaluate(() => (window.readFailure = false));
     await frame.getByRole("button", { name: "Refresh" }).click();
@@ -923,12 +1043,14 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     });
     await frame.getByRole("heading", { name: "Client diagnostics" }).waitFor();
     await expect(frame.getByRole("status")).toContainText("5 omitted");
-    await frame.locator("summary").click();
+    await reviewAppearance("diagnostics");
+    await frame.locator("#output button[aria-expanded]").click();
     assert.match(await frame.locator("pre").textContent(), /<img src=x/);
     assert.equal(await frame.locator("img").count(), 0);
-    await frame.getByRole("combobox").selectOption("metrics");
-    assert.equal(await frame.locator("table tr").count(), 5);
-    await frame.getByRole("combobox").selectOption("logs");
+    await choose(frame, "Telemetry signal", "Metrics");
+    await frame.locator("#output button[aria-expanded]").click();
+    await expect(frame.locator("#output dd")).toHaveCount(5);
+    await choose(frame, "Telemetry signal", "Logs");
     await frame.getByText("WARN · Recorded local log", { exact: true }).waitFor();
     await frame.getByRole("button", { name: "Refresh" }).click();
     await page.waitForFunction(() => window.reads.length === 1);
@@ -964,6 +1086,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       galleryHTML,
     );
     await frame.getByRole("heading", { name: "Flame icon gallery" }).waitFor();
+    await reviewAppearance("icon-gallery");
     await frame.getByRole("searchbox", { name: "Filter icons" }).fill("file-diff");
     await frame.getByText("FileDiff", { exact: true }).waitFor();
     await expect(frame.getByText("FileText", { exact: true })).toBeHidden();

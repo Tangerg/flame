@@ -29,6 +29,14 @@ const styles = stylex.create({
       ":is([data-highlighted])": surface.hover,
     },
   },
+  trigger: {
+    maxWidth: "100%",
+    height: "auto",
+    minHeight: "24px",
+    whiteSpace: "normal",
+    textAlign: "start",
+    overflowWrap: "anywhere",
+  },
 });
 
 export function Select({
@@ -36,22 +44,28 @@ export function Select({
   onValueChange,
   options,
   label,
+  id,
+  disabled,
 }: {
   value: string;
   onValueChange: (value: string) => void;
   options: readonly { value: string; label: string }[];
   label: string;
+  id?: string;
+  disabled?: boolean;
 }) {
   return (
     <SelectPrimitive.Root
       items={options}
       value={value}
+      disabled={disabled}
       onValueChange={(next) => {
         if (next !== null) onValueChange(next);
       }}
     >
       <SelectPrimitive.Trigger
-        render={<Button variant="outline" size="sm" />}
+        render={<Button variant="outline" size="sm" styles={styles.trigger} />}
+        id={id}
         aria-label={label}
       >
         <SelectPrimitive.Value />

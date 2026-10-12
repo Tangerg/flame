@@ -10,10 +10,21 @@
   }
 
   html {
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
     tab-size: 4;
     line-height: 1.5;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-size: var(--fs-ui-md);
+    font-weight: var(--fw-regular);
+    line-height: var(--leading-body);
   }
 
   hr {

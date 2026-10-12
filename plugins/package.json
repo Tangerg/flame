@@ -1,0 +1,30 @@
+{
+  "name": "@flame/portable-views",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-views.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src test */src/*.tsx build-views.mjs --deny-warnings",
+    "format:check": "prettier --check src test */src/*.tsx build-views.mjs package.json tsconfig.json",
+    "check:resources": "node build-views.mjs --check",
+    "test": "node --test test/read-view.test.ts",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run check:resources"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "@flame/ui": "file:../ui",
+    "@flame/icons": "file:../icons",
+    "@flame/runtime-contract": "file:../runtime/contract/typescript"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2",
+    "rolldown": "^1.2.13",
+    "@types/node": "^26.6.5",
+    "oxlint": "^1.87.0",
+    "prettier": "^3.9.10"
+  }
+}
