@@ -3,7 +3,7 @@
 ## Current stage
 
 Stage 1 complete: installation-owned selection and desired enablement.
-Stage 2a: public backend wire binding and refusal/uncertainty semantics implemented and verified.
+Stage 2a complete: public backend wire binding and refusal/uncertainty semantics implemented, verified and committed.
 Stage 2b is next: durable original operation binding before a generic host mutation entrance. The full proposal remains open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
@@ -12,6 +12,8 @@ Starting commit: 5262aadc002d40d415212ead3b311005c1c6a62f.
 Stage 1 commit: 869d4304.
 Incoming local main: 61645c2561b174042aa157aef21cc00cfba67a86.
 Integration commit: f5e4bdbc140ad4d24b6b723ffdfd908cdff515a3.
+Stage 2a commit: c4706b6b.
+Stage 2a main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Canonical progress file: docs/plugin-refactor-progress.md in this checkout. The user-requested /Users/tangerg/Desktop/flame/docs/plugin-refactor-progress.md points to this same file; it is not an independently edited copy.
 
 Read-only design inputs:
@@ -45,7 +47,7 @@ Read-only design inputs:
 
 ## In progress
 
-- Complete the Stage 2a commit/main synchronization. The generic host operation entrance remains unopened until original-binding persistence, retention, quiescence and receipt reconciliation are implemented.
+- The generic host operation entrance remains unopened until original-binding persistence, retention, quiescence and receipt reconciliation are implemented.
 - Next owner boundary: Runtime captures immutable routing/input/origin/parent/target evidence before backend dispatch; private backend receipts remain the sole business outcome. Derive held releases from unresolved commands at the same installation admission serialization point, rather than adding a refcount or a host business-result cache.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
@@ -146,6 +148,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 2a: the temporary SDK file proxy, independent author checkout and isolated module cache were removed by their owning temporary-directory lifetime. Backend/unit/integration checks have all returned; no task check process is running. No frontend build output was generated in this slice. The worktree is committed and clean after main synchronization; the active checkout and necessary development dependencies remain for Stage 2b.
 - Removed task-generated frontend/Icons/UI dist output, generated Icons/UI build sources and Runtime contract Vitest cache. Removed the task's offline-install debug log if present. All invoked checks have returned terminal success/failure; no task check process remains running.
 - Kept the active managed checkout, formal code/tests/docs and isolated development dependencies for the continuing refactor. Shared product source and Git configuration were not edited. Before the next frontend verification, rebuild Icons and UI to restore their generated prerequisites.
 - No remote push, publication, main-history mutation, production operation or credentialed action was performed.
