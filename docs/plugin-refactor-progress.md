@@ -4,7 +4,7 @@
 
 Stage 1 complete: installation-owned selection and desired enablement.
 Stage 2a complete: public backend wire binding and refusal/uncertainty semantics implemented, verified and committed.
-Stage 2b complete: existing Memory/Schedules human commands retain durable original binding and reconcile through owner receipt lookup. Local commit and incoming-main synchronization are being recorded. The generic host operation entrance and full proposal remain open.
+Stage 2b complete: existing Memory/Schedules human commands retain durable original binding and reconcile through owner receipt lookup. Committed and synchronized with local main. The generic host operation entrance and full proposal remain open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -13,6 +13,8 @@ Stage 1 commit: 869d4304.
 Incoming local main: 61645c2561b174042aa157aef21cc00cfba67a86.
 Integration commit: f5e4bdbc140ad4d24b6b723ffdfd908cdff515a3.
 Stage 2a commit: c4706b6b.
+Stage 2b commit: 1ea49486d7f3385e11fef7e395d43c901ca0b29d.
+Stage 2b main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2a main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Canonical progress file: docs/plugin-refactor-progress.md in this checkout. The user-requested /Users/tangerg/Desktop/flame/docs/plugin-refactor-progress.md points to this same file; it is not an independently edited copy.
 
@@ -145,7 +147,6 @@ Stage 2b verification:
 - Initial Runtime default-initialization check exceeded its existing 10-second availability deadline during the earlier full run. The unchanged check passed standalone and in the final full suite; no timeout/expectation was weakened and no unproven cause is claimed.
 - Not run: frontend UI/E2E/screenshot checks, as explicitly excluded; frontend static/build checks were not repeated because this slice changes only Go/backend behavior and owning documentation. Runtime protocol catalog did not change, so go generate was unnecessary. The pre-existing frontend consumer gate and independent published SDK version remain open.
 
-
 Stage 2a verification:
 
 - Passed: public SDK and Memory/managed-model regressions, including -race; independent Reviews go test -race ./..., go vet ./... and go build ./....
@@ -171,7 +172,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
-- Stage 2b: all invoked verification processes returned terminal success after repairs. Test-owned temporary databases/packages and helper processes were closed/removed by their owning test cleanup. No task scratch script or verification log was saved. No UI build output, shared configuration, remote publication or user-data operation was introduced. The active worktree and necessary dependencies remain for the full refactor.
+- Stage 2b: all invoked verification processes returned terminal success after repairs. Test-owned temporary databases/packages and helper processes were closed/removed by their owning test cleanup. No task scratch script or verification log was saved. No UI build output, shared configuration, remote publication or user-data operation was introduced. The slice was committed, incoming local main was already up to date, and the active checkout and necessary dependencies remain for the full refactor.
 
 - Stage 2a: the temporary SDK file proxy, independent author checkout and isolated module cache were removed by their owning temporary-directory lifetime. Backend/unit/integration checks have all returned; no task check process is running. No frontend build output was generated in this slice. The worktree is committed and clean after main synchronization; the active checkout and necessary development dependencies remain for Stage 2b.
 - Removed task-generated frontend/Icons/UI dist output, generated Icons/UI build sources and Runtime contract Vitest cache. Removed the task's offline-install debug log if present. All invoked checks have returned terminal success/failure; no task check process remains running.
