@@ -595,7 +595,7 @@ person may send the same request again. Clients present it as retryable and neve
 it on their own. Revoke and disable withdraw dispatch authority immediately; an already
 started effect can still finish or remain uncertain. Tool wrappers recheck current source
 authority, their exact realized connection configuration and the currency of the session
-that admitted them before dispatch (draft §7.5). Rotating credentials rejects old
+that admitted them before dispatch. Rotating credentials rejects old
 executables even before asynchronous reconciliation starts, and a frozen executable whose
 session was refused or replaced by a reconnect is rejected as "source connection is no
 longer current" instead of failing on the closed transport.
@@ -1487,13 +1487,17 @@ the session owner's cancellation cause before cleanup cancels temporary contexts
 Only the returned release handle transfers the live lifetime to its session owner;
 failure and panic keep cleanup with the handshake. Cleanup never reclassifies an
 ordinary transport failure as caller cancellation.
-Startup owns acquired sessions until it returns a live connection pool. An expired
-startup request or stopped session owner rejects that handoff, cancels configuration
-I/O and prevents later reads. The initializer joins session and launch-resource
-retirement before returning, retaining cleanup failures with the cancellation cause.
-An independent server failure or handshake timeout remains a tolerated failed entry
-while both initialization owners are live; an empty catalog follows the same
-admission and handoff rules.
+Runtime construction validates source declarations and admits their connection attempts
+without waiting for configuration I/O, handshakes or tool discovery. Every source
+connects independently under the Runtime lifetime. Plugin management stays available
+while a source is connecting; disable cancels its attempt and shutdown joins it.
+A construction caller's cancellation after admission cannot retire accepted attempts.
+Catalog publications include pending source identities atomically with executable tools.
+Waiting checkpoints capture their frozen MCP tool references; recovery defers validation
+only when a captured source is still connecting. This preserves waiting facts without
+granting resumption or blocking startup on unrelated sources. Once dependencies settle,
+resumption validates the exact configuration again. Checkpoints without these dependency
+references are incompatible and are not decoded through a fallback.
 Plugin realization describes current release and backend availability separately.
 Server listing and startup enumerate desired definitions without realizing plugin resources;
 these reads cannot overwrite the state of an admitted connection.

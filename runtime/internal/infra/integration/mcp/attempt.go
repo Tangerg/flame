@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"runtime/debug"
 	"sync"
 
@@ -83,10 +84,12 @@ func (c *Connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 }
 
 func (a *Attempt) Run() error {
-	a.once.Do(func() { close(a.start) })
+	a.startExecution()
 	<-a.done
 	return a.err
 }
+
+func (a *Attempt) startExecution() { a.once.Do(func() { close(a.start) }) }
 
 func (a *Attempt) Close() { a.cancel() }
 
@@ -95,6 +98,9 @@ func (a *Attempt) run() {
 	defer close(a.done)
 	defer a.cancel()
 	a.err = a.execute()
+	if a.err != nil && !errors.Is(a.err, context.Canceled) {
+		slog.ErrorContext(a.ctx, "mcp: connection attempt failed", "server.name", a.target.name().String(), "error", a.err)
+	}
 	c := a.owner
 	c.mu.Lock()
 	if c.currentAttempt(a) {
@@ -104,6 +110,7 @@ func (a *Attempt) run() {
 		} else {
 			a.target.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration)
 			a.target.attempt = nil
+			c.publishToolsLocked()
 		}
 	}
 	c.mu.Unlock()
@@ -171,6 +178,7 @@ func (c *Connections) failAttempt(attempt *Attempt, failure mcpserver.Connection
 	if c.currentAttempt(attempt) {
 		attempt.target.settle(nil, nil, mcpserver.ConnectionFailed, failure)
 		attempt.target.attempt = nil
+		c.publishToolsLocked()
 	}
 	c.mu.Unlock()
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -302,6 +303,23 @@ func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.B
 		}
 		_ = pool.Shutdown(context.WithoutCancel(t.Context()))
 	})
+	deadline, bounded := t.Deadline()
+	if !bounded {
+		deadline = time.Now().Add(10 * time.Second)
+	}
+	for {
+		pending := false
+		for _, status := range pool.Statuses() {
+			pending = pending || status.State == mcpserver.ConnectionConnecting
+		}
+		if !pending {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("connections did not settle: %+v", pool.Statuses())
+		}
+		time.Sleep(time.Millisecond)
+	}
 	return built, pool
 }
 

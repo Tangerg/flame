@@ -79,12 +79,16 @@ func (c *Connections) publishToolsLocked() {
 		return
 	}
 	var catalog []Executable
+	var pending []mcpserver.ID
 	for _, configuredServer := range c.servers {
+		if configuredServer.state == mcpserver.ConnectionConnecting {
+			pending = append(pending, configuredServer.id)
+		}
 		if configuredServer.session != nil {
 			catalog = append(catalog, configuredServer.tools...)
 		}
 	}
-	c.onTools(catalog)
+	c.onTools(catalog, pending)
 }
 
 // Shutdown rejects new operations, joins all admitted dials, and closes every

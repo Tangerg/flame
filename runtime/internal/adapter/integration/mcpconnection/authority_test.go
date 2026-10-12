@@ -50,10 +50,12 @@ func TestFailedScheduleToolInvalidatesReadsOnlyAfterAdmittedDispatch(t *testing.
 		}
 	})
 	var tools []toolcontract.Tool
-	pool.SetToolSink(func(current []toolcontract.Tool) { tools = current })
+	awaitPoolStartup(t, pool)
+	pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current })
 	if len(tools) != 1 {
 		t.Fatalf("tools = %d, want one admitted remote tool", len(tools))
 	}
+	notices = nil
 	binding, err := toolcontract.Bind(tools[0])
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +117,8 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				}
 			})
 			var initial []toolcontract.Tool
-			pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
+			awaitPoolStartup(t, pool)
+			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { initial = tools })
 			if len(initial) != 1 {
 				t.Fatalf("initial tools = %d, want 1", len(initial))
 			}
@@ -155,7 +158,8 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				t.Fatal("rejected invocation reached the remote server")
 			}
 			var replacement []toolcontract.Tool
-			pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
+			awaitPoolStartup(t, pool)
+			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { replacement = tools })
 			if err := connectPool(pool, t.Context(), server.ID()); err != nil {
 				t.Fatal(err)
 			}
@@ -228,7 +232,8 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
 	var initial []toolcontract.Tool
-	pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
+	awaitPoolStartup(t, pool)
+	pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { initial = tools })
 	if len(initial) != 1 {
 		t.Fatalf("initial tools = %d, want 1", len(initial))
 	}
@@ -245,7 +250,8 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 		return err
 	}
 	var replacement []toolcontract.Tool
-	pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
+	awaitPoolStartup(t, pool)
+	pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { replacement = tools })
 	if err := pool.Refuse(t.Context(), server.ID(), mcpserver.FailureConfiguration); err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +300,8 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	server.URL = currentRemote.URL
 	registry.set(server)
 	var replacement []toolcontract.Tool
-	pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
+	awaitPoolStartup(t, pool)
+	pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { replacement = tools })
 	if err := connectPool(pool, t.Context(), server.ID()); err != nil {
 		t.Fatal(err)
 	}

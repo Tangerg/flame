@@ -10,9 +10,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -26,6 +28,7 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	MCPReferences       *[]string                           `json:"mcp_references"`
 	Options             corechat.Options                    `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
 	Tree                jsontext.Value                      `json:"tree"`
@@ -72,6 +75,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	mcpSources          []mcpserver.ID
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
@@ -129,12 +133,14 @@ func encodeInteractionCheckpointPayload(
 	pendingContinuation *pendingInteractionContinuation,
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
+	mcpReferences []string,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
 	}
 	wire := interactionCheckpointPayloadWire{
-		ToolMetadata: toolMetadata, Options: options.Clone(),
+		MCPReferences: new(mcpReferences),
+		ToolMetadata:  toolMetadata, Options: options.Clone(),
 		Tree:         tree.JSON(),
 		Instructions: cloneChatMessages(instructions),
 	}
@@ -335,6 +341,23 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
+	if wire.MCPReferences == nil {
+		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP dependencies are required")
+	}
+	var sources []mcpserver.ID
+	for _, text := range *wire.MCPReferences {
+		ref, err := domaintool.ParseRef(text)
+		if err != nil {
+			return interactionCheckpointState{}, err
+		}
+		id, _, mcp := ref.MCP()
+		if !mcp {
+			return interactionCheckpointState{}, errors.New("execution: checkpoint source is not MCP")
+		}
+		if !slices.Contains(sources, id) {
+			sources = append(sources, id)
+		}
+	}
 	if err := wire.Options.Validate(); err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -369,7 +392,8 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	return interactionCheckpointState{
-		tree: tree, callsByProcess: callsByProcess,
+		mcpSources: sources,
+		tree:       tree, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil

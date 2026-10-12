@@ -11,7 +11,7 @@ import (
 
 type constructionContext struct{ context.Context }
 
-func TestDialRejectsTypedNilCollaborators(t *testing.T) {
+func TestOpenRejectsTypedNilCollaborators(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		ctx      context.Context
@@ -25,8 +25,8 @@ func TestDialRejectsTypedNilCollaborators(t *testing.T) {
 		{"client", t.Context(), t.Context(), nil, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			connections, err := Dial(test.ctx, test.lifetime, nil, test.oauth, func(context.Context, mcpserver.ID) (*Launch, error) {
-				t.Error("invalid dial reached configuration reads")
+			connections, err := Open(test.ctx, test.lifetime, nil, test.oauth, func(context.Context, mcpserver.ID) (*Launch, error) {
+				t.Error("invalid construction reached configuration reads")
 				return nil, errors.New("unexpected configuration read")
 			}, nil, test.client)
 			if connections != nil {

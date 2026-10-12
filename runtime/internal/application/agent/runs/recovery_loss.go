@@ -57,24 +57,30 @@ func (l Loss) failure() (rundomain.Failure, error) {
 	return rundomain.Failure{Kind: rundomain.FailureLost, Detail: detail}, nil
 }
 
-// WaitingResumption is the verdict of probing one waiting execution: it can
-// resume, or it is lost for exactly one stated reason. Only ResumableWaiting
-// grants resumption, so the zero value an erroring probe returns can never
-// keep a tree alive.
+// A pending external dependency defers validation without granting resumption.
+// The zero value never preserves a waiting tree.
 type WaitingResumption struct {
-	resumable bool
-	loss      Loss
+	state waitingResumptionState
+	loss  Loss
 }
 
-// ResumableWaiting reports that the waiting execution can resume.
-func ResumableWaiting() WaitingResumption { return WaitingResumption{resumable: true} }
+type waitingResumptionState uint8
 
-// UnresumableWaiting reports that the waiting execution is lost for loss.
+const (
+	waitingUnresumable waitingResumptionState = iota
+	waitingResumable
+	waitingDeferred
+)
+
+func ResumableWaiting() WaitingResumption { return WaitingResumption{state: waitingResumable} }
+
+func DeferredWaiting() WaitingResumption { return WaitingResumption{state: waitingDeferred} }
+
 func UnresumableWaiting(loss Loss) WaitingResumption {
 	return WaitingResumption{loss: loss}
 }
 
-func (w WaitingResumption) Resumable() bool { return w.resumable }
+func (w WaitingResumption) Resumable() bool { return w.state == waitingResumable }
+func (w WaitingResumption) Deferred() bool  { return w.state == waitingDeferred }
 
-// Loss is the reason an unresumable execution is lost.
 func (w WaitingResumption) Loss() Loss { return w.loss }

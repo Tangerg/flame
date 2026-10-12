@@ -548,7 +548,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		if sessionErr != nil {
 			return sessionErr
 		}
-		if resumption.Resumable() {
+		if resumption.Resumable() || resumption.Deferred() {
 			r.preserved[rootRunID] = struct{}{}
 			return nil
 		}

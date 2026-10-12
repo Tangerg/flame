@@ -4,6 +4,7 @@ package pluginpackage
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,7 @@ import (
 
 type replaceAfterAdmissionRegistry struct {
 	*plugins.Registry
-	replace func()
+	replace func() error
 }
 
 func (r *replaceAfterAdmissionRegistry) Connection(ctx context.Context, id mcpserver.ID) (mcpapp.Launch, error) {
@@ -25,7 +26,10 @@ func (r *replaceAfterAdmissionRegistry) Connection(ctx context.Context, id mcpse
 	if err == nil && r.replace != nil {
 		replace := r.replace
 		r.replace = nil
-		replace()
+		err = replace()
+		if err != nil && launch.Retire != nil {
+			err = errors.Join(err, launch.Retire.Close())
+		}
 	}
 	return launch, err
 }
@@ -72,26 +76,27 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				wrapped := &replaceAfterAdmissionRegistry{Registry: registry, replace: func() {
+				wrapped := &replaceAfterAdmissionRegistry{Registry: registry, replace: func() error {
 					if mutation == "replace directory" {
 						if err := os.Rename(root, root+"-retired"); err != nil {
-							t.Fatal(err)
+							return err
 						}
 						if err := os.Mkdir(root, 0700); err != nil {
-							t.Fatal(err)
+							return err
 						}
 					} else {
 						for _, name := range []string{"backend.sh", "content"} {
 							if err := os.Chmod(filepath.Join(root, name), 0600); err != nil {
-								t.Fatal(err)
+								return err
 							}
 						}
 					}
 					for name, body := range map[string]string{"backend.sh": `printf unapproved > "$PLUGIN_DATA/started"`, "content": "unapproved"} {
 						if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0600); err != nil {
-							t.Fatal(err)
+							return err
 						}
 					}
+					return nil
 				}}
 				var servers []mcpserver.Server
 				if entry == "startup" {
@@ -112,6 +117,7 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 				if entry == "reconnect" {
 					_ = connectPool(pool, t.Context(), serverID)
 				}
+				awaitPackageConnection(t, pool)
 				marker := filepath.Join(releases.dataRoot(id), "started")
 				content, err := os.ReadFile(marker)
 				if err != nil || string(content) != "original/original" {

@@ -23,7 +23,7 @@ func TestAdmissionWithdrawsToolsBeforeConfigurationIO(t *testing.T) {
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error { retired.Add(1); return nil }}},
 	}
 	var tools []string
-	c.SetToolSink(func(catalog []Executable) { tools = toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { tools = toolNames(catalog) })
 	attempt, err := c.BeginConnect(t.Context(), name, func(context.Context, mcpserver.ID) (*Launch, error) {
 		t.Error("an unstarted attempt resolved configuration")
 		return nil, errors.New("unexpected resolution")

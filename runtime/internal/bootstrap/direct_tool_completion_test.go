@@ -92,7 +92,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				deps.mcp.exposure = mcpapp.NewExposureState([]mcpserver.Server{{Source: mcpserver.UserSource(), Name: source, Enabled: true}}, nil)
 				environment, err := buildToolEnvironment(ctx, deps)
 				if err == nil {
-					environment.tools.Resolver.SetMCPTools([]toolcontract.Tool{directAnswerTool{answer}})
+					environment.tools.Resolver.SetMCPTools([]toolcontract.Tool{directAnswerTool{answer}}, nil)
 				}
 				return environment, err
 			})

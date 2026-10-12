@@ -97,7 +97,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	}
 	resolver.SetMCPTools([]toolcontract.Tool{
 		mcpToolStub{name: "linear_create_issue", server: "linear", remote: "create_issue"},
-	})
+	}, nil)
 	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)

@@ -28,6 +28,7 @@ type Manifest struct {
 	Installations []plugin.Dependency
 	Visible       []toolcontract.Tool
 	Deferred      []toolcontract.Tool
+	PendingMCP    []mcpserver.ID
 	discovery     *Discovery
 	close         func() error
 }
@@ -37,9 +38,10 @@ type Manifest struct {
 func (m Manifest) Clone() Manifest {
 	return Manifest{
 		Installations: slices.Clone(m.Installations), Visible: slices.Clone(m.Visible),
-		Deferred:  slices.Clone(m.Deferred),
-		discovery: m.discovery,
-		close:     m.close,
+		Deferred:   slices.Clone(m.Deferred),
+		PendingMCP: slices.Clone(m.PendingMCP),
+		discovery:  m.discovery,
+		close:      m.close,
 	}
 }
 
@@ -64,6 +66,7 @@ func (m Manifest) Close() error {
 // executable but are loaded through search_tools. Unavailable tools are simply
 // never added; there is no synthetic visibility state for them.
 type manifestBuilder struct {
+	pendingMCP    []mcpserver.ID
 	installations []plugin.Dependency
 	visible       []toolcontract.Tool
 	deferred      []toolcontract.Tool
@@ -114,7 +117,7 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 			installations = append(installations, dependency)
 		}
 	}
-	return Manifest{Installations: plugin.CompactDependencies(installations), Visible: visible, Deferred: deferred, discovery: m.discovery, close: m.close}, nil
+	return Manifest{Installations: plugin.CompactDependencies(installations), Visible: visible, Deferred: deferred, PendingMCP: slices.Clone(m.pendingMCP), discovery: m.discovery, close: m.close}, nil
 }
 
 func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) ([]toolcontract.Tool, error) {

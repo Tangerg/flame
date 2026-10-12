@@ -31,9 +31,7 @@ type Pool struct {
 
 var _ mcpapp.Connections = (*Pool)(nil)
 
-// Open establishes the enabled MCP connections present at runtime startup.
-// Unreachable but valid servers remain in the pool as failed, matching the
-// infrastructure pool's normal boot semantics.
+// Startup connection waits belong to the pool, so one optional source cannot block Runtime management.
 func Open(
 	ctx context.Context,
 	lifetime context.Context,
@@ -55,7 +53,7 @@ func Open(
 	if err := errors.Join(memoryrpc.RegisterClient(client), schedulerpc.RegisterClient(client)); err != nil {
 		return nil, err
 	}
-	inner, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch, models, client)
+	inner, err := mcp.Open(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch, models, client)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +115,11 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 
 // SetToolSink publishes the initial catalog and live connection changes to the
 // resolver through the connection owner's publication boundary.
-func (p *Pool) SetToolSink(sink func([]toolcontract.Tool)) {
-	p.inner.SetToolSink(func(catalog []mcp.Executable) { sink(p.authorizedTools(catalog)) })
+func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID)) {
+	p.inner.SetToolSink(func(catalog []mcp.Executable, pending []mcpserver.ID) {
+		sink(p.authorizedTools(catalog), pending)
+		p.publish.Notify(invalidation.ForMCP())
+	})
 }
 
 // Shutdown releases every live connection under the caller's shutdown budget.
@@ -132,7 +133,7 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 		return nil, err
 	}
 	if !found || !descriptor.Enabled {
-		return nil, errors.New("managed plugin: source admission was withdrawn")
+		return nil, mcp.ErrUnavailable
 	}
 	return p.inner.ServiceSession(ctx, descriptor)
 }

@@ -603,6 +603,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
+	if pendingCheckpointSources(session, checkpoint) {
+		return errors.New("execution: required MCP source is still connecting")
+	}
 	if err := session.validateWaitingTree(ctx, continuation, checkpoint); err != nil {
 		return fmt.Errorf("execution: validate waiting tree: %w", err)
 	}

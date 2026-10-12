@@ -20,9 +20,7 @@ type sourceRegistry interface {
 	Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error)
 }
 
-// authorizedTool rechecks revocable authority at dispatch (draft §7.5): the
-// source must still be admitted, with the same connection configuration, and
-// the session that admitted this executable must still be live.
+// Captured tools cannot retain authority after their source or session is withdrawn.
 type authorizedTool struct {
 	toolcontract.Tool
 	registry      sourceRegistry

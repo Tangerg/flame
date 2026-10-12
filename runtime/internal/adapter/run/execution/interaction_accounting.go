@@ -195,9 +195,7 @@ func (i *interactionAccounting) checkpointLocked() (
 func (i *interactionSession) interactionCheckpointPayload(
 	tree agent.TreeSnapshot,
 ) ([]byte, error) {
-	// Accounting and pending inputs were one lock domain before P113. Hold both
-	// owners while copying so the checkpoint retains the same atomic snapshot,
-	// without making every model call contend with Process lifecycle transitions.
+	// Checkpoints need one atomic snapshot across accounting and pending inputs.
 	i.accounting.mu.Lock()
 	i.state.mu.Lock()
 	usageByProcess, contexts := i.accounting.checkpointLocked()
@@ -230,6 +228,10 @@ func (i *interactionSession) interactionCheckpointPayload(
 	if err != nil {
 		return nil, err
 	}
+	references, err := i.checkpointMCPReferences()
+	if err != nil {
+		return nil, err
+	}
 	return encodeInteractionCheckpointPayload(
 		tree,
 		usageByProcess,
@@ -239,6 +241,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		pendingContinuation,
 		metadata,
 		executionOptions(i.start.ModelSelection, i.start.Options),
+		references,
 	)
 }
 

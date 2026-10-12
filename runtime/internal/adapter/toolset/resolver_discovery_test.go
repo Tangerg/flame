@@ -16,7 +16,7 @@ func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
-	built.Resolver.SetMCPTools(mcpTools)
+	built.Resolver.SetMCPTools(mcpTools, nil)
 
 	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {

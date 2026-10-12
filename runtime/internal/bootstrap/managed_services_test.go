@@ -169,6 +169,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
+	r.poMCPTools(server, ready)
 	replay = r.must(delivery.SchedulesRunNow, request, "manual").(*protocol.RunScheduleNowResponse)
 	if *replay != *accepted {
 		t.Fatal("restart reopened an accepted Run")

@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
@@ -59,7 +60,7 @@ type Resolver struct {
 	// locking the per-Run resolution path: Tools() does one atomic load, the
 	// reconnect does one atomic store. The model therefore always sees the
 	// currently-connected servers' tools, even mid-session.
-	mcp atomic.Pointer[[]toolcontract.Tool]
+	mcp atomic.Pointer[mcpCatalog]
 
 	// mcpToolDisabled reads the current domain policy per resolution so registry
 	// changes and live-tool reconnects remain independent hot swaps.
@@ -201,10 +202,19 @@ func (r *Resolver) createGoalTool() toolcontract.Tool {
 	return r.createGoal
 }
 
-// mcpTools returns the current MCP tool set (nil before the first store) minus
-// any tools the configured servers disable.
-func (r *Resolver) mcpTools() ([]toolcontract.Tool, error) {
-	return r.exposedMCPTools(r.mcpSnapshot())
+// Tools and pending sources must describe the same connection publication.
+type mcpCatalog struct {
+	tools   []toolcontract.Tool
+	pending []mcpserver.ID
+}
+
+func (r *Resolver) mcpTools() ([]toolcontract.Tool, []mcpserver.ID, error) {
+	snapshot := r.mcp.Load()
+	if snapshot == nil {
+		return nil, nil, nil
+	}
+	tools, err := r.exposedMCPTools(snapshot.tools)
+	return tools, slices.Clone(snapshot.pending), err
 }
 
 func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
@@ -212,7 +222,7 @@ func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
 	if p == nil {
 		return nil
 	}
-	return *p
+	return p.tools
 }
 
 // exposedMCPTools filters one snapshot by exposure. The disabled set is read
@@ -246,9 +256,8 @@ func (r *Resolver) exposedMCPTools(values []toolcontract.Tool) ([]toolcontract.T
 }
 
 // SetMCPTools swaps in a freshly-built MCP tool set (boot + each reconnect).
-func (r *Resolver) SetMCPTools(tools []toolcontract.Tool) {
-	snapshot := slices.Clone(tools)
-	r.mcp.Store(&snapshot)
+func (r *Resolver) SetMCPTools(tools []toolcontract.Tool, pending []mcpserver.ID) {
+	r.mcp.Store(&mcpCatalog{tools: slices.Clone(tools), pending: slices.Clone(pending)})
 }
 
 // ForgetSessionContext drops file-read evidence derived from one Session's
@@ -310,11 +319,12 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
 	tools.deferTools(r.online...)
-	mcpTools, err := r.mcpTools()
+	mcpTools, pending, err := r.mcpTools()
 	if err != nil {
 		return manifestBuilder{}, err
 	}
 	tools.deferred = append(tools.deferred, mcpTools...)
+	tools.pendingMCP = pending
 	tools.deferred = append(tools.deferred, r.a2a...)
 	tools.deferTools(r.lsp...)
 	tools.direct(r.shell...)

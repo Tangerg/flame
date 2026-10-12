@@ -78,7 +78,7 @@ type Connections struct {
 	// onTools is the tool sink; nil until SetToolSink; guarded by mu. It runs
 	// while mu is held, so it must be an in-memory publication that never
 	// blocks or calls back into Connections.
-	onTools  func([]Executable)
+	onTools  func([]Executable, []mcpserver.ID)
 	closed   bool // terminal admission state set by Shutdown
 	shutdown *shutdownAttempt
 	sessions map[*sdkmcp.ClientSession]*ownedSession
@@ -103,7 +103,7 @@ func (c *Connections) cancellationErr(ctx context.Context) error {
 // SetToolSink publishes the current catalog and every subsequent connection
 // change through the same critical section. The sink must publish in memory
 // without blocking or calling back into Connections.
-func (c *Connections) SetToolSink(sink func([]Executable)) {
+func (c *Connections) SetToolSink(sink func([]Executable, []mcpserver.ID)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onTools = sink
@@ -176,6 +176,8 @@ func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) (err e
 	return err
 }
 
+var ErrUnavailable = errors.New("mcp: exact backend connection is unavailable")
+
 func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -184,7 +186,7 @@ func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Serv
 	}
 	configured := c.find(current.ID())
 	if c.closed || configured == nil || configured.session == nil || !configured.config.Server.SameConnection(current) {
-		return nil, errors.New("managed plugin: exact backend connection is unavailable")
+		return nil, ErrUnavailable
 	}
 	return configured.session, nil
 }

@@ -98,6 +98,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	awaitPackageConnection(t, pool)
 	marker := filepath.Join(releases.dataRoot(installation.ID()), "started")
 	if err := os.Remove(marker); err != nil {
 		t.Fatal(err)
@@ -183,6 +184,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	awaitPackageConnection(t, pool)
 	marker := filepath.Join(releases.dataRoot(installation.ID()), "started")
 	if content, err := os.ReadFile(marker); err != nil || string(content) != "original" {
 		t.Fatalf("admitted process did not run: %q, %v", content, err)
@@ -226,7 +228,8 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 			}
 		}()
 		var tools []toolcontract.Tool
-		pool.SetToolSink(func(catalog []toolcontract.Tool) { tools = catalog })
+		awaitPackageConnection(t, pool)
+		pool.SetToolSink(func(catalog []toolcontract.Tool, _ []mcpserver.ID) { tools = catalog })
 		statuses := pool.Statuses()
 		if len(tools) != 0 || len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed {
 			t.Fatalf("tampered startup = %v, %v", tools, statuses)
@@ -401,4 +404,22 @@ func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver
 	}
 	defer attempt.Close()
 	return attempt.Run()
+}
+
+func awaitPackageConnection(t *testing.T, pool *mcpconnection.Pool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		pending := false
+		for _, status := range pool.Statuses() {
+			pending = pending || status.State == mcpserver.ConnectionConnecting
+		}
+		if !pending {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("package connection did not settle")
+		}
+		time.Sleep(time.Millisecond)
+	}
 }

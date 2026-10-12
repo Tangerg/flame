@@ -23,7 +23,7 @@ func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
 				t.Fatal(err)
 			}
 			closeBuiltToolset(t, built)
-			built.Resolver.SetMCPTools(append(test.tools, mcpToolStub{name: "other_read", server: "other", remote: "read"}))
+			built.Resolver.SetMCPTools(append(test.tools, mcpToolStub{name: "other_read", server: "other", remote: "read"}), nil)
 			manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 			if err != nil {
 				t.Fatalf("collision prevented manifest construction: %v", err)

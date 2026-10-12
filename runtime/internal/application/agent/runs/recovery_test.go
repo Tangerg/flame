@@ -1528,3 +1528,22 @@ func TestRecoveredLossCarriesTheProbedReason(t *testing.T) {
 		})
 	}
 }
+
+func TestRecoveryPreservesWaitingTreeWithPendingDependency(t *testing.T) {
+	parked, pending, item := coherentRecoveryPark(t)
+	store := &recoveryStoreStub{
+		runs: []rundomain.Run{parked}, pending: []Pending{pending},
+		transcripts:  map[string][]transcript.Item{parked.SessionID(): {item}},
+		messageMarks: map[string]int{parked.SessionID(): 5},
+	}
+	recovery, err := newTestRecovery(store, waitingVerdict(DeferredWaiting()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := recovery.Reconcile(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.commit.LostRuns()) != 0 || len(store.commit.DeleteCheckpointSessionIDs()) != 0 || len(store.commit.PreservedSessionIDs()) != 1 {
+		t.Fatalf("pending dependency advanced waiting facts: %+v", store.commit)
+	}
+}

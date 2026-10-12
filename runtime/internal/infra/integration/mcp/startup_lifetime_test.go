@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -27,7 +26,7 @@ func TestStartupRejectsCanceledAdmission(t *testing.T) {
 				if catalog == "configured" {
 					configs = []ServerConfig{startupDescriptor("unstarted")}
 				}
-				connections, err := Dial(ctx, lifetime, configs, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
+				connections, err := Open(ctx, lifetime, configs, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
 					t.Error("canceled initialization read configuration")
 					return nil, errors.New("unexpected configuration read")
 				}, nil, NewClient())
@@ -35,97 +34,68 @@ func TestStartupRejectsCanceledAdmission(t *testing.T) {
 					defer connections.Shutdown(context.WithoutCancel(t.Context()))
 				}
 				if connections != nil || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
-					t.Fatalf("Dial = (%v, %v), want rejected initialization with cancellation and cause", connections != nil, err)
+					t.Fatalf("Open = (%v, %v), want rejected initialization with cancellation and cause", connections != nil, err)
 				}
 			})
 		}
 	}
 }
 
-func TestStartupCancellationAbortsConfiguration(t *testing.T) {
-	for _, owner := range []string{"request", "session owner"} {
-		t.Run(owner, func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				ctx, lifetime, cancel := startupLifetime(t, owner)
-				cause := errors.New("initialization stopped")
-				readFailure := errors.New("configuration read failed")
-				entered := make(chan struct{})
-				forceExit := make(chan struct{})
-				type outcome struct {
-					connections *Connections
-					err         error
-				}
-				done := make(chan outcome, 1)
-				go func() {
-					connections, err := Dial(ctx, lifetime, []ServerConfig{startupDescriptor("blocked")}, nil, func(ctx context.Context, _ mcpserver.ID) (*Launch, error) {
-						close(entered)
-						select {
-						case <-ctx.Done():
-						case <-forceExit:
-						}
-						return nil, readFailure
-					}, nil, NewClient())
-					done <- outcome{connections, err}
-				}()
-				<-entered
-				cancel(cause)
-				synctest.Wait()
-				var result outcome
-				select {
-				case result = <-done:
-				default:
-					t.Error("initialization cancellation did not abort configuration")
-					close(forceExit)
-					result = <-done
-				}
-				if result.connections != nil {
-					defer result.connections.Shutdown(context.WithoutCancel(t.Context()))
-				}
-				if result.connections != nil || !errors.Is(result.err, readFailure) || !errors.Is(result.err, context.Canceled) || !errors.Is(result.err, cause) {
-					t.Fatalf("Dial = (%v, %v), want failed read, cancellation and cause", result.connections != nil, result.err)
-				}
-			})
-		})
+func TestStartupHandoffDoesNotBorrowCallerLifetime(t *testing.T) {
+	caller, cancelCaller := context.WithCancel(t.Context())
+	lifetime, cancelOwner := context.WithCancel(t.Context())
+	defer cancelOwner()
+	entered := make(chan struct{})
+	settled := make(chan struct{})
+	c, err := Open(caller, lifetime, []ServerConfig{startupDescriptor("blocked")}, nil, func(ctx context.Context, _ mcpserver.ID) (*Launch, error) {
+		close(entered)
+		<-ctx.Done()
+		close(settled)
+		return nil, ctx.Err()
+	}, nil, NewClient())
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-entered
+	cancelCaller()
+	select {
+	case <-settled:
+		t.Fatal("construction caller retired an accepted owner task")
+	default:
+	}
+	if status := c.Statuses(); len(status) != 1 || status[0].State != mcpserver.ConnectionConnecting || status[0].ToolCount != 0 {
+		t.Fatalf("pending source became executable: %+v", status)
+	}
+	if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-settled:
+	default:
+		t.Fatal("shutdown returned before admitted configuration settled")
 	}
 }
 
-func TestStartupCancellationSettlesAcquiredSessionsBeforeReturning(t *testing.T) {
-	for _, owner := range []string{"request", "session owner"} {
-		t.Run(owner, func(t *testing.T) {
-			ctx, lifetime, cancel := startupLifetime(t, owner)
-			cause := errors.New("initialization stopped")
-			readFailure := errors.New("configuration read failed")
-			closeFailure := errors.New("launch resource retirement failed")
-			remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "startup-test", Version: "v1"}, nil)
-			addRemoteTool(t, remote, "read")
-			httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
-			t.Cleanup(httpServer.Close)
-			healthy := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-			stopped := startupDescriptor("stopped")
-			unstarted := startupDescriptor("unstarted")
-			var retired, unexpectedReads atomic.Int32
-			connections, err := Dial(ctx, lifetime, []ServerConfig{healthy, stopped, unstarted}, nil, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
-				switch name {
-				case healthy.ID():
-					return NewLaunch(healthy, nil, func() error { retired.Add(1); return closeFailure })
-				case stopped.ID():
-					cancel(cause)
-					return nil, readFailure
-				default:
-					unexpectedReads.Add(1)
-					return nil, errors.New("unexpected configuration read")
-				}
-			}, nil, NewClient())
-			if connections != nil {
-				defer connections.Shutdown(context.WithoutCancel(t.Context()))
-			}
-			if connections != nil || !errors.Is(err, readFailure) || !errors.Is(err, closeFailure) || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
-				t.Errorf("Dial = (%v, %v), want failed initialization with read, retirement and cancellation causes", connections != nil, err)
-			}
-			if retired.Load() != 1 || unexpectedReads.Load() != 0 {
-				t.Errorf("retirements = %d, later reads = %d; want settled resource and no later I/O", retired.Load(), unexpectedReads.Load())
-			}
-		})
+func TestStartupShutdownRetainsSessionRetirementDiagnostics(t *testing.T) {
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "startup-test"}, nil)
+	addRemoteTool(t, remote, "read")
+	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
+	defer transport.Close()
+	cfg := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
+	failure := errors.New("launch resource retirement failed")
+	var retired atomic.Int32
+	c, err := Open(t.Context(), t.Context(), []ServerConfig{cfg}, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
+		return NewLaunch(cfg, nil, func() error { retired.Add(1); return failure })
+	}, nil, NewClient())
+	if err != nil {
+		t.Fatal(err)
+	}
+	awaitInitialConnections(c)
+	if err := c.Shutdown(context.WithoutCancel(t.Context())); !errors.Is(err, failure) {
+		t.Fatalf("shutdown lost retirement cause: %v", err)
+	}
+	if err := c.Shutdown(context.WithoutCancel(t.Context())); !errors.Is(err, failure) || retired.Load() != 1 {
+		t.Fatalf("retirement repeated or lost its diagnostic: %d, %v", retired.Load(), err)
 	}
 }
 
@@ -148,7 +118,7 @@ func TestStartupToleratesIndependentHandshakeTimeout(t *testing.T) {
 		HandshakeTimeout: mustHandshakeTimeout(t, time.Second),
 	}}
 	healthy := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-	connections, err := Dial(t.Context(), t.Context(), []ServerConfig{timedOut, healthy}, nil, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
+	connections, err := Open(t.Context(), t.Context(), []ServerConfig{timedOut, healthy}, nil, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
 		if name == timedOut.ID() {
 			return NewLaunch(timedOut, nil, nil)
 		}
@@ -162,6 +132,7 @@ func TestStartupToleratesIndependentHandshakeTimeout(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	awaitInitialConnections(connections)
 	statuses := connections.Statuses()
 	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionFailed || statuses[1].State != mcpserver.ConnectionConnected {
 		t.Fatalf("startup statuses = %+v, want tolerated timeout and healthy connection", statuses)

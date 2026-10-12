@@ -63,7 +63,8 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 		}
 	}()
 	var initial []toolcontract.Tool
-	pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
+	awaitPoolStartup(t, pool)
+	pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { initial = tools })
 	if len(initial) != 1 {
 		t.Fatalf("initial tools=%d", len(initial))
 	}

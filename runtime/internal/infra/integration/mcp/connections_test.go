@@ -136,16 +136,16 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 	}
 }
 
-func TestDialRequiresStartupAndProcessLifetimes(t *testing.T) {
+func TestOpenRequiresStartupAndProcessLifetimes(t *testing.T) {
 	var missingContext context.Context
-	if connections, _, err := testDial(missingContext, t.Context(), nil, nil); err == nil || connections != nil {
-		t.Fatalf("Dial without startup context = (%v, %v), want nil connections and non-nil error", connections, err)
+	if connections, _, err := testOpen(missingContext, t.Context(), nil, nil); err == nil || connections != nil {
+		t.Fatalf("Open without startup context = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
-	if connections, _, err := testDial(t.Context(), nil, nil, nil); err == nil || connections != nil {
-		t.Fatalf("Dial without process lifetime = (%v, %v), want nil connections and non-nil error", connections, err)
+	if connections, _, err := testOpen(t.Context(), nil, nil, nil); err == nil || connections != nil {
+		t.Fatalf("Open without process lifetime = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
-	if connections, err := Dial(t.Context(), t.Context(), nil, nil, nil, nil, NewClient()); err == nil || connections != nil {
-		t.Fatalf("Dial without configuration source = (%v, %v), want nil connections and non-nil error", connections, err)
+	if connections, err := Open(t.Context(), t.Context(), nil, nil, nil, nil, NewClient()); err == nil || connections != nil {
+		t.Fatalf("Open without configuration source = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
 }
 
@@ -337,7 +337,7 @@ func TestToolSinkReceivesCurrentSnapshotOnRegistration(t *testing.T) {
 		},
 	}}
 	var got []string
-	c.SetToolSink(func(catalog []Executable) {
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) {
 		got = make([]string, 0, len(catalog))
 		for _, tool := range catalog {
 			got = append(got, tool.Definition().Name)
@@ -349,7 +349,7 @@ func TestToolSinkReceivesCurrentSnapshotOnRegistration(t *testing.T) {
 		t.Fatalf("published tools = %v, want %v", got, want)
 	}
 	c.servers = nil
-	c.SetToolSink(func(catalog []Executable) { got = toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { got = toolNames(catalog) })
 	if len(got) != 0 {
 		t.Fatalf("replacement sink retained withdrawn tools: %v", got)
 	}
@@ -366,7 +366,7 @@ func TestDetachPublishesRemainingSnapshot(t *testing.T) {
 		},
 	}}
 	published := make(chan []string, 1)
-	c.SetToolSink(func(catalog []Executable) {
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) {
 		names := make([]string, 0, len(catalog))
 		for _, tool := range catalog {
 			names = append(names, tool.Definition().Name)
@@ -394,9 +394,9 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
@@ -408,7 +408,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	}
 
 	publications := make(chan []string, 2)
-	c.SetToolSink(func(catalog []Executable) { publications <- toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications <- toolNames(catalog) })
 	if got := <-publications; !slices.Equal(got, toolNames(initial)) {
 		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
 	}
@@ -458,7 +458,7 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 		}}},
 	}
 	var publications [][]string
-	c.SetToolSink(func(catalog []Executable) { publications = append(publications, toolNames(catalog)) })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications = append(publications, toolNames(catalog)) })
 	config.URL = "https://example.invalid/replacement"
 	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
 		t.Errorf("Configure = %v, want credential and retirement errors", err)
@@ -466,7 +466,7 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed || statuses[0].ToolCount != 0 || statuses[0].Failure != mcpserver.FailureConfiguration {
 		t.Errorf("statuses = %+v, want one source failed in configuration without tools", statuses)
 	}
-	if len(publications) != 2 || !slices.Equal(publications[0], []string{"remote_read"}) || len(publications[1]) != 0 {
+	if len(publications) != 3 || !slices.Equal(publications[0], []string{"remote_read"}) || len(publications[1]) != 0 || len(publications[2]) != 0 {
 		t.Errorf("publications = %v, want the old tools withdrawn", publications)
 	}
 	if closed.Load() != 1 || ownedSessionCount(c) != 0 {
@@ -543,7 +543,7 @@ func TestSupersededOAuthRestoreCannotReplaceCurrentConnection(t *testing.T) {
 	var releaseOnce sync.Once
 	finishLoad := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(finishLoad)
-	c, _, err := testDial(t.Context(), t.Context(), nil, &oauthLoadStore{
+	c, _, err := testOpen(t.Context(), t.Context(), nil, &oauthLoadStore{
 		load: func(context.Context, mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 			close(started)
 			<-release
@@ -551,7 +551,7 @@ func TestSupersededOAuthRestoreCannotReplaceCurrentConnection(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		finishLoad()
@@ -668,9 +668,9 @@ func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	connections, _, err := testDial(t.Context(), t.Context(), nil, nil)
+	connections, _, err := testOpen(t.Context(), t.Context(), nil, nil)
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		if shutdownErr := connections.Shutdown(context.WithoutCancel(t.Context())); shutdownErr != nil {
@@ -704,12 +704,12 @@ func TestSessionLedgerOwnsReplacementUntilClose(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("ledger"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-	c, _, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, _, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := ownedSessionCount(c); got != 1 {
-		t.Fatalf("owned sessions after Dial = %d, want 1", got)
+		t.Fatalf("owned sessions after Open = %d, want 1", got)
 	}
 	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatal(err)
@@ -734,7 +734,7 @@ func ownedSessionCount(c *Connections) int {
 	return len(c.sessions)
 }
 
-func TestDialAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
+func TestOpenAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
 	addRemoteTool(t, remote, "read")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -743,12 +743,12 @@ func TestDialAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{
+	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{
 		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a.b"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}},
 		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}},
 	}, nil)
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
@@ -765,7 +765,7 @@ func TestDialAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	}
 }
 
-func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
+func TestOpenReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 	for _, failure := range []string{"admission", "connection"} {
 		t.Run(failure, func(t *testing.T) {
 			var diagnostics bytes.Buffer
@@ -784,7 +784,7 @@ func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 				{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("missing"), Transport: mcpserver.TransportStdio, Command: missingCommand}},
 				{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}},
 			}
-			connections, err := Dial(t.Context(), t.Context(), configs, nil, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
+			connections, err := Open(t.Context(), t.Context(), configs, nil, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
 				if name == configs[0].ID() && failure == "admission" {
 					return nil, errors.New("release rejected before connection")
 				}
@@ -796,15 +796,16 @@ func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 				return nil, mcpserver.ErrUnknownServer
 			}, nil, NewClient())
 			if err != nil {
-				t.Fatalf("Dial: %v", err)
+				t.Fatalf("Open: %v", err)
 			}
 			t.Cleanup(func() {
 				if err := connections.Shutdown(context.WithoutCancel(t.Context())); err != nil {
 					t.Errorf("Shutdown: %v", err)
 				}
 			})
+			awaitInitialConnections(connections)
 			var initial []Executable
-			connections.SetToolSink(func(catalog []Executable) { initial = catalog })
+			connections.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { initial = catalog })
 			if names := toolNames(initial); !slices.Equal(names, []string{"healthy_read"}) {
 				t.Fatalf("initial tools = %v, want healthy server's tool", names)
 			}
@@ -843,14 +844,14 @@ func TestConfigureAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(firstHTTP.Close)
 
-	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{{
+	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{{
 		Server: mcpserver.Server{
 			Source: mcpserver.UserSource(),
 			Name:   testsupport.ServerName("a_b"), Transport: mcpserver.TransportStreamableHTTP, URL: firstHTTP.URL,
 		},
 	}}, nil)
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	defer func() {
 		if shutdownErr := c.Shutdown(context.WithoutCancel(t.Context())); shutdownErr != nil {
@@ -897,12 +898,12 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(secondHTTP.Close)
 
-	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{
+	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{
 		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Transport: mcpserver.TransportStreamableHTTP, URL: firstHTTP.URL}},
 		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: mcpserver.TransportStreamableHTTP, URL: secondHTTP.URL}},
 	}, nil)
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		if shutdownErr := c.Shutdown(context.WithoutCancel(t.Context())); shutdownErr != nil {
@@ -914,7 +915,7 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	}
 
 	publications := make(chan []string, 2)
-	c.SetToolSink(func(catalog []Executable) { publications <- toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications <- toolNames(catalog) })
 	if got := <-publications; !slices.Equal(got, toolNames(initial)) {
 		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
 	}
@@ -977,9 +978,9 @@ func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("detach"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
-		t.Fatalf("Dial: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() {
 		if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
@@ -988,7 +989,7 @@ func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 	})
 
 	var publications [][]string
-	c.SetToolSink(func(catalog []Executable) { publications = append(publications, toolNames(catalog)) })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications = append(publications, toolNames(catalog)) })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, test := range []struct {
@@ -1020,8 +1021,8 @@ func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 	}
 }
 
-func testDial(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions OAuthSessionStore) (*Connections, []Executable, error) {
-	c, err := Dial(ctx, lifetime, servers, oauthSessions, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
+func testOpen(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions OAuthSessionStore) (*Connections, []Executable, error) {
+	c, err := Open(ctx, lifetime, servers, oauthSessions, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
 		for _, config := range servers {
 			if config.ID() == name {
 				return NewLaunch(config, nil, nil)
@@ -1032,11 +1033,14 @@ func testDial(ctx, lifetime context.Context, servers []ServerConfig, oauthSessio
 	if err != nil {
 		return nil, nil, err
 	}
+	awaitInitialConnections(c)
 	var initial []Executable
-	c.SetToolSink(func(catalog []Executable) { initial = catalog })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { initial = catalog })
 	c.SetToolSink(nil)
 	return c, initial, nil
 }
+
+func awaitInitialConnections(c *Connections) { c.attempts.Wait() }
 
 // The sink and Statuses describe one fact. Publication inside the critical
 // section that changes a live outcome means no reader can observe one without
@@ -1047,12 +1051,12 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(httpServer.Close)
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-	c, _, err := testDial(t.Context(), t.Context(), nil, nil)
+	c, _, err := testOpen(t.Context(), t.Context(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var publications [][]string
-	c.SetToolSink(func(catalog []Executable) {
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) {
 		if c.mu.TryLock() {
 			c.mu.Unlock()
 			t.Error("tool sink ran outside the critical section that settled the connection")
@@ -1090,7 +1094,7 @@ func TestSupersededConfigureNeverResurrectsADetachedServer(t *testing.T) {
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
 	c := &Connections{lifetime: t.Context(), client: NewClient(), servers: []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}}
 	published := false
-	c.SetToolSink(func([]Executable) { published = true })
+	c.SetToolSink(func([]Executable, []mcpserver.ID) { published = true })
 	ctx, supersede := context.WithCancel(t.Context())
 	supersede()
 	if err := c.Detach(config.ID()); err != nil {
@@ -1111,7 +1115,7 @@ func TestExecutableIsCurrentOnlyWhileItsSessionServesTheSource(t *testing.T) {
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(httpServer.Close)
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
-	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1120,7 +1124,7 @@ func TestExecutableIsCurrentOnlyWhileItsSessionServesTheSource(t *testing.T) {
 		t.Fatalf("admitted executable is not current: %v", toolNames(initial))
 	}
 	var replacement []Executable
-	c.SetToolSink(func(catalog []Executable) { replacement = catalog })
+	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { replacement = catalog })
 	if err := c.Refuse(t.Context(), config.ID(), mcpserver.FailureConfiguration); err != nil {
 		t.Fatal(err)
 	}

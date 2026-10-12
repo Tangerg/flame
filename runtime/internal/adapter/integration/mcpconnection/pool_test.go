@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
@@ -46,12 +47,13 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 				}
 			})
 			var initial []toolcontract.Tool
-			pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
+			awaitPoolStartup(t, pool)
+			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { initial = tools })
 			if len(initial) != 1 {
 				t.Fatalf("initial tools = %d", len(initial))
 			}
 			published := []toolcontract.Tool{nil}
-			pool.SetToolSink(func(tools []toolcontract.Tool) { published = tools })
+			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { published = tools })
 			registry.refuse(tt.refusal)
 			for operation, connect := range map[string]func() error{
 				"configure": func() error { return connectPool(pool, t.Context(), server.ID()) },
@@ -113,4 +115,24 @@ func authorizePool(pool *Pool, ctx context.Context, name mcpserver.ID) error {
 	}
 	defer attempt.Close()
 	return attempt.Run()
+}
+
+func awaitPoolStartup(t *testing.T, pool *Pool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		pending := false
+		for _, status := range pool.Statuses() {
+			if status.State == mcpserver.ConnectionConnecting {
+				pending = true
+			}
+		}
+		if !pending {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("initial connection did not settle")
+		}
+		time.Sleep(time.Millisecond)
+	}
 }
