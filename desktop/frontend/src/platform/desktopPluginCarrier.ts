@@ -30,12 +30,9 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
       });
       const bounds = () => {
         const rect = container.getBoundingClientRect();
-        // A sibling native view cannot participate in the workbench's CSS stacking.
-        // Its visibility follows the rendered popup owner, including exit motion.
-        const occluded =
-          document.querySelector(
-            "[data-base-ui-portal] [data-open], [data-base-ui-portal] [data-ending-style]",
-          ) !== null;
+        // The native sibling cannot share CSS stacking. Portal lifetime covers
+        // the gap between open and exit animation attributes.
+        const occluded = document.querySelector("[data-base-ui-portal]") !== null;
         const x = Math.max(0, rect.left),
           y = Math.max(0, rect.top);
         return {
@@ -96,8 +93,6 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
         popups.observe(document.body, {
           subtree: true,
           childList: true,
-          attributes: true,
-          attributeFilter: ["data-open", "data-ending-style"],
         });
         addEventListener("resize", layout);
         addEventListener("scroll", layout, true);

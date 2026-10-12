@@ -6,7 +6,8 @@ package main
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-void *createPluginPage(void *, const char *, uintptr_t, size_t);
+void *createPluginPage(void *, uintptr_t, size_t);
+void loadPluginPage(void *, const char *);
 void closePluginPage(void *);
 void sendPluginPage(void *, const char *);
 void positionPluginPage(void *, double, double, double, double);
@@ -25,11 +26,9 @@ type nativePluginPage struct {
 }
 
 // Callers serialize creation, publication and retirement on the native main thread.
-func createNativePluginPage(window unsafe.Pointer, html string, bounds PluginPageBounds, receive func(json.RawMessage)) (*nativePluginPage, error) {
+func createNativePluginPage(window unsafe.Pointer, bounds PluginPageBounds, receive func(json.RawMessage)) (*nativePluginPage, error) {
 	handle := cgo.NewHandle(receive)
-	body := C.CString(html)
-	defer C.free(unsafe.Pointer(body))
-	pointer := C.createPluginPage(window, body, C.uintptr_t(handle), C.size_t(maxPluginMessageBytes))
+	pointer := C.createPluginPage(window, C.uintptr_t(handle), C.size_t(maxPluginMessageBytes))
 	if pointer == nil {
 		handle.Delete()
 		return nil, errors.New("plugin carrier: isolated WebKit unavailable")
@@ -37,6 +36,11 @@ func createNativePluginPage(window unsafe.Pointer, html string, bounds PluginPag
 	page := &nativePluginPage{pointer: pointer, handle: handle}
 	page.position(bounds)
 	return page, nil
+}
+func (p *nativePluginPage) load(html string) {
+	body := C.CString(html)
+	defer C.free(unsafe.Pointer(body))
+	C.loadPluginPage(p.pointer, body)
 }
 func (p *nativePluginPage) close() {
 	if p.pointer == nil {

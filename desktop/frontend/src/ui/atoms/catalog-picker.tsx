@@ -289,13 +289,22 @@ export function CatalogPicker({
 }: CatalogSurfaceProps & { groups: CatalogPickerGroup[] }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const pendingSelection = useRef<(() => void) | undefined>(undefined);
 
   return (
     <Popover.Root
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
+        if (nextOpen) pendingSelection.current = undefined;
         if (!nextOpen) setQuery("");
+      }}
+      onOpenChangeComplete={(open) => {
+        if (open) return;
+        // A consumer may create a native sibling; the popup must finish retiring first.
+        const select = pendingSelection.current;
+        pendingSelection.current = undefined;
+        select?.();
       }}
     >
       <CatalogTrigger trigger={trigger} label={label} className={className} />
@@ -315,7 +324,7 @@ export function CatalogPicker({
           onInputValueChange={setQuery}
           onValueChange={(item) => {
             if (!item) return;
-            onSelect(item);
+            pendingSelection.current = () => onSelect(item);
             setOpen(false);
           }}
           itemToStringLabel={(item) => [item.label, ...(item.keywords ?? [])].join(" ")}

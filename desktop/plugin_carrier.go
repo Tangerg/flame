@@ -64,13 +64,15 @@ func (d *DesktopHost) OpenPluginPage(bounds PluginPageBounds) (admission PluginP
 		d.pluginPageSequence++
 		id = fmt.Sprintf("page-%d", d.pluginPageSequence)
 		var page *nativePluginPage
-		page, err = createNativePluginPage(d.window.NativeWindow(), string(body), bounds, func(message json.RawMessage) {
+		page, err = createNativePluginPage(d.window.NativeWindow(), bounds, func(message json.RawMessage) {
 			if page != nil && d.pluginPages[id] == page {
 				d.pluginPagePublish(id, message)
 			}
 		})
 		if err == nil {
 			d.pluginPages[id] = page
+			// Registration precedes external work so early readiness has an owner.
+			page.load(string(body))
 		}
 	})
 	return PluginPageAdmission{ID: id, MaxFrameBytes: maxPluginMessageBytes}, err

@@ -224,7 +224,7 @@ async function choosePanel(panel) {
     "catalog dismissal",
     () =>
       evaluate(
-        "return {hidden:document.hidden, popups:[...document.querySelectorAll('[data-base-ui-portal] [data-open], [data-base-ui-portal] [data-ending-style]')].map(e => ({tag:e.tagName, role:e.getAttribute('role'), open:e.hasAttribute('data-open'), ending:e.hasAttribute('data-ending-style'), animation:getComputedStyle(e).animationName, transition:getComputedStyle(e).transitionProperty}))}",
+        "return {hidden:document.hidden, popups:[...document.querySelectorAll('[data-base-ui-portal]')].map(e => ({tag:e.tagName, role:e.getAttribute('role'), open:e.hasAttribute('data-open'), ending:e.hasAttribute('data-ending-style'), animation:getComputedStyle(e).animationName, transition:getComputedStyle(e).transitionProperty}))}",
       ),
     (value) => value.popups.length === 0,
   );

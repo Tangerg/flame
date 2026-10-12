@@ -174,6 +174,18 @@ it("yields the native surface to the actual workbench popup and restores its bou
       { x: 12, y: 20, width: 0, height: 0 },
     ),
   );
+  for (const element of document.querySelectorAll(
+    "[data-base-ui-portal] [data-open], [data-base-ui-portal] [data-ending-style]",
+  )) {
+    element.removeAttribute("data-open");
+    element.removeAttribute("data-ending-style");
+  }
+  window.dispatchEvent(new Event("resize"));
+  expect(f.binding.call).toHaveBeenLastCalledWith(
+    "main.DesktopHost.PositionPluginPage",
+    "page-popup",
+    { x: 12, y: 20, width: 0, height: 0 },
+  );
   view.unmount();
   await vi.waitFor(() =>
     expect(f.binding.call).toHaveBeenLastCalledWith(

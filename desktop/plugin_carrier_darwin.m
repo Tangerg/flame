@@ -59,7 +59,7 @@
 }
 @end
 
-void *createPluginPage(void *windowHandle, const char *html, uintptr_t handle, size_t messageLimit) {
+void *createPluginPage(void *windowHandle, uintptr_t handle, size_t messageLimit) {
     if (!NSThread.isMainThread || windowHandle == NULL) return NULL;
     if (@available(macOS 13.0, *)) {
         NSWindow *window = (__bridge NSWindow *)windowHandle;
@@ -88,10 +88,14 @@ void *createPluginPage(void *windowHandle, const char *html, uintptr_t handle, s
         page.view.navigationDelegate = page;
         page.view.UIDelegate = page;
         [window.contentView addSubview:page.view];
-        [page.view loadHTMLString:[NSString stringWithUTF8String:html] baseURL:nil];
         return (__bridge_retained void *)page;
     }
     return NULL;
+}
+
+void loadPluginPage(void *pointer, const char *html) {
+    PluginPage *page = (__bridge PluginPage *)pointer;
+    [page.view loadHTMLString:[NSString stringWithUTF8String:html] baseURL:nil];
 }
 
 static void restorePluginFocus(PluginPage *page) {
