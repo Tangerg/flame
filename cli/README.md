@@ -4,12 +4,18 @@ Flame CLI provides scriptable commands and an interactive terminal client over t
 
 ```sh
 cd cli
-go run .
-go run . run "explain the failing test"
-go run . run --json "summarize this workspace"
-go run . sessions ls
-go run . config show
+make build
+./build/flame
+./build/flame run "explain the failing test"
+./build/flame run --json "summarize this workspace"
+./build/flame sessions ls
+./build/flame config show
 ```
+
+The build includes the complete `build/plugins` companion distribution required by
+embedded Runtime initialization. Keep that directory beside the executable when
+packaging. An HTTP-only client does not initialize a local Runtime.
+
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 

@@ -76,11 +76,11 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	t.Setenv("FLAME_PROVIDER", "deepseek")
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
 	t.Setenv("FLAME_BASEURL", provider.URL)
-	connection := openIntegrationRuntime(t, t.TempDir())
+	connection := openIntegrationRuntime(t, tempDirectory(t))
 	if _, err := connection.SetApprovalMode(t.Context(), mode); err != nil {
 		t.Fatal(err)
 	}
-	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
+	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: tempDirectory(t)})
 	if err != nil {
 		t.Fatal(err)
 	}

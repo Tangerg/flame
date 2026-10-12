@@ -27,7 +27,7 @@ import (
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 	configureIntegrationRuntime(t)
-	runtime := openIntegrationRuntime(t, t.TempDir())
+	runtime := openIntegrationRuntime(t, tempDirectory(t))
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
@@ -50,7 +50,7 @@ func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 
 func TestRuntimeConnectionResourceFailures(t *testing.T) {
 	configureIntegrationRuntime(t)
-	runtime := openIntegrationRuntime(t, t.TempDir())
+	runtime := openIntegrationRuntime(t, tempDirectory(t))
 	activateManagedPlugins(t, runtime, "schedules")
 	for _, tc := range []struct {
 		name string
@@ -84,7 +84,7 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 
 func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	configureIntegrationRuntime(t)
-	workspace := t.TempDir()
+	workspace := tempDirectory(t)
 	if err := os.WriteFile(filepath.Join(workspace, "main.go"), []byte("package main\n\nvar answer = 42\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	activateManagedPlugins(t, runtime, "memory", "schedules")
 	created := requireSessionCatalog(t, runtime, workspace)
 	requireWorkspaceInspection(t, runtime, workspace)
-	forked := requireSessionMutation(t, runtime, created, t.TempDir())
+	forked := requireSessionMutation(t, runtime, created, tempDirectory(t))
 	requireSessionPortability(t, runtime, forked.ID)
 	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Path)
 	requireProviderMutationLifecycle(t, runtime)
@@ -461,10 +461,10 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 
 func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Helper()
-	productRoot := t.TempDir()
+	productRoot := tempDirectory(t)
 	owner := NewOwner(Config{
 		ProductRoot: productRoot, DefaultWorkspacePath: workspace,
-		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
+		UserHomePath: tempDirectory(t), ConfigDirectories: []string{tempDirectory(t)}, ClientVersion: "test",
 	})
 	runtime, err := owner.Connection(t.Context(), "")
 	if err != nil {
@@ -874,8 +874,8 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	configureIntegrationRuntime(t)
 
 	owner := NewOwner(Config{
-		ProductRoot: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
-		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
+		ProductRoot: tempDirectory(t), DefaultWorkspacePath: tempDirectory(t),
+		UserHomePath: tempDirectory(t), ConfigDirectories: []string{tempDirectory(t)}, ClientVersion: "test",
 	})
 	first, err := owner.Connection(t.Context(), "")
 	if err != nil {

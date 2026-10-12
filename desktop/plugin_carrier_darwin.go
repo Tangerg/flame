@@ -10,7 +10,7 @@ void *createPluginPage(void *, uintptr_t, size_t);
 void loadPluginPage(void *, const char *);
 void closePluginPage(void *);
 void sendPluginPage(void *, const char *);
-void positionPluginPage(void *, double, double, double, double);
+void positionPluginPage(void *, double, double, double, double, double, double, double, double);
 */
 import "C"
 import (
@@ -56,7 +56,7 @@ func (p *nativePluginPage) send(message string) {
 	C.sendPluginPage(p.pointer, body)
 }
 func (p *nativePluginPage) position(b PluginPageBounds) {
-	C.positionPluginPage(p.pointer, C.double(b.X), C.double(b.Y), C.double(b.Width), C.double(b.Height))
+	C.positionPluginPage(p.pointer, C.double(b.Frame.X), C.double(b.Frame.Y), C.double(b.Frame.Width), C.double(b.Frame.Height), C.double(b.Clip.X), C.double(b.Clip.Y), C.double(b.Clip.Width), C.double(b.Clip.Height))
 }
 
 //export receivePluginPage

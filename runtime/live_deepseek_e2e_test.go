@@ -13,6 +13,7 @@ import (
 	"time"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -338,9 +339,9 @@ func TestLiveDeepSeekRecoversKilledLongRunningTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dataDirectory := filepath.Join(t.TempDir(), "runtime")
-	userHome := t.TempDir()
-	coordinationDirectory := t.TempDir()
+	dataDirectory := filepath.Join(testsupport.TempDirectory(t), "runtime")
+	userHome := testsupport.TempDirectory(t)
+	coordinationDirectory := testsupport.TempDirectory(t)
 	statePath := filepath.Join(coordinationDirectory, "run.json")
 	toolMarkerPath := filepath.Join(coordinationDirectory, "tool-started")
 
@@ -554,8 +555,8 @@ func newLiveDeepSeekFixture(t *testing.T, timeout time.Duration) *liveDeepSeekFi
 	fixture := &liveDeepSeekFixture{
 		ctx:               ctx,
 		workspace:         workspace,
-		dataDirectory:     filepath.Join(t.TempDir(), "runtime"),
-		userHome:          t.TempDir(),
+		dataDirectory:     filepath.Join(testsupport.TempDirectory(t), "runtime"),
+		userHome:          testsupport.TempDirectory(t),
 		configDirectories: []string{configDirectory},
 	}
 	runtime, err := flameruntime.Open(ctx, fixture.config())

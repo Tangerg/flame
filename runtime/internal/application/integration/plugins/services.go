@@ -44,11 +44,11 @@ func ServiceOwner(ctx context.Context, store Store, kind plugin.ServiceKind) (Se
 	}
 	return owner, found, nil
 }
-func (c *Coordinator) admitServices(ctx context.Context, candidate *plugin.Installation, release plugin.Release) error {
+func admitServices(ctx context.Context, store Store, candidate *plugin.Installation, release plugin.Release) error {
 	if !candidate.Active() {
 		return nil
 	}
-	snapshots, err := c.store.List(ctx)
+	snapshots, err := store.List(ctx)
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
-	directory := t.TempDir()
+	directory := tempDirectory(t)
 	textPath := filepath.Join(directory, "notes.txt")
 	imagePath := filepath.Join(directory, "pixel.png")
 	if err := os.WriteFile(textPath, []byte("notes"), 0o600); err != nil {
@@ -131,7 +131,7 @@ func TestLoadAttachmentFileEnforcesTheReadLimit(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "attachment.txt")
+			path := filepath.Join(tempDirectory(t), "attachment.txt")
 			if err := os.WriteFile(path, []byte(test.content), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -155,7 +155,7 @@ func TestLoadAttachmentFileEnforcesTheReadLimit(t *testing.T) {
 }
 
 func TestLoadAttachmentFileHonorsCancellation(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "attachment.txt")
+	path := filepath.Join(tempDirectory(t), "attachment.txt")
 	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestLoadAttachmentFileHonorsCancellation(t *testing.T) {
 }
 
 func TestLoadAttachmentFileRejectsNonRegularSources(t *testing.T) {
-	directory := t.TempDir()
+	directory := tempDirectory(t)
 	target := filepath.Join(directory, "target.txt")
 	if err := os.WriteFile(target, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)

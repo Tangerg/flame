@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -54,10 +55,19 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	executable, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("runtime: locate distribution executable: %w", err)
+	}
+	firstPartyDirectory, err := localruntime.FirstPartyDirectory(executable)
+	if err != nil {
+		return nil, err
+	}
 	instance, _, err := bootstrap.OpenInstance(ctx, bootstrap.InstanceConfig{
 		UserHome:             resolved.UserHomePath,
 		DefaultWorkspacePath: resolved.DefaultWorkspacePath,
 		DataDirectory:        resolved.DataDirectory,
+		FirstPartyDirectory:  firstPartyDirectory,
 		ConfigDirectories:    resolved.ConfigDirectories,
 		ServerInfo: protocol.ServerInfo{
 			Name:    runtimeidentity.ProductName,

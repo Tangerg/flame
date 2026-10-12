@@ -14,10 +14,16 @@ node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages
 ```
 
 The output directory must not exist. Supported targets are Darwin, Linux and
-Windows on amd64 or arm64. Install `/absolute/new/packages/memory` and
-`/absolute/new/packages/schedules`, then approve the exact release and enable it.
+Windows on amd64 or arm64. The output contains the complete first-party catalog,
+including all workspace pages and renderers and compiled Memory/Schedules backends.
+Runtime and CLI build targets place it in `plugins` beside their executable.
+Runtime installs, approves and enables this catalog only when initializing a fresh
+database. Restart preserves user decisions. Package updates still require explicit
+release selection and exact-digest approval.
+
 The source folders contain no compiled backend; installation never builds code or
-installs dependencies. Executables are shipped in the admitted package.
+installs dependencies. Executables are shipped in the admitted package. `--replace`
+is for replacing an owned build output after the new distribution has been built.
 
 See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact owners
 and lifecycle contracts. Other packages contain only their declared content or presentation resources.

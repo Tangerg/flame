@@ -24,6 +24,7 @@ type runtimePaths struct {
 	userHome             string
 	defaultWorkspacePath string
 	dataDirectory        localruntime.DataDirectory
+	firstPartyDirectory  string
 	launchDirectory      string
 }
 
@@ -54,7 +55,16 @@ func resolveRuntimePaths() (runtimePaths, error) {
 	if err != nil {
 		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", flameHomeEnvironment, err)
 	}
+	executable, err := os.Executable()
+	if err != nil {
+		return runtimePaths{}, fmt.Errorf("runtime: locate distribution executable: %w", err)
+	}
+	firstPartyDirectory, err := localruntime.FirstPartyDirectory(executable)
+	if err != nil {
+		return runtimePaths{}, err
+	}
 	return runtimePaths{
+		firstPartyDirectory:  firstPartyDirectory,
 		userHome:             userHome,
 		defaultWorkspacePath: userHome,
 		dataDirectory:        dataDirectory,
@@ -84,6 +94,7 @@ func bootstrapRuntimeWithBuildID(
 		UserHome:             paths.userHome,
 		DefaultWorkspacePath: paths.defaultWorkspacePath,
 		DataDirectory:        paths.dataDirectory.Path(),
+		FirstPartyDirectory:  paths.firstPartyDirectory,
 		ConfigDirectories: []string{
 			filepath.Join(paths.launchDirectory, "config"),
 			paths.dataDirectory.Path(),

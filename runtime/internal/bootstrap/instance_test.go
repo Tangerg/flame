@@ -14,10 +14,11 @@ import (
 
 func TestInstanceConfigRequiresExactAbsoluteHostPaths(t *testing.T) {
 	valid := InstanceConfig{
-		UserHome:             t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		DataDirectory:        t.TempDir(),
-		ConfigDirectories:    []string{t.TempDir()},
+		FirstPartyDirectory:  firstPartyPackages,
+		UserHome:             testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		DataDirectory:        testsupport.TempDirectory(t),
+		ConfigDirectories:    []string{testsupport.TempDirectory(t)},
 	}
 	if err := valid.validate(); err != nil {
 		t.Fatalf("valid config: %v", err)
@@ -50,10 +51,11 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
 	cfg := InstanceConfig{
-		UserHome:             t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		DataDirectory:        t.TempDir(),
-		ConfigDirectories:    []string{t.TempDir()},
+		FirstPartyDirectory:  firstPartyPackages,
+		UserHome:             testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		DataDirectory:        testsupport.TempDirectory(t),
+		ConfigDirectories:    []string{testsupport.TempDirectory(t)},
 		BuildID:              "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		ServerInfo: protocol.ServerInfo{
 			Name: "test-runtime", Version: "test-version", InstanceID: testsupport.AlternateRuntimeInstanceID,

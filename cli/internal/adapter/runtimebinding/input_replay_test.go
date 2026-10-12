@@ -29,7 +29,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 	for _, method := range []string{"start", "resume", "steer"} {
 		for _, change := range []string{"changed", "deleted"} {
 			t.Run(method+"/"+change, func(t *testing.T) {
-				directory, source := t.TempDir(), t.TempDir()
+				directory, source := tempDirectory(t), tempDirectory(t)
 				textPath, imagePath := filepath.Join(source, "notes.txt"), filepath.Join(source, "pixel.png")
 				if err := os.WriteFile(textPath, []byte("original notes"), 0o600); err != nil {
 					t.Fatal(err)

@@ -6,11 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -47,11 +50,16 @@ func TestServedReadinessReportsTheStorageCheck(t *testing.T) {
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
 	instance, _, err := bootstrap.OpenInstance(t.Context(), bootstrap.InstanceConfig{
-		UserHome:             t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		DataDirectory:        t.TempDir(),
-		ConfigDirectories:    []string{t.TempDir()},
+		FirstPartyDirectory:  filepath.Join(filepath.Dir(executable), "plugins"),
+		UserHome:             testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		DataDirectory:        testsupport.TempDirectory(t),
+		ConfigDirectories:    []string{testsupport.TempDirectory(t)},
 		BuildID:              "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		ServerInfo:           protocol.ServerInfo{Name: "test-runtime", Version: "test-version"},
 	})

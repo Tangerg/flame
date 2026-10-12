@@ -14,7 +14,7 @@ import (
 )
 
 func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
-	local := t.TempDir()
+	local := tempDirectory(t)
 	configPath := filepath.Join(local, ".flame.yaml")
 	writeCommandFixture(t, configPath, []byte("runtime:\n  endpoint: https://file.example/flame\n"))
 	t.Setenv("FLAME_CLI_RUNTIME_ENDPOINT", "https://environment.example/flame")
@@ -44,7 +44,7 @@ func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
 }
 
 func TestRemoteTerminalSeparatesTargetWorkspaceFromLocalAuthoring(t *testing.T) {
-	local := t.TempDir()
+	local := tempDirectory(t)
 	canonical, err := filepath.EvalSymlinks(local)
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestRemoteTerminalSeparatesTargetWorkspaceFromLocalAuthoring(t *testing.T) 
 }
 
 func TestRemoteRunAttachesLocalBytesToAnExistingRemoteSession(t *testing.T) {
-	local := t.TempDir()
+	local := tempDirectory(t)
 	writeCommandFixture(t, filepath.Join(local, "notes.txt"), []byte("local attachment"))
 	runtime := instantRuntime()
 	runtime.Script = shortCompletedScript
@@ -108,7 +108,7 @@ func TestRemoteRunAttachesLocalBytesToAnExistingRemoteSession(t *testing.T) {
 }
 
 func TestRemoteFileCompletionDoesNotOpenRuntime(t *testing.T) {
-	local := t.TempDir()
+	local := tempDirectory(t)
 	writeCommandFixture(t, filepath.Join(local, "notes.txt"), []byte("notes"))
 	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
 		t.Fatal("local file completion opened Runtime")
@@ -128,7 +128,7 @@ func TestRemoteFileCompletionDoesNotOpenRuntime(t *testing.T) {
 }
 
 func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
-	local := t.TempDir()
+	local := tempDirectory(t)
 	configPath := filepath.Join(local, ".flame.yaml")
 	writeCommandFixture(t, configPath, []byte("runtime:\n  endpoint: https://configured.example/flame\n"))
 	var target string
@@ -165,9 +165,9 @@ func TestExplicitRemoteFailureDoesNotOpenAnEmbeddedRuntime(t *testing.T) {
 }
 
 func TestRemoteWorkspaceDoesNotSelectLocalProjectConfiguration(t *testing.T) {
-	local := t.TempDir()
+	local := tempDirectory(t)
 	writeCommandFixture(t, filepath.Join(local, ".flame.yaml"), []byte("ui:\n  mouse: false\n"))
-	remote := t.TempDir()
+	remote := tempDirectory(t)
 	writeCommandFixture(t, filepath.Join(remote, ".flame.yaml"), []byte("invalid: target configuration must not be read\n"))
 	var request TerminalRequest
 	root := NewRoot(Dependencies{StartTerminal: func(_ context.Context, value TerminalRequest) error {

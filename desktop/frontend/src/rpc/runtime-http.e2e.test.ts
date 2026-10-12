@@ -737,19 +737,25 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
 
   const activateManagedOwner = async (feature: "memory" | "schedules") => {
     if (!client) throw new Error("runtime client was not initialized");
-    let installation = managedOwners.get(feature);
-    if (!installation) {
+    let installation = (await client.plugins.list()).data.find(
+      (item) => item.selected.name === `flame.${feature}`,
+    );
+    if (!installation)
       installation = await client.plugins.install({
-        source: join(environmentRoot, "managed-packages", feature),
+        source: join(environmentRoot, "plugins", feature),
       });
-      expect(installation.selected.diagnostics).toEqual([]);
-      managedOwners.set(feature, installation);
-    }
-    await client.plugins.approve({
-      installationId: installation.id,
-      digest: installation.selected.digest,
-    });
-    await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+    expect(installation.selected.diagnostics).toEqual([]);
+    if (installation.state === "unapproved")
+      installation = await client.plugins.approve({
+        installationId: installation.id,
+        digest: installation.selected.digest,
+      });
+    if (installation.state !== "enabled")
+      installation = await client.plugins.setEnablement({
+        installationId: installation.id,
+        enabled: true,
+      });
+    managedOwners.set(feature, installation);
     const server = {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
@@ -1043,7 +1049,7 @@ for await (const line of lines) {
         "--arch",
         process.arch === "x64" ? "amd64" : process.arch,
         "--output",
-        join(environmentRoot, "managed-packages"),
+        join(environmentRoot, "plugins"),
       ]),
     ]);
 
@@ -1084,6 +1090,10 @@ for await (const line of lines) {
     await expect(client.plugins.install({ source: "relative/package" })).rejects.toSatisfy(
       (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
+    const defaultTrajectory = (await client.plugins.list()).data.find(
+      (item) => item.selected.name === "flame.trajectory",
+    )!;
+    await client.plugins.setEnablement({ installationId: defaultTrajectory.id, enabled: false });
     const installed = await client.plugins.install({
       source: resolve(runtimeDirectory, "../plugins/trajectory"),
     });
@@ -1135,10 +1145,13 @@ for await (const line of lines) {
         code: -32042,
       });
       const revokedSkills = await client.workspace({ path: root }).skills.listDiscovered();
-      expect(revokedSkills.skills.some((skill) => skill.name === "inspect-history")).toBe(false);
+      expect(
+        revokedSkills.skills.some((skill) => skill.installation?.installationId === installed.id),
+      ).toBe(false);
     } finally {
       await reader.close();
       await client.plugins.uninstall(installed.id);
+      await client.plugins.setEnablement({ installationId: defaultTrajectory.id, enabled: true });
     }
   });
 

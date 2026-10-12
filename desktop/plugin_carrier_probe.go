@@ -180,7 +180,7 @@ func verifyNativePluginPages(host *DesktopHost, messages <-chan json.RawMessage,
 		}
 	}
 	open := func() (string, error) {
-		admission, err := host.OpenPluginPage(PluginPageBounds{X: 100, Y: 100, Width: 640, Height: 480})
+		admission, err := host.OpenPluginPage(PluginPageBounds{Frame: PluginPageRect{X: 100, Y: 100, Width: 640, Height: 480}, Clip: PluginPageRect{X: 100, Y: 100, Width: 640, Height: 480}})
 		if err != nil {
 			return "", err
 		}
@@ -258,7 +258,7 @@ addEventListener('message', async event=>{
 		}
 		break
 	}
-	if err = host.PositionPluginPage(id, PluginPageBounds{X: 0, Y: 0, Width: 512, Height: 420}); err != nil {
+	if err = host.PositionPluginPage(id, PluginPageBounds{Frame: PluginPageRect{X: 0, Y: 0, Width: 512, Height: 420}, Clip: PluginPageRect{X: 0, Y: 0, Width: 512, Height: 420}}); err != nil {
 		return err
 	}
 	message, err := next()
@@ -271,6 +271,16 @@ addEventListener('message', async event=>{
 	}
 	if resized.Geometry.Width != 512 || resized.Geometry.Height != 420 {
 		return fmt.Errorf("native viewport geometry = %+v", resized.Geometry)
+	}
+	if err = host.PositionPluginPage(id, PluginPageBounds{Frame: PluginPageRect{Width: 512, Height: 420}, Clip: PluginPageRect{X: 20, Y: 20, Width: 100, Height: 100}}); err != nil {
+		return err
+	}
+	outsideClip, err := focusProbe(host, 10, 10)
+	if err != nil || outsideClip != workbenchResponder {
+		return errors.Join(err, errors.New("clipped page covered the workbench outside its scrollport"))
+	}
+	if err = host.PositionPluginPage(id, PluginPageBounds{Frame: PluginPageRect{Width: 512, Height: 420}, Clip: PluginPageRect{Width: 512, Height: 420}}); err != nil {
+		return err
 	}
 	pageResponder, err := focusProbe(host, 100, 100)
 	if err != nil {
@@ -289,7 +299,7 @@ addEventListener('message', async event=>{
 	if err != nil || revealed != workbenchResponder {
 		return errors.Join(err, errors.New("hidden page still covered the workbench"))
 	}
-	if err = host.PositionPluginPage(id, PluginPageBounds{X: 0, Y: 0, Width: 512, Height: 420}); err != nil {
+	if err = host.PositionPluginPage(id, PluginPageBounds{Frame: PluginPageRect{X: 0, Y: 0, Width: 512, Height: 420}, Clip: PluginPageRect{X: 0, Y: 0, Width: 512, Height: 420}}); err != nil {
 		return err
 	}
 	if _, err = focusProbe(host, 100, 100); err != nil {

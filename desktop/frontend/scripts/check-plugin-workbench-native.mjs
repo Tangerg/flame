@@ -445,17 +445,7 @@ try {
   );
   const builtPlugins = join(fixture, "managed-packages");
   await buildPlugins({ os: "linux", arch: goarch, output: builtPlugins });
-  const managed = await readdir(builtPlugins);
-  const developmentPackages = new Set([
-    ...managed.map((feature) => join(repository, "plugins", feature)),
-    join(repository, "plugins", "node_modules"),
-  ]);
-  await cp(join(repository, "plugins"), join(fixture, "plugins"), {
-    recursive: true,
-    filter: (source) => !developmentPackages.has(source),
-  });
-  for (const feature of managed)
-    await cp(join(builtPlugins, feature), join(fixture, "plugins", feature), { recursive: true });
+  await cp(builtPlugins, join(fixture, "plugins"), { recursive: true });
   await mkdir(join(fixture, "skills/native-user"), { recursive: true });
   await writeFile(
     join(fixture, "skills/native-user/SKILL.md"),
@@ -522,6 +512,8 @@ try {
   );
   const discovery = await rpc("runtime.discover");
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
+  const defaults = (await rpc("plugins.list")).data;
+  assert.equal(defaults.length, 10);
   for (const name of [
     "trajectory",
     "memory",
@@ -532,7 +524,10 @@ try {
     "diagnostics",
     "icon-gallery",
   ]) {
-    const installation = await rpc("plugins.install", { source: `/fixture/plugins/${name}` });
+    const installation = defaults.find((item) => item.selected.name === `flame.${name}`);
+    assert.ok(installation, `default ${name} package must be installed`);
+    assert.equal(installation.state, "enabled");
+    assert.equal(installation.presentation, "admitted");
     assert.deepEqual(installation.selected.diagnostics, []);
     const view = installation.selected.views[0];
     const binding = {
@@ -540,12 +535,6 @@ try {
       digest: installation.selected.digest,
       viewId: view.id,
     };
-    await rpc("plugins.approve", { installationId: installation.id, digest: binding.digest });
-    const enabled = await rpc("plugins.setEnablement", {
-      installationId: installation.id,
-      enabled: true,
-    });
-    assert.equal(enabled.presentation, "admitted");
     const resource = await rpc("plugins.readView", binding);
     assert.equal(
       resource.html,
@@ -563,20 +552,13 @@ try {
       );
     }
   }
-  resultPackage = await rpc("plugins.install", { source: "/fixture/plugins/tool-results" });
-  assert.deepEqual(resultPackage.selected.diagnostics, []);
-  await rpc("plugins.approve", {
-    installationId: resultPackage.id,
-    digest: resultPackage.selected.digest,
-  });
-  await rpc("plugins.setEnablement", { installationId: resultPackage.id, enabled: true });
-  fileRendererPackage = await rpc("plugins.install", { source: "/fixture/plugins/file-renderers" });
-  assert.deepEqual(fileRendererPackage.selected.diagnostics, []);
-  await rpc("plugins.approve", {
-    installationId: fileRendererPackage.id,
-    digest: fileRendererPackage.selected.digest,
-  });
-  await rpc("plugins.setEnablement", { installationId: fileRendererPackage.id, enabled: true });
+  resultPackage = defaults.find((item) => item.selected.name === "flame.tool-results");
+  fileRendererPackage = defaults.find((item) => item.selected.name === "flame.file-renderers");
+  for (const installation of [resultPackage, fileRendererPackage]) {
+    assert.ok(installation);
+    assert.deepEqual(installation.selected.diagnostics, []);
+    assert.equal(installation.state, "enabled");
+  }
   await command("docker", [
     "exec",
     containerName,

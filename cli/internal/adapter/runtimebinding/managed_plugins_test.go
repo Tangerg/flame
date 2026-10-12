@@ -2,39 +2,28 @@ package runtimebinding
 
 import (
 	json "encoding/json/v2"
-	"os/exec"
-	"path/filepath"
-	goruntime "runtime"
 	"testing"
 	"time"
 
-	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func activateManagedPlugins(t *testing.T, connection *Connection, features ...string) {
 	t.Helper()
-	output := filepath.Join(t.TempDir(), "packages")
-	builder, err := filepath.Abs("../../../../plugins/build.mjs")
+	catalog, err := connection.plugins.ListPlugins(t.Context(), connection.callOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.CommandContext(t.Context(), "node", builder, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", output)
-	if out, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build local plugin applications: %s %v", out, err)
-	}
 	for _, feature := range features {
-		installed, err := connection.plugins.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: filepath.Join(output, feature)}, flameruntime.CommandOptions{})
-		if err != nil {
-			t.Fatal(err)
+		var installed protocol.PluginInstallation
+		for _, item := range catalog.Data {
+			if item.Selected.Name == "flame."+feature {
+				installed = item
+				break
+			}
 		}
-		_, err = connection.plugins.ApprovePlugin(t.Context(), protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, flameruntime.CommandOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = connection.plugins.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, flameruntime.CommandOptions{})
-		if err != nil {
-			t.Fatal(err)
+		if installed.ID == "" || installed.State != protocol.PluginInstallationEnabled {
+			t.Fatalf("default %s is unavailable: %+v", feature, installed)
 		}
 		server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: feature}
 		deadline := time.Now().Add(10 * time.Second)

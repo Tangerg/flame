@@ -86,6 +86,7 @@ func OpenSchema(ctx context.Context, path string, statements []string) (*sql.DB,
 func currentSchema() []string {
 	firstExactInteger := exactint.First().Value()
 	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS plugin_initialization (id INTEGER PRIMARY KEY CHECK (id = 1))`,
 		`CREATE TABLE IF NOT EXISTS automation_starts (run_id TEXT PRIMARY KEY, request_digest TEXT NOT NULL, session_id TEXT NOT NULL, segment_id TEXT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, sequence TEXT NOT NULL, commit_id TEXT NOT NULL, commit_digest TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS execution_tree_commits (root_id TEXT NOT NULL REFERENCES execution_trees(root_id) ON DELETE CASCADE, commit_id TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(root_id, commit_id))`,

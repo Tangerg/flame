@@ -8,6 +8,7 @@ import type { DesktopHostBinding } from "./desktopHost";
 
 afterEach(() => {
   cleanup();
+  document.body.replaceChildren();
   vi.unstubAllGlobals();
 });
 
@@ -16,14 +17,19 @@ function fixture(open: () => Promise<string>) {
   const unlisten = vi.fn(() => {
     listener = undefined;
   });
-  const disconnect = vi.fn();
+  const frames = new Map<number, FrameRequestCallback>();
+  let sequence = 0;
   vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      disconnect = disconnect;
-    },
+    "requestAnimationFrame",
+    vi.fn((callback: FrameRequestCallback) => {
+      frames.set(++sequence, callback);
+      return sequence;
+    }),
   );
+  const cancelFrame = vi.fn((id: number) => {
+    frames.delete(id);
+  });
+  vi.stubGlobal("cancelAnimationFrame", cancelFrame);
   const binding: DesktopHostBinding = {
     call: vi.fn(async (method: string) =>
       method.endsWith("OpenPluginPage")
@@ -36,13 +42,19 @@ function fixture(open: () => Promise<string>) {
     },
   };
   const container = document.createElement("div");
+  document.body.append(container);
   vi.spyOn(container, "getBoundingClientRect").mockReturnValue(new DOMRect(12, 20, 300, 400));
   return {
     carrier: desktopPluginCarrier(binding),
     binding,
     container,
     unlisten,
-    disconnect,
+    cancelFrame,
+    tick: () => {
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const callback of pending) callback(performance.now());
+    },
     emit: (id: string, message: unknown) => listener?.({ id, message }),
   };
 }
@@ -80,7 +92,7 @@ it("binds early readiness and later traffic to the native instance, then retires
   controller.abort();
   await page.close();
   expect(f.unlisten).toHaveBeenCalledTimes(1);
-  expect(f.disconnect).toHaveBeenCalledTimes(1);
+  expect(f.cancelFrame).toHaveBeenCalledTimes(1);
   expect(f.binding.call).toHaveBeenCalledWith("main.DesktopHost.ClosePluginPage", "page-1");
   expect(
     vi.mocked(f.binding.call).mock.calls.filter(([method]) => method.endsWith("ClosePluginPage")),
@@ -167,11 +179,15 @@ it("yields the native surface to the actual workbench popup and restores its bou
     ),
   );
   await screen.findByText("workbench popup");
+  f.tick();
   await vi.waitFor(() =>
     expect(f.binding.call).toHaveBeenLastCalledWith(
       "main.DesktopHost.PositionPluginPage",
       "page-popup",
-      { x: 12, y: 20, width: 0, height: 0 },
+      {
+        frame: { x: 12, y: 20, width: 300, height: 400 },
+        clip: { x: 12, y: 20, width: 0, height: 0 },
+      },
     ),
   );
   for (const element of document.querySelectorAll(
@@ -180,18 +196,26 @@ it("yields the native surface to the actual workbench popup and restores its bou
     element.removeAttribute("data-open");
     element.removeAttribute("data-ending-style");
   }
-  window.dispatchEvent(new Event("resize"));
+  f.tick();
   expect(f.binding.call).toHaveBeenLastCalledWith(
     "main.DesktopHost.PositionPluginPage",
     "page-popup",
-    { x: 12, y: 20, width: 0, height: 0 },
+    {
+      frame: { x: 12, y: 20, width: 300, height: 400 },
+      clip: { x: 12, y: 20, width: 0, height: 0 },
+    },
   );
   view.unmount();
+  await Promise.resolve();
+  f.tick();
   await vi.waitFor(() =>
     expect(f.binding.call).toHaveBeenLastCalledWith(
       "main.DesktopHost.PositionPluginPage",
       "page-popup",
-      { x: 12, y: 20, width: 300, height: 400 },
+      {
+        frame: { x: 12, y: 20, width: 300, height: 400 },
+        clip: { x: 12, y: 20, width: 300, height: 400 },
+      },
     ),
   );
   await page.close();
@@ -318,5 +342,61 @@ it("retires a transfer between frames and joins its publication acknowledgement"
   expect(await failure).toMatchObject({ name: "AbortError" });
   expect(
     vi.mocked(f.binding.call).mock.calls.filter(([method]) => method.endsWith("SendPluginPage")),
+  ).toHaveLength(1);
+});
+
+it("clips an inline page to its scrollport without shrinking the guest viewport", async () => {
+  const f = fixture(async () => "inline");
+  const scroller = document.createElement("div");
+  scroller.style.overflowY = "auto";
+  document.body.append(scroller);
+  scroller.append(f.container);
+  vi.spyOn(scroller, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 80, 500, 200));
+  Object.defineProperty(scroller, "clientHeight", { value: 200 });
+  Object.defineProperty(scroller, "offsetHeight", { value: 200 });
+  vi.mocked(f.container.getBoundingClientRect).mockReturnValue(new DOMRect(12, -20, 300, 400));
+  const page = await f.carrier.open(f.container, new AbortController().signal, vi.fn());
+  expect(f.binding.call).toHaveBeenLastCalledWith("main.DesktopHost.PositionPluginPage", "inline", {
+    frame: { x: 12, y: -20, width: 300, height: 400 },
+    clip: { x: 12, y: 80, width: 300, height: 200 },
+  });
+  vi.mocked(f.container.getBoundingClientRect).mockReturnValue(new DOMRect(12, 300, 300, 400));
+  f.tick();
+  await vi.waitFor(() =>
+    expect(f.binding.call).toHaveBeenLastCalledWith(
+      "main.DesktopHost.PositionPluginPage",
+      "inline",
+      {
+        frame: { x: 12, y: 300, width: 300, height: 400 },
+        clip: { x: 12, y: 300, width: 300, height: 0 },
+      },
+    ),
+  );
+  await page.close();
+});
+
+it("follows a layout shift and releases a detached native surface without waiting for a resize", async () => {
+  const f = fixture(async () => "shifted");
+  const page = await f.carrier.open(f.container, new AbortController().signal, vi.fn());
+  vi.mocked(f.container.getBoundingClientRect).mockReturnValue(new DOMRect(12, 120, 300, 400));
+  f.tick();
+  await vi.waitFor(() =>
+    expect(f.binding.call).toHaveBeenLastCalledWith(
+      "main.DesktopHost.PositionPluginPage",
+      "shifted",
+      {
+        frame: { x: 12, y: 120, width: 300, height: 400 },
+        clip: { x: 12, y: 120, width: 300, height: 400 },
+      },
+    ),
+  );
+  f.container.remove();
+  f.tick();
+  await vi.waitFor(() =>
+    expect(f.binding.call).toHaveBeenLastCalledWith("main.DesktopHost.ClosePluginPage", "shifted"),
+  );
+  await page.close();
+  expect(
+    vi.mocked(f.binding.call).mock.calls.filter(([method]) => method.endsWith("ClosePluginPage")),
   ).toHaveLength(1);
 });

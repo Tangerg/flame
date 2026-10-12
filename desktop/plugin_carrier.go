@@ -23,18 +23,33 @@ type PluginPageAdmission struct {
 	MaxFrameBytes int    `json:"maxFrameBytes"`
 }
 
-type PluginPageBounds struct {
+type PluginPageRect struct {
 	X      float64 `json:"x"`
 	Y      float64 `json:"y"`
 	Width  float64 `json:"width"`
 	Height float64 `json:"height"`
 }
 
+// The DOM frame determines guest layout; the clip determines native exposure.
+// Keeping them distinct preserves content coordinates when a scroller clips a page.
+type PluginPageBounds struct {
+	Frame PluginPageRect `json:"frame"`
+	Clip  PluginPageRect `json:"clip"`
+}
+
 func (b PluginPageBounds) validate() error {
-	for _, value := range []float64{b.X, b.Y, b.Width, b.Height} {
-		if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+	for _, rect := range []PluginPageRect{b.Frame, b.Clip} {
+		for _, value := range []float64{rect.X, rect.Y, rect.Width, rect.Height} {
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				return errors.New("plugin carrier: invalid bounds")
+			}
+		}
+		if rect.Width < 0 || rect.Height < 0 {
 			return errors.New("plugin carrier: invalid bounds")
 		}
+	}
+	if b.Clip.X < 0 || b.Clip.Y < 0 {
+		return errors.New("plugin carrier: invalid clip")
 	}
 	return nil
 }

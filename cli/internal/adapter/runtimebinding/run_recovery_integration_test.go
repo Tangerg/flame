@@ -47,11 +47,11 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	t.Setenv("FLAME_PROVIDER", "deepseek")
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
 	t.Setenv("FLAME_BASEURL", provider.URL)
-	connection := openIntegrationRuntime(t, t.TempDir())
+	connection := openIntegrationRuntime(t, tempDirectory(t))
 	if _, err := connection.SetApprovalMode(t.Context(), protocol.ApprovalModeYolo); err != nil {
 		t.Fatal(err)
 	}
-	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
+	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: tempDirectory(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +106,11 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
 	t.Setenv("FLAME_BASEURL", provider.URL)
 
-	connection := openIntegrationRuntime(t, t.TempDir())
+	connection := openIntegrationRuntime(t, tempDirectory(t))
 	if _, err := connection.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe); err != nil {
 		t.Fatal(err)
 	}
-	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
+	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: tempDirectory(t)})
 	if err != nil {
 		t.Fatal(err)
 	}

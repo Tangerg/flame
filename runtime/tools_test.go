@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -17,14 +18,14 @@ func TestDirectToolBindingPreservesScopeInputRejection(t *testing.T) {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	root := t.TempDir()
+	root := testsupport.TempDirectory(t)
 	path := filepath.Join(root, "note.txt")
 	if err := os.WriteFile(path, []byte("flame\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	rt, err := Open(t.Context(), Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: root,
-		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: testsupport.TempDirectory(t), DefaultWorkspacePath: root,
+		UserHomePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -99,3 +99,12 @@ func (d DataDirectory) join(name string) string {
 func invalidDataDirectory(reason string) error {
 	return fmt.Errorf("local Runtime data directory: %s: %w", reason, ErrInvalidDataDirectory)
 }
+
+// FirstPartyDirectory names the companion catalog shipped with a Runtime host.
+// The executable location, not cwd or a user's data root, owns this distribution.
+func FirstPartyDirectory(executable string) (string, error) {
+	if !filepath.IsAbs(executable) {
+		return "", errors.New("first-party distribution: executable must be absolute")
+	}
+	return filepath.Join(filepath.Dir(executable), "plugins"), nil
+}

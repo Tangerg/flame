@@ -83,7 +83,7 @@ func remoteDeletionConnection(t *testing.T, malformed bool) (
 	t.Helper()
 	configureIntegrationRuntime(t)
 	target, err := flameruntime.Open(t.Context(), flameruntime.Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(), UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: tempDirectory(t), DefaultWorkspacePath: tempDirectory(t), UserHomePath: tempDirectory(t), ConfigDirectories: []string{tempDirectory(t)},
 	})
 	if err != nil {
 		t.Fatal(err)

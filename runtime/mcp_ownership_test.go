@@ -3,9 +3,11 @@ package runtime
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -29,6 +31,9 @@ func TestRuntimeStartupDoesNotCreateMCPServersFromEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	servers.Data = slices.DeleteFunc(servers.Data, func(server protocol.MCPServer) bool {
+		return server.ID.Origin.Type == protocol.MCPOriginInstallation
+	})
 	if len(servers.Data) != 0 || requests.Load() != 0 {
 		t.Fatalf("environment created %d servers and %d connection requests", len(servers.Data), requests.Load())
 	}
@@ -76,6 +81,9 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	servers.Data = slices.DeleteFunc(servers.Data, func(server protocol.MCPServer) bool {
+		return server.ID.Origin.Type == protocol.MCPOriginInstallation
+	})
 	if len(servers.Data) != 1 {
 		t.Fatalf("servers after restart = %+v", servers.Data)
 	}
@@ -94,6 +102,9 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	servers.Data = slices.DeleteFunc(servers.Data, func(server protocol.MCPServer) bool {
+		return server.ID.Origin.Type == protocol.MCPOriginInstallation
+	})
 	if len(servers.Data) != 0 {
 		t.Fatalf("servers after deletion = %+v", servers.Data)
 	}
@@ -110,6 +121,9 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	servers.Data = slices.DeleteFunc(servers.Data, func(server protocol.MCPServer) bool {
+		return server.ID.Origin.Type == protocol.MCPOriginInstallation
+	})
 	if len(servers.Data) != 0 {
 		t.Fatalf("restart resurrected deleted MCP resources: %+v", servers.Data)
 	}
@@ -125,9 +139,9 @@ func isolatedMCPRuntimeConfig(t *testing.T) Config {
 		t.Setenv(name, "")
 	}
 	return Config{
-		DataDirectory:        t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		UserHomePath:         t.TempDir(),
-		ConfigDirectories:    []string{t.TempDir()},
+		DataDirectory:        testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath:         testsupport.TempDirectory(t),
+		ConfigDirectories:    []string{testsupport.TempDirectory(t)},
 	}
 }

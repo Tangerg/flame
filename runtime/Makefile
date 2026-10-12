@@ -3,7 +3,7 @@
 # shutdown protocol. A port or pidfile is not proof of process/data ownership.
 
 PORT ?= 17171
-BIN := flame
+BIN := build/flame
 PKG := ./cmd/flame
 HEALTH := http://127.0.0.1:$(PORT)/v2/health/ready
 
@@ -16,7 +16,8 @@ export FLAME_HOME
 help: ## List targets
 	@awk -F':.*?## ' '/^[a-z-]+:.*## / {printf "  %-9s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build: ## Compile the dev binary (./flame)
+build: ## Build the Runtime distribution and first-party packages
+	node ../plugins/build.mjs --os "$$(go env GOOS)" --arch "$$(go env GOARCH)" --output "$(abspath build/plugins)" --replace
 	go build -o "$(BIN)" $(PKG)
 
 run: build ## Run in the foreground; Ctrl-C requests graceful shutdown

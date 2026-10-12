@@ -13,6 +13,7 @@ import (
 	"time"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -24,10 +25,10 @@ func TestFreshRuntimeSubscriptionObservesFirstSkill(t *testing.T) {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	data := t.TempDir()
+	data := testsupport.TempDirectory(t)
 	rt, err := Open(t.Context(), Config{
-		DataDirectory: data, UserHomePath: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
-		ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: data, UserHomePath: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
+		ConfigDirectories: []string{testsupport.TempDirectory(t)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -72,8 +73,8 @@ func TestRuntimePreservesCallerCancellation(t *testing.T) {
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	runtime, err := Open(t.Context(), Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
-		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -117,8 +118,8 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	runtime, err := Open(t.Context(), Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
-		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -193,7 +194,7 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
-	configDirectory := t.TempDir()
+	configDirectory := testsupport.TempDirectory(t)
 	if err := os.WriteFile(
 		filepath.Join(configDirectory, "config.yaml"),
 		[]byte("provider: anthropic\napiKey: sk-file\nbaseURL: https://config.example.test\n"),
@@ -202,9 +203,9 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := Config{
-		DataDirectory:        t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		UserHomePath:         t.TempDir(),
+		DataDirectory:        testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath:         testsupport.TempDirectory(t),
 		ConfigDirectories:    []string{configDirectory},
 	}
 
@@ -256,7 +257,7 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
-	configDirectory := t.TempDir()
+	configDirectory := testsupport.TempDirectory(t)
 	if err := os.WriteFile(
 		filepath.Join(configDirectory, "config.yaml"),
 		[]byte("provider: anthropic\n"),
@@ -265,9 +266,9 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := Config{
-		DataDirectory:        t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		UserHomePath:         t.TempDir(),
+		DataDirectory:        testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath:         testsupport.TempDirectory(t),
 		ConfigDirectories:    []string{configDirectory},
 	}
 
@@ -333,8 +334,8 @@ func providerByID(t *testing.T, providers []protocol.Provider, id string) *proto
 }
 
 func TestResolveConfigUsesExplicitStableDefaults(t *testing.T) {
-	data := t.TempDir()
-	home := t.TempDir()
+	data := testsupport.TempDirectory(t)
+	home := testsupport.TempDirectory(t)
 	resolved, err := (Config{DataDirectory: data, UserHomePath: home}).resolve()
 	if err != nil {
 		t.Fatalf("resolveConfig: %v", err)
@@ -371,10 +372,10 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
 	config := Config{
-		DataDirectory:        t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		UserHomePath:         t.TempDir(),
-		ConfigDirectories:    []string{t.TempDir()},
+		DataDirectory:        testsupport.TempDirectory(t),
+		DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath:         testsupport.TempDirectory(t),
+		ConfigDirectories:    []string{testsupport.TempDirectory(t)},
 	}
 	runtime, err := Open(t.Context(), config)
 	if err != nil {
@@ -477,7 +478,7 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 }
 
 func TestResolveConfigCleansPaths(t *testing.T) {
-	root := t.TempDir()
+	root := testsupport.TempDirectory(t)
 	resolved, err := (Config{
 		DataDirectory:        filepath.Join(root, "data", "..", "data"),
 		DefaultWorkspacePath: filepath.Join(root, "workspace", "."),

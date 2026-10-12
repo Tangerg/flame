@@ -222,3 +222,22 @@ func (s *InstallationStore) Remove(ctx context.Context, id resourceid.Installati
 	}
 	return nil
 }
+
+// Initialize commits the first-party catalog and its completion atomically.
+// Deleting all installations later does not make initialization pending again.
+func (s *InstallationStore) Initialize(ctx context.Context, install func(context.Context) error) error {
+	return RunInTx(ctx, s.db, func(ctx context.Context) error {
+		var initialized bool
+		if err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_initialization WHERE id=1)`).Scan(&initialized); err != nil {
+			return err
+		}
+		if initialized {
+			return nil
+		}
+		if err := install(ctx); err != nil {
+			return err
+		}
+		_, err := Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_initialization(id) VALUES(1)`)
+		return err
+	})
+}

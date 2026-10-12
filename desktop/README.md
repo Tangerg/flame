@@ -224,8 +224,11 @@ connection replacement retires the predecessor before publishing new contributio
 Optional trajectory, Memory, Schedules and Usage pages use one qualified carrier lifecycle.
 Build target-specific Memory and Schedules packages with
 `node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages`.
-Install the built `memory` and `schedules` directories, alongside `plugins/trajectory`
-and `plugins/usage`, through Settings → Plugins. Approve exact digests and enable them.
+Runtime distributions contain all first-party packages beside their executable.
+A fresh database receives approved, enabled defaults during Runtime initialization;
+Desktop renders those installations without its own installation policy. Restart
+preserves user disablement, revocation and uninstall. Settings → Plugins manages
+subsequent release selection, approval and enablement.
 Memory captures project/user scope in trusted Host controls. Its guest renders canonical
 candidates and active items; trusted Host forms retain add, review, edit, pin and delete.
 The Memory backend alone owns these facts; Runtime routes admitted commands and supplies
@@ -379,6 +382,10 @@ The Wails workbench uses its normal runtime and retains one binding call and one
 event. The native control disables lockdown, sends packets, and fails admission; API
 absence alone cannot qualify a carrier. Closing the owned view removes its handler and
 navigation delegate, stops loading, detaches the view, and releases its callback handle.
+The DOM container owns geometry. Native pages retain their full document frame inside
+an independently clipped surface that intersects the viewport and all clipping ancestors.
+Position changes are projected in order, and detaching the container retires the native
+surface. Hiding or closing a focused surface restores workbench focus.
 
 The original Wails dispatch must enforce frame authority before processing framework
 control messages.
@@ -398,7 +405,8 @@ the generic inspector. The isolated page receives one captured, settled ToolCall
 projection. Refresh reauthorizes the release and returns the same record. It cannot execute
 a tool or advance an outcome. The generic recorded content remains available after page
 failure, revocation or uninstall. Rebuild Runtime and clients together for the generated
-renderer contract, then install and approve the package explicitly.
+renderer contract. Fresh Runtime databases include this package by default;
+existing installations use explicit release selection and approval.
 
 File renderers is an optional package from `plugins/file-renderers`. Its normalized
 extension selectors consume complete file reads captured by the trusted Files dock.
@@ -431,7 +439,8 @@ The page renders recorded Run, model-call and Item observations, including missi
 without constructing execution, approval or retry state.
 
 The optional first-party package lives at [`plugins/trajectory`](../plugins/trajectory/plugin.json).
-Install, approve and enable it through the existing package lifecycle. The compiled Timeline,
+Fresh Runtime databases enable it by default; subsequent changes use the existing
+package lifecycle. The compiled Timeline,
 its fixed navigation target and its private trajectory data providers have been removed.
 The context catalogue lists admitted package contributions. Run failure recovery opens that
 catalogue, so navigation needs no knowledge of a particular installation ID.

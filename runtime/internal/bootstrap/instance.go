@@ -22,6 +22,7 @@ type InstanceConfig struct {
 	UserHome             string
 	DefaultWorkspacePath string
 	DataDirectory        string
+	FirstPartyDirectory  string
 	ConfigDirectories    []string
 	BuildID              string
 	ServerInfo           protocol.ServerInfo
@@ -78,6 +79,10 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			err = errors.Join(err, stores.Close())
 		}
 	}()
+
+	if err = initializeFirstPartyPlugins(ctx, stores, cfg.FirstPartyDirectory); err != nil {
+		return nil, config.Settings{}, err
+	}
 
 	if err = SeedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
 		return nil, config.Settings{}, err
@@ -172,6 +177,7 @@ func (i InstanceConfig) validate() error {
 		{name: "user home", value: i.UserHome},
 		{name: "default workspace path", value: i.DefaultWorkspacePath},
 		{name: "data directory", value: i.DataDirectory},
+		{name: "first-party directory", value: i.FirstPartyDirectory},
 	} {
 		if path.value == "" {
 			return fmt.Errorf("runtime: %s is required", path.name)

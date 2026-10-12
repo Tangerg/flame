@@ -29,8 +29,8 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	cfg := Config{
-		DataDirectory: t.TempDir(), UserHomePath: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
-		ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: testsupport.TempDirectory(t), UserHomePath: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
+		ConfigDirectories: []string{testsupport.TempDirectory(t)},
 	}
 	rt, err := Open(t.Context(), cfg)
 	if err != nil {

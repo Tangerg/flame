@@ -4,6 +4,26 @@ Flame Runtime is the local product backend for Flame. It owns durable agent sema
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
+## First-party initialization
+
+`make build` produces `build/flame` and its complete companion `build/plugins`
+distribution; `make run` starts that executable. The embedded Go binding uses the
+same layout: its host executable must ship a sibling `plugins` directory.
+`localruntime` owns this layout, with no working-directory or checkout fallback.
+
+On a fresh database, Runtime admits, approves and enables the distributed catalog
+through the ordinary installation aggregates, then commits the catalog and its
+initialization completion in one transaction before exposing delivery. Managed
+backend directories are prepared before completion; connections follow the existing
+MCP supervisor lifecycle. A failed admission cannot commit partial defaults.
+
+Initialization runs once per database. Restart never reinstalls an uninstalled
+package, reenables a disabled one, restores revoked trust or selects updated bytes.
+Users manage subsequent releases through the existing installation commands.
+Clearing the database starts a new initialization. The initialization record is an
+intentional pre-release schema break; incompatible databases are refused without
+migration. Use a fresh data directory when upgrading.
+
 ## Public surfaces
 
 - The module-root `runtime.Runtime` is the concrete in-process binding.

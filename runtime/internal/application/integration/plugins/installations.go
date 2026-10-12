@@ -352,7 +352,7 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 				return false, fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
 			}
 		}
-		if err := c.admitServices(ctx, installation, after); err != nil {
+		if err := admitServices(ctx, c.store, installation, after); err != nil {
 			return false, err
 		}
 		changed, err := installation.ChangedServers(previous, before, after)

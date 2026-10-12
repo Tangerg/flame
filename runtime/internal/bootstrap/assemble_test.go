@@ -239,10 +239,7 @@ func TestAssemblyReclaimsStagedToolResultsAfterSuccessfulConstruction(t *testing
 func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/memory")
-	if err != nil {
-		t.Fatal(err)
-	}
+	source := filepath.Join(firstPartyPackages, "memory")
 	r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory")
 	r.close()
 	installations, err := cfg.Stores.Installations.List(t.Context())

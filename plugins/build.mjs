@@ -1,4 +1,14 @@
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  readFile,
+  writeFile,
+  readdir,
+  access,
+  mkdtemp,
+  rename,
+  rm,
+} from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,38 +36,65 @@ export async function buildPlugins({ os, arch, output }) {
   if (!isAbsolute(output))
     throw new Error("output must be a new absolute directory");
   await mkdir(output);
-  for (const feature of ["memory", "schedules"]) {
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const feature = entry.name;
+    const manifestPath = join(source, feature, "plugin.json");
+    try {
+      await access(manifestPath);
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const contributes =
+      manifest.extensions["io.github.tangerg.flame"].contributes;
     const target = join(output, feature);
-    await mkdir(join(target, "bin"), { recursive: true });
-    await cp(join(source, feature, "views"), join(target, "views"), {
-      recursive: true,
-    });
-    await cp(join(source, feature, "plugin.json"), join(target, "plugin.json"));
+    await mkdir(target);
+    await cp(manifestPath, join(target, "plugin.json"));
+    if ((await readdir(join(source, feature))).includes("skills"))
+      await cp(join(source, feature, "skills"), join(target, "skills"), {
+        recursive: true,
+      });
+    for (const resource of new Set(
+      [...(contributes.views ?? []), ...(contributes.renderers ?? [])].map(
+        (item) => item.entry,
+      ),
+    )) {
+      await mkdir(dirname(join(target, resource)), { recursive: true });
+      await cp(join(source, feature, resource), join(target, resource));
+    }
+    if (!contributes.services?.length) continue;
     const descriptor = JSON.parse(
       await readFile(join(source, feature, "mcp.json"), "utf8"),
     );
-    const executable = feature + (os === "windows" ? ".exe" : "");
-    descriptor.mcpServers[feature].command = `./bin/${executable}`;
+    await mkdir(join(target, "bin"));
+    for (const service of contributes.services) {
+      if (!["memory", "schedules"].includes(service.type))
+        throw new Error("unsupported first-party backend");
+      const executable = service.type + (os === "windows" ? ".exe" : "");
+      descriptor.mcpServers[service.server].command = `./bin/${executable}`;
+      await go(
+        [
+          "build",
+          "-trimpath",
+          "-ldflags=-s -w",
+          "-o",
+          join(target, "bin", executable),
+          `./runtime/internal/plugins/${service.type}`,
+        ],
+        {
+          ...process.env,
+          GOWORK: join(repository, "go.work"),
+          CGO_ENABLED: "0",
+          GOOS: os,
+          GOARCH: arch,
+        },
+      );
+    }
     await writeFile(
       join(target, "mcp.json"),
       JSON.stringify(descriptor, null, 2) + "\n",
-    );
-    await go(
-      [
-        "build",
-        "-trimpath",
-        "-ldflags=-s -w",
-        "-o",
-        join(target, "bin", executable),
-        `./runtime/internal/plugins/${feature}`,
-      ],
-      {
-        ...process.env,
-        GOWORK: join(repository, "go.work"),
-        CGO_ENABLED: "0",
-        GOOS: os,
-        GOARCH: arch,
-      },
     );
   }
 }
@@ -68,7 +105,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       os: { type: "string" },
       arch: { type: "string" },
       output: { type: "string" },
+      replace: { type: "boolean", default: false },
     },
   });
-  await buildPlugins(values);
+  if (!values.replace) await buildPlugins(values);
+  else {
+    if (!isAbsolute(values.output)) throw new Error("output must be absolute");
+    await mkdir(dirname(values.output), { recursive: true });
+    const stage = await mkdtemp(join(dirname(values.output), ".first-party-"));
+    try {
+      const built = join(stage, "plugins");
+      await buildPlugins({ ...values, output: built });
+      await rm(values.output, { recursive: true, force: true });
+      await rename(built, values.output);
+    } finally {
+      await rm(stage, { recursive: true, force: true });
+    }
+  }
 }

@@ -14,5 +14,7 @@ desktop/.task/
 desktop/build/bin/
 runtime/cmd/contractgen/contractgen
 /runtime/flame
+/runtime/build/
+/cli/build/
 /examples/plugins/reviews/package/bin/
 */**/config.yaml

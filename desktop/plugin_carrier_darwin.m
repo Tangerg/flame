@@ -8,8 +8,19 @@
 @implementation PluginWebView
 @end
 
+@interface PluginSurface : NSView
+@end
+@implementation PluginSurface
+- (BOOL)isFlipped { return YES; }
+- (NSView *)hitTest:(NSPoint)point {
+    if (self.hidden || !NSPointInRect([self convertPoint:point fromView:self.superview], self.bounds)) return nil;
+    return [super hitTest:point];
+}
+@end
+
 @interface PluginPage : NSObject <WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate>
 @property(nonatomic, strong) PluginWebView *view;
+@property(nonatomic, strong) PluginSurface *surface;
 @property(nonatomic) uintptr_t handle;
 @property(nonatomic) BOOL active;
 @property(nonatomic) NSUInteger messageLimit;
@@ -87,7 +98,11 @@ void *createPluginPage(void *windowHandle, uintptr_t handle, size_t messageLimit
         page.view.workbenchResponder = workbenchResponder;
         page.view.navigationDelegate = page;
         page.view.UIDelegate = page;
-        [window.contentView addSubview:page.view];
+        page.surface = [PluginSurface new];
+        page.surface.wantsLayer = YES;
+        page.surface.layer.masksToBounds = YES;
+        [page.surface addSubview:page.view];
+        [window.contentView addSubview:page.surface];
         return (__bridge_retained void *)page;
     }
     return NULL;
@@ -112,14 +127,18 @@ static void restorePluginFocus(PluginPage *page) {
     }
 }
 
-void positionPluginPage(void *pointer, double x, double y, double width, double height) {
+void positionPluginPage(void *pointer, double x, double y, double width, double height,
+                        double clipX, double clipY, double clipWidth, double clipHeight) {
     PluginPage *page = (__bridge PluginPage *)pointer;
-    NSView *parent = page.view.superview;
-    NSRect requested = NSMakeRect(x, parent.bounds.size.height - y - height, width, height);
-    page.view.frame = NSIntersectionRect(requested, parent.bounds);
-    BOOL hidden = width == 0 || height == 0;
+    NSView *parent = page.surface.superview;
+    NSRect requested = NSMakeRect(clipX, parent.bounds.size.height - clipY - clipHeight, clipWidth, clipHeight);
+    NSRect visible = NSIntersectionRect(requested, parent.bounds);
+    BOOL hidden = NSIsEmptyRect(visible);
     if (hidden) restorePluginFocus(page);
-    page.view.hidden = hidden;
+    page.surface.hidden = hidden;
+    page.surface.frame = visible;
+    double top = parent.bounds.size.height - NSMaxY(visible);
+    page.view.frame = NSMakeRect(x - visible.origin.x, y - top, width, height);
 }
 
 void sendPluginPage(void *pointer, const char *body) {
@@ -140,6 +159,7 @@ void closePluginPage(void *pointer) {
     page.view.navigationDelegate = nil;
     page.view.UIDelegate = nil;
     [page.view stopLoading];
-    [page.view removeFromSuperview];
+    [page.surface removeFromSuperview];
     page.view = nil;
+    page.surface = nil;
 }

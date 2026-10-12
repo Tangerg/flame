@@ -171,7 +171,7 @@ func (h *hookBindingStub) SetHookTrust(_ context.Context, request protocol.SetHo
 }
 
 func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
-	projectRoot := t.TempDir()
+	projectRoot := tempDirectory(t)
 	workspace := filepath.Join(projectRoot, "nested")
 	hooks := &hookBindingStub{t: t, workspace: workspace, projectRoot: projectRoot, result: &protocol.HooksListResult{
 		ProjectRoot: projectRoot, ProjectTrusted: false,

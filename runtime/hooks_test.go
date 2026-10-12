@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -15,8 +16,8 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
 	config := Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
-		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+		DataDirectory: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
+		UserHomePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)},
 	}
 	if err := os.Mkdir(filepath.Join(config.DefaultWorkspacePath, ".git"), 0o700); err != nil {
 		t.Fatal(err)
