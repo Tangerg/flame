@@ -43,18 +43,19 @@ func (i *IdempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 	// Standalone it still runs atomically (RunInTx begins its own).
 	err = RunInTx(ctx, i.db, func(ctx context.Context) error {
 		db := Connection(ctx, i.db)
-		// Only completed results expire. An empty payload is an unresolved
-		// reservation: releasing it on elapsed wall time would let the same key
+		// Only completed responses expire. A pending_response reservation is an
+		// unresolved claim: releasing it on elapsed wall time would let the same key
 		// execute its business mutation again after a process crash, even though
-		// the first mutation may already have committed.
+		// the first mutation may already have committed. A run_opening acceptance has
+		// no wall-clock expiry at all and is never pruned here.
 		if _, execContextErr := db.ExecContext(ctx,
-			`DELETE FROM idempotency_records WHERE expires_at <= ? AND length(payload) > 0`, now,
+			`DELETE FROM idempotency_records WHERE kind = 'response' AND expires_at <= ?`, now,
 		); execContextErr != nil {
 			return fmt.Errorf("sqlite: prune idempotency records: %w", execContextErr)
 		}
 		res, execContextErr := db.ExecContext(ctx, `INSERT INTO idempotency_records(
-				key, fingerprint, payload, expires_at
-			) VALUES (?, ?, ?, ?)
+				key, kind, fingerprint, payload, expires_at
+			) VALUES (?, 'pending_response', ?, ?, ?)
 			ON CONFLICT(key) DO NOTHING`,
 			key, fingerprint, []byte{}, now+int64(idempotency.Retention/time.Second))
 		if execContextErr != nil {
@@ -92,8 +93,8 @@ func (i *IdempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 func (i *IdempotencyStore) Complete(ctx context.Context, record idempotency.Record) error {
 	now := time.Now().Unix()
 	res, err := Connection(ctx, i.db).ExecContext(ctx,
-		`UPDATE idempotency_records SET payload = ?, expires_at = ?
-		 WHERE key = ? AND fingerprint = ? AND length(payload) = 0`,
+		`UPDATE idempotency_records SET kind = 'response', payload = ?, expires_at = ?
+		 WHERE key = ? AND fingerprint = ? AND kind = 'pending_response'`,
 		record.Payload, now+int64(idempotency.Retention/time.Second), record.Key, record.Fingerprint)
 	if err != nil {
 		return fmt.Errorf("sqlite: complete idempotency claim: %w", err)
@@ -105,10 +106,14 @@ func (i *IdempotencyStore) Complete(ctx context.Context, record idempotency.Reco
 	if changed != 0 {
 		return nil
 	}
+	// The pending reservation is gone. An exact already-committed response is an
+	// idempotent success; a different owner or outcome is a conflict; anything
+	// else means the claim was lost. A run_opening never answers here: it is not a
+	// generic response and cannot share this owner's fingerprint.
 	var fingerprint string
 	var payload []byte
 	err = Connection(ctx, i.db).QueryRowContext(ctx,
-		`SELECT fingerprint, payload FROM idempotency_records WHERE key = ? AND expires_at > ?`,
+		`SELECT fingerprint, payload FROM idempotency_records WHERE key = ? AND kind = 'response' AND expires_at > ?`,
 		record.Key, now).Scan(&fingerprint, &payload)
 	if errors.Is(err, sql.ErrNoRows) {
 		return idempotency.ErrClaimLost
@@ -118,9 +123,6 @@ func (i *IdempotencyStore) Complete(ctx context.Context, record idempotency.Reco
 	}
 	if fingerprint != record.Fingerprint {
 		return idempotency.ErrKeyConflict
-	}
-	if len(payload) == 0 {
-		return idempotency.ErrClaimLost
 	}
 	if !bytes.Equal(payload, record.Payload) {
 		return idempotency.ErrOutcomeConflict

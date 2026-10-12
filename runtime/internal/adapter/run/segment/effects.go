@@ -41,6 +41,13 @@ type AutomationStartStore interface {
 	Save(context.Context, runs.AutomationReceipt) error
 }
 
+// CommandAcceptanceStore records the Run-owned run_opening acceptance in the
+// opening transaction, so a lost response never splits command acceptance from
+// the Run it opened.
+type CommandAcceptanceStore interface {
+	Save(context.Context, runs.CommandAcceptance) error
+}
+
 // GoalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
 // runs in the same transaction as terminalizing that Run.
 type GoalRunRecorder interface {
@@ -215,6 +222,7 @@ type Config struct {
 	Sessions            SessionStore
 	AutomationAuthority AutomationAuthority
 	AutomationStarts    AutomationStartStore
+	CommandAcceptances  CommandAcceptanceStore
 	GoalRuns            GoalRunRecorder
 	Transcript          TranscriptStore
 	ItemReplacer        ItemReplacer
@@ -238,6 +246,7 @@ type Effects struct {
 	sessions            SessionStore
 	automationAuthority AutomationAuthority
 	automationStarts    AutomationStartStore
+	commandAcceptances  CommandAcceptanceStore
 	goalRuns            GoalRunRecorder
 	transcript          TranscriptStore
 	itemReplacer        ItemReplacer
@@ -287,6 +296,7 @@ func New(cfg Config) (*Effects, error) {
 		{"child run start store", cfg.ChildRunStarts},
 		{"automation authority", cfg.AutomationAuthority},
 		{"automation start store", cfg.AutomationStarts},
+		{"command acceptance store", cfg.CommandAcceptances},
 		{"goal run recorder", cfg.GoalRuns},
 		{"tool result store", cfg.ToolResults},
 		{"transactor", cfg.Tx},
@@ -302,6 +312,7 @@ func New(cfg Config) (*Effects, error) {
 		sessions:            cfg.Sessions,
 		automationAuthority: cfg.AutomationAuthority,
 		automationStarts:    cfg.AutomationStarts,
+		commandAcceptances:  cfg.CommandAcceptances,
 		goalRuns:            cfg.GoalRuns,
 		transcript:          cfg.Transcript,
 		itemReplacer:        cfg.ItemReplacer,

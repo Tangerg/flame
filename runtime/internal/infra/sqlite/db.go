@@ -543,14 +543,42 @@ func currentSchema() []string {
 		)`,
 		`INSERT OR IGNORE INTO runtime_identity(id, idempotency_namespace)
 			VALUES (1, 'idp_' || lower(hex(randomblob(16))))`,
+		// One shared command-record store under a single global key. Three closed
+		// variants record different facts with different owners: a delivery-owned
+		// generic response reservation (pending_response) and its completed outcome
+		// (response), and a Run-owned immutable acceptance (run_opening) written in
+		// the Run opening transaction. The shared primary key is the one global key
+		// constraint; a Run opening never passes through pending_response and a
+		// generic Complete never overwrites a run_opening. material_run_id is the
+		// retire-only reference to the original Run material: the opening establishes
+		// it, the material's deletion sets it NULL via the foreign key, and importing
+		// the same RunID cannot refill it.
 		`CREATE TABLE IF NOT EXISTS idempotency_records (
-			key         TEXT PRIMARY KEY,
-			fingerprint TEXT NOT NULL,
-			payload     BLOB NOT NULL,
-			expires_at  INTEGER NOT NULL
+			key          TEXT PRIMARY KEY,
+			kind         TEXT NOT NULL CHECK (kind IN ('pending_response','response','run_opening')),
+			fingerprint  TEXT NOT NULL,
+			payload      BLOB,
+			expires_at   INTEGER,
+			operation    TEXT,
+			session_id   TEXT,
+			run_id       TEXT,
+			segment_id   TEXT,
+			user_item_id TEXT,
+			material_run_id TEXT REFERENCES runs(run_id) ON DELETE SET NULL,
+			CHECK (
+				(kind IN ('pending_response','response')
+					AND payload IS NOT NULL AND expires_at IS NOT NULL
+					AND operation IS NULL AND session_id IS NULL AND run_id IS NULL
+					AND segment_id IS NULL AND user_item_id IS NULL AND material_run_id IS NULL)
+				OR
+				(kind = 'run_opening'
+					AND payload IS NULL AND expires_at IS NULL
+					AND operation IS NOT NULL AND session_id IS NOT NULL AND run_id IS NOT NULL
+					AND segment_id IS NOT NULL AND user_item_id IS NOT NULL)
+			)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_expires_at
-			ON idempotency_records(expires_at)`,
+			ON idempotency_records(expires_at) WHERE expires_at IS NOT NULL`,
 		// Optional agent-memory embedding role. Single row, pinned by CHECK(id =
 		// 1); empty model leaves memory search keyword-only. The credential comes
 		// from the provider registry.

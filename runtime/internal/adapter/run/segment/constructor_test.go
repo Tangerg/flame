@@ -70,6 +70,9 @@ func mustNewEffects(cfg Config) *Effects {
 	if dependency.Missing(cfg.AutomationStarts) {
 		cfg.AutomationStarts = inertAutomationStarts{}
 	}
+	if dependency.Missing(cfg.CommandAcceptances) {
+		cfg.CommandAcceptances = inertCommandAcceptances{}
+	}
 	if dependency.Missing(cfg.AutomationAuthority) {
 		cfg.AutomationAuthority = inertAutomationAuthority{}
 	}
@@ -194,6 +197,10 @@ func (inertToolInvocations) MarkToolInvocationIncomplete(context.Context, string
 type inertAutomationStarts struct{}
 
 func (inertAutomationStarts) Save(context.Context, runs.AutomationReceipt) error { return nil }
+
+type inertCommandAcceptances struct{}
+
+func (inertCommandAcceptances) Save(context.Context, runs.CommandAcceptance) error { return nil }
 
 type inertAutomationAuthority struct{}
 

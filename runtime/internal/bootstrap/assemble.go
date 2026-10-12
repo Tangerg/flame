@@ -194,6 +194,7 @@ func buildAssemblyCore(
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
 	runSegmentConfig.AutomationStarts = cfg.Stores.AutomationStarts
+	runSegmentConfig.CommandAcceptances = cfg.Stores.CommandAcceptances
 	runSegmentConfig.AutomationAuthority, err = plugins.NewAutomationAdmission(cfg.Stores.Installations)
 	if err != nil {
 		return nil, err

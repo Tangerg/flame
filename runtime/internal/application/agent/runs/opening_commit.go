@@ -21,6 +21,7 @@ type OpeningCommit struct {
 	initialSession     *session.Session
 	sessionReplacement *session.Replacement
 	automation         *AutomationStart
+	commandAcceptance  *CommandAcceptance
 	events             []EventCommit
 }
 
@@ -43,6 +44,22 @@ func NewAdmissionOpeningCommit(
 		return OpeningCommit{}, err
 	}
 	return opening, nil
+}
+
+// WithCommandAcceptance binds an externally initiated command's immutable
+// acceptance to this fresh admission opening, so the acceptance record commits
+// in the same transaction as the Run it names. It returns a new validated value
+// and never mutates the receiver.
+func (o OpeningCommit) WithCommandAcceptance(acceptance CommandAcceptance) (OpeningCommit, error) {
+	if o.admit == nil {
+		return OpeningCommit{}, errors.New("runs: command acceptance requires a fresh admission")
+	}
+	next := o
+	next.commandAcceptance = &acceptance
+	if err := next.Validate(); err != nil {
+		return OpeningCommit{}, err
+	}
+	return next, nil
 }
 
 // NewResumeOpeningCommit binds one complete tree continuation to the opening
@@ -106,7 +123,8 @@ func (o OpeningCommit) validateAdmission() error {
 		return fmt.Errorf("runs: opening admission: %w", err)
 	}
 	if o.admit.Lineage().IsChild() &&
-		(o.initialSession != nil || o.sessionReplacement != nil || o.automation != nil) {
+		(o.initialSession != nil || o.sessionReplacement != nil || o.automation != nil ||
+			o.commandAcceptance != nil) {
 		return errors.New("runs: child opening carries root admission facts")
 	}
 	if o.initialSession != nil {
@@ -132,6 +150,16 @@ func (o OpeningCommit) validateAdmission() error {
 		}
 		if o.automation.RunID != o.admit.RunID || o.automation.SessionID != o.admit.SessionID {
 			return errors.New("runs: automation opening differs from admitted Run")
+		}
+	}
+	if o.commandAcceptance != nil {
+		if err := o.commandAcceptance.Validate(); err != nil {
+			return fmt.Errorf("runs: opening command acceptance: %w", err)
+		}
+		if o.commandAcceptance.SessionID != o.admit.SessionID ||
+			o.commandAcceptance.RunID != o.admit.RunID ||
+			o.commandAcceptance.SegmentID != o.admit.SegmentID {
+			return errors.New("runs: opening command acceptance differs from admitted Run")
 		}
 	}
 	return nil
@@ -236,6 +264,12 @@ func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
 // record commits with this admission.
 func (o OpeningCommit) Automation() (AutomationStart, bool) {
 	return optional.Present(o.automation)
+}
+
+// CommandAcceptance returns the externally initiated command's immutable
+// acceptance reference committed with this admission, when one was supplied.
+func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
+	return optional.Present(o.commandAcceptance)
 }
 
 // Events returns isolated opening projections in their canonical order.
