@@ -113,7 +113,6 @@ func TestMemoryServiceHasOneOwnerAndReenableRetainsItsPrivateFacts(t *testing.T)
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	fact := r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "owned fact"}, "fact").(*protocol.AgentMemoryItem)
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "second-install").(*protocol.PluginInstallation)
-	r.must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: second.ID, Digest: second.Selected.Digest}, "second-approve")
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
 		return r.endpoint.Invoke(t.Context(), method, input, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	}
@@ -123,7 +122,7 @@ func TestMemoryServiceHasOneOwnerAndReenableRetainsItsPrivateFacts(t *testing.T)
 	}
 	secondState := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	for _, installation := range secondState.Data {
-		if installation.ID == second.ID && installation.State == protocol.PluginInstallationEnabled {
+		if installation.ID == second.ID && installation.Enabled == true {
 			t.Fatal("refused owner became enabled")
 		}
 	}
@@ -204,14 +203,13 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("backend did not commit before response loss: %v", err)
 	}
 	requireManagedServiceChange(t, changed)
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-memory")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-memory")
 	unavailable := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
-		t.Fatalf("revoked Memory remained callable: %v", unavailable.Failure)
+		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
-	r.must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "reapprove-memory")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	replay := r.must(delivery.AgentMemoryAdd, request, "lost").(*protocol.AgentMemoryItem)
@@ -309,10 +307,9 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	if captured.Response.Result.Value == nil {
 		t.Fatal("create did not commit before response loss")
 	}
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	r.close()
 	r = poMCPOpen(t, cfg)
-	r.must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "reapprove")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	replay := r.must(delivery.SchedulesCreate, request, "lost-create").(*protocol.Schedule)

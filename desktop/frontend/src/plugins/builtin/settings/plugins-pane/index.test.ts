@@ -102,7 +102,7 @@ function installation(id: string, name: string): PluginInstallation {
   return {
     id,
     source: "/package",
-    state: "enabled",
+    enabled: true,
     realization: { type: "available", unavailableBackends: [] },
     presentation: "admitted",
     inputStates: {},

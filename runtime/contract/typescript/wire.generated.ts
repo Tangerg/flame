@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-12.1";
+export const PROTOCOL_VERSION = "2026-10-13.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -100,10 +100,10 @@ export const PROBLEM_CODES = {
   "method_not_found": -32601,
   "path_outside_root": -32013,
   "plugin_changed": -32046,
+  "plugin_disabled": -32042,
   "plugin_in_use": -32041,
   "plugin_not_found": -32040,
   "plugin_stale": -32043,
-  "plugin_unapproved": -32042,
   "plugin_unavailable": -32045,
   "prompt_source_too_large": -32038,
   "provider_error": -32001,
@@ -152,10 +152,10 @@ export const PROBLEM_RECOVERY = {
   "method_not_found": "stop",
   "path_outside_root": "promptUser",
   "plugin_changed": "promptUser",
+  "plugin_disabled": "promptUser",
   "plugin_in_use": "promptUser",
   "plugin_not_found": "promptUser",
   "plugin_stale": "promptUser",
-  "plugin_unapproved": "promptUser",
   "plugin_unavailable": "promptUser",
   "prompt_source_too_large": "promptUser",
   "provider_error": "promptUser",
@@ -1195,6 +1195,7 @@ export type PluginInputTarget = "env" | "header" | "authorization";
 export interface PluginInstallation {
   disabledServers: string[];
   disabledSkills: string[];
+  enabled: boolean;
   id: string;
   inputStates: Record<string, PluginInputState>;
   presentation: PluginPresentation;
@@ -1202,10 +1203,7 @@ export interface PluginInstallation {
   selected: PluginRelease;
   source: string;
   staged?: PluginRelease;
-  state: PluginInstallationState;
 }
-
-export type PluginInstallationState = "unapproved" | "approved" | "enabled";
 
 export type PluginPresentation = "admitted" | "withheld";
 
@@ -1338,10 +1336,10 @@ export type ProblemData =
   | { type: "method_not_found"; detail?: string; docUrl?: string }
   | { type: "path_outside_root"; detail?: string; docUrl?: string }
   | { type: "plugin_changed"; detail?: string; docUrl?: string }
+  | { type: "plugin_disabled"; detail?: string; docUrl?: string }
   | { type: "plugin_in_use"; detail?: string; docUrl?: string }
   | { type: "plugin_not_found"; detail?: string; docUrl?: string }
   | { type: "plugin_stale"; detail?: string; docUrl?: string }
-  | { type: "plugin_unapproved"; detail?: string; docUrl?: string }
   | { type: "plugin_unavailable"; detail?: string; docUrl?: string }
   | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
@@ -2245,7 +2243,6 @@ export const WIRE_ENUMS = {
   PluginDiagnosticCode: ["unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"],
   PluginInputStateType: ["unset", "configured", "value"],
   PluginInputTarget: ["env", "header", "authorization"],
-  PluginInstallationState: ["unapproved", "approved", "enabled"],
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],

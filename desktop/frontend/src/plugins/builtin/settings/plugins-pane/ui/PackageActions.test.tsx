@@ -26,7 +26,7 @@ function fixture(
   const installation: PluginInstallation = {
     id: "940ac827-b431-455b-af4b-e3a170bcfda0",
     source: "/package",
-    state: "enabled",
+    enabled: true,
     presentation: "admitted",
     realization: { type: "available" },
     inputStates: {},

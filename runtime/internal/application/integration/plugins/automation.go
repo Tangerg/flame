@@ -30,7 +30,7 @@ func (a *AutomationAdmission) Admit(ctx context.Context, request runs.Automation
 	if err != nil {
 		return err
 	}
-	if !found || !snapshot.Installation.Active() || snapshot.Selected.Digest().String() != request.Origin.ReleaseDigest {
+	if !found || !snapshot.Installation.Enabled() || snapshot.Selected.Digest().String() != request.Origin.ReleaseDigest {
 		return fmt.Errorf("%w: automated Run origin was withdrawn", plugin.ErrUnavailable)
 	}
 	service, found := snapshot.Selected.Service(plugin.SchedulesService)

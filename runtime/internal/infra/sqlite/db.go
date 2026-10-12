@@ -20,7 +20,6 @@ import (
 	"unicode"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
@@ -385,13 +384,13 @@ func currentSchema() []string {
 		pluginReleaseServersSchema(),
 		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_release_server BEFORE UPDATE ON plugin_release_servers
             BEGIN SELECT RAISE(ABORT,'admitted release is immutable'); END`,
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS plugin_installations (
+		`CREATE TABLE IF NOT EXISTS plugin_installations (
             id TEXT PRIMARY KEY,
             source TEXT NOT NULL CHECK (length(source) BETWEEN 1 AND 4096),
             selected_digest TEXT NOT NULL REFERENCES plugin_releases(digest),
             staged_digest TEXT REFERENCES plugin_releases(digest) CHECK (staged_digest IS NOT selected_digest),
-            admission_state TEXT NOT NULL CHECK (admission_state IN ('%s', '%s', '%s'))
-        )`, plugin.Unapproved, plugin.Approved, plugin.Enabled),
+            enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))
+        )`,
 		// Installation state is relational: each configured input value and
 		// disabled component is one row owned by its installation.
 		`CREATE TABLE IF NOT EXISTS plugin_installation_values (

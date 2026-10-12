@@ -170,7 +170,7 @@ func TestConflictingArchiveCannotAdvanceInstallation(t *testing.T) {
 			}
 			remaining := current[0]
 			if remaining.Installation.ID() != installed.View.ID ||
-				remaining.Installation.State() != installed.View.State ||
+				remaining.Installation.Enabled() != installed.View.Enabled ||
 				remaining.Selected.Digest() != installed.Selected.Digest() || remaining.Staged != nil {
 				t.Fatalf("conflicting archive changed durable installation state: %+v", current)
 			}

@@ -48,8 +48,7 @@ func TestPluginViewReadsUseInstalledBytesAndExistingTrajectory(t *testing.T) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}
 	}
-	checkFailure(delivery.PluginsReadView, request, protocol.ErrPluginUnapproved)
-	r.must(delivery.PluginsApprove, request.PluginReleaseRequest, "approve")
+	checkFailure(delivery.PluginsReadView, request, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 	html := r.must(delivery.PluginsReadView, request, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "views", "trajectory.html"))
@@ -140,9 +139,9 @@ func TestPluginViewReadsUseInstalledBytesAndExistingTrajectory(t *testing.T) {
 	if got := r.must(delivery.PluginsReadView, request, "").(*protocol.PluginViewResource); got.HTML != html.HTML {
 		t.Fatal("restart reinterpreted the admitted view")
 	}
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
-	checkFailure(delivery.PluginsReadView, request, protocol.ErrPluginUnapproved)
-	checkFailure(delivery.PluginsReadTrajectory, read, protocol.ErrPluginUnapproved)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
+	checkFailure(delivery.PluginsReadView, request, protocol.ErrPluginDisabled)
+	checkFailure(delivery.PluginsReadTrajectory, read, protocol.ErrPluginDisabled)
 }
 
 func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
@@ -154,7 +153,6 @@ func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
 		t.Fatalf("memory admission: %+v", installed.Selected)
 	}
 	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "memory"}
-	r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve-memory")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-memory")
 	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "views", "memory.html"))
@@ -203,7 +201,6 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 		t.Fatalf("schedule admission: %+v", installed.Selected)
 	}
 	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "schedules"}
-	r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve-schedules")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-schedules")
 	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "views", "schedules.html"))
@@ -238,7 +235,7 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
 	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-	if !errors.Is(refused.Failure, protocol.ErrPluginUnapproved) {
+	if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
@@ -282,8 +279,7 @@ func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}
 	}
-	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginUnapproved)
-	r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve-usage")
+	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-usage")
 	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "views", "usage.html"))
@@ -317,8 +313,8 @@ func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
 	if restarted := r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(restarted, recorded) {
 		t.Fatal("restart changed the recorded report")
 	}
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-usage")
-	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginUnapproved)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-usage")
+	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-usage")
 	if canonical := r.must(delivery.UsageSummary, read.UsageSummaryRequest, "").(*protocol.UsageSummary); !reflect.DeepEqual(canonical, recorded) {
 		t.Fatal("uninstall changed accounting records")

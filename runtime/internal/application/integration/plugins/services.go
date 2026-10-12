@@ -29,7 +29,7 @@ func ServiceOwner(ctx context.Context, store Store, kind plugin.ServiceKind) (Se
 	for _, snapshot := range snapshots {
 		installation := snapshot.Installation
 		service, declared := snapshot.Selected.Service(kind)
-		if !declared || !installation.Active() || !installation.ServerEnabled(service.Server) {
+		if !declared || !installation.Enabled() || !installation.ServerEnabled(service.Server) {
 			continue
 		}
 		if found {
@@ -45,7 +45,7 @@ func ServiceOwner(ctx context.Context, store Store, kind plugin.ServiceKind) (Se
 	return owner, found, nil
 }
 func admitServices(ctx context.Context, store Store, candidate *plugin.Installation, release plugin.Release) error {
-	if !candidate.Active() {
+	if !candidate.Enabled() {
 		return nil
 	}
 	snapshots, err := store.List(ctx)
@@ -59,7 +59,7 @@ func admitServices(ctx context.Context, store Store, candidate *plugin.Installat
 		for _, snapshot := range snapshots {
 			other := snapshot.Installation
 			declared, found := snapshot.Selected.Service(service.Kind)
-			if other.ID() != candidate.ID() && other.Active() && found && other.ServerEnabled(declared.Server) {
+			if other.ID() != candidate.ID() && other.Enabled() && found && other.ServerEnabled(declared.Server) {
 				return fmt.Errorf("%w: %s already has enabled installation %s", plugin.ErrInvalid, service.Kind, other.ID())
 			}
 		}

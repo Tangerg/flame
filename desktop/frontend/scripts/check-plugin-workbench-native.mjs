@@ -397,10 +397,6 @@ async function checkTrajectoryCapacity(kind) {
   const remoteSource = `/fixture/capacity-${kind}`;
   const installation = await rpc("plugins.install", { source: remoteSource });
   assert.deepEqual(installation.selected.diagnostics, []);
-  await rpc("plugins.approve", {
-    installationId: installation.id,
-    digest: installation.selected.digest,
-  });
   await rpc("plugins.setEnablement", { installationId: installation.id, enabled: true });
   await clickText(sessionTitle);
   const panelTitle = `${manifest.name} · ${contribution.views[0].title}`;
@@ -879,22 +875,21 @@ try {
   const period = await pageWith("Recorded usage loaded.");
   assert.notEqual(period.id, report.id, "period replacement must retire the captured report");
   await assert.rejects(guest(report.id, "document.body.innerText"), /page is not ready/);
-  await rpc("plugins.revoke", { installationId: installed.usage.installationId });
+  await rpc("plugins.setEnablement", {
+    installationId: installed.usage.installationId,
+    enabled: false,
+  });
   await noPages();
   await assert.rejects(guest(period.id, "document.body.innerText"), /page is not ready/);
-  await rpc("plugins.approve", {
-    installationId: installed.usage.installationId,
-    digest: installed.usage.digest,
-  });
   await rpc("plugins.setEnablement", {
     installationId: installed.usage.installationId,
     enabled: true,
   });
   const successor = await openPanel(installed.usage.title, "Recorded usage loaded.");
-  assert.notEqual(successor.id, period.id, "reapproval must create a successor page");
+  assert.notEqual(successor.id, period.id, "re-enablement must create a successor page");
   await closePanel(installed.usage.title, successor.id);
   console.log(
-    "Usage: recorded zero/unpriced usage, period replacement, withdrawal and reapproval passed",
+    "Usage: recorded zero/unpriced usage, period replacement, withdrawal and re-enablement passed",
   );
 
   const diffPage = await openPanel(installed.diff.title, "Workspace diff loaded.");
@@ -1061,7 +1056,7 @@ try {
     (value) => value.ready && JSON.parse(value.value) === originalResult,
   );
   const canonicalResult = await rpc("sessions.trajectory", { sessionId: proposalSession.id });
-  await rpc("plugins.revoke", { installationId: resultPackage.id });
+  await rpc("plugins.setEnablement", { installationId: resultPackage.id, enabled: false });
   await noPages();
   await assert.rejects(guest(resultPage.id, "document.body.innerText"), /page is not ready/);
   await waitFor(
@@ -1094,7 +1089,7 @@ try {
     () => readGuest(filePage.id, 'document.querySelector("#output").innerText'),
     (value) => value.ready && JSON.parse(value.value) === originalFile,
   );
-  await rpc("plugins.revoke", { installationId: fileRendererPackage.id });
+  await rpc("plugins.setEnablement", { installationId: fileRendererPackage.id, enabled: false });
   await noPages();
   await assert.rejects(guest(filePage.id, "document.body.innerText"), /page is not ready/);
   await waitFor(
@@ -1127,7 +1122,10 @@ try {
   assert.notEqual(clearedPage.id, diagnosticPage.id);
   await assert.rejects(guest(diagnosticPage.id, "document.body.innerText"), /page is not ready/);
   assert.deepEqual(await rpc("usage.summary"), canonicalUsage);
-  await rpc("plugins.revoke", { installationId: installed.diagnostics.installationId });
+  await rpc("plugins.setEnablement", {
+    installationId: installed.diagnostics.installationId,
+    enabled: false,
+  });
   await noPages();
   await closeWithdrawnPanel(installed.diagnostics, clearedPage.id);
   console.log(
@@ -1143,7 +1141,10 @@ try {
     await guest(galleryPage.id, 'document.querySelector("#icons").innerText'),
     /FileDiff/,
   );
-  await rpc("plugins.revoke", { installationId: installed["icon-gallery"].installationId });
+  await rpc("plugins.setEnablement", {
+    installationId: installed["icon-gallery"].installationId,
+    enabled: false,
+  });
   await noPages();
   await assert.rejects(guest(galleryPage.id, "document.body.innerText"), /page is not ready/);
   await closeWithdrawnPanel(installed["icon-gallery"], galleryPage.id);

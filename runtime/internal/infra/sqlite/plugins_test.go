@@ -29,9 +29,6 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := i.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +50,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err := rules.Put(t.Context(), rule); err != nil {
 		t.Fatal(err)
 	}
-	for _, transition := range []func() error{func() error { i.Disable(); return nil }, func() error { return i.Enable(release) }, func() error { i.Revoke(); return nil }} {
+	for _, transition := range []func() error{func() error { i.Disable(); return nil }, func() error { return i.Enable(release) }, func() error { i.Disable(); return nil }} {
 		if err := transition(); err != nil {
 			t.Fatal(err)
 		}
@@ -101,9 +98,6 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 	release := declare("1", "https://mcp.example.test/tools")
 	i, err := plugin.New(testsupport.InstallationID(t), "/package", release)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := i.Approve(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Save(t.Context(), i); err != nil {
@@ -189,7 +183,6 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 	}
 	key := "secret"
 	for _, transition := range []error{
-		i.Approve(release),
 		i.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue(key)}, Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("b"): plugin.DisableComponent}, Skills: map[string]plugin.ComponentChange{"review": plugin.DisableComponent}}),
 		i.Enable(release),
 		i.Stage(release, candidate),
@@ -213,7 +206,7 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 	}
 	requireRows(t, db, map[string]int{"plugin_installation_values": 1, "plugin_installation_disabled": 2, "mcp_sources": 2})
 	for _, statement := range []string{
-		`UPDATE plugin_installations SET admission_state = 'active' WHERE id = ?`,
+		`UPDATE plugin_installations SET enabled = 2 WHERE id = ?`,
 		`UPDATE plugin_installations SET staged_digest = selected_digest WHERE id = ?`,
 		`INSERT INTO plugin_installation_disabled(installation_id, kind, name) VALUES (?, 'theme', 'dark')`,
 	} {
@@ -270,7 +263,6 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, err := range []error{
-				installation.Approve(release),
 				installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue("value"), "header": plugin.SetValue("value")}}),
 				installation.Enable(release),
 				store.Save(t.Context(), installation),
@@ -330,17 +322,17 @@ func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
 	}
 }
 
-// Earlier shapes kept installation state in a JSON column, then in an
-// approval flag beside an enablement flag. Neither is converted.
+// Earlier shapes kept JSON state, separate approval, or a closed trust state.
+// Opening them must never convert their installation decisions.
 func TestOpenRefusesFormerInstallationStateShapes(t *testing.T) {
-	for _, former := range []string{"state", "approved"} {
+	for _, former := range []string{"state", "approved", "admission_state"} {
 		t.Run(former, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")
 			db, err := sqlite.Open(t.Context(), path)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.ExecContext(t.Context(), `ALTER TABLE plugin_installations RENAME COLUMN admission_state TO `+former); err != nil {
+			if _, err := db.ExecContext(t.Context(), `ALTER TABLE plugin_installations RENAME COLUMN enabled TO `+former); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {

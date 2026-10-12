@@ -33,7 +33,7 @@ function reviewedInstallation(): PluginInstallation {
   return {
     id: "940ac827-b431-455b-af4b-e3a170bcfda0",
     source: "/package",
-    state: "unapproved",
+    enabled: false,
     inputStates: {},
     disabledServers: [],
     disabledSkills: [],
@@ -56,57 +56,6 @@ function reviewedInstallation(): PluginInstallation {
 }
 
 describe("PluginsPane installation facts", () => {
-  it("asks for approval of a selected release before it can run", async () => {
-    let installation: PluginInstallation = {
-      ...reviewedInstallation(),
-      state: "enabled",
-    };
-    const approve = vi.fn(async () => reviewedInstallation());
-    host = await startKernel([
-      definePlugin({
-        name: "test.package-approval",
-        setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, {
-            key: PACKAGES_KEY,
-            fetcher: async () => [installation],
-          });
-          ctx.cleanup(
-            packageOperations.configure({
-              signal: ctx.signal,
-              approve,
-            } as unknown as ReturnType<typeof packageOperations.get>),
-          );
-        },
-      }),
-    ]);
-    render(
-      <QueryClientProvider client={queryClient}>
-        <PluginsPane />
-      </QueryClientProvider>,
-    );
-    expect(await screen.findByText("Enabled.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Trust this release" })).toBeNull();
-    const selectedDigest = "2".repeat(64);
-    installation = {
-      ...installation,
-      state: "unapproved",
-      selected: { ...installation.selected, digest: selectedDigest },
-    };
-    await act(async () => {
-      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
-    });
-    expect(
-      await screen.findByText("Not approved: review this release before enabling it."),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Trust this release" }));
-    await waitFor(() =>
-      expect(approve).toHaveBeenCalledWith({
-        installationId: installation.id,
-        digest: selectedDigest,
-      }),
-    );
-  });
-
   it.each(["Configure"])("binds %s to the release opened for review", async () => {
     const reviewedDigest = "1".repeat(64);
     const replacementDigest = "2".repeat(64);
@@ -315,33 +264,6 @@ describe("PluginsPane installation facts", () => {
         "This release's files failed verification, so its components are unavailable.",
       ),
     ).toBeTruthy();
-  });
-
-  it("labels a failed row operation with the operation that ran", async () => {
-    const installation = reviewedInstallation();
-    host = await startKernel([
-      definePlugin({
-        name: "test.package-revoke",
-        setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
-          ctx.cleanup(
-            packageOperations.configure({
-              signal: ctx.signal,
-              revoke: async () => {
-                throw { code: "refused" };
-              },
-            } as unknown as ReturnType<typeof packageOperations.get>),
-          );
-        },
-      }),
-    ]);
-    render(
-      <QueryClientProvider client={queryClient}>
-        <PluginsPane />
-      </QueryClientProvider>,
-    );
-    fireEvent.click(await screen.findByRole("button", { name: "Revoke trust" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Revoke trust");
   });
 
   it("shows this window's package realization failure with a local retry", async () => {

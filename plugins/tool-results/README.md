@@ -1,8 +1,7 @@
 # Tool results
 
 An optional first-party Agent Plugins package for recorded tool-result presentation.
-Install this directory through the local application's plugin manager or CLI, approve
-its exact release digest, and enable it. The package has no backend and executes no tools.
+Install this directory through the local application's plugin manager or CLI and enable it. The package has no backend and executes no tools.
 
 The manifest declares display-name and result-shape selectors. These select presentation
 only; executable definitions, policy, approval and recorded outcomes remain Runtime-owned.

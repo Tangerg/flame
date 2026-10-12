@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestOptionalRendererUsesApprovedImmutableBytes(t *testing.T) {
+func TestOptionalRendererUsesSelectedImmutableBytes(t *testing.T) {
 	r := poMCPOpen(t, poMCPConfig(t))
 	source, err := filepath.Abs("../../../plugins/tool-results")
 	if err != nil {
@@ -37,9 +37,7 @@ func TestOptionalRendererUsesApprovedImmutableBytes(t *testing.T) {
 			t.Fatalf("read: %v, want %v", result.Failure, want)
 		}
 	}
-	refused(request, protocol.ErrPluginUnapproved)
-	r.must(delivery.PluginsApprove, request.PluginReleaseRequest, "approve-renderer")
-	refused(request, protocol.ErrPluginUnapproved)
+	refused(request, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-renderer")
 	resource := r.must(delivery.PluginsReadRenderer, request, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "renderers", "result.html"))
@@ -57,11 +55,11 @@ func TestOptionalRendererUsesApprovedImmutableBytes(t *testing.T) {
 	wrong = request
 	wrong.Digest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	refused(wrong, protocol.ErrPluginStale)
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-renderer")
-	refused(request, protocol.ErrPluginUnapproved)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-renderer")
+	refused(request, protocol.ErrPluginDisabled)
 }
 
-func TestFileRendererUsesApprovedImmutableBytes(t *testing.T) {
+func TestFileRendererUsesSelectedImmutableBytes(t *testing.T) {
 	r := poMCPOpen(t, poMCPConfig(t))
 	source, err := filepath.Abs("../../../plugins/file-renderers")
 	if err != nil {
@@ -72,7 +70,6 @@ func TestFileRendererUsesApprovedImmutableBytes(t *testing.T) {
 		t.Fatalf("admission: %+v", installed.Selected.Diagnostics)
 	}
 	request := protocol.ReadPluginRendererRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, RendererID: "markdown"}
-	r.must(delivery.PluginsApprove, request.PluginReleaseRequest, "approve-file-renderer")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-file-renderer")
 	resource := r.must(delivery.PluginsReadRenderer, request, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "renderers", "markdown.html"))

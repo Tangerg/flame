@@ -43,7 +43,7 @@ export const MAPPED_TYPES: readonly string[] = [
   "plugin_in_use",
   "plugin_not_found",
   "plugin_stale",
-  "plugin_unapproved",
+  "plugin_disabled",
   "plugin_unavailable",
   "mcp_owned_by_installation",
   "export_too_large",

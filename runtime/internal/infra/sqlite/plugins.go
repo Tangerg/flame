@@ -23,7 +23,7 @@ const (
 func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	var result []plugin.Snapshot
 	err := RunInTx(ctx, s.db, func(ctx context.Context) error {
-		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,admission_state FROM plugin_installations ORDER BY id`)
+		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations ORDER BY id`)
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error)
 func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
 	var result plugin.Snapshot
 	err := RunInTx(ctx, s.db, func(ctx context.Context) error {
-		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,admission_state FROM plugin_installations WHERE id=?`, id.String())
+		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations WHERE id=?`, id.String())
 		if err != nil {
 			return err
 		}
@@ -67,12 +67,11 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 	var result []plugin.Record
 	for rows.Next() {
 		var record plugin.Record
-		var id, selected, state string
+		var id, selected string
 		var staged sql.NullString
-		if err := rows.Scan(&id, &record.Source, &selected, &staged, &state); err != nil {
+		if err := rows.Scan(&id, &record.Source, &selected, &staged, &record.Enabled); err != nil {
 			return nil, err
 		}
-		record.State = plugin.State(state)
 		if record.ID, err = resourceid.ParseInstallation(id); err != nil {
 			return nil, fmt.Errorf("sqlite: decode installation identity: %w", err)
 		}
@@ -168,9 +167,9 @@ func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Insta
 	}
 	return RunInTx(ctx, s.db, func(ctx context.Context) error {
 		db := Connection(ctx, s.db)
-		if _, err := db.ExecContext(ctx, `INSERT INTO plugin_installations(id,source,selected_digest,staged_digest,admission_state) VALUES(?,?,?,?,?)
-		 ON CONFLICT(id) DO UPDATE SET source=excluded.source,selected_digest=excluded.selected_digest,staged_digest=excluded.staged_digest,admission_state=excluded.admission_state`,
-			id, record.Source, record.Selected.String(), staged, string(record.State)); err != nil {
+		if _, err := db.ExecContext(ctx, `INSERT INTO plugin_installations(id,source,selected_digest,staged_digest,enabled) VALUES(?,?,?,?,?)
+		 ON CONFLICT(id) DO UPDATE SET source=excluded.source,selected_digest=excluded.selected_digest,staged_digest=excluded.staged_digest,enabled=excluded.enabled`,
+			id, record.Source, record.Selected.String(), staged, record.Enabled); err != nil {
 			return err
 		}
 		for _, table := range []string{"plugin_installation_values", "plugin_installation_disabled"} {

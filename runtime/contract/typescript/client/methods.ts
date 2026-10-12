@@ -327,10 +327,8 @@ export interface Methods {
     install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
     stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
     select: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
-    approve: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
     configure: (params: ConfigurePluginRequest) => MutationPromise<PluginInstallation>;
     setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginInstallation>;
-    revoke: (installationId: string) => MutationPromise<PluginInstallation>;
     uninstall: (installationId: string) => MutationPromise<void>;
   };
   providers: {
@@ -602,10 +600,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       install: (params) => call("plugins.install", params),
       stage: (params) => call("plugins.stage", params),
       select: (params) => call("plugins.select", params),
-      approve: (params) => call("plugins.approve", params),
       configure: (params) => call("plugins.configure", params),
       setEnablement: (params) => call("plugins.setEnablement", params),
-      revoke: (installationId) => call("plugins.revoke", { installationId }),
       uninstall: (installationId) => call("plugins.uninstall", { installationId }),
     },
     providers: {

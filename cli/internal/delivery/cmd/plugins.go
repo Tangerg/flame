@@ -17,10 +17,8 @@ type pluginRuntime interface {
 	InstallPlugin(context.Context, protocol.InstallPluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	ApprovePlugin(context.Context, protocol.PluginReleaseRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	RevokePlugin(context.Context, protocol.PluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, replay.CommandID) error
 	RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, replay.CommandID) (*protocol.Session, error)
 }
@@ -61,10 +59,8 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		pluginMutationCommand(provider, "install", "Install an immutable directory or ZIP on the Runtime", pluginRuntime.InstallPlugin),
 		pluginMutationCommand(provider, "stage", "Stage a release without changing active code", pluginRuntime.StagePlugin),
 		pluginMutationCommand(provider, "select", "Select a staged release when dependencies are quiescent", pluginRuntime.SelectPlugin),
-		pluginMutationCommand(provider, "approve", "Approve the exact selected release digest", pluginRuntime.ApprovePlugin),
 		pluginMutationCommand(provider, "configure", "Change inputs and enable or disable components of an exact selected release", pluginRuntime.ConfigurePlugin),
 		pluginMutationCommand(provider, "set-enablement", "Enable or disable an installation with an explicit enabled value", pluginRuntime.SetPluginEnablement),
-		pluginMutationCommand(provider, "revoke", "Revoke trust and retire backend resources", pluginRuntime.RevokePlugin),
 		pluginCommand(provider, "uninstall", "Remove installation while retaining private data", func(runtime pluginRuntime, cmd *cobra.Command, request protocol.PluginRequest, commandID replay.CommandID) error {
 			return runtime.UninstallPlugin(cmd.Context(), request, commandID)
 		}),

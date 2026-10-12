@@ -29,9 +29,6 @@ func executionFixture(t *testing.T) (*Releases, *plugin.Installation, plugin.Rel
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}

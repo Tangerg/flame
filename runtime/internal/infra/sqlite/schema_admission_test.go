@@ -15,6 +15,7 @@ import (
 func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 	for _, change := range []struct{ name, statement string }{
 		{"former column", `ALTER TABLE model_invocations DROP COLUMN usage`},
+		{"former installation trust state", `ALTER TABLE plugin_installations RENAME COLUMN enabled TO admission_state`},
 		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},
 		{"missing table", `DROP TABLE automation_starts`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},

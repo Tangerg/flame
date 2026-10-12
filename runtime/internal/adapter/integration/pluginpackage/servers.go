@@ -22,7 +22,7 @@ import (
 // Its outcome is not retained here: a backend that could not be prepared stays
 // unrealizable, and [Releases.Realize] observes that from the filesystem.
 func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installation, release plugin.Release) error {
-	if !installation.Active() {
+	if !installation.Enabled() {
 		return nil
 	}
 	root, _, err := r.verifiedRoot(ctx, release.Digest())

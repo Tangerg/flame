@@ -57,9 +57,6 @@ func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
 				t.Fatal(err)
 			}
 			id := installed.View.ID
-			if _, err := owner.Approve(t.Context(), id, installed.Selected.Digest()); err != nil {
-				t.Fatal(err)
-			}
 			if _, err := owner.Enable(t.Context(), id); err != nil {
 				t.Fatal(err)
 			}

@@ -143,7 +143,6 @@ func poMCPConfig(t *testing.T) Config {
 func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation {
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	r.must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "approve")
 	return r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
 }
 
@@ -165,7 +164,7 @@ func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T
 	if len(enabled.Selected.Servers) != 1 || enabled.Selected.Servers[0].Name != "reviews" {
 		t.Fatalf("invalid server was admitted or withdrew its sibling: %+v", enabled.Selected.Servers)
 	}
-	if enabled.State != protocol.PluginInstallationEnabled || enabled.Presentation != protocol.PluginPresentationAdmitted || enabled.Realization.Type != protocol.PluginRealizationAvailable {
+	if enabled.Enabled != true || enabled.Presentation != protocol.PluginPresentationAdmitted || enabled.Realization.Type != protocol.PluginRealizationAvailable {
 		t.Fatalf("installation with one invalid server did not activate: %+v", enabled)
 	}
 	sibling := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: enabled.ID}, Name: "reviews"}
@@ -181,7 +180,7 @@ func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T
 		t.Fatalf("restart lost the installation: %+v", listed.Data)
 	}
 	cold := listed.Data[0]
-	if cold.ID != enabled.ID || cold.State != protocol.PluginInstallationEnabled || cold.Presentation != protocol.PluginPresentationAdmitted ||
+	if cold.ID != enabled.ID || cold.Enabled != true || cold.Presentation != protocol.PluginPresentationAdmitted ||
 		cold.Selected.Digest != enabled.Selected.Digest || !reflect.DeepEqual(cold.Selected.Diagnostics, enabled.Selected.Diagnostics) {
 		t.Fatalf("restart changed the installation: %+v, want %+v", cold, enabled)
 	}

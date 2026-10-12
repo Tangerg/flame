@@ -29,7 +29,6 @@ func TestClientPresentationPackagesAdmitResourcesWithoutRuntimeQueries(t *testin
 				t.Fatalf("admission: %+v", installed.Selected)
 			}
 			view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: fixture.name}
-			r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve")
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 			resource := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
 			authored, err := os.ReadFile(filepath.Join(source, "views", fixture.name+".html"))
@@ -43,10 +42,10 @@ func TestClientPresentationPackagesAdmitResourcesWithoutRuntimeQueries(t *testin
 			if !errors.Is(refused.Failure, protocol.ErrPluginNotFound) {
 				t.Fatalf("client view acquired Runtime query authority: %v", refused.Failure)
 			}
-			r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
+			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 			refused = r.endpoint.Invoke(t.Context(), delivery.PluginsReadView, view, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-			if !errors.Is(refused.Failure, protocol.ErrPluginUnapproved) {
-				t.Fatalf("revoked resource admitted: %v", refused.Failure)
+			if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
+				t.Fatalf("disabled resource admitted: %v", refused.Failure)
 			}
 		})
 	}

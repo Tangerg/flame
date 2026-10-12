@@ -192,14 +192,13 @@ approval databases require a fresh data directory rather than data migration.
 
 ## Runtime plugin commands
 
-`flame plugins list` inspects admitted releases, each installation's closed `state`
-(`unapproved`, `approved` or `enabled`), Skill provenance, typed admission diagnostics, the
+`flame plugins list` inspects admitted releases, each installation's desired `enabled` value, Skill provenance, typed admission diagnostics, the
 realization Runtime observes now (release availability and unavailable backends) and each
 declared input's state. A configured secret input, including every header and
 authorization input, reports `configured` and never carries its text.
-`approve` takes `installationId` and the exact selected `digest`. Selecting another release
-returns the installation to `unapproved`; approve and enable it again to run the new code.
-`install`, `stage`, `select`, `approve`, `configure`, `set-enablement`, `revoke`, and `uninstall`
+Installation and explicit release selection are the trust decisions. Selection preserves
+desired enablement and refuses a candidate missing required retained inputs before mutation.
+`install`, `stage`, `select`, `configure`, `set-enablement`, and `uninstall`
 accept their exact Runtime JSON request through `--request`. Source paths refer to the
 Runtime machine. Each mutation prints its command identity to stderr and the resulting installation as
 JSON; `uninstall` is an acknowledgement and prints nothing on success. Retain the identity and use

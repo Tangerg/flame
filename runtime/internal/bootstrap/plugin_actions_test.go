@@ -31,8 +31,7 @@ func TestPluginRenameUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) 
 			t.Fatalf("refusal: %v, want %v", result.Failure, want)
 		}
 	}
-	refused(request, "unapproved", protocol.ErrPluginUnapproved)
-	r.must(delivery.PluginsApprove, request.PluginReleaseRequest, "approve")
+	refused(request, "disabled", protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 	missing := request
 	missing.ActionID = "missing"
@@ -57,10 +56,10 @@ func TestPluginRenameUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) 
 		}
 	}
 	check()
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	fresh := request
 	fresh.Update.ExpectedRevision = saved.Revision
-	refused(fresh, "withdrawn", protocol.ErrPluginUnapproved)
+	refused(fresh, "withdrawn", protocol.ErrPluginDisabled)
 	if got := r.must(delivery.PluginsRenameSession, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
 		t.Fatal("withdrawal changed the historical receipt")
 	}
@@ -69,6 +68,6 @@ func TestPluginRenameUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) 
 	if got := r.must(delivery.PluginsRenameSession, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
 		t.Fatal("restart did not retain the exact receipt")
 	}
-	refused(fresh, "withdrawn-restart", protocol.ErrPluginUnapproved)
+	refused(fresh, "withdrawn-restart", protocol.ErrPluginDisabled)
 	check()
 }

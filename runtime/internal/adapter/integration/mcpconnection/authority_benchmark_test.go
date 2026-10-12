@@ -78,9 +78,6 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		b.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		b.Fatal(err)
 	}

@@ -10,8 +10,8 @@ import (
 func TestViewAuthorityFollowsTheActiveExactRelease(t *testing.T) {
 	view := ViewDeclaration{ID: "trajectory", Title: "Trajectory", Kind: SessionTrajectory, Entry: "views/index.html"}
 	release := testRelease(t, "1", Declaration{Name: "review", Views: []ViewDeclaration{view}})
-	installation := approvedInstallation(t, release, nil)
-	if _, err := installation.AuthorizeView(release, release.Digest(), view.ID); !errors.Is(err, ErrUnapproved) {
+	installation := configuredInstallation(t, release, nil)
+	if _, err := installation.AuthorizeView(release, release.Digest(), view.ID); !errors.Is(err, ErrDisabled) {
 		t.Fatalf("disabled view admitted: %v", err)
 	}
 	if err := installation.Enable(release); err != nil {
@@ -31,9 +31,9 @@ func TestViewAuthorityFollowsTheActiveExactRelease(t *testing.T) {
 	if _, err := installation.AuthorizeView(release, release.Digest(), "missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("undeclared view admitted: %v", err)
 	}
-	installation.Revoke()
-	if _, err := installation.AuthorizeView(release, release.Digest(), view.ID); !errors.Is(err, ErrUnapproved) {
-		t.Fatalf("revoked view admitted: %v", err)
+	installation.Disable()
+	if _, err := installation.AuthorizeView(release, release.Digest(), view.ID); !errors.Is(err, ErrDisabled) {
+		t.Fatalf("disabled view admitted: %v", err)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestScheduleTemplatesRemainImmutableAuthoringContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installation := approvedInstallation(t, release, nil)
+	installation := configuredInstallation(t, release, nil)
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}

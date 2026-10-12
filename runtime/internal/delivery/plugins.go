@@ -10,10 +10,8 @@ const (
 	PluginsInstall            Name = "plugins.install"
 	PluginsStage              Name = "plugins.stage"
 	PluginsSelect             Name = "plugins.select"
-	PluginsApprove            Name = "plugins.approve"
 	PluginsConfigure          Name = "plugins.configure"
 	PluginsSetEnablement      Name = "plugins.setEnablement"
-	PluginsRevoke             Name = "plugins.revoke"
 	PluginsUninstall          Name = "plugins.uninstall"
 	PluginsReadView           Name = "plugins.readView"
 	PluginsReadRenderer       Name = "plugins.readRenderer"
@@ -36,7 +34,7 @@ func pluginErrors() []string {
 		protocol.ErrPluginUnavailable.Error(),
 		protocol.ErrPluginNotFound.Error(),
 		protocol.ErrPluginInUse.Error(),
-		protocol.ErrPluginUnapproved.Error(),
+		protocol.ErrPluginDisabled.Error(),
 		protocol.ErrPluginStale.Error(),
 	}
 }
@@ -125,11 +123,6 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
 		return s.SelectPlugin(ctx, in)
 	})
-	r.command(MethodMeta{Name: PluginsApprove, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		ApprovePlugin(context.Context, protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
-		return s.ApprovePlugin(ctx, in)
-	})
 	r.command(MethodMeta{Name: PluginsConfigure, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error)
 	}, ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
@@ -139,11 +132,6 @@ func registerPlugins(r *Registry) {
 		SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error)
 	}, ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error) {
 		return s.SetPluginEnablement(ctx, in)
-	})
-	r.command(MethodMeta{Name: PluginsRevoke, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		RevokePlugin(context.Context, protocol.PluginRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.PluginRequest) (*protocol.PluginInstallation, error) {
-		return s.RevokePlugin(ctx, in)
 	})
 	r.commandAck(MethodMeta{Name: PluginsUninstall, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		UninstallPlugin(context.Context, protocol.PluginRequest) error

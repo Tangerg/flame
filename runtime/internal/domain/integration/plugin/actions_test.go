@@ -60,11 +60,8 @@ func TestActionAuthorityRequiresAnExactEnabledReleaseAndOperation(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.AuthorizeAction(release, release.Digest(), "rename", RenameSession); !errors.Is(err, ErrUnapproved) {
-		t.Fatalf("unapproved: %v", err)
-	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
+	if err := installation.AuthorizeAction(release, release.Digest(), "rename", RenameSession); !errors.Is(err, ErrDisabled) {
+		t.Fatalf("disabled: %v", err)
 	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
@@ -80,8 +77,8 @@ func TestActionAuthorityRequiresAnExactEnabledReleaseAndOperation(t *testing.T) 
 			t.Fatalf("undeclared operation: %v", err)
 		}
 	}
-	installation.Revoke()
-	if err := installation.AuthorizeAction(release, release.Digest(), "rename", RenameSession); !errors.Is(err, ErrUnapproved) {
+	installation.Disable()
+	if err := installation.AuthorizeAction(release, release.Digest(), "rename", RenameSession); !errors.Is(err, ErrDisabled) {
 		t.Fatalf("withdrawn: %v", err)
 	}
 }

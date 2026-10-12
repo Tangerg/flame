@@ -229,7 +229,6 @@ export type WireTypeName =
   | "PluginInputStateType"
   | "PluginInputTarget"
   | "PluginInstallation"
-  | "PluginInstallationState"
   | "PluginPresentation"
   | "PluginRealization"
   | "PluginRealizationType"
@@ -2442,6 +2441,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   PluginInstallation: object({
     disabledServers: array(text()),
     disabledSkills: array(text()),
+    enabled: flag(),
     id: text(),
     inputStates: record(ref(() => CHECKS.PluginInputState)),
     presentation: ref(() => CHECKS.PluginPresentation),
@@ -2449,9 +2449,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     selected: ref(() => CHECKS.PluginRelease),
     source: text(),
     staged: ref(() => CHECKS.PluginRelease),
-    state: ref(() => CHECKS.PluginInstallationState),
-  }, ["disabledServers", "disabledSkills", "id", "inputStates", "presentation", "realization", "selected", "source", "state"]),
-  PluginInstallationState: enumOf(["unapproved", "approved", "enabled"]),
+  }, ["disabledServers", "disabledSkills", "enabled", "id", "inputStates", "presentation", "realization", "selected", "source"]),
   PluginPresentation: enumOf(["admitted", "withheld"]),
   PluginRealization: allOf([
     object({
@@ -2770,6 +2768,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
+        type: literal("plugin_disabled"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
         type: literal("plugin_in_use"),
       }, ["type"]),
       fields({
@@ -2785,13 +2790,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
         type: literal("plugin_stale"),
-      }, ["type"]),
-      fields({
-        activeRun: absent(),
-        errors: absent(),
-        requiredCapabilities: absent(),
-        retryAfterSeconds: absent(),
-        type: literal("plugin_unapproved"),
       }, ["type"]),
       fields({
         activeRun: absent(),
@@ -4437,10 +4435,8 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "plugins.install": ref(() => CHECKS.InstallPluginRequest),
   "plugins.stage": ref(() => CHECKS.StagePluginRequest),
   "plugins.select": ref(() => CHECKS.PluginReleaseRequest),
-  "plugins.approve": ref(() => CHECKS.PluginReleaseRequest),
   "plugins.configure": ref(() => CHECKS.ConfigurePluginRequest),
   "plugins.setEnablement": ref(() => CHECKS.SetPluginEnablementRequest),
-  "plugins.revoke": ref(() => CHECKS.PluginRequest),
   "plugins.uninstall": ref(() => CHECKS.PluginRequest),
   "hooks.list": ref(() => CHECKS.ListHooksRequest),
   "hooks.setTrust": ref(() => CHECKS.SetHookTrustRequest),
@@ -4558,10 +4554,8 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "plugins.install": ref(() => CHECKS.PluginInstallation),
   "plugins.stage": ref(() => CHECKS.PluginInstallation),
   "plugins.select": ref(() => CHECKS.PluginInstallation),
-  "plugins.approve": ref(() => CHECKS.PluginInstallation),
   "plugins.configure": ref(() => CHECKS.PluginInstallation),
   "plugins.setEnablement": ref(() => CHECKS.PluginInstallation),
-  "plugins.revoke": ref(() => CHECKS.PluginInstallation),
   "plugins.uninstall": object({}, []),
   "hooks.list": ref(() => CHECKS.HooksListResult),
   "hooks.setTrust": object({}, []),

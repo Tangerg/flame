@@ -303,9 +303,6 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -358,13 +355,13 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err != nil || !found || current != before {
 		t.Fatalf("unavailable bytes obscured standing authority: %t, %v", found, err)
 	}
-	installation.Revoke()
+	installation.Disable()
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
 	current, found, err = authorities.Fingerprint(t.Context(), ref)
 	if err != nil || !found || current != before {
-		t.Fatalf("revoking the same code advanced its standing authority: %t, %v", found, err)
+		t.Fatalf("disabling the same code advanced its standing authority: %t, %v", found, err)
 	}
 }
 
@@ -386,9 +383,6 @@ func TestMCPDefinitionsStayStableWhenBackendAvailabilityChanges(t *testing.T) {
 	}
 	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installation.Approve(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := installation.Enable(release); err != nil {
@@ -545,15 +539,9 @@ func TestInstallationDefinitionsReflectAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = i.Enable(release); !errors.Is(err, plugin.ErrUnapproved) {
-		t.Fatalf("enable without approval = %v", err)
-	}
 	before, err := r.Definitions(t.Context(), i, release)
 	if err != nil || len(before) != 1 || before[0].Enabled {
 		t.Fatalf("unadmitted projection = %+v, %v", before, err)
-	}
-	if err = i.Approve(release); err != nil {
-		t.Fatal(err)
 	}
 	if err = i.Enable(release); err != nil {
 		t.Fatal(err)
@@ -659,9 +647,6 @@ func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
 				t.Fatal(err)
 			}
 			release := admitted
-			if err := installation.Approve(release); err != nil {
-				t.Fatal(err)
-			}
 			if err := installation.Enable(release); err != nil {
 				t.Fatal(err)
 			}
@@ -709,9 +694,6 @@ func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 	}
 	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installation.Approve(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := installation.Enable(release); err != nil {
@@ -773,9 +755,6 @@ func TestBackendRealizationIsPureAndIsolatesDirectoryFailures(t *testing.T) {
 	if _, err := os.Stat(data); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("read created data root: %v", err)
 	}
-	if err := i.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := i.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -805,9 +784,6 @@ func TestBackendPreparationDoesNotWriteThroughAReplacedDataNamespace(t *testing.
 			}
 			installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 			if err != nil {
-				t.Fatal(err)
-			}
-			if err := installation.Approve(release); err != nil {
 				t.Fatal(err)
 			}
 			if err := installation.Enable(release); err != nil {

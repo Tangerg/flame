@@ -125,7 +125,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		}
 	}
 	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
-	if installed.State != protocol.PluginInstallationUnapproved || len(installed.Selected.Skills) != 1 {
+	if installed.Enabled != false || len(installed.Selected.Skills) != 1 {
 		t.Fatalf("unexpected admission: %+v", installed)
 	}
 	replayed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
@@ -142,11 +142,6 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		t.Fatalf("unbound configuration: %v", unboundConfiguration.Failure)
 	}
 	must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: release.Digest}, "configure-selected-release")
-	denied := invoke(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-unapproved")
-	if denied.Failure == nil || !errors.Is(denied.Failure, protocol.ErrPluginUnapproved) {
-		t.Fatalf("unapproved enable: %v", denied.Failure)
-	}
-	must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: release.Digest}, "approve-release")
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-release")
 	name := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	deadline := time.NewTimer(5 * time.Second)
@@ -213,7 +208,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		t.Fatalf("cold waiting dependency switch: %v", blocked.Failure)
 	}
 
-	must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-release")
+	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-release")
 	removal := invoke(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-while-waiting")
 	if removal.Failure == nil || !errors.Is(removal.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("waiting dependency removal: %v", removal.Failure)
@@ -221,7 +216,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 
 	discovered = must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
 	if len(discovered.Skills) != 0 {
-		t.Fatal("revoked skill remained available")
+		t.Fatal("disabled skill remained available")
 	}
 }
 

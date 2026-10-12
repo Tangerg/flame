@@ -18,10 +18,8 @@ type pluginUseCases interface {
 	Install(context.Context, string) (plugins.Inspection, error)
 	Stage(context.Context, resourceid.InstallationID, string) (plugins.Inspection, error)
 	Select(context.Context, resourceid.InstallationID, fingerprint.Digest) (plugins.Inspection, error)
-	Approve(context.Context, resourceid.InstallationID, fingerprint.Digest) (plugins.Inspection, error)
 	Enable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
 	Disable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
-	Revoke(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
 	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, resourceid.InstallationID) error
 	ReadView(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
@@ -76,8 +74,8 @@ func wirePluginError(err error) error {
 		return NewFailure(errors.Join(protocol.ErrPluginNotFound, err), err.Error())
 	case errors.Is(err, plugin.ErrInUse):
 		return NewFailure(errors.Join(protocol.ErrPluginInUse, err), err.Error())
-	case errors.Is(err, plugin.ErrUnapproved):
-		return NewFailure(errors.Join(protocol.ErrPluginUnapproved, err), err.Error())
+	case errors.Is(err, plugin.ErrDisabled):
+		return NewFailure(errors.Join(protocol.ErrPluginDisabled, err), err.Error())
 	case errors.Is(err, plugin.ErrStale):
 		return NewFailure(errors.Join(protocol.ErrPluginStale, err), err.Error())
 	default:
@@ -121,13 +119,6 @@ func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseReq
 		return nil, err
 	}
 	return presentPluginResult(s.plugins.Select(ctx, id, digest))
-}
-func (s *Handler) ApprovePlugin(ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	return presentPluginResult(s.plugins.Approve(ctx, id, digest))
 }
 func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
@@ -187,13 +178,6 @@ func (s *Handler) SetPluginEnablement(ctx context.Context, in protocol.SetPlugin
 		return presentPluginResult(s.plugins.Enable(ctx, id))
 	}
 	return presentPluginResult(s.plugins.Disable(ctx, id))
-}
-func (s *Handler) RevokePlugin(ctx context.Context, in protocol.PluginRequest) (*protocol.PluginInstallation, error) {
-	id, err := parseInstallationID(in.InstallationID)
-	if err != nil {
-		return nil, err
-	}
-	return presentPluginResult(s.plugins.Revoke(ctx, id))
 }
 func (s *Handler) UninstallPlugin(ctx context.Context, in protocol.PluginRequest) error {
 	id, err := parseInstallationID(in.InstallationID)

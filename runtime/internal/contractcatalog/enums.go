@@ -78,7 +78,6 @@ var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.MCPTestOutcome]():                    {string(protocol.MCPTestReachable), string(protocol.MCPTestAuthorizationRequired), string(protocol.MCPTestTimedOut), string(protocol.MCPTestFailed)},
 	reflect.TypeFor[protocol.ProviderTestOutcome]():               {string(protocol.ProviderTestReachable), string(protocol.ProviderTestNotConfigured), string(protocol.ProviderTestInvalidCredentials), string(protocol.ProviderTestTimedOut), string(protocol.ProviderTestFailed)},
 	reflect.TypeFor[protocol.PluginPresentation]():                {string(protocol.PluginPresentationAdmitted), string(protocol.PluginPresentationWithheld)},
-	reflect.TypeFor[protocol.PluginInstallationState]():           {string(protocol.PluginInstallationUnapproved), string(protocol.PluginInstallationApproved), string(protocol.PluginInstallationEnabled)},
 	reflect.TypeFor[protocol.PluginComponentChange]():             {string(protocol.PluginComponentEnable), string(protocol.PluginComponentDisable)},
 	reflect.TypeFor[protocol.PluginRealizationType]():             {string(protocol.PluginRealizationAvailable), string(protocol.PluginRealizationReleaseUnavailable)},
 	reflect.TypeFor[protocol.PluginInputTarget]():                 {string(protocol.PluginInputEnvironment), string(protocol.PluginInputHeader), string(protocol.PluginInputAuthorization)},

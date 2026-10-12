@@ -22,7 +22,7 @@ func activateManagedPlugins(t *testing.T, connection *Connection, features ...st
 				break
 			}
 		}
-		if installed.ID == "" || installed.State != protocol.PluginInstallationEnabled {
+		if installed.ID == "" || installed.Enabled != true {
 			t.Fatalf("default %s is unavailable: %+v", feature, installed)
 		}
 		server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: feature}

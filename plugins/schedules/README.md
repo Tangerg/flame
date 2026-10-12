@@ -27,7 +27,7 @@ acknowledgement redelivers the same identity and receives the existing acceptanc
 including after terminal execution or Runtime restart. Selecting a new release
 can reconcile old captured work from the same installation without changing it.
 
-Disable, revoke and uninstall withdraw new Run admission and stop the process.
+Disable and uninstall withdraw new Run admission and stop the process.
 Already accepted Runs continue under Runtime. Pending private work and command
 receipts remain in the installation directory. Reenable and restart resume that
 same owner; uninstall does not delete data. Definition disable stops future cron

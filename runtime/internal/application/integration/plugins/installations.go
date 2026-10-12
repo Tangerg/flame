@@ -169,7 +169,7 @@ func (c *Coordinator) inspect(ctx context.Context, snapshot plugin.Snapshot) (In
 		return Inspection{}, fmt.Errorf("plugins: observe installation %s: %w", installation.ID(), err)
 	}
 	inspection.Presentation = PresentationWithheld
-	if installation.Active() && inspection.Realization.Release == ReleaseAvailable {
+	if installation.Enabled() && inspection.Realization.Release == ReleaseAvailable {
 		inspection.Presentation = PresentationAdmitted
 	}
 	return inspection, nil
@@ -292,31 +292,19 @@ func (c *Coordinator) Select(ctx context.Context, id resourceid.InstallationID, 
 		return i.Select(selected, staged)
 	})
 }
-func (c *Coordinator) Approve(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest) (Inspection, error) {
-	return c.change(ctx, id, RequireQuiescent, func(ctx context.Context, i *plugin.Installation, _ plugin.Release) error {
-		release, err := c.named(ctx, digest)
-		if err != nil {
-			return err
-		}
-		return i.Approve(release)
-	})
-}
+
+// Restoring availability of the same selected code does not replace a held
+// execution dependency. Selection and configuration still require quiescence.
 func (c *Coordinator) Enable(ctx context.Context, id resourceid.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, RequireQuiescent, func(_ context.Context, i *plugin.Installation, selected plugin.Release) error {
+	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, selected plugin.Release) error {
 		return i.Enable(selected)
 	})
 }
 
-// Disable withdraws authority, so like Revoke it is available while in use.
+// Disable withdraws future dispatch and remains available while in use.
 func (c *Coordinator) Disable(ctx context.Context, id resourceid.InstallationID) (Inspection, error) {
 	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, _ plugin.Release) error {
 		i.Disable()
-		return nil
-	})
-}
-func (c *Coordinator) Revoke(ctx context.Context, id resourceid.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, _ plugin.Release) error {
-		i.Revoke()
 		return nil
 	})
 }
@@ -412,7 +400,7 @@ func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationI
 	var servers []mcpserver.ID
 	removed := false
 	// Removal withdraws every artifact a waiting operation needs to resume, so
-	// it requires quiescence; Revoke stays available to withdraw authority
+	// it requires quiescence; Disable stays available to withdraw authority
 	// from work that is still in use.
 	unreclaimed, err := c.commit(ctx, id, RequireQuiescent, func() (bool, error) {
 		snapshot, err := c.installationSnapshot(ctx, id)

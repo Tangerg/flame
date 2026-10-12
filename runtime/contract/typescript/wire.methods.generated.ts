@@ -253,10 +253,8 @@ const METHOD_NAMES = [
   "plugins.install",
   "plugins.stage",
   "plugins.select",
-  "plugins.approve",
   "plugins.configure",
   "plugins.setEnablement",
-  "plugins.revoke",
   "plugins.uninstall",
   "hooks.list",
   "hooks.setTrust",
@@ -379,10 +377,8 @@ const VALUE_METHOD_NAMES = [
   "plugins.install",
   "plugins.stage",
   "plugins.select",
-  "plugins.approve",
   "plugins.configure",
   "plugins.setEnablement",
-  "plugins.revoke",
   "hooks.list",
   "approval.getMode",
   "approval.setMode",
@@ -421,11 +417,11 @@ export function wireMethodReturnsValue(
   return (VALUE_METHOD_NAMES as readonly string[]).includes(method);
 }
 
-export type WireOperationKind = "query" | "command" | "subscription";
-export type WireResponseKind = "unary" | "stream";
-export type WireIdempotencyPolicy = "none" | "replayResponse" | "ownerResponse" | "replayRunStream";
+export type WireOperationKind = "command" | "query" | "subscription";
+export type WireResponseKind = "stream" | "unary";
+export type WireIdempotencyPolicy = "none" | "ownerResponse" | "ownerRunStream" | "replayResponse" | "replayRunStream";
 export type WireReplayCursorPolicy = "none" | "run";
-export type WirePaginationKind = "none" | "cursor";
+export type WirePaginationKind = "cursor" | "none";
 
 export interface WireMethodPolicy {
   operation: WireOperationKind;
@@ -926,13 +922,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "plugins.approve": {
-    operation: "command",
-    response: "unary",
-    idempotency: "replayResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "plugins.configure": {
     operation: "command",
     response: "unary",
@@ -941,13 +930,6 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "plugins.setEnablement": {
-    operation: "command",
-    response: "unary",
-    idempotency: "replayResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.revoke": {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
@@ -1417,16 +1399,10 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.select": [
     { requires: ["plugins"] },
   ],
-  "plugins.approve": [
-    { requires: ["plugins"] },
-  ],
   "plugins.configure": [
     { requires: ["plugins"] },
   ],
   "plugins.setEnablement": [
-    { requires: ["plugins"] },
-  ],
-  "plugins.revoke": [
     { requires: ["plugins"] },
   ],
   "plugins.uninstall": [
@@ -1554,10 +1530,8 @@ export interface WireShapes {
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
   "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };
   "plugins.select": { params: PluginReleaseRequest; result: PluginInstallation };
-  "plugins.approve": { params: PluginReleaseRequest; result: PluginInstallation };
   "plugins.configure": { params: ConfigurePluginRequest; result: PluginInstallation };
   "plugins.setEnablement": { params: SetPluginEnablementRequest; result: PluginInstallation };
-  "plugins.revoke": { params: PluginRequest; result: PluginInstallation };
   "plugins.uninstall": { params: PluginRequest };
   "hooks.list": { params: ListHooksRequest; result: HooksListResult };
   "hooks.setTrust": { params: SetHookTrustRequest };

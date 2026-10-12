@@ -27,11 +27,11 @@ idempotency conflict. Runtime stores no competing command outcome. An unavailabl
 owner returns `plugin_unavailable` for human operations; Run context reads omit
 this optional feature when no owner is enabled. An enabled owner's failures remain
 explicit. An admitted command with an unconfirmed transport reply invalidates human
-reads without claiming success; the next read consults the backend. Revoked curation
+reads without claiming success; the next read consults the backend. Disabled curation
 leaves committed extraction pending and resumes its fold after restart. Human edits
 and review remain authoritative throughout.
 
-Disable, revoke and uninstall withdraw the generation and its capabilities. They
+Disable and uninstall withdraw the generation and its capabilities. They
 retain its private data. Reenable uses the same installation directory; a new
 installation receives a different directory. Restart restores private facts from
 the same database. Old Runtime memory tables are not read or migrated.

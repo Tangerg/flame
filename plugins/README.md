@@ -17,9 +17,9 @@ The output directory must not exist. Supported targets are Darwin, Linux and
 Windows on amd64 or arm64. The output contains the complete first-party catalog,
 including all workspace pages and renderers and compiled Memory/Schedules backends.
 Runtime and CLI build targets place it in `plugins` beside their executable.
-Runtime installs, approves and enables this catalog only when initializing a fresh
+Runtime installs and enables this catalog only when initializing a fresh
 database. Restart preserves user decisions. Package updates still require explicit
-release selection and exact-digest approval.
+release selection.
 
 The source folders contain no compiled backend; installation never builds code or
 installs dependencies. Executables are shipped in the admitted package. `--replace`
@@ -54,4 +54,4 @@ npm run check --prefix plugins
 checks the Runtime page bound. Generated HTML is tracked for installation; source
 and shared library styles are authoritative. The Desktop gate checks reproducible
 resources and browser/native acceptance checks their real read-only channel. The
-package remains private. Reinstall changed packages and approve their new digests.
+package remains private. Reinstall changed packages and explicitly select their new digests.

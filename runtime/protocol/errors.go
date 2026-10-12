@@ -224,7 +224,7 @@ var (
 	ErrPluginUnavailable      = errors.New("plugin_unavailable")
 	ErrPluginNotFound         = errors.New("plugin_not_found")
 	ErrPluginInUse            = errors.New("plugin_in_use")
-	ErrPluginUnapproved       = errors.New("plugin_unapproved")
+	ErrPluginDisabled         = errors.New("plugin_disabled")
 	ErrPluginStale            = errors.New("plugin_stale")
 	ErrMCPOwnedByInstallation = errors.New("mcp_owned_by_installation")
 	// ErrPluginChanged: runs.start or runs.resume assembled its execution while

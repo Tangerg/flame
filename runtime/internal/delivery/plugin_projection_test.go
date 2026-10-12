@@ -33,7 +33,7 @@ func TestSecretInputProjectionCarriesStateNeverText(t *testing.T) {
 		{"secret": credential, "header": credential, "region": "eu"},
 		{"secret": "", "header": "", "region": ""},
 	} {
-		view := installationView(t, plugin.Record{ID: testsupport.InstallationID(t), Source: "/package", State: plugin.Enabled, Values: values, Selected: release.Digest()}, release)
+		view := installationView(t, plugin.Record{ID: testsupport.InstallationID(t), Source: "/package", Enabled: true, Values: values, Selected: release.Digest()}, release)
 		projected, err := presentInstallation(plugins.Inspection{View: view, Selected: release, Realization: plugins.Realization{Release: plugins.ReleaseAvailable}, Presentation: plugins.PresentationAdmitted})
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ func TestPluginRealizationProjectionIsAClosedUnion(t *testing.T) {
 		t.Fatal(err)
 	}
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
-	view := installationView(t, plugin.Record{ID: testsupport.InstallationID(t), Source: "/package", State: plugin.Unapproved, Selected: release.Digest()}, release)
+	view := installationView(t, plugin.Record{ID: testsupport.InstallationID(t), Source: "/package", Enabled: false, Selected: release.Digest()}, release)
 	for _, test := range []struct {
 		realization plugins.Realization
 		want        protocol.PluginRealization

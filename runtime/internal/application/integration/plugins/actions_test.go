@@ -18,9 +18,6 @@ func TestActionAdmissionRechecksWithdrawalAfterResourceVerification(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = installation.Approve(release); err != nil {
-				t.Fatal(err)
-			}
 			if err = installation.Enable(release); err != nil {
 				t.Fatal(err)
 			}
@@ -35,7 +32,7 @@ func TestActionAdmissionRechecksWithdrawalAfterResourceVerification(t *testing.T
 				if dependencies.held {
 					t.Fatal("filesystem verification retained installation admission")
 				}
-				if state == "withdrawn" && snapshot.Active() {
+				if state == "withdrawn" && snapshot.Enabled() {
 					if _, err := coordinator.Disable(ctx, installation.ID()); err != nil {
 						return Realization{}, err
 					}
@@ -53,7 +50,7 @@ func TestActionAdmissionRechecksWithdrawalAfterResourceVerification(t *testing.T
 			err = coordinator.AuthorizeAction(t.Context(), installation.ID(), release.Digest(), "rename", plugin.RenameSession)
 			var want error
 			if state == "withdrawn" {
-				want = plugin.ErrUnapproved
+				want = plugin.ErrDisabled
 			}
 			if state == "unavailable" {
 				want = plugin.ErrUnavailable

@@ -262,7 +262,7 @@ func (c *componentInvocation) Discover(context.Context) (*protocol.DiscoverRespo
 	}}}, nil
 }
 
-func (c *componentInvocation) RevokePlugin(ctx context.Context, _ protocol.PluginRequest) (*protocol.PluginInstallation, error) {
+func (c *componentInvocation) SetPluginEnablement(ctx context.Context, _ protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error) {
 	ownerCtx, release, ok := c.tasks.Attach(ctx)
 	if !ok {
 		return nil, context.Canceled
@@ -301,7 +301,7 @@ func TestInstanceShutdownCancelsComponentsBeforeJoiningDelivery(t *testing.T) {
 		}}
 		invoked := make(chan delivery.Result, 1)
 		go func() {
-			invoked <- endpoint.Invoke(t.Context(), delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: "11111111-1111-1111-1111-111111111111"}, delivery.Options{})
+			invoked <- endpoint.Invoke(t.Context(), delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: "11111111-1111-1111-1111-111111111111", Enabled: false}, delivery.Options{})
 		}()
 		synctest.Wait()
 		select {

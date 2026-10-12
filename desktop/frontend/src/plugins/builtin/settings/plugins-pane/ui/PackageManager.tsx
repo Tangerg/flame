@@ -120,7 +120,7 @@ function PackageRow({
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const request = { installationId: installation.id, digest: installation.selected.digest };
-  const enabled = installation.state === "enabled";
+  const enabled = installation.enabled;
   const enablementLabel = enabled ? "packages.disable" : "packages.enable";
   const run = (label: string, operation: () => Promise<unknown>) =>
     runFeedback(async () => {
@@ -156,7 +156,9 @@ function PackageRow({
       <div {...stylex.props(vocab.muted, vocab.truncate)} title={request.digest}>
         {request.digest}
       </div>
-      <div {...stylex.props(vocab.muted)}>{t(`packages.state.${installation.state}`)}</div>
+      <div {...stylex.props(vocab.muted)}>
+        {t(enabled ? "packages.enabled" : "packages.disabled")}
+      </div>
       {installation.presentation === "admitted" && installation.selected.actions.length > 0 && (
         <PackageActions
           key={installation.selected.digest}
@@ -165,19 +167,6 @@ function PackageRow({
         />
       )}
       <div {...stylex.props(ss.lineWrap)}>
-        {installation.state === "unapproved" && (
-          <PillButton
-            size="sm"
-            pending={busy}
-            onClick={() =>
-              void run(t("packages.approve"), () =>
-                operations.approve(checkRequest("plugins.approve", request)),
-              )
-            }
-          >
-            {t("packages.approve")}
-          </PillButton>
-        )}
         <PillButton
           size="sm"
           pending={busy}
@@ -238,13 +227,6 @@ function PackageRow({
             {t("packages.select")}
           </PillButton>
         )}
-        <PillButton
-          size="sm"
-          pending={busy}
-          onClick={() => void run(t("packages.revoke"), () => operations.revoke(installation.id))}
-        >
-          {t("packages.revoke")}
-        </PillButton>
         <PillButton
           size="sm"
           pending={busy}

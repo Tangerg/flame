@@ -44,6 +44,13 @@ Construction, ownership transfer, cancellation, joining, and shutdown are explic
 
 Every goroutine and resource has one owner, a stop condition, and a join or close path. Durable state is the recovery source; process-local notifications only wake consumers so they can reread it.
 
+Installing or explicitly selecting plugin release bytes is the trust decision.
+The installation owns selected content and desired enablement; backend and client
+availability are observations. Enabling the same selected code restores availability
+without replacing an execution dependency. Release or configuration replacement still
+requires the owning work to be quiescent. Installing code does not create standing
+model-tool approval: those decisions retain their source-qualified policy owner.
+
 ## Evidence over symmetry
 
 Architecture is judged by real consumers, invariants, failure ordering, protocol behavior, persistence, and lifecycle tests. Package counts, file counts, private field inventories, and symmetric trees are not design evidence.

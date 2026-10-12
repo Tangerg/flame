@@ -15,7 +15,7 @@ npm run check:resources --prefix plugins
 
 The frontend check verifies the generated resource is current. The admitted release
 is self-contained and needs no network, clipboard, file, Runtime query or mutation
-authority. Search only filters immutable cards within that page. Install, approve and
+authority. Search only filters immutable cards within that page. Install and
 enable the package explicitly to expose its workspace view. The former compiled
 gallery and advanced settings showcase are removed.
 

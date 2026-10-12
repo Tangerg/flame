@@ -82,9 +82,6 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := installation.Approve(release); err != nil {
-						t.Fatal(err)
-					}
 					if err := installation.Enable(release); err != nil {
 						t.Fatal(err)
 					}
@@ -149,9 +146,6 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 				}
 				installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 				if err != nil {
-					t.Fatal(err)
-				}
-				if err := installation.Approve(release); err != nil {
 					t.Fatal(err)
 				}
 				if err := installation.Enable(release); err != nil {
@@ -230,9 +224,6 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -281,8 +272,8 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		}
 	}
 	setSkill(plugin.DisableComponent)
-	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) || errors.Is(err, plugin.ErrUnapproved) || len(content) != 0 {
-		t.Fatalf("disabled skill of an approved release = %q, %v; want unavailable, not unapproved", content, err)
+	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) || errors.Is(err, plugin.ErrDisabled) || len(content) != 0 {
+		t.Fatalf("disabled skill of an enabled installation = %q, %v; want skill unavailable", content, err)
 	}
 	if summary, err := model.Lookup(t.Context(), "review"); err != nil || summary != (sdk.Summary{Name: "review", Description: "Review a result"}) {
 		t.Fatalf("withdrawal changed admitted metadata: %+v, %v", summary, err)

@@ -195,15 +195,15 @@ boundary. Protocol clients contain no Wails import or UI state.
 
 ## Portable Runtime plugins
 
-Settings → Plugins manages Runtime-owned installations, exact-digest trust, declared input
+Settings → Plugins manages Runtime-owned installations, selected digests, declared input
 changes, enablement and staged updates. MCP configuration from an installation is read-only
 in the MCP pane. The existing exposure, OAuth and approval controls remain authoritative.
 MCP settings key every server by Runtime's structured `MCPServerID` (origin plus name), so a
 user server and an installation server with the same name keep separate rows, tool
 exposure and standing approval.
-Each row shows Runtime's closed installation `state` (`unapproved`, `approved`, `enabled`).
-Approval names the exact selected digest: after a staged release is selected the row is
-`unapproved` again and offers approval of the new digest before it can be enabled.
+Each row shows Runtime's desired `enabled` value. Installation and explicit release
+selection are the trust decisions. Selecting a staged release preserves desired enablement;
+an enabled installation refuses the candidate if required configuration cannot be retained.
 The configuration editor retains the exact release opened for review. Catalog refreshes
 cannot retarget its draft to newly selected code; Runtime rejects stale drafts. It uses the
 generated request contract and submits deltas (`valueChanges`, `serverChanges`,
@@ -214,8 +214,8 @@ servers whose backend cannot be realized) and the release's typed admission diag
 localized text built from component and code; nothing parses diagnostic text. Input state
 arrives as `unset`, `configured` or `value`: a configured secret is shown as configured and
 its text never reaches the client. Package themes load exactly while Runtime reports the
-installation's `presentation` as `admitted`; the client never derives it from enablement,
-approval or `realization`.
+installation's `presentation` as `admitted`; the client never derives it from enablement
+or `realization`.
 An MCP server's failed status renders its typed problem category as localized text.
 The status, authorization attempt and connection test projections accept only the categories
 their state allows and reject anything else as a Runtime contract violation.
@@ -225,16 +225,16 @@ Optional trajectory, Memory, Schedules and Usage pages use one qualified carrier
 Build target-specific Memory and Schedules packages with
 `node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages`.
 Runtime distributions contain all first-party packages beside their executable.
-A fresh database receives approved, enabled defaults during Runtime initialization;
+A fresh database receives enabled defaults during Runtime initialization;
 Desktop renders those installations without its own installation policy. Restart
-preserves user disablement, revocation and uninstall. Settings → Plugins manages
-subsequent release selection, approval and enablement.
+preserves user disablement and uninstall. Settings → Plugins manages subsequent release
+selection and enablement.
 Memory captures project/user scope in trusted Host controls. Its guest renders canonical
 candidates and active items; trusted Host forms retain add, review, edit, pin and delete.
 The Memory backend alone owns these facts; Runtime routes admitted commands and supplies
 bounded model capabilities. Withdrawal retires the backend generation and retains its
-private data. Rebuild all clients for protocol 2026-10-12.1. Memory and Schedules use
-package resources built with the current bridge. Reinstall and approve current bytes
+private data. Rebuild all clients for protocol 2026-10-13.1. Memory and Schedules use
+package resources built with the current bridge. Explicitly select current bytes
 for the `flame.view.ready.v3` / `flame.view.connect.v3` handshake.
 Packages may also declare `renameSession` actions. An admitted package row displays a
 trusted host form with the operation and captured Session ID/revision. The human submits
@@ -399,14 +399,14 @@ MCP declarations retain their existing admission and lifecycle.
 ### Optional first-party pages
 
 Tool results is an optional package from `plugins/tool-results`. Runtime admits its
-renderer declarations and authorizes the exact approved, enabled release. The workbench
+renderer declarations and authorizes the exact selected, enabled release. The workbench
 selects a unique display-name match before a unique result-shape match; ambiguity retains
 the generic inspector. The isolated page receives one captured, settled ToolCall read
 projection. Refresh reauthorizes the release and returns the same record. It cannot execute
 a tool or advance an outcome. The generic recorded content remains available after page
-failure, revocation or uninstall. Rebuild Runtime and clients together for the generated
+failure, disablement or uninstall. Rebuild Runtime and clients together for the generated
 renderer contract. Fresh Runtime databases include this package by default;
-existing installations use explicit release selection and approval.
+existing installations use explicit release selection and enablement.
 
 File renderers is an optional package from `plugins/file-renderers`. Its normalized
 extension selectors consume complete file reads captured by the trusted Files dock.
@@ -460,7 +460,7 @@ model and UTC-day buckets and can only refresh that captured query. Local filter
 totals intact. Zero reported usage, unpriced usage, an empty report and read failure remain
 separate states. Runtime alone folds recorded Run usage; uninstall preserves accounting.
 The shared bridge now uses `flame.view.ready.v3` / `flame.view.connect.v3` and data replies
-for both reports and pages. Rebuild clients and approve the updated 2.0.0 trajectory, memory
+for both reports and pages. Rebuild clients and select the updated 2.0.0 trajectory, memory
 and schedules packages; the former handshake and compiled Usage pane have no fallback.
 
 The optional Schedules package supplies the schedule list and immutable authoring templates.
@@ -583,20 +583,23 @@ Wails SDK so its event dispatcher retains one owner. Test hooks are absent from 
 The gate focuses its owned window and waits for the catalogue popup to retire before
 checking page visibility. It selects each admitted contribution through the workbench, inspects the real
 opaque guest, refreshes recorded data, replaces memory scope and usage period, and
-checks withdrawal, reapproval and physical page retirement. Skills covers discovery,
+checks withdrawal, re-enablement and physical page retirement. Skills covers discovery,
 document inspection, library archive/restore and trusted publication of a proposal
 created through a normal Run. Diff covers remote Git evidence and trusted baseline
 replacement. Uninstall must preserve
 canonical trajectory, memory, schedules, usage, workspace diffs and Skill curation.
 The Tool results check displays and refreshes a recorded Skill proposal in its isolated
-page, revokes the renderer and verifies physical retirement, generic record visibility
+page, disables the renderer and verifies physical retirement, generic record visibility
 and unchanged canonical trajectory. The application exits and cleanup completes before
 the single terminal result. File renderers covers a captured remote Markdown file,
-read renewal, physical retirement and preserved canonical source after revocation.
+read renewal, physical retirement and preserved canonical source after disablement.
 Diagnostics covers local reads and trusted buffer clearing without changing canonical
 Runtime usage; the static icon gallery covers SVG display, filtering and retirement.
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
+
+The following validation records predate removal of installation approval. They do not
+qualify the current enablement contract; UI and E2E execution is excluded from that refactor.
 
 The production native workbench gate also qualifies Tool results, File renderers,
 Diagnostics and static icon views. Recorded data refresh, trusted clearing, withdrawal,
@@ -652,4 +655,4 @@ usage were synthetic, so this check does not qualify a live provider or its acco
 
 ## Shared presentation package
 
-Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party pages are generated from each package's `src/view.tsx` by `npm run build --prefix plugins`. The frontend gate checks the tracked resources against that build. Portable pages use the v3 ready/connect handshake and receive a closed appearance projection. Reinstall changed resources and approve their new digests through the existing installation workflow. Durable plugin data formats are unchanged.
+Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party pages are generated from each package's `src/view.tsx` by `npm run build --prefix plugins`. The frontend gate checks the tracked resources against that build. Portable pages use the v3 ready/connect handshake and receive a closed appearance projection. Explicitly select changed resources through the existing installation workflow. Durable plugin data formats are unchanged.

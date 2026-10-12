@@ -73,9 +73,6 @@ func TestInspectionWithdrawsTamperedReleaseAndReadmitsRepairedBytes(t *testing.T
 		t.Fatal(err)
 	}
 	id, digest := installed.View.ID, installed.Selected.Digest()
-	if _, err := owner.Approve(t.Context(), id, digest); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := owner.Enable(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +87,7 @@ func TestInspectionWithdrawsTamperedReleaseAndReadmitsRepairedBytes(t *testing.T
 			t.Fatalf("installations = %d, want 1", len(rows))
 		}
 		row := rows[0]
-		if row.View.State != plugin.Enabled || row.Selected.Digest() != digest {
+		if row.View.Enabled != true || row.Selected.Digest() != digest {
 			t.Fatalf("byte availability changed installation authority: %+v", row)
 		}
 		if row.Realization.Release != release || row.Presentation != presentation {

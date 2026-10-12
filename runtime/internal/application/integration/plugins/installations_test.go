@@ -194,9 +194,6 @@ func installationFixture(t *testing.T) (*installationMemory, *installationDepend
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := i.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	catalog := releaseMemory{release.Digest(): release}
 	s := &installationMemory{catalog: catalog}
 	if err := s.Save(t.Context(), i); err != nil {
@@ -212,7 +209,7 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 			t.Fatal("external reconcile retained executable admission")
 		}
 		current, found, err := store.Get(ctx, id)
-		if err != nil || !found || !current.Installation.Active() {
+		if err != nil || !found || !current.Installation.Enabled() {
 			t.Fatal("realization preceded durable enablement")
 		}
 		return errors.New("supervisor is closing")
@@ -222,7 +219,7 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 		t.Fatal(err)
 	}
 	result, err := c.Enable(t.Context(), id)
-	if err != nil || result.View.State != plugin.Enabled {
+	if err != nil || result.View.Enabled != true {
 		t.Fatalf("committed result was reported as failed command: %+v, %v", result, err)
 	}
 	if !reflect.DeepEqual(result.Realization, Realization{Release: ReleaseAvailable}) {
@@ -237,13 +234,13 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 		name     string
 		saveErr  error
 		withdraw error
-		state    plugin.State
+		state    bool
 		changed  bool
 		wantErr  error
 	}{
-		{"committed", nil, nil, plugin.Enabled, true, nil},
-		{"rejected write", storageFailure, nil, plugin.Approved, false, storageFailure},
-		{"failed withdrawal", nil, withdrawalFailure, plugin.Enabled, true, withdrawalFailure},
+		{"committed", nil, nil, true, true, nil},
+		{"rejected write", storageFailure, nil, false, false, storageFailure},
+		{"failed withdrawal", nil, withdrawalFailure, true, true, withdrawalFailure},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store, dependencies, id, catalog := installationFixture(t)
@@ -258,7 +255,7 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 					t.Fatal("publication retained installation admission")
 				}
 				current, found, err := store.Get(t.Context(), id)
-				if err != nil || !found || current.Installation.State() != test.state {
+				if err != nil || !found || current.Installation.Enabled() != test.state {
 					t.Fatalf("publication preceded durable state: %+v, %v", current, err)
 				}
 				notices = append(notices, notice.Resource)
@@ -271,8 +268,8 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 				t.Fatalf("enable = %v, want %v", err, test.wantErr)
 			}
 			current, found, err := store.Get(t.Context(), id)
-			if err != nil || !found || current.Installation.State() != test.state {
-				t.Fatalf("durable state = %+v, %v; want %s", current, err, test.state)
+			if err != nil || !found || current.Installation.Enabled() != test.state {
+				t.Fatalf("durable enablement = %+v, %v; want %t", current, err, test.state)
 			}
 			if dependencies.executionChanged != test.changed {
 				t.Fatalf("committed execution change = %t, want %t", dependencies.executionChanged, test.changed)
@@ -464,7 +461,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 				t.Fatal("package preparation retained executable admission")
 			}
 			current, found, err := store.Get(ctx, id)
-			if err != nil || !found || !current.Installation.Active() || !installation.Active() {
+			if err != nil || !found || !current.Installation.Enabled() || !installation.Enabled() {
 				t.Fatal("package preparation preceded durable enablement")
 			}
 			return errors.New("backend directory could not be created")
@@ -482,7 +479,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 		t.Fatal(err)
 	}
 	result, err := c.Enable(t.Context(), id)
-	if err != nil || result.View.State != plugin.Enabled || !reconciled || !slices.Equal(result.Realization.UnavailableBackends, []mcpserver.ServerName{backend}) {
+	if err != nil || result.View.Enabled != true || !reconciled || !slices.Equal(result.Realization.UnavailableBackends, []mcpserver.ServerName{backend}) {
 		t.Fatalf("committed change realization = %+v, %v", result, err)
 	}
 	for range 2 {
@@ -533,7 +530,7 @@ func TestChangedSourcesAreWithdrawnInsideAdmissionAfterTheCommit(t *testing.T) {
 					current, found, err := store.Get(t.Context(), id)
 					switch operation {
 					case "disable":
-						if err != nil || !found || current.Installation.Active() {
+						if err != nil || !found || current.Installation.Enabled() {
 							t.Fatalf("withdrawal preceded the durable change: %+v, %v", current, err)
 						}
 					case "uninstall":
@@ -599,7 +596,7 @@ func TestInstallationReconcileCanReenterTheOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	current, found, err := store.Get(t.Context(), id)
-	if err != nil || !found || current.Installation.Active() || calls != 2 {
+	if err != nil || !found || current.Installation.Enabled() || calls != 2 {
 		t.Fatalf("reentrant withdrawal: %+v, %v, calls=%d", current, err, calls)
 	}
 }
@@ -698,10 +695,10 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 						t.Fatal("shutdown restored removed admission")
 					}
 				} else if phase == "installation" {
-					if store.record == nil || store.record.State != plugin.Unapproved {
+					if store.record == nil || store.record.Enabled != false {
 						t.Fatal("shutdown reversed durable installation")
 					}
-				} else if store.record == nil || store.record.State != plugin.Enabled {
+				} else if store.record == nil || store.record.Enabled != true {
 					t.Fatal("shutdown reversed durable enablement")
 				}
 			})
@@ -763,7 +760,7 @@ func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 	}
 }
 
-func TestUninstallRequiresQuiescenceButRevocationDoesNot(t *testing.T) {
+func TestReplacementRequiresQuiescenceButSameReleaseEnablementDoesNot(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
 	dependencies.inUse = true
 	c, err := New(t.Context(), store, catalog, installationPackages{}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}, dependencies, nil)
@@ -776,7 +773,17 @@ func TestUninstallRequiresQuiescenceButRevocationDoesNot(t *testing.T) {
 	if _, found, err := store.Get(t.Context(), id); err != nil || !found {
 		t.Fatalf("refused uninstall removed the installation: %v", err)
 	}
-	if _, err := c.Revoke(t.Context(), id); err != nil {
-		t.Fatalf("revocation of a depended installation: %v", err)
+	if _, err := c.Disable(t.Context(), id); err != nil {
+		t.Fatalf("disablement of a depended installation: %v", err)
+	}
+	before := store.record.Selected
+	if _, err := c.Enable(t.Context(), id); err != nil {
+		t.Fatalf("enable same depended release: %v", err)
+	}
+	if !store.record.Enabled || store.record.Selected != before {
+		t.Fatal("enablement changed the selected code or failed to restore availability")
+	}
+	if _, err := c.Configure(t.Context(), id, before, plugin.Configuration{}); !errors.Is(err, plugin.ErrInUse) {
+		t.Fatalf("configure a depended release = %v", err)
 	}
 }

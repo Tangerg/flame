@@ -44,7 +44,7 @@ const pluginThemeSchemas = [
         {
           id: "940ac827-b431-455b-af4b-e3a170bcfda0",
           source: "/sample",
-          state: "unapproved",
+          enabled: false,
           realization: { type: "available" },
           presentation: "withheld",
           inputStates: {},
@@ -135,7 +135,7 @@ describe("the published OpenRPC request schemas", () => {
   });
 
   it("rejects unknown nested members in frames and by-name parameters", () => {
-    expect(requestSchema("plugins.approve")({ ...target, unexpected: true })).toBe(false);
+    expect(requestSchema("plugins.select")({ ...target, unexpected: true })).toBe(false);
     const serverChanges = { backend: "toggle" };
     expect(requestSchema("plugins.configure", "serverChanges")(serverChanges)).toBe(false);
     const valueChanges = { token: { type: "set", value: "", unexpected: true } };

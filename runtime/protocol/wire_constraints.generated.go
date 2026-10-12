@@ -711,7 +711,7 @@ func (p ProblemData) ValidateWire() error {
 		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
 		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
 		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unapproved", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "schedule_not_found", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "schedule_not_found", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "errors", p),
@@ -811,6 +811,10 @@ func (p ProblemData) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "errors", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "activeRun", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "requiredCapabilities", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "retryAfterSeconds", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "errors", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "activeRun", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "errors", p),
@@ -823,10 +827,6 @@ func (p ProblemData) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "errors", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unapproved"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unapproved"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unapproved"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unapproved"), "activeRun", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "errors", p),
@@ -2969,7 +2969,6 @@ func (p PluginDiagnostic) ValidateWire() error {
 func (p PluginInstallation) ValidateWire() error {
 	return collectWireViolations("PluginInstallation",
 		closedEnum("presentation", string(p.Presentation), []string{"admitted", "withheld"}, false),
-		closedEnum("state", string(p.State), []string{"unapproved", "approved", "enabled"}, false),
 	)
 }
 

@@ -16,7 +16,7 @@ type InitializationStore interface {
 }
 
 // Initialize grants only the distribution's initial catalog. Thereafter the
-// ordinary installation aggregates own approval, enablement and removal.
+// ordinary installation aggregates own selection, enablement and removal.
 func Initialize(ctx context.Context, store InitializationStore, packages Packages, sources func() ([]string, error)) error {
 	return store.Initialize(ctx, func(ctx context.Context) (err error) {
 		existing, err := store.List(ctx)
@@ -58,9 +58,6 @@ func installFirstParty(ctx context.Context, store Store, packages Packages, sour
 	}
 	installation, err := plugin.New(id, source, release)
 	if err != nil {
-		return err
-	}
-	if err := installation.Approve(release); err != nil {
 		return err
 	}
 	if err := installation.Enable(release); err != nil {

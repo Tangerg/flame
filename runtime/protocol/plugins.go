@@ -9,22 +9,11 @@ type PluginInstallation struct {
 	Source          string                      `json:"source"`
 	Selected        PluginRelease               `json:"selected"`
 	Staged          *PluginRelease              `json:"staged,omitzero"`
-	State           PluginInstallationState     `json:"state"`
+	Enabled         bool                        `json:"enabled"`
 	InputStates     map[string]PluginInputState `json:"inputStates"`
 	DisabledServers []string                    `json:"disabledServers"`
 	DisabledSkills  []string                    `json:"disabledSkills"`
 }
-
-// PluginInstallationState is the closed trust state of an installation.
-// Approval names the selected release: selecting another release returns the
-// installation to unapproved.
-type PluginInstallationState string
-
-const (
-	PluginInstallationUnapproved PluginInstallationState = "unapproved"
-	PluginInstallationApproved   PluginInstallationState = "approved"
-	PluginInstallationEnabled    PluginInstallationState = "enabled"
-)
 
 // PluginPresentation is the Runtime's decision whether the selected release's
 // declarative presentation contributions, such as themes, are admitted now.

@@ -105,8 +105,8 @@ func TestDiffViewUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *testi
 	r.close()
 	r = poMCPOpen(t, cfg)
 	compare()
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-diff")
-	refuse(read, protocol.ErrPluginUnapproved)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-diff")
+	refuse(read, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-diff")
 	refuse(read, protocol.ErrPluginNotFound)
 	if got := r.must(delivery.WorkspaceDiffGet, read.GetDiffRequest, "").(*protocol.Diff); !reflect.DeepEqual(got, diff) {

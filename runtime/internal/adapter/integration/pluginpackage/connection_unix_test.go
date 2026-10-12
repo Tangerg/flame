@@ -68,9 +68,6 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -153,9 +150,6 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 	}
 	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installation.Approve(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := installation.Enable(release); err != nil {
@@ -257,9 +251,6 @@ func TestBackendPreparationFailureIsObservedByLaterReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -322,9 +313,6 @@ func TestDisabledInstallationServerRefusesConnectionAsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Configure(release, plugin.Configuration{Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("backend"): plugin.DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +330,7 @@ func TestDisabledInstallationServerRefusesConnectionAsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := registry.Connection(t.Context(), disabled); !errors.Is(err, mcpapp.ErrServerDisabled) || errors.Is(err, plugin.ErrUnapproved) {
+	if _, err := registry.Connection(t.Context(), disabled); !errors.Is(err, mcpapp.ErrServerDisabled) || errors.Is(err, plugin.ErrDisabled) {
 		t.Fatalf("disabled server connection = %v, want server disabled", err)
 	}
 	enabled, err := installation.ServerID(testsupport.ServerName("remote"))

@@ -1,7 +1,7 @@
 # File renderers
 
 An optional first-party Markdown renderer for complete Runtime file reads. Install this
-directory, approve its exact release digest, and enable it through the local application.
+directory and enable it through the local application.
 It supplies `md`, `markdown` and `mdx` file-extension declarations. Equally ranked matches
 remain ambiguous and keep the host's source view.
 
@@ -9,7 +9,7 @@ The trusted host reads the file and captures `flame.file.v1`: its Runtime worksp
 requested path, content, start line, total lines and truncation marker. The page cannot
 choose another file or invoke a tool. Refresh reauthorizes its renderer and repeats the
 same captured read. Truncated and partial reads retain source presentation; line navigation
-starts in source mode. Revocation or failure leaves the recorded source available.
+starts in source mode. Disablement or failure leaves the recorded source available.
 
 Marked parses Markdown into tokens. The page builds a closed DOM with text nodes; authored
 HTML, MDX expressions, image embeds and URLs remain text. Code fences remain readable code.

@@ -62,10 +62,6 @@
               "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
             },
             {
-              "name": "ApprovePlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
             },
@@ -392,10 +388,6 @@
             {
               "name": "ReviewAgentMemory",
               "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
-            },
-            {
-              "name": "RevokePlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "RollbackSession",
@@ -610,10 +602,6 @@
               "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
             },
             {
-              "name": "ApprovePlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
             },
@@ -940,10 +928,6 @@
             {
               "name": "ReviewAgentMemory",
               "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
-            },
-            {
-              "name": "RevokePlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "RollbackSession",
@@ -2257,21 +2241,6 @@
           "value": "\"value\""
         },
         {
-          "name": "PluginInstallationApproved",
-          "type": "PluginInstallationState",
-          "value": "\"approved\""
-        },
-        {
-          "name": "PluginInstallationEnabled",
-          "type": "PluginInstallationState",
-          "value": "\"enabled\""
-        },
-        {
-          "name": "PluginInstallationUnapproved",
-          "type": "PluginInstallationState",
-          "value": "\"unapproved\""
-        },
-        {
           "name": "PluginPresentationAdmitted",
           "type": "PluginPresentation",
           "value": "\"admitted\""
@@ -2444,7 +2413,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-12.1\""
+          "value": "\"2026-10-13.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -3067,6 +3036,10 @@
           "type": "error"
         },
         {
+          "name": "ErrPluginDisabled",
+          "type": "error"
+        },
+        {
           "name": "ErrPluginInUse",
           "type": "error"
         },
@@ -3076,10 +3049,6 @@
         },
         {
           "name": "ErrPluginStale",
-          "type": "error"
-        },
-        {
-          "name": "ErrPluginUnapproved",
           "type": "error"
         },
         {
@@ -7447,9 +7416,9 @@
               "tag": "json:\"staged,omitzero\""
             },
             {
-              "name": "State",
-              "type": "PluginInstallationState",
-              "tag": "json:\"state\""
+              "name": "Enabled",
+              "type": "bool",
+              "tag": "json:\"enabled\""
             },
             {
               "name": "InputStates",
@@ -7473,11 +7442,6 @@
               "signature": "func() error"
             }
           ]
-        },
-        {
-          "name": "PluginInstallationState",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "PluginPresentation",

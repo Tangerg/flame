@@ -252,7 +252,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	if err != nil || item.Status != protocol.ItemStatusIncomplete || !strings.Contains(string(encoded), `"type":"revisionConflict"`) {
 		t.Fatalf("stale update = %+v, %s, %v", item, encoded, err)
 	}
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	if current := toolResult(update, "reviews_update_review"); !reflect.DeepEqual(current.Tool.Result, savedResult) {
 		t.Fatal("withdrawal changed history")
 	}

@@ -125,10 +125,6 @@ func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstall
 	if err != nil {
 		return nil, err
 	}
-	state, err := presentPluginInstallationState(view.State)
-	if err != nil {
-		return nil, err
-	}
 	inputStates, err := presentPluginInputStates(view.Inputs)
 	if err != nil {
 		return nil, err
@@ -141,7 +137,7 @@ func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstall
 	if err != nil {
 		return nil, err
 	}
-	result := &protocol.PluginInstallation{Realization: realization, Presentation: presentation, ID: view.ID.String(), Source: view.Source, Selected: selected, State: state, InputStates: inputStates, DisabledServers: disabledServers, DisabledSkills: slices.Clone(view.DisabledSkills)}
+	result := &protocol.PluginInstallation{Realization: realization, Presentation: presentation, ID: view.ID.String(), Source: view.Source, Selected: selected, Enabled: view.Enabled, InputStates: inputStates, DisabledServers: disabledServers, DisabledSkills: slices.Clone(view.DisabledSkills)}
 	if inspection.Staged != nil {
 		staged, err := presentPluginRelease(*inspection.Staged)
 		if err != nil {
@@ -182,19 +178,6 @@ func presentPluginRealization(realization plugins.Realization) (protocol.PluginR
 		return protocol.PluginRealization{Type: protocol.PluginRealizationReleaseUnavailable}, nil
 	default:
 		return protocol.PluginRealization{}, fmt.Errorf("plugin: project release state %q", realization.Release)
-	}
-}
-
-func presentPluginInstallationState(state plugin.State) (protocol.PluginInstallationState, error) {
-	switch state {
-	case plugin.Unapproved:
-		return protocol.PluginInstallationUnapproved, nil
-	case plugin.Approved:
-		return protocol.PluginInstallationApproved, nil
-	case plugin.Enabled:
-		return protocol.PluginInstallationEnabled, nil
-	default:
-		return "", fmt.Errorf("plugin: project installation state %q", state)
 	}
 }
 

@@ -16,7 +16,7 @@ func TestRuntimeAPIInventoryHasNoUnreviewedMethods(t *testing.T) {
 	covered := runtimeAPIConsumptionByMethod()
 	validModes := []runtimeConsumptionMode{
 		consumedByLifecycle, consumedByCoreFlow, consumedByCommand, consumedBySideChannel,
-		materializedByAggregate, desktopDiagnostics,
+		materializedByAggregate, desktopDiagnostics, externalReconciliation,
 	}
 	var materialized []string
 	for method, consumption := range covered {
@@ -207,6 +207,7 @@ const (
 	consumedBySideChannel   runtimeConsumptionMode = "side-channel"
 	materializedByAggregate runtimeConsumptionMode = "aggregate-materialized"
 	desktopDiagnostics      runtimeConsumptionMode = "desktop-diagnostics"
+	externalReconciliation  runtimeConsumptionMode = "external-reconciliation"
 )
 
 type runtimeAPIConsumption struct {
@@ -313,13 +314,14 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"RollbackSession": command("sessions", "TUI /rollback"),
 		"UpdateSession":   command("sessions", "sessions update/rename and TUI metadata actions"),
 
-		"CancelRun":    command("runs", "run cleanup, TUI stop, and runs cancel"),
-		"GetRun":       command("runs", "runs show"),
-		"ListRuns":     command("runs", "runs ls and completion; cold material projection comes from sessions.snapshot"),
-		"ResumeRun":    flow("runs", "HITL continuation"),
-		"StartRun":     flow("runs", "interactive and one-shot execution"),
-		"SteerRun":     command("runs", "TUI /steer"),
-		"SubscribeRun": flow("runs", "stream recovery and reattachment"),
+		"CancelRun":        command("runs", "run cleanup, TUI stop, and runs cancel"),
+		"GetRun":           command("runs", "runs show"),
+		"GetRunAcceptance": {Area: "durable Run admission", Mode: externalReconciliation, Entry: "public read-only reconciliation for external callers; CLI preserves opening command identity and does not expose a receipt lookup command"},
+		"ListRuns":         command("runs", "runs ls and completion; cold material projection comes from sessions.snapshot"),
+		"ResumeRun":        flow("runs", "HITL continuation"),
+		"StartRun":         flow("runs", "interactive and one-shot execution"),
+		"SteerRun":         command("runs", "TUI /steer"),
+		"SubscribeRun":     flow("runs", "stream recovery and reattachment"),
 
 		"GetPlan":        materialized("run resources", "response contract materialized atomically by sessions.snapshot"),
 		"ListInterrupts": materialized("run resources", "response contract materialized atomically by sessions.snapshot"),
@@ -354,10 +356,8 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"RenamePluginSession":           command("plugins", "plugins rename-session"),
 		"StagePlugin":                   command("plugins", "plugins stage"),
 		"SelectPlugin":                  command("plugins", "plugins select"),
-		"ApprovePlugin":                 command("plugins", "plugins approve"),
 		"ConfigurePlugin":               command("plugins", "plugins configure"),
 		"SetPluginEnablement":           command("plugins", "plugins set-enablement"),
-		"RevokePlugin":                  command("plugins", "plugins revoke"),
 		"UninstallPlugin":               command("plugins", "plugins uninstall"),
 		"ListPlugins":                   command("plugins", "plugins list"),
 		"ListApprovalRules":             command("approvals", "approvals ls/completion and TUI /rules"),

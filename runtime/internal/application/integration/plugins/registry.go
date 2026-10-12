@@ -160,7 +160,7 @@ func (r *Registry) Service(ctx context.Context, id mcpserver.ID) (plugin.Service
 	if err != nil || !found {
 		return "", false, err
 	}
-	if !snapshot.Installation.Active() || !snapshot.Installation.ServerEnabled(id.Name()) {
+	if !snapshot.Installation.Enabled() || !snapshot.Installation.ServerEnabled(id.Name()) {
 		return "", false, nil
 	}
 	for _, service := range snapshot.Selected.Declaration().Services {

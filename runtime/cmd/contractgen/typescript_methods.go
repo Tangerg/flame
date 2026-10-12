@@ -58,11 +58,11 @@ func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
 // method. The SDK consumes this table to attach idempotency keys to commands by
 // construction; method wrappers never classify themselves.
 func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
-	m.line("export type WireOperationKind = \"query\" | \"command\" | \"subscription\";")
-	m.line("export type WireResponseKind = \"unary\" | \"stream\";")
-	m.line("export type WireIdempotencyPolicy = \"none\" | \"replayResponse\" | \"ownerResponse\" | \"replayRunStream\";")
-	m.line("export type WireReplayCursorPolicy = \"none\" | \"run\";")
-	m.line("export type WirePaginationKind = \"none\" | \"cursor\";")
+	m.line("export type WireOperationKind = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.Operation.String() }))
+	m.line("export type WireResponseKind = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.Kind.String() }))
+	m.line("export type WireIdempotencyPolicy = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.Idempotency.String() }))
+	m.line("export type WireReplayCursorPolicy = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.ReplayCursor.String() }))
+	m.line("export type WirePaginationKind = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.Pagination.String() }))
 	m.line("")
 	m.line("export interface WireMethodPolicy {")
 	m.line("  operation: WireOperationKind;")
@@ -322,4 +322,17 @@ func (m *methodsEmitter) shape(t reflect.Type) string {
 
 func (m *methodsEmitter) line(format string, arguments ...any) {
 	fmt.Fprintf(&m.out, format+"\n", arguments...)
+}
+
+func methodPolicyUnion(metas []delivery.MethodMeta, value func(delivery.MethodMeta) string) string {
+	values := make([]string, 0, len(metas))
+	for _, meta := range metas {
+		values = append(values, strconv.Quote(value(meta)))
+	}
+	slices.Sort(values)
+	values = slices.Compact(values)
+	if len(values) == 0 {
+		return "never"
+	}
+	return strings.Join(values, " | ")
 }

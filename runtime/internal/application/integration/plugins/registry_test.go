@@ -152,9 +152,6 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Configure(release, plugin.Configuration{Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("off"): plugin.DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}

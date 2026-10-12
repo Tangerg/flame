@@ -745,12 +745,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         source: join(environmentRoot, "plugins", feature),
       });
     expect(installation.selected.diagnostics).toEqual([]);
-    if (installation.state === "unapproved")
-      installation = await client.plugins.approve({
-        installationId: installation.id,
-        digest: installation.selected.digest,
-      });
-    if (installation.state !== "enabled")
+    if (!installation.enabled)
       installation = await client.plugins.setEnablement({
         installationId: installation.id,
         enabled: true,
@@ -1100,14 +1095,13 @@ for await (const line of lines) {
     const target = { installationId: installed.id, digest: installed.selected.digest };
     const reader = createSharedClient();
     try {
-      expect(installed.state).toBe("unapproved");
+      expect(installed.enabled).toBe(false);
       expect(installed.selected.diagnostics).toEqual([]);
       expect(installed.selected.themes).toHaveLength(1);
       expect(installed.selected.skills).toHaveLength(1);
       await expect(
         client.plugins.setEnablement({ installationId: installed.id, enabled: true }),
       ).rejects.toMatchObject({ code: -32042 });
-      await client.plugins.approve(target);
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
       const view = { ...target, viewId: "trajectory" };
       const resource = await client.plugins.readView(view);
@@ -1139,7 +1133,7 @@ for await (const line of lines) {
           }),
         }),
       );
-      await client.plugins.revoke(installed.id);
+      await client.plugins.setEnablement({ installationId: installed.id, enabled: false });
       await expect(client.plugins.readView(view)).rejects.toMatchObject({ code: -32042 });
       await expect(reader.plugins.readTrajectory({ ...view, ...query })).rejects.toMatchObject({
         code: -32042,
@@ -1188,7 +1182,7 @@ for await (const line of lines) {
       ).rejects.toSatisfy(
         (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
       );
-      await client.plugins.revoke(installation.id);
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
       await expect(client.plugins.readMemory({ ...view, ...query })).rejects.toMatchObject({
         code: -32042,
       });
@@ -1221,7 +1215,6 @@ for await (const line of lines) {
         { id: "usage", title: "Usage", type: "usageSummary" },
       ]);
       await expect(client.plugins.readUsage(view)).rejects.toMatchObject({ code: -32042 });
-      await client.plugins.approve(release);
       await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
       const session = await client.sessions.create({ workspace: { path: root } });
       const started = await client.runs.start({
@@ -1244,7 +1237,7 @@ for await (const line of lines) {
         (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
       );
       const recorded = await client.usage.summary({ sinceDays: 7 });
-      await client.plugins.revoke(installation.id);
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
       await expect(client.plugins.readUsage(view)).rejects.toMatchObject({ code: -32042 });
       await client.plugins.uninstall(installation.id);
       remainingInstallation = undefined;
@@ -1286,7 +1279,7 @@ for await (const line of lines) {
       await expect(client.plugins.readMemory({ ...view, scope: "user" })).rejects.toSatisfy(
         (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
       );
-      await client.plugins.revoke(installation.id);
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
       await expect(client.plugins.readSchedules(view)).rejects.toMatchObject({ code: -32042 });
       await expect(client.schedules.list()).rejects.toSatisfy(
         (error: unknown) => error instanceof RpcError && error.data.type === "plugin_unavailable",

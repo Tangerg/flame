@@ -124,7 +124,6 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"streamable-http","url":"` + server.URL + `"}}}`,
 	})
 	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "approve")
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 	serverID := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	awaitTool := func(phase string) protocol.MCPTool {
@@ -216,31 +215,31 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	if staged.Staged == nil || staged.Staged.Digest == installed.Selected.Digest {
 		t.Fatalf("staged release = %+v", staged.Staged)
 	}
+	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-for-update")
 	before := sessions.Load()
 	selected := must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: staged.Staged.Digest}, "select").(*protocol.PluginInstallation)
-	if selected.Selected.Digest != staged.Staged.Digest || selected.State != protocol.PluginInstallationUnapproved || selected.Presentation != protocol.PluginPresentationWithheld {
-		t.Fatalf("release switch inherited approval of other code: %+v", selected)
+	if selected.Selected.Digest != staged.Staged.Digest || selected.Enabled != false || selected.Presentation != protocol.PluginPresentationWithheld {
+		t.Fatalf("release switch changed explicit disablement: %+v", selected)
 	}
 	rules = must(delivery.ApprovalListRules, protocol.ListApprovalRulesRequest{SessionID: session.ID}, "").(*protocol.ListApprovalRulesResult)
 	if len(rules.Rules) != 1 || !rules.Rules[0].Stale {
 		t.Fatalf("standing rule after release switch = %+v, want stale", rules.Rules)
 	}
 	if sessions.Load() != before {
-		t.Fatal("release switch launched unreviewed code")
+		t.Fatal("release switch launched disabled code")
 	}
 	// The switch withdrew the old release's tools in the critical section that
 	// committed it, so no Run admitted after it can freeze them.
 	if tools := must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID}, "").(*protocol.Page[protocol.MCPTool]); len(tools.Data) != 0 {
 		t.Fatalf("release switch left the old release's tools live: %+v", tools.Data)
 	}
-	must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: selected.Selected.Digest}, "approve-second")
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-second")
-	// Enabling the reviewed release dials it in the background.
+	// Enabling the selected release dials it in the background.
 	if tool := awaitTool("second release"); tool.ModelName != modelName.Load().(string) {
 		t.Fatalf("release switch changed the model-visible name: %q", tool.ModelName)
 	}
 	if sessions.Load() == before {
-		t.Fatal("the reviewed release's tools were served without a new connection")
+		t.Fatal("the selected release's tools were served without a new connection")
 	}
 	rules = must(delivery.ApprovalListRules, protocol.ListApprovalRulesRequest{SessionID: session.ID}, "").(*protocol.ListApprovalRulesResult)
 	if len(rules.Rules) != 1 || !rules.Rules[0].Stale {

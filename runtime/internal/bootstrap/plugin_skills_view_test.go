@@ -86,7 +86,6 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 	}
 	memory := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: memorySource}, "install-memory").(*protocol.PluginInstallation)
 	memoryView := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: memory.ID, Digest: memory.Selected.Digest}, ViewID: "memory"}
-	r.must(delivery.PluginsApprove, memoryView.PluginReleaseRequest, "approve-memory")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: memory.ID, Enabled: true}, "enable-memory")
 	wrong := read
 	wrong.ReadPluginViewRequest = memoryView
@@ -111,9 +110,9 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 	r.close()
 	r = poMCPOpen(t, cfg)
 	compare()
-	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	for _, check := range checks {
-		refuse(check.plugin, check.scoped, protocol.ErrPluginUnapproved)
+		refuse(check.plugin, check.scoped, protocol.ErrPluginDisabled)
 	}
 	before := r.must(delivery.SkillsLibraryList, struct{}{}, "")
 	proposal.Name = "pending"

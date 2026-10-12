@@ -25,7 +25,7 @@ command `./bin/reviews`, binds `PLUGIN_ROOT` to immutable execution content, and
 binds `PLUGIN_DATA` to the installation's private data directory. The stripped
 build fits the existing 16 MiB single-file admission limit on macOS arm64.
 Rebuild and admit new bytes when changing the backend. A selected new digest
-requires approval and enablement again.
+is an explicit trust decision; it preserves desired enablement when configuration remains valid.
 
 For an already running Runtime, use its endpoint and an absolute source path on
 that machine:
@@ -34,8 +34,6 @@ that machine:
 flame --runtime-url http://127.0.0.1:17171 plugins install \
   --request '{"source":"/absolute/path/to/flame/examples/plugins/reviews/package"}'
 flame --runtime-url http://127.0.0.1:17171 plugins list
-flame --runtime-url http://127.0.0.1:17171 plugins approve \
-  --request '{"installationId":"<installed-id>","digest":"<selected-digest>"}'
 flame --runtime-url http://127.0.0.1:17171 plugins set-enablement \
   --request '{"installationId":"<installed-id>","enabled":true}'
 ```

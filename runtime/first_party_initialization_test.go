@@ -36,7 +36,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	var memory, diagnostics, usage protocol.PluginInstallation
 	for _, item := range initial.Data {
 		ids[item.Selected.Name] = item.ID
-		if item.State != protocol.PluginInstallationEnabled || item.Presentation != protocol.PluginPresentationAdmitted {
+		if item.Enabled != true || item.Presentation != protocol.PluginPresentationAdmitted {
 			t.Fatalf("default installation = %+v", item)
 		}
 		for _, view := range item.Selected.Views {
@@ -89,7 +89,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: memory.ID, Enabled: false}, CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := current.RevokePlugin(t.Context(), protocol.PluginRequest{InstallationID: usage.ID}, CommandOptions{}); err != nil {
+	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: usage.ID, Enabled: false}, CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := current.UninstallPlugin(t.Context(), protocol.PluginRequest{InstallationID: diagnostics.ID}, CommandOptions{}); err != nil {
@@ -113,10 +113,10 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		if ids[item.Selected.Name] != item.ID {
 			t.Fatal("restart duplicated a default installation")
 		}
-		if item.Selected.Name == "flame.memory" && item.State != protocol.PluginInstallationApproved {
+		if item.Selected.Name == "flame.memory" && item.Enabled != false {
 			t.Fatal("restart reenabled disabled memory")
 		}
-		if item.Selected.Name == "flame.usage" && item.State != protocol.PluginInstallationUnapproved {
+		if item.Selected.Name == "flame.usage" && item.Enabled != false {
 			t.Fatal("restart restored revoked trust")
 		}
 	}

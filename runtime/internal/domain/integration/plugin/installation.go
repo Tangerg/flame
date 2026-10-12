@@ -19,32 +19,12 @@ const MaxInstallations = 128
 
 var (
 	ErrInvalid     = errors.New("plugin: invalid installation")
-	ErrUnapproved  = errors.New("plugin: release is not approved")
+	ErrDisabled    = errors.New("plugin: installation is disabled")
 	ErrStale       = errors.New("plugin: stale release")
 	ErrInUse       = errors.New("plugin: release is in use")
 	ErrNotFound    = errors.New("plugin: installation not found")
 	ErrUnavailable = errors.New("plugin: release is unavailable")
 )
-
-// State is the closed trust state of an installation. Approval always names
-// the selected release: selecting other bytes returns to [Unapproved], so
-// changed code is never run without a renewed review.
-type State string
-
-const (
-	Unapproved State = "unapproved"
-	Approved   State = "approved"
-	Enabled    State = "enabled"
-)
-
-func (s State) validate() error {
-	switch s {
-	case Unapproved, Approved, Enabled:
-		return nil
-	default:
-		return fmt.Errorf("%w: installation state %q", ErrInvalid, s)
-	}
-}
 
 // Record is the persisted projection of an installation. It names releases
 // by digest only: the admitted release catalog alone owns their content.
@@ -53,7 +33,7 @@ type Record struct {
 	Source          string
 	Selected        fingerprint.Digest
 	Staged          *fingerprint.Digest
-	State           State
+	Enabled         bool
 	Values          map[string]string
 	DisabledServers []mcpserver.ServerName
 	DisabledSkills  []string
@@ -102,7 +82,7 @@ type Snapshot struct {
 	Staged       *Release
 }
 
-// Installation alone advances selection, trust, and configuration. A
+// Installation alone advances selection, desired enablement, and configuration. A
 // transition that depends on release content is handed the release read from
 // the admitted catalog and refuses any release other than the one it names.
 // Construction and restoration enforce the same release-bound invariants;
@@ -110,7 +90,7 @@ type Snapshot struct {
 type Installation struct{ record Record }
 
 func New(id resourceid.InstallationID, source string, release Release) (*Installation, error) {
-	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), State: Unapproved, Values: map[string]string{}}, release, nil)
+	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), Values: map[string]string{}}, release, nil)
 }
 
 // Restore validates persisted state against its admitted release definitions.
@@ -141,9 +121,6 @@ func Restore(r Record, selected Release, staged *Release) (*Installation, error)
 	} else if staged != nil {
 		return nil, fmt.Errorf("%w: unexpected staged release", ErrStale)
 	}
-	if err := r.State.validate(); err != nil {
-		return nil, err
-	}
 	if err := validateValues(selected, r.Values); err != nil {
 		return nil, err
 	}
@@ -163,7 +140,7 @@ func Restore(r Record, selected Release, staged *Release) (*Installation, error)
 	if duplicateNames(r.DisabledServers) || duplicateNames(r.DisabledSkills) {
 		return nil, fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
 	}
-	if r.State == Enabled {
+	if r.Enabled {
 		if err := requiredValues(selected, r.Values, r.DisabledServers); err != nil {
 			return nil, err
 		}
@@ -191,7 +168,7 @@ func clone(r Record) Record {
 func (i *Installation) Snapshot() Record              { return clone(i.record) }
 func (i *Installation) ID() resourceid.InstallationID { return i.record.ID }
 func (i *Installation) Selected() fingerprint.Digest  { return i.record.Selected }
-func (i *Installation) State() State                  { return i.record.State }
+func (i *Installation) Enabled() bool                 { return i.record.Enabled }
 func (i *Installation) Staged() (fingerprint.Digest, bool) {
 	if i.record.Staged == nil {
 		return fingerprint.Digest{}, false
@@ -207,7 +184,7 @@ func (i *Installation) bound(release Release) error {
 }
 
 // Stage records a candidate of the same package without touching the
-// selected release, its configuration, or its trust.
+// selected release, its configuration, or its desired enablement.
 func (i *Installation) Stage(selected, candidate Release) error {
 	if err := i.bound(selected); err != nil {
 		return err
@@ -230,8 +207,7 @@ func validateStaged(selected, candidate Release) error {
 	return nil
 }
 
-// Select replaces the selected release with the staged one. The approval
-// named the previous bytes, so the installation returns to [Unapproved].
+// Select is the explicit trust decision for the staged release.
 // Configuration survives only where its meaning is unchanged: a value keeps
 // its input declaration, a secret additionally keeps its recipient, and a
 // disabled component is still declared.
@@ -242,7 +218,7 @@ func (i *Installation) Select(selected, staged Release) error {
 	if i.record.Staged == nil || *i.record.Staged != staged.Digest() {
 		return fmt.Errorf("%w: release %s is not staged", ErrStale, staged.Digest())
 	}
-	next := Record{ID: i.record.ID, Source: i.record.Source, Selected: staged.Digest(), State: Unapproved, Values: map[string]string{}}
+	next := Record{ID: i.record.ID, Source: i.record.Source, Selected: staged.Digest(), Enabled: i.record.Enabled, Values: map[string]string{}}
 	for id, value := range i.record.Values {
 		if retainsInput(selected, staged, id) {
 			next.Values[id] = value
@@ -256,6 +232,11 @@ func (i *Installation) Select(selected, staged Release) error {
 	for _, name := range i.record.DisabledSkills {
 		if staged.declaresSkill(name) {
 			next.DisabledSkills = append(next.DisabledSkills, name)
+		}
+	}
+	if next.Enabled {
+		if err := requiredValues(staged, next.Values, next.DisabledServers); err != nil {
+			return err
 		}
 	}
 	i.record = next
@@ -281,40 +262,18 @@ func retainsInput(selected, staged Release, id string) bool {
 	return previous == current
 }
 
-// Approve admits the exact selected release. Approving an approved or enabled
-// installation changes nothing.
-func (i *Installation) Approve(release Release) error {
-	if err := i.bound(release); err != nil {
-		return err
-	}
-	if i.record.State == Unapproved {
-		i.record.State = Approved
-	}
-	return nil
-}
-
 func (i *Installation) Enable(release Release) error {
 	if err := i.bound(release); err != nil {
 		return err
 	}
-	if i.record.State == Unapproved {
-		return fmt.Errorf("%w: enable release %s", ErrUnapproved, i.record.Selected)
-	}
 	if err := requiredValues(release, i.record.Values, i.record.DisabledServers); err != nil {
 		return err
 	}
-	i.record.State = Enabled
+	i.record.Enabled = true
 	return nil
 }
 
-// Disable withdraws enablement and keeps the approval of the selected release.
-func (i *Installation) Disable() {
-	if i.record.State == Enabled {
-		i.record.State = Approved
-	}
-}
-
-func (i *Installation) Revoke() { i.record.State = Unapproved }
+func (i *Installation) Disable() { i.record.Enabled = false }
 
 func (i *Installation) Configure(release Release, configuration Configuration) error {
 	if err := i.bound(release); err != nil {
@@ -348,7 +307,7 @@ func (i *Installation) Configure(release Release, configuration Configuration) e
 	if err != nil {
 		return fmt.Errorf("skill enablement: %w", err)
 	}
-	if i.record.State == Enabled {
+	if i.record.Enabled {
 		if err := requiredValues(release, values, servers); err != nil {
 			return err
 		}
@@ -472,20 +431,18 @@ func (i *Installation) ServerSource(release Release, server mcpserver.ServerName
 	return mcpserver.InstallationSource(i.record.ID, i.record.Selected, i.ServerAuthority(server), recipient)
 }
 
-func (i *Installation) Active() bool { return i.record.State == Enabled }
-
 func (i *Installation) authorizePresentation(release Release, digest fingerprint.Digest) error {
 	if i.Selected() != digest || release.Digest() != digest {
 		return fmt.Errorf("%w: presentation release", ErrStale)
 	}
-	if !i.Active() {
-		return fmt.Errorf("%w: presentation requires an enabled approved release", ErrUnapproved)
+	if !i.Enabled() {
+		return fmt.Errorf("%w: presentation requires an enabled installation", ErrDisabled)
 	}
 	return nil
 }
 
 func (i *Installation) ServerEnabled(name mcpserver.ServerName) bool {
-	return i.Active() && !slices.Contains(i.record.DisabledServers, name)
+	return i.Enabled() && !slices.Contains(i.record.DisabledServers, name)
 }
 
 // InputPresence is what a reader may learn about one declared input.
@@ -515,7 +472,7 @@ func (s InputState) Value() (string, bool) { return s.value, s.presence == Input
 type View struct {
 	ID              resourceid.InstallationID
 	Source          string
-	State           State
+	Enabled         bool
 	Inputs          map[string]InputState
 	DisabledServers []mcpserver.ServerName
 	DisabledSkills  []string
@@ -540,7 +497,7 @@ func (i *Installation) View(release Release) (View, error) {
 	return View{
 		ID:              i.record.ID,
 		Source:          i.record.Source,
-		State:           i.record.State,
+		Enabled:         i.record.Enabled,
 		Inputs:          inputs,
 		DisabledServers: slices.Clone(i.record.DisabledServers),
 		DisabledSkills:  slices.Clone(i.record.DisabledSkills),
@@ -558,7 +515,7 @@ func (i *Installation) EnabledSkills(release Release) ([]Skill, error) {
 	if err := i.bound(release); err != nil {
 		return nil, err
 	}
-	if !i.Active() {
+	if !i.Enabled() {
 		return nil, nil
 	}
 	var enabled []Skill
@@ -600,11 +557,10 @@ func (i *Installation) ServerInputs(release Release, server mcpserver.ServerName
 	return result, nil
 }
 
-// ExecutionChanged excludes staging and approval of inactive releases: neither
-// changes the selected capabilities an execution can admit.
+// Staging does not change the selected capabilities execution may admit.
 func (i *Installation) ExecutionChanged(previous *Installation) bool {
 	return i.record.Selected != previous.record.Selected ||
-		i.Active() != previous.Active() ||
+		i.Enabled() != previous.Enabled() ||
 		!maps.Equal(i.record.Values, previous.record.Values) ||
 		!slices.Equal(i.record.DisabledServers, previous.record.DisabledServers) ||
 		!slices.Equal(i.record.DisabledSkills, previous.record.DisabledSkills)

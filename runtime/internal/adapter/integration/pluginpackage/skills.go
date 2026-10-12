@@ -45,7 +45,7 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 	var bundles []promptsource.PackageSkillBundle
 	for _, snapshot := range installations {
 		installation, release := snapshot.Installation, snapshot.Selected
-		if !installation.Active() {
+		if !installation.Enabled() {
 			continue
 		}
 		enabled, err := installation.EnabledSkills(release)

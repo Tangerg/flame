@@ -169,9 +169,6 @@ func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release); err != nil {
-		t.Fatal(err)
-	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
@@ -221,68 +218,55 @@ func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *test
 }
 
 func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
-	for _, operation := range []struct {
-		name   string
-		change func(*plugins.Coordinator, context.Context, resourceid.InstallationID) (plugins.Inspection, error)
-	}{
-		{"disable", (*plugins.Coordinator).Disable},
-		{"revoke", (*plugins.Coordinator).Revoke},
-	} {
-		t.Run(operation.name, func(t *testing.T) {
-			release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
-			installation, err := plugin.New(dependedInstallation, "/package", release)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := installation.Approve(release); err != nil {
-				t.Fatal(err)
-			}
-			if err := installation.Enable(release); err != nil {
-				t.Fatal(err)
-			}
-			store := &singleInstallationStore{catalog: releaseCatalog{release.Digest(): release}}
-			if err := store.Save(t.Context(), installation); err != nil {
-				t.Fatal(err)
-			}
-			catalog := &liveCatalogTools{}
-			catalog.live.Store(&plugin.Dependency{InstallationID: dependedInstallation, Digest: release.Digest()})
-			entered, proceed := make(chan struct{}), make(chan struct{})
-			finishAssembly := sync.OnceFunc(func() { close(proceed) })
-			defer finishAssembly()
-			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-				return nil, errors.New("installation admission invoked the model")
-			}), InteractionExecutorConfig{
-				InstallationCheckpoints: pendingInstallationCheckpoints{},
-				ToolResolver:            assemblingCatalogTools{catalog: catalog, entered: entered, proceed: proceed},
-				ToolInterpreter:         testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
-			})
-			connections := realizingConnections{catalog: catalog, entered: make(chan struct{}), release: make(chan struct{})}
-			close(connections.release)
-			coordinator, err := plugins.New(t.Context(), store, store.catalog, preparedPackages{}, connections, executor, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			assembled := make(chan error, 1)
-			go func() {
-				ref, err := executor.StageRoot(t.Context(), interactionTestStart())
-				if err == nil {
-					err = executor.Release(t.Context(), ref)
-				}
-				assembled <- err
-			}()
-			<-entered
-			result, err := operation.change(coordinator, t.Context(), dependedInstallation)
-			if err != nil || result.View.State == plugin.Enabled {
-				t.Fatalf("withdrawal = %+v, %v", result, err)
-			}
-			finishAssembly()
-			if err := <-assembled; !errors.Is(err, runs.ErrInstallationChanged) {
-				t.Fatalf("assembly admitted after %s = %v, want installation-changed refusal", operation.name, err)
-			}
-			if live := executor.sessions.snapshot(); len(live) != 0 {
-				t.Fatalf("refused assembly retained %d owned sessions", len(live))
-			}
-		})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
+	installation, err := plugin.New(dependedInstallation, "/package", release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := installation.Enable(release); err != nil {
+		t.Fatal(err)
+	}
+	store := &singleInstallationStore{catalog: releaseCatalog{release.Digest(): release}}
+	if err := store.Save(t.Context(), installation); err != nil {
+		t.Fatal(err)
+	}
+	catalog := &liveCatalogTools{}
+	catalog.live.Store(&plugin.Dependency{InstallationID: dependedInstallation, Digest: release.Digest()})
+	entered, proceed := make(chan struct{}), make(chan struct{})
+	finishAssembly := sync.OnceFunc(func() { close(proceed) })
+	defer finishAssembly()
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		return nil, errors.New("installation admission invoked the model")
+	}), InteractionExecutorConfig{
+		InstallationCheckpoints: pendingInstallationCheckpoints{},
+		ToolResolver:            assemblingCatalogTools{catalog: catalog, entered: entered, proceed: proceed},
+		ToolInterpreter:         testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+	})
+	connections := realizingConnections{catalog: catalog, entered: make(chan struct{}), release: make(chan struct{})}
+	close(connections.release)
+	coordinator, err := plugins.New(t.Context(), store, store.catalog, preparedPackages{}, connections, executor, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assembled := make(chan error, 1)
+	go func() {
+		ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+		if err == nil {
+			err = executor.Release(t.Context(), ref)
+		}
+		assembled <- err
+	}()
+	<-entered
+	result, err := coordinator.Disable(t.Context(), dependedInstallation)
+	if err != nil || result.View.Enabled == true {
+		t.Fatalf("withdrawal = %+v, %v", result, err)
+	}
+	finishAssembly()
+	if err := <-assembled; !errors.Is(err, runs.ErrInstallationChanged) {
+		t.Fatalf("assembly admitted after disablement = %v, want installation-changed refusal", err)
+	}
+	if live := executor.sessions.snapshot(); len(live) != 0 {
+		t.Fatalf("refused assembly retained %d owned sessions", len(live))
 	}
 }
 

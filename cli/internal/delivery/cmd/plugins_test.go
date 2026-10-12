@@ -47,15 +47,7 @@ func (f *pluginCommandFixture) InstallPlugin(_ context.Context, in protocol.Inst
 }
 func (f *pluginCommandFixture) SetPluginEnablement(_ context.Context, in protocol.SetPluginEnablementRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
-	state := protocol.PluginInstallationApproved
-	if in.Enabled {
-		state = protocol.PluginInstallationEnabled
-	}
-	return &protocol.PluginInstallation{ID: in.InstallationID, State: state}, nil
-}
-func (f *pluginCommandFixture) ApprovePlugin(_ context.Context, in protocol.PluginReleaseRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
-	f.calls++
-	return &protocol.PluginInstallation{ID: in.InstallationID, State: protocol.PluginInstallationApproved}, nil
+	return &protocol.PluginInstallation{ID: in.InstallationID, Enabled: in.Enabled}, nil
 }
 func (f *pluginCommandFixture) ConfigurePlugin(_ context.Context, in protocol.ConfigurePluginRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
@@ -82,8 +74,8 @@ func TestPluginCommandsPreserveAuthoredChangePresence(t *testing.T) {
 		{"request", "set-enablement", `null`},
 		{"enablement", "set-enablement", `{"installationId":"` + id + `","enabled":null}`},
 		{"missing enablement", "set-enablement", `{"installationId":"` + id + `"}`},
-		{"grants", "approve", `{"installationId":"` + id + `","digest":"` + digest + `","grants":[]}`},
-		{"missing digest", "approve", `{"installationId":"` + id + `"}`},
+		{"unsupported grants", "select", `{"installationId":"` + id + `","digest":"` + digest + `","grants":[]}`},
+		{"missing digest", "select", `{"installationId":"` + id + `"}`},
 		{"inputs", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":null,"serverChanges":{},"skillChanges":{}}`},
 		{"server changes", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{},"serverChanges":null,"skillChanges":{}}`},
 		{"wholesale disablement", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{},"disabledServers":[],"disabledSkills":[]}`},
@@ -105,7 +97,7 @@ func TestPluginCommandsPreserveAuthoredChangePresence(t *testing.T) {
 func TestPluginCommandPreservesExplicitFalseEnablement(t *testing.T) {
 	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
 	out, _, err := executeCommand(t, fixture, "", "plugins", "set-enablement", "--request", `{"installationId":"12345678-1234-1234-1234-123456789abc","enabled":false}`)
-	if err != nil || fixture.calls != 1 || !strings.Contains(out, `"state":"approved"`) {
+	if err != nil || fixture.calls != 1 || !strings.Contains(out, `"enabled":false`) {
 		t.Fatalf("explicit disablement = %s, calls=%d, error=%v", out, fixture.calls, err)
 	}
 }

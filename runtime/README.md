@@ -11,14 +11,14 @@ distribution; `make run` starts that executable. The embedded Go binding uses th
 same layout: its host executable must ship a sibling `plugins` directory.
 `localruntime` owns this layout, with no working-directory or checkout fallback.
 
-On a fresh database, Runtime admits, approves and enables the distributed catalog
+On a fresh database, Runtime admits and enables the distributed catalog
 through the ordinary installation aggregates, then commits the catalog and its
 initialization completion in one transaction before exposing delivery. Managed
 backend directories are prepared before completion; connections follow the existing
 MCP supervisor lifecycle. A failed admission cannot commit partial defaults.
 
 Initialization runs once per database. Restart never reinstalls an uninstalled
-package, reenables a disabled one, restores revoked trust or selects updated bytes.
+package, reenables a disabled one or selects updated bytes.
 Users manage subsequent releases through the existing installation commands.
 Clearing the database starts a new initialization. The initialization record is an
 intentional pre-release schema break; incompatible databases are refused without
@@ -62,7 +62,7 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-12.1
+## Protocol 2026-10-13.1
 
 Memory and Schedules are optional, complete managed plugin backends. Their
 `services` declarations bind one enabled installation to each fact owner. Human
@@ -88,14 +88,14 @@ Schedule tables are imported, decoded or maintained in parallel.
 ## Protocol 2026-10-11.4
 
 `clientDiagnostics` and `static` are admitted graphical view kinds. Both read only
-an approved release resource through `plugins.readView`; neither admits Runtime
+a selected release resource through `plugins.readView`; neither admits Runtime
 trajectory, usage, memory, Skill or workspace queries. The trusted client projects its
 existing bounded telemetry buffer for Diagnostics. Collection and clearing retain
 that client's existing owner. Static pages receive no product data; the first consumer
 is an icon gallery generated from the canonical icon package's public exports.
 
 Rebuild Runtime, CLI and Desktop together for the new closed view enum. Install,
-approve and enable the optional packages explicitly. Compiled Diagnostics and icon
+install and enable the optional packages explicitly. Compiled Diagnostics and icon
 showcases are removed; there is no implicit installation, legacy view ID or resource
 fallback. Persisted data needs no conversion.
 
@@ -108,14 +108,14 @@ only an already captured complete read, with its workspace, path and bounds. Ref
 reauthorizes the renderer resource and returns that snapshot. The page cannot select
 a new file. Ambiguity, truncation, failure and withdrawal preserve source presentation;
 line navigation begins in source mode. Rebuild Runtime and clients together, then
-install and approve the current File renderers package explicitly. Existing data needs no conversion.
+install and enable the current File renderers package explicitly. Existing data needs no conversion.
 
 ## Protocol 2026-10-11.2
 
 The optional [Tool results package](../plugins/tool-results/plugin.json) replaces the
 compiled Desktop tool previews. Releases declare bounded `renderers`, each with an
 exact display-name or closed result-shape selector. `plugins.readRenderer` authorizes
-an enabled, approved installation's exact release and returns its immutable HTML.
+an enabled installation's exact release and returns its immutable HTML.
 It grants no Tool invocation or historical replay authority.
 
 The trusted client captures one settled transcript result. An isolated page receives
@@ -126,7 +126,7 @@ The inspector remains available with a renderer and appears automatically during
 or failure. Revocation, replacement and connection withdrawal retire the page while
 preserving recorded results and the host's trusted actions.
 
-Rebuild Runtime and clients together. Install and approve the current Tool results package to enable
+Rebuild Runtime and clients together. Install and enable the current Tool results package to enable
 rich previews. There is no compiled preview adapter or automatic package installation.
 Existing durable results and admitted releases need no data conversion.
 
@@ -171,7 +171,7 @@ File-edit and header navigation consult admitted Diff contributions, opening the
 when none or several are available. Withdrawal removes the page without changing files,
 Git state, recorded Tool results or restore authority. There is no built-in Diff fallback.
 
-Rebuild Runtime and clients together and install/approve the current Diff package to expose its page.
+Rebuild Runtime and clients together and install/enable the current Diff package to expose its page.
 Runtime data needs no migration. Desktop dock preference version 1 resets the former
 layout/folding shape; it has no legacy reader or preference migration.
 
@@ -193,7 +193,7 @@ remains installation configuration. Proposal approval and rejection use trusted 
 that capture the reviewed instructions and revision. A concurrently replaced proposal
 fails its existing revision check and requires a new review.
 
-Rebuild Runtime and clients together and install/approve the current Skills package to expose its page.
+Rebuild Runtime and clients together and install/enable the current Skills package to expose its page.
 The compiled Skills view and its document cache have been removed without fallback.
 Removing the package withdraws presentation and controls while preserving managed Skills,
 pending proposals, published documents, discovery and mining. No persisted-data migration
@@ -223,9 +223,9 @@ The existing transport and carrier byte limits refuse oversized reports explicit
 The HTML bridge uses `flame.view.ready.v3` / `flame.view.connect.v3` and replies with
 `{type: "data", data: <canonical result>}`. It carries both bounded pages and complete
 reports directly. Rebuild all clients and first-party package resources, then reinstall
-and approve their new digests. The host grants a read-only theme projection at connection
+and explicitly select their new digests. The host grants a read-only theme projection at connection
 and publishes updates over the same port. Older handshakes and page replies have no aliases.
-Install and approve the current Usage package to expose its view in the Context Dock; the former settings
+Install and enable the current Usage package to expose its view in the Context Dock; the former settings
 pane has no fallback. This change requires no accounting or installation data migration.
 
 ## Protocol 2026-10-10.4
@@ -241,7 +241,7 @@ Templates are immutable release content. The trusted Host copies a template only
 selection; opening a draft submits nothing. Commands use existing Schedule revisions and Runtime
 receipts. A saved Schedule retains complete instructions, never a template reference.
 
-Rebuild Runtime, the shared client, CLI and Desktop together. Install and approve the new
+Rebuild Runtime, the shared client, CLI and Desktop together. Install and enable the new
 package bytes to restore rich graphical scheduling. The former settings pane, sidebar shortcut
 and compiled presets have no aliases or fallback. The Context Dock lists admitted package views.
 Disable or uninstall withdraws presentation, templates and the managed backend generation,
@@ -275,12 +275,12 @@ from negotiated subagent capability; the guest can request only a cursor or refr
 
 The first-party [Session trajectory package](../plugins/trajectory/plugin.json) replaces
 the compiled Desktop Timeline. It is optional and uses ordinary package installation,
-exact-digest approval and enablement. Its display, filters and current-page metrics consume
+explicit release selection and enablement. Its display, filters and current-page metrics consume
 canonical Run, model-call and Item evidence. Runtime owns execution and recorded evidence;
 the Host owns navigation, Run controls and complete Session trajectory export.
 
 Rebuild Runtime, the shared client, CLI and Desktop together. Earlier protocol versions
-are refused. Install the new package bytes from `plugins/trajectory` and approve their digest;
+are refused. Install the new package bytes from `plugins/trajectory` and explicitly select their digest;
 previously admitted immutable releases do not change when their source directory moves.
 There is no Timeline alias, fallback renderer or second trajectory query model.
 
@@ -295,7 +295,7 @@ events; the delivery endpoint owns command identity and durable replay.
 
 Trusted clients accept the human's title and captured Session revision. Opening or
 restoring a form does not submit it. Runtime verifies release availability, then admits
-the action against the current enabled, approved installation. Withdrawal refuses new
+the action against the current enabled installation. Withdrawal refuses new
 commands; a previously accepted command retains its existing product owner, and replay
 returns its historical receipt. The read-only HTML bridge receives no write authority.
 
@@ -326,7 +326,7 @@ remain valid; there is no alternate storage reader or migration path.
 
 Portable releases publish `views` alongside themes, Skills and MCP declarations. The only
 admitted view type is `sessionTrajectory`, a bounded, self-contained HTML entry.
-`plugins.readView` addresses an enabled, approved installation by exact selected digest
+`plugins.readView` addresses an enabled installation by exact selected digest
 and declared view ID. `plugins.readTrajectory` applies the same authorization and delegates
 to the existing Session trajectory query. No second trajectory store or execution path exists.
 
@@ -505,10 +505,13 @@ Release diagnostics are typed admission findings: a closed `code` (`unknownField
 `extensionField`, `contribution`, `mcpServer` and `skill` carry the authored `name`;
 `flameExtension`, `mcp` and `skills` carry none). They describe what admission isolated,
 travel with the immutable declaration, and never decide availability.
-An installation has one closed `state`: `unapproved`, `approved` or `enabled`. It starts
-`unapproved`. Approve the exact selected digest, configure declared inputs, then enable it;
-disable returns it to `approved`, revoke to `unapproved`. Approval always names the
-selected release. Package roots are
+An installation owns selected release identity and desired `enabled` state.
+Explicit installation and release selection trust those package bytes; there is no
+separate release-approval operation. A new installation starts disabled. Configure
+declared required inputs, then enable it. Disablement withdraws future dispatch
+without discarding the selected release or standing tool decisions. Enabling the same
+selected code may restore availability while execution still holds that release;
+configuration, release selection and uninstall still require quiescence. Package roots are
 read-only. Admission seals the staged tree before digesting it, and admission and cold
 loading scan an entire release once; concurrent cold loads of one digest share that scan
 while other digests load independently. A scan canceled by its caller does not decide
@@ -574,8 +577,10 @@ keep their format; invalid records fail reads without automatic conversion or re
 
 Staging never switches running code. An already selected digest cannot be staged
 again. Selecting a distinct staged release requires execution to be quiescent. It is one
-installation transition that always returns the installation to `unapproved`: changed
-code is never launched or dispatched until its exact digest is approved and enabled again.
+explicit trust decision that preserves desired enablement. A candidate whose retained
+configuration lacks inputs required by an enabled installation is refused before any
+selection or configuration changes. Disable first when new credentials are needed,
+select the candidate, configure it and enable it explicitly.
 It retains what the candidate declares unchanged: input values whose input keeps its
 server, target, key and secrecy, and disabled servers and Skills that are still declared.
 A secret input and an OAuth credential follow one rule: a credential follows its
@@ -603,9 +608,9 @@ critical section that commits a change cancels the affected sources' in-flight c
 attempts and detaches them, in memory and without waiting for I/O, so no Run assembled
 after the commit can freeze the superseded release's tools. Launching or dialing the
 committed release happens afterwards, outside the lock. The installation owner reports
-whether its durable change affected selected execution capabilities; staging, inactive
-approval and unchanged configuration do not. Quiescence controls existing executions,
-while every committed execution change, including disable or revoke, invalidates
+whether its durable change affected selected execution capabilities; staging and
+unchanged configuration do not. Quiescence controls existing executions,
+while every committed execution change, including disable, invalidates
 unpublished assemblies of that installation. A withdrawal failure after the durable
 write preserves this invalidation; a rejected write cannot originate one.
 Plugin and Skill read invalidations likewise follow the durable write, outside admission
@@ -614,7 +619,7 @@ a refused write publishes none.
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
 person may send the same request again. Clients present it as retryable and never retry
-it on their own. Revoke and disable withdraw dispatch authority immediately; an already
+it on their own. Disablement withdraws dispatch authority immediately; an already
 started effect can still finish or remain uncertain. Tool wrappers recheck current source
 authority, their exact realized connection configuration and the currency of the session
 that admitted them before dispatch. Rotating credentials rejects old
@@ -623,7 +628,7 @@ session was refused or replaced by a reconnect is rejected as "source connection
 longer current" instead of failing on the closed transport.
 Permission fingerprints bind the admitted code of one server (`release digest + server
 name`), so every release change makes standing rules for its tools stale; credential
-rotation, approval, revocation and sibling enablement do not erase them.
+rotation, disablement and sibling enablement do not erase them.
 The rule-list projection observes each referenced MCP source once per request; tool
 decisions and dispatch still read the current owner independently.
 Permission fingerprints read desired source definitions independently of executable
@@ -650,7 +655,7 @@ installation is active and its release is available, otherwise `withheld`. Clien
 present admitted themes only and never rebuild that decision from `state` or
 `realization`. Uninstall requires
 the same quiescence as a release switch and returns `plugin_in_use` while an active or
-waiting execution depends on the installation; revoke remains available to withdraw its
+waiting execution depends on the installation; disablement remains available to withdraw its
 authority while in use. Uninstall is an acknowledgement without a result: it durably removes
 admission before asynchronous connection retirement, and leaves all retirement work in the
 existing Connections shutdown ownership graph.
@@ -819,9 +824,9 @@ foreign key, so deleting a user server or uninstalling a package removes every r
 about its servers. Approval rules store the tool kind, the source-local tool name and the
 MCP source reference as columns rather than an encoded reference string; installation
 records do not store server identities or declarations. Installation state is relational:
-the installation row holds its source, selected and staged digests and its closed
-`admission_state` (`CHECK`ed to `unapproved`, `approved` or `enabled`; a staged digest
-differs from the selected one), and child tables hold input values and disabled
+the installation row holds its source, selected and staged digests and its desired
+`enabled` integer constrained to zero or one (a staged digest differs from the
+selected one), and child tables hold input values and disabled
 components, each removed with its installation by cascade. Open admits a data directory
 that is empty or holds exactly the current tables, indexes and triggers; any other
 directory, such as one with former MCP, installation, OAuth or checkpoint shapes, is

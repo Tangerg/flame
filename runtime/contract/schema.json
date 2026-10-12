@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-12.1",
+  "protocolVersion": "2026-10-13.1",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -6583,6 +6583,9 @@
             "type": "string"
           }
         },
+        "enabled": {
+          "type": "boolean"
+        },
         "id": {
           "type": "string"
         },
@@ -6606,29 +6609,18 @@
         },
         "staged": {
           "$ref": "#/$defs/PluginRelease"
-        },
-        "state": {
-          "$ref": "#/$defs/PluginInstallationState"
         }
       },
       "required": [
         "disabledServers",
         "disabledSkills",
+        "enabled",
         "id",
         "inputStates",
         "presentation",
         "realization",
         "selected",
-        "source",
-        "state"
-      ]
-    },
-    "PluginInstallationState": {
-      "type": "string",
-      "enum": [
-        "unapproved",
-        "approved",
-        "enabled"
+        "source"
       ]
     },
     "PluginPresentation": {
@@ -7520,6 +7512,20 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
+              "const": "plugin_disabled"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
               "const": "plugin_in_use"
             }
           },
@@ -7549,20 +7555,6 @@
             "retryAfterSeconds": false,
             "type": {
               "const": "plugin_stale"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "activeRun": false,
-            "errors": false,
-            "requiredCapabilities": false,
-            "retryAfterSeconds": false,
-            "type": {
-              "const": "plugin_unapproved"
             }
           },
           "required": [
