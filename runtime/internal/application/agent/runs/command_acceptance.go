@@ -1,12 +1,17 @@
 package runs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
+
+// ErrCommandKeyConflict reports that a command's idempotency key is already
+// bound to a different request or to another operation entirely.
+var ErrCommandKeyConflict = errors.New("runs: idempotency key is already bound to another command")
 
 // CommandOperation names the externally initiated Run command whose acceptance
 // an opening transaction records. It is a closed value so a record cannot carry
@@ -66,6 +71,44 @@ func (a CommandAcceptance) Validate() error {
 		return err
 	}
 	return resourceid.ValidateItem(a.UserItemID)
+}
+
+// CommandIdentity is the external command reference the delivery boundary binds
+// to a Start before admission: the global idempotency key and the request
+// fingerprint that pins the exact accepted request. The namespace is the store's
+// own identity, validated at the delivery boundary.
+type CommandIdentity struct {
+	Key         string
+	Fingerprint string
+}
+
+// Validate reports whether the identity can address and pin one command.
+func (c CommandIdentity) Validate() error {
+	if c.Key == "" {
+		return errors.New("runs: command identity has no idempotency key")
+	}
+	if _, err := fingerprint.ParseDigest(c.Fingerprint); err != nil {
+		return fmt.Errorf("runs: command identity fingerprint: %w", err)
+	}
+	return nil
+}
+
+// CommandAcceptanceRecord is the read-only projection of a command-record lookup
+// by key. At most one of Found or OtherOperation is true; neither means the key
+// is unused. MaterialAvailable reports whether the original Run material is still
+// referenced by the acceptance.
+type CommandAcceptanceRecord struct {
+	Acceptance        CommandAcceptance
+	Found             bool
+	MaterialAvailable bool
+	OtherOperation    bool
+}
+
+// CommandAcceptanceReader resolves a previously accepted command by its key so a
+// retry returns the original opening rather than admitting a second Run. It only
+// reads owner-provided facts; it never admits, completes, or repairs a record.
+type CommandAcceptanceReader interface {
+	Lookup(ctx context.Context, key string) (CommandAcceptanceRecord, error)
 }
 
 // AcceptCommand derives the acceptance for key and fingerprint from the opening

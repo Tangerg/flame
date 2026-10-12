@@ -34,12 +34,51 @@ type rootStartPreparation struct {
 	openingUserText    string
 }
 
-// Start opens a Run in the existing Session supplied by its caller.
+// Start opens a Run in the existing Session supplied by its caller. When the
+// command carries an external acceptance identity, an exact prior acceptance is
+// returned as the original opening before any mutable preparation, so a retried
+// key never admits a second Run.
 func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
 	if err := resourceid.ValidateSession(cmd.SessionID); err != nil {
 		return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 	}
+	if cmd.Acceptance != nil {
+		if err := cmd.Acceptance.Validate(); err != nil {
+			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
+		}
+		reopened, found, err := c.lookupAcceptedStart(ctx, *cmd.Acceptance)
+		if err != nil {
+			return StartResult{}, err
+		}
+		if found {
+			return reopened, nil
+		}
+	}
 	return c.startRoot(ctx, rootStartCommand{StartCommand: cmd.clone()})
+}
+
+// lookupAcceptedStart returns a previously accepted command's original opening.
+// A different fingerprint, a non-start operation, or a key held by another
+// operation conflicts; an absent record proceeds to admission.
+func (c *Coordinator) lookupAcceptedStart(ctx context.Context, identity CommandIdentity) (StartResult, bool, error) {
+	record, err := c.commandAcceptances.Lookup(ctx, identity.Key)
+	if err != nil {
+		return StartResult{}, false, err
+	}
+	if record.OtherOperation {
+		return StartResult{}, false, ErrCommandKeyConflict
+	}
+	if !record.Found {
+		return StartResult{}, false, nil
+	}
+	acceptance := record.Acceptance
+	if acceptance.Fingerprint != identity.Fingerprint || acceptance.Operation != CommandStartOpening {
+		return StartResult{}, false, ErrCommandKeyConflict
+	}
+	return StartResult{
+		RunID: acceptance.RunID, SegmentID: acceptance.SegmentID, SessionID: acceptance.SessionID,
+		UserItemID: acceptance.UserItemID, Reopened: true,
+	}, true, nil
 }
 
 // startRoot claims the Session and working tree, stages execution, and commits
@@ -124,6 +163,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (resu
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
 		Automation:         cmd.automation,
+		CommandAcceptance:  cmd.Acceptance,
 		CreatedAt:          createdAt,
 		OpeningUserText:    preparation.openingUserText,
 		Input:              cmd.Input,

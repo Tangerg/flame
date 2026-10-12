@@ -37,6 +37,9 @@ type segmentSpec struct {
 	InitialSession     *session.Session
 	SessionReplacement *session.Replacement
 	Automation         *AutomationStart
+	// CommandAcceptance binds an externally initiated command to this fresh
+	// admission; its run_opening acceptance commits in the opening transaction.
+	CommandAcceptance  *CommandIdentity
 	CreatedAt          time.Time
 	OpeningUserText    string
 	Input              []transcript.ContentBlock

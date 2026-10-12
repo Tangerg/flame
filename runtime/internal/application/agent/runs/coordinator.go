@@ -33,6 +33,7 @@ var ErrClosed = errors.New("runs: coordinator closed")
 // application events.
 type Coordinator struct {
 	automationStarts                   AutomationStartReader
+	commandAcceptances                 CommandAcceptanceReader
 	automationAdmissions               *keylock.Set
 	rootStarts                         RootExecutionStarter
 	rootCancellation                   RunningRootCancellationRequester
@@ -89,6 +90,7 @@ func (c *Coordinator) AdmitSelection(selection modelref.Selection) error {
 // cases and the segment supervisor they own.
 type Dependencies struct {
 	AutomationStarts                   AutomationStartReader
+	CommandAcceptances                 CommandAcceptanceReader
 	RootStarts                         RootExecutionStarter
 	Observations                       ExecutionObserver
 	Releases                           ExecutionReleaser
@@ -135,6 +137,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 	}{
 		{"root execution starter", deps.RootStarts},
 		{"automated start reader", deps.AutomationStarts},
+		{"command acceptance reader", deps.CommandAcceptances},
 		{"execution observer", deps.Observations},
 		{"execution releaser", deps.Releases},
 		{"root cancellation requester", deps.RootCancellation},
@@ -176,6 +179,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 	}
 	return &Coordinator{
 		automationStarts:                   deps.AutomationStarts,
+		commandAcceptances:                 deps.CommandAcceptances,
 		automationAdmissions:               keylock.NewSet(),
 		rootStarts:                         deps.RootStarts,
 		rootCancellation:                   deps.RootCancellation,
@@ -539,6 +543,23 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	}
 	if err != nil {
 		return nil, err
+	}
+	if spec.CommandAcceptance != nil {
+		admission, ok := opening.Admission()
+		if !ok {
+			return nil, errors.New("runs: command acceptance requires a fresh admission")
+		}
+		acceptance, acceptErr := AcceptCommand(
+			spec.CommandAcceptance.Key, spec.CommandAcceptance.Fingerprint,
+			opening, userMessageItemID(admission.SegmentID),
+		)
+		if acceptErr != nil {
+			return nil, acceptErr
+		}
+		opening, err = opening.WithCommandAcceptance(acceptance)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if err := commitOpening(ctx, opening); err != nil {
 		return nil, err

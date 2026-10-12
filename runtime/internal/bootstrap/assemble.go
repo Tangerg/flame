@@ -219,6 +219,7 @@ func buildAssemblyCore(
 	workspaceNotifier := segment.NewWorkspaceNotifier(fileChanges.Publish)
 	runDependencies := runs.Dependencies{
 		AutomationStarts:                   cfg.Stores.AutomationStarts,
+		CommandAcceptances:                 cfg.Stores.CommandAcceptances,
 		RootStarts:                         execution.executor,
 		Observations:                       execution.executor,
 		Releases:                           execution.executor,

@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -41,4 +42,51 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 		return fmt.Errorf("sqlite: record command acceptance: %w", err)
 	}
 	return nil
+}
+
+// Lookup resolves a command record by its key. A run_opening projects the
+// immutable acceptance and whether its original material is still referenced; a
+// generic response variant reports that the key belongs to another operation; an
+// absent key reports neither. It performs no mutation and starts no Run.
+func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
+	var (
+		kind        string
+		digest      string
+		operation   sql.NullString
+		sessionID   sql.NullString
+		runID       sql.NullString
+		segmentID   sql.NullString
+		userItemID  sql.NullString
+		materialRun sql.NullString
+	)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
+		`SELECT kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id
+		   FROM idempotency_records WHERE key = ?`, key,
+	).Scan(&kind, &digest, &operation, &sessionID, &runID, &segmentID, &userItemID, &materialRun)
+	if errors.Is(err, sql.ErrNoRows) {
+		return runs.CommandAcceptanceRecord{}, nil
+	}
+	if err != nil {
+		return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: look up command acceptance: %w", err)
+	}
+	if kind != "run_opening" {
+		return runs.CommandAcceptanceRecord{OtherOperation: true}, nil
+	}
+	acceptance := runs.CommandAcceptance{
+		Key:         key,
+		Fingerprint: digest,
+		Operation:   runs.CommandOperation(operation.String),
+		SessionID:   sessionID.String,
+		RunID:       runID.String,
+		SegmentID:   segmentID.String,
+		UserItemID:  userItemID.String,
+	}
+	if err := acceptance.Validate(); err != nil {
+		return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: decode command acceptance: %w", err)
+	}
+	return runs.CommandAcceptanceRecord{
+		Acceptance:        acceptance,
+		Found:             true,
+		MaterialAvailable: materialRun.Valid && materialRun.String != "",
+	}, nil
 }

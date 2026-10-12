@@ -111,6 +111,12 @@ type StartCommand struct {
 	// that launched it, so the Run's reported outcome only affects that Goal
 	// (see the goals application store's incarnation-and-revision CAS). Empty for ordinary runs.
 	GoalIncarnationID string
+	// Acceptance is the external command reference bound by the delivery boundary
+	// before admission. When present, the opening commits its acceptance record in
+	// the same transaction and a retry with the same key returns the original
+	// opening. nil for application-authored starts (automation, Goal), which carry
+	// their own acceptance owner.
+	Acceptance *CommandIdentity
 }
 
 func (s StartCommand) clone() StartCommand {
@@ -120,6 +126,10 @@ func (s StartCommand) clone() StartCommand {
 	}
 	s.Capabilities = s.Capabilities.Clone()
 	s.Input = transcript.CloneContent(s.Input)
+	if s.Acceptance != nil {
+		acceptance := *s.Acceptance
+		s.Acceptance = &acceptance
+	}
 	return s
 }
 
@@ -346,6 +356,10 @@ type StartResult struct {
 	// opening userMessage identity promised by the application contract.
 	UserItemID string
 	Events     iter.Seq[Event]
+	// Reopened is true when this is a previously accepted command's original
+	// opening returned by acceptance lookup rather than a freshly admitted Run.
+	// Its Events are absent; the caller re-attaches the live stream by identity.
+	Reopened bool
 }
 
 // Validate checks the semantic Run-opening invariants before any Session is

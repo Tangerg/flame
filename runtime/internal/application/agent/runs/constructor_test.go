@@ -134,6 +134,9 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.AutomationStarts == nil {
 		deps.AutomationStarts = noAutomationStarts{}
 	}
+	if deps.CommandAcceptances == nil {
+		deps.CommandAcceptances = noCommandAcceptances{}
+	}
 	if deps.Runs == nil {
 		deps.Runs = &fakeRunProjection{}
 	}
@@ -163,4 +166,10 @@ type noAutomationStarts struct{}
 
 func (noAutomationStarts) Get(context.Context, string) (AutomationReceipt, bool, error) {
 	return AutomationReceipt{}, false, nil
+}
+
+type noCommandAcceptances struct{}
+
+func (noCommandAcceptances) Lookup(context.Context, string) (CommandAcceptanceRecord, error) {
+	return CommandAcceptanceRecord{}, nil
 }
