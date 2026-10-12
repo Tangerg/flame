@@ -37,7 +37,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 			workspace := t.TempDir()
 			owner := runtimebinding.NewOwner(runtimebinding.Config{
-				ProductRoot: t.TempDir(), DefaultWorkspacePath: workspace,
+				ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: workspace,
 				UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 			})
 			connection, err := owner.Connection(t.Context(), "")

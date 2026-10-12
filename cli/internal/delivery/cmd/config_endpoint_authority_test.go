@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestProjectConfigurationCannotSelectCredentialDestination(t *testing.T) {
@@ -17,7 +19,7 @@ func TestProjectConfigurationCannotSelectCredentialDestination(t *testing.T) {
 		"case folded": "Runtime:\n  Endpoint: https://project-selected.invalid\n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			workspace := tempDirectory(t)
+			workspace := runtimefixture.TempDirectory(t)
 			path := filepath.Join(workspace, ".flame.yaml")
 			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 				t.Fatal(err)
@@ -39,7 +41,7 @@ func TestProjectConfigurationCannotSelectCredentialDestination(t *testing.T) {
 }
 
 func TestProjectPreferencesStillAllowExplicitEndpointSelection(t *testing.T) {
-	workspace := tempDirectory(t)
+	workspace := runtimefixture.TempDirectory(t)
 	if err := os.WriteFile(filepath.Join(workspace, ".flame.yaml"), []byte("ui:\n  mouse: false\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +53,7 @@ func TestProjectPreferencesStillAllowExplicitEndpointSelection(t *testing.T) {
 }
 
 func TestDynamicCompletionRejectsProjectSelectedEndpoint(t *testing.T) {
-	workspace := tempDirectory(t)
+	workspace := runtimefixture.TempDirectory(t)
 	if err := os.WriteFile(filepath.Join(workspace, ".flame.yaml"), []byte("runtime:\n  endpoint: https://project-selected.invalid\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

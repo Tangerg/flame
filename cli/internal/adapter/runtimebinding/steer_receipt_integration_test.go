@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -76,11 +77,11 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	t.Setenv("FLAME_PROVIDER", "deepseek")
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
 	t.Setenv("FLAME_BASEURL", provider.URL)
-	connection := openIntegrationRuntime(t, tempDirectory(t))
+	connection := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
 	if _, err := connection.SetApprovalMode(t.Context(), mode); err != nil {
 		t.Fatal(err)
 	}
-	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: tempDirectory(t)})
+	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: runtimefixture.TempDirectory(t)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -27,6 +27,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/ptytest"
 )
@@ -862,6 +863,13 @@ func buildProductionBinary(t *testing.T) string {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build flame: %v\n%s", err, output)
 	}
+	directory, err := localruntime.FirstPartyDirectory(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimefixture.BuildFirstPartyPackages(t.Context(), directory); err != nil {
+		t.Fatal(err)
+	}
 	return binary
 }
 
@@ -1139,7 +1147,7 @@ func terminalTestEnvironment(t *testing.T, overrides map[string]string) []string
 		"COLORTERM": "", "LANG": "", "LC_ALL": "", "TERM_PROGRAM": "",
 		"VSCODE_INJECTION": "", "WSL_INTEROP": "", "WSL_DISTRO_NAME": "",
 		"FLAME_RUNTIME_CONFIG_DIR": "", "FLAME_TEST_PROCESS": "1",
-		"FLAME_HOME": t.TempDir(),
+		"FLAME_HOME": runtimefixture.TempDirectory(t),
 	}
 	maps.Copy(values, overrides)
 	values["HOME"], values["USERPROFILE"] = t.TempDir(), t.TempDir()

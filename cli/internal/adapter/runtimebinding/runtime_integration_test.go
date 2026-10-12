@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
@@ -27,7 +28,7 @@ import (
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 	configureIntegrationRuntime(t)
-	runtime := openIntegrationRuntime(t, tempDirectory(t))
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
@@ -50,7 +51,7 @@ func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 
 func TestRuntimeConnectionResourceFailures(t *testing.T) {
 	configureIntegrationRuntime(t)
-	runtime := openIntegrationRuntime(t, tempDirectory(t))
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
 	activateManagedPlugins(t, runtime, "schedules")
 	for _, tc := range []struct {
 		name string
@@ -84,7 +85,7 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 
 func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	configureIntegrationRuntime(t)
-	workspace := tempDirectory(t)
+	workspace := runtimefixture.TempDirectory(t)
 	if err := os.WriteFile(filepath.Join(workspace, "main.go"), []byte("package main\n\nvar answer = 42\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	activateManagedPlugins(t, runtime, "memory", "schedules")
 	created := requireSessionCatalog(t, runtime, workspace)
 	requireWorkspaceInspection(t, runtime, workspace)
-	forked := requireSessionMutation(t, runtime, created, tempDirectory(t))
+	forked := requireSessionMutation(t, runtime, created, runtimefixture.TempDirectory(t))
 	requireSessionPortability(t, runtime, forked.ID)
 	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Path)
 	requireProviderMutationLifecycle(t, runtime)
@@ -461,10 +462,10 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 
 func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Helper()
-	productRoot := tempDirectory(t)
+	productRoot := runtimefixture.TempDirectory(t)
 	owner := NewOwner(Config{
 		ProductRoot: productRoot, DefaultWorkspacePath: workspace,
-		UserHomePath: tempDirectory(t), ConfigDirectories: []string{tempDirectory(t)}, ClientVersion: "test",
+		UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)}, ClientVersion: "test",
 	})
 	runtime, err := owner.Connection(t.Context(), "")
 	if err != nil {
@@ -874,8 +875,8 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	configureIntegrationRuntime(t)
 
 	owner := NewOwner(Config{
-		ProductRoot: tempDirectory(t), DefaultWorkspacePath: tempDirectory(t),
-		UserHomePath: tempDirectory(t), ConfigDirectories: []string{tempDirectory(t)}, ClientVersion: "test",
+		ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: runtimefixture.TempDirectory(t),
+		UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)}, ClientVersion: "test",
 	})
 	first, err := owner.Connection(t.Context(), "")
 	if err != nil {

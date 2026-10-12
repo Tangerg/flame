@@ -7,6 +7,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -171,7 +172,7 @@ func (h *hookBindingStub) SetHookTrust(_ context.Context, request protocol.SetHo
 }
 
 func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
-	projectRoot := tempDirectory(t)
+	projectRoot := runtimefixture.TempDirectory(t)
 	workspace := filepath.Join(projectRoot, "nested")
 	hooks := &hookBindingStub{t: t, workspace: workspace, projectRoot: projectRoot, result: &protocol.HooksListResult{
 		ProjectRoot: projectRoot, ProjectTrusted: false,

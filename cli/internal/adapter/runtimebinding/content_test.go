@@ -11,11 +11,12 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
-	directory := tempDirectory(t)
+	directory := runtimefixture.TempDirectory(t)
 	textPath := filepath.Join(directory, "notes.txt")
 	imagePath := filepath.Join(directory, "pixel.png")
 	if err := os.WriteFile(textPath, []byte("notes"), 0o600); err != nil {
@@ -131,7 +132,7 @@ func TestLoadAttachmentFileEnforcesTheReadLimit(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(tempDirectory(t), "attachment.txt")
+			path := filepath.Join(runtimefixture.TempDirectory(t), "attachment.txt")
 			if err := os.WriteFile(path, []byte(test.content), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -155,7 +156,7 @@ func TestLoadAttachmentFileEnforcesTheReadLimit(t *testing.T) {
 }
 
 func TestLoadAttachmentFileHonorsCancellation(t *testing.T) {
-	path := filepath.Join(tempDirectory(t), "attachment.txt")
+	path := filepath.Join(runtimefixture.TempDirectory(t), "attachment.txt")
 	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func TestLoadAttachmentFileHonorsCancellation(t *testing.T) {
 }
 
 func TestLoadAttachmentFileRejectsNonRegularSources(t *testing.T) {
-	directory := tempDirectory(t)
+	directory := runtimefixture.TempDirectory(t)
 	target := filepath.Join(directory, "target.txt")
 	if err := os.WriteFile(target, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)

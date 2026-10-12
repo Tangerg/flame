@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -29,7 +30,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 	for _, method := range []string{"start", "resume", "steer"} {
 		for _, change := range []string{"changed", "deleted"} {
 			t.Run(method+"/"+change, func(t *testing.T) {
-				directory, source := tempDirectory(t), tempDirectory(t)
+				directory, source := runtimefixture.TempDirectory(t), runtimefixture.TempDirectory(t)
 				textPath, imagePath := filepath.Join(source, "notes.txt"), filepath.Join(source, "pixel.png")
 				if err := os.WriteFile(textPath, []byte("original notes"), 0o600); err != nil {
 					t.Fatal(err)

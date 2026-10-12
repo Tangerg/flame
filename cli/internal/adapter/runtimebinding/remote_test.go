@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
@@ -83,7 +84,7 @@ func remoteDeletionConnection(t *testing.T, malformed bool) (
 	t.Helper()
 	configureIntegrationRuntime(t)
 	target, err := flameruntime.Open(t.Context(), flameruntime.Config{
-		DataDirectory: tempDirectory(t), DefaultWorkspacePath: tempDirectory(t), UserHomePath: tempDirectory(t), ConfigDirectories: []string{tempDirectory(t)},
+		DataDirectory: runtimefixture.TempDirectory(t), DefaultWorkspacePath: runtimefixture.TempDirectory(t), UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)},
 	})
 	if err != nil {
 		t.Fatal(err)
