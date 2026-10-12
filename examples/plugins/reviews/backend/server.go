@@ -34,7 +34,11 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		if err != nil {
 			return UpdateResult{}, rejected("bounded invocation identity is required")
 		}
-		result, err := store.Update(ctx, id, input)
+		admitted, err := pluginsdk.RequestInput(ctx)
+		if err != nil {
+			return UpdateResult{}, err
+		}
+		result, err := store.Update(ctx, id, input, admitted)
 		if err != nil {
 			return UpdateResult{}, err
 		}
@@ -71,7 +75,11 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		return nil, err
 	}
 	if err := contracts.Update.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[Update]) (UpdateResult, error) {
-		return store.Update(ctx, command.ID, command.Input)
+		admitted, err := command.RequestInput()
+		if err != nil {
+			return UpdateResult{}, err
+		}
+		return store.Update(ctx, command.ID, command.Input, admitted)
 	}); err != nil {
 		return nil, err
 	}

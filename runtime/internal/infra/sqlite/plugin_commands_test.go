@@ -18,7 +18,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	}
 	store := sqlite.NewPluginCommandStore(db)
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
-	command, err := plugin.NewCommand("command", "review.update", testsupport.Digest("2"), provider, testsupport.ServerName("backend"))
+	command, err := plugin.NewCommand("command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), provider, testsupport.ServerName("backend"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,12 +82,12 @@ func TestPluginCommandHistoryNeverEvictsEarlierIdentityOrCapsLifetimeUsage(t *te
 	t.Cleanup(func() { _ = db.Close() })
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	_, err = db.ExecContext(t.Context(), `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
-INSERT INTO plugin_commands SELECT 'command-'||n,'review.update',?,?,?,'backend','dispatched' FROM slots`, 4096, testsupport.Digest("2").String(), provider.InstallationID.String(), provider.Digest.String())
+INSERT INTO plugin_commands SELECT 'command-'||n,'review.update',?,?,?,'backend','dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), provider.InstallationID.String(), provider.Digest.String())
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := sqlite.NewPluginCommandStore(db)
-	command, err := plugin.NewCommand("new", "review.update", testsupport.Digest("2"), provider, testsupport.ServerName("backend"))
+	command, err := plugin.NewCommand("new", "review.update", testsupport.JSONInput(t, `{"revision":2}`), provider, testsupport.ServerName("backend"))
 	if err != nil {
 		t.Fatal(err)
 	}

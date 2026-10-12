@@ -14,6 +14,7 @@ const runtimeModulePath = "github.com/Tangerg/flame/runtime"
 
 var publicPackagePaths = []string{
 	runtimeModulePath,
+	runtimeModulePath + "/jsoninput",
 	runtimeModulePath + "/localruntime",
 	runtimeModulePath + "/plugin",
 	runtimeModulePath + "/protocol",

@@ -396,13 +396,13 @@ func currentSchema() []string {
 		`CREATE TABLE IF NOT EXISTS plugin_commands (
             id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 256),
             method TEXT NOT NULL CHECK (length(method) BETWEEN 1 AND 256),
-            input_digest TEXT NOT NULL CHECK (length(input_digest)=64),
+            input_json TEXT NOT NULL CHECK (json_valid(input_json)),
             installation_id TEXT NOT NULL,
             release_digest TEXT NOT NULL CHECK (length(release_digest)=64),
             server_name TEXT NOT NULL,
             phase TEXT NOT NULL CHECK (phase IN ('prepared','dispatched','observed'))
         )`,
-		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_command BEFORE UPDATE OF id,method,input_digest,installation_id,release_digest,server_name ON plugin_commands
+		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_command BEFORE UPDATE OF id,method,input_json,installation_id,release_digest,server_name ON plugin_commands
             BEGIN SELECT RAISE(ABORT,'command binding is immutable'); END`,
 		`CREATE TRIGGER IF NOT EXISTS plugin_command_phase BEFORE UPDATE OF phase ON plugin_commands
             WHEN NOT (NEW.phase=OLD.phase OR (OLD.phase='prepared' AND NEW.phase='dispatched') OR (OLD.phase='dispatched' AND NEW.phase='observed'))

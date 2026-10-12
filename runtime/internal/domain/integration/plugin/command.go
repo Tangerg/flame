@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 var (
@@ -27,7 +27,7 @@ const (
 type CommandBinding struct {
 	ID       string
 	Method   string
-	Input    fingerprint.Digest
+	Input    jsoninput.Input
 	Provider Dependency
 	Server   mcpserver.ServerName
 	Phase    CommandPhase
@@ -35,7 +35,7 @@ type CommandBinding struct {
 
 type Command struct{ record CommandBinding }
 
-func NewCommand(id, method string, input fingerprint.Digest, provider Dependency, server mcpserver.ServerName) (*Command, error) {
+func NewCommand(id, method string, input jsoninput.Input, provider Dependency, server mcpserver.ServerName) (*Command, error) {
 	return RestoreCommand(CommandBinding{ID: id, Method: method, Input: input, Provider: provider, Server: server, Phase: CommandPrepared})
 }
 
@@ -61,7 +61,7 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 }
 
 func (c *Command) Snapshot() CommandBinding { return c.record }
-func (c *Command) Matches(method string, input fingerprint.Digest) bool {
+func (c *Command) Matches(method string, input jsoninput.Input) bool {
 	return c.record.Method == method && c.record.Input == input
 }
 func (c *Command) Pending() bool { return c.record.Phase != CommandObserved }

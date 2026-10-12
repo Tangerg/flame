@@ -1904,7 +1904,7 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional":
+	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput":
 		return ringValue
 	case "internal/cancellation", "internal/capture", "internal/completion", "internal/idempotency", "internal/keylock":
 		return ringMechanism

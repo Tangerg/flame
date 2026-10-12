@@ -1076,6 +1076,54 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/runtime/jsoninput",
+      "imports": [
+        "encoding/json/jsontext"
+      ],
+      "functions": [
+        {
+          "name": "Encode",
+          "signature": "func[T any](value T) (Input, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(data []byte) (Input, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Input",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Digest",
+              "signature": "func() string"
+            },
+            {
+              "name": "JSON",
+              "signature": "func() jsontext.Value"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime/localruntime",
       "variables": [
         {
@@ -1153,6 +1201,7 @@
       "imports": [
         "context",
         "encoding/json/jsontext",
+        "github.com/Tangerg/flame/runtime/jsoninput",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/tool"
       ],
@@ -1192,10 +1241,6 @@
           "signature": "func[T any](data []byte) (T, error)"
         },
         {
-          "name": "InputDigest",
-          "signature": "func[T any](input T) (string, error)"
-        },
-        {
           "name": "InvocationID",
           "signature": "func(ctx context.Context) (string, error)"
         },
@@ -1228,6 +1273,10 @@
           "signature": "func[T any](value T, err error, classify func(error) string) (*Result[T], error)"
         },
         {
+          "name": "RequestInput",
+          "signature": "func(ctx context.Context) (jsoninput.Input, error)"
+        },
+        {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
         }
@@ -1244,6 +1293,12 @@
             {
               "name": "Input",
               "type": "T"
+            }
+          ],
+          "methods": [
+            {
+              "name": "RequestInput",
+              "signature": "func() (jsoninput.Input, error)"
             }
           ]
         },
@@ -1385,6 +1440,10 @@
             {
               "name": "GetMeta",
               "signature": "func() map[string]any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
             },
             {
               "name": "SetMeta",

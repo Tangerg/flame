@@ -1,7 +1,9 @@
 package reviews
 
 import (
+	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"reflect"
 	"strings"
 	"sync"
@@ -29,7 +31,7 @@ func TestUpdateReceiptSurvivesRestartAndRejectsIdentityReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	accepted, err := first.Update(t.Context(), "original-call", input)
+	accepted, err := testUpdate(t.Context(), first, "original-call", input)
 	if err != nil || accepted.Type != Updated || accepted.Review.Revision != 2 {
 		t.Fatalf("update = %+v, %v", accepted, err)
 	}
@@ -38,17 +40,17 @@ func TestUpdateReceiptSurvivesRestartAndRejectsIdentityReuse(t *testing.T) {
 	}
 
 	restarted := openTestStore(t, directory)
-	replayed, err := restarted.Update(t.Context(), "original-call", input)
+	replayed, err := testUpdate(t.Context(), restarted, "original-call", input)
 	if err != nil || !reflect.DeepEqual(replayed, accepted) {
 		t.Fatalf("replay = %+v, %v, want %+v", replayed, err, accepted)
 	}
 	input.Status = Open
-	conflicting, err := restarted.Update(t.Context(), "original-call", input)
+	conflicting, err := testUpdate(t.Context(), restarted, "original-call", input)
 	if err != nil || conflicting.Type != IdentityConflict {
 		t.Fatalf("identity reuse = %+v, %v", conflicting, err)
 	}
 	input.Status = Resolved
-	stale, err := restarted.Update(t.Context(), "another-call", input)
+	stale, err := testUpdate(t.Context(), restarted, "another-call", input)
 	if err != nil || stale.Type != Conflict || stale.Review.Revision != 2 {
 		t.Fatalf("stale update = %+v, %v", stale, err)
 	}
@@ -64,7 +66,7 @@ func TestReceiptFailureRollsBackBusinessTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	if _, err := store.Update(t.Context(), "original-call", input); err == nil {
+	if _, err := testUpdate(t.Context(), store, "original-call", input); err == nil {
 		t.Fatal("receipt failure became success")
 	}
 	current, err := store.List(t.Context())
@@ -74,7 +76,7 @@ func TestReceiptFailureRollsBackBusinessTransition(t *testing.T) {
 	if _, err := store.db.ExecContext(t.Context(), `DROP TRIGGER reject_receipt`); err != nil {
 		t.Fatal(err)
 	}
-	result, err := store.Update(t.Context(), "original-call", input)
+	result, err := testUpdate(t.Context(), store, "original-call", input)
 	if err != nil || result.Type != Updated || result.Review.Revision != 2 {
 		t.Fatalf("original call = %+v, %v", result, err)
 	}
@@ -85,7 +87,7 @@ func TestConcurrentDuplicateHasOneBusinessTransition(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {
-			result, err := store.Update(t.Context(), "same-call", Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved})
+			result, err := testUpdate(t.Context(), store, "same-call", Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved})
 			if err != nil || result.Type != Updated || result.Review.Revision != 2 {
 				t.Errorf("duplicate = %+v, %v", result, err)
 			}
@@ -101,7 +103,7 @@ func TestConcurrentDuplicateHasOneBusinessTransition(t *testing.T) {
 func TestReceiptCapacityPreservesOriginalRecovery(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	accepted, err := store.Update(t.Context(), "original", input)
+	accepted, err := testUpdate(t.Context(), store, "original", input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,11 +111,11 @@ func TestReceiptCapacityPreservesOriginalRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	refused, err := store.Update(t.Context(), "new", Update{ID: ExampleReviewID, ExpectedRevision: 2, Status: Open})
+	refused, err := testUpdate(t.Context(), store, "new", Update{ID: ExampleReviewID, ExpectedRevision: 2, Status: Open})
 	if err != nil || refused.Type != Capacity {
 		t.Fatalf("capacity = %+v, %v", refused, err)
 	}
-	recovered, err := store.Update(t.Context(), "original", input)
+	recovered, err := testUpdate(t.Context(), store, "original", input)
 	if err != nil || !reflect.DeepEqual(recovered, accepted) {
 		t.Fatalf("recovery at capacity = %+v, %v", recovered, err)
 	}
@@ -123,23 +125,25 @@ func TestInvalidInputsCannotConsumeInvocationOrAdvanceReview(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
 	for _, id := range []string{"", strings.Repeat("x", 257), "invalid\xff"} {
-		if _, err := store.Update(t.Context(), id, input); err == nil {
+		if _, err := testUpdate(t.Context(), store, id, input); err == nil {
 			t.Fatalf("accepted invalid identity %q", id)
 		}
 	}
 	for _, invalid := range []Update{
 		{ID: strings.Repeat("x", 129), ExpectedRevision: 1, Status: Resolved},
-		{ID: "invalid\xff", ExpectedRevision: 1, Status: Resolved},
 		{ID: ExampleReviewID, Status: Resolved},
 		{ID: ExampleReviewID, ExpectedRevision: MaxRevision + 1, Status: Resolved},
 		{ID: ExampleReviewID, ExpectedRevision: 1, Status: "unknown"},
 	} {
-		result, err := store.Update(t.Context(), "original", invalid)
+		result, err := testUpdate(t.Context(), store, "original", invalid)
 		if err != nil || result.Type != Invalid {
 			t.Fatalf("invalid input = %+v, %v", result, err)
 		}
 	}
-	result, err := store.Update(t.Context(), "original", input)
+	if _, err := testUpdate(t.Context(), store, "original", Update{ID: "invalid\xff", ExpectedRevision: 1, Status: Resolved}); err == nil {
+		t.Fatal("invalid UTF-8 acquired admitted JSON or consumed an invocation")
+	}
+	result, err := testUpdate(t.Context(), store, "original", input)
 	if err != nil || result.Type != Updated || result.Review.Revision != 2 {
 		t.Fatalf("admitted input after invalid proposals = %+v, %v", result, err)
 	}
@@ -150,7 +154,7 @@ func TestRevisionExhaustionIsAKnownRefusal(t *testing.T) {
 	if _, err := store.db.ExecContext(t.Context(), `UPDATE reviews SET revision = ?`, MaxRevision); err != nil {
 		t.Fatal(err)
 	}
-	result, err := store.Update(t.Context(), "original", Update{ID: ExampleReviewID, ExpectedRevision: MaxRevision, Status: Resolved})
+	result, err := testUpdate(t.Context(), store, "original", Update{ID: ExampleReviewID, ExpectedRevision: MaxRevision, Status: Resolved})
 	if err != nil || result.Type != RevisionExhausted {
 		t.Fatalf("exhausted revision = %+v, %v", result, err)
 	}
@@ -158,4 +162,12 @@ func TestRevisionExhaustionIsAKnownRefusal(t *testing.T) {
 	if err != nil || current[0].Revision != MaxRevision || current[0].Status != Open {
 		t.Fatalf("exhausted update changed review: %+v, %v", current, err)
 	}
+}
+
+func testUpdate(ctx context.Context, store *Store, id string, input Update) (UpdateResult, error) {
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	return store.Update(ctx, id, input, admitted)
 }

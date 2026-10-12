@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 
 	_ "modernc.org/sqlite"
@@ -45,23 +46,20 @@ func OpenStore(ctx context.Context, directory string) (_ *Store, err error) {
 			err = errors.Join(err, db.Close())
 		}
 	}()
-	_, err = db.ExecContext(ctx, fmt.Sprintf(`
-PRAGMA busy_timeout = 5000;
-PRAGMA synchronous = FULL;
-CREATE TABLE IF NOT EXISTS reviews (
+	if _, err = db.ExecContext(ctx, `PRAGMA busy_timeout = 5000; PRAGMA synchronous = FULL;`); err != nil {
+		return nil, err
+	}
+	schema := map[string]string{"reviews": fmt.Sprintf(`CREATE TABLE reviews (
  id TEXT PRIMARY KEY CHECK (id = '%s'),
  title TEXT NOT NULL CHECK (length(title) > 0),
  status TEXT NOT NULL CHECK (status IN ('%s', '%s')),
  revision INTEGER NOT NULL CHECK (revision BETWEEN 1 AND %d)
-);
-CREATE TABLE IF NOT EXISTS invocations (
+);`, ExampleReviewID, Open, Resolved, MaxRevision), "invocations": `CREATE TABLE invocations (
  id TEXT PRIMARY KEY,
- arguments BLOB NOT NULL,
+ input_json TEXT NOT NULL CHECK(json_valid(input_json)),
  result BLOB NOT NULL
-);
-INSERT OR IGNORE INTO reviews VALUES ('%s', 'Inspect the plugin ownership boundary', '%s', 1);
-`, ExampleReviewID, Open, Resolved, MaxRevision, ExampleReviewID, Open))
-	if err != nil {
+);`}
+	if err = admitSchema(ctx, db, schema); err != nil {
 		return nil, fmt.Errorf("reviews: open private database: %w", err)
 	}
 	return &Store{db: db}, nil
@@ -91,7 +89,7 @@ func (s *Store) Receipt(ctx context.Context, request pluginsdk.ReceiptRequest, u
 		return pluginsdk.Receipt{}, errors.New("reviews: receipt method conflicts")
 	}
 	var arguments, encoded []byte
-	err := s.db.QueryRowContext(ctx, `SELECT arguments, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
+	err := s.db.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
 	if errors.Is(err, sql.ErrNoRows) {
 		return pluginsdk.Receipt{}, nil
 	}
@@ -105,11 +103,11 @@ func (s *Store) Receipt(ctx context.Context, request pluginsdk.ReceiptRequest, u
 	if err := input.Validate(); err != nil {
 		return pluginsdk.Receipt{}, err
 	}
-	digest, err := pluginsdk.InputDigest(input)
+	admitted, err := jsoninput.Parse(arguments)
 	if err != nil {
 		return pluginsdk.Receipt{}, err
 	}
-	if digest != request.InputDigest {
+	if admitted.Digest() != request.InputDigest {
 		return pluginsdk.Receipt{}, errors.New("reviews: receipt input conflicts")
 	}
 	var result UpdateResult
@@ -130,17 +128,24 @@ func (s *Store) Receipt(ctx context.Context, request pluginsdk.ReceiptRequest, u
 	return pluginsdk.Receipt{Found: true, Reply: data}, nil
 }
 
-func (s *Store) Update(ctx context.Context, invocationID string, input Update) (_ UpdateResult, err error) {
+func (s *Store) Update(ctx context.Context, invocationID string, input Update, admitted jsoninput.Input) (_ UpdateResult, err error) {
 	if err := validateInvocationID(invocationID); err != nil {
 		return UpdateResult{}, err
 	}
 	if input.Validate() != nil {
 		return UpdateResult{Type: Invalid}, nil
 	}
-	arguments, err := json.Marshal(input)
-	if err != nil {
+	if err := admitted.Validate(); err != nil {
 		return UpdateResult{}, err
 	}
+	var received Update
+	if err := json.Unmarshal(admitted.JSON(), &received, json.RejectUnknownMembers(true)); err != nil {
+		return UpdateResult{}, err
+	}
+	if received != input {
+		return UpdateResult{}, errors.New("reviews: update differs from admitted input")
+	}
+	arguments := admitted.String()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return UpdateResult{}, err
@@ -150,10 +155,11 @@ func (s *Store) Update(ctx context.Context, invocationID string, input Update) (
 			err = errors.Join(err, rollbackErr)
 		}
 	}()
-	var previousArguments, encoded []byte
-	err = tx.QueryRowContext(ctx, `SELECT arguments, result FROM invocations WHERE id = ?`, invocationID).Scan(&previousArguments, &encoded)
+	var previousArguments string
+	var encoded []byte
+	err = tx.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, invocationID).Scan(&previousArguments, &encoded)
 	if err == nil {
-		if string(previousArguments) != string(arguments) {
+		if previousArguments != arguments {
 			return UpdateResult{Type: IdentityConflict}, nil
 		}
 		var result UpdateResult

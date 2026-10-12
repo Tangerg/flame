@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"path/filepath"
 	"testing"
 
@@ -39,16 +40,16 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return "saved", nil
 		}
 	}
-	_, err = Command(t.Context(), db, "update", "refused", "known", classify, handler)
+	_, err = Command(t.Context(), db, "update", "refused", "known", receiptInput(t, "known"), classify, handler)
 	failure, ok := errors.AsType[*pluginsdk.Failure](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
-	value, err := Command(t.Context(), db, "update", "success", "valid", classify, handler)
+	value, err := Command(t.Context(), db, "update", "success", "valid", receiptInput(t, "valid"), classify, handler)
 	if err != nil || value != "saved" {
 		t.Fatalf("success=%q, %v", value, err)
 	}
-	_, err = Command(t.Context(), db, "update", "unconfirmed", "unknown", classify, handler)
+	_, err = Command(t.Context(), db, "update", "unconfirmed", "unknown", receiptInput(t, "unknown"), classify, handler)
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
@@ -63,7 +64,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		t.Fatalf("receipt count=%d, %v", total, err)
 	}
 	for _, key := range []struct{ id, input string }{{"refused", "known"}, {"success", "valid"}} {
-		_, err := Command(t.Context(), db, "update", key.id, key.input, classify, func(context.Context, string) (string, error) {
+		_, err := Command(t.Context(), db, "update", key.id, key.input, receiptInput(t, key.input), classify, func(context.Context, string) (string, error) {
 			t.Fatal("receipt replay invoked mutation")
 			return "", nil
 		})
@@ -81,30 +82,43 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	}
 }
 
-func TestFormerBareResultReceiptSchemaIsRefusedWithoutMutation(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "private.db")
-	former := `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_digest TEXT NOT NULL, result TEXT NOT NULL CHECK(json_valid(result)))`
-	db, err := sqlitedb.OpenSchema(t.Context(), path, []string{former})
+func TestFormerDigestReceiptSchemasAreRefusedWithoutMutation(t *testing.T) {
+	for _, column := range []string{"result", "reply"} {
+		t.Run(column, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "private.db")
+			former := `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_digest TEXT NOT NULL, ` + column + ` TEXT NOT NULL CHECK(json_valid(` + column + `)))`
+			db, err := sqlitedb.OpenSchema(t.Context(), path, []string{former})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(t.Context(), `INSERT INTO commands VALUES('retained','review.update','original','{"saved":true}')`); err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if current, err := sqlitedb.OpenSchema(t.Context(), path, []string{CommandsSchema}); err == nil {
+				_ = current.Close()
+				t.Fatal("former private receipt schema was converted or accepted")
+			}
+			raw, err := sql.Open("sqlite", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer raw.Close()
+			var result string
+			if err := raw.QueryRowContext(t.Context(), `SELECT `+column+` FROM commands WHERE id='retained'`).Scan(&result); err != nil || result != `{"saved":true}` {
+				t.Fatalf("refusal changed private data = %q, %v", result, err)
+			}
+		})
+	}
+}
+
+func receiptInput[T any](t *testing.T, value T) jsoninput.Input {
+	t.Helper()
+	input, err := jsoninput.Encode(value)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `INSERT INTO commands VALUES('retained','review.update','original','{"saved":true}')`); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if current, err := sqlitedb.OpenSchema(t.Context(), path, []string{CommandsSchema}); err == nil {
-		_ = current.Close()
-		t.Fatal("former private receipt schema was converted or accepted")
-	}
-	raw, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raw.Close()
-	var result string
-	if err := raw.QueryRowContext(t.Context(), `SELECT result FROM commands WHERE id='retained'`).Scan(&result); err != nil || result != `{"saved":true}` {
-		t.Fatalf("refusal changed private data = %q, %v", result, err)
-	}
+	return input
 }

@@ -618,7 +618,7 @@ Plugin and Skill read invalidations likewise follow the durable write, outside a
 and before realization. Withdrawal failure cannot suppress a committed change's notices;
 a refused write publishes none.
 
-Memory/Schedules human commands durably bind identity, method, input digest and
+Memory/Schedules human commands durably bind identity, method, admitted raw input and
 original installation/release/server before network dispatch. The host records
 prepared, dispatch-admitted and observed evidence, never a business result. A
 dispatch admission is not proof that the backend received or committed the call.
@@ -627,8 +627,11 @@ resending the mutation. Missing, malformed or unavailable evidence remains unkno
 and holds the release. A valid original success or business refusal releases the
 hold; immutable routing remains retained so the same identity cannot adopt a new
 provider after update or uninstall. History is not evicted or capped by an arbitrary
-lifetime command count. This storage shape requires a fresh Runtime directory;
-the former private Memory/Schedules bare-result receipt shape is also refused.
+lifetime command count. The pure public jsoninput value normalizes object order
+without rounding numbers or replacing original request evidence with decoded DTOs.
+The host and private stores persist this input; fingerprints are derived projections.
+This storage shape requires a fresh Runtime directory; former digest-only command
+routing and private Memory/Schedules receipts are refused, as are bare-result receipts.
 Retain old directories separately; opening them performs no conversion or deletion.
 
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on

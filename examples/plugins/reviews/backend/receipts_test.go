@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
+
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -14,16 +16,16 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 	directory := t.TempDir()
 	store := openTestStore(t, directory)
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	original, err := store.Update(t.Context(), "original", input)
+	original, err := testUpdate(t.Context(), store, "original", input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	refused, err := store.Update(t.Context(), "refused", input)
+	refused, err := testUpdate(t.Context(), store, "refused", input)
 	if err != nil || refused.Type != Conflict {
 		t.Fatalf("business refusal = %+v, %v", refused, err)
 	}
 	later := Update{ID: ExampleReviewID, ExpectedRevision: 2, Status: Open}
-	if _, err := store.Update(t.Context(), "later", later); err != nil {
+	if _, err := testUpdate(t.Context(), store, "later", later); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {
@@ -96,10 +98,10 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	if _, err := store.Update(t.Context(), "original", input); err != nil {
+	if _, err := testUpdate(t.Context(), store, "original", input); err != nil {
 		t.Fatal(err)
 	}
-	digest, err := pluginsdk.InputDigest(input)
+	digest, err := jsoninput.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +109,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 		if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET result=? WHERE id='original'`, []byte(result)); err != nil {
 			t.Fatal(err)
 		}
-		receipt, err := store.Receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest}, contracts.Update.Name())
+		receipt, err := store.Receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name())
 		if err == nil || receipt.Found {
 			t.Fatalf("corrupt private result became receipt evidence: %s, %v", result, err)
 		}
@@ -128,10 +130,10 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET arguments=? WHERE id='original'`, data); err != nil {
+	if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET input_json=? WHERE id='original'`, data); err != nil {
 		t.Fatal(err)
 	}
-	if receipt, err := store.Receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest}, contracts.Update.Name()); err == nil || receipt.Found {
+	if receipt, err := store.Receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name()); err == nil || receipt.Found {
 		t.Fatalf("corrupt binding became known evidence: %+v, %v", receipt, err)
 	}
 }

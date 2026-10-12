@@ -7,6 +7,7 @@ Stage 2a complete: public backend wire binding and refusal/uncertainty semantics
 Stage 2b complete: existing Memory/Schedules human commands retain durable original binding and reconcile through owner receipt lookup.
 Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bindings and operation reference artifacts; Reviews consumes the same immutable contracts. Committed and synchronized with local main; independent author and regeneration-drift checks passed. The generic host operation entrance and full proposal remain open.
 Stage 2d complete: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. The slice is verified, committed and synchronized with local main; the full proposal remains open.
+Stage 2e verified: one immutable admitted JSON representation now supplies request identity to SDK methods/Tools, host routing and private Memory/Schedules/Reviews receipts. Struct/map ordering agrees and numeric lexemes survive typed conversion. Former digest/DTO formats are strictly refused. Commit and main synchronization are being recorded; generic declarations, installed operation entrances and the full proposal remain open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -74,10 +75,16 @@ Read-only design inputs:
 - Replaced the real stdio response-loss test's same-key Tool mutation recovery with public read-only receipt lookup. The original result is compared as exact JSON evidence without converting integers to floating point. The finished Run retains its original unresolved effect after Runtime restart.
 - Read-only cutover review traced declaration, selected provider, invocation and client consumers. Removing the entire apiVersion:1 parser also requires migrating the actual closed page/component consumers; hiding those values in a generic declaration would retain the wrong contract.
 
+- Added the pure public jsoninput value to own normalization, immutable JSON and fingerprint projection once across Domain and backend authors. It uses standard jsontext object reordering without floating-point canonicalization; duplicate members/invalid UTF-8 are rejected and exact number lexemes/array order are preserved. No new module or dependency was introduced.
+- SDK method and Tool admission retain original JSON before typed conversion. Command.RequestInput and RequestInput(ctx) expose only that received projection; unbound contexts and constructed DTOs cannot fabricate it. Removed InputDigest, which hashed re-encoded DTOs.
+- Replaced host plugin_commands.input_digest and private Memory/Schedules commands.input_digest with immutable input_json. Dispatch and lookup send the saved host input; private receipts persist received JSON and derive their digest. Original route/phase/dependency ownership and value/refusal atomicity remain unchanged.
+- Reviews now stores admitted input_json and verifies the typed business input against its received projection. Its original invocation outcome remains the sole private result. Added strict private-schema admission before schema/business writes; former arguments directories are retained and refused, not interpreted as raw requests.
+- Regression evidence covers struct/map/raw identity agreement, exact integers, numeric lexemes after method/Tool decoding, optional empty Tool arguments, private receipt recovery after a real DB close/reopen, changed input rejection without repeating mutation and non-mutating old-format refusal. Real installed Reviews loss recovery now uses the actual raw request without a duplicated Go DTO fixture.
+
 ## In progress
 
 - Generic installed-operation admission, contribution declarations, plugin-defined points, target/origin/parent capture and provider selection still need the verified method/routing owners. Generated backend metadata is not an installed capability or an alternate registration authority.
-- The current InputDigest is not representation-independent: deterministic marshal orders maps but preserves struct member order, and typed numeric re-encoding can change raw lexemes. The generic envelope must own one admitted raw fingerprint and deliver it to the private receipt owner. Host/private persisted hash semantics must change with the actual envelope/receipt representation and strict old-format refusal; no silent same-schema algorithm replacement or dual hash reader.
+- The verified request representation now fixes object-order and typed numeric rehashing at the backend boundary. Generic operation binding still must capture exact contribution/contract/target/origin/parent alongside that input, and handshake must reject incompatible public contracts before publication. This slice has not removed ServiceOwner/ServiceKind, apiVersion:1 or the old graphical carrier.
 - Public TypeScript installed-call/component bindings, callbacks and decorators remain open. The generated TypeScript artifacts supply concrete data maps, not a completed host client SDK.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
@@ -116,6 +123,8 @@ Read-only design inputs:
 | 2026-10-13 | Keep descriptor and generated files as projections; validate raw input and output at the bound method | Typed decoding can hide absent fields; artifact edits must not change a running method or create another registration path | Revalidating only a re-encoded DTO or classifying malformed output as a known refusal |
 | 2026-10-13 | Give Reviews a read-only projection of its existing private invocation receipts | Recovery must not re-enter the mutation owner; the stored outcome and original arguments already supply the needed evidence | A new receipt/result table, same-key mutation used as a receipt query, or treating missing evidence as permission to resend |
 | 2026-10-13 | Carry one admitted raw invocation fingerprint to private receipt owners; preserve numeric lexemes and normalize object order at the common boundary | Struct/map encoding and raw/decoded numeric encoding do not agree today; recomputing from a DTO can change identity | Map-only ordering, float64 canonicalization, backend DTO rehashing, silent same-schema hash changes or a compatibility hash fallback |
+| 2026-10-13 | Persist immutable admitted JSON in host routes and private receipts; derive the digest instead of persisting a competing DTO hash | Original input must survive decoding, restart and receipt lookup; the actual input_json format change makes strict cutover enforceable | Changing hash semantics under the old schema, retaining only a re-encoded DTO, introducing a per-record epoch or keeping the former helper as an alias |
+| 2026-10-13 | Share the pure public jsoninput value across Domain and SDK authors | Domain cannot depend on the MCP/Scope transport package; independent authors need the same encoding owner without Runtime internal source | Duplicated canonicalization implementations, importing transport into Domain or creating a separate SDK module |
 | 2026-10-13 | Keep target meaning declared by the contract; capture concrete target/origin/parent at generic host admission next | Current Reviews uses installation-private facts; target metadata alone is not captured invocation authority | Pretending backend descriptors already implement installed provider/context binding |
 
 
@@ -139,7 +148,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
 | Strict public protocol requirements without internal revision coupling | Open | public SDK handshake and contract tests |
 | Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; generic provider selection open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
-| Reject old host encodings without data mutation | Installation/command-route host shapes and private bare-result receipt refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; runtime/README.md |
+| Reject old host encodings without data mutation | Installation/command-route host shapes, digest-only/private bare-result and Reviews former DTO format refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; managedmcp/receipts_test.go; Reviews schema_test.go; runtime/README.md |
 | Preserve Memory ledger, watermark, curation and receipts | Open | public Memory capability and backend tests |
 | One Schedules wake/dispatch lifetime and retained Run acceptance | Open | public background role and Schedules tests |
 | Preserve package integrity, credentials, source identity and core authority checks | Open; baseline required | existing admission and policy regression checks |
@@ -161,6 +170,17 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 2e verification:
+
+- Passed: complete Runtime and CLI go test ./..., go vet ./... and go build ./..., including architecture/dependency gates and the exact public package/API inventory. No checks were disabled or assertions weakened.
+- Passed: jsoninput, SDK, Application command admission and SQLite full targeted -race suites. Managed receipts full -race passed again after the restart fixture repair, including raw 1.0 recovery, changed numeric identity and exact original input persistence.
+- Passed: Reviews complete go test -race ./..., go vet ./... and go build ./.... Strict refusal retains original review and invocation data. Invalid UTF-8 now fails serialized admission before the private use case; well-formed business-invalid updates retain their original refusal assertions.
+- Passed: installed Reviews and Schedule manual replay -race suites, plus real Memory committed-response loss, Schedule lost create response, absent receipt without resend and observed identity after provider replacement. Existing host/backend restart, enablement and quiescence assertions remain in force.
+- Passed: Runtime go generate ./... twice with zero SHA-256 drift across formal contract artifacts. go-api.json includes jsoninput and the actual SDK API changes; no Runtime wire catalog or TypeScript data contract changed.
+- Passed: independent Reviews author tidy/test/vet/build with GOWORK=off, no replace, an offline temporary module archive containing only plugin/jsoninput public source and module metadata, its own generated contracts and an isolated module cache. No Runtime internal source or published module cache was substituted. The snapshot is not a published release.
+- Resolved introduced fixture failures: the private restart counter schema lacked repeatable DDL/initialization and its cleanup captured a reassigned nil handle. It now uses the verified OpenSchema initialization convention and registers each actual DB handle's cleanup separately. The repaired regression and complete Runtime suite pass.
+- Not run: frontend UI/E2E/screenshot/composite frontend checks, explicitly excluded; no frontend source or TypeScript wire shape changed. Existing getAcceptance consumer and published Runtime dependency gaps remain open. Generic installed-operation/target/origin/protocol handshake completion is not claimed.
 
 Stage 2d verification:
 
@@ -217,6 +237,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 2e: all verification handles returned terminal success after fixture repairs. Existing test cleanup retires process/session/database/temp-package ownership. TemporaryDirectory removed the independent author's SDK proxy/archive/cache/source. No user directory, original proposal/review, shared configuration, remote publication or credentialed service was changed. The active checkout and required development dependencies remain for the full refactor.
+
 - Stage 2d: all backend/module/race checks returned success. Test-owned processes, private databases and installed binaries were retired by their existing cleanup; TemporaryDirectory removed the input-fingerprint proof source. No generated binary, UI artifact, shared configuration change or user-data operation was kept. The current input hashes still match the read-only baselines. The slice is committed and incoming local main is already up to date; keep the active checkout and required dependencies for the continuing full refactor.
 
 - Stage 2c: all invoked verification processes returned terminal success. TemporaryDirectory removed the task-owned independent SDK proxy/checkouts/module cache. Formal generated Reviews contracts/data bindings remain as product artifacts. Task-generated Runtime TypeScript test cache was removed. The verified slice is committed and local main was already up to date; active checkout/development dependencies remain for the continuing refactor.
@@ -230,7 +252,7 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Replace representation-dependent input hashing at the admitted raw envelope owner, and pass that identity to every backend receipt without typed re-encoding. Verify reordered objects, exact large integers and raw numeric lexemes; reject old persisted host/private formats in the actual breaking representation batch and retain their directories separately.
+- Extend the verified immutable input to the complete generic binding: exact contract/contribution, captured target and adapter-established origin/parent, with current declaration and activation handshake. Existing raw JSON and old-format refusal do not prove the missing installed operation/proxy/component paths.
 - Extend the verified durable original-binding/retention owner to generic operation descriptors and public entrances before opening new plugin mutation. Current closed service binding is not the final contribution substrate.
 - Finish generic call/error projections and public TypeScript client/component bindings through Reviews; current Go-owned generation supplies structural contracts and preserves typed outcome vocabulary.
 - Verify the selected MCP/SDK custom method and streaming primitives using real processes.
@@ -240,6 +262,7 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 2e removes public plugin.InputDigest and adds unexported received input to Command; external unkeyed literals/old helper callers require migration. Host digest-only routes, Memory/Schedules digest-only receipts and Reviews re-encoded arguments directories are refused before conversion; retain them separately and use fresh directories. In-repository callers are migrated; independent published dependency metadata and exact public handshake remain open.
 - New schema-bound methods tighten feature input/output admission. Params and Result now retain unexported original wire evidence, so external unkeyed literals require migration; keyed usage and real consumers are updated. Separate Reviews ListMethod/UpdateMethod exports were removed without aliases.
 - Public installation/protocol/storage changes break external compiled clients. Rebuild all in-repository consumers; report any externally used SDK/module contracts.
 - Protocol 2026-10-13.1 removes approve/revoke and replaces installation state with required enabled. All external compiled Runtime clients must rebuild. No externally deployed clients were inventoried or modified in this isolated task.

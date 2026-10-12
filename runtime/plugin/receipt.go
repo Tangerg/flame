@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -54,15 +55,6 @@ type Receipt struct {
 	Reply jsontext.Value `json:"reply,omitzero"`
 }
 
-func InputDigest[T any](input T) (string, error) {
-	encoded, err := json.Marshal(input, json.Deterministic(true))
-	if err != nil {
-		return "", err
-	}
-	hash := sha256.Sum256(encoded)
-	return hex.EncodeToString(hash[:]), nil
-}
-
 func DecodeReply[T any](data []byte) (T, error) {
 	var result Result[T]
 	var zero T
@@ -76,11 +68,11 @@ func DecodeReply[T any](data []byte) (T, error) {
 // mutation or proves that the original command had no effect.
 func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id, method string, input P) (R, bool, error) {
 	var zero R
-	digest, err := InputDigest(input)
+	admitted, err := jsoninput.Encode(input)
 	if err != nil {
 		return zero, false, err
 	}
-	request := ReceiptRequest{ID: id, Method: method, InputDigest: digest}
+	request := ReceiptRequest{ID: id, Method: method, InputDigest: admitted.Digest()}
 	if err := request.validate(); err != nil {
 		return zero, false, err
 	}

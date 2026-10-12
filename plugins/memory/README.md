@@ -43,8 +43,10 @@ Disable and uninstall withdraw the generation and its capabilities. They
 retain its private data. Reenable uses the same installation directory; a new
 installation receives a different directory. Restart restores private facts from
 the same database. Old Runtime memory tables are not read or migrated.
-The private command table now stores the typed value/refusal envelope in `reply`.
-A database with the former bare `result` column is refused without conversion;
+The private command table stores original admitted JSON in `input_json` and the
+typed value/refusal envelope in `reply`. Fingerprints derive from that original
+input, including its exact numeric lexemes. Former digest-only and bare-result
+databases are refused without conversion;
 retain that directory separately and use a fresh directory for this breaking change.
 
 Build packages using [the local application workflow](../README.md). Backend

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -29,8 +31,8 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 			if err := RegisterServer(server, ReceiptMethod, nil, func(_ context.Context, _ *sdk.ServerSession, input ReceiptRequest) (Receipt, error) {
-				digest, err := InputDigest("input")
-				if err != nil || input.ID != "original" || input.Method != "review.update" || input.InputDigest != digest {
+				digest, err := jsoninput.Encode("input")
+				if err != nil || input.ID != "original" || input.Method != "review.update" || input.InputDigest != digest.Digest() {
 					t.Fatalf("lookup changed original binding: %+v, %v", input, err)
 				}
 				return test.receipt, nil
@@ -70,15 +72,15 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 }
 
 func TestReceiptRequestRefusesMissingAndInvalidBindings(t *testing.T) {
-	digest, err := InputDigest("input")
+	digest, err := jsoninput.Encode("input")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, data := range []string{
 		`{}`, `{"id":"original","method":"review.update","inputDigest":"short"}`,
-		`{"id":"original","method":"","inputDigest":"` + digest + `"}`,
-		`{"id":"","method":"review.update","inputDigest":"` + digest + `"}`,
-		`{"id":"original","method":"review.update","inputDigest":"` + digest + `","extra":true}`,
+		`{"id":"original","method":"","inputDigest":"` + digest.Digest() + `"}`,
+		`{"id":"","method":"review.update","inputDigest":"` + digest.Digest() + `"}`,
+		`{"id":"original","method":"review.update","inputDigest":"` + digest.Digest() + `","extra":true}`,
 	} {
 		var request ReceiptRequest
 		if err := json.Unmarshal([]byte(data), &request); err == nil {

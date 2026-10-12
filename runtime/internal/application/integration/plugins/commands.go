@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 type CommandStore interface {
@@ -28,7 +28,7 @@ func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
 	return &Commands{store: store, admission: admission}, nil
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input fingerprint.Digest, resolve func(context.Context) (ServiceBinding, error)) (*plugin.Command, error) {
+func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (ServiceBinding, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Under(ctx, func() error {
 		previous, found, err := c.store.Get(ctx, id)

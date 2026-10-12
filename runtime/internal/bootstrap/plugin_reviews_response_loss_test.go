@@ -155,18 +155,13 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	type reviewUpdate struct {
-		ID               string `json:"id"`
-		ExpectedRevision int64  `json:"expectedRevision"`
-		Status           string `json:"status"`
-	}
 	var evidence struct {
 		DataDirectory string `json:"dataDirectory"`
 		Request       struct {
 			Params struct {
-				Meta      sdk.Meta     `json:"_meta"`
-				Name      string       `json:"name"`
-				Arguments reviewUpdate `json:"arguments"`
+				Meta      sdk.Meta       `json:"_meta"`
+				Name      string         `json:"name"`
+				Arguments jsontext.Value `json:"arguments"`
 			} `json:"params"`
 		} `json:"request"`
 		Response struct {
@@ -209,7 +204,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 			t.Error(err)
 		}
 	})
-	result, found, err := pluginsdk.ReadReceipt[reviewUpdate, jsontext.Value](ctx, backend, identity, updateMethod, evidence.Request.Params.Arguments)
+	result, found, err := pluginsdk.ReadReceipt[jsontext.Value, jsontext.Value](ctx, backend, identity, updateMethod, evidence.Request.Params.Arguments)
 	if err != nil || !found {
 		t.Fatalf("read-only lookup did not recover the committed receipt: %+v, %t, %v", result, found, err)
 	}
@@ -227,7 +222,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if !bytes.Equal(result, expectedResult) {
 		t.Fatalf("receipt changed the original business evidence: %s, want %s", result, expectedResult)
 	}
-	if _, found, err := pluginsdk.ReadReceipt[reviewUpdate, jsontext.Value](ctx, backend, "never-dispatched", updateMethod, evidence.Request.Params.Arguments); err != nil || found {
+	if _, found, err := pluginsdk.ReadReceipt[jsontext.Value, jsontext.Value](ctx, backend, "never-dispatched", updateMethod, evidence.Request.Params.Arguments); err != nil || found {
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
 	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: sdk.Meta{"io.github.tangerg.flame/invocationId": "new-inspected-call"}})

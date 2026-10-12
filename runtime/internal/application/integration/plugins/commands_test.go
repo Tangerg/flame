@@ -26,7 +26,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	}
 	provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend")}
 	resolve := func(context.Context) (plugins.ServiceBinding, error) { return provider, nil }
-	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.Digest("2"), resolve)
+	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,14 +34,14 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 		t.Fatalf("observation before dispatch = %v", err)
 	}
 	provider.Digest = testsupport.Digest("3")
-	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.Digest("2"), func(context.Context) (plugins.ServiceBinding, error) {
+	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ServiceBinding, error) {
 		t.Fatal("same identity resolved a current provider")
 		return provider, nil
 	})
 	if err != nil || replay.Snapshot() != bound.Snapshot() {
 		t.Fatalf("original binding = %v, %v", replay, err)
 	}
-	if _, err := commands.Bind(t.Context(), "command", "review.update", testsupport.Digest("4"), resolve); !errors.Is(err, plugin.ErrCommandConflict) {
+	if _, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":4}`), resolve); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("changed input = %v", err)
 	}
 	refused := errors.New("original provider unavailable")
@@ -105,7 +105,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend")}
 		bound := make(chan error, 1)
 		go func() {
-			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.Digest("2"), func(context.Context) (plugins.ServiceBinding, error) { return provider, nil })
+			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ServiceBinding, error) { return provider, nil })
 			bound <- err
 		}()
 		synctest.Wait()

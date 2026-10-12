@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 type PluginCommandStore struct{ db *sql.DB }
@@ -18,14 +19,14 @@ func NewPluginCommandStore(db *sql.DB) *PluginCommandStore { return &PluginComma
 func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	var record plugin.CommandBinding
 	var installation, digest, input, server string
-	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,input_digest,installation_id,release_digest,server_name,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &installation, &digest, &server, &record.Phase)
+	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,input_json,installation_id,release_digest,server_name,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &installation, &digest, &server, &record.Phase)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	if record.Input, err = fingerprint.ParseDigest(input); err != nil {
+	if record.Input, err = jsoninput.Parse([]byte(input)); err != nil {
 		return nil, false, err
 	}
 	if record.Provider.InstallationID, err = resourceid.ParseInstallation(installation); err != nil {
@@ -62,7 +63,7 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		if r.Phase != plugin.CommandPrepared {
 			return plugin.ErrInvalid
 		}
-		_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,input_digest,installation_id,release_digest,server_name,phase) VALUES(?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Phase)
+		_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,input_json,installation_id,release_digest,server_name,phase) VALUES(?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Phase)
 		return err
 	})
 }

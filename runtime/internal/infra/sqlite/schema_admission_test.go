@@ -19,6 +19,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},
 		{"missing table", `DROP TABLE automation_starts`},
 		{"former host without command routing", `DROP TABLE plugin_commands`},
+		{"former host command digest", `ALTER TABLE plugin_commands RENAME COLUMN input_json TO input_digest`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
 		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
 	} {

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -16,14 +17,44 @@ type Params[T any] struct {
 	sdk.ParamsBase
 	Input     T      `json:"input"`
 	CommandID string `json:"commandId,omitempty"`
-	inputJSON jsontext.Value
+	inputJSON jsoninput.Input
 }
 
 // Command carries a caller's logical identity and input. Business admission and
 // the atomic mutation/receipt commit remain with the business owner.
 type Command[T any] struct {
-	ID    string
-	Input T
+	ID        string
+	Input     T
+	inputJSON jsoninput.Input
+}
+
+func (c Command[T]) RequestInput() (jsoninput.Input, error) {
+	return c.inputJSON, c.inputJSON.Validate()
+}
+
+type requestInputKey struct{}
+
+// RequestInput projects the input received at this method or Tool boundary.
+// In particular, a typed numeric conversion cannot originate another identity.
+func RequestInput(ctx context.Context) (jsoninput.Input, error) {
+	value, _ := ctx.Value(requestInputKey{}).(jsoninput.Input)
+	return value, value.Validate()
+}
+
+func (p Params[T]) MarshalJSON() ([]byte, error) {
+	input := p.inputJSON
+	if input.Validate() != nil {
+		var err error
+		input, err = jsoninput.Encode(p.Input)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(struct {
+		sdk.ParamsBase
+		Input     jsoninput.Input `json:"input"`
+		CommandID string          `json:"commandId,omitzero"`
+	}{p.ParamsBase, input, p.CommandID})
 }
 
 func (p *Params[T]) UnmarshalJSON(data []byte) error {
@@ -38,6 +69,10 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 	if len(wire.Input) == 0 || string(wire.Input) == "null" {
 		return errors.New("plugin: input is required")
 	}
+	admitted, err := jsoninput.Parse(wire.Input)
+	if err != nil {
+		return err
+	}
 	if wire.CommandID != "" {
 		if err := validateCommandID(wire.CommandID); err != nil {
 			return err
@@ -47,7 +82,7 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(wire.Input, &input, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	*p = Params[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID, inputJSON: wire.Input}
+	*p = Params[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID, inputJSON: admitted}
 	return nil
 }
 
@@ -146,6 +181,7 @@ func RegisterServer[P, R any](server *sdk.Server, name string, classify func(err
 		if params == nil || params.CommandID != "" {
 			return nil, fmt.Errorf("%s: unkeyed method parameters are required", name)
 		}
+		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
 		value, err := handler(ctx, session, params.Input)
 		return Reply(value, err, classify)
 	})
@@ -162,7 +198,8 @@ func RegisterCommand[P, R any](server *sdk.Server, name string, classify func(er
 		if err := validateCommandID(params.CommandID); err != nil {
 			return nil, err
 		}
-		value, err := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input})
+		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
+		value, err := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input, inputJSON: params.inputJSON})
 		return Reply(value, err, classify)
 	})
 }

@@ -65,6 +65,13 @@ mutation. Retained identities do not expire into calls on a current provider.
 Generic operation descriptors, origin/parent propagation and public installed
 proxies still require the same guarantee when they replace the closed services.
 
+Request identity retains one admitted raw JSON value before typed conversion.
+The shared pure jsoninput value normalizes object spelling and order while
+preserving numeric lexemes. Host routing and private receipts persist that value;
+their digests are projections. Re-encoding a DTO cannot replace original evidence.
+An incompatible digest-only directory is refused, retained separately and replaced
+with a fresh directory rather than silently interpreted under a new algorithm.
+
 Feature authoring keeps Go-owned types and method descriptions authoritative.
 Scope derives and compiles their structural schemas; the same immutable contract
 admits the backend wire call and publishes build/discovery descriptors. Runtime's

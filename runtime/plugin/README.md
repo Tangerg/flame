@@ -44,8 +44,20 @@ return the owner's original outcome according to that operation's contract;
 different input with the same identity must be refused. Retention, capacity and
 transaction boundaries belong to the business owner.
 
-`InputDigest` derives the immutable request fingerprint used by both caller and
-receipt owner. `Reply` encodes a success or explicitly classified refusal;
+`github.com/Tangerg/flame/runtime/jsoninput` owns the immutable admitted JSON.
+Its standard-library parser normalizes object ordering, whitespace and string
+spelling while preserving numeric lexemes and array order. Structs, maps and raw
+objects agree when they encode the same request. A raw `1.0` remains distinct
+from `1`, and integers beyond JavaScript's exact range are not rounded.
+The former DTO-hashing `InputDigest` function is removed.
+
+`Command.RequestInput` and `RequestInput(ctx)` expose the input received at the
+typed method or Tool boundary. Private receipt owners save this value and derive
+its digest; they never recreate it from a decoded DTO. An unbound context or
+manually constructed command cannot supply received evidence. Runtime's pending
+command store also retains the original JSON and uses it for dispatch and lookup.
+
+`Reply` encodes a success or explicitly classified refusal;
 `DecodeReply` validates the same outcome when it is read from private storage.
 An empty acknowledgement and other zero values remain present successes.
 

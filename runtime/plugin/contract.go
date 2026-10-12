@@ -92,10 +92,11 @@ func (m *Method[P, R]) RegisterServer(server *sdk.Server, classify func(error) s
 				return nil, err
 			}
 		}
-		if err := m.input.Validate(params.inputJSON); err != nil {
+		if err := m.input.Validate(params.inputJSON.JSON()); err != nil {
 			return nil, fmt.Errorf("plugin: %s input: %w", m.config.Name, err)
 		}
-		value, operationErr := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input})
+		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
+		value, operationErr := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input, inputJSON: params.inputJSON})
 		if operationErr == nil {
 			encoded, err := json.Marshal(value)
 			if err != nil {

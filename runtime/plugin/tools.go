@@ -5,6 +5,7 @@ import (
 	"errors"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -21,6 +22,15 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 	server.AddReceivingMiddleware(func(next sdk.MethodHandler) sdk.MethodHandler {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil {
+				arguments := call.Params.Arguments
+				if len(arguments) == 0 {
+					arguments = []byte("{}")
+				}
+				input, err := jsoninput.Parse(arguments)
+				if err != nil {
+					return nil, err
+				}
+				ctx = context.WithValue(ctx, requestInputKey{}, input)
 				ctx = scopemcp.WithRequestMeta(ctx, call.Params.Meta)
 			}
 			return next(ctx, method, request)

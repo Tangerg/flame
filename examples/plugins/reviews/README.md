@@ -87,12 +87,13 @@ conflict after the current review has advanced. Missing evidence stays absent;
 binding conflicts, corrupt private evidence and storage failures remain protocol
 errors. The query adds no second receipt table or host result cache.
 
-This receipt binding currently serves the typed Go input representation used by
-the backend. The shared fingerprint still depends on the encoded object's member
-order. The generic cross-language entrance must replace that encoding with one
-admitted raw invocation fingerprint, preserving numeric precision, in the same
-breaking batch as the actual host and managed receipt format change. It must not
-rehash a decoded DTO or silently read both persisted formats.
+The binding retains the original admitted JSON before decoding the Go input.
+Object member order does not change identity, while numeric lexemes remain exact.
+The private `input_json` field is the immutable request source, and receipt lookup
+derives its fingerprint from that source. It does not rehash a decoded DTO. The
+former `arguments` format stored re-encoded Go input and is refused at startup
+before schema or business writes. Retain the old directory separately and use a
+fresh `PLUGIN_DATA` directory for this breaking cutover.
 
 Malformed inputs and known business refusals produce explicit Tool failures.
 Unexpected storage or commit errors remain MCP protocol failures, so Runtime

@@ -64,7 +64,7 @@ func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
 		var params Params[contractInput]
 		data := []byte(`{"commandId":"original","input":` + raw + `}`)
 		if err := json.Unmarshal(data, &params); err == nil {
-			if err := method.input.Validate(params.inputJSON); err == nil {
+			if err := method.input.Validate(params.inputJSON.JSON()); err == nil {
 				t.Fatalf("schema admitted original malformed input: %s", raw)
 			}
 		}

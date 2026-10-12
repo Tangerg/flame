@@ -2,6 +2,7 @@ package pluginservices
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 
@@ -10,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -53,15 +54,11 @@ func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBindin
 func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.ServiceKind, method string, input P, validate func(R) error) (commandReply[R], error) {
 	var zero commandReply[R]
 	id := operation.Identity(ctx)
-	digest, err := pluginsdk.InputDigest(input)
+	admitted, err := jsoninput.Encode(input)
 	if err != nil {
 		return zero, err
 	}
-	fingerprint, err := fingerprint.ParseDigest(digest)
-	if err != nil {
-		return zero, err
-	}
-	command, err := c.routing.Bind(ctx, id, method, fingerprint, func(ctx context.Context) (plugins.ServiceBinding, error) {
+	command, err := c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ServiceBinding, error) {
 		binding, found, err := plugins.ServiceOwner(ctx, c.installations, kind)
 		if err != nil {
 			return binding, err
@@ -98,10 +95,10 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.S
 		if err != nil {
 			return zero, err
 		}
-		value, err = pluginsdk.CallCommand[P, R](ctx, session, method, id, input)
+		value, err = pluginsdk.CallCommand[jsontext.Value, R](ctx, session, method, id, record.Input.JSON())
 	} else {
 		var found bool
-		value, found, err = pluginsdk.ReadReceipt[P, R](ctx, session, id, method, input)
+		value, found, err = pluginsdk.ReadReceipt[jsontext.Value, R](ctx, session, id, method, record.Input.JSON())
 		if !found && err == nil {
 			err = plugin.ErrCommandUnconfirmed
 		}
