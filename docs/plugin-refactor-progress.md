@@ -9,7 +9,7 @@ Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bin
 Stage 2d complete: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. The slice is verified, committed and synchronized with local main; the full proposal remains open.
 Stage 2e complete: one immutable admitted JSON representation now supplies request identity to SDK methods/Tools, host routing and private Memory/Schedules/Reviews receipts. Struct/map ordering agrees and numeric lexemes survive typed conversion. Former digest/DTO formats are strictly refused. The verified slice is committed and synchronized with local main; generic declarations, installed operation entrances and the full proposal remain open.
 Stage 2f complete: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. The verified slice is committed and synchronized with local main. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance; the full proposal remains open.
-Stage 2g verified: Memory maintenance now privately fences original command admission before model I/O and commits publication plus its original receipt in one short transaction. Real committed-response loss recovers after backend restart without another model call. Pending/canceled work remains unknown, preserves ledger facts and cannot re-enter under its original identity. Commit/main synchronization are being recorded; the full proposal remains open.
+Stage 2g complete: Memory maintenance now privately fences original command admission before model I/O and commits publication plus its original receipt in one short transaction. Real committed-response loss recovers after backend restart without another model call. Pending/canceled work remains unknown, preserves ledger facts and cannot re-enter under its original identity. The verified slice is committed and synchronized with local main; the full proposal remains open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -22,6 +22,8 @@ Stage 2c commit: da20c0848b3ccb3351587c30d3cb5d622e600230.
 Stage 2d commit: fe57e21a82b83139633083e837eb7e1ca0e162e8.
 Stage 2e commit: d0fda261ad086fb6be0544f87b26b8fe9fa5ac1d.
 Stage 2f commit: c7061dee16e1e84fba1667ff0433c7193c64159e.
+Stage 2g commit: 0a696aa5de5e7c694e01f09d3d840d28da1e0181.
+Stage 2g main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2f main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2e main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2d main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
