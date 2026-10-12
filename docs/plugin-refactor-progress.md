@@ -9,6 +9,7 @@ Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bin
 Stage 2d complete: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. The slice is verified, committed and synchronized with local main; the full proposal remains open.
 Stage 2e complete: one immutable admitted JSON representation now supplies request identity to SDK methods/Tools, host routing and private Memory/Schedules/Reviews receipts. Struct/map ordering agrees and numeric lexemes survive typed conversion. Former digest/DTO formats are strictly refused. The verified slice is committed and synchronized with local main; generic declarations, installed operation entrances and the full proposal remain open.
 Stage 2f complete: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. The verified slice is committed and synchronized with local main. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance; the full proposal remains open.
+Stage 2g verified: Memory maintenance now privately fences original command admission before model I/O and commits publication plus its original receipt in one short transaction. Real committed-response loss recovers after backend restart without another model call. Pending/canceled work remains unknown, preserves ledger facts and cannot re-enter under its original identity. Commit/main synchronization are being recorded; the full proposal remains open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -93,12 +94,18 @@ Read-only design inputs:
 - Memory maintenance keeps model I/O outside database transactions and preserves concurrent human edit/curation CAS semantics. It now carries command identity and original host routing; its publication-owner receipt integration remains open. A missing maintenance receipt remains unknown and never authorizes another model call or provider retargeting.
 - Loss probes now match the semantic method inside the current invocation envelope while standard tools/call retains its own direction. Existing withheld-response/request, restart, known/unconfirmed and provider replacement assertions are retained.
 
+- Private commands now represent admission without a known reply using SQL null. A prepared command records immutable method/input once before external I/O; same-identity reentry stays unconfirmed across restart. Existing atomic command handling also refuses a pending row before executing its mutation. No second table, result owner or state counter was added.
+- Memory publication composes its existing CurationStore with the private receipt transaction only at Reconcile. Watermark, item fold and the original Published outcome commit or roll back together. Ledger extraction and model calls remain outside that transaction, preserving pending facts and concurrent human authority.
+- Non-publication success commits its original false outcome; a completed duplicate returns the original true/false reply. Canceled/failed model work retains private pending admission and no known receipt. Later maintenance activity uses its own identity to fold retained ledger facts; it does not replace the earlier command's uncertainty.
+- Private completed-only receipt databases are refused without mutation. Memory and Schedules share this actual nullable-reply format; fresh directories are required and old directories are retained separately.
+- Added atomic completion rollback/immutability, pending admission restart/conflict/reentry, private publication receipt-failure and cancellation regressions. A real stdio response-loss probe witnesses committed maintenance, then a fresh backend reads and replays the original reply with exactly the original two model calls and one retained proposal.
+
 ## In progress
 
 - Generic installed-operation admission, contribution declarations, plugin-defined points, target/origin/parent capture and provider selection still need the verified method/routing owners. Generated backend metadata is not an installed capability or an alternate registration authority.
 - The verified request representation now fixes object-order and typed numeric rehashing at the backend boundary. Generic operation binding still must capture exact contribution/contract/target/origin/parent alongside that input, and handshake must reject incompatible public contracts before publication. This slice has not removed ServiceOwner/ServiceKind, apiVersion:1 or the old graphical carrier.
 - The backend's current protocol and immutable exports are verified, but package declaration/token/contract matching and activation binding are still missing. Public installed operations cannot be claimed ready from Backend.Describe alone.
-- Integrate Memory maintenance command receipt with the actual private ledger/publication transaction. Do not wrap model I/O in a receipt transaction or create a competing host maintenance result; until owner evidence exists, response loss remains unconfirmed.
+- Memory publication-owner receipts and the private admission fence are now verified. A canceled/unknown original remains pending rather than being automatically re-executed or fabricated as success. Generic contribution/protocol/target/origin bindings still need these owners.
 - Public TypeScript installed-call/component bindings, callbacks and decorators remain open. The generated TypeScript artifacts supply concrete data maps, not a completed host client SDK.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
@@ -142,6 +149,7 @@ Read-only design inputs:
 | 2026-10-13 | Publish immutable typed exports through one public backend invocation/discovery transport | Installed operations need schema-bearing exports without connection code importing every feature's Go DTOs | Per-feature client registration, mutable published exports, former named-method aliases or a reflection/ambient service registry |
 | 2026-10-13 | Keep Schedules settlement as the existing convergent accepted-Run handoff with one captured backend and accept/RunID receipt identity | Runtime's durable acceptance and the private pending queue already own recovery; an absent host dispatch record must not prevent settling that proven Run | Treating acknowledgement as another Run creation, current-provider retargeting, or replacing handoff ownership with a host business result |
 | 2026-10-13 | Commit Memory maintenance receipt at its actual publication owner, with model I/O outside transactions | The new outer receipt transaction prevented concurrent human editing and rolled back required pending ledger evidence | Holding a database transaction through model calls, weakening the curation race test, or fabricating successful host maintenance evidence |
+| 2026-10-13 | Persist private admission before maintenance model I/O; infer pending from absent reply and complete with publication in its existing transaction | Restart or response loss cannot authorize another model request; partial committed ledger evidence must survive while publication and receipt remain atomic | An in-memory running flag, retrying an absent receipt, a second checkpoint/result store, or rolling ledger facts back through model I/O |
 | 2026-10-13 | Keep target meaning declared by the contract; capture concrete target/origin/parent at generic host admission next | Current Reviews uses installation-private facts; target metadata alone is not captured invocation authority | Pretending backend descriptors already implement installed provider/context binding |
 
 
@@ -166,7 +174,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Strict public protocol requirements without internal revision coupling | Open | public SDK handshake and contract tests |
 | Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; generic provider selection open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
 | Reject old host encodings without data mutation | Installation/command-route host shapes, digest-only/private bare-result and Reviews former DTO format refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; managedmcp/receipts_test.go; Reviews schema_test.go; runtime/README.md |
-| Preserve Memory ledger, watermark, curation and receipts | Open | public Memory capability and backend tests |
+| Preserve Memory ledger, watermark, curation and receipts | Existing private maintenance admission/publication/receipt and failure boundaries verified; public capability migration open | managedmcp/prepared.go; memory/transport/maintenance.go; prepared_test.go; memory transport tests; bootstrap/plugin_memory_maintenance_receipt_test.go |
 | One Schedules wake/dispatch lifetime and retained Run acceptance | Open | public background role and Schedules tests |
 | Preserve package integrity, credentials, source identity and core authority checks | Open; baseline required | existing admission and policy regression checks |
 | New acceptance coverage for unresolved mutation/update/provider replacement | Existing real commands verified, including database reopening and distinct installation replacement; generic/UI coverage open | bootstrap/managed_services_test.go; plugin_command_recovery_test.go; application/integration/plugins/commands_test.go |
@@ -187,6 +195,15 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 2g verification:
+
+- Passed: complete Runtime and CLI go test ./..., go vet ./... and go build ./..., including architecture/dependency gates. No public SDK/wire catalog changed, so contract generation was unnecessary.
+- Passed: managed receipts/prepared admission, Memory transport and Memory SQLite complete targeted -race suites. They cover immutable admission/reply across restart, changed binding rejection, pending reentry without handlers, atomic rollback, concurrent edits, canceled model work and retained ledger facts.
+- Passed: real stdio maintenance committed-response loss with backend restart and original receipt replay, using exactly two model calls. Additional bootstrap -race covers existing Memory reply loss, Schedule create/prepare/settlement message loss, absent receipt and observed provider replacement.
+- Passed: completed-only, digest-only and bare-result private schema refusal, with retained evidence assertions. The actual nullable-reply shape triggers the strict cutover; no per-record epoch or compatibility reader was introduced.
+- Resolved fixture migrations: canceled work cannot reuse its original ID with a fresh model grant/body; the retained-ledger recovery has a new activity ID, and the completed duplicate must return its original Published value rather than reevaluate current state. The stdio fixture resolves its temporary CWD before maintenance so later application-normalized reads address the same target. Original watermark, human authority, callback count and no-repeat assertions remain explicit.
+- Not run: frontend UI/E2E/screenshot/composite frontend checks, explicitly excluded; no frontend changes. Reviews independent author checks and generation were not repeated because its source and public SDK did not change. Full generic installed operation/declaration/selection/origin/target/parent/callback/component completion remains open.
 
 Stage 2f verification:
 
@@ -263,6 +280,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 2g: all invoked backend/module/race handles returned success after fixture corrections. Existing test cleanup closes model grants, sessions, subprocesses, temporary packages and databases; no scratch scripts or build products remain. No user data, original proposal/review, shared configuration, external publication or credentialed service was changed. Keep the active checkout/dependencies for the full refactor.
+
 - Stage 2f: backend/module/race checks and independent author fixture returned terminal success after fixes. Existing cleanup retires test processes, sessions, temporary packages and databases; TemporaryDirectory removed the public SDK proxy/archive/cache/source. No production/user data, original proposal/review, shared configuration, remote service or credential was modified. Original input hashes match the baseline. The slice is committed and incoming local main is already up to date; the active checkout/dependencies remain for the full refactor.
 
 - Stage 2e: all verification handles returned terminal success after fixture repairs. Existing test cleanup retires process/session/database/temp-package ownership. TemporaryDirectory removed the independent author's SDK proxy/archive/cache/source. No user directory, original proposal/review, shared configuration, remote publication or credentialed service was changed. Original input hashes match the baseline. The slice is committed and incoming local main is already up to date; the active checkout and required development dependencies remain for the full refactor.
@@ -280,7 +299,7 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Complete Memory maintenance receipt at the private publication/ledger owner without holding model I/O inside a transaction. Unknown maintenance cannot be declared recovered merely because its host routing is durable.
+- Extend the verified private maintenance admission/publication receipt and original host routing to public contribution bindings. Preserve the distinction between recovering a completed receipt and unknown/canceled original work; never restart its models from host routing alone.
 - Extend the verified immutable input to the complete generic binding: exact contract/contribution, captured target and adapter-established origin/parent, with current declaration and activation handshake. Existing raw JSON and old-format refusal do not prove the missing installed operation/proxy/component paths.
 - Extend the verified durable original-binding/retention owner to generic operation descriptors and public entrances before opening new plugin mutation. Current closed service binding is not the final contribution substrate.
 - Finish generic call/error projections and public TypeScript client/component bindings through Reviews; current Go-owned generation supplies structural contracts and preserves typed outcome vocabulary.
@@ -291,6 +310,7 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 2g changes the shared private command schema from completed-only to pending-capable nullable reply. Existing Memory/Schedules directories are refused before conversion; retain them separately and use fresh directories. Unconfirmed original maintenance remains visible pending evidence, even if later independent maintenance folds its ledger; this is not a fabricated recovery.
 - Stage 2f changes SDK registration to explicit Backend assembly/publication, removes per-method client registration/Method.RegisterClient and removes former physical per-operation RPC handlers. External backend authors/compiled callers require rebuild and migration. BackendProtocol is the current public wire identity; declaration and activation matching still need the owning cutover before API freeze.
 - Stage 2e removes public plugin.InputDigest and adds unexported received input to Command; external unkeyed literals/old helper callers require migration. Host digest-only routes, Memory/Schedules digest-only receipts and Reviews re-encoded arguments directories are refused before conversion; retain them separately and use fresh directories. In-repository callers are migrated; independent published dependency metadata and exact public handshake remain open.
 - New schema-bound methods tighten feature input/output admission. Params and Result now retain unexported original wire evidence, so external unkeyed literals require migration; keyed usage and real consumers are updated. Separate Reviews ListMethod/UpdateMethod exports were removed without aliases.

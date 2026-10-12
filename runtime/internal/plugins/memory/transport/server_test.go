@@ -2,10 +2,12 @@ package transport_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -189,6 +191,13 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	broker.AdmitSession(session)
+	originalInput := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
+	if _, found, err := pluginsdk.ReadReceipt[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, "maintenance", rpc.Maintain, originalInput); err != nil || found {
+		t.Fatalf("canceled model work became known receipt: %t, %v", found, err)
+	}
+	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", originalInput); err == nil {
+		t.Fatal("pending original maintenance restarted model work")
+	}
 	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "uncompacted", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant})
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
@@ -204,7 +213,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	}
 	defer releaseFresh()
 	input := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: fresh}
-	published, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", input)
+	published, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "recover-pending-ledger", input)
 	if err != nil || !published.Published {
 		t.Fatalf("pending recovery=%+v %v", published, err)
 	}
@@ -227,8 +236,8 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if !foundHuman || !foundProposal {
 		t.Fatalf("curation replaced human authority: %+v", page.Rows)
 	}
-	repeated, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", input)
-	if err != nil || repeated.Published {
+	repeated, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "recover-pending-ledger", input)
+	if err != nil || repeated != published {
 		t.Fatalf("settled recovery repeated publication: %+v %v", repeated, err)
 	}
 	final, err := store.State(ctx, project)
@@ -236,4 +245,52 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		t.Fatalf("settled recovery advanced generation: %+v %v", final, err)
 	}
 	broker.RevokeSession(session)
+}
+
+func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	project := t.TempDir()
+	store, session, _ := connectMemoryBackend(t, path)
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_maintenance_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
+		t.Fatal(err)
+	}
+	broker := managedmcp.NewModels()
+	broker.AdmitSession(session)
+	defer broker.RevokeSession(session)
+	var calls atomic.Int32
+	grant, release, err := broker.Grant(t.Context(), session, func(context.Context, managedmcp.Prompt) (string, error) {
+		calls.Add(1)
+		return "- durable ledger fact", nil
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	input := rpc.MaintenanceInput{SessionID: "ses_receipt_failure", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
+	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "original", input); err == nil {
+		t.Fatal("receipt failure returned successful publication")
+	}
+	state, err := store.State(t.Context(), project)
+	if err != nil || state.Watermark != 0 {
+		t.Fatalf("receipt failure advanced watermark: %+v, %v", state, err)
+	}
+	pending, err := store.PendingLedger(t.Context(), project, 0, memory.MaxLedgerFoldFacts)
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("receipt failure discarded committed ledger: %+v, %v", pending, err)
+	}
+	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](t.Context(), session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
+	if err != nil || len(page.Rows) != 0 {
+		t.Fatalf("publication survived failed receipt: %+v, %v", page, err)
+	}
+	if _, found, err := pluginsdk.ReadReceipt[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, "original", rpc.Maintain, input); err != nil || found {
+		t.Fatalf("failed publication became known: %t, %v", found, err)
+	}
+	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "original", input); err == nil || calls.Load() != 2 {
+		t.Fatalf("pending admission reran models: %d, %v", calls.Load(), err)
+	}
 }

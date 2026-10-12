@@ -109,11 +109,26 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 		}),
 		pluginsdk.RegisterCommand(backend, rpc.Maintain, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
 			input := command.Input
+			admitted, err := command.RequestInput()
+			if err != nil {
+				return rpc.MaintenanceResult{}, err
+			}
+			prepared, original, err := managedmcp.PrepareCommand(ctx, db, rpc.Maintain, command.ID, admitted)
+			if err != nil {
+				return rpc.MaintenanceResult{}, err
+			}
+			if prepared == nil {
+				return pluginsdk.DecodeReply[rpc.MaintenanceResult](original)
+			}
 			if !input.Compacted {
-				return rpc.MaintenanceResult{}, nil
+				reply, err := maintenanceReply(false)
+				if err != nil {
+					return rpc.MaintenanceResult{}, err
+				}
+				return rpc.MaintenanceResult{}, prepared.Complete(ctx, reply)
 			}
 			published := false
-			curation, err := app.NewCuration(app.CurationConfig{Store: store, Invalidations: func(invalidation.Notice) { published = true }})
+			curation, err := app.NewCuration(app.CurationConfig{Store: maintenancePublication{CurationStore: store, db: db, command: prepared}, Invalidations: func(invalidation.Notice) { published = true }})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
@@ -122,7 +137,14 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 				return rpc.MaintenanceResult{}, err
 			}
 			err = consolidator.Consolidate(ctx, input.SessionID, input.Project)
-			return rpc.MaintenanceResult{Published: published}, err
+			if err != nil {
+				return rpc.MaintenanceResult{Published: published}, err
+			}
+			reply, err := maintenanceReply(published)
+			if err != nil {
+				return rpc.MaintenanceResult{}, err
+			}
+			return rpc.MaintenanceResult{Published: published}, prepared.Complete(ctx, reply)
 		}),
 	); err != nil {
 		return err

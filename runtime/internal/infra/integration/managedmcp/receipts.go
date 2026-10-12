@@ -14,7 +14,9 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_json TEXT NOT NULL CHECK(json_valid(input_json)), reply TEXT NOT NULL CHECK(json_valid(reply)))`
+const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_json TEXT NOT NULL CHECK(json_valid(input_json)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))`
+
+var ErrCommandUnconfirmed = errors.New("managed plugin: command outcome is unconfirmed")
 
 func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input P, admitted jsoninput.Input, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error) {
 	var zero R
@@ -32,6 +34,9 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 		if err == nil {
 			if previousMethod != method || previousInput != admitted.String() {
 				return idempotency.ErrKeyConflict
+			}
+			if len(reply) == 0 {
+				return ErrCommandUnconfirmed
 			}
 			return nil
 		}
@@ -80,7 +85,8 @@ func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, name strin
 
 func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
 	return pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
-		var method, encoded, reply string
+		var method, encoded string
+		var reply []byte
 		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
 		if errors.Is(err, sql.ErrNoRows) {
 			return pluginsdk.Receipt{}, nil
@@ -95,6 +101,6 @@ func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
 		if method != input.Method || admitted.Digest() != input.InputDigest {
 			return pluginsdk.Receipt{}, idempotency.ErrKeyConflict
 		}
-		return pluginsdk.Receipt{Found: true, Reply: []byte(reply)}, nil
+		return pluginsdk.Receipt{Found: len(reply) != 0, Reply: reply}, nil
 	})
 }

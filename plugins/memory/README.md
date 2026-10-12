@@ -39,14 +39,26 @@ reads without claiming success; the next read consults the backend. Disabled cur
 leaves committed extraction pending and resumes its fold after restart. Human edits
 and review remain authoritative throughout.
 
+Maintenance durably binds its original command before model work. An admitted
+command with no final reply remains unconfirmed across backend restart and cannot
+start extraction or curation again. A subsequent maintenance activity has its own
+identity and may fold the retained pending ledger under the existing policy.
+Publication commits watermark, items and the original maintenance reply in one
+short private transaction. Receipt failure rolls publication back and preserves
+the ledger. Model I/O stays outside transactions so human edits and review remain
+available. A completed duplicate returns the original Published value, rather
+than reevaluating whether a new generation is due. Receipt lookup after transport
+loss or a backend restart performs no model work.
+
 Disable and uninstall withdraw the generation and its capabilities. They
 retain its private data. Reenable uses the same installation directory; a new
 installation receives a different directory. Restart restores private facts from
 the same database. Old Runtime memory tables are not read or migrated.
 The private command table stores original admitted JSON in `input_json` and the
 typed value/refusal envelope in `reply`. Fingerprints derive from that original
-input, including its exact numeric lexemes. Former digest-only and bare-result
-databases are refused without conversion;
+input, including its exact numeric lexemes. A null reply represents private
+admission without a known outcome; it is not a successful empty result. Former
+completed-only, digest-only and bare-result databases are refused without conversion;
 retain that directory separately and use a fresh directory for this breaking change.
 
 Build packages using [the local application workflow](../README.md). Backend
