@@ -11,10 +11,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 type Schedules struct {
@@ -34,7 +34,7 @@ func (s *Schedules) ListPage(ctx context.Context, cursor string, limit paginatio
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
 	}
-	page, err := managedmcp.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Cursor: cursor, Limit: limit.Explicit()})
+	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Cursor: cursor, Limit: limit.Explicit()})
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, rpc.DecodeError(err)
 	}
@@ -53,7 +53,7 @@ func (s *Schedules) Create(ctx context.Context, input schedule.Draft) (schedule.
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	value, err := managedmcp.CallCommand[schedule.Draft, schedule.Snapshot](ctx, session, rpc.Create, operation.Identity(ctx), input)
+	value, err := pluginsdk.CallCommand[schedule.Draft, schedule.Snapshot](ctx, session, rpc.Create, operation.Identity(ctx), input)
 	if err != nil {
 		s.publish.Notify(invalidation.ForSchedules())
 		return schedule.Schedule{}, rpc.DecodeError(err)
@@ -71,7 +71,7 @@ func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedu
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	value, err := managedmcp.CallCommand[rpc.UpdateInput, schedule.Snapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: input.Patch.ModelSelection})
+	value, err := pluginsdk.CallCommand[rpc.UpdateInput, schedule.Snapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: input.Patch.ModelSelection})
 	if err != nil {
 		s.publish.Notify(invalidation.ForSchedules(input.ID))
 		return schedule.Schedule{}, rpc.DecodeError(err)
@@ -89,7 +89,7 @@ func (s *Schedules) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = managedmcp.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
+	_, err = pluginsdk.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
 	s.publish.Notify(invalidation.ForSchedules(id))
 	return rpc.DecodeError(err)
 }

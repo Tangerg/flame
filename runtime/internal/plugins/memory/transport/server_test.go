@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/transport"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -43,7 +44,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 		t.Fatal(err)
 	}
 	defer release()
-	_, err = managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
+	_, err = pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	if err != nil || state.Watermark != 2 {
 		t.Fatalf("private generation=%+v %v", state, err)
 	}
-	page, err := managedmcp.Call[rpc.ListInput, rpc.Page](t.Context(), session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
+	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](t.Context(), session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
 	if err != nil || len(page.Rows) != 2 {
 		t.Fatalf("published proposals=%+v %v", page, err)
 	}
@@ -65,7 +66,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	}
 	release()
 
-	_, err = managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4}})
+	_, err = pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +147,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	defer release()
 	result := make(chan error, 1)
 	go func() {
-		_, err := managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
+		_, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
 		result <- err
 	}()
 	select {
@@ -154,12 +155,12 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
-	added, err := managedmcp.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, "human-add", rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "human fact"})
+	added, err := pluginsdk.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, "human-add", rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "human fact"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	content, pinned := "human edit during curation", true
-	human, err := managedmcp.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), Content: &content, Pinned: &pinned})
+	human, err := pluginsdk.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), Content: &content, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +189,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	broker.AdmitSession(session)
-	_, err = managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant})
+	_, err = pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant})
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
@@ -203,7 +204,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	}
 	defer releaseFresh()
 	input := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: fresh}
-	published, err := managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, input)
+	published, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, input)
 	if err != nil || !published.Published {
 		t.Fatalf("pending recovery=%+v %v", published, err)
 	}
@@ -211,7 +212,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err != nil || recovered.Watermark != pending[0].Sequence {
 		t.Fatalf("recovery watermark=%+v %v", recovered, err)
 	}
-	page, err := managedmcp.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
+	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
 	if err != nil || len(page.Rows) != 2 {
 		t.Fatalf("recovered private facts=%+v %v", page, err)
 	}
@@ -226,7 +227,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if !foundHuman || !foundProposal {
 		t.Fatalf("curation replaced human authority: %+v", page.Rows)
 	}
-	repeated, err := managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, input)
+	repeated, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, input)
 	if err != nil || repeated.Published {
 		t.Fatalf("settled recovery repeated publication: %+v %v", repeated, err)
 	}

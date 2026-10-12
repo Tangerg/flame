@@ -1912,6 +1912,8 @@ func layerOf(rel string) string {
 		return ringProtocol
 	case "internal/contractcatalog":
 		return ringGenerator
+	case "plugin":
+		return ringInfra
 	}
 	switch {
 	case rel == "." || inPackageTree(rel, "internal/bootstrap") || inPackageTree(rel, "internal/config"):

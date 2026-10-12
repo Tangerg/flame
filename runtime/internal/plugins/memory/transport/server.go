@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/maintenance"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/tools"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -47,11 +48,11 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 	if err != nil {
 		return err
 	}
-	if err := managedmcp.RegisterTools(server, searchTool); err != nil {
+	if err := pluginsdk.RegisterTools(server, searchTool); err != nil {
 		return err
 	}
 	return errors.Join(
-		managedmcp.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
+		pluginsdk.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
 				var err error
@@ -82,11 +83,11 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 		managedmcp.RegisterCommand(server, db, rpc.Review, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
 			return rpc.Ack{}, review.Review(ctx, input.ID, input.Decision)
 		}),
-		managedmcp.RegisterServer(server, rpc.Items, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemsInput) ([]memory.ItemSnapshot, error) {
+		pluginsdk.RegisterServer(server, rpc.Items, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemsInput) ([]memory.ItemSnapshot, error) {
 			items, err := read.Items(ctx, input.Scope, input.Project)
 			return snapshots(items), err
 		}),
-		managedmcp.RegisterServer(server, rpc.Search, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, input rpc.SearchInput) ([]memory.ItemSnapshot, error) {
+		pluginsdk.RegisterServer(server, rpc.Search, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, input rpc.SearchInput) ([]memory.ItemSnapshot, error) {
 			var resolve func(context.Context) (app.Embedder, error)
 			if input.EmbeddingSpace != "" {
 				resolve = func(context.Context) (app.Embedder, error) {
@@ -100,7 +101,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			items, err := read.Search(ctx, input.Project, input.Query, input.TopK)
 			return snapshots(items), err
 		}),
-		managedmcp.RegisterServer(server, rpc.Maintain, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, input rpc.MaintenanceInput) (rpc.MaintenanceResult, error) {
+		pluginsdk.RegisterServer(server, rpc.Maintain, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, input rpc.MaintenanceInput) (rpc.MaintenanceResult, error) {
 			if !input.Compacted {
 				return rpc.MaintenanceResult{}, nil
 			}

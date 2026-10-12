@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -125,7 +126,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	} else {
 		if o.ref.Kind() == tool.MCPKind {
 			ctx = scopemcp.WithRequestMeta(ctx, map[string]any{
-				"io.github.tangerg.flame/invocationId": callID,
+				pluginsdk.InvocationKey: callID,
 			})
 		}
 		ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {

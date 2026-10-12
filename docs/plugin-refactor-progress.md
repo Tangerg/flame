@@ -3,7 +3,8 @@
 ## Current stage
 
 Stage 1 complete: installation-owned selection and desired enablement.
-Stage 2 is next: public contract authoring and durable operation binding. The full proposal remains open.
+Stage 2a: public backend wire binding and refusal/uncertainty semantics implemented and verified.
+Stage 2b is next: durable original operation binding before a generic host mutation entrance. The full proposal remains open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -35,15 +36,22 @@ Read-only design inputs:
 - Existing frontend fixtures were mechanically migrated to the removed APIs/shape and obsolete approval UI cases deleted. No new frontend UI assertions or test execution were added.
 - Committed the complete first slice and merged local main without conflict. The incoming change reconciles already-accepted Interaction answer Signals as success. Integrated Runtime/CLI module checks and execution races passed.
 - Fixed the existing commit-msg hook's assumption that COMMIT_EDITMSG is always relative. Linked worktree commits supply an absolute path; the hook now preserves it while using the same commitlint rules.
+- Added runtime/plugin in the existing Runtime module as the one public typed MCP backend binding. Memory, Schedules, their actual host callers and the independent Reviews backend use it; former private method/result/client/tool registration implementations were removed, not wrapped.
+- Unrecognized storage/commit/transport/cancellation errors remain protocol failures. Only explicitly classified business refusals become a known Failure. Memory/Schedules classifiers no longer label every unknown error internal as a business result.
+- Closed method envelopes reject missing input, unknown members and malformed command identity before mutation. Replies reject ambiguous/missing outcomes and preserve an explicit nullable value separately from a missing reply.
+- Centralized logical Tool metadata in the public binding. Existing Tool receipt namespaces remain unchanged; model arguments and transport IDs cannot originate that identity.
+- Reviews now exposes typed list/update backend methods and its existing model Tools through the same private store. Tests prove shared receipt replay across entrances, typed revision/identity conflicts and preserved uncertainty for unexpected storage failure.
+- Verified an external Reviews author with GOWORK=off, no local replace and a temporary module archive containing only the public SDK files plus module metadata, without Runtime internal source. Tidy/test/vet/build all passed in that isolated offline fixture. This proves the backend binding subset, not the full future SDK or a published release.
 
 ## In progress
 
-- Stage 2 has not yet changed production code. Begin by tracing public contract generation and the owner of unresolved command bindings before adding a public mutation path.
+- Complete the Stage 2a commit/main synchronization. The generic host operation entrance remains unopened until original-binding persistence, retention, quiescence and receipt reconciliation are implemented.
+- Next owner boundary: Runtime captures immutable routing/input/origin/parent/target evidence before backend dispatch; private backend receipts remain the sole business outcome. Derive held releases from unresolved commands at the same installation admission serialization point, rather than adding a refcount or a host business-result cache.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
 ## Next
 
-1. Establish the public contract authoring path and typed plugin operation binding; resolve unresolved human-command lifetime before exposing mutation. Re-read proposal sections 6-12 and 17-18 plus the review's two API-freeze gaps before implementation.
+1. Implement durable original command binding and typed installed-operation admission, including receipt-only reconciliation after response loss, Runtime restart, disable/re-enable, update, uninstall and provider replacement. Then finish the single-source Go/schema/TS authoring route. Re-read proposal sections 6-12 and 17-18 plus the review's two API-freeze gaps before implementation.
 2. Prove real managed callbacks and cancelable streaming decoration without a graphical relay.
 3. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 4. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
@@ -63,6 +71,10 @@ Read-only design inputs:
 | 2026-10-13 | Enumerate the default distribution with an owned, bounded directory reader | The required architecture gate exposed an unbounded directory read; the installation owner supplies the actual maximum | Ignoring the gate or choosing an unrelated arbitrary bound |
 | 2026-10-13 | Reuse installed local development dependencies in the isolated checkout with local package links | Offline installation lacked cached packages; no source, shared config or credentialed service needed mutation | Sharing a node_modules symlink that resolves old contracts or running install scripts against shared state |
 | 2026-10-13 | Preserve Git's absolute commit-message path in linked worktrees and resolve relative paths before changing directory | The existing hook blocked a valid local commit by prefixing an already-absolute path | Disabling hooks, weakening commitlint or changing shared Git configuration |
+| 2026-10-13 | Publish the existing backend method binding in runtime/plugin and migrate all actual consumers together | A demonstrated public author boundary should have one implementation; independent Reviews must use the same method and Tool semantics as bundled backends | Keeping a private richer binding beside a public imitation, or creating a separate SDK module |
+| 2026-10-13 | Only explicitly classified business errors are known refusals; empty classification preserves protocol failure | The former wrapper encoded every internal/commit failure as a business response, which could hide uncertainty | Treating all errors as definite failures or silently retrying a possibly committed effect |
+| 2026-10-13 | Host unresolved-command evidence owns immutable routing, not mutation outcome; only the original owner's valid response discharges its dependency | No-Run commands need original provider/release retention without a competing business receipt | Client-current proxies, execution-only dependency holds, mutable provider retargeting, or host success fabrication |
+| 2026-10-13 | Prove the current public backend subset through an isolated file-proxy SDK archive while its release metadata is still pending | Independent build evidence must not rely on Runtime internal source, workspace privilege or local replace; a temporary snapshot must not masquerade as a published artifact | Overwriting a cached published module, claiming an old release contains the new SDK, or publishing before the final authorization boundary |
 | 2026-10-13 | Run backend, contract, failure and relevant race checks; do not write/run frontend UI, E2E or screenshot checks | Explicit task verification constraint | Running the composite frontend gate without inspecting its test components |
 | 2026-10-13 | Merge current local main into the feature branch after each verified slice; do not push, publish, modify shared main history or use credentialed services during ordinary slices | The amended task explicitly requires incoming main synchronization; external/shared changes and credentials still require authorization | Deferring integration until final delivery or treating code-edit authorization as production authorization |
 
@@ -75,14 +87,14 @@ Status is open until code and appropriate verification prove the requirement.
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Open | plugin declaration and public contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Open | public binding, delivery and Reviews |
+| Public operation shared by Tool, CLI, UI and other plugins | Backend typed/Tool owner sharing verified; generic host/CLI/UI/other-plugin admission open | runtime/plugin; examples/plugins/reviews/backend/server.go; server_test.go |
 | Preserve origin, parent identity and concrete target | Open | shared call envelope and execution context |
 | Public React/TS components and shared module instances | Open | public SDK and installed component loader |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Open | public point contracts and Reviews analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Open | managed link and real-process backend tests |
 | No-Run unresolved human command pins original binding and recovery evidence | Open; required before public mutation | delivery/persistence, release retention, owner receipt reconciliation |
-| One executable contract generation source | Decision settled; implementation open | existing Go contract generator, public authoring fixture |
-| Typed business refusal versus transport uncertainty across entrances | Open | operation result contract, Tool/CLI/TS projections |
+| One executable contract generation source | Go source direction settled; public backend types/build verified; Go/schema/TS feature generation open | runtime/plugin; existing Go contract generator; independent archive fixture |
+| Typed business refusal versus transport uncertainty across entrances | Public Go/backend and Reviews typed/Tool semantics verified; generic host/CLI/TS projections open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
 | Strict public protocol requirements without internal revision coupling | Open | public SDK handshake and contract tests |
 | Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update semantics verified; generic provider and unresolved-command lifecycle open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
@@ -108,6 +120,16 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 2a verification:
+
+- Passed: public SDK and Memory/managed-model regressions, including -race; independent Reviews go test -race ./..., go vet ./... and go build ./....
+- Passed: current SDK package GOWORK=off GOPROXY=off go test ./plugin. The isolated external Reviews author fixture passed GOWORK=off tidy/test/vet/build with only public SDK source and no local replace or Runtime internal source.
+- Passed: real stdio Reviews installation, lost response, Runtime/backend restart, process retirement and CLI observation via go test ./internal/bootstrap -run TestReviewBackend -count=1.
+- Passed: CLI full test/vet/build. Runtime's initial full suite passed all behavioral packages but exposed the intentional new public-package baseline; after updating that exact baseline and external consumer fixture, full internal/arch, vet and build passed. The final full Runtime go test ./... also passed.
+- Resolved: the moved method's same-package model test callers initially referred to the deleted private functions; they now consume the public package. The public-package gate retains exact checking and dependency rejection, with plugin intentionally admitted as a transport boundary.
+- Pending release graph, failed as expected: GOPROXY=off GOSUMDB=off go mod tidy in the actual Reviews module cannot find runtime/plugin in its currently named published Runtime version. Workspace and isolated current-source archive builds pass. Update published dependency metadata when the final SDK-containing Runtime version is available; no cached published module was overwritten or released in this slice.
+- Not run: frontend checks in this Go/backend-only slice; no frontend files, UI/E2E/screenshot checks or new UI tests were added. The pre-existing runs.getAcceptance consumer-gate failure remains open.
 
 - Passed before incoming main integration: runtime and CLI go test ./..., go vet ./... and go build ./.... Runtime's architecture/dependency checks run as part of its Go suite.
 - Passed after incoming main integration: runtime and CLI go test ./..., go vet ./... and go build ./.... Runtime internal/arch and internal/dependency and CLI internal/arch passed with those suites.
@@ -135,6 +157,7 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 - Verify the selected MCP/SDK custom method and streaming primitives using real processes.
 - Select and implement actual module/resource loading for Web and Wails, including a management recovery entrance.
 - Close the existing runs.getAcceptance source-consumer gate with an actual reconciliation caller and appropriate contract evidence.
+- Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
 

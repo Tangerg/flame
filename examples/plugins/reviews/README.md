@@ -5,6 +5,11 @@ Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares no graphical view or host action.
 
+The backend uses the public Go binding in `github.com/Tangerg/flame/runtime/plugin`.
+Its typed `reviews.list` and `reviews.update` MCP custom methods share the same
+private use cases and receipt owner as the model Tools. These are backend method
+bindings; a general installed-provider host operation entrance is still pending.
+
 The backend owns one example review in `PLUGIN_DATA/reviews.sqlite`. Runtime
 owns execution and approval; its stored Tool results are historical observations,
 not another review database. Read the backend again to observe its current state.
@@ -79,7 +84,11 @@ does not retroactively settle a finished Run whose response was never observed.
 From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
 `go test -race -run TestConcurrentDuplicate ./...` checks the changed transaction
 ownership. Use `GOWORK=off` for the same checks against this module's independent
-released dependency graph.
+released dependency graph once its Runtime dependency names a release containing
+the new public SDK. Current workspace checks use the branch's SDK. An isolated
+offline author build of this source has also been verified with the current SDK's
+public files packaged as a temporary module archive, `GOWORK=off`, no local
+`replace`, and no Runtime internal source. That fixture is not a published release.
 
 From `runtime`, `go test ./internal/bootstrap -run TestReviewBackend -count=1`
 builds and installs the real stdio backend in temporary directories. It exercises

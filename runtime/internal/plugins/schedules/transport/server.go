@@ -13,6 +13,7 @@ import (
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/tools"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/google/uuid"
 )
@@ -38,11 +39,11 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 	if err != nil {
 		return err
 	}
-	if err := managedmcp.RegisterTools(server, modelTools...); err != nil {
+	if err := pluginsdk.RegisterTools(server, modelTools...); err != nil {
 		return err
 	}
 	return errors.Join(
-		managedmcp.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
+		pluginsdk.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
 				var err error
@@ -81,7 +82,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			err = store.QueueManual(ctx, request)
 			return request.Snapshot(), err
 		}),
-		managedmcp.RegisterServer(server, rpc.Scan, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {
+		pluginsdk.RegisterServer(server, rpc.Scan, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {
 			if input.Now.IsZero() {
 				return nil, errors.New("schedule: scan time is required")
 			}
@@ -92,7 +93,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			}
 			return values, err
 		}),
-		managedmcp.RegisterServer(server, rpc.Accept, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AcceptInput) (rpc.Ack, error) {
+		pluginsdk.RegisterServer(server, rpc.Accept, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AcceptInput) (rpc.Ack, error) {
 			return rpc.Ack{}, store.AcceptRun(ctx, input.RunID)
 		}),
 	)
@@ -107,7 +108,7 @@ func (t toolCommands) ListPage(ctx context.Context, cursor string, limit paginat
 	return t.coordinator.ListPage(ctx, cursor, limit)
 }
 func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedule.Schedule, error) {
-	id, err := managedmcp.InvocationID(ctx)
+	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
@@ -121,7 +122,7 @@ func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedul
 	return schedule.Restore(value)
 }
 func (t toolCommands) Delete(ctx context.Context, id string) error {
-	invocation, err := managedmcp.InvocationID(ctx)
+	invocation, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
 		return err
 	}

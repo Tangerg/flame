@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "localruntime", "protocol"}
+	want := []string{".", "localruntime", "plugin", "protocol"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -94,6 +94,7 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/localruntime"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -102,6 +103,10 @@ var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
+var _ = pluginsdk.RegisterTools
+var _ = pluginsdk.RegisterClient[string, string]
+var _ = pluginsdk.CallCommand[string, string]
+var _ pluginsdk.Command[string]
 
 func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	if _, err := runtime.Discover(ctx, flameruntime.CallOptions{}); err != nil {

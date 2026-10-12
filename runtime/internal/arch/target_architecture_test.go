@@ -94,6 +94,7 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		{name: "bootstrap", dependency: "internal/bootstrap", wantViolations: 1},
 		{name: "unknown target", dependency: "internal/newfeature", wantViolations: 1},
 		{name: "public protocol", dependency: "protocol"},
+		{name: "public backend transport", dependency: "plugin", wantViolations: 1},
 		{name: "pure value", dependency: "internal/identity"},
 		{name: "technical mechanism", dependency: "internal/keylock"},
 		{name: "generator", dependency: "internal/contractcatalog", wantViolations: 1},

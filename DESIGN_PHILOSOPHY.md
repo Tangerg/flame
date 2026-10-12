@@ -51,6 +51,15 @@ without replacing an execution dependency. Release or configuration replacement 
 requires the owning work to be quiescent. Installing code does not create standing
 model-tool approval: those decisions retain their source-qualified policy owner.
 
+Backend method bindings are a public transport boundary used by every author.
+The feature owns structural types, business refusals and private mutation receipts.
+An unrecognized storage, commit or transport failure is unconfirmed; the binding
+must not turn it into a definite business refusal. For a command without a Run,
+Runtime must durably capture the original provider and request binding before
+dispatch, derive retention and quiescence from unresolved bindings, and discharge
+that dependency only after observing the original owner's valid response. This
+routing evidence does not become another business result or receipt store.
+
 ## Evidence over symmetry
 
 Architecture is judged by real consumers, invariants, failure ordering, protocol behavior, persistence, and lifecycle tests. Package counts, file counts, private field inventories, and symmetric trees are not design evidence.

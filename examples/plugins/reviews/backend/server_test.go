@@ -2,10 +2,12 @@ package reviews
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -35,7 +37,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 		t.Helper()
 		meta := sdk.Meta{}
 		if id != "" {
-			meta[InvocationMetadataKey] = id
+			meta[pluginsdk.InvocationKey] = id
 		}
 		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: args, Meta: meta})
 		if err != nil {
@@ -98,6 +100,73 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	}
 }
 
+func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
+	store := openTestStore(t, t.TempDir())
+	server, err := NewServer(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := sdk.NewClient(&sdk.Implementation{Name: "typed-review-client"}, nil)
+	if err := pluginsdk.RegisterClient[Update, UpdateResult](client, UpdateMethod); err != nil {
+		t.Fatal(err)
+	}
+	if err := pluginsdk.RegisterClient[struct{}, ListResult](client, ListMethod); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sdk.NewInMemoryTransports()
+	backend, err := server.Connect(t.Context(), a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = backend.Close() })
+	session, err := client.Connect(t.Context(), b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
+	accepted, err := pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "shared-command", input)
+	if err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
+		t.Fatalf("typed update = %+v, %v", accepted, err)
+	}
+	replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: sdk.Meta{pluginsdk.InvocationKey: "shared-command"}})
+	if err != nil || replayed.IsError {
+		t.Fatalf("Tool replay = %+v, %v", replayed, err)
+	}
+	encoded, err := json.Marshal(replayed.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var observed UpdateResult
+	if err := json.Unmarshal(encoded, &observed); err != nil || observed.Type != accepted.Type || observed.Review == nil || *observed.Review != *accepted.Review {
+		t.Fatalf("Tool entrance created a different business result: %+v, %v", observed, err)
+	}
+	conflict, err := pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "second-command", input)
+	if err != nil || conflict.Type != Conflict || conflict.Review == nil || conflict.Review.Revision != 2 {
+		t.Fatalf("typed business refusal lost its current-review evidence: %+v, %v", conflict, err)
+	}
+	changed := input
+	changed.Status = Open
+	identityConflict, err := pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "shared-command", changed)
+	if err != nil || identityConflict.Type != IdentityConflict {
+		t.Fatalf("identity conflict = %+v, %v", identityConflict, err)
+	}
+	listed, err := pluginsdk.Call[struct{}, ListResult](t.Context(), session, ListMethod, struct{}{})
+	if err != nil || len(listed.Reviews) != 1 || listed.Reviews[0] != *accepted.Review {
+		t.Fatalf("canonical typed read = %+v, %v", listed, err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = pluginsdk.CallCommand[Update, UpdateResult](t.Context(), session, UpdateMethod, "unknown-command", changed)
+	if err == nil {
+		t.Fatal("storage failure succeeded")
+	}
+	if _, classified := errors.AsType[*pluginsdk.Failure](err); classified {
+		t.Fatalf("unexpected storage error became a known refusal: %v", err)
+	}
+}
+
 func TestUnexpectedStoreFailureRemainsProtocolFailure(t *testing.T) {
 	store, err := OpenStore(t.Context(), t.TempDir())
 	if err != nil {
@@ -122,7 +191,7 @@ func TestUnexpectedStoreFailureRemainsProtocolFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: sdk.Meta{InvocationMetadataKey: "original"}})
+	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: sdk.Meta{pluginsdk.InvocationKey: "original"}})
 	if err == nil || result != nil {
 		t.Fatalf("unexpected store failure became a definite tool result: %+v, %v", result, err)
 	}

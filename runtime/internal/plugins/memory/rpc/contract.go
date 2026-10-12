@@ -6,8 +6,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -72,14 +72,14 @@ type Ack struct{}
 
 func RegisterClient(client *sdk.Client) error {
 	return errors.Join(
-		managedmcp.RegisterClient[ListInput, Page](client, List),
-		managedmcp.RegisterClient[AddInput, AddResult](client, Add),
-		managedmcp.RegisterClient[UpdateInput, memory.ItemSnapshot](client, Update),
-		managedmcp.RegisterClient[ItemInput, Ack](client, Delete),
-		managedmcp.RegisterClient[ReviewInput, Ack](client, Review),
-		managedmcp.RegisterClient[ItemsInput, []memory.ItemSnapshot](client, Items),
-		managedmcp.RegisterClient[SearchInput, []memory.ItemSnapshot](client, Search),
-		managedmcp.RegisterClient[MaintenanceInput, MaintenanceResult](client, Maintain),
+		pluginsdk.RegisterClient[ListInput, Page](client, List),
+		pluginsdk.RegisterClient[AddInput, AddResult](client, Add),
+		pluginsdk.RegisterClient[UpdateInput, memory.ItemSnapshot](client, Update),
+		pluginsdk.RegisterClient[ItemInput, Ack](client, Delete),
+		pluginsdk.RegisterClient[ReviewInput, Ack](client, Review),
+		pluginsdk.RegisterClient[ItemsInput, []memory.ItemSnapshot](client, Items),
+		pluginsdk.RegisterClient[SearchInput, []memory.ItemSnapshot](client, Search),
+		pluginsdk.RegisterClient[MaintenanceInput, MaintenanceResult](client, Maintain),
 	)
 }
 
@@ -94,10 +94,10 @@ func Classify(err error) string {
 			return code
 		}
 	}
-	return "internal"
+	return ""
 }
 func DecodeError(err error) error {
-	var failure *managedmcp.Failure
+	var failure *pluginsdk.Failure
 	if errors.As(err, &failure) {
 		if cause := errorCodes[failure.Code]; cause != nil {
 			return errors.Join(cause, err)

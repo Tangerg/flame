@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -94,13 +95,13 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	broker := NewModels()
 	server := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
-	if err := RegisterServer(server, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant string) (string, error) {
+	if err := pluginsdk.RegisterServer(server, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant string) (string, error) {
 		return (RemoteModels{Grant: grant}).Complete(ctx, testPrompt())
 	}); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
-	if err := RegisterClient[string, string](client, "flame.memory/test.v1"); err != nil {
+	if err := pluginsdk.RegisterClient[string, string](client, "flame.memory/test.v1"); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -120,7 +121,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	value, err := Call[string, string](t.Context(), session, "flame.memory/test.v1", grant)
+	value, err := pluginsdk.Call[string, string](t.Context(), session, "flame.memory/test.v1", grant)
 	if err != nil || value != "durable fact" {
 		t.Fatalf("round trip=%q %v", value, err)
 	}

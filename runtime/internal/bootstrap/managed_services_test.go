@@ -14,9 +14,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -298,7 +298,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	}
 	var captured struct {
 		Response struct {
-			Result managedmcp.Result[scheduledomain.Snapshot] `json:"result"`
+			Result pluginsdk.Result[scheduledomain.Snapshot] `json:"result"`
 		} `json:"response"`
 	}
 	if err := json.Unmarshal(raw, &captured); err != nil {
@@ -355,7 +355,7 @@ func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testi
 					} `json:"params"`
 				} `json:"request"`
 				Response struct {
-					Result managedmcp.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
+					Result pluginsdk.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
 				} `json:"response"`
 			}
 			if err := json.Unmarshal(raw, &captured); err != nil {
@@ -433,7 +433,7 @@ func TestScheduleLostPrepareReplyRecoversCapturedWorkOnStartup(t *testing.T) {
 	}
 	var captured struct {
 		Response struct {
-			Result managedmcp.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
+			Result pluginsdk.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
 		} `json:"response"`
 	}
 	if err := json.Unmarshal(raw, &captured); err != nil {

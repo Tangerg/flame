@@ -8,8 +8,8 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -45,13 +45,13 @@ type Ack struct{}
 
 func RegisterClient(client *sdk.Client) error {
 	return errors.Join(
-		managedmcp.RegisterClient[ListInput, Page](client, List),
-		managedmcp.RegisterClient[schedule.Draft, schedule.Snapshot](client, Create),
-		managedmcp.RegisterClient[UpdateInput, schedule.Snapshot](client, Update),
-		managedmcp.RegisterClient[ItemInput, Ack](client, Delete),
-		managedmcp.RegisterClient[ItemInput, schedule.RunRequestSnapshot](client, PrepareManual),
-		managedmcp.RegisterClient[ScanInput, []schedule.RunRequestSnapshot](client, Scan),
-		managedmcp.RegisterClient[AcceptInput, Ack](client, Accept),
+		pluginsdk.RegisterClient[ListInput, Page](client, List),
+		pluginsdk.RegisterClient[schedule.Draft, schedule.Snapshot](client, Create),
+		pluginsdk.RegisterClient[UpdateInput, schedule.Snapshot](client, Update),
+		pluginsdk.RegisterClient[ItemInput, Ack](client, Delete),
+		pluginsdk.RegisterClient[ItemInput, schedule.RunRequestSnapshot](client, PrepareManual),
+		pluginsdk.RegisterClient[ScanInput, []schedule.RunRequestSnapshot](client, Scan),
+		pluginsdk.RegisterClient[AcceptInput, Ack](client, Accept),
 	)
 }
 
@@ -63,10 +63,10 @@ func Classify(err error) string {
 			return code
 		}
 	}
-	return "internal"
+	return ""
 }
 func DecodeError(err error) error {
-	var failure *managedmcp.Failure
+	var failure *pluginsdk.Failure
 	if errors.As(err, &failure) {
 		if cause := errorCodes[failure.Code]; cause != nil {
 			return errors.Join(cause, err)

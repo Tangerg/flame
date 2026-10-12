@@ -1,0 +1,46 @@
+# Go backend binding
+
+The public package `github.com/Tangerg/flame/runtime/plugin` supplies the typed MCP
+method binding used by Memory, Schedules and the independent Reviews example.
+It lives in the existing Runtime module and imports no Runtime internal package.
+Use the ordinary MCP SDK server and transport; this package does not create a
+second process supervisor or lifecycle.
+
+`RegisterServer[P, R]` binds an unkeyed method. `RegisterCommand[P, R]` passes the
+bounded logical command identity and typed input to the business owner.
+`RegisterClient[P, R]`, `Call[P, R]` and `CallCommand[P, R]` use those same wire
+types. Missing input, unknown envelope/input/result members and malformed command
+identities are refused. A reply contains exactly one value or business refusal;
+an explicitly nullable value remains distinct from a missing reply.
+
+A method's classifier returns a nonempty code only for a known business refusal.
+Returning an empty code leaves the error as an MCP protocol failure. Storage,
+commit, transport and cancellation errors must not be relabeled as definite
+business refusals. Callers must not automatically resend a possibly committed
+mutation. A feature may instead return its own typed outcome union, including
+conflict evidence, as Reviews does.
+
+The backend owns its business database and mutation receipt. The SDK neither
+commits nor caches a competing result. The same logical identity and input must
+return the owner's original outcome according to that operation's contract;
+different input with the same identity must be refused. Retention, capacity and
+transaction boundaries belong to the business owner.
+
+`RegisterTools` reuses Scope's frozen Tool schemas and execution. `InvocationID`
+reads Runtime's logical Tool call identity from MCP metadata, never from model
+arguments or transport IDs. `ToolCommandID` qualifies that identity for receipt
+owners that separate Tool and human command namespaces. These identities are not
+credentials or standing approval grants.
+
+The [Reviews backend](../../examples/plugins/reviews/backend/server.go) binds Tool
+and typed method entrances to the same private owner. Its tests prove shared
+receipts, business conflicts, identity conflicts and uncertain storage failures.
+The current repository workspace builds the evolving SDK source. Independent
+published consumers need a Runtime version containing this package; the older
+version still named by application module metadata does not contain it.
+
+This package currently supplies backend wire primitives. Installed-provider
+resolution, durable original-binding retention, host callbacks, point descriptors,
+Go/TypeScript contract generation and component bindings remain separate unfinished
+parts of the unified-plugin refactor. A direct backend session is not a public
+installed-provider proxy, and these primitives do not authorize core Runtime calls.

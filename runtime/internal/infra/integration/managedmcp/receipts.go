@@ -7,10 +7,10 @@ import (
 	"encoding/hex"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -58,11 +58,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 	return value, nil
 }
 func RegisterCommand[P, R any](server *sdk.Server, db *sql.DB, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
-	return sdk.AddReceivingCustomMethod(server, name, func(ctx context.Context, session *sdk.ServerSession, params *Params[P]) (*Result[R], error) {
-		if params == nil {
-			return nil, fmt.Errorf("%s: parameters are required", name)
-		}
-		value, err := Command(ctx, db, name, params.CommandID, params.Input, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
-		return newResult(value, err, classify), nil
+	return pluginsdk.RegisterCommand(server, name, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[P]) (R, error) {
+		return Command(ctx, db, name, command.ID, command.Input, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
 	})
 }

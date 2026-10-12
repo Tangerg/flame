@@ -20,6 +20,7 @@ import (
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -62,7 +63,7 @@ func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page
 	if err != nil {
 		return pagination.Page[memory.Item]{}, err
 	}
-	value, err := managedmcp.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()})
+	value, err := pluginsdk.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()})
 	if err != nil {
 		return pagination.Page[memory.Item]{}, rpc.DecodeError(err)
 	}
@@ -74,7 +75,7 @@ func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content strin
 	if err != nil {
 		return memory.Item{}, err
 	}
-	value, err := managedmcp.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, operation.Identity(ctx), rpc.AddInput{Scope: scope, CWD: cwd, Content: content})
+	value, err := pluginsdk.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, operation.Identity(ctx), rpc.AddInput{Scope: scope, CWD: cwd, Content: content})
 	if err != nil {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
@@ -90,7 +91,7 @@ func (m *Memory) Update(ctx context.Context, id string, content *string, pinned 
 	if err != nil {
 		return memory.Item{}, err
 	}
-	value, err := managedmcp.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: id, Content: content, Pinned: pinned})
+	value, err := pluginsdk.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: id, Content: content, Pinned: pinned})
 	if err != nil {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
@@ -104,7 +105,7 @@ func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDe
 	if err != nil {
 		return err
 	}
-	_, err = managedmcp.CallCommand[rpc.ReviewInput, rpc.Ack](ctx, session, rpc.Review, operation.Identity(ctx), rpc.ReviewInput{ID: id, Decision: decision})
+	_, err = pluginsdk.CallCommand[rpc.ReviewInput, rpc.Ack](ctx, session, rpc.Review, operation.Identity(ctx), rpc.ReviewInput{ID: id, Decision: decision})
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
@@ -113,7 +114,7 @@ func (m *Memory) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = managedmcp.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
+	_, err = pluginsdk.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
@@ -125,7 +126,7 @@ func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) 
 	if err != nil {
 		return nil, err
 	}
-	values, err := managedmcp.Call[rpc.ItemsInput, []memory.ItemSnapshot](ctx, session, rpc.Items, rpc.ItemsInput{Scope: scope, Project: project})
+	values, err := pluginsdk.Call[rpc.ItemsInput, []memory.ItemSnapshot](ctx, session, rpc.Items, rpc.ItemsInput{Scope: scope, Project: project})
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}
@@ -162,7 +163,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	values, err := managedmcp.Call[rpc.SearchInput, []memory.ItemSnapshot](ctx, session, rpc.Search, rpc.SearchInput{Project: project, Query: query, TopK: topK, Grant: grant, EmbeddingSpace: space})
+	values, err := pluginsdk.Call[rpc.SearchInput, []memory.ItemSnapshot](ctx, session, rpc.Search, rpc.SearchInput{Project: project, Query: query, TopK: topK, Grant: grant, EmbeddingSpace: space})
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}
@@ -199,7 +200,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	defer release()
-	result, err := managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}})
+	result, err := pluginsdk.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}})
 	if err != nil || result.Published {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}

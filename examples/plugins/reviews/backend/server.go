@@ -5,32 +5,38 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
-const InvocationMetadataKey = "io.github.tangerg.flame/invocationId"
+const (
+	ListMethod   = "io.github.tangerg.flame.examples/reviews.list"
+	UpdateMethod = "io.github.tangerg.flame.examples/reviews.update"
+)
+
+type ListResult struct {
+	Reviews []Snapshot `json:"reviews"`
+}
 
 func NewServer(store *Store) (*sdk.Server, error) {
 	if store == nil {
 		return nil, fmt.Errorf("reviews: store is required")
 	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_reviews", Description: "Read the review backend's current review and revision."}, func(ctx context.Context, _ struct{}) (struct {
-		Reviews []Snapshot `json:"reviews"`
-	}, error) {
+	read := func(ctx context.Context) (ListResult, error) {
 		reviews, err := store.List(ctx)
-		return struct {
-			Reviews []Snapshot `json:"reviews"`
-		}{Reviews: reviews}, err
+		return ListResult{Reviews: reviews}, err
+	}
+	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_reviews", Description: "Read the review backend's current review and revision."}, func(ctx context.Context, _ struct{}) (ListResult, error) {
+		return read(ctx)
 	})
 	if err != nil {
 		return nil, err
 	}
 	update, err := tool.NewFunc(tool.FuncConfig{Name: "update_review", Description: "Change one review's status using its inspected revision. Runtime supplies the invocation identity; do not add a retry key to arguments."}, func(ctx context.Context, input Update) (UpdateResult, error) {
-		id, _ := scopemcp.RequestMetaFromContext(ctx)[InvocationMetadataKey].(string)
-		if validateInvocationID(id) != nil {
+		id, err := pluginsdk.InvocationID(ctx)
+		if err != nil {
 			return UpdateResult{}, rejected("bounded invocation identity is required")
 		}
 		result, err := store.Update(ctx, id, input)
@@ -56,15 +62,17 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame-review-example", Version: "1.0.0"}, nil)
-	server.AddReceivingMiddleware(func(next sdk.MethodHandler) sdk.MethodHandler {
-		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
-			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil {
-				ctx = scopemcp.WithRequestMeta(ctx, call.Params.Meta)
-			}
-			return next(ctx, method, request)
-		}
-	})
-	if err := scopemcp.Register(server, list, update); err != nil {
+	if err := pluginsdk.RegisterTools(server, list, update); err != nil {
+		return nil, err
+	}
+	if err := pluginsdk.RegisterServer(server, ListMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, _ struct{}) (ListResult, error) {
+		return read(ctx)
+	}); err != nil {
+		return nil, err
+	}
+	if err := pluginsdk.RegisterCommand(server, UpdateMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[Update]) (UpdateResult, error) {
+		return store.Update(ctx, command.ID, command.Input)
+	}); err != nil {
 		return nil, err
 	}
 	return server, nil

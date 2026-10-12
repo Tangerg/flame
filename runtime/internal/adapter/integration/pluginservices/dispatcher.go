@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -51,7 +51,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBindin
 	if err != nil {
 		return runs.StartResult{}, err
 	}
-	_, err = managedmcp.Call[rpc.AcceptInput, rpc.Ack](ctx, session, rpc.Accept, rpc.AcceptInput{RunID: request.RunID()})
+	_, err = pluginsdk.Call[rpc.AcceptInput, rpc.Ack](ctx, session, rpc.Accept, rpc.AcceptInput{RunID: request.RunID()})
 	d.publish.Notify(invalidation.ForSchedules(request.ScheduleID()))
 	if err != nil {
 		return runs.StartResult{}, rpc.DecodeError(err)
@@ -63,7 +63,7 @@ func (d *Dispatcher) RunNow(ctx context.Context, id string) (runs.StartResult, e
 	if err != nil {
 		return runs.StartResult{}, err
 	}
-	request, err := managedmcp.CallCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, session, rpc.PrepareManual, operation.Identity(ctx), rpc.ItemInput{ID: id})
+	request, err := pluginsdk.CallCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, session, rpc.PrepareManual, operation.Identity(ctx), rpc.ItemInput{ID: id})
 	if err != nil {
 		return runs.StartResult{}, rpc.DecodeError(err)
 	}
@@ -91,7 +91,7 @@ func (d *Dispatcher) pass(ctx context.Context) {
 		slog.ErrorContext(ctx, "schedule: backend admission failed", "error", err)
 		return
 	}
-	requests, err := managedmcp.Call[rpc.ScanInput, []schedule.RunRequestSnapshot](ctx, session, rpc.Scan, rpc.ScanInput{Now: time.Now()})
+	requests, err := pluginsdk.Call[rpc.ScanInput, []schedule.RunRequestSnapshot](ctx, session, rpc.Scan, rpc.ScanInput{Now: time.Now()})
 	if err != nil {
 		slog.ErrorContext(ctx, "schedule: durable scan failed", "error", err)
 		return
