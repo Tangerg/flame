@@ -17,6 +17,27 @@ type pluginCommandFixture struct {
 	received protocol.InstallPluginRequest
 	command  replay.CommandID
 	rename   protocol.RenamePluginSessionRequest
+	provider protocol.SelectPluginProviderRequest
+}
+
+func (f *pluginCommandFixture) SelectPluginProvider(_ context.Context, request protocol.SelectPluginProviderRequest, id replay.CommandID) (*protocol.PluginProviderSelection, error) {
+	f.calls++
+	f.provider = request
+	f.command = id
+	return &protocol.PluginProviderSelection{Role: request.Role, InstallationID: request.InstallationID, Contribution: request.Contribution}, nil
+}
+
+func TestPluginProviderSelectionPreservesExplicitBindingAndCommandIdentity(t *testing.T) {
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
+	key := "cli_" + strings.Repeat("a", 32)
+	request := `{"role":"memory","installationId":"12345678-1234-1234-1234-123456789abc","contribution":"memory"}`
+	out, stderr, err := executeCommand(t, fixture, "", "plugins", "select-provider", "--command-id", key, "--request", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fixture.calls != 1 || string(fixture.command) != key || fixture.provider.Role != "memory" || fixture.provider.Contribution != "memory" || !strings.Contains(out, fixture.provider.InstallationID) || !strings.Contains(stderr, key) {
+		t.Fatalf("provider selection: %s %s %+v", out, stderr, fixture)
+	}
 }
 
 func (f *pluginCommandFixture) RenamePluginSession(_ context.Context, request protocol.RenamePluginSessionRequest, id replay.CommandID) (*protocol.Session, error) {

@@ -33,7 +33,7 @@ func NewSchedules(store plugins.Store, pool *mcpconnection.Pool, commands *Comma
 	return &Schedules{installations: store, pool: pool, publish: publish, commands: commands}, nil
 }
 func (s *Schedules) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
-	_, session, err := serviceSession(ctx, s.installations, s.pool, plugin.SchedulesService)
+	_, session, err := serviceSession(ctx, s.installations, s.commands.selections, s.pool, plugin.SchedulesService)
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
 	}

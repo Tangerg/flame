@@ -1,5 +1,17 @@
 package protocol
 
+type PluginProviderSelection struct {
+	Role           string `json:"role"`
+	InstallationID string `json:"installationId"`
+	Contribution   string `json:"contribution"`
+}
+
+type SelectPluginProviderRequest struct {
+	Role           string `json:"role"`
+	InstallationID string `json:"installationId"`
+	Contribution   string `json:"contribution"`
+}
+
 // PluginInstallation projects durable admission beside the realization the
 // Runtime observes for it now.
 type PluginInstallation struct {

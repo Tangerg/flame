@@ -65,10 +65,22 @@ generated client checks; its result references retain the reusable schema shapes
 ## Protocol 2026-10-13.1
 
 Memory and Schedules are optional, complete managed plugin backends. Their
-`services` declarations bind one enabled installation to each fact owner. Human
+`services` declarations describe provider candidates. Product composition selects
+an exact installation/contribution independently of its enablement. More than
+one candidate may be enabled; absence, disablement or removal of the selected
+provider never chooses another one. Human
 commands and packaged views use the same backend as model Tools and maintenance.
-The host retains no Memory ledger or Schedule store. With no enabled owner, human
+The host retains no Memory ledger or Schedule store. With no available selected owner, human
 operations return `plugin_unavailable`; optional Memory context is absent.
+
+`plugins.listProviders` and `plugins.selectProvider` expose the same composition
+owner through the Go binding and Runtime Protocol. CLI uses `plugins providers`
+and `plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`.
+Selection changes future resolution, preserves each provider's private data and
+never retargets an original command or its receipt. Distribution selects initial
+providers by configured package/contribution once in its initial transaction;
+restart preserves later choices. The provider-selection table is a strict host
+schema cutover, requiring a fresh directory while retaining the old one.
 
 These commands use `ownerResponse` idempotency. The Runtime store namespace and
 logical key identify a durable original route, including installation, release,

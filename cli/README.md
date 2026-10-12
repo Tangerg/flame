@@ -192,6 +192,13 @@ approval databases require a fresh data directory rather than data migration.
 
 ## Runtime plugin commands
 
+`flame plugins providers` reads explicit provider choices. Use
+`flame plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`
+to select a declared installation/contribution for future calls. Enablement does
+not select a provider; several candidates may be enabled. Disabling or removing
+the selected provider leaves the choice unavailable rather than selecting another
+one. Selection preserves private data and the original route of pending commands.
+
 `flame plugins list` inspects admitted releases, each installation's desired `enabled` value, Skill provenance, typed admission diagnostics, the
 realization Runtime observes now (release availability and unavailable backends) and each
 declared input's state. A configured secret input, including every header and

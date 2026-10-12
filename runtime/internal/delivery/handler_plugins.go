@@ -28,6 +28,50 @@ type pluginUseCases interface {
 	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
 }
 
+type selectionUseCases interface {
+	List(context.Context) ([]plugin.ProviderSelection, error)
+	Select(context.Context, plugin.SelectionRecord) (plugin.ProviderSelection, error)
+}
+
+func presentProviderSelection(value plugin.ProviderSelection) *protocol.PluginProviderSelection {
+	record := value.Snapshot()
+	return &protocol.PluginProviderSelection{Role: record.Role, InstallationID: record.Installation.String(), Contribution: record.Contribution.String()}
+}
+
+func (s *Handler) ListPluginProviders(ctx context.Context) (*protocol.Page[protocol.PluginProviderSelection], error) {
+	if s.pluginSelections == nil {
+		return nil, NewFailure(protocol.ErrPluginUnavailable, "plugin provider selection is unavailable")
+	}
+	selections, err := s.pluginSelections.List(ctx)
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	result := make([]protocol.PluginProviderSelection, 0, len(selections))
+	for _, selection := range selections {
+		result = append(result, *presentProviderSelection(selection))
+	}
+	return protocol.NewPage(result), nil
+}
+
+func (s *Handler) SelectPluginProvider(ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
+	if s.pluginSelections == nil {
+		return nil, NewFailure(protocol.ErrPluginUnavailable, "plugin provider selection is unavailable")
+	}
+	id, err := parseInstallationID(in.InstallationID)
+	if err != nil {
+		return nil, err
+	}
+	contribution, err := mcpserver.ParseServerName(in.Contribution)
+	if err != nil {
+		return nil, InvalidParameters(err)
+	}
+	value, err := s.pluginSelections.Select(ctx, plugin.SelectionRecord{Role: in.Role, Installation: id, Contribution: contribution})
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	return presentProviderSelection(value), nil
+}
+
 func (s *Handler) RenamePluginSession(ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {

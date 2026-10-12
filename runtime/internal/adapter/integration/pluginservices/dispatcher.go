@@ -81,7 +81,7 @@ func (d *Dispatcher) RunWorker(ctx context.Context) {
 	}
 }
 func (d *Dispatcher) pass(ctx context.Context) {
-	binding, session, err := serviceSession(ctx, d.service.installations, d.service.pool, plugin.SchedulesService)
+	binding, session, err := serviceSession(ctx, d.service.installations, d.service.commands.selections, d.service.pool, plugin.SchedulesService)
 	if errors.Is(err, errInactive) {
 		return
 	}

@@ -118,7 +118,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
-	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, mcpPool, commands)
+	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, mcpPool, commands)
 	if err != nil {
 		return environment, err
 	}

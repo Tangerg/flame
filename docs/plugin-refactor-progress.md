@@ -11,6 +11,7 @@ Stage 2e complete: one immutable admitted JSON representation now supplies reque
 Stage 2f complete: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. The verified slice is committed and synchronized with local main. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance; the full proposal remains open.
 Stage 2g complete: Memory maintenance now privately fences original command admission before model I/O and commits publication plus its original receipt in one short transaction. Real committed-response loss recovers after backend restart without another model call. Pending/canceled work remains unknown, preserves ledger facts and cannot re-enter under its original identity. The verified slice is committed and synchronized with local main; the full proposal remains open.
 Stage 2h complete: public operation bindings freeze and check the exact method/kind/target/schema contract before invocation. Existing Memory/Schedules command routes now persist that complete contract and validate original receipt output against it after restart. The verified slice is committed and synchronized with local main. Generic installed contributions, selection, captured target/origin/parent and the full proposal remain open.
+Stage 3a verified: provider selection now has its own durable composition value/store and Go/Protocol/CLI entrances. Current Memory/Schedules resolution reads only the explicitly selected installation/contribution; enablement no longer selects or excludes another candidate. Default choices are explicit package/contribution configuration inside the one-time catalog transaction. Complete Runtime/CLI checks and coexistence/original-command recovery races pass; commit/main synchronization are being recorded. Current role candidacy still uses the existing Services declaration and is not the final consumer-owned point/contract substrate.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -107,6 +108,8 @@ Read-only design inputs:
 
 ## In progress
 
+- Provider composition now advances independently of enablement. Existing business role candidacy still comes from Services and uses its server name as the contribution key. Replacing that declaration/identity with consumer-owned exact point contracts, real contribution IDs and scoped/frozen composition remains required; the new store must not be mistaken for completion of the entire generic point substrate.
+
 - Generic installed-operation admission, contribution declarations, plugin-defined points, target/origin/parent capture and provider selection still need the verified method/routing owners. Generated backend metadata is not an installed capability or an alternate registration authority.
 - The verified request representation now fixes object-order and typed numeric rehashing at the backend boundary. Existing routes also capture the complete exact method contract and the backend checks its fingerprint. Generic operation binding still must capture contribution, actual target and adapter-established origin/parent alongside that input, with declaration/activation matching before publication. This slice has not removed ServiceOwner/ServiceKind, apiVersion:1 or the old graphical carrier.
 - The backend's current protocol and immutable exports are verified, but package declaration/token/contract matching and activation binding are still missing. Public installed operations cannot be claimed ready from Backend.Describe alone.
@@ -127,6 +130,8 @@ Read-only design inputs:
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
 | 2026-10-13 | Keep external proposal and review read-only; record corrections in owning repository design documentation and this ledger | The task explicitly identifies read-only inputs; corrections must not rewrite review evidence | Editing the external inputs |
+| 2026-10-13 | Give provider choice one durable composition owner, independent of enablement; preserve the selected reference when its provider becomes unavailable or is removed | An enabled candidate must not implicitly win, and absence must not silently choose another owner or transfer private data | Scanning enabled installations, exclusive enablement, publisher/load-order selection or automatic replacement |
+| 2026-10-13 | Configure initial provider choices by exact distribution package/contribution and commit them with initial catalog admission | Default selection happens once without giving first-party code lasting priority; ambiguous defaults fail instead of taking the first match | Filesystem order and reselecting defaults on restart |
 | 2026-10-13 | Freeze the public semantic method, query/command kind, target meaning and exact structural schemas in each original command route; derive the invocation fingerprint from that immutable value | Receipt recovery must validate the original contract without discovering a current mutation or depending on a private build revision | Name-only invocation, a competing stored checksum, current-schema receipt interpretation, or an old route reader |
 | 2026-10-13 | Discover new-call metadata outside installation admission, then recheck the concrete installation/release/server before storing the route | Network I/O must not block installation changes, and a captured automatic provider cannot persist a route after withdrawal | Holding admission during RPC or persisting a stale prepared route |
 | 2026-10-13 | Use one managed checkout and one canonical progress file, exposed at the requested path by a symlink | Isolate product changes from concurrent user work without creating competing progress copies | Editing product files in main or maintaining two progress ledgers |
@@ -202,6 +207,15 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 3a verification:
+
+- Passed: complete Runtime and CLI go test ./..., go vet ./... and go build ./..., including architecture, dependency-direction and real source-consumer gates. go generate ./... updated Go/Schema/OpenRPC/TypeScript catalogs and shared request constraints. No frontend UI/E2E/screenshot tests were written or run.
+- Passed: Application plugin admission and SQLite full -race suites; provider choice persists across real DB close/reopen, does not require its installation row to exist and never resolves a different role implicitly. The former host without provider selections is refused without mutation.
+- Passed: real bootstrap -race for two enabled Memory candidates, absent explicit choice, wrong-role/contribution refusal without a write, provider replacement after committed-response loss, retained original command dependency/receipt after Runtime restart, isolated private facts, choice persistence and disabled-selected-provider refusal despite another enabled candidate. Existing Memory re-enable and Schedule accepted manual command recovery races pass.
+- Passed: CLI provider-selection command/identity capture and refusal of a mismatched returned role/installation/contribution; focused adapter/command races pass.
+- Resolved checks: initial complete runs hit managed-backend connection deadlines; focused checks and final complete runs passed without changing those bounds. Old backend tests required exclusive enablement or assumed enabling selected a provider; they now establish explicit choices while preserving identity conflict, private-data and backend-page assertions. The response-loss probe deliberately terminates its transport; the new cross-provider recovery case restores availability by reopening Runtime and retains its witnessed-commit, no-resend and original-owner assertions.
+- Not run: frontend UI/E2E/screenshot/composite checks, explicitly excluded. Reviews and public-only archive checks were not repeated because their SDK/backend source did not change. No external publication, credentials, production actions or user-data conversion occurred. Generic point declarations, independent feature contracts, scoped/frozen composition, captured target/origin/parent and public components remain open.
 
 Stage 2h verification:
 
@@ -296,6 +310,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3a: all invoked module, targeted race and fixture handles returned terminal results. Existing test cleanup closes private databases, model grants, transports and managed processes. No scratch scripts/artifacts, new worktree, shared config edits or background task checks remain. Input hashes are unchanged; retain the active managed checkout and dependencies for the full goal.
+
 - Stage 2h: all module, architecture, targeted race and isolated-author handles are terminal. Both temporary SDK archive/author/module-cache fixtures were removed by their temporary-directory lifetime, including the failed fixture. Test cleanup owns backend processes and databases. Original proposal/review hashes remain unchanged; no shared checkout product source, user data, external state or credentialed service changed. Keep the active checkout and its development dependencies for the full goal.
 
 - Stage 2g: all invoked backend/module/race handles returned success after fixture corrections. Existing test cleanup closes model grants, sessions, subprocesses, temporary packages and databases; no scratch scripts or build products remain. No user data, original proposal/review, shared configuration, external publication or credentialed service was changed. Keep the active checkout/dependencies for the full refactor.
@@ -327,6 +343,8 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3a adds plugin_provider_selections and removes exclusive-enable admission. Existing data directories are refused and retained; use a fresh directory. External automation that formerly enabled a backend to select it must explicitly call plugins.selectProvider. Missing/disabled/uninstalled selections remain unavailable instead of following enabled candidates. Public Go/Protocol/CLI consumers are updated; generic declaration/point and graphical selection workflows remain open.
 
 - Stage 2h requires the current backend protocol and exact method fingerprint on invocation. External backend binaries and SDK consumers require rebuild. Host command routes now require contract_json; former directories are refused and retained, with no conversion or old reader. The Runtime Protocol identity is independent of this backend wire change. Full installed declaration/activation protocol admission remains open.
 

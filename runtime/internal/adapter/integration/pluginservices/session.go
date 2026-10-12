@@ -14,8 +14,8 @@ import (
 
 var errInactive = errors.New("managed plugin: no enabled owner")
 
-func serviceSession(ctx context.Context, store plugins.Store, pool *mcpconnection.Pool, kind plugin.ServiceKind) (plugins.ServiceBinding, *sdk.ClientSession, error) {
-	binding, found, err := plugins.ServiceOwner(ctx, store, kind)
+func serviceSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, kind plugin.ServiceKind) (plugins.ServiceBinding, *sdk.ClientSession, error) {
+	binding, found, err := plugins.ServiceOwner(ctx, store, selections, kind)
 	if err != nil {
 		return binding, nil, err
 	}

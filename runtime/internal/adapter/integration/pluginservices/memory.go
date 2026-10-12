@@ -65,7 +65,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	return &Memory{installations: config.Installations, pool: config.Connections, models: config.Models, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
 }
 func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
+	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
 	if err != nil {
 		return pagination.Page[memory.Item]{}, err
 	}
@@ -109,7 +109,7 @@ func (m *Memory) Delete(ctx context.Context, id string) error {
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
+	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
@@ -132,7 +132,7 @@ func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) 
 	return items, nil
 }
 func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([]memory.Item, error) {
-	_, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
+	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
@@ -172,7 +172,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	return items, nil
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
-	binding, session, err := serviceSession(ctx, m.installations, m.pool, plugin.MemoryService)
+	binding, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
 	if errors.Is(err, errInactive) {
 		return nil
 	}

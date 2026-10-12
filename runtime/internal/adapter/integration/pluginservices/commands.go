@@ -19,15 +19,16 @@ import (
 
 type CommandCalls struct {
 	installations plugins.Store
+	selections    plugins.SelectionStore
 	pool          *mcpconnection.Pool
 	routing       *plugins.Commands
 }
 
-func NewCommandCalls(store plugins.Store, pool *mcpconnection.Pool, routing *plugins.Commands) (*CommandCalls, error) {
-	if dependency.Missing(store) || pool == nil || routing == nil {
+func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands) (*CommandCalls, error) {
+	if dependency.Missing(store) || dependency.Missing(selections) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
-	return &CommandCalls{installations: store, pool: pool, routing: routing}, nil
+	return &CommandCalls{installations: store, selections: selections, pool: pool, routing: routing}, nil
 }
 
 type commandReply[T any] struct {
@@ -53,7 +54,7 @@ func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBindin
 
 func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.ServiceKind, method string, input P, validate func(R) error) (commandReply[R], error) {
 	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ServiceBinding, error) {
-		binding, found, err := plugins.ServiceOwner(ctx, c.installations, kind)
+		binding, found, err := plugins.ServiceOwner(ctx, c.installations, c.selections, kind)
 		if err != nil {
 			return binding, err
 		}

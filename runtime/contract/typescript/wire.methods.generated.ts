@@ -80,6 +80,7 @@ import type {
   PageOfModelInvocation,
   PageOfPendingInterruptSet,
   PageOfPluginInstallation,
+  PageOfPluginProviderSelection,
   PageOfProvider,
   PageOfRunRef,
   PageOfSchedule,
@@ -92,6 +93,7 @@ import type {
   PageQuery,
   Plan,
   PluginInstallation,
+  PluginProviderSelection,
   PluginReleaseRequest,
   PluginRequest,
   PluginViewResource,
@@ -120,6 +122,7 @@ import type {
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
   Schedule,
+  SelectPluginProviderRequest,
   Session,
   SessionSnapshot,
   SessionUsage,
@@ -237,6 +240,8 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.listProviders",
+  "plugins.selectProvider",
   "plugins.readRenderer",
   "plugins.readDiff",
   "plugins.readSkills",
@@ -361,6 +366,8 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.listProviders",
+  "plugins.selectProvider",
   "plugins.readRenderer",
   "plugins.readDiff",
   "plugins.readSkills",
@@ -807,6 +814,20 @@ export const WIRE_METHOD_POLICY = {
     operation: "query",
     response: "unary",
     idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.listProviders": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.selectProvider": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1351,6 +1372,12 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.listProviders": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.selectProvider": [
+    { requires: ["plugins"] },
+  ],
   "plugins.readRenderer": [
     { requires: ["plugins"] },
   ],
@@ -1514,6 +1541,8 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
+  "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
   "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };
   "plugins.readDiff": { params: ReadPluginDiffRequest; result: Diff };
   "plugins.readSkills": { params: ReadPluginSkillsRequest; result: SkillDiscovery };

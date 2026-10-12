@@ -13,6 +13,8 @@ import (
 )
 
 type pluginRuntime interface {
+	ListPluginProviders(context.Context) ([]protocol.PluginProviderSelection, error)
+	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, replay.CommandID) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
 	InstallPlugin(context.Context, protocol.InstallPluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
@@ -40,6 +42,20 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 
 func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
+	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := runtime.ListPluginProviders(cmd.Context())
+		if err != nil {
+			return err
+		}
+		if values == nil {
+			values = []protocol.PluginProviderSelection{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginProviderSelection]{Data: values})
+	}})
 	root.AddCommand(&cobra.Command{Use: "list", Short: "Inspect releases, installation state and component diagnostics", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
 		if err != nil {
@@ -55,6 +71,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginInstallation]{Data: installations})
 	}})
 	root.AddCommand(
+		pluginMutationCommand(provider, "select-provider", "Select a declared provider without changing its enablement or private data", pluginRuntime.SelectPluginProvider),
 		pluginMutationCommand(provider, "rename-session", "Submit a declared action to rename an exact Session revision", pluginRuntime.RenamePluginSession),
 		pluginMutationCommand(provider, "install", "Install an immutable directory or ZIP on the Runtime", pluginRuntime.InstallPlugin),
 		pluginMutationCommand(provider, "stage", "Stage a release without changing active code", pluginRuntime.StagePlugin),

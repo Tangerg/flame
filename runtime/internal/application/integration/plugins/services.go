@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -21,50 +20,29 @@ type ServiceBinding struct {
 	Contract       jsoninput.Input
 }
 
-func ServiceOwner(ctx context.Context, store Store, kind plugin.ServiceKind) (ServiceBinding, bool, error) {
-	snapshots, err := store.List(ctx)
+func ServiceOwner(ctx context.Context, store Store, selections SelectionStore, kind plugin.ServiceKind) (ServiceBinding, bool, error) {
+	choice, found, err := selections.Get(ctx, string(kind))
 	if err != nil {
 		return ServiceBinding{}, false, err
 	}
-	var owner ServiceBinding
-	found := false
-	for _, snapshot := range snapshots {
-		installation := snapshot.Installation
-		service, declared := snapshot.Selected.Service(kind)
-		if !declared || !installation.Enabled() || !installation.ServerEnabled(service.Server) {
-			continue
-		}
-		if found {
-			return ServiceBinding{}, false, fmt.Errorf("%w: more than one enabled %s owner", plugin.ErrInvalid, kind)
-		}
-		id, err := installation.ServerID(service.Server)
-		if err != nil {
-			return ServiceBinding{}, false, err
-		}
-		owner = ServiceBinding{InstallationID: installation.ID(), ServerID: id, Digest: snapshot.Selected.Digest(), ServerName: service.Server}
-		found = true
+	if !found {
+		return ServiceBinding{}, false, nil
 	}
-	return owner, found, nil
-}
-func admitServices(ctx context.Context, store Store, candidate *plugin.Installation, release plugin.Release) error {
-	if !candidate.Enabled() {
-		return nil
-	}
-	snapshots, err := store.List(ctx)
+	record := choice.Snapshot()
+	snapshot, found, err := store.Get(ctx, record.Installation)
 	if err != nil {
-		return err
+		return ServiceBinding{}, false, err
 	}
-	for _, service := range release.Declaration().Services {
-		if !candidate.ServerEnabled(service.Server) {
-			continue
-		}
-		for _, snapshot := range snapshots {
-			other := snapshot.Installation
-			declared, found := snapshot.Selected.Service(service.Kind)
-			if other.ID() != candidate.ID() && other.Enabled() && found && other.ServerEnabled(declared.Server) {
-				return fmt.Errorf("%w: %s already has enabled installation %s", plugin.ErrInvalid, service.Kind, other.ID())
-			}
-		}
+	if !found {
+		return ServiceBinding{}, false, nil
 	}
-	return nil
+	service, declared := snapshot.Selected.Service(kind)
+	if !declared || service.Server != record.Contribution || !snapshot.Installation.ServerEnabled(service.Server) {
+		return ServiceBinding{}, false, nil
+	}
+	id, err := snapshot.Installation.ServerID(service.Server)
+	if err != nil {
+		return ServiceBinding{}, false, err
+	}
+	return ServiceBinding{InstallationID: record.Installation, ServerID: id, Digest: snapshot.Selected.Digest(), ServerName: service.Server}, true, nil
 }

@@ -154,6 +154,7 @@ func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
 	}
 	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "memory"}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-memory")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: installed.ID, Contribution: "memory"}, "select-memory")
 	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "views", "memory.html"))
 	if err != nil || html.HTML != string(authored) {
@@ -202,6 +203,7 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 	}
 	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "schedules"}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-schedules")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "schedules", InstallationID: installed.ID, Contribution: "schedules"}, "select-schedules")
 	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
 	authored, err := os.ReadFile(filepath.Join(source, "views", "schedules.html"))
 	if err != nil || html.HTML != string(authored) {

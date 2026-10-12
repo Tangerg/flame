@@ -16,6 +16,21 @@ type pluginBindingStub struct {
 	page     *protocol.Page[protocol.PluginInstallation]
 	selected *protocol.PluginInstallation
 	renamed  *protocol.Session
+	provider *protocol.PluginProviderSelection
+}
+
+func (s pluginBindingStub) SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, flameruntime.CommandOptions) (*protocol.PluginProviderSelection, error) {
+	return s.provider, nil
+}
+
+func TestPluginProviderSelectionRefusesAnotherBinding(t *testing.T) {
+	request := protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: "requested", Contribution: "memory"}
+	for _, value := range []*protocol.PluginProviderSelection{nil, {Role: "other", InstallationID: "requested", Contribution: "memory"}, {Role: "memory", InstallationID: "other", Contribution: "memory"}, {Role: "memory", InstallationID: "requested", Contribution: "other"}} {
+		connection := &Connection{plugins: pluginBindingStub{provider: value}, meta: requestMeta("test")}
+		if _, err := connection.SelectPluginProvider(t.Context(), request, ""); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+			t.Fatalf("another provider accepted: %+v, %v", value, err)
+		}
+	}
 }
 
 func (s pluginBindingStub) RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error) {

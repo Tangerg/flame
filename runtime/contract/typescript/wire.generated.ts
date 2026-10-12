@@ -1092,6 +1092,8 @@ export type PageOfPendingInterruptSet = Page<PendingInterruptSet>;
 
 export type PageOfPluginInstallation = Page<PluginInstallation>;
 
+export type PageOfPluginProviderSelection = Page<PluginProviderSelection>;
+
 export type PageOfProvider = Page<Provider>;
 
 export type PageOfRunRef = Page<RunRef>;
@@ -1206,6 +1208,12 @@ export interface PluginInstallation {
 }
 
 export type PluginPresentation = "admitted" | "withheld";
+
+export interface PluginProviderSelection {
+  contribution: string;
+  installationId: string;
+  role: string;
+}
 
 export type PluginRealization =
   | { type: "available"; unavailableBackends?: string[] }
@@ -1740,6 +1748,12 @@ export interface SearchHit {
 
 export interface SearchResult {
   hits: SearchHit[];
+}
+
+export interface SelectPluginProviderRequest {
+  contribution: string;
+  installationId: string;
+  role: string;
 }
 
 export interface ServerCapabilities {

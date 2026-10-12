@@ -266,6 +266,10 @@
               "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error)"
             },
             {
+              "name": "ListPluginProviders",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)"
+            },
+            {
               "name": "ListPlugins",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
             },
@@ -404,6 +408,10 @@
             {
               "name": "SelectPlugin",
               "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "SelectPluginProvider",
+              "signature": "func(ctx context.Context, request protocol.SelectPluginProviderRequest, options CommandOptions) (*protocol.PluginProviderSelection, error)"
             },
             {
               "name": "SetApprovalMode",
@@ -806,6 +814,10 @@
               "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error)"
             },
             {
+              "name": "ListPluginProviders",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)"
+            },
+            {
               "name": "ListPlugins",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
             },
@@ -944,6 +956,10 @@
             {
               "name": "SelectPlugin",
               "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "SelectPluginProvider",
+              "signature": "func(ctx context.Context, request protocol.SelectPluginProviderRequest, options CommandOptions) (*protocol.PluginProviderSelection, error)"
             },
             {
               "name": "SetApprovalMode",
@@ -7904,6 +7920,33 @@
           "underlying": "string"
         },
         {
+          "name": "PluginProviderSelection",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Role",
+              "type": "string",
+              "tag": "json:\"role\""
+            },
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "PluginRealization",
           "kind": "struct",
           "fields": [
@@ -9700,6 +9743,33 @@
           "name": "ScheduleWorkspaceMode",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "SelectPluginProviderRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Role",
+              "type": "string",
+              "tag": "json:\"role\""
+            },
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
         },
         {
           "name": "ServerCapabilities",

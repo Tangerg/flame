@@ -8,6 +8,8 @@ import (
 )
 
 type pluginBinding interface {
+	ListPluginProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)
+	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, flameruntime.CommandOptions) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)
 	InstallPlugin(context.Context, protocol.InstallPluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
@@ -16,6 +18,36 @@ type pluginBinding interface {
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
 	RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+}
+
+func (r *Connection) ListPluginProviders(ctx context.Context) ([]protocol.PluginProviderSelection, error) {
+	page, err := r.plugins.ListPluginProviders(ctx, r.callOptions())
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	values, err := requireCompletePage("list plugin providers", page)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireUniqueIdentities("list plugin providers", values, func(value protocol.PluginProviderSelection) string { return value.Role }); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func (r *Connection) SelectPluginProvider(ctx context.Context, request protocol.SelectPluginProviderRequest, commandID replay.CommandID) (*protocol.PluginProviderSelection, error) {
+	options, err := r.commandOptionsFor(commandID)
+	if err != nil {
+		return nil, err
+	}
+	value, err := r.plugins.SelectPluginProvider(ctx, request, options)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || value.Role != request.Role || value.InstallationID != request.InstallationID || value.Contribution != request.Contribution {
+		return nil, runtimeContractViolation("select plugin provider returned another binding")
+	}
+	return value, nil
 }
 
 func (r *Connection) RenamePluginSession(ctx context.Context, request protocol.RenamePluginSessionRequest, commandID replay.CommandID) (*protocol.Session, error) {

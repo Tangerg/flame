@@ -1091,6 +1091,14 @@ func registerPluginValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginServerDeclaration](), Constraints: mcpServerName("name")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginInput](), Constraints: mcpServerName("server")})
+	for _, shape := range []reflect.Type{typeOf[protocol.SelectPluginProviderRequest](), typeOf[protocol.PluginProviderSelection]()} {
+		constraints := append(mcpServerName("contribution"),
+			FieldConstraint{Field: "role", Kind: ConstraintNonEmpty},
+			FieldConstraint{Field: "role", Kind: ConstraintMaxLength, Limit: 256},
+			FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+		)
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	}
 	for _, shape := range []reflect.Type{typeOf[protocol.StagePluginRequest](), typeOf[protocol.PluginRequest](), typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.SetPluginEnablementRequest](), typeOf[protocol.ConfigurePluginRequest]()} {
 		constraints := []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()}}
 		switch shape {

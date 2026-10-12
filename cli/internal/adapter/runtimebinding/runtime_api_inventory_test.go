@@ -360,6 +360,8 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"SetPluginEnablement":           command("plugins", "plugins set-enablement"),
 		"UninstallPlugin":               command("plugins", "plugins uninstall"),
 		"ListPlugins":                   command("plugins", "plugins list"),
+		"ListPluginProviders":           command("plugins", "plugins providers"),
+		"SelectPluginProvider":          command("plugins", "plugins select-provider"),
 		"ListApprovalRules":             command("approvals", "approvals ls/completion and TUI /rules"),
 		"SetApprovalMode":               command("approvals", "TUI /approval"),
 		"GetGoal":                       command("goals", "TUI /goal"),

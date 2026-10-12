@@ -7,6 +7,8 @@ import (
 
 const (
 	PluginsList               Name = "plugins.list"
+	PluginsListProviders      Name = "plugins.listProviders"
+	PluginsSelectProvider     Name = "plugins.selectProvider"
 	PluginsInstall            Name = "plugins.install"
 	PluginsStage              Name = "plugins.stage"
 	PluginsSelect             Name = "plugins.select"
@@ -40,6 +42,16 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsListProviders, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ListPluginProviders(context.Context) (*protocol.Page[protocol.PluginProviderSelection], error)
+	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginProviderSelection], error) {
+		return s.ListPluginProviders(ctx)
+	})
+	r.command(MethodMeta{Name: PluginsSelectProvider, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error)
+	}, ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
+		return s.SelectPluginProvider(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsReadRenderer, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ReadPluginRenderer(context.Context, protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error)
 	}, ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {

@@ -9,7 +9,8 @@ same watermark compare-and-set and human-review invariants as every other write.
 
 The installed stdio process opens only `PLUGIN_DATA/memory.db`, under an exclusive
 process lease. A release declares the closed `memory` service against its own
-stdio server. Runtime admits at most one enabled owner and connects its human
+stdio server. Multiple candidates may be enabled; product composition explicitly
+selects one installation/contribution for new calls. Runtime connects its human
 `agentMemory.*` operations, Run context reads and source-qualified `search_memory`
 Tool to that exact generation. Closing a view cannot stop this process.
 
@@ -33,7 +34,8 @@ dispatch admission, retries only query that owner's receipt: a missing receipt
 never authorizes resubmission. An unavailable new owner returns
 `plugin_unavailable`; an unavailable original dispatched owner remains an unknown
 outcome and is never replaced by a current provider. Run context reads omit
-this optional feature when no owner is enabled. An enabled owner's failures remain
+this optional feature when its selected owner is unavailable. Another enabled
+candidate never silently takes over. An available selected owner's failures remain
 explicit. An admitted command with an unconfirmed transport reply invalidates human
 reads without claiming success; the next read consults the backend. Disabled curation
 leaves committed extraction pending and resumes its fold after restart. Human edits

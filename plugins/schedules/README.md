@@ -8,7 +8,10 @@ any scheduling fact.
 
 The installed stdio process holds an exclusive lease and opens only
 `PLUGIN_DATA/schedules.db`. Its closed `schedules` declaration binds human commands
-and source-qualified list/create/delete MCP Tools to one enabled owner. Runtime
+to a provider candidate. Product composition explicitly selects an installation
+and contribution for human commands and background scans; enabling another
+candidate does not replace it. Source-qualified MCP Tools retain their concrete
+installation identity. Runtime
 owns the minute wake-up and dispatch lifecycle; the backend's bounded scanner
 claims due work and rotates pending pages fairly. Failed pending work cannot
 starve new due definitions.

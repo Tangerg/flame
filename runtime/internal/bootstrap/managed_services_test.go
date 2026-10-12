@@ -104,7 +104,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 	}
 }
 
-func TestMemoryServiceHasOneOwnerAndReenableRetainsItsPrivateFacts(t *testing.T) {
+func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "memory")
@@ -118,14 +118,18 @@ func TestMemoryServiceHasOneOwnerAndReenableRetainsItsPrivateFacts(t *testing.T)
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
 		return r.endpoint.Invoke(t.Context(), method, input, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	}
-	conflict := invoke(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "second-enable")
-	if !errors.Is(conflict.Failure, protocol.ErrInvalidParams) {
-		t.Fatalf("second Memory owner=%v", conflict.Failure)
+	enabled := invoke(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "second-enable")
+	if enabled.Failure != nil || !enabled.Value.(*protocol.PluginInstallation).Enabled {
+		t.Fatalf("second candidate was not enabled: %v", enabled.Failure)
+	}
+	choices := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])
+	if len(choices.Data) != 1 || choices.Data[0].InstallationID != first.ID {
+		t.Fatalf("enabling another candidate changed the owner: %+v", choices.Data)
 	}
 	secondState := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	for _, installation := range secondState.Data {
-		if installation.ID == second.ID && installation.Enabled == true {
-			t.Fatal("refused owner became enabled")
+		if installation.ID == second.ID && !installation.Enabled {
+			t.Fatal("independent candidate lost enablement")
 		}
 	}
 	reused := invoke(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "different fact"}, "fact")

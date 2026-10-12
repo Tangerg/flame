@@ -143,7 +143,11 @@ func poMCPConfig(t *testing.T) Config {
 func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation {
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	return r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
+	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
+	for _, service := range installed.Selected.Services {
+		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: string(service.Type), InstallationID: installed.ID, Contribution: service.Server}, "select-"+string(service.Type))
+	}
+	return installed
 }
 
 const poMCPManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package","extensions":{"io.github.tangerg.flame":{"apiVersion":1,"requests":[{"capability":"tools.invoke","targets":["reviews/record","reviews/summarize"]}]}}}`

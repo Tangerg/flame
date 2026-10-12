@@ -391,6 +391,12 @@ func currentSchema() []string {
             staged_digest TEXT REFERENCES plugin_releases(digest) CHECK (staged_digest IS NOT selected_digest),
             enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))
         )`,
+		// Removing an installation cannot silently choose another provider.
+		`CREATE TABLE IF NOT EXISTS plugin_provider_selections (
+            role TEXT PRIMARY KEY CHECK (length(role) BETWEEN 1 AND 256),
+            installation_id TEXT NOT NULL,
+            contribution TEXT NOT NULL
+        )`,
 		// Command routes survive installation removal; only unresolved routes
 		// retain release bytes. They never store the backend's business result.
 		`CREATE TABLE IF NOT EXISTS plugin_commands (

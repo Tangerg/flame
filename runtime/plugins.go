@@ -10,6 +10,14 @@ func (r *binding) ListPlugins(ctx context.Context, options CallOptions) (*protoc
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.PluginsList, struct{}{}, callOptions(options))
 }
 
+func (r *binding) ListPluginProviders(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error) {
+	return r.invoke[struct{}, *protocol.Page[protocol.PluginProviderSelection]](ctx, delivery.PluginsListProviders, struct{}{}, callOptions(options))
+}
+
+func (r *binding) SelectPluginProvider(ctx context.Context, request protocol.SelectPluginProviderRequest, options CommandOptions) (*protocol.PluginProviderSelection, error) {
+	return r.invoke[protocol.SelectPluginProviderRequest, *protocol.PluginProviderSelection](ctx, delivery.PluginsSelectProvider, request, commandOptions(options))
+}
+
 func (r *binding) RenamePluginSession(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.RenamePluginSessionRequest, *protocol.Session](ctx, delivery.PluginsRenameSession, request, commandOptions(options))
 }
