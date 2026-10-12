@@ -26,7 +26,10 @@ same-key redelivery returns the original reply; changing the method or input is 
 idempotency conflict. Runtime stores no competing command outcome. An unavailable
 owner returns `plugin_unavailable` for human operations; Run context reads omit
 this optional feature when no owner is enabled. An enabled owner's failures remain
-explicit.
+explicit. An admitted command with an unconfirmed transport reply invalidates human
+reads without claiming success; the next read consults the backend. Revoked curation
+leaves committed extraction pending and resumes its fold after restart. Human edits
+and review remain authoritative throughout.
 
 Disable, revoke and uninstall withdraw the generation and its capabilities. They
 retain its private data. Reenable uses the same installation directory; a new

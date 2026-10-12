@@ -22,14 +22,14 @@ import (
 func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *testing.T) {
 	source := reviewExamplePackage(t)
 	evidencePath := filepath.Join(t.TempDir(), "lost-response.json")
-	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", "response-loss"), "./testdata/review-response-loss")
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", "response-loss"), "./testdata/managed-message-loss")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build transport probe: %s, %v", output, err)
 	}
 	manifest, err := json.Marshal(map[string]any{
 		"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
 		"mcpServers": map[string]any{"reviews": map[string]any{
-			"type": "stdio", "command": "./bin/response-loss", "args": []string{evidencePath, "./bin/reviews"},
+			"type": "stdio", "command": "./bin/response-loss", "args": []string{evidencePath, "./bin/reviews", "tools/call", "update_review", "response"},
 		}},
 	})
 	if err != nil {

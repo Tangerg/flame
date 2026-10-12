@@ -55,11 +55,14 @@ func (s *Schedules) Create(ctx context.Context, input schedule.Draft) (schedule.
 	}
 	value, err := managedmcp.CallCommand[schedule.Draft, schedule.Snapshot](ctx, session, rpc.Create, operation.Identity(ctx), input)
 	if err != nil {
+		s.publish.Notify(invalidation.ForSchedules())
 		return schedule.Schedule{}, rpc.DecodeError(err)
 	}
 	saved, err := schedule.Restore(value)
 	if err == nil {
 		s.publish.Notify(invalidation.ForSchedules(saved.ID()))
+	} else {
+		s.publish.Notify(invalidation.ForSchedules())
 	}
 	return saved, err
 }
@@ -70,11 +73,14 @@ func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedu
 	}
 	value, err := managedmcp.CallCommand[rpc.UpdateInput, schedule.Snapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: input.Patch.ModelSelection})
 	if err != nil {
+		s.publish.Notify(invalidation.ForSchedules(input.ID))
 		return schedule.Schedule{}, rpc.DecodeError(err)
 	}
 	saved, err := schedule.Restore(value)
 	if err == nil {
 		s.publish.Notify(invalidation.ForSchedules(saved.ID()))
+	} else {
+		s.publish.Notify(invalidation.ForSchedules())
 	}
 	return saved, err
 }
@@ -84,8 +90,6 @@ func (s *Schedules) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	_, err = managedmcp.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
-	if err == nil {
-		s.publish.Notify(invalidation.ForSchedules(id))
-	}
+	s.publish.Notify(invalidation.ForSchedules(id))
 	return rpc.DecodeError(err)
 }

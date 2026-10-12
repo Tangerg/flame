@@ -76,10 +76,11 @@ func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content strin
 	}
 	value, err := managedmcp.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, operation.Identity(ctx), rpc.AddInput{Scope: scope, CWD: cwd, Content: content})
 	if err != nil {
+		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
 	}
 	item, err := memory.RestoreItem(value.Item)
-	if err == nil && value.Changed {
+	if value.Changed {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}
 	return item, err
@@ -91,12 +92,11 @@ func (m *Memory) Update(ctx context.Context, id string, content *string, pinned 
 	}
 	value, err := managedmcp.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, operation.Identity(ctx), rpc.UpdateInput{ID: id, Content: content, Pinned: pinned})
 	if err != nil {
+		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
 	}
 	item, err := memory.RestoreItem(value)
-	if err == nil {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
-	}
+	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return item, err
 }
 func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDecision) error {
@@ -105,9 +105,7 @@ func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDe
 		return err
 	}
 	_, err = managedmcp.CallCommand[rpc.ReviewInput, rpc.Ack](ctx, session, rpc.Review, operation.Identity(ctx), rpc.ReviewInput{ID: id, Decision: decision})
-	if err == nil {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
-	}
+	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Delete(ctx context.Context, id string) error {
@@ -116,9 +114,7 @@ func (m *Memory) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	_, err = managedmcp.CallCommand[rpc.ItemInput, rpc.Ack](ctx, session, rpc.Delete, operation.Identity(ctx), rpc.ItemInput{ID: id})
-	if err == nil {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
-	}
+	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
@@ -204,7 +200,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	}
 	defer release()
 	result, err := managedmcp.Call[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}})
-	if err == nil && result.Published {
+	if err != nil || result.Published {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}
 	return rpc.DecodeError(err)

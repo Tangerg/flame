@@ -8,11 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -181,22 +185,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 }
 
 func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
-	source := filepath.Join(t.TempDir(), "memory")
-	if err := os.CopyFS(source, os.DirFS(filepath.Join(firstPartyPackages, "memory"))); err != nil {
-		t.Fatal(err)
-	}
-	evidence := filepath.Join(t.TempDir(), "lost-response.json")
-	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", "response-loss"), "./testdata/review-response-loss")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build response-loss fixture: %s %v", output, err)
-	}
-	descriptor, err := json.Marshal(map[string]any{"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json", "mcpServers": map[string]any{"memory": map[string]any{"type": "stdio", "command": "./bin/response-loss", "args": []string{evidence, "./bin/memory", "flame.memory/add.v1"}}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(source, "mcp.json"), descriptor, 0600); err != nil {
-		t.Fatal(err)
-	}
+	source, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v1", "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -205,6 +194,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	}
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	changed := managedServiceChange(t, r, protocol.TopicAgentMemoryChanged)
 	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "committed before transport loss"}
 	lost := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryAdd, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {
@@ -213,11 +203,294 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	if _, err := os.Stat(evidence); err != nil {
 		t.Fatalf("backend did not commit before response loss: %v", err)
 	}
-	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: server}, "reconnect")
+	requireManagedServiceChange(t, changed)
+	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-memory")
+	unavailable := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
+		t.Fatalf("revoked Memory remained callable: %v", unavailable.Failure)
+	}
+	r.close()
+	r = poMCPOpen(t, cfg)
+	r.must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "reapprove-memory")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	replay := r.must(delivery.AgentMemoryAdd, request, "lost").(*protocol.AgentMemoryItem)
 	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
-	if len(page.Data) != 1 || page.Data[0] != *replay {
+	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
+	}
+}
+
+func managedMessageLossPackage(t *testing.T, name, method, stage string) (string, string) {
+	t.Helper()
+	source := filepath.Join(t.TempDir(), name)
+	if err := os.CopyFS(source, os.DirFS(filepath.Join(firstPartyPackages, name))); err != nil {
+		t.Fatal(err)
+	}
+	evidence := filepath.Join(t.TempDir(), "lost-message.json")
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", "message-loss"), "./testdata/managed-message-loss")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build message-loss fixture: %s %v", output, err)
+	}
+	descriptor, err := json.Marshal(map[string]any{"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json", "mcpServers": map[string]any{name: map[string]any{"type": "stdio", "command": "./bin/message-loss", "args": []string{evidence, "./bin/" + name, method, "", stage}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "mcp.json"), descriptor, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return source, evidence
+}
+
+func managedServiceChange(t *testing.T, r *poMCPRuntime, topic protocol.RuntimeTopic) <-chan error {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{topic}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if subscription.Failure != nil {
+		t.Fatal(subscription.Failure)
+	}
+	changed := make(chan error, 1)
+	go func() {
+		for event, err := range subscription.Events {
+			if err != nil {
+				changed <- err
+				return
+			}
+			value := event.(protocol.RuntimeEvent)
+			if topic == protocol.TopicAgentMemoryChanged && value.Type == protocol.RuntimeAgentMemoryChanged || topic == protocol.TopicSchedulesChanged && value.Type == protocol.RuntimeSchedulesChanged {
+				changed <- nil
+				return
+			}
+		}
+		changed <- errors.New("service subscription ended before invalidation")
+	}()
+	return changed
+}
+func requireManagedServiceChange(t *testing.T, changed <-chan error) {
+	t.Helper()
+	select {
+	case err := <-changed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(lifecycleWaitBudget(t)):
+		t.Fatal("committed reply loss left human reads stale")
+	}
+}
+
+func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
+	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.Create, "response")
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, source)
+	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	r.poMCPTools(server, ready)
+	changed := managedServiceChange(t, r, protocol.TopicSchedulesChanged)
+	request := protocol.CreateScheduleRequest{Title: "captured schedule", Instructions: "inspect captured work", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}
+	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesCreate, request, delivery.Options{IdempotencyKey: "lost-create", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if lost.Failure == nil {
+		t.Fatal("withheld create reply appeared successful")
+	}
+	requireManagedServiceChange(t, changed)
+	raw, err := os.ReadFile(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var captured struct {
+		Response struct {
+			Result managedmcp.Result[scheduledomain.Snapshot] `json:"result"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(raw, &captured); err != nil {
+		t.Fatal(err)
+	}
+	if captured.Response.Result.Value == nil {
+		t.Fatal("create did not commit before response loss")
+	}
+	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke")
+	r.close()
+	r = poMCPOpen(t, cfg)
+	r.must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "reapprove")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
+	r.poMCPTools(server, ready)
+	replay := r.must(delivery.SchedulesCreate, request, "lost-create").(*protocol.Schedule)
+	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) || replay.ID != captured.Response.Result.Value.ID {
+		t.Fatalf("lost create repeated mutation: %+v", page.Data)
+	}
+}
+
+func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testing.T) {
+	for _, test := range []struct{ name, method, stage string }{
+		{"prepare reply", schedulerpc.PrepareManual, "response"}, {"accept request", schedulerpc.Accept, "request"}, {"accept reply", schedulerpc.Accept, "response"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source, evidence := managedMessageLossPackage(t, "schedules", test.method, test.stage)
+			cfg := poMCPConfig(t)
+			r := poMCPOpen(t, cfg)
+			installed := poMCPActivate(r, source)
+			server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+			ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+			r.poMCPTools(server, ready)
+			saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
+			var changed <-chan error
+			if test.method == schedulerpc.Accept {
+				changed = managedServiceChange(t, r, protocol.TopicSchedulesChanged)
+			}
+			request := protocol.RunScheduleNowRequest{ID: saved.ID}
+			lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+			if lost.Failure == nil {
+				t.Fatal("withheld dispatch message appeared successful")
+			}
+			if changed != nil {
+				requireManagedServiceChange(t, changed)
+			}
+			raw, err := os.ReadFile(evidence)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var captured struct {
+				Request struct {
+					Params struct {
+						Input schedulerpc.AcceptInput `json:"input"`
+					} `json:"params"`
+				} `json:"request"`
+				Response struct {
+					Result managedmcp.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
+				} `json:"response"`
+			}
+			if err := json.Unmarshal(raw, &captured); err != nil {
+				t.Fatal(err)
+			}
+			accepted := protocol.RunScheduleNowResponse{RunID: captured.Request.Params.Input.RunID}
+			if test.method == schedulerpc.PrepareManual {
+				if captured.Response.Result.Value == nil {
+					t.Fatal("manual queue did not commit before response loss")
+				}
+				accepted.RunID = captured.Response.Result.Value.RunID
+				accepted.SessionID = captured.Response.Result.Value.SessionID
+			}
+			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
+			if test.method == schedulerpc.Accept {
+				deadline := time.Now().Add(lifecycleWaitBudget(t))
+				for {
+					current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
+					accepted.SessionID = current.SessionID
+					if current.Status == protocol.RunStatusFinished {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatalf("accepted Run did not survive backend withdrawal: %+v", current)
+					}
+					time.Sleep(10 * time.Millisecond)
+				}
+				r.close()
+				r = poMCPOpen(t, cfg)
+				r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: accepted.SessionID}, "delete-accepted-session")
+			}
+			r.close()
+			r = poMCPOpen(t, cfg)
+			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
+			r.poMCPTools(server, ready)
+			replay := r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
+			if *replay != accepted {
+				t.Fatalf("lost dispatch opened another Run: got=%+v want=%+v", replay, accepted)
+			}
+			replay = r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
+			if *replay != accepted {
+				t.Fatal("exact manual replay changed identity")
+			}
+			page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+			if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
+				t.Fatalf("acceptance replay advanced definition again: %+v", page.Data)
+			}
+			if test.method == schedulerpc.Accept {
+				sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
+				if len(sessions.Data) != 0 {
+					t.Fatalf("deleted acceptance recreated Session: %+v", sessions.Data)
+				}
+			}
+		})
+	}
+}
+
+func TestScheduleLostPrepareReplyRecoversCapturedWorkOnStartup(t *testing.T) {
+	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.PrepareManual, "response")
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, source)
+	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	r.poMCPTools(&server, ready)
+	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
+	request := protocol.RunScheduleNowRequest{ID: saved.ID}
+	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if lost.Failure == nil {
+		t.Fatal("withheld prepare reply appeared successful")
+	}
+	raw, err := os.ReadFile(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var captured struct {
+		Response struct {
+			Result managedmcp.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(raw, &captured); err != nil {
+		t.Fatal(err)
+	}
+	if captured.Response.Result.Value == nil {
+		t.Fatal("manual preparation did not commit")
+	}
+	pending := captured.Response.Result.Value
+	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: server}, "reconnect")
+	r.poMCPTools(&server, ready)
+	title, instructions := "edited title", "edited instructions"
+	r.must(delivery.SchedulesUpdate, protocol.UpdateScheduleRequest{ID: saved.ID, ExpectedRevision: saved.Revision, Title: &title, Instructions: &instructions}, "edit-after-capture")
+	r.close()
+	r = poMCPOpen(t, cfg)
+	r.poMCPTools(&server, ready)
+	workerCtx, cancelWorkers := context.WithCancel(t.Context())
+	joins := r.host.application.startWorkers(workerCtx)
+	t.Cleanup(func() { cancelWorkers(); <-joins.scheduler; <-joins.recovery })
+	deadline := time.Now().Add(lifecycleWaitBudget(t))
+	for {
+		result := r.endpoint.Invoke(t.Context(), delivery.RunsGet, protocol.GetRunRequest{RunID: pending.RunID}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		if result.Failure == nil {
+			break
+		}
+		if !errors.Is(result.Failure, protocol.ErrRunNotFound) || time.Now().After(deadline) {
+			t.Fatalf("startup did not recover private pending work: %v", result.Failure)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	session := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: pending.SessionID}, "").(*protocol.Session)
+	if session.Title != saved.Title {
+		t.Fatalf("startup rewrote captured execution: %+v", session)
+	}
+	trajectory := r.must(delivery.SessionsTrajectory, protocol.ListSessionTrajectoryRequest{SessionID: pending.SessionID}, "").(*protocol.Page[protocol.TrajectoryEntry])
+	capturedInput := false
+	for _, entry := range trajectory.Data {
+		if entry.Item == nil || entry.Item.Type != protocol.ItemTypeUserMessage {
+			continue
+		}
+		if len(entry.Item.Content) != 1 || entry.Item.Content[0].Text != saved.Instructions {
+			t.Fatalf("startup replaced captured instructions: %+v", entry.Item.Content)
+		}
+		capturedInput = true
+	}
+	if !capturedInput {
+		t.Fatal("startup opening omitted captured instructions")
+	}
+	replay := r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
+	if replay.RunID != pending.RunID || replay.SessionID != pending.SessionID {
+		t.Fatalf("startup recovery repeated admission: %+v", replay)
+	}
+	sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
+	if len(sessions.Data) != 1 {
+		t.Fatalf("startup recovery created extra Sessions: %+v", sessions.Data)
 	}
 }

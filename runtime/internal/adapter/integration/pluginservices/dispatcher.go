@@ -52,10 +52,10 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBindin
 		return runs.StartResult{}, err
 	}
 	_, err = managedmcp.Call[rpc.AcceptInput, rpc.Ack](ctx, session, rpc.Accept, rpc.AcceptInput{RunID: request.RunID()})
+	d.publish.Notify(invalidation.ForSchedules(request.ScheduleID()))
 	if err != nil {
 		return runs.StartResult{}, rpc.DecodeError(err)
 	}
-	d.publish.Notify(invalidation.ForSchedules(request.ScheduleID()))
 	return result, nil
 }
 func (d *Dispatcher) RunNow(ctx context.Context, id string) (runs.StartResult, error) {

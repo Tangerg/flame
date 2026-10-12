@@ -1,7 +1,7 @@
 // Package invalidation carries the "this moved, read it again" notices a use case
-// publishes after its durable mutation commits.
+// publishes after a durable mutation or an unconfirmed remote command.
 //
-// The facts are application-owned: which resource a committed write moved, and
+// The facts are application-owned: which resource may have moved, and
 // which of its members. Producers publish this semantic notice without choosing
 // a transport topic or presentation shape.
 //
@@ -68,7 +68,7 @@ func (r Resource) String() string {
 	return string(r)
 }
 
-// Notice is one committed change: the resource, and the members of it a reader can
+// Notice marks potentially stale reads: the resource, and the members of it a reader can
 // narrow to. Empty ID sets mean "every member of this resource may be stale",
 // which is the honest answer when a mutation's scope is not enumerable.
 type Notice struct {
@@ -100,7 +100,7 @@ func InSessions(resource Resource, ids ...string) Notice {
 	return Notice{Resource: resource, SessionIDs: slices.Clone(ids)}
 }
 
-// ForSchedules is the notice for committed changes to editable schedules.
+// ForSchedules marks editable schedule reads that may be stale.
 func ForSchedules(ids ...string) Notice {
 	return Notice{Resource: Schedules, ScheduleIDs: slices.Clone(ids)}
 }

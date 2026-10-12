@@ -34,8 +34,8 @@ same owner; uninstall does not delete data. Definition disable stops future cron
 claims, while captured dispatch remains pending. There is no host Schedule store,
 legacy worker or fallback to a built-in tool.
 
-An admitted scheduling Tool dispatch invalidates human reads even when its reply
-fails. The notice carries no facts; the next query reads the backend owner.
+An admitted scheduling Tool dispatch and an unconfirmed human command invalidate
+human reads even when the reply fails. The notice carries no facts; the next query reads the backend owner.
 
 Use [the local build workflow](../README.md). Backend source lives in
 [`runtime/internal/plugins/schedules`](../../runtime/internal/plugins/schedules) as part of the

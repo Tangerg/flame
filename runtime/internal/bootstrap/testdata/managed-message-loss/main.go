@@ -22,8 +22,8 @@ func main() {
 }
 
 func run() (err error) {
-	if len(os.Args) != 3 && len(os.Args) != 4 {
-		return fmt.Errorf("response loss probe requires an evidence path and backend executable")
+	if len(os.Args) != 6 || (os.Args[5] != "request" && os.Args[5] != "response") {
+		return fmt.Errorf("message loss probe requires evidence, backend, method, tool and request or response stage")
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -63,12 +63,18 @@ func run() (err error) {
 				cancel()
 				return
 			}
-			matched := request.Method == "tools/call" && request.Params.Name == "update_review"
-			if len(os.Args) == 4 {
-				matched = request.Method == os.Args[3]
-			}
+			matched := request.Method == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
 			if matched {
-				updates.Store(string(request.ID), jsontext.Value(line))
+				if os.Args[5] == "request" {
+					withheld, err := withhold(line, nil)
+					if err != nil || withheld {
+						forwarded <- errors.Join(err, errors.New("message loss probe withheld request"))
+						cancel()
+						return
+					}
+				} else {
+					updates.Store(string(request.ID), jsontext.Value(line))
+				}
 			}
 			if _, err := fmt.Fprintln(input, string(line)); err != nil {
 				forwarded <- err
@@ -88,26 +94,12 @@ func run() (err error) {
 			return err
 		}
 		if request, ok := updates.LoadAndDelete(string(response.ID)); ok {
-			evidence, err := json.Marshal(struct {
-				DataDirectory string         `json:"dataDirectory"`
-				Request       jsontext.Value `json:"request"`
-				Response      jsontext.Value `json:"response"`
-			}{os.Getenv("PLUGIN_DATA"), request.(jsontext.Value), line})
+			withheld, err := withhold(request.(jsontext.Value), line)
 			if err != nil {
 				return err
 			}
-			file, err := os.OpenFile(os.Args[1], os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-			if err == nil {
-				_, writeErr := file.Write(evidence)
-				if err := errors.Join(writeErr, file.Close()); err != nil {
-					return err
-				}
-				// The real backend has returned its committed result. Retire the
-				// transport before Runtime can observe any of those response bytes.
-				return fmt.Errorf("response loss probe withheld the committed update")
-			}
-			if !errors.Is(err, os.ErrExist) {
-				return err
+			if withheld {
+				return errors.New("message loss probe withheld committed response")
 			}
 		}
 		if _, err := fmt.Fprintln(os.Stdout, string(line)); err != nil {
@@ -123,4 +115,24 @@ func run() (err error) {
 	default:
 		return nil
 	}
+}
+
+func withhold(request, response jsontext.Value) (bool, error) {
+	evidence, err := json.Marshal(struct {
+		DataDirectory string         `json:"dataDirectory"`
+		Request       jsontext.Value `json:"request"`
+		Response      jsontext.Value `json:"response,omitempty"`
+	}{os.Getenv("PLUGIN_DATA"), request, response})
+	if err != nil {
+		return false, err
+	}
+	file, err := os.OpenFile(os.Args[1], os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if errors.Is(err, os.ErrExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	_, writeErr := file.Write(evidence)
+	return true, errors.Join(writeErr, file.Close())
 }

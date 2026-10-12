@@ -386,7 +386,15 @@ Resume passes the claim's complete committed Items to the reducer. Each open Too
 
 Goal lifecycle and incarnation-local usage are read in one storage transaction. Usage remains a fold over terminal Runs; a read cannot combine an earlier Goal revision with accounting committed by a later transition.
 
-`schedule.Schedule` decides every revision transition. `Claim` produces the next Schedule state and its captured occurrence; SQLite persists both atomically under the original revision and due cursor. Run opening loads the current Schedule inside its transaction and applies `AcceptRun`, which retains the latest accepted Run time without moving the cron cursor. SQLite writes that decided state and never increments revisions or arbitrates Run times independently. Occurrence acceptance can survive Schedule deletion; manual admission requires the Schedule. Revision exhaustion rolls back the whole opening.
+The Schedules backend owns every definition revision transition. `Claim` derives
+the next Schedule and its captured occurrence; the private SQLite transaction persists
+both under the original revision and due cursor. Runtime opens Session/Run and records
+its own acceptance receipt atomically against current installation authority. Backend
+acceptance then settles the private pending entry and applies `AcceptRun` to a surviving
+definition without moving its cron cursor. Replayed acceptance changes nothing, including
+after Session or Schedule deletion. Manual preparation requires its source Schedule;
+captured dispatch survives later deletion. Revision exhaustion rolls back private acceptance
+and leaves the same pending identity available for reconciliation.
 
 A value is validated where it enters the process, and read everywhere else. The boundaries that own that answer are the ones facing something untrusted: a use case turning caller input into a domain value, an adapter parsing a remote server's reply, and a store decoding its own persisted rows. An Application that re-checks identity, uniqueness or field agreement on the way back out of its own port is not defending the product — it is a second implementation of a rule the producer already owns, and it drifts. Uniqueness stated by a primary key, a lookup keyed by the identity it was asked for, and a projection whose contradictory states the producer clears at the transition are all facts to consume, not to reprove. A test that reaches this code through a fake port returning something the real one cannot produce is freezing the defense, not the contract.
 

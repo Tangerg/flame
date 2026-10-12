@@ -216,23 +216,23 @@ arrives as `unset`, `configured` or `value`: a configured secret is shown as con
 its text never reaches the client. Package themes load exactly while Runtime reports the
 installation's `presentation` as `admitted`; the client never derives it from enablement,
 approval or `realization`.
-An MCP server's failed status names its category (connection, tool discovery,
-configuration, authorization, unavailable release or backend) through localized problem types.
+An MCP server's failed status renders its typed problem category as localized text.
 The status, authorization attempt and connection test projections accept only the categories
 their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
 Optional trajectory, Memory, Schedules and Usage pages use one qualified carrier lifecycle.
-Install the first-party packages from `plugins/trajectory`, `plugins/memory`,
-`plugins/schedules` and `plugins/usage` through Settings → Plugins, approve their
-exact digests, then enable them. Memory captures
-project/user scope in trusted Host controls. Its guest renders canonical candidates and
-active items, with current-page filters and pagination; trusted Host forms retain add,
-review, edit, pin and delete. Runtime remains the sole memory owner. Removing the package
-withdraws presentation without deleting memory. Rebuild all clients for protocol
-2026-10-10.5. Trajectory, Memory and Schedules use package version 2.0.0; Usage uses
-1.0.0. Approve the current bytes for the `flame.view.ready.v2` /
-`flame.view.connect.v2` handshake.
+Build target-specific Memory and Schedules packages with
+`node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages`.
+Install the built `memory` and `schedules` directories, alongside `plugins/trajectory`
+and `plugins/usage`, through Settings → Plugins. Approve exact digests and enable them.
+Memory captures project/user scope in trusted Host controls. Its guest renders canonical
+candidates and active items; trusted Host forms retain add, review, edit, pin and delete.
+The Memory backend alone owns these facts; Runtime routes admitted commands and supplies
+bounded model capabilities. Withdrawal retires the backend generation and retains its
+private data. Rebuild all clients for protocol 2026-10-12.1. Memory and Schedules use
+package version 3.0.0, Trajectory uses 2.0.0 and Usage uses 1.0.0. Approve current bytes
+for the `flame.view.ready.v2` / `flame.view.connect.v2` handshake.
 Packages may also declare `renameSession` actions. An admitted package row displays a
 trusted host form with the operation and captured Session ID/revision. The human submits
 the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission

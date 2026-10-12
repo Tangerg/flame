@@ -102,7 +102,9 @@ release. The Host's `settings/schedules` owns trusted authoring and command rece
 its public controls capture Runtime revision and workspace intent. Templates only initialize
 explicitly opened drafts. The isolated page consumes canonical schedule pages, including
 reported firing times; it cannot submit commands or supply timers. Package withdrawal removes
-the view without changing Runtime's Schedule, Occurrence or worker ownership.
+the view and withdraws the managed backend. The Schedules backend owns definitions,
+Occurrence claims, captured pending work and firing acceptance. Runtime owns dispatch
+wake-ups and Session/Run acceptance; accepted Runs continue after withdrawal.
 
 Usage presentation lives in the optional `plugins/usage` portable release. The trusted
 Host binds one Runtime-owned summary period; the isolated page renders canonical reports

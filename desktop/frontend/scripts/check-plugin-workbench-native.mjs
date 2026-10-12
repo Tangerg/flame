@@ -863,7 +863,7 @@ try {
     refreshedScheduleTitle,
   );
   await closePanel(installed.schedules.title, schedules.id);
-  console.log("Schedules: Runtime-owned saved schedule, refresh, retirement passed");
+  console.log("Schedules: backend-owned saved schedule, refresh, retirement passed");
 
   const report = await openPanel(installed.usage.title, "Recorded usage loaded.");
   usage = await rpc("usage.summary");

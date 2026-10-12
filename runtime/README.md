@@ -223,9 +223,10 @@ receipts. A saved Schedule retains complete instructions, never a template refer
 Rebuild Runtime, the shared client, CLI and Desktop together. Install and approve the new
 package bytes to restore rich graphical scheduling. The former settings pane, sidebar shortcut
 and compiled presets have no aliases or fallback. The Context Dock lists admitted package views.
-Disable or uninstall withdraws presentation and templates, preserving Schedule/Occurrence data
-and the default Runtime worker. Disabling or deleting a Schedule stops future claims; accepted
-occurrences keep their dispatch identity and require separate Run cancellation.
+Disable or uninstall withdraws presentation, templates and the managed backend generation,
+preserving its private definitions and pending work. Runtime retains dispatch wake-ups;
+reenable or restart resumes the same backend owner. Disabling or deleting a definition stops
+future claims; captured work keeps its dispatch identity. Accepted Runs require separate cancellation.
 
 ## Protocol 2026-10-10.3
 
