@@ -69,6 +69,7 @@ func TestBackendRejectsOldOrMalformedTransportBeforeInvocation(t *testing.T) {
 	for _, data := range []string{
 		`{}`, `{"protocol":"old","method":"read","input":{}}`,
 		`{"protocol":"` + BackendProtocol + `","method":"read"}`,
+		`{"protocol":"` + BackendProtocol + `","method":"read","input":{}}`,
 		`{"protocol":"` + BackendProtocol + `","method":"read","input":{},"extra":true}`,
 	} {
 		var request invokeParams

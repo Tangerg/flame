@@ -28,6 +28,17 @@ func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
 	return &Commands{store: store, admission: admission}, nil
 }
 
+// Find projects an original binding before new-call discovery does network I/O.
+// Bind rereads under admission before persisting, so this read cannot admit a
+// competing route or race installation replacement.
+func (c *Commands) Find(ctx context.Context, id, method string, input jsoninput.Input) (*plugin.Command, bool, error) {
+	command, found, err := c.store.Get(ctx, id)
+	if err == nil && found && !command.Matches(method, input) {
+		return nil, false, plugin.ErrCommandConflict
+	}
+	return command, found, err
+}
+
 func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (ServiceBinding, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Under(ctx, func() error {
@@ -46,7 +57,7 @@ func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.
 		if err != nil {
 			return err
 		}
-		command, err = plugin.NewCommand(id, method, input, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, binding.ServerName)
+		command, err = plugin.NewCommand(id, method, input, binding.Contract, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, binding.ServerName)
 		if err != nil {
 			return err
 		}

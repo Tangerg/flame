@@ -28,6 +28,7 @@ type CommandBinding struct {
 	ID       string
 	Method   string
 	Input    jsoninput.Input
+	Contract jsoninput.Input
 	Provider Dependency
 	Server   mcpserver.ServerName
 	Phase    CommandPhase
@@ -35,8 +36,8 @@ type CommandBinding struct {
 
 type Command struct{ record CommandBinding }
 
-func NewCommand(id, method string, input jsoninput.Input, provider Dependency, server mcpserver.ServerName) (*Command, error) {
-	return RestoreCommand(CommandBinding{ID: id, Method: method, Input: input, Provider: provider, Server: server, Phase: CommandPrepared})
+func NewCommand(id, method string, input, contract jsoninput.Input, provider Dependency, server mcpserver.ServerName) (*Command, error) {
+	return RestoreCommand(CommandBinding{ID: id, Method: method, Input: input, Contract: contract, Provider: provider, Server: server, Phase: CommandPrepared})
 }
 
 func RestoreCommand(record CommandBinding) (*Command, error) {
@@ -44,6 +45,9 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 		return nil, fmt.Errorf("%w: command identity or method", ErrInvalid)
 	}
 	if err := record.Input.Validate(); err != nil {
+		return nil, err
+	}
+	if err := record.Contract.Validate(); err != nil {
 		return nil, err
 	}
 	if err := record.Provider.Validate(); err != nil {

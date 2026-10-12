@@ -111,10 +111,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "typed-review-client"}, nil)
-	if err := contracts.Update.RegisterClient(client); err != nil {
-		t.Fatal(err)
-	}
-	if err := contracts.List.RegisterClient(client); err != nil {
+	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()

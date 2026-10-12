@@ -1209,7 +1209,7 @@
         {
           "name": "BackendProtocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-13.1\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-13.2\""
         },
         {
           "name": "InvocationKey",
@@ -1258,6 +1258,10 @@
           "signature": "func(server *mcp.Server) (*Backend, error)"
         },
         {
+          "name": "NewBinding",
+          "signature": "func(session *mcp.ClientSession, descriptor MethodDescriptor) (*Binding, error)"
+        },
+        {
           "name": "NewMethod",
           "signature": "func[P, R any](config MethodConfig) (*Method[P, R], error)"
         },
@@ -1290,6 +1294,10 @@
           "signature": "func(ctx context.Context) (jsoninput.Input, error)"
         },
         {
+          "name": "Resolve",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string) (*Binding, error)"
+        },
+        {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
         }
@@ -1302,6 +1310,32 @@
             {
               "name": "Publish",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Binding",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Contract",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "Descriptor",
+              "signature": "func() MethodDescriptor"
+            },
+            {
+              "name": "Invoke",
+              "signature": "func(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, error)"
+            },
+            {
+              "name": "ReadReceipt",
+              "signature": "func(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, bool, error)"
+            },
+            {
+              "name": "ValidateInput",
+              "signature": "func(input jsoninput.Input) error"
             }
           ]
         },

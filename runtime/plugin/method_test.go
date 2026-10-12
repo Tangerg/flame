@@ -86,6 +86,7 @@ type malformedParams struct {
 	sdk.ParamsBase
 	Protocol  string `json:"protocol"`
 	Method    string `json:"method"`
+	Contract  string `json:"contract"`
 	Input     any    `json:"input,omitzero"`
 	CommandID string `json:"commandId,omitzero"`
 	Extra     bool   `json:"extra,omitzero"`
@@ -106,6 +107,14 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
+	method, err := NewMethod[string, string](MethodConfig{Name: "flame.test/admission", Kind: Mutation, Target: "installation", Description: "admission"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := methodContract(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, params := range []malformedParams{
 		{Input: "input"},
 		{CommandID: "command"},
@@ -115,6 +124,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 	} {
 		params.Protocol = BackendProtocol
 		params.Method = "flame.test/admission"
+		params.Contract = contract.Digest()
 		if result, err := sdk.CallCustomMethod[*malformedParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &params); err == nil || result != nil {
 			t.Fatalf("malformed command reached a result: %+v, %v", result, err)
 		}
@@ -232,6 +242,15 @@ func TestCallsPreserveBackendFailureClassification(t *testing.T) {
 func replySession(t *testing.T, result *Result[string]) *sdk.ClientSession {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "backend"}, nil)
+	method, err := NewMethod[string, string](MethodConfig{Name: "flame.test/reply.v1", Kind: Mutation, Target: "installation", Description: "reply"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *describeParams) (*Result[Description], error) {
+		return Reply(Description{Protocol: BackendProtocol, Methods: []MethodDescriptor{method.Descriptor()}}, nil, nil)
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[string], error) {
 		return result, nil
 	}); err != nil {

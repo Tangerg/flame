@@ -40,6 +40,16 @@ unknown envelope/input/result members and malformed command
 identities are refused. A reply contains exactly one value or business refusal;
 an explicitly nullable value remains distinct from a missing reply.
 
+`Resolve` discovers a method for a new call and returns a `Binding` against that
+concrete session. `NewBinding` restores an already captured descriptor without
+discovering another implementation. The binding validates raw input, reply and
+original receipt before typed decoding. Its immutable `Contract` includes the
+semantic name, query/command kind, target meaning and exact input/output schemas;
+description prose is excluded. Every invocation carries that contract's derived
+fingerprint. A backend refuses a different contract before calling the feature.
+This exact binding is independent of private build revisions and does not make
+two methods with equal shapes interchangeable.
+
 A method's classifier returns a nonempty code only for a known business refusal.
 Returning an empty code leaves the error as an MCP protocol failure. Storage,
 commit, transport and cancellation errors must not be relabeled as definite
@@ -65,6 +75,11 @@ typed method or Tool boundary. Private receipt owners save this value and derive
 its digest; they never recreate it from a decoded DTO. An unbound context or
 manually constructed command cannot supply received evidence. Runtime's pending
 command store also retains the original JSON and uses it for dispatch and lookup.
+It also retains the original complete method contract. Network discovery happens
+outside installation admission; the concrete provider is rechecked before
+saving the route. Recovery uses the retained contract rather than current method
+metadata. The former route schema without that contract is refused without
+conversion; retain the old directory and use a fresh Runtime data directory.
 
 `Reply` encodes a success or explicitly classified refusal;
 `DecodeReply` validates the same outcome when it is read from private storage.

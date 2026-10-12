@@ -8,15 +8,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
-// ServiceBinding is a read projection of the installation owner. It is never
-// retained as enablement, and a connection must still admit the exact source.
+// ServiceBinding projects installation authority and, after discovery, its
+// captured method contract. Neither projection can advance installation state.
 type ServiceBinding struct {
 	InstallationID resourceid.InstallationID
 	ServerID       mcpserver.ID
 	Digest         fingerprint.Digest
 	ServerName     mcpserver.ServerName
+	Contract       jsoninput.Input
 }
 
 func ServiceOwner(ctx context.Context, store Store, kind plugin.ServiceKind) (ServiceBinding, bool, error) {

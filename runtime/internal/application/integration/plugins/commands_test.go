@@ -24,7 +24,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend")}
+	provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.JSONInput(t, `{"name":"review.update"}`)}
 	resolve := func(context.Context) (plugins.ServiceBinding, error) { return provider, nil }
 	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve)
 	if err != nil {
@@ -102,7 +102,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend")}
+		provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.JSONInput(t, `{"name":"review.update"}`)}
 		bound := make(chan error, 1)
 		go func() {
 			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ServiceBinding, error) { return provider, nil })

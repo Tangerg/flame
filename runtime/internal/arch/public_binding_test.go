@@ -110,6 +110,9 @@ var _ = pluginsdk.CallCommand[string, string]
 var _ pluginsdk.Command[string]
 var _ = pluginsdk.NewMethod[struct{}, string]
 var _ pluginsdk.MethodDescriptor
+var _ = pluginsdk.NewBinding
+var _ = pluginsdk.Resolve
+var _ *pluginsdk.Binding
 var _ = jsoninput.Encode[struct{}]
 var _ = pluginsdk.RequestInput
 

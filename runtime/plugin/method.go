@@ -215,26 +215,19 @@ func callResult[P, R any](ctx context.Context, session *sdk.ClientSession, name 
 	if session == nil {
 		return nil, errors.New("plugin: client session is required")
 	}
-	encoded, err := json.Marshal(params.Input)
+	input, err := jsoninput.Encode(params.Input)
 	if err != nil {
 		return nil, err
 	}
-	wire, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, session, invokeMethod, &invokeParams{ParamsBase: params.ParamsBase, Protocol: BackendProtocol, Method: name, Input: encoded, CommandID: params.CommandID})
+	binding, err := Resolve(ctx, session, name)
 	if err != nil {
 		return nil, err
 	}
-	if wire == nil {
-		return nil, errors.New("plugin: missing operation result")
-	}
-	data, err := json.Marshal(wire)
+	wire, err := binding.invoke(ctx, params.CommandID, input, params.ParamsBase)
 	if err != nil {
 		return nil, err
 	}
-	var result Result[R]
-	if err := json.Unmarshal(data, &result, json.RejectUnknownMembers(true)); err != nil {
-		return nil, err
-	}
-	return &result, nil
+	return decodeBoundResult[R](wire)
 }
 func call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, params *Params[P]) (R, error) {
 	var zero R

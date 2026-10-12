@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
@@ -154,23 +155,21 @@ func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, par
 	if session == nil {
 		return zero, errors.New("plugin: client session is required")
 	}
-	encoded, err := json.Marshal(params.Input)
+	binding, err := NewBinding(session, m.Descriptor())
 	if err != nil {
 		return zero, err
 	}
-	if err := m.input.Validate(encoded); err != nil {
-		return zero, fmt.Errorf("plugin: %s input: %w", m.config.Name, err)
-	}
-	result, err := callResult[P, R](ctx, session, m.config.Name, params)
+	input, err := jsoninput.Encode(params.Input)
 	if err != nil {
 		return zero, err
 	}
-	value, err := result.value(m.config.Name)
+	wire, err := binding.invoke(ctx, params.CommandID, input, params.ParamsBase)
 	if err != nil {
 		return zero, err
 	}
-	if err := m.output.Validate(result.valueJSON); err != nil {
-		return zero, fmt.Errorf("plugin: %s output: %w", m.config.Name, err)
+	result, err := decodeBoundResult[R](wire)
+	if err != nil {
+		return zero, err
 	}
-	return value, nil
+	return result.value(m.config.Name)
 }

@@ -70,10 +70,14 @@ commands and packaged views use the same backend as model Tools and maintenance.
 The host retains no Memory ledger or Schedule store. With no enabled owner, human
 operations return `plugin_unavailable`; optional Memory context is absent.
 
-These commands use `ownerResponse` idempotency: a key is scoped to the selected
-backend's installation and the Runtime store namespace. The backend persists its
-transition and reply together; the host redelivers identity after an unknown
-response instead of retaining a second outcome. Run acceptance remains a separate
+These commands use `ownerResponse` idempotency. The Runtime store namespace and
+logical key identify a durable original route, including installation, release,
+method, admitted input and exact public method contract. The backend persists its
+transition and reply together; after dispatch admission the host reads only the
+original receipt and validates it against that captured contract. A missing or
+unreachable receipt remains unconfirmed and never permits resending the mutation.
+The former route encoding without a method contract is refused without conversion.
+Run acceptance remains a separate
 Runtime fact, recorded atomically with its opening. Already accepted automated
 Runs survive backend disable and can be reconciled after restart.
 

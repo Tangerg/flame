@@ -12,7 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
@@ -202,6 +204,16 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	if _, err := os.Stat(evidence); err != nil {
 		t.Fatalf("backend did not commit before response loss: %v", err)
 	}
+	commandID := operation.Identity(operation.Bind(t.Context(), cfg.Stores.IdempotencyNamespace.String(), "lost"))
+	original, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found {
+		t.Fatalf("original command binding missing: %t, %v", found, err)
+	}
+	contract := original.Snapshot().Contract
+	var descriptor pluginsdk.MethodDescriptor
+	if err := json.Unmarshal(contract.JSON(), &descriptor); err != nil || descriptor.Name != "flame.memory/add.v1" || descriptor.Kind != pluginsdk.Mutation || len(descriptor.Input) == 0 || len(descriptor.Output) == 0 {
+		t.Fatalf("original contract not captured: %+v, %v", descriptor, err)
+	}
 	requireManagedServiceChange(t, changed)
 	installed = stageCommandReplacement(t, r, installed, source)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
@@ -211,6 +223,10 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
 	r = reopenCommandRuntime(t, r, &cfg)
+	restored, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found || restored.Snapshot().Contract != contract {
+		t.Fatalf("restart changed original contract: %t, %v", found, err)
+	}
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	pending := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryAdd, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if pending.Failure == nil || !errors.Is(pending.Failure, protocol.ErrInternalError) {
@@ -222,6 +238,10 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
+	}
+	observed, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found || observed.Snapshot().Contract != contract || observed.Snapshot().Phase != plugin.CommandObserved {
+		t.Fatalf("receipt did not observe original contract: %t, %v", found, err)
 	}
 	r.must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, "configure-after-receipt")
 }

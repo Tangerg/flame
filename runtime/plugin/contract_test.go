@@ -119,6 +119,7 @@ type rawContractParams struct {
 	sdk.ParamsBase
 	Protocol  string         `json:"protocol"`
 	Method    string         `json:"method"`
+	Contract  string         `json:"contract"`
 	Input     jsontext.Value `json:"input"`
 	CommandID string         `json:"commandId"`
 }
@@ -141,8 +142,12 @@ func TestMethodServerRejectsOriginalMissingMembersBeforeBusinessExecution(t *tes
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
+	contract, err := methodContract(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, raw := range []string{`{"status":"open"}`, `{"status":"open","revision":null}`, `{"status":"unknown","revision":1}`} {
-		if _, err := sdk.CallCustomMethod[*rawContractParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &rawContractParams{Protocol: BackendProtocol, Method: method.Name(), Input: []byte(raw), CommandID: "original"}); err == nil {
+		if _, err := sdk.CallCustomMethod[*rawContractParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &rawContractParams{Protocol: BackendProtocol, Method: method.Name(), Contract: contract.Digest(), Input: []byte(raw), CommandID: "original"}); err == nil {
 			t.Fatalf("malformed input admitted: %s", raw)
 		}
 	}

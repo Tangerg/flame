@@ -14,7 +14,7 @@ import (
 
 // BackendProtocol identifies public wire behavior, independently of private
 // implementation releases. There is one supported contract and no old reader.
-const BackendProtocol = "io.github.tangerg.flame/backend/2026-10-13.1"
+const BackendProtocol = "io.github.tangerg.flame/backend/2026-10-13.2"
 
 const invokeMethod = "io.github.tangerg.flame/operations.invoke"
 const describeMethod = "io.github.tangerg.flame/operations.describe"
@@ -23,6 +23,7 @@ type invokeParams struct {
 	sdk.ParamsBase
 	Protocol  string         `json:"protocol"`
 	Method    string         `json:"method"`
+	Contract  string         `json:"contract"`
 	Input     jsontext.Value `json:"input"`
 	CommandID string         `json:"commandId,omitzero"`
 }
@@ -33,8 +34,8 @@ func (p *invokeParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if decoded.Protocol != BackendProtocol || decoded.Method == "" || len(decoded.Input) == 0 {
-		return errors.New("plugin: current backend protocol, method and input are required")
+	if decoded.Protocol != BackendProtocol || decoded.Method == "" || len(decoded.Contract) != 64 || len(decoded.Input) == 0 {
+		return errors.New("plugin: current backend protocol, method, contract and input are required")
 	}
 	*p = invokeParams(decoded)
 	return nil
@@ -65,6 +66,7 @@ type Description struct {
 
 type boundMethod struct {
 	descriptor MethodDescriptor
+	contract   string
 	invoke     func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[jsontext.Value], error)
 }
 
@@ -92,6 +94,9 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		b.mu.RUnlock()
 		if !ready || !found {
 			return nil, errors.New("plugin: operation export is not published")
+		}
+		if params.Contract != method.contract {
+			return nil, errors.New("plugin: operation contract mismatch")
 		}
 		return method.invoke(ctx, session, params)
 	}); err != nil {
@@ -135,6 +140,11 @@ func (b *Backend) register(method boundMethod) error {
 	if b == nil {
 		return errors.New("plugin: backend is required")
 	}
+	contract, err := methodContract(method.descriptor)
+	if err != nil {
+		return err
+	}
+	method.contract = contract.Digest()
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.published {
