@@ -44,7 +44,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       configFile: false,
       root: process.cwd(),
       resolve: { alias: { "@": new URL("../src", import.meta.url).pathname } },
-      optimizeDeps: { noDiscovery: true, include: [] },
+      optimizeDeps: { noDiscovery: true, include: ["react"] },
       server: { host: "127.0.0.1", port: 0 },
       plugins: [
         {
@@ -73,7 +73,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       window.mount=(html,initial,scheme="light")=>{
        window.reads=[];window.loads=0;window.failures=[];window.controller=new AbortController();
        window.dispose=mountPluginViewFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,scheme,
-        reads:{load:async()=>{window.loads++;return {html,initial}},read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? window.continuation ?? {data:[{type:"model",occurredAt:"2026-10-07T00:00:00Z",model:{callId:"older-call",runId:"run-2",segmentId:"segment-2",state:"failed",startedAt:"2026-10-07T00:00:00Z"}}]} : initial;}},
+        reads:{binding:{installationId:"fixture",digest:"fixture",contributionId:"fixture"},resource:async()=>{window.loads++;return html},initial:async()=>initial,read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? window.continuation ?? {data:[{type:"model",occurredAt:"2026-10-07T00:00:00Z",model:{callId:"older-call",runId:"run-2",segmentId:"segment-2",state:"failed",startedAt:"2026-10-07T00:00:00Z"}}]} : initial;}},
         status:value=>{window.viewStatus=value;if(value.type==='failure'){window.failure=value.reason;window.failures.push(value.reason)}}});
       };
     </script>`);
@@ -95,7 +95,15 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`${origin}/__plugin_fixture`);
-    await page.waitForFunction(() => window.mount);
+    await page
+      .waitForFunction(() => window.mount)
+      .catch((cause) => {
+        throw new AggregateError(
+          errors.map((message) => new Error(message)),
+          "production plugin fixture failed to initialize",
+          { cause },
+        );
+      });
     const initial = {
       data: [
         {
@@ -177,7 +185,11 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     );
     if (name === "webkit") {
       await page.waitForFunction(() => window.failure);
-      assert.match(await page.evaluate(() => window.failure), /unavailable/);
+      assert.equal(await page.evaluate(() => window.viewStatus.stage), "carrier");
+      assert.equal(
+        await page.evaluate(() => window.failure),
+        "The plugin carrier could not be opened.",
+      );
       assert.equal(
         await page.evaluate(() => window.loads),
         0,

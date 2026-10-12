@@ -7,7 +7,6 @@ import (
 	"iter"
 	"log/slog"
 	"runtime/debug"
-	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -64,9 +63,8 @@ type segmentPump struct {
 }
 
 type managedChildStart struct {
-	prepared  *preparedChildStart
-	outcome   ChildRunStartOutcome
-	startedAt time.Time
+	prepared *preparedChildStart
+	outcome  ChildRunStartOutcome
 }
 
 func (s *segmentPump) run(initialErr error) {
@@ -89,9 +87,6 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 	defer s.owner.observation.Unlock()
 	if request, reserving := event.Payload.(ChildRunReservationRequest); reserving {
 		return s.handleChildRunReservation(event, request)
-	}
-	if request, concluding := event.Payload.(ChildRunStartOutcomeRequest); concluding {
-		return s.handleChildRunStartOutcome(event, request)
 	}
 	if err := event.Validate(); err != nil {
 		s.fail(err)
@@ -191,102 +186,6 @@ func (s *segmentPump) handleChildRunReservation(
 		return false
 	}
 	return true
-}
-
-func (s *segmentPump) handleChildRunStartOutcome(
-	event ExecutorEvent,
-	request ChildRunStartOutcomeRequest,
-) bool {
-	if err := event.Validate(); err != nil {
-		if request.claim() {
-			_ = request.complete(err)
-		}
-		s.fail(err)
-		return false
-	}
-	if err := request.validate(); err != nil {
-		s.fail(err)
-		return false
-	}
-	if !request.claim() {
-		return true
-	}
-	managed := s.childStarts[event.Member.MemberID]
-	if managed == nil || managed.prepared.member != event.Member ||
-		managed.prepared.reservation.Binding != request.Binding {
-		err := fmt.Errorf("runs: child member %q has no matching start reservation", event.Member.MemberID)
-		_ = request.complete(err)
-		return true
-	}
-	if managed.outcome.Valid() {
-		if managed.outcome != request.Outcome || !managed.startedAt.Equal(request.StartedAt) {
-			err := fmt.Errorf("runs: child member %q repeated a contradictory start outcome", event.Member.MemberID)
-			_ = request.complete(err)
-			return true
-		}
-		_ = request.complete(nil)
-		return true
-	}
-	prepared := managed.prepared
-	var err error
-	keep := true
-	switch request.Outcome {
-	case ChildRunStarted:
-		err = s.coordinator.finalizeChildOpening(s.spec, s.owner, prepared, request.StartedAt)
-		if err == nil {
-			err = s.coordinator.childStarts.CommitStartedChildRun(s.ownerCtx, prepared.started)
-		}
-		if err == nil {
-			managed.outcome = request.Outcome
-			managed.startedAt = request.StartedAt
-			s.coordinator.activatePreparedChild(s.spec, s.routes, prepared)
-			publication, publishErr := s.publisher.publish(s.ownerCtx, prepared.route, prepared.batch)
-			if publishErr != nil || publication.finished() {
-				if publishErr == nil {
-					publishErr = fmt.Errorf("runs: child member %q start unexpectedly reached a boundary", event.Member.MemberID)
-				}
-				// The durable child Run now exists. Rejecting the executor's started
-				// outcome would create a public Run without its executor member, so acknowledge
-				// the conclusive start and fail this projection pump instead.
-				s.fail(publishErr)
-				keep = false
-			}
-		}
-		if err != nil {
-			// The executor will not publish a child when this receipt fails. Consume
-			// the invisible reservation as aborted; a failed cleanup remains hidden
-			// and is reconciled at startup rather than becoming a ghost Run.
-			// Detached because the owner may already be canceled, and bounded
-			// because this pump is the only thing driving the Run to a terminal
-			// state: an unbounded store call here strands the whole Session.
-			cleanupCtx, cancelCleanup := context.WithTimeout(
-				context.WithoutCancel(s.ownerCtx), runCleanupTimeout,
-			)
-			cleanupErr := s.coordinator.childStarts.AbortChildRunStart(
-				cleanupCtx, prepared.reservation,
-			)
-			cancelCleanup()
-			err = errors.Join(err, cleanupErr)
-			prepared.releaseBinding(s.owner)
-			prepared.route.reducer = nil
-			prepared.batch = reductionBatch{}
-			prepared.started = StartedChildRun{}
-		}
-	case ChildRunStartAborted:
-		err = s.coordinator.childStarts.AbortChildRunStart(s.ownerCtx, prepared.reservation)
-		if err == nil {
-			managed.outcome = request.Outcome
-			managed.startedAt = time.Time{}
-			prepared.releaseBinding(s.owner)
-		}
-	default:
-		err = errors.New("runs: invalid child Run start outcome")
-	}
-	if completionErr := request.complete(err); completionErr != nil {
-		s.fail(errors.Join(err, completionErr))
-		return false
-	}
-	return keep
 }
 
 func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {

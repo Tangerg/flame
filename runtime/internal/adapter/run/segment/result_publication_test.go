@@ -85,7 +85,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 					State: runs.ToolInvocationCompleted, StartedAt: started, FinishedAt: started.Add(time.Second)}},
 				ConversationMessages: []chat.Message{chat.NewToolMessage(modelResult)},
 			}
-			if err := effects.CommitExecutionTree(ctx, update, []runs.EventCommit{commit}); err == nil {
+			if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, Events: []runs.EventCommit{commit}}); err == nil {
 				t.Fatal("rolled-back publication succeeded")
 			}
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest); err != nil || found {
@@ -101,7 +101,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 				t.Fatalf("rolled-back tree = %t, %v", found, err)
 			}
 			rollback = false
-			if err := effects.CommitExecutionTree(ctx, update, []runs.EventCommit{commit}); err != nil {
+			if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, Events: []runs.EventCommit{commit}}); err != nil {
 				t.Fatalf("publication: %v", err)
 			}
 			if transactions != 2 {
@@ -112,7 +112,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			}
 			// A new product write attempt still denotes the same Scope publication.
 			commit.CommitID = testCommitID("run_commit_result_duplicate")
-			if err := effects.CommitExecutionTree(ctx, update, []runs.EventCommit{commit}); err != nil {
+			if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, Events: []runs.EventCommit{commit}}); err != nil {
 				t.Fatalf("same publication: %v", err)
 			}
 			var journalCount int
@@ -129,7 +129,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, conflict.ResultPublication.ID, conflict.ResultPublication.Digest); err == nil || found {
 				t.Fatalf("conflicting receipt = %t, %v", found, err)
 			}
-			if err := effects.CommitExecutionTree(ctx, update, []runs.EventCommit{conflict}); err == nil {
+			if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, Events: []runs.EventCommit{conflict}}); err == nil {
 				t.Fatal("same identity with different content succeeded")
 			}
 			active, err := run.Admit(draft)
@@ -151,7 +151,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest); err == nil || found {
 				t.Fatalf("stale Segment receipt = %t, %v", found, err)
 			}
-			if err := effects.CommitExecutionTree(ctx, update, []runs.EventCommit{commit}); err == nil {
+			if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, Events: []runs.EventCommit{commit}}); err == nil {
 				t.Fatal("stale Segment used a stored receipt to publish")
 			}
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, "seg_next", commit.ResultPublication.ID, commit.ResultPublication.Digest); err == nil || found {

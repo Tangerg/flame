@@ -9,18 +9,63 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	if tree.Update.Head.SessionID != s.spec.SessionID || tree.Update.Head.RootID != s.routes.root.member.MemberID {
 		return fmt.Errorf("runs: foreign execution tree")
 	}
+	commit := ExecutionTreeCommit{Update: tree.Update}
+	startedRoutes := make(map[string]*executorRoute)
+	var children []*managedChildStart
+	seen := make(map[string]struct{})
+	for _, publication := range tree.Children {
+		if _, duplicate := seen[publication.Binding.MemberID]; duplicate {
+			return fmt.Errorf("runs: duplicate child publication")
+		}
+		seen[publication.Binding.MemberID] = struct{}{}
+		if err := publication.Binding.Validate(); err != nil {
+			return err
+		}
+		if !publication.Outcome.Valid() {
+			return fmt.Errorf("runs: invalid child publication outcome")
+		}
+		managed := s.childStarts[publication.Binding.MemberID]
+		if managed == nil || managed.prepared.reservation.Binding != publication.Binding {
+			return fmt.Errorf("runs: published child has no matching reservation")
+		}
+		if managed.outcome.Valid() {
+			if managed.outcome != publication.Outcome {
+				return fmt.Errorf("runs: contradictory child publication")
+			}
+			continue
+		}
+		prepared := managed.prepared
+		if publication.Outcome == ChildRunStarted {
+			if prepared.route.reducer == nil {
+				if err := s.coordinator.finalizeChildOpening(s.spec, s.owner, prepared, s.coordinator.publications.nowUTC()); err != nil {
+					return err
+				}
+			}
+			commit.StartedChildren = append(commit.StartedChildren, prepared.started)
+			startedRoutes[prepared.member.MemberID] = prepared.route
+		} else {
+			commit.AbortedChildren = append(commit.AbortedChildren, prepared.reservation)
+		}
+		children = append(children, managed)
+	}
 	type projection struct {
 		route   *executorRoute
 		reducer *reducer
 		batch   reductionBatch
 	}
 	var projections []projection
-	var commits []EventCommit
 	staged := make(map[*executorRoute]*reducer)
 	for _, event := range tree.Facts {
-		route, err := s.routes.resolve(event.Member)
-		if err != nil {
-			return err
+		route := startedRoutes[event.Member.MemberID]
+		if route != nil && route.member != event.Member {
+			return fmt.Errorf("runs: newly published child changed immutable lineage")
+		}
+		if route == nil {
+			var err error
+			route, err = s.routes.resolve(event.Member)
+			if err != nil {
+				return err
+			}
 		}
 		switch event.Payload.(type) {
 		case ToolResultsCommitted:
@@ -43,21 +88,36 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		if err != nil {
 			return err
 		}
-		var commit EventCommit
+		var eventCommit EventCommit
 		if engineEventEndsSegment(fact) {
-			commit, err = combineTerminalEventCommit(batch)
+			eventCommit, err = combineTerminalEventCommit(batch)
 		} else {
-			commit, err = combineAuthoritativeCommit(route, s.spec.SessionID, batch)
+			eventCommit, err = combineAuthoritativeCommit(route, s.spec.SessionID, batch)
 		}
 		if err != nil {
 			return err
 		}
-		commits = append(commits, commit)
+		commit.Events = append(commit.Events, eventCommit)
 		staged[route] = candidate
 		projections = append(projections, projection{route, candidate, batch})
 	}
-	if err := s.coordinator.publications.events.CommitExecutionTree(s.ownerCtx, tree.Update, commits); err != nil {
+	if err := s.coordinator.publications.events.CommitExecutionTree(s.ownerCtx, commit); err != nil {
 		return err
+	}
+	for _, managed := range children {
+		prepared := managed.prepared
+		if startedRoutes[prepared.member.MemberID] != nil {
+			managed.outcome = ChildRunStarted
+			s.coordinator.activatePreparedChild(s.spec, s.routes, prepared)
+			for _, reduced := range prepared.batch.events {
+				if err := s.publisher.append(prepared.route, reduced); err != nil {
+					return err
+				}
+			}
+		} else {
+			managed.outcome = ChildRunStartAborted
+			prepared.releaseBinding(s.owner)
+		}
 	}
 	for _, projected := range projections {
 		projected.route.reducer = projected.reducer

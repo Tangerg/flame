@@ -187,9 +187,9 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 	child := ExecutorMember{MemberID: "member_child", ParentID: root.MemberID, SpawnCallID: "spawn_child"}
 	sibling := ExecutorMember{MemberID: "member_sibling", ParentID: root.MemberID, SpawnCallID: "spawn_sibling"}
 	completed := ExecutorMember{MemberID: "member_completed", ParentID: root.MemberID, SpawnCallID: "spawn_completed"}
-	childStart, childReceipt := newChildStartFixture(testSegment().CreatedAt)
-	siblingStart, siblingReceipt := newChildStartFixture(testSegment().CreatedAt)
-	completedStart, completedReceipt := newChildStartFixture(testSegment().CreatedAt)
+	childStart, childReceipt := newChildStartFixture()
+	siblingStart, siblingReceipt := newChildStartFixture()
+	completedStart, completedReceipt := newChildStartFixture()
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{Member: root, Payload: ToolCallStarted{CallID: "delegate_child", SourceCallID: child.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
 		{Member: root, Payload: ToolCallStarted{CallID: "delegate_sibling", SourceCallID: sibling.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},

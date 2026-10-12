@@ -2,12 +2,15 @@ package segment
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -183,12 +186,23 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 		RootRunID: root.RunID, ReservedAt: startedAt.Add(-time.Second),
 	}
 	loseReceipt := false
+	rollback := true
+	rollbackErr := errors.New("reject child tree transaction")
 	commitCtx, cancelCommit := context.WithCancel(ctx)
 	t.Cleanup(cancelCommit)
 	effects := mustNewEffects(Config{
 		State: runStore, Transcript: transcriptStore, ChildRunStarts: childStarts,
+		ExecutionTrees: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			runInTxErr := sqlite.RunInTx(ctx, db, apply)
+			runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+				if err := apply(ctx); err != nil {
+					return err
+				}
+				if rollback {
+					return rollbackErr
+				}
+				return nil
+			})
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -197,6 +211,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 			return runInTxErr
 		},
 	})
+	rollback = false
 	if reserveChildRunStartErr := effects.ReserveChildRunStart(ctx, reservation); reserveChildRunStartErr != nil {
 		t.Fatalf("ReserveChildRunStart: %v", reserveChildRunStartErr)
 	}
@@ -209,9 +224,22 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	opening := started.Opening()
+	update := childExecutionTreeUpdate(root.SessionID)
+	rollback = true
+	if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, StartedChildren: []runs.StartedChildRun{started}}); !errors.Is(err, rollbackErr) {
+		t.Fatalf("tree rollback = %v", err)
+	}
+	if _, found, err := runStore.Run(ctx, child.RunID); err != nil || found {
+		t.Fatalf("rolled-back tree published child: found=%t err=%v", found, err)
+	}
+	trees := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	if _, found, err := trees.LoadExecutionTree(ctx, root.SessionID, update.Head.RootID); err != nil || found {
+		t.Fatalf("rolled-back opening published tree: found=%t err=%v", found, err)
+	}
+	rollback = false
 	loseReceipt = true
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(commitCtx, started); commitStartedChildRunErr != nil {
-		t.Fatalf("ambiguous CommitStartedChildRun = %v, want reconciled success", commitStartedChildRunErr)
+	if commitTreeErr := effects.CommitExecutionTree(commitCtx, runs.ExecutionTreeCommit{Update: update, StartedChildren: []runs.StartedChildRun{started}}); commitTreeErr != nil {
+		t.Fatalf("ambiguous CommitExecutionTree = %v, want reconciled success", commitTreeErr)
 	}
 	matched, err := runStore.RunCommitCommitted(
 		ctx, child.SessionID, child.RunID, child.SegmentID, opening.CommitID(),
@@ -219,15 +247,18 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if err != nil || !matched {
 		t.Fatalf("child opening marker matched=%t err=%v, want true/nil", matched, err)
 	}
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, started); commitStartedChildRunErr != nil {
-		t.Fatalf("exact concluded child opening = %v, want idempotent success", commitStartedChildRunErr)
+	if commitTreeErr := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, StartedChildren: []runs.StartedChildRun{started}}); commitTreeErr != nil {
+		t.Fatalf("exact concluded child opening = %v, want idempotent success", commitTreeErr)
 	}
 	other, err := runs.NewStartedChildRun(reservation, child.ModelSelection, startedAt, openingEvents)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, other); commitStartedChildRunErr == nil {
+	if commitTreeErr := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, StartedChildren: []runs.StartedChildRun{other}}); commitTreeErr == nil {
 		t.Fatal("different child opening write-set reused a concluded reservation")
+	}
+	if err := effects.CommitExecutionTree(ctx, runs.ExecutionTreeCommit{Update: update, AbortedChildren: []runs.ChildRunStartReservation{reservation}}); err == nil {
+		t.Fatal("exact tree receipt concealed contradictory child withdrawal")
 	}
 	items, err := transcriptStore.List(ctx, root.SessionID)
 	if err != nil || len(items) != 1 || items[0].ID() != spawningItem.ID() {
@@ -265,4 +296,12 @@ func requireChildOpeningSQLiteHealthy(t *testing.T, ctx context.Context, db *sql
 	if err := foreignKeys.Err(); err != nil {
 		t.Fatalf("foreign_key_check rows: %v", err)
 	}
+}
+
+func childExecutionTreeUpdate(sessionID string) runs.ExecutionTreeUpdate {
+	payload := []byte(`{"child":"published"}`)
+	return runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{
+		SessionID: sessionID, RootID: "member_root", Sequence: 1, Writer: "writer", Payload: payload,
+		Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(payload)), CommitID: "child-opening", CommitDigest: "child-opening",
+	}}
 }

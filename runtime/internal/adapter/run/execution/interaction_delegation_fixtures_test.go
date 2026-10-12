@@ -267,7 +267,7 @@ func (d *delegateProjection) ReserveChildRunStart(
 	return nil
 }
 
-func (d *delegateProjection) CommitStartedChildRun(_ context.Context, started runs.StartedChildRun) error {
+func (d *delegateProjection) applyStartedChildRun(started runs.StartedChildRun) error {
 	reservation, opening := started.Reservation(), started.Opening()
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -430,11 +430,21 @@ func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
 	}
 }
 
-func (d *delegateProjection) CommitExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate, commits []runs.EventCommit) error {
-	if err := d.trees.SaveExecutionTree(ctx, update); err != nil {
+func (d *delegateProjection) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) error {
+	if err := d.trees.SaveExecutionTree(ctx, tree.Update); err != nil {
 		return err
 	}
-	for _, commit := range commits {
+	for _, started := range tree.StartedChildren {
+		if err := d.applyStartedChildRun(started); err != nil {
+			return err
+		}
+	}
+	for _, aborted := range tree.AbortedChildren {
+		if err := d.AbortChildRunStart(ctx, aborted); err != nil {
+			return err
+		}
+	}
+	for _, commit := range tree.Events {
 		if err := d.CommitEvent(ctx, commit); err != nil {
 			return err
 		}

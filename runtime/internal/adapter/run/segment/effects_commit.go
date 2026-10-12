@@ -33,49 +33,24 @@ func (e *Effects) ReserveChildRunStart(
 	})
 }
 
-// CommitStartedChildRun atomically consumes the invisible reservation with the
-// public Running child Run and its causal parent Item.
-func (e *Effects) CommitStartedChildRun(ctx context.Context, started runs.StartedChildRun) error {
+func (e *Effects) applyStartedChildRun(ctx context.Context, started runs.StartedChildRun) error {
 	opening := started.Opening()
 	record, err := childRunStartReservationRecord(started.Reservation())
 	if err != nil {
 		return err
 	}
-	alreadyConcluded := false
-	err = e.runInTx(ctx, func(ctx context.Context) error {
-		changed, concludeErr := e.childRunStarts.Conclude(
-			ctx, record, sqlite.ChildRunStartConclusionStarted,
-		)
-		if concludeErr != nil {
-			return fmt.Errorf("segment: conclude started child Run reservation: %w", concludeErr)
-		}
-		if !changed {
-			alreadyConcluded = true
-			return nil
-		}
-		if commitOpeningErr := e.commitOpening(ctx, opening); commitOpeningErr != nil {
-			return fmt.Errorf("segment: commit started child Run opening: %w", commitOpeningErr)
-		}
-		return nil
-	})
-	if err == nil {
-		if !alreadyConcluded {
-			return nil
-		}
-		settled, settleErr := e.reconcileOpeningCommit(ctx, opening)
-		if settled {
-			return nil
-		}
-		return errors.Join(
-			errors.New("segment: child Run start was concluded by another opening write-set"),
-			settleErr,
-		)
+	changed, err := e.childRunStarts.Conclude(ctx, record, sqlite.ChildRunStartConclusionStarted)
+	if err != nil {
+		return fmt.Errorf("segment: conclude started child Run reservation: %w", err)
 	}
-	settled, settleErr := e.reconcileOpeningCommit(ctx, opening)
+	if changed {
+		return e.commitOpening(ctx, opening)
+	}
+	settled, err := e.reconcileOpeningCommit(ctx, opening)
 	if settled {
 		return nil
 	}
-	return errors.Join(err, settleErr)
+	return errors.Join(errors.New("segment: child Run start was concluded by another opening write-set"), err)
 }
 
 // AbortChildRunStart consumes an invisible reservation without creating a Run.

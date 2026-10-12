@@ -68,6 +68,10 @@ type ChildRunStartReservationRecord struct {
 	CreatedAt time.Time
 }
 
+func (c ChildRunStartReservationRecord) same(other ChildRunStartReservationRecord) bool {
+	return c.MemberID == other.MemberID && c.SessionID == other.SessionID && c.CreatedAt.Equal(other.CreatedAt) && bytes.Equal(c.Payload, other.Payload)
+}
+
 func (c ChildRunStartReservationRecord) validate() error {
 	if err := runtimeidentity.ValidateMember(c.MemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
@@ -89,7 +93,7 @@ func (c ChildRunStartReservationRecord) validate() error {
 
 // ChildRunStartReservationStore persists opaque child-start reservations and
 // their conclusive state. Rows intentionally survive conclusion so exact
-// callbacks remain idempotent without guessing from absence.
+// publications remain idempotent without guessing from absence.
 type ChildRunStartReservationStore struct{ db *sql.DB }
 
 func NewChildRunStartReservationStore(db *sql.DB) *ChildRunStartReservationStore {
@@ -125,11 +129,32 @@ func (c *ChildRunStartReservationStore) Reserve(
 	if err != nil {
 		return err
 	}
-	if existing.SessionID != record.SessionID || !existing.CreatedAt.Equal(record.CreatedAt.UTC()) ||
-		!bytes.Equal(existing.Payload, record.Payload) {
+	if !existing.same(record) {
 		return ErrChildRunStartReservationConflict
 	}
 	return nil
+}
+
+// Concluded confirms the exact durable outcome without advancing a reservation.
+func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record ChildRunStartReservationRecord, conclusion ChildRunStartConclusion) (bool, error) {
+	if err := record.validate(); err != nil {
+		return false, err
+	}
+	expected, err := childRunStartConcludedState(conclusion)
+	if err != nil {
+		return false, err
+	}
+	existing, state, err := c.load(ctx, record.MemberID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !existing.same(record) {
+		return false, ErrChildRunStartReservationConflict
+	}
+	return state == expected, nil
 }
 
 // Conclude advances an exact reservation from reserved to one conclusive
@@ -155,8 +180,7 @@ func (c *ChildRunStartReservationStore) Conclude(
 	if err != nil {
 		return false, err
 	}
-	if existing.SessionID != record.SessionID || !existing.CreatedAt.Equal(record.CreatedAt.UTC()) ||
-		!bytes.Equal(existing.Payload, record.Payload) {
+	if !existing.same(record) {
 		return false, ErrChildRunStartReservationConflict
 	}
 	if state == concludedState {

@@ -24,7 +24,7 @@ type ResumeClaimCommitter interface {
 // EventCommitter persists reduced facts and verifies their durable publication
 // receipts under the currently active Segment's ownership.
 type EventCommitter interface {
-	CommitExecutionTree(ctx context.Context, update ExecutionTreeUpdate, commits []EventCommit) error
+	CommitExecutionTree(ctx context.Context, commit ExecutionTreeCommit) error
 	CommitEvent(ctx context.Context, commit EventCommit) error
 }
 

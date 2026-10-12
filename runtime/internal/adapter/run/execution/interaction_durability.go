@@ -73,7 +73,11 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	if err != nil {
 		return err
 	}
-	fact := runs.ExecutionTreeSettled{Update: update}
+	children, err := i.childPublications(ctx, tree)
+	if err != nil {
+		return err
+	}
+	fact := runs.ExecutionTreeSettled{Update: update, Children: children}
 	i.state.mu.Lock()
 	hasChildren := len(i.state.delegateChildren) > 0
 	i.state.mu.Unlock()
@@ -109,6 +113,13 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 				retired = append(retired, identity)
 				if committed {
 					continue
+				}
+				failedChild, failed, err := i.failedChildPublication(tree, round.Relation().ProcessID(), round.ModelCallSequence(), entry.Call)
+				if err != nil {
+					return err
+				}
+				if failed {
+					fact.Children = append(fact.Children, failedChild)
 				}
 				projection, err := i.toolResultProjection(round.Relation(), round.ModelCallSequence(), entry)
 				if err != nil {
@@ -150,7 +161,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		}
 		return rank(a.Payload) - rank(b.Payload)
 	})
-	if len(fact.Facts) == 0 {
+	if len(fact.Facts) == 0 && len(fact.Children) == 0 {
 		err = i.executionTrees.SaveExecutionTree(ctx, update)
 		if err != nil {
 			readCtx, stop := i.lifetime.treeCommitContext(ctx)
@@ -178,6 +189,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		}
 		return fmt.Errorf("execution: commit execution tree: %w", err)
 	}
+	i.publishChildBindings(fact.Children)
 	for _, child := range terminalChildren {
 		child.mu.Lock()
 		child.segmentProjected = true

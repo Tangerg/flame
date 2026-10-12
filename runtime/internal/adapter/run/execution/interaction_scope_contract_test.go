@@ -106,6 +106,9 @@ func (*scopeDefinitionTool) Call(context.Context, toolcontract.Invocation) (chat
 func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 	executable := &scopeDefinitionTool{definition: scopeOutputTool{}.Definition()}
 	want := executable.Definition()
+	if err := want.InputSchema.Canonicalize(); err != nil {
+		t.Fatal(err)
+	}
 	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.A2ATool(t, "inspect"))
 	if err != nil {
 		t.Fatal(err)

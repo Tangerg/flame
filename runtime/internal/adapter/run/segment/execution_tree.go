@@ -5,11 +5,23 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-func (e *Effects) CommitExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate, commits []runs.EventCommit) (commitErr error) {
+func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) (commitErr error) {
+	update, commits := tree.Update, tree.Events
 	if err := update.Validate(); err != nil {
 		return err
+	}
+	for _, started := range tree.StartedChildren {
+		if started.Reservation().SessionID != update.Head.SessionID {
+			return errors.New("segment: foreign child Run publication")
+		}
+	}
+	for _, aborted := range tree.AbortedChildren {
+		if aborted.SessionID != update.Head.SessionID {
+			return errors.New("segment: foreign child Run withdrawal")
+		}
 	}
 	for _, commit := range commits {
 		if commit.SessionID != update.Head.SessionID || commit.CommitID.IsZero() || commit.State == runs.StateSuspend || commit.ObsoleteCheckpointRootID != "" {
@@ -26,9 +38,25 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, update runs.Execution
 			}
 		}
 	}()
-	err := e.runInTx(ctx, func(ctx context.Context) error {
+	var applyErr error
+	err := e.runInTx(ctx, func(ctx context.Context) (err error) {
+		defer func() { applyErr = err }()
 		if err := e.executionTrees.SaveExecutionTree(ctx, update); err != nil {
 			return err
+		}
+		for _, started := range tree.StartedChildren {
+			if err := e.applyStartedChildRun(ctx, started); err != nil {
+				return err
+			}
+		}
+		for _, aborted := range tree.AbortedChildren {
+			record, err := childRunStartReservationRecord(aborted)
+			if err != nil {
+				return err
+			}
+			if _, err := e.childRunStarts.Conclude(ctx, record, sqlite.ChildRunStartConclusionAborted); err != nil {
+				return err
+			}
 		}
 		for _, commit := range commits {
 			if err := e.applyCommit(ctx, commit); err != nil {
@@ -40,10 +68,29 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, update runs.Execution
 	if err == nil {
 		return nil
 	}
+	if applyErr != nil {
+		return err
+	}
 	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
 	defer cancel()
 	head, found, readErr := e.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
 	if readErr == nil && found && head.SameCommit(update.Head) {
+		for _, started := range tree.StartedChildren {
+			confirmed, lookupErr := e.reconcileOpeningCommit(readCtx, started.Opening())
+			if lookupErr != nil || !confirmed {
+				return errors.Join(err, lookupErr)
+			}
+		}
+		for _, aborted := range tree.AbortedChildren {
+			record, recordErr := childRunStartReservationRecord(aborted)
+			if recordErr != nil {
+				return errors.Join(err, recordErr)
+			}
+			confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, sqlite.ChildRunStartConclusionAborted)
+			if lookupErr != nil || !confirmed {
+				return errors.Join(err, lookupErr)
+			}
+		}
 		last := make(map[string]runs.EventCommit)
 		for _, commit := range commits {
 			last[commit.RunID] = commit

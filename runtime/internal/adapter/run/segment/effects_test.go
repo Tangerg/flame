@@ -279,7 +279,7 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 	}
 }
 
-func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
+func TestChildPublicationAndTreeOwnOneTransactionBoundary(t *testing.T) {
 	startedAt := time.Unix(2, 0).UTC()
 	reservation := runs.ChildRunStartReservation{
 		SessionID:  "ses_1",
@@ -299,15 +299,15 @@ func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
 	childStarts := &fakeChildRunStarts{}
 	runState := &fakeRunState{}
 	effects := testEffects(&fakeStores{transcript: &fakeTranscript{}}, Config{
-		State: runState, ChildRunStarts: childStarts, Tx: tx.run,
+		State: runState, ChildRunStarts: childStarts, Tx: tx.run, ExecutionTrees: &recordingExecutionTrees{},
 	})
 
 	started, err := runs.NewStartedChildRun(reservation, testsupport.DefaultModelSelection(), startedAt, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := effects.CommitStartedChildRun(t.Context(), started); err != nil {
-		t.Fatalf("CommitStartedChildRun: %v", err)
+	if err := effects.CommitExecutionTree(t.Context(), runs.ExecutionTreeCommit{Update: childExecutionTreeUpdate(reservation.SessionID), StartedChildren: []runs.StartedChildRun{started}}); err != nil {
+		t.Fatalf("CommitExecutionTree: %v", err)
 	}
 	if tx.calls != 1 {
 		t.Fatalf("transaction entries = %d, want one composite boundary", tx.calls)
@@ -1124,3 +1124,20 @@ func (*fakeRunState) UnpublishedToolResults(context.Context, string, string) ([]
 	return nil, nil
 }
 func (*fakeStores) Read(context.Context, string) ([]chat.Message, error) { return nil, nil }
+
+type recordingExecutionTrees struct{ head runs.ExecutionTreeHead }
+
+func (r *recordingExecutionTrees) SaveExecutionTree(_ context.Context, update runs.ExecutionTreeUpdate) error {
+	r.head = update.Head
+	return nil
+}
+func (r *recordingExecutionTrees) LoadExecutionTree(context.Context, string, string) (runs.ExecutionTreeHead, bool, error) {
+	return r.head, r.head.RootID != "", nil
+}
+func (*recordingExecutionTrees) ExecutionResultCommitted(context.Context, string, runs.ResultPublication) (bool, error) {
+	return false, nil
+}
+
+func (*fakeChildRunStarts) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {
+	return false, nil
+}

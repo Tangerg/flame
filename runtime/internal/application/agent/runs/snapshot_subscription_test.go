@@ -110,7 +110,7 @@ func TestSnapshotSubscriptionReadFailureReleasesPublication(t *testing.T) {
 func TestSnapshotSubscriptionIncludesChildOpeningAndCompletion(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	request, confirmation := newChildStartFixture(time.Now())
+	request, confirmation := newChildStartFixture()
 	root := ExecutorMember{MemberID: "member_root"}
 	child := ExecutorMember{MemberID: "member_child", ParentID: root.MemberID, SpawnCallID: "delegate_source"}
 	executor := &snapshotExecutor{fakeExecutor: fakeExecutor{executorEvents: []ExecutorEvent{

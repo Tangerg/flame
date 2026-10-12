@@ -1557,3 +1557,7 @@ type noDeliveryAutomationStarts struct{}
 func (noDeliveryAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
 	return runs.AutomationReceipt{}, false, nil
 }
+
+func (inertRuntimeStores) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {
+	return false, nil
+}

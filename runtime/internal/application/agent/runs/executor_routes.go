@@ -671,9 +671,8 @@ func (c *Coordinator) prepareChildStart(
 	}, nil
 }
 
-// finalizeChildOpening creates the Run projection from the exact lifecycle
-// time reported by the successful Process start. It still performs no durable
-// write and leaves the route invisible until the opening transaction commits.
+// The Runtime admission clock owns the product Run time. The route remains
+// invisible until its opening and the executor tree commit together.
 func (c *Coordinator) finalizeChildOpening(
 	spec segmentSpec,
 	owner *runTreeOwner,

@@ -25,11 +25,20 @@ func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
 	if reserveErr := store.Reserve(t.Context(), record); reserveErr != nil {
 		t.Fatalf("Reserve exact replay: %v", reserveErr)
 	}
+	if confirmed, err := store.Concluded(t.Context(), record, storage.ChildRunStartConclusionStarted); err != nil || confirmed {
+		t.Fatalf("reserved conclusion = %t/%v", confirmed, err)
+	}
 	changed, err := store.Conclude(
 		t.Context(), record, storage.ChildRunStartConclusionStarted,
 	)
 	if err != nil || !changed {
 		t.Fatalf("first started conclusion = (%v, %v), want changed", changed, err)
+	}
+	if confirmed, err := store.Concluded(t.Context(), record, storage.ChildRunStartConclusionStarted); err != nil || !confirmed {
+		t.Fatalf("started conclusion = %t/%v", confirmed, err)
+	}
+	if confirmed, err := store.Concluded(t.Context(), record, storage.ChildRunStartConclusionAborted); err != nil || confirmed {
+		t.Fatalf("contradictory conclusion = %t/%v", confirmed, err)
 	}
 	changed, err = store.Conclude(
 		t.Context(), record, storage.ChildRunStartConclusionStarted,

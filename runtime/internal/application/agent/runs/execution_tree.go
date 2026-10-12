@@ -54,12 +54,27 @@ type ExecutionTreeStore interface {
 // facts together. A receipt authorizes Scope to advance; a projection event does not.
 type ExecutionTreeSettled struct {
 	executionFactBase
-	Update ExecutionTreeUpdate
-	Facts  []ExecutorEvent
+	Update   ExecutionTreeUpdate
+	Children []ChildRunPublication
+	Facts    []ExecutorEvent
+}
+
+type ChildRunPublication struct {
+	Binding ChildRunBinding
+	Outcome ChildRunStartOutcome
+}
+
+// Child admission and the executor cut that proves it must share one transaction.
+type ExecutionTreeCommit struct {
+	Update          ExecutionTreeUpdate
+	StartedChildren []StartedChildRun
+	AbortedChildren []ChildRunStartReservation
+	Events          []EventCommit
 }
 
 func (e ExecutionTreeSettled) clone() ExecutionTreeSettled {
 	e.Update.Head.Payload = slices.Clone(e.Update.Head.Payload)
+	e.Children = slices.Clone(e.Children)
 	e.Facts = slices.Clone(e.Facts)
 	for index := range e.Facts {
 		e.Facts[index].Payload, _ = cloneExecutionFact(e.Facts[index].Payload.(ExecutionFact))

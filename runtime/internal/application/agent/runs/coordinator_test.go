@@ -2,7 +2,9 @@ package runs
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"iter"
 	"math"
 	"slices"
@@ -85,8 +87,7 @@ type fakeExecutor struct {
 // pump sees any event.
 type childStartFixture struct {
 	executorPayloadBase
-	StartedAt time.Time
-	result    chan childStartFixtureResult
+	result chan childStartFixtureResult
 }
 
 type childStartReceipt struct {
@@ -98,9 +99,9 @@ type childStartFixtureResult struct {
 	err     error
 }
 
-func newChildStartFixture(startedAt time.Time) (childStartFixture, childStartReceipt) {
+func newChildStartFixture() (childStartFixture, childStartReceipt) {
 	result := make(chan childStartFixtureResult, 1)
-	return childStartFixture{StartedAt: startedAt.Round(0).UTC(), result: result}, childStartReceipt{result: result}
+	return childStartFixture{result: result}, childStartReceipt{result: result}
 }
 
 func (c childStartFixture) complete(binding ChildRunBinding, err error) {
@@ -116,9 +117,25 @@ func (c childStartReceipt) Await(ctx context.Context) (ChildRunBinding, error) {
 	}
 }
 
+func childTreePublication(rootID string, binding ChildRunBinding) (ExecutionFactCommit, ExecutionFactReceipt) {
+	payload := []byte(binding.MemberID)
+	fact, receipt, err := NewExecutionFactCommit(ExecutionTreeSettled{
+		Update: ExecutionTreeUpdate{Head: ExecutionTreeHead{
+			SessionID: fixtureSessionID, RootID: rootID, Writer: "test-writer", Payload: payload,
+			Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(payload)), CommitID: binding.MemberID, CommitDigest: binding.MemberID,
+		}},
+		Children: []ChildRunPublication{{Binding: binding, Outcome: ChildRunStarted}},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return fact, receipt
+}
+
 func yieldChildStart(
 	ctx context.Context,
 	yield func(ExecutorEvent) bool,
+	rootID string,
 	member ExecutorMember,
 	fixture childStartFixture,
 ) bool {
@@ -129,8 +146,8 @@ func yieldChildStart(
 	}
 	binding, err := reservationReceipt.Await(ctx)
 	if err == nil {
-		outcome, outcomeReceipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted, fixture.StartedAt)
-		if !yield(ExecutorEvent{Member: member, Payload: outcome}) {
+		outcome, outcomeReceipt := childTreePublication(rootID, binding)
+		if !yield(ExecutorEvent{Member: ExecutorMember{MemberID: rootID}, Payload: outcome}) {
 			fixture.complete(ChildRunBinding{}, ctx.Err())
 			return false
 		}
@@ -164,7 +181,6 @@ type acknowledgedNativeChildExecutor struct {
 	childMember        ExecutorMember
 	reservation        ChildRunReservationRequest
 	reservationReceipt ChildRunReservationReceipt
-	startedAt          time.Time
 }
 
 func (a *acknowledgedNativeChildExecutor) Observe(
@@ -187,14 +203,14 @@ func (a *acknowledgedNativeChildExecutor) Observe(
 		if err != nil {
 			return
 		}
-		outcome, receipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted, a.startedAt)
-		if !yield(ExecutorEvent{Member: a.childMember, Payload: outcome}) || receipt.Await(ctx) != nil {
+		outcome, receipt := childTreePublication(a.rootMember.MemberID, binding)
+		if !yield(ExecutorEvent{Member: a.rootMember, Payload: outcome}) || receipt.Await(ctx) != nil {
 			return
 		}
 		// A fresh request carrying the same conclusive result proves pump-level
 		// idempotence rather than merely re-reading one receipt.
-		replay, replayReceipt := NewChildRunStartOutcomeRequest(binding, ChildRunStarted, a.startedAt)
-		if !yield(ExecutorEvent{Member: a.childMember, Payload: replay}) || replayReceipt.Await(ctx) != nil {
+		replay, replayReceipt := childTreePublication(a.rootMember.MemberID, binding)
+		if !yield(ExecutorEvent{Member: a.rootMember, Payload: replay}) || replayReceipt.Await(ctx) != nil {
 			return
 		}
 		if !yield(ExecutorEvent{
@@ -246,7 +262,7 @@ func (c *cancellableChildExecutor) Observe(
 		}) {
 			return
 		}
-		if !yieldChildStart(ctx, yield, c.childMember, c.request) {
+		if !yieldChildStart(ctx, yield, c.rootMember.MemberID, c.childMember, c.request) {
 			return
 		}
 		close(c.childOpened)
@@ -302,7 +318,7 @@ func (a *acknowledgedChildExecutor) Observe(ctx context.Context, _ ExecutorRef) 
 		}) {
 			return
 		}
-		if !yieldChildStart(ctx, yield, a.childMember, a.request) {
+		if !yieldChildStart(ctx, yield, a.rootMember.MemberID, a.childMember, a.request) {
 			return
 		}
 		close(a.childStarted)
@@ -349,9 +365,16 @@ func (f *fakeExecutor) Observe(ctx context.Context, _ ExecutorRef) (iter.Seq[Exe
 				}
 			}
 		}
+		rootID := "member_root"
+		for _, event := range events {
+			if !event.Member.Child() && event.Member.MemberID != "" {
+				rootID = event.Member.MemberID
+				break
+			}
+		}
 		for _, event := range events {
 			if fixture, ok := event.Payload.(childStartFixture); ok {
-				if !yieldChildStart(ctx, yield, event.Member, fixture) {
+				if !yieldChildStart(ctx, yield, rootID, event.Member, fixture) {
 					return
 				}
 				continue
@@ -458,7 +481,7 @@ func (f *fakeEffects) ReserveChildRunStart(
 	return nil
 }
 
-func (f *fakeEffects) CommitStartedChildRun(_ context.Context, started StartedChildRun) error {
+func (f *fakeEffects) applyStartedChildRun(started StartedChildRun) error {
 	reservation, opening := started.Reservation(), started.Opening()
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -560,14 +583,17 @@ type blockingChildOpeningEffects struct {
 	release <-chan struct{}
 }
 
-func (b *blockingChildOpeningEffects) CommitStartedChildRun(ctx context.Context, started StartedChildRun) error {
+func (b *blockingChildOpeningEffects) CommitExecutionTree(ctx context.Context, tree ExecutionTreeCommit) error {
+	if len(tree.StartedChildren) == 0 {
+		return b.fakeEffects.CommitExecutionTree(ctx, tree)
+	}
 	b.started <- struct{}{}
 	select {
 	case <-b.release:
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	return b.fakeEffects.CommitStartedChildRun(ctx, started)
+	return b.fakeEffects.CommitExecutionTree(ctx, tree)
 }
 
 func (f *fakeEffects) CommitOpening(_ context.Context, opening OpeningCommit) error {
@@ -1438,7 +1464,7 @@ func TestCoordinatorRejectsUnadmittedChildSource(t *testing.T) {
 
 func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 	startedAt := time.Date(2026, 7, 13, 1, 2, 4, 0, time.FixedZone("test", 8*60*60))
-	request, confirmation := newChildStartFixture(startedAt)
+	request, confirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -1461,6 +1487,7 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
+	coordinator.publications.now = func() time.Time { return startedAt.UTC() }
 	coordinator.newRunID = func() string { return "run_child" }
 	coordinator.newSegmentID = func() string { return "seg_child" }
 
@@ -1518,7 +1545,7 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 	}
 }
 
-func TestCoordinatorPublishesNativeChildOnlyAfterConclusiveStart(t *testing.T) {
+func TestCoordinatorPublishesNativeChildWithExecutionTree(t *testing.T) {
 	startedAt := time.Date(2026, 7, 13, 1, 2, 4, 0, time.UTC)
 	reservation, receipt := NewChildRunReservationRequest()
 	rootMember := ExecutorMember{MemberID: "member_root"}
@@ -1527,10 +1554,11 @@ func TestCoordinatorPublishesNativeChildOnlyAfterConclusiveStart(t *testing.T) {
 	}
 	executor := &acknowledgedNativeChildExecutor{
 		rootMember: rootMember, childMember: childMember,
-		reservation: reservation, reservationReceipt: receipt, startedAt: startedAt,
+		reservation: reservation, reservationReceipt: receipt,
 	}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
+	coordinator.publications.now = func() time.Time { return startedAt.UTC() }
 	coordinator.newRunID = func() string { return "run_child" }
 	coordinator.newSegmentID = func() string { return "segment_child" }
 	spec := testSegment()
@@ -1657,7 +1685,7 @@ func requireTerminalCommitOrder(t *testing.T, commits []EventCommit, earlierRunI
 }
 
 func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
-	request, confirmation := newChildStartFixture(time.Date(2026, 7, 13, 1, 2, 4, 0, time.UTC))
+	request, confirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -1734,8 +1762,8 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 }
 
 func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
-	requestA, confirmationA := newChildStartFixture(time.Now())
-	requestB, confirmationB := newChildStartFixture(time.Now())
+	requestA, confirmationA := newChildStartFixture()
+	requestB, confirmationB := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childA := ExecutorMember{
 		MemberID:    "member_child_a",
@@ -1871,8 +1899,8 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 }
 
 func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t *testing.T) {
-	childRequest, childConfirmation := newChildStartFixture(time.Now())
-	grandchildRequest, grandchildConfirmation := newChildStartFixture(time.Now())
+	childRequest, childConfirmation := newChildStartFixture()
+	grandchildRequest, grandchildConfirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -2010,8 +2038,8 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 }
 
 func TestCoordinatorDrainedStreamClosesNestedChildrenBeforeAncestors(t *testing.T) {
-	childRequest, childConfirmation := newChildStartFixture(time.Now())
-	grandchildRequest, grandchildConfirmation := newChildStartFixture(time.Now())
+	childRequest, childConfirmation := newChildStartFixture()
+	grandchildRequest, grandchildConfirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID: "member_child", ParentID: rootMember.MemberID, SpawnCallID: "spawn_child",
@@ -2083,7 +2111,7 @@ func TestCoordinatorDrainedStreamClosesNestedChildrenBeforeAncestors(t *testing.
 // before the root, so the durable tree is never a closed root over a live
 // descendant row.
 func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
-	request, confirmation := newChildStartFixture(time.Now())
+	request, confirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -2149,7 +2177,7 @@ func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
 
 func TestCoordinatorRecoversFromChildTerminalCommitFailureBeforeClosingRoot(t *testing.T) {
 	commitErr := errors.New("child terminal commit failed")
-	request, confirmation := newChildStartFixture(time.Now())
+	request, confirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -2214,7 +2242,7 @@ func runHasFailureKind(record run.Run, expected run.FailureKind) bool {
 
 func TestCoordinatorRejectsChildWhenAtomicOpeningFails(t *testing.T) {
 	commitErr := errors.New("child opening transaction failed")
-	request, confirmation := newChildStartFixture(time.Now())
+	request, confirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -2272,8 +2300,8 @@ func TestCoordinatorRejectsChildWhenAtomicOpeningFails(t *testing.T) {
 
 func TestCoordinatorClosesAdmittedSiblingWhenNextOpeningRollsBack(t *testing.T) {
 	commitErr := errors.New("second child opening failed")
-	requestA, confirmationA := newChildStartFixture(time.Now())
-	requestB, confirmationB := newChildStartFixture(time.Now())
+	requestA, confirmationA := newChildStartFixture()
+	requestB, confirmationB := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childA := ExecutorMember{
 		MemberID: "member_child_a", ParentID: rootMember.MemberID, SpawnCallID: "spawn_a",
@@ -2344,7 +2372,7 @@ func TestCoordinatorClosesAdmittedSiblingWhenNextOpeningRollsBack(t *testing.T) 
 }
 
 func TestCoordinatorAcknowledgesChildOnlyAfterOpeningCommit(t *testing.T) {
-	request, confirmation := newChildStartFixture(time.Now())
+	request, confirmation := newChildStartFixture()
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
 		MemberID:    "member_child",
@@ -2503,10 +2531,9 @@ func requirePublishedWaitingOrder(t *testing.T, events []Event, wantRunIDs []str
 }
 
 func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testing.T) {
-	startedAt := testSegment().CreatedAt
-	requestA, confirmationA := newChildStartFixture(startedAt)
-	requestB, confirmationB := newChildStartFixture(startedAt)
-	requestGrandchild, confirmationGrandchild := newChildStartFixture(startedAt)
+	requestA, confirmationA := newChildStartFixture()
+	requestB, confirmationB := newChildStartFixture()
+	requestGrandchild, confirmationGrandchild := newChildStartFixture()
 	root := ExecutorMember{MemberID: "member_root"}
 	childA := ExecutorMember{
 		MemberID: "member_child_a", ParentID: root.MemberID, SpawnCallID: "spawn_a",
@@ -2952,8 +2979,18 @@ func TestRootBoundaryWaitsForEveryLiveChildBeforeItCommits(t *testing.T) {
 	}
 }
 
-func (f *fakeEffects) CommitExecutionTree(ctx context.Context, update ExecutionTreeUpdate, commits []EventCommit) error {
-	for _, commit := range commits {
+func (f *fakeEffects) CommitExecutionTree(ctx context.Context, tree ExecutionTreeCommit) error {
+	for _, started := range tree.StartedChildren {
+		if err := f.applyStartedChildRun(started); err != nil {
+			return err
+		}
+	}
+	for _, aborted := range tree.AbortedChildren {
+		if err := f.AbortChildRunStart(ctx, aborted); err != nil {
+			return err
+		}
+	}
+	for _, commit := range tree.Events {
 		if err := f.CommitEvent(ctx, commit); err != nil {
 			return err
 		}

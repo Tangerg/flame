@@ -14,7 +14,7 @@ import (
 )
 
 // ChildRunStartReservation is the durable, non-public identity allocated for
-// one admitted executor child before that child has conclusively initialized.
+// one admitted executor child before its executor child is published in the durable tree.
 // It is not a Run and must never be returned by Run projections. The exact
 // value is consumed when the child either enters Running or aborts.
 type ChildRunStartReservation struct {
@@ -75,8 +75,8 @@ func (c ChildRunStartReservation) validateIdentity() error {
 	return nil
 }
 
-// draft is the child Run this reservation admits once its executor child has
-// started: every identity comes from the reservation, which owns them.
+// draft is the child Run this reservation admits once its executor child is
+// durably published: every identity comes from the reservation, which owns them.
 func (c ChildRunStartReservation) draft(model modelref.Selection, startedAt time.Time) rundomain.Draft {
 	return rundomain.Draft{
 		RunID:           c.Binding.RunID,
@@ -124,14 +124,12 @@ func (s StartedChildRun) Reservation() ChildRunStartReservation { return s.reser
 // Opening returns the child Run's admission write-set.
 func (s StartedChildRun) Opening() OpeningCommit { return s.opening }
 
-// ChildRunStartCommitter owns the three durable transitions of an invisible
-// child start reservation. CommitStarted atomically concludes the exact
-// reservation with the child Run opening; Abort concludes it without publishing
-// a Run. Implementations must treat an exact repeated request idempotently and
-// reject a contradictory conclusion.
+// ChildRunStartCommitter reserves an invisible child identity and withdraws
+// unpublished reservations during cleanup. Publication belongs to the atomic
+// ExecutionTreeCommit. Exact repeated requests are idempotent; contradictory
+// conclusions fail.
 type ChildRunStartCommitter interface {
 	ReserveChildRunStart(ctx context.Context, reservation ChildRunStartReservation) error
-	CommitStartedChildRun(ctx context.Context, started StartedChildRun) error
 	AbortChildRunStart(ctx context.Context, reservation ChildRunStartReservation) error
 }
 
@@ -189,7 +187,7 @@ func (c ChildRunReservationReceipt) Await(
 	return c.exchange.await(ctx)
 }
 
-// ChildRunStartOutcome identifies the conclusive executor initialization
+// ChildRunStartOutcome identifies the conclusive executor publication
 // result applied to one durable reservation. The zero value is invalid.
 type ChildRunStartOutcome string
 
@@ -198,7 +196,7 @@ const (
 	ChildRunStartAborted ChildRunStartOutcome = "aborted"
 )
 
-// Valid reports whether c is one conclusive child initialization fact.
+// Valid reports whether c is one conclusive child publication fact.
 func (c ChildRunStartOutcome) Valid() bool {
 	return c == ChildRunStarted || c == ChildRunStartAborted
 }
@@ -211,70 +209,7 @@ func (c ChildRunStartOutcome) String() string {
 	return string(c)
 }
 
-// ChildRunStartOutcomeRequest asks the Run pump to consume the exact
-// reservation after executor initialization concludes. Started publishes the
-// child Run atomically; aborted leaves no public Run.
-type ChildRunStartOutcomeRequest struct {
-	executorPayloadBase
-	Binding   ChildRunBinding
-	Outcome   ChildRunStartOutcome
-	StartedAt time.Time
-	exchange  *executorRequest[struct{}]
-}
-
-// ChildRunStartOutcomeReceipt is the executor's read-only side of the
-// conclusive child start transaction.
-type ChildRunStartOutcomeReceipt struct {
-	exchange *executorRequest[struct{}]
-}
-
-// NewChildRunStartOutcomeRequest creates one single-use outcome handshake.
-func NewChildRunStartOutcomeRequest(
-	binding ChildRunBinding,
-	outcome ChildRunStartOutcome,
-	startedAt time.Time,
-) (ChildRunStartOutcomeRequest, ChildRunStartOutcomeReceipt) {
-	exchange := newExecutorRequest[struct{}]()
-	return ChildRunStartOutcomeRequest{
-			Binding: binding, Outcome: outcome, StartedAt: startedAt, exchange: exchange,
-		},
-		ChildRunStartOutcomeReceipt{exchange: exchange}
-}
-
-func (c ChildRunStartOutcomeRequest) validate() error {
-	if c.exchange == nil {
-		return errors.New("runs: child Run start outcome request has no receipt")
-	}
-	if err := c.Binding.Validate(); err != nil {
-		return err
-	}
-	if !c.Outcome.Valid() {
-		return errors.New("runs: child Run start outcome is invalid")
-	}
-	if c.Outcome == ChildRunStarted {
-		if c.StartedAt.IsZero() || c.StartedAt.Location() != time.UTC {
-			return errors.New("runs: started child Run requires an authoritative UTC start time")
-		}
-	} else if !c.StartedAt.IsZero() {
-		return errors.New("runs: aborted child Run cannot have a start time")
-	}
-	return nil
-}
-
-func (c ChildRunStartOutcomeRequest) claim() bool { return c.exchange.claim() }
-
-func (c ChildRunStartOutcomeRequest) complete(err error) error {
-	return c.exchange.complete(struct{}{}, err)
-}
-
-// Await returns after the Application has durably published or discarded the
-// reserved child start.
-func (c ChildRunStartOutcomeReceipt) Await(ctx context.Context) error {
-	_, err := c.exchange.await(ctx)
-	return err
-}
-
 // MaxActiveChildRuns bounds product delegation independently of ordinary Tool
-// processes. Reservations count until initialization aborts or the drained
+// processes. Reservations count until publication aborts or the drained
 // child's authoritative terminal commits.
 const MaxActiveChildRuns = 4

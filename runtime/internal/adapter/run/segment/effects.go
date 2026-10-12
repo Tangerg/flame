@@ -185,6 +185,7 @@ type ExecutorCheckpointStore interface {
 // this adapter alone translates the application value.
 type ChildRunStartReservationStore interface {
 	Reserve(ctx context.Context, record sqlite.ChildRunStartReservationRecord) error
+	Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error)
 	Conclude(
 		ctx context.Context,
 		record sqlite.ChildRunStartReservationRecord,

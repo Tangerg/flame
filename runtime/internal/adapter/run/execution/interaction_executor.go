@@ -271,9 +271,8 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, fmt.Errorf("execution: observe Interaction tree commits: %w", err)
 	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
-		TreeCommitter:                     committer,
-		ProcessAdmitter:                   agent.ProcessAdmitterFunc(session.admitProcess),
-		ProcessInitializationAcknowledger: agent.ProcessInitializationAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),
+		TreeCommitter:   committer,
+		ProcessAdmitter: agent.ProcessAdmitterFunc(session.admitProcess),
 		EventListeners: []agent.EventListener{
 			agent.EventListenerFunc(session.observeFrameworkEvent), telemetry,
 		},
