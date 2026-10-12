@@ -8,7 +8,7 @@ Stage 2b complete: existing Memory/Schedules human commands retain durable origi
 Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bindings and operation reference artifacts; Reviews consumes the same immutable contracts. Committed and synchronized with local main; independent author and regeneration-drift checks passed. The generic host operation entrance and full proposal remain open.
 Stage 2d complete: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. The slice is verified, committed and synchronized with local main; the full proposal remains open.
 Stage 2e complete: one immutable admitted JSON representation now supplies request identity to SDK methods/Tools, host routing and private Memory/Schedules/Reviews receipts. Struct/map ordering agrees and numeric lexemes survive typed conversion. Former digest/DTO formats are strictly refused. The verified slice is committed and synchronized with local main; generic declarations, installed operation entrances and the full proposal remain open.
-Stage 2f verified: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance. Commit and main synchronization are being recorded.
+Stage 2f complete: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. The verified slice is committed and synchronized with local main. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance; the full proposal remains open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -20,6 +20,8 @@ Stage 2a commit: c4706b6b.
 Stage 2c commit: da20c0848b3ccb3351587c30d3cb5d622e600230.
 Stage 2d commit: fe57e21a82b83139633083e837eb7e1ca0e162e8.
 Stage 2e commit: d0fda261ad086fb6be0544f87b26b8fe9fa5ac1d.
+Stage 2f commit: c7061dee16e1e84fba1667ff0433c7193c64159e.
+Stage 2f main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2e main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2d main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2c main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
@@ -261,7 +263,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
-- Stage 2f: backend/module/race checks and independent author fixture returned terminal success after fixes. Existing cleanup retires test processes, sessions, temporary packages and databases; TemporaryDirectory removed the public SDK proxy/archive/cache/source. No production/user data, original proposal/review, shared configuration, remote service or credential was modified. The active checkout/dependencies remain for the full refactor.
+- Stage 2f: backend/module/race checks and independent author fixture returned terminal success after fixes. Existing cleanup retires test processes, sessions, temporary packages and databases; TemporaryDirectory removed the public SDK proxy/archive/cache/source. No production/user data, original proposal/review, shared configuration, remote service or credential was modified. Original input hashes match the baseline. The slice is committed and incoming local main is already up to date; the active checkout/dependencies remain for the full refactor.
 
 - Stage 2e: all verification handles returned terminal success after fixture repairs. Existing test cleanup retires process/session/database/temp-package ownership. TemporaryDirectory removed the independent author's SDK proxy/archive/cache/source. No user directory, original proposal/review, shared configuration, remote publication or credentialed service was changed. Original input hashes match the baseline. The slice is committed and incoming local main is already up to date; the active checkout and required development dependencies remain for the full refactor.
 
