@@ -164,12 +164,12 @@ func (i *interactionSession) deliverContinuationAnswers(
 		}()
 	}
 	for _, answer := range answers {
-		accepted, err := answer.process.DeliverSignals(deliveryContext, answer.signal)
-		if err != nil {
+		// Scope admits an exact duplicate answer idempotently: false with a nil error
+		// means this Signal's immutable content was already accepted, which a
+		// partial-delivery restart reconciles as success rather than failing. A
+		// conflicting identity or payload returns an error, handled here.
+		if _, err := answer.process.DeliverSignals(deliveryContext, answer.signal); err != nil {
 			return fmt.Errorf("execution: deliver Interaction answer Signal: %w", err)
-		}
-		if !accepted {
-			return errors.New("execution: Interaction answer Signal was already accepted")
 		}
 	}
 	inputRetained = input != nil
