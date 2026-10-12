@@ -80,6 +80,20 @@ Inputs and identities are bounded before storage. At 4,096 receipts, new calls
 return `receiptCapacity`; existing receipts remain recoverable and are never
 expired or deleted to make space.
 
+The public `commands.get` method reads an existing private receipt without
+entering the update use case. It checks the original update method and input
+fingerprint and returns the original typed outcome, including a stored revision
+conflict after the current review has advanced. Missing evidence stays absent;
+binding conflicts, corrupt private evidence and storage failures remain protocol
+errors. The query adds no second receipt table or host result cache.
+
+This receipt binding currently serves the typed Go input representation used by
+the backend. The shared fingerprint still depends on the encoded object's member
+order. The generic cross-language entrance must replace that encoding with one
+admitted raw invocation fingerprint, preserving numeric precision, in the same
+breaking batch as the actual host and managed receipt format change. It must not
+rehash a decoded DTO or silently read both persisted formats.
+
 Malformed inputs and known business refusals produce explicit Tool failures.
 Unexpected storage or commit errors remain MCP protocol failures, so Runtime
 retains execution uncertainty instead of inventing a definite failure. Do not
@@ -104,8 +118,9 @@ builds and installs the real stdio backend in temporary directories. It exercise
 approval, Runtime/backend restart, command replay, stale revisions, withdrawal,
 historical results, and a real CLI reading through HTTP. A transport probe drops
 an actual committed update's response: Runtime retains a lost Run and unresolved
-effect, the restarted backend recovers the original receipt, and a replacement
-call returns the revision conflict. That test also verifies process retirement
+effect, the restarted backend recovers the original receipt through the public
+read-only query, and a replacement call returns the revision conflict. An absent
+receipt does not enter the mutation handler. That test also verifies process retirement
 and preserves the Run's original uncertainty after restart. Its model is scripted;
 the test needs no provider credentials or external service.
 

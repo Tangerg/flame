@@ -1,7 +1,9 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"iter"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -37,6 +40,29 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	}
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
 		t.Fatal(err)
+	}
+	metadata, err := os.ReadFile(filepath.Join(source, "io.github.tangerg.flame", "contracts", "methods.generated.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var methods []struct {
+		Name string               `json:"name"`
+		Kind pluginsdk.MethodKind `json:"kind"`
+	}
+	if err := json.Unmarshal(metadata, &methods); err != nil {
+		t.Fatal(err)
+	}
+	var updateMethod string
+	for _, method := range methods {
+		if method.Kind == pluginsdk.Mutation {
+			if updateMethod != "" {
+				t.Fatal("receipt fixture requires one declared mutation")
+			}
+			updateMethod = method.Name
+		}
+	}
+	if updateMethod == "" {
+		t.Fatal("backend contract does not declare its mutation")
 	}
 	var modelCalls atomic.Int32
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -129,13 +155,18 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	type reviewUpdate struct {
+		ID               string `json:"id"`
+		ExpectedRevision int64  `json:"expectedRevision"`
+		Status           string `json:"status"`
+	}
 	var evidence struct {
 		DataDirectory string `json:"dataDirectory"`
 		Request       struct {
 			Params struct {
-				Meta      sdk.Meta       `json:"_meta"`
-				Name      string         `json:"name"`
-				Arguments map[string]any `json:"arguments"`
+				Meta      sdk.Meta     `json:"_meta"`
+				Name      string       `json:"name"`
+				Arguments reviewUpdate `json:"arguments"`
 			} `json:"params"`
 		} `json:"request"`
 		Response struct {
@@ -166,6 +197,9 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	command := exec.CommandContext(ctx, filepath.Join(source, "bin", "reviews"))
 	command.Env = append(os.Environ(), "PLUGIN_DATA="+evidence.DataDirectory)
 	mcpClient := sdk.NewClient(&sdk.Implementation{Name: "receipt-recovery-test", Version: "1"}, nil)
+	if err := pluginsdk.RegisterClient[pluginsdk.ReceiptRequest, pluginsdk.Receipt](mcpClient, pluginsdk.ReceiptMethod); err != nil {
+		t.Fatal(err)
+	}
 	backend, err := mcpClient.Connect(ctx, &sdk.CommandTransport{Command: command}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -175,9 +209,26 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 			t.Error(err)
 		}
 	})
-	result, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: evidence.Request.Params.Meta})
-	if err != nil || result.IsError || !reflect.DeepEqual(result.StructuredContent, evidence.Response.Result.StructuredContent) {
-		t.Fatalf("original invocation did not recover its committed receipt: %+v, %v", result, err)
+	result, found, err := pluginsdk.ReadReceipt[reviewUpdate, jsontext.Value](ctx, backend, identity, updateMethod, evidence.Request.Params.Arguments)
+	if err != nil || !found {
+		t.Fatalf("read-only lookup did not recover the committed receipt: %+v, %t, %v", result, found, err)
+	}
+	expected, err := json.Marshal(evidence.Response.Result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedResult := jsontext.Value(expected)
+	if err := expectedResult.Format(jsontext.ReorderRawObjects(true)); err != nil {
+		t.Fatal(err)
+	}
+	if err := result.Format(jsontext.ReorderRawObjects(true)); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(result, expectedResult) {
+		t.Fatalf("receipt changed the original business evidence: %s, want %s", result, expectedResult)
+	}
+	if _, found, err := pluginsdk.ReadReceipt[reviewUpdate, jsontext.Value](ctx, backend, "never-dispatched", updateMethod, evidence.Request.Params.Arguments); err != nil || found {
+		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
 	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: sdk.Meta{"io.github.tangerg.flame/invocationId": "new-inspected-call"}})
 	if err != nil || !stale.IsError {

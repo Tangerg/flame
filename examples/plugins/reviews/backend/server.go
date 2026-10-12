@@ -60,6 +60,11 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	if err := pluginsdk.RegisterTools(server, list, update); err != nil {
 		return nil, err
 	}
+	if err := pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, request pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
+		return store.Receipt(ctx, request, contracts.Update.Name())
+	}); err != nil {
+		return nil, err
+	}
 	if err := contracts.List.RegisterServer(server, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (ListResult, error) {
 		return read(ctx)
 	}); err != nil {

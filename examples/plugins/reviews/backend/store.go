@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -77,6 +79,55 @@ func (s *Store) List(ctx context.Context) ([]Snapshot, error) {
 		return nil, err
 	}
 	return []Snapshot{review.Snapshot()}, nil
+}
+
+// Receipt reads the original owner result without entering Update. Method and
+// input binding remain required even after the review has advanced again.
+func (s *Store) Receipt(ctx context.Context, request pluginsdk.ReceiptRequest, updateMethod string) (pluginsdk.Receipt, error) {
+	if err := validateInvocationID(request.ID); err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	if request.Method != updateMethod {
+		return pluginsdk.Receipt{}, errors.New("reviews: receipt method conflicts")
+	}
+	var arguments, encoded []byte
+	err := s.db.QueryRowContext(ctx, `SELECT arguments, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
+	if errors.Is(err, sql.ErrNoRows) {
+		return pluginsdk.Receipt{}, nil
+	}
+	if err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	var input Update
+	if err := json.Unmarshal(arguments, &input, json.RejectUnknownMembers(true)); err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	if err := input.Validate(); err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	digest, err := pluginsdk.InputDigest(input)
+	if err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	if digest != request.InputDigest {
+		return pluginsdk.Receipt{}, errors.New("reviews: receipt input conflicts")
+	}
+	var result UpdateResult
+	if err := json.Unmarshal(encoded, &result, json.RejectUnknownMembers(true)); err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	if err := result.Validate(); err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	reply, err := pluginsdk.Reply(result, nil, nil)
+	if err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	data, err := json.Marshal(reply)
+	if err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	return pluginsdk.Receipt{Found: true, Reply: data}, nil
 }
 
 func (s *Store) Update(ctx context.Context, invocationID string, input Update) (_ UpdateResult, err error) {
