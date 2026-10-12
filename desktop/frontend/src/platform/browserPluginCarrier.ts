@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pluginMessageFrames } from "./pluginMessageFrames";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 
 const seedMessage = z.discriminatedUnion("type", [
@@ -78,7 +79,8 @@ export const browserPluginCarrier: PluginCarrier = {
       return {
         async send(message) {
           if (closed) throw new Error("Plugin carrier retired.");
-          channel.port1.postMessage(message);
+          for (const frame of pluginMessageFrames(message))
+            channel.port1.postMessage(JSON.parse(frame));
         },
         close,
       };

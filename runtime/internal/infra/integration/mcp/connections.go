@@ -78,7 +78,7 @@ type Connections struct {
 	// onTools is the tool sink; nil until SetToolSink; guarded by mu. It runs
 	// while mu is held, so it must be an in-memory publication that never
 	// blocks or calls back into Connections.
-	onTools  func([]Executable, []mcpserver.ID)
+	onTools  func([]Executable, []mcpserver.ID, []mcpserver.ID)
 	closed   bool // terminal admission state set by Shutdown
 	shutdown *shutdownAttempt
 	sessions map[*sdkmcp.ClientSession]*ownedSession
@@ -103,7 +103,7 @@ func (c *Connections) cancellationErr(ctx context.Context) error {
 // SetToolSink publishes the current catalog and every subsequent connection
 // change through the same critical section. The sink must publish in memory
 // without blocking or calling back into Connections.
-func (c *Connections) SetToolSink(sink func([]Executable, []mcpserver.ID)) {
+func (c *Connections) SetToolSink(sink func([]Executable, []mcpserver.ID, []mcpserver.ID)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onTools = sink

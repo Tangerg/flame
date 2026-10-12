@@ -337,7 +337,7 @@ func TestToolSinkReceivesCurrentSnapshotOnRegistration(t *testing.T) {
 		},
 	}}
 	var got []string
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) {
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) {
 		got = make([]string, 0, len(catalog))
 		for _, tool := range catalog {
 			got = append(got, tool.Definition().Name)
@@ -349,7 +349,7 @@ func TestToolSinkReceivesCurrentSnapshotOnRegistration(t *testing.T) {
 		t.Fatalf("published tools = %v, want %v", got, want)
 	}
 	c.servers = nil
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { got = toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { got = toolNames(catalog) })
 	if len(got) != 0 {
 		t.Fatalf("replacement sink retained withdrawn tools: %v", got)
 	}
@@ -366,7 +366,7 @@ func TestDetachPublishesRemainingSnapshot(t *testing.T) {
 		},
 	}}
 	published := make(chan []string, 1)
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) {
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) {
 		names := make([]string, 0, len(catalog))
 		for _, tool := range catalog {
 			names = append(names, tool.Definition().Name)
@@ -408,7 +408,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	}
 
 	publications := make(chan []string, 2)
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications <- toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { publications <- toolNames(catalog) })
 	if got := <-publications; !slices.Equal(got, toolNames(initial)) {
 		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
 	}
@@ -458,7 +458,9 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 		}}},
 	}
 	var publications [][]string
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications = append(publications, toolNames(catalog)) })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) {
+		publications = append(publications, toolNames(catalog))
+	})
 	config.URL = "https://example.invalid/replacement"
 	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
 		t.Errorf("Configure = %v, want credential and retirement errors", err)
@@ -805,7 +807,7 @@ func TestOpenReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 			})
 			awaitInitialConnections(connections)
 			var initial []Executable
-			connections.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { initial = catalog })
+			connections.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { initial = catalog })
 			if names := toolNames(initial); !slices.Equal(names, []string{"healthy_read"}) {
 				t.Fatalf("initial tools = %v, want healthy server's tool", names)
 			}
@@ -915,7 +917,7 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	}
 
 	publications := make(chan []string, 2)
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications <- toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { publications <- toolNames(catalog) })
 	if got := <-publications; !slices.Equal(got, toolNames(initial)) {
 		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
 	}
@@ -989,7 +991,9 @@ func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 	})
 
 	var publications [][]string
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { publications = append(publications, toolNames(catalog)) })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) {
+		publications = append(publications, toolNames(catalog))
+	})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, test := range []struct {
@@ -1035,7 +1039,7 @@ func testOpen(ctx, lifetime context.Context, servers []ServerConfig, oauthSessio
 	}
 	awaitInitialConnections(c)
 	var initial []Executable
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { initial = catalog })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { initial = catalog })
 	c.SetToolSink(nil)
 	return c, initial, nil
 }
@@ -1056,7 +1060,7 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 		t.Fatal(err)
 	}
 	var publications [][]string
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) {
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) {
 		if c.mu.TryLock() {
 			c.mu.Unlock()
 			t.Error("tool sink ran outside the critical section that settled the connection")
@@ -1094,7 +1098,7 @@ func TestSupersededConfigureNeverResurrectsADetachedServer(t *testing.T) {
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
 	c := &Connections{lifetime: t.Context(), client: NewClient(), servers: []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}}
 	published := false
-	c.SetToolSink(func([]Executable, []mcpserver.ID) { published = true })
+	c.SetToolSink(func([]Executable, []mcpserver.ID, []mcpserver.ID) { published = true })
 	ctx, supersede := context.WithCancel(t.Context())
 	supersede()
 	if err := c.Detach(config.ID()); err != nil {
@@ -1124,7 +1128,7 @@ func TestExecutableIsCurrentOnlyWhileItsSessionServesTheSource(t *testing.T) {
 		t.Fatalf("admitted executable is not current: %v", toolNames(initial))
 	}
 	var replacement []Executable
-	c.SetToolSink(func(catalog []Executable, _ []mcpserver.ID) { replacement = catalog })
+	c.SetToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { replacement = catalog })
 	if err := c.Refuse(t.Context(), config.ID(), mcpserver.FailureConfiguration); err != nil {
 		t.Fatal(err)
 	}

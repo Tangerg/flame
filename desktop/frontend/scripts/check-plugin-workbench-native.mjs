@@ -77,8 +77,11 @@ async function waitFor(label, read, accept, timeout = 20000) {
   throw new Error(`${label} timed out: ${JSON.stringify(observed)}\n${nativeOutput}`);
 }
 
-async function rpc(method, params = {}) {
-  const metadata = { protocolVersion: manifest.protocolVersion };
+async function rpc(method, params = {}, clientCapabilities) {
+  const metadata = {
+    protocolVersion: manifest.protocolVersion,
+    ...(clientCapabilities ? { clientCapabilities } : {}),
+  };
   const headers = { "Content-Type": "application/json" };
   if (manifest.methods.find((entry) => entry.name === method).idempotency !== "none") {
     headers["Idempotency-Key"] = randomUUID();
@@ -161,9 +164,9 @@ async function clickText(text, selector = 'button, [role="option"]') {
     `control ${text}`,
     () =>
       evaluate(
-        `return [...document.querySelectorAll(${JSON.stringify(selector)})].some(e => e.textContent.trim() === ${JSON.stringify(text)} && e.getBoundingClientRect().width > 0)`,
+        `return {controls:[...document.querySelectorAll(${JSON.stringify(selector)})].map(e=>({text:e.textContent.trim(),visible:e.getBoundingClientRect().width>0})),body:document.body.innerText.slice(0,5000)}`,
       ),
-    Boolean,
+    (value) => value.controls.some((control) => control.text === text && control.visible),
   );
   await evaluate(
     `const e = [...document.querySelectorAll(${JSON.stringify(selector)})].find(e => e.textContent.trim() === ${JSON.stringify(text)} && e.getBoundingClientRect().width > 0); e.click(); return true`,
@@ -283,6 +286,131 @@ async function refreshPage(id, method, binding, query, text) {
   await guest(id, "document.getElementById('refresh').click(); true");
   const refreshed = await pageWith(text);
   assert.equal(refreshed.id, id, "refresh must preserve the current native instance");
+}
+
+function capacitySummary(value) {
+  const canonical = (value) =>
+    Array.isArray(value)
+      ? value.map(canonical)
+      : value && typeof value === "object"
+        ? Object.fromEntries(
+            Object.keys(value)
+              .sort()
+              .map((key) => [key, canonical(value[key])]),
+          )
+        : value;
+  const text = JSON.stringify(canonical(value));
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return {
+    bytes: new TextEncoder().encode(text).byteLength,
+    hash: hash >>> 0,
+    records: value.data.length,
+  };
+}
+
+async function checkTrajectoryCapacity(kind) {
+  const frameCapacity = (await pages()).maxFrameBytes;
+  assert.ok(Number.isSafeInteger(frameCapacity) && frameCapacity > 0);
+  const sessionTitle = `Native capacity ${kind}`;
+  const captured = await rpc("sessions.create", {
+    title: sessionTitle,
+    workspace: { path: workspace },
+  });
+  for (let i = 0; i < (kind === "multi-record" ? 10 : 1); i++) {
+    const run = await rpc("runs.start", {
+      sessionId: captured.id,
+      input: [{ type: "text", text: `Native ${kind} capacity.` }],
+    });
+    const result = await rpc("runs.get", { runId: run.runId });
+    assert.equal(result.outcome.type, "completed", JSON.stringify(result.outcome));
+  }
+  if (kind === "single-item") {
+    const marker = await rpc("runs.start", {
+      sessionId: captured.id,
+      input: [{ type: "text", text: "Complete the capacity cursor marker." }],
+    });
+    const result = await rpc("runs.get", { runId: marker.runId });
+    assert.equal(result.outcome.type, "completed", JSON.stringify(result.outcome));
+  }
+  const discovery = await rpc("runtime.discover");
+  const scope = {
+    sessionId: captured.id,
+    includeDescendants: discovery.capabilities.features.subagents?.enabled === true,
+  };
+  const capabilities = { features: { subagents: { enabled: true } } };
+  const initial = await rpc("sessions.trajectory", { ...scope, limit: 100 }, capabilities);
+  const continuation = await rpc("sessions.trajectory", { ...scope, limit: 1 }, capabilities);
+  assert.ok(continuation.nextCursor, "capacity fixture must have a real Runtime cursor");
+  const subsequent = await rpc(
+    "sessions.trajectory",
+    { ...scope, cursor: continuation.nextCursor, limit: 100 },
+    capabilities,
+  );
+  assert.ok(
+    capacitySummary(initial).bytes > frameCapacity,
+    `${kind} initial capacity: ${JSON.stringify(capacitySummary(initial))}`,
+  );
+  assert.ok(
+    capacitySummary(subsequent).bytes > frameCapacity,
+    `${kind} continuation capacity: ${JSON.stringify(capacitySummary(subsequent))}`,
+  );
+  if (kind === "single-item")
+    assert.ok(
+      initial.data.some(
+        (entry) => entry.item && Buffer.byteLength(JSON.stringify(entry.item)) > frameCapacity,
+      ),
+    );
+  else
+    assert.ok(
+      initial.data.length > 1 &&
+        initial.data.every((entry) => Buffer.byteLength(JSON.stringify(entry)) < frameCapacity),
+    );
+  const source = join(fixture, `capacity-${kind}`);
+  await cp(join(fixture, "plugins", "trajectory"), source, { recursive: true });
+  const manifest = JSON.parse(await readFile(join(source, "plugin.json"), "utf8"));
+  manifest.name = `native-capacity-${kind}`;
+  const contribution = manifest.extensions["io.github.tangerg.flame"].contributes;
+  manifest.extensions["io.github.tangerg.flame"].contributes = { views: contribution.views };
+  await writeFile(join(source, "plugin.json"), JSON.stringify(manifest));
+  const resource = join(source, "views", "trajectory.html");
+  const observation = `<!doctype html><p>Native trajectory capacity</p><script>
+    const summarize=${capacitySummary.toString()};
+    addEventListener('message',event=>{
+      if(event.source!==parent || event.data?.type!=='flame.view.connect.v2')return;
+      const port=event.ports[0];
+      window.nativeCapacity={initial:summarize(event.data.initial),read:()=>port.postMessage({type:'read',cursor:${JSON.stringify(continuation.nextCursor)}})};
+      port.onmessage=event=>{window.nativeCapacity.reply=event.data.type==='data'?summarize(event.data.data):event.data};
+      port.start();
+    });
+    parent.postMessage('flame.view.ready.v2','*');
+  </script>`;
+  await writeFile(resource, observation);
+  const remoteSource = `/fixture/capacity-${kind}`;
+  const installation = await rpc("plugins.install", { source: remoteSource });
+  assert.deepEqual(installation.selected.diagnostics, []);
+  await rpc("plugins.approve", {
+    installationId: installation.id,
+    digest: installation.selected.digest,
+  });
+  await rpc("plugins.setEnablement", { installationId: installation.id, enabled: true });
+  await clickText(sessionTitle);
+  const panelTitle = `${manifest.name} · ${contribution.views[0].title}`;
+  const page = await openPanel(panelTitle, "Native trajectory capacity");
+  assert.deepEqual(await guest(page.id, "window.nativeCapacity.initial"), capacitySummary(initial));
+  await guest(page.id, "window.nativeCapacity.read();true");
+  await waitFor(
+    `${kind} native continuation`,
+    () => guest(page.id, "window.nativeCapacity.reply ?? null"),
+    Boolean,
+  );
+  assert.deepEqual(
+    await guest(page.id, "window.nativeCapacity.reply"),
+    capacitySummary(subsequent),
+  );
+  await closePanel(panelTitle, page.id);
+  await rpc("plugins.uninstall", { installationId: installation.id });
+  console.log(`Trajectory capacity: ${kind} initial and cursor continuation passed`);
 }
 
 try {
@@ -1042,6 +1170,8 @@ try {
     ),
     true,
   );
+  await checkTrajectoryCapacity("multi-record");
+  await checkTrajectoryCapacity("single-item");
   await noPages();
   await tool("window_control", { action: "close" });
   let shutdownDeadline;

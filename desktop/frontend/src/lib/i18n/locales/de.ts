@@ -1119,6 +1119,7 @@ export const de: Record<string, string> = {
   "packages.action.target": "Sitzung {{sessionId}} umbenennen · Revision {{revision}}",
 
   "packages.view.selectSession": "Wählen Sie eine Sitzung, um ihren Verlauf anzusehen.",
+  "packages.view.retirementFailed": "Die vorherige Plugin-Seite konnte nicht geschlossen werden.",
   "packages.view.loading": "Plugin-Seite wird geöffnet…",
   "packages.view.identity": "{{title}} · Schreibgeschütztes Plugin",
 

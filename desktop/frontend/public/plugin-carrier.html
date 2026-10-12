@@ -80,7 +80,38 @@
         document.body.append(guest);
       } else if (value?.type === "reply") port?.postMessage(value.reply);
     }
-    window.flameCarrierReceive = receive;
+    let fragments = [];
+    let failed = false;
+    function receiveFrame(value) {
+      if (failed) return;
+      if (
+        value?.type !== "fragment" ||
+        Object.keys(value).length !== 4 ||
+        !Number.isSafeInteger(value.index) ||
+        value.index !== fragments.length ||
+        typeof value.last !== "boolean" ||
+        typeof value.data !== "string"
+      ) {
+        failed = true;
+        fragments = [];
+        fail("The plugin carrier received an invalid frame.");
+        return;
+      }
+      fragments.push(value.data);
+      if (!value.last) return;
+      const text = fragments.join("");
+      fragments = [];
+      let message;
+      try {
+        message = JSON.parse(text);
+      } catch {
+        failed = true;
+        fail("The plugin carrier received invalid JSON.");
+        return;
+      }
+      receive(message);
+    }
+    window.flameCarrierReceive = receiveFrame;
     addEventListener("message", (event) => {
       if (
         native ||
@@ -91,7 +122,7 @@
       )
         return;
       transport = event.ports[0];
-      transport.onmessage = (event) => receive(event.data);
+      transport.onmessage = (event) => receiveFrame(event.data);
       transport.start();
     });
     addEventListener("error", (event) => fail(String(event.message)));
@@ -99,6 +130,8 @@
     addEventListener(
       "pagehide",
       () => {
+        fragments = [];
+        failed = true;
         port?.close();
         transport?.close();
         guest?.remove();

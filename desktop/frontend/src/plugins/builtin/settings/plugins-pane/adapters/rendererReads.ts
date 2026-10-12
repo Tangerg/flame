@@ -19,14 +19,18 @@ export function createRecordedRendererReads<T extends ToolResultSnapshot | FileS
   binding: Readonly<ReadPluginRendererRequest>,
   record: T,
 ): PluginViewReads<T> {
-  const request = { ...binding };
+  const request = Object.freeze({ ...binding });
   const snapshot = structuredClone(record);
   let admittedHTML: string | undefined;
   return {
-    async load(signal) {
+    binding: request,
+    async resource(signal) {
       const resource = await plugins.readRenderer(request, signal);
       admittedHTML = resource.html;
-      return { html: resource.html, initial: structuredClone(snapshot) };
+      return resource.html;
+    },
+    async initial() {
+      return structuredClone(snapshot);
     },
     async read(cursor, signal) {
       if (cursor !== undefined) throw new Error("Captured renderer records have no continuation");

@@ -53,10 +53,7 @@ it("captures Skill document identity and grants refresh without guest-selected n
   target.workspace.path = "/replacement";
   target.name = "other";
   const signal = new AbortController().signal;
-  await expect(reads.load(signal)).resolves.toEqual({
-    html: "<!doctype html>",
-    initial: { type: "detail", data: detail },
-  });
+  await expect(reads.initial(signal)).resolves.toEqual({ type: "detail", data: detail });
   await reads.read(undefined, signal);
   expect(plugins.readSkill).toHaveBeenLastCalledWith(
     {
@@ -71,33 +68,21 @@ it("captures Skill document identity and grants refresh without guest-selected n
   await expect(reads.read("unbound", signal)).rejects.toThrow("no cursor");
   expect(plugins.readSkill).toHaveBeenCalledTimes(2);
 });
-it("joins an accepted memory query when the HTML read fails", async () => {
-  let memorySignal!: AbortSignal;
-  let settle!: () => void;
-  const pending = new Promise<{ data: [] }>((resolve) => (settle = () => resolve({ data: [] })));
+it("keeps resource admission and initial data as separately owned operations", async () => {
+  const cause = new Error("package missing");
   const plugins = {
     readView: vi.fn(async () => {
-      throw new Error("package missing");
+      throw cause;
     }),
-    readMemory: vi.fn((_request: unknown, signal?: AbortSignal) => {
-      memorySignal = signal!;
-      return pending;
-    }),
+    readMemory: vi.fn(async () => ({ data: [] })),
   };
   const reads = createMemoryViewReads(
     plugins,
     { installationId: "installation", digest: "digest", viewId: "memory" },
     { scope: "user" },
   );
-  let settled = false;
-  const loading = reads.load(new AbortController().signal).catch((error) => {
-    settled = true;
-    return error;
-  });
-  await vi.waitFor(() => expect(memorySignal.aborted).toBe(true));
-  expect(settled).toBe(false);
-  settle();
-  await expect(loading).resolves.toMatchObject({ message: "package missing" });
+  await expect(reads.resource(new AbortController().signal)).rejects.toBe(cause);
+  expect(plugins.readMemory).not.toHaveBeenCalled();
 });
 
 it("binds schedule continuation to the captured release without guest-selected targets", async () => {
@@ -109,7 +94,7 @@ it("binds schedule continuation to the captured release without guest-selected t
   const reads = createScheduleViewReads(plugins, binding);
   binding.digest = "successor";
   const signal = new AbortController().signal;
-  await reads.load(signal);
+  await reads.initial(signal);
   await reads.read("next", signal);
   expect(plugins.readSchedules).toHaveBeenLastCalledWith(
     { installationId: "installation", digest: "digest", viewId: "schedules", cursor: "next" },
@@ -129,7 +114,7 @@ it("captures the usage period and passes through the canonical report without pa
   binding.digest = "successor";
   period.sinceDays = 30;
   const signal = new AbortController().signal;
-  await expect(reads.load(signal)).resolves.toEqual({ html: "<!doctype html>", initial: report });
+  await expect(reads.initial(signal)).resolves.toEqual(report);
   await expect(reads.read(undefined, signal)).resolves.toBe(report);
   expect(plugins.readUsage).toHaveBeenLastCalledWith(
     { installationId: "installation", digest: "digest", viewId: "usage", sinceDays: 7 },
@@ -156,10 +141,7 @@ it("captures Diff workspace, baseline and focus while refusing guest continuatio
   target.workspace.path = "/replacement";
   target.focusPath = "other.ts";
   const signal = new AbortController().signal;
-  await expect(reads.load(signal)).resolves.toEqual({
-    html: "<!doctype html>",
-    initial: { diff, focusPath: "src/a.ts" },
-  });
+  await expect(reads.initial(signal)).resolves.toEqual({ diff, focusPath: "src/a.ts" });
   await reads.read(undefined, signal);
   expect(plugins.readDiff).toHaveBeenLastCalledWith(
     {

@@ -445,7 +445,9 @@ function workspaceDataPlugin(
       const lifetime = ctx.lifetime("visual-trajectory");
       const read = async () => ({ data: visualTrajectory(snapshot) });
       const reads = () => ({
-        load: async () => ({ html: trajectoryHTML, initial: await read() }),
+        binding: { installationId: "fixture", digest: "release", viewId: "view" },
+        resource: async () => trajectoryHTML,
+        initial: async () => await read(),
         read,
       });
       lifetime.contribute(WORKSPACE_VIEW, {
@@ -471,7 +473,12 @@ function workspaceDataPlugin(
             focusPath: target.focusPath,
           };
         };
-        return { load: async () => ({ html: diffHTML, initial: await read() }), read };
+        return {
+          binding: { installationId: "fixture", digest: "release", viewId: "view" },
+          resource: async () => diffHTML,
+          initial: async () => await read(),
+          read,
+        };
       };
       diffLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:diff",
@@ -514,7 +521,12 @@ function workspaceDataPlugin(
             }
           }
         };
-        return { load: async () => ({ html: skillsHTML, initial: await read() }), read };
+        return {
+          binding: { installationId: "fixture", digest: "release", viewId: "view" },
+          resource: async () => skillsHTML,
+          initial: async () => await read(),
+          read,
+        };
       };
       skillLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:skills",
@@ -531,7 +543,9 @@ function workspaceDataPlugin(
       });
       const usageLifetime = ctx.lifetime("visual-usage");
       const usageReads = () => ({
-        load: async () => ({ html: usageHTML, initial: VISUAL_USAGE }),
+        binding: { installationId: "fixture", digest: "release", viewId: "view" },
+        resource: async () => usageHTML,
+        initial: async () => VISUAL_USAGE,
         read: async () => VISUAL_USAGE,
       });
       usageLifetime.contribute(WORKSPACE_VIEW, {
@@ -549,7 +563,9 @@ function workspaceDataPlugin(
       });
       const scheduleLifetime = ctx.lifetime("visual-schedules");
       const scheduleReads = () => ({
-        load: async () => ({ html: scheduleHTML, initial: { data: VISUAL_SCHEDULES } }),
+        binding: { installationId: "fixture", digest: "release", viewId: "view" },
+        resource: async () => scheduleHTML,
+        initial: async () => ({ data: VISUAL_SCHEDULES }),
         read: async () => ({ data: VISUAL_SCHEDULES }),
       });
       scheduleLifetime.contribute(WORKSPACE_VIEW, {
@@ -570,7 +586,9 @@ function workspaceDataPlugin(
       });
       const memoryLifetime = ctx.lifetime("visual-memory");
       const memoryReads = () => ({
-        load: async () => ({ html: memoryHTML, initial: { data: visualMemory } }),
+        binding: { installationId: "fixture", digest: "release", viewId: "view" },
+        resource: async () => memoryHTML,
+        initial: async () => ({ data: visualMemory }),
         read: async () => ({ data: visualMemory }),
       });
       memoryLifetime.contribute(WORKSPACE_VIEW, {

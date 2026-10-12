@@ -1100,6 +1100,7 @@ export const en: Record<string, string> = {
   "packages.action.target": "Rename Session {{sessionId}} · revision {{revision}}",
 
   "packages.view.selectSession": "Select a Session to inspect its trajectory.",
+  "packages.view.retirementFailed": "The previous plugin page could not be retired.",
   "packages.view.loading": "Opening plugin page…",
   "packages.view.identity": "{{title}} · Read-only plugin",
 

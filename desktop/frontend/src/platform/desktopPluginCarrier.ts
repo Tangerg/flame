@@ -1,7 +1,12 @@
 import { z } from "zod";
+import { pluginMessageFrames } from "./pluginMessageFrames";
 import type { DesktopHostBinding } from "./desktopHost";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 
+const admissionSchema = z.strictObject({
+  id: z.string().min(1),
+  maxFrameBytes: z.number().int().positive(),
+});
 const eventSchema = z.strictObject({ id: z.string(), message: z.unknown() });
 export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier {
   return {
@@ -9,6 +14,9 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
       signal.throwIfAborted();
       let id: string | undefined;
       let closed = false;
+      let sending = Promise.resolve();
+      const retired = new DOMException("Plugin carrier retired.", "AbortError");
+      let maxFrameBytes: number;
       let closing: Promise<void> | undefined;
       let queued: Map<string, unknown[]> | undefined = new Map();
       const unlisten = await binding.on("desktop:plugin-page", (value) => {
@@ -48,7 +56,15 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
           unlisten();
           queued?.clear();
           queued = undefined;
-          if (id) await binding.call("main.DesktopHost.ClosePluginPage", id);
+          const results = await Promise.allSettled([
+            // Publication errors belong to send; retirement still joins that transfer.
+            sending.catch(() => undefined),
+            id ? binding.call("main.DesktopHost.ClosePluginPage", id) : undefined,
+          ]);
+          const errors = results.flatMap((result) =>
+            result.status === "rejected" ? [result.reason] : [],
+          );
+          if (errors.length) throw new AggregateError(errors, "Plugin carrier retirement failed.");
         })());
       const layout = () => {
         if (id && !closed)
@@ -67,10 +83,11 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
       };
       try {
         signal.throwIfAborted();
-        id = z
-          .string()
-          .min(1)
-          .parse(await binding.call("main.DesktopHost.OpenPluginPage", bounds()));
+        const admission = admissionSchema.parse(
+          await binding.call("main.DesktopHost.OpenPluginPage", bounds()),
+        );
+        id = admission.id;
+        maxFrameBytes = admission.maxFrameBytes;
         if (signal.aborted) {
           await close();
           signal.throwIfAborted();
@@ -94,9 +111,16 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
           receive(message);
         }
         return {
-          async send(message) {
-            if (closed) throw new Error("Plugin carrier retired.");
-            await binding.call("main.DesktopHost.SendPluginPage", id, JSON.stringify(message));
+          send(message) {
+            if (closed) return Promise.reject(retired);
+            const frames = pluginMessageFrames(message, maxFrameBytes);
+            sending = sending.then(async () => {
+              for (const frame of frames) {
+                if (closed) throw retired;
+                await binding.call("main.DesktopHost.SendPluginPage", id, frame);
+              }
+            });
+            return sending;
           },
           close,
         };

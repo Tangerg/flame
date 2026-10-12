@@ -60,8 +60,9 @@ type WorkbenchPage struct {
 }
 
 type WorkbenchPages struct {
-	Pages    []WorkbenchPage `json:"pages"`
-	Physical int             `json:"physical"`
+	Pages         []WorkbenchPage `json:"pages"`
+	MaxFrameBytes int             `json:"maxFrameBytes"`
+	Physical      int             `json:"physical"`
 }
 
 type WorkbenchEvaluation struct {
@@ -70,6 +71,7 @@ type WorkbenchEvaluation struct {
 }
 
 func (g *NativeWorkbenchGate) Pages() (result WorkbenchPages) {
+	result.MaxFrameBytes = maxPluginMessageBytes
 	result.Pages = []WorkbenchPage{}
 	application.InvokeSync(func() {
 		for id, page := range g.host.pluginPages {

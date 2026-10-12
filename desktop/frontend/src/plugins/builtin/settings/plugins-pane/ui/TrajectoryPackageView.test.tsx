@@ -53,7 +53,9 @@ async function fixture(carrier: PluginCarrier) {
   const navigation = createMemoryNavigator({ session: "session-a" });
   configureNavigator(navigation);
   const reads = vi.fn((_session: string, _includeDescendants: boolean) => ({
-    load: async (_signal: AbortSignal) => ({ html: "<!doctype html>", initial: { data: [] } }),
+    binding: { installationId: "fixture", digest: "release", viewId: "view" },
+    resource: async () => "<!doctype html>",
+    initial: async () => ({ data: [] }),
     read: async () => ({ data: [] }),
   }));
   const view = render(

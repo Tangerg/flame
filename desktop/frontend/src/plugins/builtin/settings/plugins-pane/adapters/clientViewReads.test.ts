@@ -35,7 +35,8 @@ it("renews exact resource admission before reading newer local observations", as
   const reads = createClientViewReads(plugins, binding, snapshot);
   binding.digest = "replacement";
   const signal = new AbortController().signal;
-  expect((await reads.load(signal)).initial.logs.rows).toEqual([]);
+  await reads.resource(signal);
+  expect((await reads.initial(signal)).logs.rows).toEqual([]);
   useTelemetryStore.getState().ingestLogs([log("later")]);
   expect((await reads.read(undefined, signal)).logs.rows[0]?.id).toBe("later");
   expect(plugins.readView).toHaveBeenLastCalledWith({ ...binding, digest: "release" }, signal);

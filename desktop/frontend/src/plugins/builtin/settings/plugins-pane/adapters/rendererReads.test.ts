@@ -28,9 +28,10 @@ describe("the captured recorded result", () => {
     captured.result = "later bytes";
     captured.range!.start = 1;
     request.digest = "replacement";
-    const loaded = await reads.load(new AbortController().signal);
-    expect(loaded.initial.tool).toEqual(tool);
-    loaded.initial.tool.result = "guest edit";
+    await reads.resource(new AbortController().signal);
+    const loaded = await reads.initial(new AbortController().signal);
+    expect(loaded.tool).toEqual(tool);
+    loaded.tool.result = "guest edit";
     const refreshed = await reads.read(undefined, new AbortController().signal);
     expect(refreshed.tool).toEqual(tool);
     expect(readRenderer.mock.calls[0]![0]).toEqual(binding);
@@ -43,7 +44,8 @@ describe("the captured recorded result", () => {
       format: "flame.tool-result.v1",
       tool,
     });
-    await reads.load(new AbortController().signal);
+    await reads.resource(new AbortController().signal);
+    await reads.initial(new AbortController().signal);
     readRenderer.mockRejectedValueOnce(new Error("withdrawn"));
     await expect(reads.read(undefined, new AbortController().signal)).rejects.toThrow("withdrawn");
     await expect(reads.read("foreign call", new AbortController().signal)).rejects.toThrow(
@@ -57,7 +59,8 @@ describe("the captured recorded result", () => {
       format: "flame.tool-result.v1",
       tool,
     });
-    await reads.load(new AbortController().signal);
+    await reads.resource(new AbortController().signal);
+    await reads.initial(new AbortController().signal);
     readRenderer.mockResolvedValueOnce({ html: "<html>replacement</html>" });
     await expect(reads.read(undefined, new AbortController().signal)).rejects.toThrow(
       "renderer resource changed",
@@ -78,8 +81,9 @@ describe("the captured recorded result", () => {
     });
     file.cwd = "/replacement";
     file.content = "# Later";
-    const loaded = await reads.load(new AbortController().signal);
-    loaded.initial.file.content = "guest edit";
+    await reads.resource(new AbortController().signal);
+    const loaded = await reads.initial(new AbortController().signal);
+    loaded.file.content = "guest edit";
     expect((await reads.read(undefined, new AbortController().signal)).file).toEqual({
       cwd: "/runtime/workspace",
       path: "notes.md",

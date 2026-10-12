@@ -43,7 +43,9 @@ async function fixture() {
     },
   };
   const reads = vi.fn(() => ({
-    load: async () => ({ html: "<!doctype html>", initial: { data: [] } }),
+    binding: { installationId: "fixture", digest: "release", viewId: "view" },
+    resource: async () => "<!doctype html>",
+    initial: async () => ({ data: [] }),
     read: async () => ({ data: [] }),
   }));
   const props = { title: "Memory", reads, lifetime, carrier };

@@ -25,7 +25,9 @@ it("retires the prior report before rendering a different trusted period", async
     },
   };
   const reads = vi.fn(() => ({
-    load: async () => ({ html: "<!doctype html>", initial: { total: {}, runs: 1 } }),
+    binding: { installationId: "fixture", digest: "release", viewId: "view" },
+    resource: async () => "<!doctype html>",
+    initial: async () => ({ total: {}, runs: 1 }),
     read: async () => ({ total: {}, runs: 1 }),
   }));
   const view = render(

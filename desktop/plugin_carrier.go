@@ -18,6 +18,11 @@ const (
 	maxNativePluginPages  = 16
 )
 
+type PluginPageAdmission struct {
+	ID            string `json:"id"`
+	MaxFrameBytes int    `json:"maxFrameBytes"`
+}
+
 type PluginPageBounds struct {
 	X      float64 `json:"x"`
 	Y      float64 `json:"y"`
@@ -35,17 +40,18 @@ func (b PluginPageBounds) validate() error {
 }
 
 // Native resources belong to the main-thread actor; the frontend authorizes reads.
-func (d *DesktopHost) OpenPluginPage(bounds PluginPageBounds) (id string, err error) {
+func (d *DesktopHost) OpenPluginPage(bounds PluginPageBounds) (admission PluginPageAdmission, err error) {
 	if err = bounds.validate(); err != nil {
-		return "", err
+		return admission, err
 	}
 	if d.window == nil || d.pluginPagePublish == nil {
-		return "", errors.New("plugin carrier: native host unavailable")
+		return admission, errors.New("plugin carrier: native host unavailable")
 	}
 	body, err := pluginCarrierAssets.ReadFile("frontend/public/plugin-carrier.html")
 	if err != nil {
-		return "", err
+		return admission, err
 	}
+	var id string
 	application.InvokeSync(func() {
 		if d.pluginPagesClosed {
 			err = errors.New("plugin carrier: host retired")
@@ -67,7 +73,7 @@ func (d *DesktopHost) OpenPluginPage(bounds PluginPageBounds) (id string, err er
 			d.pluginPages[id] = page
 		}
 	})
-	return id, err
+	return PluginPageAdmission{ID: id, MaxFrameBytes: maxPluginMessageBytes}, err
 }
 
 func (d *DesktopHost) SendPluginPage(id, message string) (err error) {

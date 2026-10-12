@@ -142,7 +142,7 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 	// settled them. Re-querying every other server here would let an unrelated
 	// transient tools/list failure or cancellation silently erase its tools
 	// while its status remained connected.
-	c.publishToolsLocked()
+	c.publishToolsLocked(attempt.target.id)
 	// Failed verification withdraws the session. Teardown must run outside mu.
 	staleSession := session
 	if err == nil {
@@ -189,7 +189,7 @@ func (c *Connections) Refuse(ctx context.Context, name mcpserver.ID, failure mcp
 	withdrawn := target.session
 	target.settle(nil, nil, mcpserver.ConnectionFailed, failure)
 	c.retireSessionLocked(withdrawn)
-	c.publishToolsLocked()
+	c.publishToolsLocked(name)
 	c.mu.Unlock()
 	return nil
 }

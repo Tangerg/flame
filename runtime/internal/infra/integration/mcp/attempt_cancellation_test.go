@@ -210,7 +210,7 @@ func TestPublishedAttemptRetainsSuccessAfterCallerCancellation(t *testing.T) {
 		}
 	})
 	var catalog []Executable
-	c.SetToolSink(func(tools []Executable, _ []mcpserver.ID) { catalog = tools })
+	c.SetToolSink(func(tools []Executable, _, _ []mcpserver.ID) { catalog = tools })
 	ctx, cancel := context.WithCancelCause(t.Context())
 	defer cancel(nil)
 	attempt, err := c.BeginConnect(ctx, config.ID(), func(context.Context, mcpserver.ID) (*Launch, error) {

@@ -54,7 +54,7 @@ func (c *Connections) removeLocked(target *server) {
 	c.retireSessionLocked(target.session)
 	index := slices.Index(c.servers, target)
 	c.servers = slices.Delete(c.servers, index, index+1)
-	c.publishToolsLocked()
+	c.publishToolsLocked(target.id)
 }
 
 func (c *Connections) retireSessionLocked(session *sdkmcp.ClientSession) *sessionCloseAttempt {
@@ -74,7 +74,7 @@ func (c *Connections) retireSessionLocked(session *sdkmcp.ClientSession) *sessio
 // the state Statuses reports. Network I/O happens only while establishing a
 // session; publication is deterministic and cannot turn caller cancellation or
 // another server's independent failure into a false catalog.
-func (c *Connections) publishToolsLocked() {
+func (c *Connections) publishToolsLocked(changed ...mcpserver.ID) {
 	if c.onTools == nil {
 		return
 	}
@@ -88,7 +88,7 @@ func (c *Connections) publishToolsLocked() {
 			catalog = append(catalog, configuredServer.tools...)
 		}
 	}
-	c.onTools(catalog, pending)
+	c.onTools(catalog, pending, changed)
 }
 
 // Shutdown rejects new operations, joins all admitted dials, and closes every

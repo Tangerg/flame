@@ -180,10 +180,11 @@ func verifyNativePluginPages(host *DesktopHost, messages <-chan json.RawMessage,
 		}
 	}
 	open := func() (string, error) {
-		id, err := host.OpenPluginPage(PluginPageBounds{X: 100, Y: 100, Width: 640, Height: 480})
+		admission, err := host.OpenPluginPage(PluginPageBounds{X: 100, Y: 100, Width: 640, Height: 480})
 		if err != nil {
 			return "", err
 		}
+		id := admission.ID
 		message, err := next()
 		if err != nil {
 			return "", err
@@ -225,7 +226,7 @@ addEventListener('message', async event=>{
 	if err != nil {
 		return err
 	}
-	if err = host.SendPluginPage(id, string(body)); err != nil {
+	if err = sendCarrierProbeMessage(host, id, body); err != nil {
 		return err
 	}
 	for {
@@ -311,7 +312,7 @@ addEventListener('message', async event=>{
 	if err = host.ClosePluginPage(id); err != nil {
 		return err
 	}
-	if err = host.SendPluginPage(successor, string(body)); err != nil {
+	if err = sendCarrierProbeMessage(host, successor, body); err != nil {
 		return err
 	}
 	for {
@@ -344,4 +345,17 @@ addEventListener('message', async event=>{
 	}
 	time.Sleep(600 * time.Millisecond)
 	return nil
+}
+
+func sendCarrierProbeMessage(host *DesktopHost, id string, body []byte) error {
+	frame, err := json.Marshal(struct {
+		Type  string `json:"type"`
+		Index int    `json:"index"`
+		Last  bool   `json:"last"`
+		Data  string `json:"data"`
+	}{"fragment", 0, true, string(body)})
+	if err != nil {
+		return err
+	}
+	return host.SendPluginPage(id, string(frame))
 }

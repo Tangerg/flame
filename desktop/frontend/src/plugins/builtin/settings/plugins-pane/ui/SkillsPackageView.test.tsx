@@ -51,7 +51,9 @@ async function fixture() {
   };
   const initial: SkillViewSnapshot = { type: "available", data: { skills: [], diagnostics: [] } };
   const reads = vi.fn(() => ({
-    load: async () => ({ html: "<!doctype html>", initial }),
+    binding: { installationId: "fixture", digest: "release", viewId: "view" },
+    resource: async () => "<!doctype html>",
+    initial: async () => initial,
     read: async () => initial,
   }));
   const props = { title: "Skills", reads, lifetime, carrier };

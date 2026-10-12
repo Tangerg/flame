@@ -1020,6 +1020,7 @@ export const zh: Record<string, string> = {
   "packages.action.target": "重命名会话 {{sessionId}} · 修订 {{revision}}",
 
   "packages.view.selectSession": "选择一个会话来查看其轨迹。",
+  "packages.view.retirementFailed": "上一个插件页面未能完成退出。",
   "packages.view.loading": "正在打开插件页面…",
   "packages.view.identity": "{{title}} · 只读插件",
 

@@ -1,9 +1,14 @@
 import { afterEach, expect, it, vi } from "vitest";
+import { RpcError } from "@flame/runtime-contract/client";
+import { usePluginErrorStore } from "@/plugins/sdk/errors";
 import { mountPluginViewFrame } from "./pluginViewFrame";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import type { PluginViewStatus } from "../application/pluginView";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  usePluginErrorStore.getState().clearAll();
+});
 
 function fixture() {
   let receive: (message: unknown) => void = () => {};
@@ -19,10 +24,9 @@ function fixture() {
     },
   };
   const reads = {
-    load: vi.fn(async (_signal: AbortSignal) => ({
-      html: "<!doctype html>",
-      initial: { data: [] },
-    })),
+    binding: { installationId: "installation", digest: "release", viewId: "view" },
+    resource: vi.fn(async (_signal: AbortSignal) => "<!doctype html>"),
+    initial: vi.fn(async (_signal: AbortSignal) => ({ data: [] })),
     read: vi.fn(async (_cursor: string | undefined, _signal: AbortSignal) => ({ data: [] })),
   };
   const signal = new AbortController();
@@ -55,7 +59,7 @@ function fixture() {
 it("reuses the initial read and permits only the bound cursor operation", async () => {
   const f = fixture();
   const dispose = await f.ready();
-  expect(f.reads.load).toHaveBeenCalledOnce();
+  expect(f.reads.resource).toHaveBeenCalledOnce();
   expect(f.send).toHaveBeenCalledWith({
     type: "boot",
     html: "<!doctype html>",
@@ -69,6 +73,7 @@ it("reuses the initial read and permits only the bound cursor operation", async 
   f.publish({ type: "request", request: { type: "read", sessionId: "other" } });
   expect(f.status).toHaveBeenLastCalledWith({
     type: "failure",
+    stage: "protocol",
     reason: expect.stringContaining("unsupported"),
   });
   await dispose();
@@ -113,20 +118,21 @@ it("joins a carrier that finishes opening after retirement", async () => {
   opened.resolve({ send: f.send, close: f.close });
   await dispose();
   expect(f.close).toHaveBeenCalledOnce();
-  expect(f.reads.load).not.toHaveBeenCalled();
+  expect(f.reads.resource).not.toHaveBeenCalled();
 });
 
 it("rejects connection before publishing boot", async () => {
   const f = fixture();
-  const loaded = Promise.withResolvers<Awaited<ReturnType<typeof f.reads.load>>>();
-  f.reads.load.mockImplementation(() => loaded.promise);
+  const loaded = Promise.withResolvers<Awaited<ReturnType<typeof f.reads.resource>>>();
+  f.reads.resource.mockImplementation(() => loaded.promise);
   const dispose = f.mount();
-  await vi.waitFor(() => expect(f.reads.load).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(f.reads.resource).toHaveBeenCalledOnce());
   f.publish({ type: "connected" });
-  loaded.resolve({ html: "<!doctype html>", initial: { data: [] } });
+  loaded.resolve("<!doctype html>");
   await dispose();
   expect(f.status).toHaveBeenLastCalledWith({
     type: "failure",
+    stage: "protocol",
     reason: "Invalid plugin initialization.",
   });
   expect(f.send).not.toHaveBeenCalled();
@@ -144,6 +150,7 @@ it("treats publication failure as terminal rather than a failed read", async () 
   await vi.waitFor(() =>
     expect(f.status).toHaveBeenLastCalledWith({
       type: "failure",
+      stage: "publication",
       reason: "The plugin channel could not publish its result.",
     }),
   );
@@ -189,7 +196,7 @@ it("keeps failure terminal when the carrier fails immediately after connecting",
   expect(f.status.mock.calls).toEqual([
     [{ type: "loading" }],
     [{ type: "ready" }],
-    [{ type: "failure", reason: "native page terminated" }],
+    [{ type: "failure", stage: "carrier", reason: "native page terminated" }],
   ]);
 });
 
@@ -201,27 +208,31 @@ it("waits for qualification before loading any package resource", async () => {
   });
   const dispose = f.mount();
   await vi.waitFor(() => expect(f.carrier.open).toHaveBeenCalledOnce());
-  expect(f.reads.load).not.toHaveBeenCalled();
+  expect(f.reads.resource).not.toHaveBeenCalled();
   f.publish({ type: "failure", reason: "carrier unavailable" });
   await dispose();
-  expect(f.reads.load).not.toHaveBeenCalled();
-  expect(f.status).toHaveBeenLastCalledWith({ type: "failure", reason: "carrier unavailable" });
+  expect(f.reads.resource).not.toHaveBeenCalled();
+  expect(f.status).toHaveBeenLastCalledWith({
+    type: "failure",
+    stage: "carrier",
+    reason: "carrier unavailable",
+  });
 });
 
 it("joins resource loading and an allocated page when retired during startup", async () => {
   const f = fixture();
-  const loaded = Promise.withResolvers<Awaited<ReturnType<typeof f.reads.load>>>();
-  f.reads.load.mockImplementation(() => loaded.promise);
+  const loaded = Promise.withResolvers<Awaited<ReturnType<typeof f.reads.resource>>>();
+  f.reads.resource.mockImplementation(() => loaded.promise);
   const dispose = f.mount();
-  await vi.waitFor(() => expect(f.reads.load).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(f.reads.resource).toHaveBeenCalledOnce());
   const disposed = dispose();
   await vi.waitFor(() => expect(f.close).toHaveBeenCalledOnce());
-  expect(f.reads.load.mock.calls[0]?.[0].aborted).toBe(true);
+  expect(f.reads.resource.mock.calls[0]?.[0].aborted).toBe(true);
   let completed = false;
   void disposed.then(() => (completed = true));
   await Promise.resolve();
   expect(completed).toBe(false);
-  loaded.resolve({ html: "<!doctype html>", initial: { data: [] } });
+  loaded.resolve("<!doctype html>");
   await disposed;
   expect(f.send).not.toHaveBeenCalled();
   expect(f.status).toHaveBeenLastCalledWith({ type: "loading" });
@@ -239,6 +250,7 @@ it("settles a renderer format failure and joins its admitted read", async () => 
   });
   expect(f.status).toHaveBeenLastCalledWith({
     type: "failure",
+    stage: "guest",
     reason: "Unsupported recorded result format.",
   });
   expect(f.reads.read.mock.calls[0]?.[1].aborted).toBe(true);
@@ -246,4 +258,182 @@ it("settles a renderer format failure and joins its admitted read", async () => 
   await dispose();
   expect(f.close).toHaveBeenCalledOnce();
   expect(f.send).toHaveBeenCalledOnce();
+});
+
+it("queues a successor whose predecessor reply was delivered before publication acknowledgement", async () => {
+  const f = fixture();
+  const acknowledged = Promise.withResolvers<void>();
+  let firstReply = true;
+  f.send.mockImplementation(async (message: unknown) => {
+    if ((message as { type: string }).type === "boot") f.publish({ type: "connected" });
+    else if (firstReply) {
+      firstReply = false;
+      f.publish({ type: "request", request: { type: "read", cursor: "successor" } });
+      await acknowledged.promise;
+    }
+  });
+  const dispose = await f.ready();
+  try {
+    f.publish({ type: "request", request: { type: "read", cursor: "first" } });
+    await vi.waitFor(() => expect(f.send).toHaveBeenCalledTimes(2));
+    expect(f.status).toHaveBeenLastCalledWith({ type: "ready" });
+    expect(f.reads.read).toHaveBeenCalledTimes(1);
+    acknowledged.resolve();
+    await vi.waitFor(() => expect(f.reads.read).toHaveBeenCalledTimes(2));
+    expect(f.reads.read.mock.calls[1]?.[0]).toBe("successor");
+    expect(f.close).not.toHaveBeenCalled();
+  } finally {
+    acknowledged.resolve();
+    await dispose();
+  }
+});
+
+it.each(["resource", "initial"] as const)(
+  "does not spend the guest handshake deadline while %s is still loading",
+  async (stage) => {
+    const f = fixture();
+    vi.useFakeTimers();
+    const loaded = Promise.withResolvers<void>();
+    if (stage === "resource")
+      f.reads.resource.mockImplementation(async () => {
+        await loaded.promise;
+        return "<!doctype html>";
+      });
+    else
+      f.reads.initial.mockImplementation(async () => {
+        await loaded.promise;
+        return { data: [] };
+      });
+    const dispose = f.mount();
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(10001);
+      expect(f.send).not.toHaveBeenCalled();
+      expect(f.status).toHaveBeenLastCalledWith({ type: "loading" });
+      expect(f.reads[stage].mock.calls[0]?.[0].aborted).toBe(false);
+    } finally {
+      loaded.resolve();
+      await dispose();
+    }
+  },
+);
+
+it("does not let predecessor cleanup erase an active successor", async () => {
+  const f = fixture();
+  const sent = Promise.withResolvers<void>();
+  const next = Promise.withResolvers<{ data: [] }>();
+  f.reads.read.mockResolvedValueOnce({ data: [] }).mockImplementationOnce(() => next.promise);
+  f.send.mockImplementation(async (message: unknown) => {
+    if ((message as { type: string }).type === "boot") f.publish({ type: "connected" });
+    else if (f.reads.read.mock.calls.length === 1) await sent.promise;
+  });
+  const dispose = await f.ready();
+  f.publish({ type: "request", request: { type: "read", cursor: "first" } });
+  await vi.waitFor(() => expect(f.send).toHaveBeenCalledTimes(2));
+  f.publish({ type: "request", request: { type: "read", cursor: "next" } });
+  sent.resolve();
+  await vi.waitFor(() => expect(f.reads.read).toHaveBeenCalledTimes(2));
+  f.publish({ type: "request", request: { type: "read", cursor: "overlapping" } });
+  expect(f.status).toHaveBeenLastCalledWith({
+    type: "failure",
+    stage: "protocol",
+    reason: expect.stringContaining("pending read"),
+  });
+  next.resolve({ data: [] });
+  await dispose();
+  expect(f.send).toHaveBeenCalledTimes(2);
+});
+
+it("retires a failed publication without starting its queued successor", async () => {
+  const f = fixture();
+  const sent = Promise.withResolvers<void>();
+  f.send.mockImplementation(async (message: unknown) => {
+    if ((message as { type: string }).type === "boot") f.publish({ type: "connected" });
+    else await sent.promise;
+  });
+  const dispose = await f.ready();
+  f.publish({ type: "request", request: { type: "read" } });
+  await vi.waitFor(() => expect(f.send).toHaveBeenCalledTimes(2));
+  f.publish({ type: "request", request: { type: "read", cursor: "next" } });
+  sent.reject(new Error("lost publication"));
+  await vi.waitFor(() =>
+    expect(f.status).toHaveBeenLastCalledWith({
+      type: "failure",
+      stage: "publication",
+      reason: expect.any(String),
+    }),
+  );
+  await dispose();
+  expect(f.reads.read).toHaveBeenCalledTimes(1);
+});
+
+it("joins the initial read after resource failure and preserves the failing stage", async () => {
+  const f = fixture();
+  const initial = Promise.withResolvers<{ data: [] }>();
+  f.reads.initial.mockImplementation(() => initial.promise);
+  f.reads.resource.mockRejectedValue(new Error("missing resource"));
+  const dispose = f.mount();
+  await vi.waitFor(() =>
+    expect(f.status).toHaveBeenLastCalledWith({
+      type: "failure",
+      stage: "resource",
+      reason: expect.any(String),
+    }),
+  );
+  expect(f.reads.initial.mock.calls[0]![0].aborted).toBe(true);
+  let settled = false;
+  const disposing = dispose().then(() => {
+    settled = true;
+  });
+  await Promise.resolve();
+  expect(settled).toBe(false);
+  initial.resolve({ data: [] });
+  await disposing;
+  expect(f.send).not.toHaveBeenCalled();
+  expect(f.close).toHaveBeenCalledOnce();
+});
+
+it("starts the guest deadline after boot publication settles", async () => {
+  const f = fixture();
+  vi.useFakeTimers();
+  const sent = Promise.withResolvers<void>();
+  f.send.mockImplementation(() => sent.promise);
+  const dispose = f.mount();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(f.send).toHaveBeenCalledOnce();
+  await vi.advanceTimersByTimeAsync(10001);
+  expect(f.status).toHaveBeenLastCalledWith({ type: "loading" });
+  sent.resolve();
+  await vi.advanceTimersByTimeAsync(0);
+  await vi.advanceTimersByTimeAsync(10001);
+  expect(f.status).toHaveBeenLastCalledWith({
+    type: "failure",
+    stage: "handshake",
+    reason: expect.any(String),
+  });
+  await dispose();
+});
+
+it("retains safe host diagnostics while withholding integration details from the guest", async () => {
+  const f = fixture();
+  const secret = "credential-and-private-content";
+  f.reads.read.mockRejectedValue(
+    new RpcError(
+      { message: secret, data: { type: "plugin_unavailable", detail: secret } },
+      "request-42",
+    ),
+  );
+  const dispose = await f.ready();
+  f.publish({ type: "request", request: { type: "read" } });
+  await vi.waitFor(() => expect(f.send).toHaveBeenCalledTimes(2));
+  const log = usePluginErrorStore.getState().log.at(-1)!;
+  expect(JSON.parse(log.detail!)).toMatchObject({
+    binding: f.reads.binding,
+    stage: "read",
+    problem: { category: "plugin_unavailable", requestId: "request-42" },
+  });
+  expect(JSON.stringify(log)).not.toContain(secret);
+  expect(JSON.stringify(f.send.mock.calls)).not.toContain(secret);
+  expect(f.status).toHaveBeenLastCalledWith({ type: "ready" });
+  await dispose();
 });

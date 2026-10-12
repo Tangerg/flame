@@ -77,7 +77,7 @@ func (c *Connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	}
 	target.attempt = attempt
 	target.settle(nil, nil, mcpserver.ConnectionConnecting, "")
-	c.publishToolsLocked()
+	c.publishToolsLocked(name)
 	c.attempts.Add(1)
 	go attempt.run()
 	return attempt, nil
@@ -110,7 +110,7 @@ func (a *Attempt) run() {
 		} else {
 			a.target.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration)
 			a.target.attempt = nil
-			c.publishToolsLocked()
+			c.publishToolsLocked(a.target.id)
 		}
 	}
 	c.mu.Unlock()
@@ -178,7 +178,7 @@ func (c *Connections) failAttempt(attempt *Attempt, failure mcpserver.Connection
 	if c.currentAttempt(attempt) {
 		attempt.target.settle(nil, nil, mcpserver.ConnectionFailed, failure)
 		attempt.target.attempt = nil
-		c.publishToolsLocked()
+		c.publishToolsLocked(attempt.target.id)
 	}
 	c.mu.Unlock()
 }

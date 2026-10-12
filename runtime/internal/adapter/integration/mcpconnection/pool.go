@@ -116,9 +116,11 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 // SetToolSink publishes the initial catalog and live connection changes to the
 // resolver through the connection owner's publication boundary.
 func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID)) {
-	p.inner.SetToolSink(func(catalog []mcp.Executable, pending []mcpserver.ID) {
+	p.inner.SetToolSink(func(catalog []mcp.Executable, pending, changed []mcpserver.ID) {
 		sink(p.authorizedTools(catalog), pending)
-		p.publish.Notify(invalidation.ForMCP())
+		if len(changed) > 0 {
+			p.publish.Notify(invalidation.ForMCP(changed...))
+		}
 	})
 }
 

@@ -23,7 +23,7 @@ export function createTrajectoryViewReads(
   sessionId: string,
   includeDescendants: boolean,
 ): PluginViewReads<Page<TrajectoryEntry>> {
-  const view = { ...binding };
+  const view = Object.freeze({ ...binding });
   return createViewReads(plugins, view, (cursor, signal) =>
     plugins.readTrajectory(
       {
@@ -43,7 +43,7 @@ export function createMemoryViewReads(
   binding: Readonly<ReadPluginViewRequest>,
   target: Readonly<MemoryViewTarget>,
 ): PluginViewReads<Page<AgentMemoryItem>> {
-  const view = { ...binding };
+  const view = Object.freeze({ ...binding });
   const captured = {
     ...target,
     ...(target.workspace ? { workspace: { ...target.workspace } } : {}),
@@ -57,7 +57,7 @@ export function createScheduleViewReads(
   plugins: Pick<FlameClient["plugins"], "readView" | "readSchedules">,
   binding: Readonly<ReadPluginViewRequest>,
 ): PluginViewReads<Page<Schedule>> {
-  const view = { ...binding };
+  const view = Object.freeze({ ...binding });
   return createViewReads(plugins, view, (cursor, signal) =>
     plugins.readSchedules({ ...view, cursor }, signal),
   );
@@ -68,7 +68,7 @@ export function createUsageViewReads(
   binding: Readonly<ReadPluginViewRequest>,
   period: Readonly<UsageSummaryRequest>,
 ): PluginViewReads<UsageSummary> {
-  const view = { ...binding };
+  const view = Object.freeze({ ...binding });
   const captured = { ...period };
   return createViewReads(plugins, view, (cursor, signal) => {
     if (cursor !== undefined)
@@ -85,7 +85,7 @@ export function createSkillViewReads(
   binding: Readonly<ReadPluginViewRequest>,
   target: Readonly<SkillViewTarget>,
 ): PluginViewReads<SkillViewSnapshot> {
-  const view = { ...binding };
+  const view = Object.freeze({ ...binding });
   const captured =
     target.type === "library" ? { ...target } : { ...target, workspace: { ...target.workspace } };
   return createViewReads(plugins, view, async (cursor, signal): Promise<SkillViewSnapshot> => {
@@ -125,20 +125,10 @@ function createViewReads<T>(
   read: (cursor: string | undefined, signal: AbortSignal) => Promise<T>,
 ): PluginViewReads<T> {
   return {
+    binding: view,
+    resource: async (signal) => (await plugins.readView(view, signal)).html,
+    initial: (signal) => read(undefined, signal),
     read,
-    async load(signal) {
-      const loading = new AbortController();
-      const owned = AbortSignal.any([signal, loading.signal]);
-      const pending = [plugins.readView(view, owned), read(undefined, owned)] as const;
-      try {
-        const [resource, initial] = await Promise.all(pending);
-        return { html: resource.html, initial };
-      } catch (error) {
-        loading.abort(error);
-        await Promise.allSettled(pending);
-        throw error;
-      }
-    },
   };
 }
 
@@ -147,7 +137,7 @@ export function createDiffViewReads(
   binding: Readonly<ReadPluginViewRequest>,
   target: Readonly<DiffViewTarget>,
 ): PluginViewReads<DiffViewSnapshot> {
-  const view = { ...binding };
+  const view = Object.freeze({ ...binding });
   const captured = { ...target, workspace: { ...target.workspace } };
   return createViewReads(plugins, view, async (cursor, signal) => {
     if (cursor !== undefined) throw new Error("Workspace diffs have no cursor continuation");

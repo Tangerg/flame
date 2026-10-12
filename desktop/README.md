@@ -494,6 +494,14 @@ or closing a focused page restores workbench focus. Other desktop targets report
 unavailable. The qualified target was macOS 26.5 with Wails v3 beta.28; other engine/OS
 versions require their own gate result.
 
+Native page admission declares its physical frame capacity. The native adapter splits
+complete JSON messages within that budget and serializes transfers per page. Both
+carriers use ordered fragments; the constrained entry reassembles one logical message
+before delivering boot data or a read reply. Large pages and individual records retain
+all their data. Retirement stops remaining frames and joins accepted publications.
+The native host and frontend share the current admission shape; no alternate decoder
+accepts the former unframed transport.
+
 Session, descendant-scope or host-scheme changes close the prior instance. Installation withdrawal or digest changes
 retire its contribution lifetime, and Runtime connection replacement joins predecessor
 cleanup before registering successor contributions. Native IDs identify physical pages;
@@ -505,10 +513,18 @@ contributions before publishing the snapshot into the Settings query cache. Work
 cache cancellation cannot withdraw package resources or cancel that observer.
 The shared view bridge alone advances each page's initialization and terminal status;
 React renders that projection. Qualification precedes resource loading, and connection
-is accepted only after boot publication starts. The contribution receives its cleanup
+is accepted only after boot publication starts. Carrier qualification has its own budget;
+the guest handshake deadline starts after boot transfer settles. Resource and initial
+reads retain their actual failure stage and cancel their sibling read before retirement
+joins both. A read reply may reach the guest before native publication acknowledgement;
+one successor may wait behind that publication, and all reads remain serial. Read
+failures keep the displayed evidence and record a host diagnostic with source, stage,
+error category and request association, without recording raw integration messages.
+Trusted Retry controls replace a failed initial load only after its predecessor has
+retired; they do not retry commands. The contribution receives its cleanup
 handle immediately. Cleanup joins allocation, startup and pending reads even when physical
 closure fails; publication failure retires the channel instead of becoming a read error.
-Initial HTML and projection reads cancel and join their sibling on failure. The native
+The native
 transport preserves early messages in source order through initial positioning; the
 bridge owns their operation and handshake validation.
 
@@ -576,6 +592,14 @@ private data, canary and temporary files; macOS retains protected container meta
 The production native workbench gate also qualifies Tool results, File renderers,
 Diagnostics and static icon views. Recorded data refresh, trusted clearing, withdrawal,
 unavailable-view presentation, physical retirement and canonical data preservation pass.
+
+Capacity cases preserve and compare complete initial and cursor-continuation pages above
+the native frame limit. The multi-record case uses separate text Items; the single-item
+case uses a 5 MiB reasoning Item. Both retain the normal native isolation and retirement
+assertions. A separate run with a 5 MiB conversation paragraph exceeded the 20-second
+workbench command deadline, including after the page data arrived. Revisit conversation
+rendering before qualifying that paragraph size as interactive; the capacity gate does
+not qualify conversation rendering.
 
 The qualified carrier and first-party page lifecycle were verified on macOS 26.5 with
 Wails v3 beta.28 at the shipping deployment floor. A run requires an unlocked graphical

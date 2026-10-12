@@ -754,12 +754,33 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
     };
+    await awaitMCPTools(server, feature === "memory" ? 1 : 3);
+    return installation;
+  };
+
+  const awaitMCPTools = async (
+    server: Parameters<FlameClient["mcp"]["listTools"]>[0],
+    count: number,
+  ) => {
+    if (!client) throw new Error("runtime client was not initialized");
     const deadline = Date.now() + defaultTestDeadlineMilliseconds;
-    while ((await client.mcp.listTools(server)).data.length !== (feature === "memory" ? 1 : 3)) {
-      if (Date.now() >= deadline) throw new Error(`${feature} backend connection timed out`);
+    while ((await client.mcp.listTools(server)).data.length !== count) {
+      if (Date.now() >= deadline)
+        throw new Error(
+          `MCP source did not become ready: ${JSON.stringify(server)}; ${processOutput}`,
+        );
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
-    return installation;
+  };
+
+  const awaitManagedOwners = async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    for (const [feature, installation] of managedOwners) {
+      await awaitMCPTools(
+        { origin: { type: "installation", installationId: installation.id }, name: feature },
+        feature === "memory" ? 1 : 3,
+      );
+    }
   };
 
   const runtimeEnvironment = () => ({
@@ -1030,11 +1051,13 @@ for await (const line of lines) {
     baseUrl = `http://127.0.0.1:${runtimePort}`;
     await startRuntimeProcess();
     client = createRuntimeClient();
+    await awaitManagedOwners();
   }, 60_000);
 
   beforeEach(async () => {
     for (const feature of ["memory", "schedules"] as const)
       if (!managedOwners.has(feature)) await activateManagedOwner(feature);
+    await awaitManagedOwners();
   });
 
   afterAll(async () => {
@@ -3208,6 +3231,7 @@ for await (const line of lines) {
     await killRuntimeProcess();
     await startRuntimeProcess();
     client = createRuntimeClient();
+    await awaitManagedOwners();
 
     const restored = await client.runs.get(runId);
     expect(
@@ -3986,6 +4010,7 @@ for await (const line of lines) {
         servers: [serverId],
       });
     }
+    await awaitMCPTools(serverId, 1);
     await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
       data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });
@@ -4678,6 +4703,7 @@ for await (const line of lines) {
 
     await startRuntimeProcess();
     client = createRuntimeClient();
+    await awaitManagedOwners();
 
     const afterRestart = await client.runtime.discover();
     expect(afterRestart).toMatchObject({
@@ -4852,6 +4878,7 @@ for await (const line of lines) {
 
       await startRuntimeProcess();
       client = createRuntimeClient();
+      await awaitManagedOwners();
       await expect(client.runs.get(runId)).resolves.toMatchObject({
         status: "finished",
         outcome: { type: "lost", error: expect.objectContaining({ type: "run_lost" }) },
@@ -4960,6 +4987,7 @@ for await (const line of lines) {
 
       await startRuntimeProcess();
       client = createRuntimeClient();
+      await awaitManagedOwners();
 
       const afterKill = await client.runtime.discover();
       expect(afterKill).toMatchObject({
@@ -5145,6 +5173,7 @@ for await (const line of lines) {
 
       await startRuntimeProcess();
       client = createRuntimeClient();
+      await awaitManagedOwners();
       await expect(client.runs.get(runId)).resolves.toMatchObject({
         status: "finished",
         outcome: { type: "lost", error: expect.objectContaining({ type: "run_lost" }) },

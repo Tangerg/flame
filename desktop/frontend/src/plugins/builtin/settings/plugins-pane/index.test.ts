@@ -577,7 +577,7 @@ it("cancels and joins both initial view reads when either one fails", async () =
       cursor: undefined,
       limit: 100,
     });
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toBe("The plugin resource could not be read.");
   } finally {
     pending.resolve({ data: [] });
   }

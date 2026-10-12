@@ -8,14 +8,29 @@ import type {
   WorkspaceRef,
   GetDiffRequest,
   Diff,
+  ReadPluginViewRequest,
+  ReadPluginRendererRequest,
 } from "@flame/runtime-contract/wire";
 
+export type PluginViewStage =
+  | "carrier"
+  | "resource"
+  | "initial"
+  | "handshake"
+  | "read"
+  | "publication"
+  | "protocol"
+  | "guest"
+  | "retirement";
 export type PluginViewStatus =
-  { type: "loading" } | { type: "ready" } | { type: "failure"; reason: string };
+  | { type: "loading" }
+  | { type: "ready" }
+  | { type: "failure"; stage: PluginViewStage; reason: string };
 
-// Settlement joins all reads accepted by the operation, including on failure or cancellation.
 export interface PluginViewReads<T> {
-  load(signal: AbortSignal): Promise<{ html: string; initial: T }>;
+  readonly binding: Readonly<ReadPluginViewRequest | ReadPluginRendererRequest>;
+  resource(signal: AbortSignal): Promise<string>;
+  initial(signal: AbortSignal): Promise<T>;
   read(cursor: string | undefined, signal: AbortSignal): Promise<T>;
 }
 

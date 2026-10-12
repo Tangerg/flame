@@ -43,10 +43,9 @@ it("retires reads when trusted mode, focus, workspace or Git authority changes",
     },
   };
   const reads = vi.fn(() => ({
-    load: async () => ({
-      html: "<!doctype html>",
-      initial: { diff: { baseline: { type: "emptyTree" as const } }, focusPath: "" },
-    }),
+    binding: { installationId: "fixture", digest: "release", viewId: "view" },
+    resource: async () => "<!doctype html>",
+    initial: async () => ({ diff: { baseline: { type: "emptyTree" as const } }, focusPath: "" }),
     read: async () => ({ diff: { baseline: { type: "emptyTree" as const } }, focusPath: "" }),
   }));
   openDiffViewInDock();

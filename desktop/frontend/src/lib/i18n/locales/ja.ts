@@ -1078,6 +1078,7 @@ export const ja: Record<string, string> = {
   "packages.action.target": "セッション {{sessionId}} の名前を変更 · リビジョン {{revision}}",
 
   "packages.view.selectSession": "軌跡を確認するセッションを選択してください。",
+  "packages.view.retirementFailed": "前のプラグインページを終了できませんでした。",
   "packages.view.loading": "プラグインページを開いています…",
   "packages.view.identity": "{{title}} · 読み取り専用プラグイン",
 

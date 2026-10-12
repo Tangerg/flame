@@ -52,13 +52,17 @@ export function createClientViewReads<T>(
   binding: Readonly<ReadPluginViewRequest>,
   snapshot: () => T,
 ): PluginViewReads<T> {
-  const request = { ...binding };
+  const request = Object.freeze({ ...binding });
   let admittedHTML: string | undefined;
   return {
-    async load(signal) {
+    binding: request,
+    async resource(signal) {
       const resource = await plugins.readView(request, signal);
       admittedHTML = resource.html;
-      return { html: resource.html, initial: snapshot() };
+      return resource.html;
+    },
+    async initial() {
+      return snapshot();
     },
     async read(cursor, signal) {
       if (cursor !== undefined) throw new Error("Client views have no cursor continuation");

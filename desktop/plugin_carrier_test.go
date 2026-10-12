@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -17,5 +18,13 @@ func TestPluginPageBoundsRefuseInvalidGeometryBeforeNativeAdmission(t *testing.T
 	}
 	if err := host.SendPluginPage("unknown", "not JSON"); err == nil {
 		t.Fatal("admitted invalid bridge JSON")
+	}
+}
+
+func TestNativePublicationRetainsItsPhysicalFrameLimit(t *testing.T) {
+	host := mustDesktopHost(t, t.TempDir())
+	frame := `{"type":"fragment","index":0,"last":true,"data":"` + strings.Repeat("x", maxPluginMessageBytes) + `"}`
+	if err := host.SendPluginPage("unallocated", frame); err == nil {
+		t.Fatal("oversized native frame was admitted")
 	}
 }

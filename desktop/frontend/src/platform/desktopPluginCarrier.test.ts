@@ -3,6 +3,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { createElement } from "react";
 import { PopoverPrimitive } from "@/ui/primitives";
 import { desktopPluginCarrier } from "./desktopPluginCarrier";
+import { pluginMessageFrames } from "./pluginMessageFrames";
 import type { DesktopHostBinding } from "./desktopHost";
 
 afterEach(() => {
@@ -24,7 +25,11 @@ function fixture(open: () => Promise<string>) {
     },
   );
   const binding: DesktopHostBinding = {
-    call: vi.fn(async (method: string) => (method.endsWith("OpenPluginPage") ? open() : undefined)),
+    call: vi.fn(async (method: string) =>
+      method.endsWith("OpenPluginPage")
+        ? open().then((id) => ({ id, maxFrameBytes: 4 << 20 }))
+        : undefined,
+    ),
     on: async (_event, receive) => {
       listener = receive;
       return unlisten;
@@ -70,7 +75,7 @@ it("binds early readiness and later traffic to the native instance, then retires
   expect(f.binding.call).toHaveBeenCalledWith(
     "main.DesktopHost.SendPluginPage",
     "page-1",
-    '{"type":"boot"}',
+    [...pluginMessageFrames({ type: "boot" }, 4 << 20)][0],
   );
   controller.abort();
   await page.close();
@@ -249,4 +254,57 @@ it("keeps buffering through initial positioning so later messages cannot overtak
     [{ type: "ready" }],
     [{ type: "failure", reason: "native process terminated" }],
   ]);
+});
+
+it.each(["boot", "reply"])(
+  "transfers oversized %s results completely within the native capacity",
+  async (type) => {
+    const f = fixture(async () => "large");
+    const page = await f.carrier.open(f.container, new AbortController().signal, vi.fn());
+    for (const data of [
+      Array.from({ length: 100 }, (_, index) => ({ index, body: "x".repeat(50 << 10) })),
+      [{ body: "汉😀".repeat(1 << 20) }],
+    ]) {
+      vi.mocked(f.binding.call).mockClear();
+      const message = { type, data };
+      await page.send(message);
+      const calls = vi.mocked(f.binding.call).mock.calls;
+      expect(calls.length).toBeGreaterThan(1);
+      const frames = calls.map(([method, id, frame]) => {
+        expect(method).toBe("main.DesktopHost.SendPluginPage");
+        expect(id).toBe("large");
+        expect(new TextEncoder().encode(String(frame)).byteLength).toBeLessThanOrEqual(4 << 20);
+        return JSON.parse(String(frame)) as { index: number; last: boolean; data: string };
+      });
+      expect(frames.map((frame) => frame.index)).toEqual(frames.map((_, index) => index));
+      expect(frames.at(-1)!.last).toBe(true);
+      expect(JSON.parse(frames.map((frame) => frame.data).join(""))).toEqual(message);
+    }
+    await page.close();
+  },
+);
+
+it("retires a transfer between frames and joins its publication acknowledgement", async () => {
+  const f = fixture(async () => "partial");
+  const page = await f.carrier.open(f.container, new AbortController().signal, vi.fn());
+  const ack = Promise.withResolvers<void>();
+  const invoke = f.binding.call;
+  f.binding.call = vi.fn((method, ...args) =>
+    method.endsWith("SendPluginPage") ? ack.promise : invoke(method, ...args),
+  );
+  const sending = page.send({ type: "boot", body: "x".repeat(5 << 20) });
+  const failure = sending.catch((error) => error);
+  await vi.waitFor(() => expect(f.binding.call).toHaveBeenCalledOnce());
+  let settled = false;
+  const closing = page.close().then(() => {
+    settled = true;
+  });
+  await Promise.resolve();
+  expect(settled).toBe(false);
+  ack.resolve();
+  await closing;
+  expect(await failure).toMatchObject({ name: "AbortError" });
+  expect(
+    vi.mocked(f.binding.call).mock.calls.filter(([method]) => method.endsWith("SendPluginPage")),
+  ).toHaveLength(1);
 });

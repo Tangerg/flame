@@ -1,3 +1,5 @@
+import { Button } from "@/ui/atoms/button";
+import { reportViewFailure } from "../adapters/pluginViewDiagnostics";
 import { AgentActivityDisclosure, AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { useScheme } from "@/lib/appearance";
@@ -19,7 +21,14 @@ const styles = stylex.create({
     flexShrink: 0,
   },
   carrier: { flex: 1, minHeight: 0, width: "100%" },
-  status: { padding: space.s4, color: color.fgMuted },
+  status: {
+    padding: space.s4,
+    color: color.fgMuted,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: space.s2,
+  },
 });
 export function PackageView<T>({
   reads,
@@ -39,24 +48,61 @@ export function PackageView<T>({
   const container = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<PluginViewStatus>({ type: "loading" });
   const [showRecorded, setShowRecorded] = useState(false);
+  const [handoff, setHandoff] = useState<"idle" | "pending" | "failed">("idle");
+  const retry = useRef<(() => void) | undefined>(undefined);
+  const retirement = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
-    const instance = lifetime.lifetime("page");
-    const signal = instance.signal;
-    if (container.current)
-      instance.cleanup(
-        mountPluginViewFrame({
-          container: container.current,
-          reads,
-          carrier,
-          signal,
-          scheme,
-          status: (value) => {
-            if (!signal.aborted) setStatus(value);
-          },
-        }),
+    const predecessor = retirement.current;
+    const owner = lifetime.lifetime("view");
+    let page: ContributionLifetime | undefined;
+    let starting: Promise<void> | undefined;
+    const start = () => {
+      if (starting || owner.signal.aborted) return;
+      setHandoff("pending");
+      const job = (async () => {
+        await predecessor;
+        await page?.[asyncDisposeSymbol]();
+        if (owner.signal.aborted || !container.current) return;
+        const instance = owner.lifetime("page");
+        page = instance;
+        setHandoff("idle");
+        instance.cleanup(
+          mountPluginViewFrame({
+            container: container.current,
+            reads,
+            carrier,
+            signal: instance.signal,
+            scheme,
+            status: (value) => {
+              if (!instance.signal.aborted) setStatus(value);
+            },
+          }),
+        );
+      })()
+        .catch((error) => {
+          reportViewFailure(reads.binding, "retirement", error);
+          if (!owner.signal.aborted) setHandoff("failed");
+        })
+        .finally(() => {
+          if (starting === job) starting = undefined;
+        });
+      starting = job;
+    };
+    owner.cleanup(async () => {
+      const results = await Promise.allSettled([starting, page?.[asyncDisposeSymbol]()]);
+      const errors = results.flatMap((result) =>
+        result.status === "rejected" ? [result.reason] : [],
       );
+      if (errors.length) throw new AggregateError(errors, "The plugin view could not be retired.");
+    });
+    retry.current = start;
+    start();
     return () => {
-      void instance[asyncDisposeSymbol]().catch(console.error);
+      retry.current = undefined;
+      retirement.current = owner[asyncDisposeSymbol]();
+      void retirement.current.catch((error) =>
+        reportViewFailure(reads.binding, "retirement", error),
+      );
     };
   }, [reads, scheme, carrier, lifetime]);
   return (
@@ -69,10 +115,25 @@ export function PackageView<T>({
           {t("packages.view.loading")}
         </p>
       )}
-      {status.type === "failure" && (
+      {handoff === "failed" && (
         <p role="alert" {...stylex.props(styles.status)}>
-          {status.reason}
+          {t("packages.view.retirementFailed")}
         </p>
+      )}
+      {status.type === "failure" && handoff !== "failed" && (
+        <div {...stylex.props(styles.status)}>
+          <p role="alert">{status.reason}</p>
+          {(status.stage === "resource" || status.stage === "initial") && (
+            <Button
+              size="sm"
+              variant="soft"
+              disabled={handoff === "pending"}
+              onClick={() => retry.current?.()}
+            >
+              {t("common.retry")}
+            </Button>
+          )}
+        </div>
       )}
       <div ref={container} {...stylex.props(styles.carrier)} />
       {fallback &&
