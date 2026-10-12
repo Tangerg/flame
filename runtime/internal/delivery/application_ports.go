@@ -85,6 +85,7 @@ type toolUseCases interface {
 
 type runUseCases interface {
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
+	LookupCommandAcceptance(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error)
 	Resume(ctx context.Context, cmd runs.ResumeCommand) (runs.StartResult, error)
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 	Steer(ctx context.Context, cmd runs.SteerCommand) (string, error)

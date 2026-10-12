@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-12.1` · 110 methods
+Protocol `2026-10-12.1` · 111 methods
 
 ## Methods
 
@@ -31,6 +31,7 @@ Protocol `2026-10-12.1` · 110 methods
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
 | `runs.steer` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment` |
 | `runs.get` | query | unary | none | none | none | — | — | `run_not_found`, `capability_not_negotiated` |
+| `runs.getAcceptance` | query | unary | none | none | none | — | — | — |
 | `runs.list` | query | unary | none | none | cursor | — | `subagents` | `capability_not_negotiated` |
 | `interrupts.list` | query | unary | none | none | cursor | — | — | `run_not_root`, `capability_not_negotiated` |
 | `plan.get` | query | unary | none | none | none | — | `plan` | `session_not_found`, `capability_not_negotiated` |
@@ -231,6 +232,15 @@ publish one namespaced pattern branch without weakening first-party tags.
 | --- | --- | --- |
 | `root` | `run` | — |
 | `child` | `run`, `rootRun` | — |
+
+### `RunAcceptance`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `notRecorded` | — | — |
+| `opened` | `runId`, `segmentId`, `sessionId`, `userItemId` | — |
+| `retired` | `runId`, `sessionId`, `userItemId` | — |
+| `conflict` | — | — |
 
 ### `RunOutcome`
 
@@ -771,6 +781,16 @@ TypeScript validator from this single registry projection.
 | `GetRunRequest` | `runId` | `nonEmpty` |
 | `GetRunRequest` | `runId` | `identity` |
 | `GetRunRequest` | `runId` | `maxLength(256)` |
+| `GetRunAcceptanceRequest` | `key` | `nonEmpty` |
+| `GetRunAcceptanceRequest` | `key` | `maxLength(255)` |
+| `RunAcceptance` | `runId` | `identity` |
+| `RunAcceptance` | `runId` | `maxLength(256)` |
+| `RunAcceptance` | `segmentId` | `identity` |
+| `RunAcceptance` | `segmentId` | `maxLength(256)` |
+| `RunAcceptance` | `sessionId` | `identity` |
+| `RunAcceptance` | `sessionId` | `maxLength(256)` |
+| `RunAcceptance` | `userItemId` | `identity` |
+| `RunAcceptance` | `userItemId` | `maxLength(256)` |
 | `CancelRunRequest` | `runId` | `nonEmpty` |
 | `CancelRunRequest` | `runId` | `identity` |
 | `CancelRunRequest` | `runId` | `maxLength(256)` |

@@ -1675,6 +1675,52 @@
       }
     },
     {
+      "name": "runs.getAcceptance",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "key",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/RunAcceptance"
+        }
+      },
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "key": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/GetRunAcceptanceRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "runs.list",
       "paramStructure": "by-name",
       "params": [

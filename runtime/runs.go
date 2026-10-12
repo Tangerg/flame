@@ -38,6 +38,11 @@ func (r *binding) GetRun(ctx context.Context, request protocol.GetRunRequest, op
 	return r.invoke[protocol.GetRunRequest, *protocol.RunRef](ctx, delivery.RunsGet, request, callOptions(options))
 }
 
+// GetRunAcceptance reports what Runtime recorded for one runs.start idempotency key.
+func (r *binding) GetRunAcceptance(ctx context.Context, request protocol.GetRunAcceptanceRequest, options CallOptions) (*protocol.RunAcceptance, error) {
+	return r.invoke[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](ctx, delivery.RunsGetAcceptance, request, callOptions(options))
+}
+
 // ListRuns returns one cursor page of Runs.
 func (r *binding) ListRuns(ctx context.Context, request protocol.ListRunsRequest, options CallOptions) (*protocol.Page[protocol.RunRef], error) {
 	return r.invoke[protocol.ListRunsRequest, *protocol.Page[protocol.RunRef]](ctx, delivery.RunsList, request, callOptions(options))

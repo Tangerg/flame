@@ -178,6 +178,10 @@
               "signature": "func(ctx context.Context, request protocol.GetRunRequest, options CallOptions) (*protocol.RunRef, error)"
             },
             {
+              "name": "GetRunAcceptance",
+              "signature": "func(ctx context.Context, request protocol.GetRunAcceptanceRequest, options CallOptions) (*protocol.RunAcceptance, error)"
+            },
+            {
               "name": "GetSession",
               "signature": "func(ctx context.Context, request protocol.GetSessionRequest, options CallOptions) (*protocol.Session, error)"
             },
@@ -720,6 +724,10 @@
             {
               "name": "GetRun",
               "signature": "func(ctx context.Context, request protocol.GetRunRequest, options CallOptions) (*protocol.RunRef, error)"
+            },
+            {
+              "name": "GetRunAcceptance",
+              "signature": "func(ctx context.Context, request protocol.GetRunAcceptanceRequest, options CallOptions) (*protocol.RunAcceptance, error)"
             },
             {
               "name": "GetSession",
@@ -1999,6 +2007,11 @@
           "value": "9007199254740991"
         },
         {
+          "name": "MaximumIdempotencyKeyCharacters",
+          "type": "untyped int",
+          "value": "255"
+        },
+        {
           "name": "MaximumModelIdentityCharacters",
           "type": "untyped int",
           "value": "256"
@@ -2582,6 +2595,26 @@
           "name": "RestoreHistory",
           "type": "RestoreType",
           "value": "\"history\""
+        },
+        {
+          "name": "RunAcceptanceConflict",
+          "type": "RunAcceptanceType",
+          "value": "\"conflict\""
+        },
+        {
+          "name": "RunAcceptanceNotRecorded",
+          "type": "RunAcceptanceType",
+          "value": "\"notRecorded\""
+        },
+        {
+          "name": "RunAcceptanceOpened",
+          "type": "RunAcceptanceType",
+          "value": "\"opened\""
+        },
+        {
+          "name": "RunAcceptanceRetired",
+          "type": "RunAcceptanceType",
+          "value": "\"retired\""
         },
         {
           "name": "RunProtocolFeatureSubagents",
@@ -5030,6 +5063,23 @@
               "name": "SessionID",
               "type": "string",
               "tag": "json:\"sessionId\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "GetRunAcceptanceRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Key",
+              "type": "string",
+              "tag": "json:\"key\""
             }
           ],
           "methods": [
@@ -8602,6 +8652,48 @@
               "tag": "json:\"droppedRuns\""
             }
           ]
+        },
+        {
+          "name": "RunAcceptance",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "RunAcceptanceType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId,omitempty\""
+            },
+            {
+              "name": "SegmentID",
+              "type": "string",
+              "tag": "json:\"segmentId,omitempty\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "UserItemID",
+              "type": "string",
+              "tag": "json:\"userItemId,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "RunAcceptanceType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "RunEvent",

@@ -100,6 +100,7 @@ export type WireTypeName =
   | "GetDiffRequest"
   | "GetFileHeadRequest"
   | "GetPlanRequest"
+  | "GetRunAcceptanceRequest"
   | "GetRunRequest"
   | "GetSessionRequest"
   | "GetSessionSnapshotRequest"
@@ -285,6 +286,8 @@ export type WireTypeName =
   | "ResumeRunResponse"
   | "RollbackSessionRequest"
   | "RollbackSessionResponse"
+  | "RunAcceptance"
+  | "RunAcceptanceType"
   | "RunEvent"
   | "RunMetrics"
   | "RunOutcome"
@@ -1236,6 +1239,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
+  GetRunAcceptanceRequest: object({
+    key: allOf([text(), minLength(1), maxLength(255)]),
+  }, ["key"]),
   GetRunRequest: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId"]),
@@ -3181,6 +3187,39 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     droppedRuns: array(ref(() => CHECKS.DroppedRun)),
     session: ref(() => CHECKS.Session),
   }, ["droppedRuns", "session"]),
+  RunAcceptance: allOf([
+    object({
+      runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      segmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      type: ref(() => CHECKS.RunAcceptanceType),
+      userItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    }, []),
+    oneOf([
+      fields({
+        runId: absent(),
+        segmentId: absent(),
+        sessionId: absent(),
+        type: literal("notRecorded"),
+        userItemId: absent(),
+      }, ["type"]),
+      fields({
+        type: literal("opened"),
+      }, ["runId", "segmentId", "sessionId", "type", "userItemId"]),
+      fields({
+        segmentId: absent(),
+        type: literal("retired"),
+      }, ["runId", "sessionId", "type", "userItemId"]),
+      fields({
+        runId: absent(),
+        segmentId: absent(),
+        sessionId: absent(),
+        type: literal("conflict"),
+        userItemId: absent(),
+      }, ["type"]),
+    ]),
+  ]),
+  RunAcceptanceType: enumOf(["notRecorded", "opened", "retired", "conflict"]),
   RunEvent: object({
     event: ref(() => CHECKS.StreamEvent),
     eventId: allOf([text(), maxLength(65540), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^evt_")]),
@@ -4348,6 +4387,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "runs.cancel": ref(() => CHECKS.CancelRunRequest),
   "runs.steer": ref(() => CHECKS.SteerRunRequest),
   "runs.get": ref(() => CHECKS.GetRunRequest),
+  "runs.getAcceptance": ref(() => CHECKS.GetRunAcceptanceRequest),
   "runs.list": ref(() => CHECKS.ListRunsRequest),
   "interrupts.list": ref(() => CHECKS.ListInterruptsRequest),
   "plan.get": ref(() => CHECKS.GetPlanRequest),
@@ -4468,6 +4508,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "runs.cancel": ref(() => CHECKS.CancelRunResponse),
   "runs.steer": ref(() => CHECKS.SteerRunResponse),
   "runs.get": ref(() => CHECKS.RunRef),
+  "runs.getAcceptance": ref(() => CHECKS.RunAcceptance),
   "runs.list": ref(() => CHECKS.PageOfRunRef),
   "interrupts.list": ref(() => CHECKS.PageOfPendingInterruptSet),
   "plan.get": ref(() => CHECKS.Plan),

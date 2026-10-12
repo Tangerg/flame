@@ -317,6 +317,14 @@
       ]
     },
     {
+      "name": "runs.getAcceptance",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none"
+    },
+    {
       "name": "runs.list",
       "kind": "unary",
       "operation": "query",
@@ -3709,6 +3717,35 @@
             "run",
             "rootRun"
           ]
+        }
+      ]
+    },
+    {
+      "type": "RunAcceptance",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "notRecorded"
+        },
+        {
+          "tag": "opened",
+          "required": [
+            "runId",
+            "segmentId",
+            "sessionId",
+            "userItemId"
+          ]
+        },
+        {
+          "tag": "retired",
+          "required": [
+            "runId",
+            "sessionId",
+            "userItemId"
+          ]
+        },
+        {
+          "tag": "conflict"
         }
       ]
     },
@@ -8057,6 +8094,56 @@
         },
         {
           "field": "runId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "GetRunAcceptanceRequest",
+      "rules": [
+        {
+          "field": "key",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "key",
+          "constraint": "maxLength(255)"
+        }
+      ]
+    },
+    {
+      "type": "RunAcceptance",
+      "rules": [
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "userItemId",
           "constraint": "maxLength(256)"
         }
       ]

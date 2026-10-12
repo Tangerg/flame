@@ -2716,6 +2716,19 @@
         "sessionId"
       ]
     },
+    "GetRunAcceptanceRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      },
+      "required": [
+        "key"
+      ]
+    },
     "GetRunRequest": {
       "type": "object",
       "properties": {
@@ -8728,6 +8741,101 @@
       "required": [
         "droppedRuns",
         "session"
+      ]
+    },
+    "RunAcceptance": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "segmentId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "type": {
+          "$ref": "#/$defs/RunAcceptanceType"
+        },
+        "userItemId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "runId": false,
+            "segmentId": false,
+            "sessionId": false,
+            "type": {
+              "const": "notRecorded"
+            },
+            "userItemId": false
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "opened"
+            }
+          },
+          "required": [
+            "runId",
+            "segmentId",
+            "sessionId",
+            "type",
+            "userItemId"
+          ]
+        },
+        {
+          "properties": {
+            "segmentId": false,
+            "type": {
+              "const": "retired"
+            }
+          },
+          "required": [
+            "runId",
+            "sessionId",
+            "type",
+            "userItemId"
+          ]
+        },
+        {
+          "properties": {
+            "runId": false,
+            "segmentId": false,
+            "sessionId": false,
+            "type": {
+              "const": "conflict"
+            },
+            "userItemId": false
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "RunAcceptanceType": {
+      "type": "string",
+      "enum": [
+        "notRecorded",
+        "opened",
+        "retired",
+        "conflict"
       ]
     },
     "RunEvent": {

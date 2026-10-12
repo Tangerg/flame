@@ -222,6 +222,19 @@ func registerRunUnions(s *Shapes) {
 		},
 	})
 
+	// Only an opened run still has a live segment; a retired run carries its
+	// historical identity without one, and the two keyless variants carry nothing.
+	s.union(UnionSpec{
+		GoType:        typeOf[protocol.RunAcceptance](),
+		Discriminator: "type",
+		Variants: []VariantSpec{
+			{Tag: string(protocol.RunAcceptanceNotRecorded)},
+			{Tag: string(protocol.RunAcceptanceOpened), Required: []string{"runId", "segmentId", "sessionId", "userItemId"}},
+			{Tag: string(protocol.RunAcceptanceRetired), Required: []string{"runId", "sessionId", "userItemId"}},
+			{Tag: string(protocol.RunAcceptanceConflict)},
+		},
+	})
+
 	// A terminal says only why the run stopped; what it consumed is published
 	// beside it as metrics. `detail` is the human-readable note the non-error
 	// terminals may add — the error terminal's note stays on

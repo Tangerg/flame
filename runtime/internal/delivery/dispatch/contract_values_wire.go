@@ -412,6 +412,20 @@ func registerRunValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GetRunRequest](), Constraints: requiredResourceIdentity("runId")})
 	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.GetRunAcceptanceRequest](),
+		Constraints: []FieldConstraint{
+			{Field: "key", Kind: ConstraintNonEmpty},
+			{Field: "key", Kind: ConstraintMaxLength, Limit: protocol.MaximumIdempotencyKeyCharacters},
+		},
+	})
+	// The run identity is present only for the opened and retired variants; the
+	// union owns that requiredness, so these are identity-when-present guards.
+	runAcceptanceIdentity := resourceIdentity("runId")
+	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("segmentId")...)
+	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("sessionId")...)
+	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("userItemId")...)
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RunAcceptance](), Constraints: runAcceptanceIdentity})
+	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.CancelRunRequest](),
 		Constraints: append(requiredResourceIdentity("runId"), []FieldConstraint{
 			{Field: "reason", Kind: ConstraintMaxLength, Limit: runs.MaxCancellationReasonCharacters},

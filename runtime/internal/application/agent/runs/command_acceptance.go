@@ -111,6 +111,17 @@ type CommandAcceptanceReader interface {
 	Lookup(ctx context.Context, key string) (CommandAcceptanceRecord, error)
 }
 
+// LookupCommandAcceptance reports what an opening recorded for one external
+// command key. It is the read peer of the acceptance the opening transaction owns:
+// a client that lost a start ack resolves the key here instead of opening a second
+// Run. An absent key is the lookup's own not-recorded answer, not a failure.
+func (c *Coordinator) LookupCommandAcceptance(ctx context.Context, key string) (CommandAcceptanceRecord, error) {
+	if key == "" {
+		return CommandAcceptanceRecord{}, nil
+	}
+	return c.commandAcceptances.Lookup(ctx, key)
+}
+
 // AcceptCommand derives the acceptance for key and fingerprint from the opening
 // that an admission produced, so the two cannot describe different Runs.
 func AcceptCommand(key, requestFingerprint string, opening OpeningCommit, userItemID string) (CommandAcceptance, error) {

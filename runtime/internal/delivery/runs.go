@@ -14,6 +14,7 @@ const (
 	RunsCancel           Name = "runs.cancel"
 	RunsSteer            Name = "runs.steer"
 	RunsGet              Name = "runs.get"
+	RunsGetAcceptance    Name = "runs.getAcceptance"
 	RunsList             Name = "runs.list"
 	ModelInvocationsList Name = "modelInvocations.list"
 )
@@ -138,6 +139,18 @@ func registerRuns(registry *Registry) {
 	}, ctx context.Context, request protocol.GetRunRequest,
 	) (*protocol.RunRef, error) {
 		return service.GetRun(ctx, request)
+	})
+
+	// runs.getAcceptance answers what Runtime recorded for one runs.start idempotency
+	// key, so a client that lost the start ack learns whether the command opened a
+	// run — and whether that run still exists — instead of opening a second one. A
+	// never-seen key, a retired run, and a key bound elsewhere are all normal reads,
+	// so the result is a closed union rather than a not-found refusal.
+	registry.query(MethodMeta{Name: RunsGetAcceptance}, func(service interface {
+		GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error)
+	}, ctx context.Context, request protocol.GetRunAcceptanceRequest,
+	) (*protocol.RunAcceptance, error) {
+		return service.GetRunAcceptance(ctx, request)
 	})
 
 	// Only a request that asks for descendants needs features.subagents; the

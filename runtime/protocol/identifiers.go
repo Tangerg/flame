@@ -23,6 +23,12 @@ const MaximumResourceIdentityCharacters = runtimeidentity.MaximumResourceCharact
 // options, and the HTTP Last-Event-Id header. It includes the evt_ framing.
 const MaximumRunEventIDCharacters = runtimeidentity.MaximumEventCharacters
 
+// MaximumIdempotencyKeyCharacters bounds a client-chosen idempotency key where it
+// travels as a request body field (runs.getAcceptance). The transport metadata
+// path enforces its own byte limit; this is the wire-shape guard for the key as a
+// lookup subject.
+const MaximumIdempotencyKeyCharacters = 255
+
 // ValidateSessionID reports whether value is an exact opaque Session identity.
 func ValidateSessionID(value string) error {
 	return runtimeidentity.ValidateResource("session", value, MaximumResourceIdentityCharacters)

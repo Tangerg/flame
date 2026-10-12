@@ -182,6 +182,13 @@ func (g GetRunRequest) ValidateWire() error {
 	)
 }
 
+func (g GetRunAcceptanceRequest) ValidateWire() error {
+	return collectWireViolations("GetRunAcceptanceRequest",
+		requiredText("key", g.Key),
+		maxLength("key", g.Key, 255),
+	)
+}
+
 func (l ListRunsRequest) ValidateWire() error {
 	return collectWireViolations("ListRunsRequest",
 		identity("sessionId", l.SessionID),
@@ -938,6 +945,36 @@ func (c CancelRunResponse) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(c, "type", "root"), "rootRun", c),
 		requiredWhen(wireFieldEquals(c, "type", "child"), "run", c),
 		requiredWhen(wireFieldEquals(c, "type", "child"), "rootRun", c),
+	)
+}
+
+func (r RunAcceptance) ValidateWire() error {
+	return collectWireViolations("RunAcceptance",
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
+		identity("segmentId", r.SegmentID),
+		maxLength("segmentId", r.SegmentID, 256),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		identity("userItemId", r.UserItemID),
+		maxLength("userItemId", r.UserItemID, 256),
+		closedEnum("type", string(r.Type), []string{"notRecorded", "opened", "retired", "conflict"}, false),
+		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "runId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "segmentId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "sessionId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "userItemId", r),
+		requiredWhen(wireFieldEquals(r, "type", "opened"), "runId", r),
+		requiredWhen(wireFieldEquals(r, "type", "opened"), "segmentId", r),
+		requiredWhen(wireFieldEquals(r, "type", "opened"), "sessionId", r),
+		requiredWhen(wireFieldEquals(r, "type", "opened"), "userItemId", r),
+		requiredWhen(wireFieldEquals(r, "type", "retired"), "runId", r),
+		requiredWhen(wireFieldEquals(r, "type", "retired"), "sessionId", r),
+		requiredWhen(wireFieldEquals(r, "type", "retired"), "userItemId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "retired"), "segmentId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "conflict"), "runId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "conflict"), "segmentId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "conflict"), "sessionId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "conflict"), "userItemId", r),
 	)
 }
 

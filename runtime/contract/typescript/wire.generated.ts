@@ -624,6 +624,10 @@ export interface GetPlanRequest {
   sessionId: string;
 }
 
+export interface GetRunAcceptanceRequest {
+  key: string;
+}
+
 export interface GetRunRequest {
   runId: string;
 }
@@ -1551,6 +1555,14 @@ export interface RollbackSessionResponse {
   session: Session;
 }
 
+export type RunAcceptance =
+  | { type: "notRecorded" }
+  | { type: "opened"; runId: string; segmentId: string; sessionId: string; userItemId: string }
+  | { type: "retired"; runId: string; sessionId: string; userItemId: string }
+  | { type: "conflict" };
+
+export type RunAcceptanceType = "notRecorded" | "opened" | "retired" | "conflict";
+
 export interface RunEvent {
   event: StreamEvent;
   eventId: string;
@@ -2248,6 +2260,7 @@ export const WIRE_ENUMS = {
   QuestionFieldType: ["text", "choice"],
   RememberScopeKind: ["session", "project", "global"],
   RestoreType: ["history", "files", "both"],
+  RunAcceptanceType: ["notRecorded", "opened", "retired", "conflict"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],

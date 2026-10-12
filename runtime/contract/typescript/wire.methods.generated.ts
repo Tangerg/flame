@@ -37,6 +37,7 @@ import type {
   GetDiffRequest,
   GetFileHeadRequest,
   GetPlanRequest,
+  GetRunAcceptanceRequest,
   GetRunRequest,
   GetSessionRequest,
   GetSessionSnapshotRequest,
@@ -112,6 +113,7 @@ import type {
   ResumeRunResponse,
   RollbackSessionRequest,
   RollbackSessionResponse,
+  RunAcceptance,
   RunRef,
   RunScheduleNowRequest,
   RunScheduleNowResponse,
@@ -201,6 +203,7 @@ const METHOD_NAMES = [
   "runs.cancel",
   "runs.steer",
   "runs.get",
+  "runs.getAcceptance",
   "runs.list",
   "interrupts.list",
   "plan.get",
@@ -333,6 +336,7 @@ const VALUE_METHOD_NAMES = [
   "runs.cancel",
   "runs.steer",
   "runs.get",
+  "runs.getAcceptance",
   "runs.list",
   "interrupts.list",
   "plan.get",
@@ -566,6 +570,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "runs.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "runs.getAcceptance": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1493,6 +1504,7 @@ export interface WireShapes {
   "runs.cancel": { params: CancelRunRequest; result: CancelRunResponse };
   "runs.steer": { params: SteerRunRequest; result: SteerRunResponse };
   "runs.get": { params: GetRunRequest; result: RunRef };
+  "runs.getAcceptance": { params: GetRunAcceptanceRequest; result: RunAcceptance };
   "runs.list": { params: ListRunsRequest; result: PageOfRunRef };
   "interrupts.list": { params: ListInterruptsRequest; result: PageOfPendingInterruptSet };
   "plan.get": { params: GetPlanRequest; result: Plan };

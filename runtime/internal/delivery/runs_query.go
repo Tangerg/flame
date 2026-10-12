@@ -35,6 +35,41 @@ func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*proto
 	return &ref, nil
 }
 
+// GetRunAcceptance resolves what Runtime recorded for one runs.start idempotency
+// key. Every outcome — never seen, opened, retired, or bound elsewhere — is a
+// normal read, so the result is a closed union rather than a not-found refusal.
+func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error) {
+	record, err := s.runs.LookupCommandAcceptance(ctx, in.Key)
+	if err != nil {
+		return nil, err
+	}
+	return presentRunAcceptance(record), nil
+}
+
+func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcceptance {
+	switch {
+	case record.OtherOperation:
+		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceConflict}
+	case !record.Found:
+		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}
+	case record.MaterialAvailable:
+		return &protocol.RunAcceptance{
+			Type:       protocol.RunAcceptanceOpened,
+			RunID:      record.Acceptance.RunID,
+			SegmentID:  record.Acceptance.SegmentID,
+			SessionID:  record.Acceptance.SessionID,
+			UserItemID: record.Acceptance.UserItemID,
+		}
+	default:
+		return &protocol.RunAcceptance{
+			Type:       protocol.RunAcceptanceRetired,
+			RunID:      record.Acceptance.RunID,
+			SessionID:  record.Acceptance.SessionID,
+			UserItemID: record.Acceptance.UserItemID,
+		}
+	}
+}
+
 // ListRuns pages the durable run history as a cursor Page. The set and the scope
 // come from the durable admission record, not from this process's live registry:
 // the registry sees only the segments it is streaming, so it lost every run whose
