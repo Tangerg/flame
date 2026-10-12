@@ -6,7 +6,7 @@ Stage 1 complete: installation-owned selection and desired enablement.
 Stage 2a complete: public backend wire binding and refusal/uncertainty semantics implemented, verified and committed.
 Stage 2b complete: existing Memory/Schedules human commands retain durable original binding and reconcile through owner receipt lookup.
 Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bindings and operation reference artifacts; Reviews consumes the same immutable contracts. Committed and synchronized with local main; independent author and regeneration-drift checks passed. The generic host operation entrance and full proposal remain open.
-Stage 2d verified: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. Commit and incoming-main synchronization are being recorded below.
+Stage 2d complete: Reviews exposes the public read-only receipt query over its existing private invocation owner. Real committed-response loss recovers through that query after backend restart, without replaying the mutation. This is the existing typed Go binding, not the generic installed-operation entrance. The slice is verified, committed and synchronized with local main; the full proposal remains open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -16,6 +16,8 @@ Incoming local main: 61645c2561b174042aa157aef21cc00cfba67a86.
 Integration commit: f5e4bdbc140ad4d24b6b723ffdfd908cdff515a3.
 Stage 2a commit: c4706b6b.
 Stage 2c commit: da20c0848b3ccb3351587c30d3cb5d622e600230.
+Stage 2d commit: fe57e21a82b83139633083e837eb7e1ca0e162e8.
+Stage 2d main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2c main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2b commit: 1ea49486d7f3385e11fef7e395d43c901ca0b29d.
 Stage 2b main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
@@ -215,7 +217,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
-- Stage 2d: all backend/module/race checks returned success. Test-owned processes, private databases and installed binaries were retired by their existing cleanup. No generated binary, UI artifact, shared configuration change or user-data operation was kept. The current input hashes still match the read-only baselines. Keep the active checkout and required dependencies for the continuing full refactor.
+- Stage 2d: all backend/module/race checks returned success. Test-owned processes, private databases and installed binaries were retired by their existing cleanup; TemporaryDirectory removed the input-fingerprint proof source. No generated binary, UI artifact, shared configuration change or user-data operation was kept. The current input hashes still match the read-only baselines. The slice is committed and incoming local main is already up to date; keep the active checkout and required dependencies for the continuing full refactor.
 
 - Stage 2c: all invoked verification processes returned terminal success. TemporaryDirectory removed the task-owned independent SDK proxy/checkouts/module cache. Formal generated Reviews contracts/data bindings remain as product artifacts. Task-generated Runtime TypeScript test cache was removed. The verified slice is committed and local main was already up to date; active checkout/development dependencies remain for the continuing refactor.
 
