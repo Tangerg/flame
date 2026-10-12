@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { motion, space } from "@/styles/tokens.stylex";
+import { motion, space } from "@flame/ui/tokens.stylex";
 import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
 import { cn } from "@/lib/classNames";
 

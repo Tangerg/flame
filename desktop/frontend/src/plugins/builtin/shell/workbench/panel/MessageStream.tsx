@@ -22,7 +22,7 @@ import {
   RootRunOutcome,
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const ms = stylex.create({
   arrival: { position: "relative" },

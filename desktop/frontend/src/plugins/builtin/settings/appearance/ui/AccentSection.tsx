@@ -5,7 +5,7 @@ import { ACCENT, useExtensionPoint } from "@/plugins/sdk";
 import { useAccentPreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
 import { ColorPickerInput, Icon, Pressable } from "@/ui";
-import { corner, motion, space, surface } from "@/styles/tokens.stylex";
+import { corner, motion, space, surface } from "@flame/ui/tokens.stylex";
 
 const RAINBOW_HINT =
   "conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7, #ec4899, #ef4444)";

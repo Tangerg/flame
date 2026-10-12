@@ -14,6 +14,7 @@ export default defineConfig({
   // component with it.
   plugins: [stylexBabel()],
   resolve: {
+    dedupe: ["react", "react-dom", "@base-ui/react"],
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
     },

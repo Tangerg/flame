@@ -1,4 +1,5 @@
-import { IconButton, type IconName, type ButtonTone } from "@/ui";
+import { iconGlyph, type IconName } from "@/ui/icons";
+import { IconButton, type ButtonTone } from "@flame/ui";
 
 interface MessageActionButtonProps {
   icon: IconName;
@@ -11,7 +12,16 @@ interface MessageActionButtonProps {
   "aria-pressed"?: boolean;
 }
 
-export function MessageActionButton({ role, className, ...props }: MessageActionButtonProps) {
+export function MessageActionButton({ role, className, icon, ...props }: MessageActionButtonProps) {
   const isUser = role === "user";
-  return <IconButton {...props} size="sm" quiet round={isUser} className={className} />;
+  return (
+    <IconButton
+      {...props}
+      icon={iconGlyph(icon)}
+      size="sm"
+      quiet
+      round={isUser}
+      className={className}
+    />
+  );
 }

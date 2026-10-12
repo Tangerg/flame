@@ -2,7 +2,8 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { gap, Icon, PillButton, Segmented, Surface, Switch, TextField, vocab } from "@/ui";
+import { Icon, PillButton, Segmented, Surface, Switch } from "@/ui";
+import { gap, TextField, vocab } from "@flame/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -17,7 +18,7 @@ import { LinesField } from "./ServerFormFields";
 import { MCPServerEdit, type MCPServerFields } from "../application/mcpServerDraft";
 import { ToolControls } from "./ToolControls";
 import { useAsyncFeedback } from "../../kit";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {

@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { cn } from "@/lib/classNames";
@@ -5,7 +6,8 @@ import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
-import { Chip, IconButton, LightboxDialog, Pressable, TextEditorDialog, reveal } from "@/ui";
+import { Chip, LightboxDialog, Pressable, TextEditorDialog, reveal } from "@/ui";
+import { IconButton } from "@flame/ui";
 import { Icon, fileIconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
 import { draftMentions, removeMention } from "../application/draftContext";
@@ -94,7 +96,7 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         <img src={src} alt={image.name ?? ""} {...stylex.props(composerStyles.previewImage)} />
       </LightboxDialog>
       <IconButton
-        icon="x"
+        icon={iconGlyph("x")}
         size="xs"
         title={t("composer.removeImage")}
         aria-label={t("composer.removeImage")}

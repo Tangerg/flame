@@ -1,3 +1,4 @@
+import type { IconGlyph } from "@flame/ui/font-scale";
 import { memo } from "react";
 import {
   Activity,
@@ -136,10 +137,10 @@ import {
   type IconProps,
 } from "@flame/icons/react";
 import { useUiFontSize } from "@/lib/appearance";
-import { iconSizePx } from "@/lib/iconScale";
-import type { IconSize } from "@/lib/iconScale";
+import { productIconSizePx } from "@/lib/productIconScale";
+import type { ProductIconSize } from "@/lib/productIconScale";
 
-const ICON_MAP = {
+const DRAWINGS = {
   server: Server,
   network: Network,
   workflow: Workflow,
@@ -275,7 +276,13 @@ const ICON_MAP = {
   strikethrough: Strikethrough,
 } satisfies Record<string, IconComponent>;
 
-export type IconName = keyof typeof ICON_MAP;
+export type IconName = keyof typeof DRAWINGS;
+const ICON_MAP = Object.fromEntries(
+  Object.entries(DRAWINGS).map(([name, Drawing]) => {
+    const Glyph: IconComponent = (props) => <Drawing {...props} data-icon-name={name} />;
+    return [name, Glyph];
+  }),
+) as Record<IconName, IconComponent>;
 
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
@@ -283,9 +290,15 @@ export function knownIconName(value: string | null | undefined): IconName | unde
   return value != null && ICON_NAMES.has(value as IconName) ? (value as IconName) : undefined;
 }
 
+export function iconGlyph(name: IconName): IconGlyph;
+export function iconGlyph(name: IconName | undefined): IconGlyph | undefined;
+export function iconGlyph(name: IconName | undefined): IconGlyph | undefined {
+  return name === undefined ? undefined : ICON_MAP[name];
+}
+
 interface Props {
   name: IconName;
-  size?: IconSize;
+  size?: ProductIconSize;
   style?: IconProps["style"];
   className?: string;
   full?: boolean;
@@ -293,12 +306,11 @@ interface Props {
 
 export const Icon = memo(function Icon({ name, size = "sm", style, className, full }: Props) {
   const fontSize = useUiFontSize();
-  const pixels = iconSizePx(size, fontSize);
+  const pixels = productIconSizePx(size, fontSize);
   const Glyph = ICON_MAP[name];
   return (
     <Glyph
       aria-hidden="true"
-      data-icon-name={name}
       data-glyph={full ? "full" : undefined}
       className={className}
       size={pixels}

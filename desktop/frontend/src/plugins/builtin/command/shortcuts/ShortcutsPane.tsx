@@ -1,6 +1,8 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useMemo, useState } from "react";
-import { Button, EmptyState, Kbd, SearchField, TextButton, vocab } from "@/ui";
+import { Kbd, TextButton } from "@/ui";
+import { Button, EmptyState, SearchField, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { comboFromEvent, normalizeCombo, splitCombo } from "@/lib/combo";
 import {
@@ -9,7 +11,7 @@ import {
   useExtensionPoint,
   useShortcutOverrides,
 } from "@/plugins/sdk";
-import { color, motion, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, motion, space, surface, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { SettingsGroup } from "@/plugins/builtin/settings/kit";
 
 const sc = stylex.create({
@@ -154,7 +156,7 @@ export function ShortcutsPane() {
 
       <SettingsGroup>
         {shown.length === 0 ? (
-          <EmptyState icon="search" title={t("shortcuts.empty")} />
+          <EmptyState icon={iconGlyph("search")} title={t("shortcuts.empty")} />
         ) : (
           <table {...stylex.props(sc.table, typeStep.uiMd)}>
             <thead {...stylex.props(sc.head, typeStep.uiSm)}>

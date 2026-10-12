@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space } from "@/styles/tokens.stylex";
+import { color, space } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 
 export type StepState = "done" | "active" | "pending";

@@ -19,6 +19,7 @@ import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
+const SHARED = new URL("../../../ui/src/", import.meta.url).pathname;
 const SRC = new URL("../src/", import.meta.url).pathname;
 
 // The widths the product has named. Derived rather than listed: a token that is renamed or
@@ -124,7 +125,7 @@ const MARKUP_RULES = [
     pattern: /fontSize:\s*"var\(--(?:text|fs)-[^)]*\)"/g,
     message:
       "half a type step — compose `type.uiMd` / `type.displayMd` from `tokens.stylex.ts`, which carries the tracking and leading with it",
-    appliesTo: (rel) => rel !== "styles/tokens.stylex.ts",
+    appliesTo: (rel) => !rel.endsWith("tokens.stylex.ts"),
   },
   {
     // An ink or accent wash mixed by hand in an arbitrary value. The mermaid
@@ -194,7 +195,8 @@ function rulesFor(path) {
   const ext = extname(path);
   if (ext === ".tsx" || ext === ".ts") return MARKUP_RULES;
   if (ext === ".css") {
-    return STYLESHEET_EXEMPT.has(relative(SRC, path))
+    return path === new URL("../../../ui/src/globals.css", import.meta.url).pathname ||
+      STYLESHEET_EXEMPT.has(relative(SRC, path))
       ? EVERY_STYLESHEET_RULES
       : [...EVERY_STYLESHEET_RULES, ...STYLESHEET_RULES];
   }
@@ -212,13 +214,13 @@ function rulesFor(path) {
 // utilities: `--radius-scale` is a multiplier and `--leading-markdown-*` are stylesheet
 const violations = [];
 let examined = 0;
-const scanned = [...walk(SRC)];
+const scanned = [...walk(SRC), ...walk(SHARED)];
 assertSourceCoverage(sourceFiles(SRC), scanned);
 for (const path of scanned) {
   const rules = rulesFor(path);
   if (rules.length === 0) continue;
   examined += 1;
-  const rel = relative(SRC, path);
+  const rel = path.startsWith(SHARED) ? `@flame/ui/${relative(SHARED, path)}` : relative(SRC, path);
   const source = readFileSync(path, "utf8");
   const lines = source.split("\n");
 

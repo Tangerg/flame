@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Checkbox, Segmented, Switch } from "@/ui";
+import { Segmented, Switch } from "@/ui";
+import { Checkbox } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import {
   useCompletionSoundPreference,

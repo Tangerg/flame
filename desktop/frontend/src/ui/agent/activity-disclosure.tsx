@@ -3,12 +3,12 @@ import { reveal } from "@/ui/atoms/reveal";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Children, useId } from "react";
 import { cn } from "@/lib/classNames";
-import { color, leading, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
 import { ProgressBar } from "@/ui/atoms/progress-bar";
 import { Icon, type IconName } from "@/ui/icons";
-import { toneInk } from "@/ui/atoms/tone-ink";
+import { toneInk } from "@flame/ui/tone-ink";
 import { chevron } from "@/ui/atoms/chevron";
 
 type ActivityTone = "neutral" | "warning" | "negative";

@@ -1,24 +1,19 @@
+import { iconGlyph } from "@/ui/icons";
 import { useState, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import {
-  Badge,
-  Button,
-  Checkbox,
   ChoiceList,
   ChoiceOption,
   Chip,
   DiffStat,
   Divider,
-  EmptyState,
   FilePath,
   Gauge,
-  IconButton,
   Kbd,
   Loader,
   PillButton,
   ProgressBar,
-  SearchField,
   SectionLabel,
   Segmented,
   SelectTrigger,
@@ -29,11 +24,25 @@ import {
   Switch,
   SystemMessage,
   Tag,
-  TextArea,
   TextButton,
-  TextField,
   Well,
 } from "@/ui";
+import {
+  Panel,
+  Toolbar,
+  PanelTitle,
+  ListRow,
+  Metadata,
+  Select,
+  Badge,
+  Button,
+  Checkbox,
+  EmptyState,
+  IconButton,
+  SearchField,
+  TextArea,
+  TextField,
+} from "@flame/ui";
 import { Icon } from "@/ui/icons";
 
 const styles = stylex.create({
@@ -111,8 +120,32 @@ function ChoiceSpecimen({ multiple }: { multiple: boolean }) {
 }
 
 export function VisualAtomsFixture() {
+  const [status, setStatus] = useState("pending");
   return (
     <main data-slot="atoms-gallery" {...stylex.props(styles.page)}>
+      <Specimen name="shared-panel">
+        <Panel label="Shared Memory controls">
+          <Toolbar label="Memory overview">
+            <PanelTitle>Agent memory</PanelTitle>
+            <Badge tone="accent">Pending review</Badge>
+          </Toolbar>
+          <Toolbar label="Memory filters">
+            <Select
+              label="Memory status"
+              value={status}
+              onValueChange={setStatus}
+              options={[
+                { value: "pending", label: "Pending review" },
+                { value: "active", label: "Active" },
+              ]}
+            />
+          </Toolbar>
+          <ListRow>
+            <p>Keep the durable fact with its owner.</p>
+            <Metadata>Project · User authored · Pinned</Metadata>
+          </ListRow>
+        </Panel>
+      </Specimen>
       <Specimen name="button">
         <div {...stylex.props(styles.row)}>
           <Button variant="primary">Primary</Button>
@@ -129,11 +162,11 @@ export function VisualAtomsFixture() {
       </Specimen>
       <Specimen name="icon-button">
         <div {...stylex.props(styles.row)}>
-          <IconButton icon="search" size="xs" aria-label="Search" />
-          <IconButton icon="copy" size="sm" aria-label="Copy" />
-          <IconButton icon="settings" size="md" aria-label="Settings" />
-          <IconButton icon="bell" size="md" badge={3} aria-label="Notifications" />
-          <IconButton icon="trash" size="sm" disabled aria-label="Delete" />
+          <IconButton icon={iconGlyph("search")} size="xs" aria-label="Search" />
+          <IconButton icon={iconGlyph("copy")} size="sm" aria-label="Copy" />
+          <IconButton icon={iconGlyph("settings")} size="md" aria-label="Settings" />
+          <IconButton icon={iconGlyph("bell")} size="md" badge={3} aria-label="Notifications" />
+          <IconButton icon={iconGlyph("trash")} size="sm" disabled aria-label="Delete" />
         </div>
       </Specimen>
       <Specimen name="pill-button">
@@ -269,7 +302,7 @@ export function VisualAtomsFixture() {
       <Specimen name="empty-skeleton">
         <div {...stylex.props(styles.column)}>
           <EmptyState
-            icon="bell"
+            icon={iconGlyph("bell")}
             title="Nothing here"
             sub="New items appear here."
             size="compact"

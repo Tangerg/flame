@@ -1,13 +1,14 @@
 import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
-import { SystemMessage, TextField, vocab } from "@/ui";
+import { SystemMessage } from "@/ui";
+import { TextField, vocab } from "@flame/ui";
 import { useActiveSession, useRelocateSession } from "@/plugins/builtin/agent/public/session";
 import { BannerAction } from "./BannerAction";
 import { useT } from "@/lib/i18n";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { shellStyles as sh } from "../shellStyles";
-import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const cw = stylex.create({
   title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },

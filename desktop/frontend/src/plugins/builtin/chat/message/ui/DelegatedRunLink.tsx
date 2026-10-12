@@ -1,11 +1,13 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
-import { Icon, IconButton, Pressable, reveal, StatusDot, toneInk, vocab } from "@/ui";
+import { Icon, Pressable, reveal, StatusDot } from "@/ui";
+import { IconButton, toneInk, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { motion, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { motion, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 
 const styles = stylex.create({
@@ -97,7 +99,7 @@ export function DelegatedRunLink({
       <span {...stylex.props(styles.cancelSlot)}>
         {model.cancelable && (
           <IconButton
-            icon="stop"
+            icon={iconGlyph("stop")}
             size="sm"
             quiet
             disabled={!available}

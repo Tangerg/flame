@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space, weight } from "@/styles/tokens.stylex";
+import { color, space, weight } from "./tokens.stylex";
 
 export const vocab = stylex.create({
   fill: { minWidth: 0, flex: 1 },
@@ -9,11 +9,20 @@ export const vocab = stylex.create({
   column: { display: "flex", flexDirection: "column" },
   line: { display: "flex", alignItems: "center", gap: space.s2 },
   lineTight: { display: "flex", alignItems: "center", gap: space.s1_5 },
-  firstLine: { display: "flex", height: "1lh", flexShrink: 0, alignItems: "center" },
+  firstLine: {
+    display: "flex",
+    height: "1lh",
+    flexShrink: 0,
+    alignItems: "center",
+  },
 
   afterLine: { marginTop: space.s1_5 },
 
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  truncate: {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
   wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
   pretty: { textWrap: "pretty" },
   figures: { fontVariantNumeric: "tabular-nums" },

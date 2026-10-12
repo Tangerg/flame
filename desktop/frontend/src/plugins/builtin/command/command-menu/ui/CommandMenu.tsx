@@ -1,7 +1,9 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
-import { EmptyState, Icon, Kbd, SearchOverlay } from "@/ui";
+import { Icon, Kbd, SearchOverlay } from "@/ui";
+import { EmptyState } from "@flame/ui";
 import { knownIconName } from "@/ui/icons";
 import { useEffectiveCommands, useWorkspaceViews } from "@/plugins/sdk";
 import { useContextDockCatalog } from "@/plugins/builtin/workspace/public/contextDockCatalog";
@@ -12,7 +14,7 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { matchCommands, type CommandChoice } from "../application/commandMatches";
 import { useCommandMenuStore } from "../application/commandMenuState";
-import { color, space } from "@/styles/tokens.stylex";
+import { color, space } from "@flame/ui/tokens.stylex";
 
 const cmd = stylex.create({
   glyph: { flexShrink: 0, color: color.fgMuted },
@@ -66,7 +68,7 @@ export function CommandMenu() {
       placeholder={t("commandMenu.placeholder")}
       empty={
         <EmptyState
-          icon="command"
+          icon={iconGlyph("command")}
           size="compact"
           title={t("commandMenu.empty.title")}
           sub={t("commandMenu.empty.sub")}

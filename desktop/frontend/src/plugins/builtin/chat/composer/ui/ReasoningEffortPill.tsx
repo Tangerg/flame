@@ -1,9 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { reasoningEffortLabel } from "@/plugins/builtin/providers/public/reasoningEffort";
-import { DropdownMenu, Icon, vocab } from "@/ui";
+import { DropdownMenu, Icon } from "@/ui";
+import { vocab } from "@flame/ui";
 import { AgentComposerChip } from "@/ui/agent";
-import { corner, space, type as typeStep } from "@/styles/tokens.stylex";
+import { corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
 import { toolbarStyles } from "../toolbarStyles";

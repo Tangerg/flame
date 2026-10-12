@@ -9,14 +9,10 @@ import {
   surface,
   type,
   weight,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { Icon } from "@/ui/icons";
-import {
-  CheckboxGroupPrimitive,
-  CheckboxPrimitive,
-  RadioGroupPrimitive,
-  RadioPrimitive,
-} from "@/ui/primitives";
+import { CheckboxGroupPrimitive, RadioGroupPrimitive, RadioPrimitive } from "@/ui/primitives";
+import { CheckboxPrimitive } from "@flame/ui/primitives";
 import { Pressable } from "./pressable";
 
 const styles = stylex.create({

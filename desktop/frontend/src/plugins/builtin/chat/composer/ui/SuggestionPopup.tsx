@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type RefObject, useEffect } from "react";
 import { Popover, SectionLabel } from "@/ui";
 import { SUGGESTION_LISTBOX_ID, suggestionOptionId } from "../application/suggestions";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { suggestionStyles } from "./suggestionStyles";
 
 interface Props {

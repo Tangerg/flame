@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { TooltipProvider } from "@/ui";
+import { TooltipProvider } from "@flame/ui";
 import { startKernel, stopKernel } from "../sdk";
 import type { AnyPlugin, Host } from "dougong";
 

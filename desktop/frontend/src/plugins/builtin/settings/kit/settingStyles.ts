@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, weight } from "@flame/ui/tokens.stylex";
 
 export const settingStyles = stylex.create({
   stack: { display: "flex", flexDirection: "column", gap: space.s3 },

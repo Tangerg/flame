@@ -1,6 +1,8 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { IconButton, knownIconName, reveal, StatusDot, vocab } from "@/ui";
+import { knownIconName, reveal, StatusDot } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import {
   lookupToolActionOwner,
@@ -15,7 +17,7 @@ import {
   toolCardActions,
   toolCardViewOpener,
 } from "../application/toolCardModel";
-import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   sans: { fontFamily: "var(--font-sans)" },
@@ -70,7 +72,7 @@ export function useToolRowActions(tool: ToolCall) {
       <IconButton
         key={action.id}
         data-reveal="hover"
-        icon={knownIconName(action.icon) ?? "tool"}
+        icon={iconGlyph(knownIconName(action.icon) ?? "tool")}
         size="xs"
         quiet
         title={t(action.title)}
@@ -90,7 +92,7 @@ export function useToolRowActions(tool: ToolCall) {
         key="open-view"
         data-reveal="hover"
         data-slot="tool-open-view"
-        icon="open"
+        icon={iconGlyph("open")}
         size="xs"
         quiet
         title={t(opener.label(tool))}

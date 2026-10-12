@@ -9,9 +9,10 @@ import {
   SkillLibraryControls,
   SkillProposalControls,
 } from "@/plugins/builtin/workspace/public/skills";
-import { Segmented, SystemMessage, vocab } from "@/ui";
+import { Segmented, SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import type {
   PluginViewReads,
   SkillViewTarget,

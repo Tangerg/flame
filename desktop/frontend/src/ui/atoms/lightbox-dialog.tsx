@@ -1,9 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, type KeyboardEventHandler, type ReactElement, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { radius, space, surface } from "@/styles/tokens.stylex";
+import { radius, space, surface } from "@flame/ui/tokens.stylex";
 import { DialogPrimitive } from "@/ui/primitives";
-import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
 
 type LightboxKind = "figure" | "document" | "media";
 

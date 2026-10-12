@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence, motion } from "motion/react";
-import { Gauge, Pressable, RichTooltip, StepMark, vocab } from "@/ui";
+import { Gauge, Pressable, StepMark } from "@/ui";
+import { RichTooltip, vocab } from "@flame/ui";
 import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
 import { useT } from "@/lib/i18n";
 import { type PlanStep, useSessionPlan } from "@/plugins/builtin/agent/public/plan";
@@ -11,7 +12,7 @@ import {
   space,
   type as typeStep,
   motion as motionToken,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 
 const ap = stylex.create({
   pill: {

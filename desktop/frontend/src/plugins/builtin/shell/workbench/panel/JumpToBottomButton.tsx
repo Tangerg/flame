@@ -1,8 +1,9 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { scrollStreamToBottom, useStreamAtBottom } from "./streamFollow";
-import { IconButton } from "@/ui";
+import { IconButton } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   float: {
@@ -22,7 +23,7 @@ export function JumpToBottomButton() {
   return (
     <IconButton
       type="button"
-      icon="chevron-down"
+      icon={iconGlyph("chevron-down")}
       variant="raised"
       round
       size="md"

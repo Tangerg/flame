@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ChoiceList, ChoiceOption } from "./choice-list";
-import { TextArea, TextField } from "./text-field";
+import { TextArea, TextField } from "@flame/ui/text-field";
 
 describe("field pending", () => {
   it("keeps a text field focusable and unwritable while its action is in flight", () => {

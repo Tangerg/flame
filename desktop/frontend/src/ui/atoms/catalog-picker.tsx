@@ -1,14 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
-import { dress } from "./button";
+import { dress } from "@flame/ui/button";
 import { Popover } from "./popover";
 import { floatingRow } from "./option-row";
 import { Pressable } from "./pressable";
-import { vocab } from "./vocabulary";
+import { vocab } from "@flame/ui/vocabulary";
 
 const styles = stylex.create({
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },

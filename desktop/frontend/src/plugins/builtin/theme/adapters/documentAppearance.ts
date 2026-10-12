@@ -9,7 +9,7 @@ import {
   publishUiFontSize,
 } from "@/lib/appearance";
 import { densityCssVariables } from "../kit/density";
-import { iconScaleCssVariables } from "@/lib/iconScale";
+import { productIconScaleCssVariables } from "@/lib/productIconScale";
 import { uiTypeLadderCssVariables } from "../kit/typeLadder";
 import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { subscribeContributions } from "@/plugins/sdk";
@@ -144,7 +144,7 @@ function applyFonts(
 
   for (const [property, value] of Object.entries({
     ...uiTypeLadderCssVariables(fontSize),
-    ...iconScaleCssVariables(fontSize),
+    ...productIconScaleCssVariables(fontSize),
     ...(codeFontSize === null ? {} : { "--fs-code": `${codeFontSize}px` }),
   })) {
     root.style.setProperty(property, value);
@@ -215,6 +215,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     ) {
       applyShape(state.density, state.radiusScale, state.motionScale);
     }
+    publishTokens();
   });
 
   const unsubscribePlugins = subscribeContributions(() => {

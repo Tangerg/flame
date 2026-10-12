@@ -36,7 +36,7 @@
     "check:locales": "node scripts/check-locales.mjs",
     "check:lookup-tables": "node scripts/check-lookup-tables.mjs",
     "check:bundle": "vite build && node scripts/check-css-variables.mjs && node scripts/check-bundle-size.mjs",
-    "check:plugin-resources": "node ../../plugins/file-renderers/build.mjs --check && node ../../plugins/icon-gallery/build.mjs --check",
+    "check:plugin-resources": "node ../../plugins/file-renderers/build.mjs --check && node ../../plugins/icon-gallery/build.mjs --check && node ../../plugins/memory/build.mjs --check",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run check:plugin-messages && npm run knip && npm run check:circular && npm run check:contexts && npm run check:published-boundaries && npm run check:layers && npm run check:port-surface && npm run check:api-consumers && npm run check:style-invalidation && npm run check:hmr && npm run check:design-system && npm run check:tokens && npm run check:styles && npm run check:dead-tokens && npm run check:classes && npm run check:shorthand && npm run check:chrome && npm run check:locales && npm run check:lookup-tables && npm run check:bootstrap && npm run check:plugin-resources && npm run check:bundle",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -47,7 +47,8 @@
     "check:variables": "node scripts/check-css-variables.mjs",
     "check:shorthand": "node scripts/check-shorthand-longhand.mjs",
     "check:dead-tokens": "node scripts/check-dead-tokens.mjs",
-    "check:styles": "node scripts/check-dead-styles.mjs"
+    "check:styles": "node scripts/check-dead-styles.mjs",
+    "precheck": "npm run build --prefix ../../ui"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
@@ -104,7 +105,8 @@
     "unist-util-visit": "^5.1.0",
     "use-stick-to-bottom": "^1.1.6",
     "zod": "^4.6.6",
-    "zustand": "^5.0.15"
+    "zustand": "^5.0.15",
+    "@flame/ui": "file:../../ui"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

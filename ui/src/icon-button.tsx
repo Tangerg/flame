@@ -1,17 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
-import type { IconSize } from "@/lib/iconScale";
-import { cn } from "@/lib/classNames";
-import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
-import { Icon, type IconName } from "@/ui/icons";
+import type { IconSize } from "./font-scale";
+import { color, corner, space, surface, type, weight } from "./tokens.stylex";
+import { Icon, type IconGlyph } from "./font-scale";
 import { Button, type ButtonProps, type ButtonSize } from "./button";
 import { GlyphSwap } from "./glyph-swap";
 import { Tooltip } from "./tooltip";
 
 interface IconButtonProps extends Omit<ButtonProps, "children" | "size"> {
-  icon: IconName;
-  hoverIcon?: IconName;
+  icon: IconGlyph;
+  hoverIcon?: IconGlyph;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
-  iconSize?: IconSize;
+  iconSize?: IconSize | number;
   title?: string;
   badge?: string | number;
 }
@@ -57,28 +56,33 @@ export function IconButton({
   iconSize = ICON_SIZE[size],
   badge,
   className,
+  styles: extra,
   title,
   ...props
 }: IconButtonProps) {
   const hasBadge = badge !== undefined && badge !== "" && badge !== 0;
-  const host = stylex.props(hasBadge && styles.host);
   return (
     <Tooltip label={title}>
       <Button
         {...props}
         aria-label={props["aria-label"] ?? title}
         size={BOX[size]}
-        className={cn(host.className, className)}
+        className={className}
+        styles={[hasBadge && styles.host, extra]}
       >
         {hoverIcon ? (
           <GlyphSwap
-            rest={<Icon name={icon} size={iconSize} />}
-            hover={<Icon name={hoverIcon} size={iconSize} />}
+            rest={<Icon glyph={icon} size={iconSize} />}
+            hover={<Icon glyph={hoverIcon} size={iconSize} />}
           />
         ) : (
-          <Icon name={icon} size={iconSize} />
+          <Icon glyph={icon} size={iconSize} />
         )}
-        {hasBadge && <span {...stylex.props(styles.badge, corner.pill, type.ui2xs)}>{badge}</span>}
+        {hasBadge && (
+          <span {...stylex.props(styles.badge, corner.pill, type.ui2xs)}>
+            {badge}
+          </span>
+        )}
       </Button>
     </Tooltip>
   );

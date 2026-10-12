@@ -1,12 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, Icon, Pressable, reveal, vocab } from "@/ui";
+import { DiffStat, Icon, Pressable, reveal } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
-import { color, face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
 import { ToolFailureLine, ToolStatusMarks, useToolRowActions } from "./ToolRowParts";
 

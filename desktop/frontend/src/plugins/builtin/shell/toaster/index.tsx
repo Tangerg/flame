@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Toaster } from "sonner";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
-import { color, radius, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, radius, surface, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const ts = stylex.create({
   toast: {

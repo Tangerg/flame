@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, space, weight } from "@/styles/tokens.stylex";
+import { color, leading, space, weight } from "@flame/ui/tokens.stylex";
 
 export const toolbarStyles = stylex.create({
   describedRow: { alignItems: "flex-start", paddingBlock: space.s1_5 },

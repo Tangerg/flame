@@ -3,7 +3,7 @@ import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import { motion as anim } from "motion/react";
 import { createContext, use, useId, useMemo, useState, type ReactNode } from "react";
 import { selectionTransition } from "@/lib/motion";
-import { radius, surface } from "@/styles/tokens.stylex";
+import { radius, surface } from "@flame/ui/tokens.stylex";
 
 interface HoverTrack {
   layoutId: string;

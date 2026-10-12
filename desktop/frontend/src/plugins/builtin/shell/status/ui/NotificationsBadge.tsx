@@ -1,8 +1,10 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
-import { EmptyState, IconButton, Popover, SectionLabel, StatusDot, vocab } from "@/ui";
+import { Popover, SectionLabel, StatusDot } from "@/ui";
+import { EmptyState, IconButton, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { formatRelative } from "@/lib/i18n/relativeTime";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useNotificationStore, type NotificationLevel } from "@/plugins/sdk";
 import {
   notificationBadgeText,
@@ -46,7 +48,7 @@ export function NotificationsBadge() {
       <Popover.Trigger
         render={
           <IconButton
-            icon="bell"
+            icon={iconGlyph("bell")}
             size="sm"
             quiet
             badge={notificationBadgeText(unread) ?? undefined}
@@ -70,7 +72,7 @@ export function NotificationsBadge() {
           className={stylex.props(styles.header).className}
           trailing={
             <IconButton
-              icon="trash"
+              icon={iconGlyph("trash")}
               size="sm"
               title={t("notifications.clearAll")}
               disabled={log.length === 0}
@@ -82,7 +84,9 @@ export function NotificationsBadge() {
           {t("notifications.title")}
         </SectionLabel>
         <div {...stylex.props(styles.list)}>
-          {log.length === 0 && <EmptyState icon="bell" title={t("notifications.empty.title")} />}
+          {log.length === 0 && (
+            <EmptyState icon={iconGlyph("bell")} title={t("notifications.empty.title")} />
+          )}
           {log.toReversed().map((entry) => (
             <div key={entry.id} {...stylex.props(styles.row)}>
               <StatusDot
@@ -101,7 +105,7 @@ export function NotificationsBadge() {
               </div>
               {!entry.dismissed && (
                 <IconButton
-                  icon="x"
+                  icon={iconGlyph("x")}
                   size="xs"
                   title={t("notifications.dismiss")}
                   onClick={() => dismiss(entry.id)}

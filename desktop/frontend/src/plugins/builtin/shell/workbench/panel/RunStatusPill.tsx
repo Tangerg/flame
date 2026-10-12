@@ -4,7 +4,7 @@ import { durationText } from "@/lib/format";
 import { useCurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import { useElapsedMillis } from "./useElapsedMillis";
 import { useT } from "@/lib/i18n";
-import { vocab } from "@/ui";
+import { vocab } from "@flame/ui";
 
 export function RunStatusPill() {
   const t = useT();

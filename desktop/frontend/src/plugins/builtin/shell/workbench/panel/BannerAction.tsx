@@ -1,5 +1,6 @@
 import type { IconName } from "@/ui";
-import { Button, Icon } from "@/ui";
+import { Icon } from "@/ui";
+import { Button } from "@flame/ui";
 
 export function BannerAction({
   icon,

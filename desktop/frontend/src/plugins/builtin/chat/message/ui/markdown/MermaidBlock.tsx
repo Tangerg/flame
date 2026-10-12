@@ -1,13 +1,15 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { IconButton, LightboxDialog, ShikiCodeBlock, reveal } from "@/ui";
+import { LightboxDialog, ShikiCodeBlock, reveal } from "@/ui";
+import { IconButton } from "@flame/ui";
 import { measureMermaidRender } from "@/lib/metrics";
 import { useT } from "@/lib/i18n";
 import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
-import { motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { MermaidViewer } from "./MermaidViewer";
 
 const mb = stylex.create({
@@ -189,7 +191,7 @@ export function MermaidBlock({ code }: Props) {
             title={t("markdown.diagram")}
             trigger={
               <IconButton
-                icon="maximize"
+                icon={iconGlyph("maximize")}
                 size="xs"
                 quiet
                 title={t("message.mermaid.enlarge")}
@@ -200,7 +202,7 @@ export function MermaidBlock({ code }: Props) {
             <MermaidViewer svg={svg} />
           </LightboxDialog>
           <IconButton
-            icon={copied ? "check" : "copy"}
+            icon={iconGlyph(copied ? "check" : "copy")}
             size="xs"
             quiet
             onClick={() => void copy()}

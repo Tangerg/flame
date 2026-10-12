@@ -4,13 +4,14 @@ import { toolIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/agent/public/hitl";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { useT } from "@/lib/i18n";
-import { Button, Divider, DropdownMenu, Icon, Surface, type IconName, vocab, Well } from "@/ui";
+import { Divider, DropdownMenu, Icon, Surface, type IconName, Well } from "@/ui";
+import { Button, vocab } from "@flame/ui";
 import { useApprovalArgsEditor } from "../../application/approvalArgsEditor";
 import { useApprovalCardActions } from "../../application/approvalCardActions";
 import { ApprovalArgsEditor } from "./ApprovalArgsEditor";
 import { approvalHeadline } from "./approvalHeadline";
 import { HitlSettledRow } from "./HitlCard";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
 const ac = stylex.create({

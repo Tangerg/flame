@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, corner, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, corner, leading, radius, space, surface, weight } from "@flame/ui/tokens.stylex";
 
 export const fx = stylex.create({
   pane: { display: "flex", minHeight: 0, flex: 1, flexDirection: "column" },

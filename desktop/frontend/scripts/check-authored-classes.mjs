@@ -14,9 +14,12 @@
 
 import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import { extname, join, relative } from "node:path";
 
 const ROOT = new URL("../", import.meta.url).pathname;
+const require = createRequire(import.meta.url);
+const SHARED = new URL("../../../ui/src/", import.meta.url).pathname;
 const STYLES = join(ROOT, "src", "styles");
 
 function walk(dir) {
@@ -31,6 +34,13 @@ function walk(dir) {
 
 const defined = new Set();
 const sheets = walk(STYLES).filter((path) => path.endsWith(".css"));
+for (const file of [...walk(join(ROOT, "src")), ...walk(join(ROOT, "visual"))].filter((path) =>
+  /\.tsx?$/.test(path),
+)) {
+  for (const match of readFileSync(file, "utf8").matchAll(/import\s+"([^"]+\.css)"/g)) {
+    if (!match[1].startsWith(".")) sheets.push(require.resolve(match[1]));
+  }
+}
 for (const path of sheets) {
   const css = readFileSync(path, "utf8").replace(/\\/g, "");
   for (const match of css.matchAll(/\.(-?[A-Za-z][A-Za-z0-9_-]*)/g)) defined.add(match[1]);
@@ -68,7 +78,7 @@ const BARE = new Set(
 
 const violations = [];
 let examined = 0;
-const roots = [join(ROOT, "src"), join(ROOT, "visual")];
+const roots = [join(ROOT, "src"), join(ROOT, "visual"), SHARED];
 const scanned = roots.flatMap(walk);
 assertSourceCoverage(roots.flatMap(sourceFiles), scanned);
 for (const path of scanned) {

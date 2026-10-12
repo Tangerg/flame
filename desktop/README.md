@@ -46,7 +46,7 @@
 ## 2 · 技术栈（选择已定，别轻易换 —— 反向不变量见 §6.1）
 
 - **UI**：React + TypeScript。
-- **样式**：**StyleX（编译期原子 CSS）+ 语义标记**。令牌走 `src/styles/tokens.stylex.ts`（它包住 `globals.css` 的变量，不内联数值）。Tailwind 已完全移除 —— 连同 `cva` 与 `tailwind-merge`，`cn()` 现在只是 `clsx`。**手写的 class 只能是 `globals.css` 定义的那些**（`check:classes` 强制）。**不写新 .css 文件**：`globals.css` 唯一，`markdown.css` / `overlays.css` 只承载 StyleX 表达不了的后代规则，`stylex.css` 是空表。
+- **样式**：**StyleX（编译期原子 CSS）+ 语义标记**。令牌走 `@flame/ui/tokens.stylex`（它包住 `globals.css` 的变量，不内联数值）。Tailwind 已完全移除 —— 连同 `cva` 与 `tailwind-merge`，`cn()` 现在只是 `clsx`。**手写的 class 只能是 `globals.css` 定义的那些**（`check:classes` 强制）。**不写新 .css 文件**：`globals.css` 唯一，`markdown.css` / `overlays.css` 只承载 StyleX 表达不了的后代规则，`stylex.css` 是空表。
 - **Headless 基件**：**Base UI primitives first**（带交互 / 焦点 / 键盘 / aria 的一律先用 Base UI，没有的才自写）。Base UI 只作为行为 primitive；视觉、主题 token、阴影、圆角、密度归 Flame 自己。
 - **状态 / 数据 / 路由**：Zustand（多小 store）/ TanStack React Query / TanStack Router。
 - **协议**：自研 Flame Runtime Protocol v2（JSON-RPC 2.0，已弃用 AG-UI），权威定义见 `../runtime/contract/`（`manifest.json` / `openrpc.json` / `schema.json` 是机器真值，`API_REFERENCE.md` 是它们生成的人读索引）。
@@ -81,9 +81,9 @@
 
 - **一个元素的样式只能出自一次 `stylex.props()`**：它只在**同一次调用内**定优先级（后者胜，败者根本不生成）。两次调用的结果并排放，谁赢由打包顺序决定 —— 那不是一个可以争论的答案。组件要给调用方留口子就暴露 `styles?: StyleXArray<…>`（`Button` / `Badge` / `AgentRow` 都是），不是 `className`。同理**一个 style 对象里不许同时出现简写和它自己的分写**（`padding` 配 `paddingTop`）：那是两个 key，StyleX 排不了序（`check:shorthand` 强制）。`style={{}}` 内联只在值真动态时用。
 - **不写新 .css 文件**：新样式进 className，`globals.css` 是唯一例外。
-- **设计系统三环，方向单一**（layer 守卫强制）：Base UI 只在 `ui/primitives` 出现（别处 import 它 = 回归）→ `ui/atoms` 给 primitives 穿 token → `ui/agent` 把 atoms 组成 shell 形状。业务层只消费 atoms / agent，**不自己拼交互件**：缺档就往库里加一档（尺寸 / tone / 状态），别在 callsite 手搓 —— 手搓出来的那批就是 hover 有 11 种写法的由来。
+- **设计系统三环，方向单一**（layer 守卫强制）：Base UI 只在 `ui/src/primitives` 或 Desktop 剩余的 `ui/primitives` 出现（别处 import 它 = 回归）→ `ui/atoms` 给 primitives 穿 token → `ui/agent` 把 atoms 组成 shell 形状。业务层只消费 atoms / agent，**不自己拼交互件**：缺档就往库里加一档（尺寸 / tone / 状态），别在 callsite 手搓 —— 手搓出来的那批就是 hover 有 11 种写法的由来。
 - **Base UI first（硬规则）**：任何带交互 / 焦点 / 键盘 / aria 的组件一律先用 Base UI，在 `ui/atoms` 薄包一层套设计 token，**绝不手写 focus trap / roving tabindex / aria-\* / 键盘事件**。唯一豁免（须注释写明理由）：纯展示无交互、Base UI 版有实测开销且无 a11y 收益、定制行为 Base UI 模型套不进（如 textarea —— Base UI 无此 part 且其 control 类型只对 input）—— 判据是"Base UI 是否带来真实 a11y / 行为收益"，纯为统一不换。
-- **边界机制由 visual style 决定，callsite 永不自画**（DESIGN.md §5 + DESKTOP_UI_POLISH.md，2026-08 修订）：当前 tool-window style 的答案是 **区域之间不画线** —— 靠 value delta + 接缝定向投射（drawer 用平面自身的 `--app-card-edge` inset cast，dock 用 `--app-pane-split` 向左投；chrome bar 底边什么都没有）；card 只有 `surface.card` 填充、well 只有 `surface.sunken`；composer 用**真实 1px border**，focus 换成 accent；popover 等真正浮层用**一层 shadow ring + depth**、不叠 border；固定控件（输入框 / chip）用真 `border`。**禁止**同一个面同时有 border 和 shadow ring（双边），**禁止**同一个边界两条线。行状态用 **`surface.hover` / `surface.selected`**（ink wash，强度绑在 `--depth-step` 上，不是 surface 台阶、不是自己挑的 alpha），按下用 `scale: var(--press-scale)` 的 `:active`，键盘 focus 由 globals.css 里**唯一一条全局规则**画（会被裁就标 `data-focus-inset`，行状态代替环就标 `data-chrome-focus`，主题只调 `--color-focus-ring`）；四者各只有一个值，`check-interactive-chrome` 守着 —— 在 callsite 自己画 outline / box-shadow 环一律 build 失败。⚠️ 这条**取代**了 2026-07 的「一个边界只画一条线」—— 给每条边界都发一根 hairline 会把三栏画成线框图；也**不是**退回更早的「只靠 background delta」—— 那个模型的 delta 小到读不出来。四个 surface 锚点（`bg` / `surface` / `elevated` / `sunken`）为什么不能是一条 ladder，见 DESIGN.md §2。
+- **边界机制由 visual style 决定，callsite 永不自画**（DESIGN.md §5 + DESKTOP_UI_POLISH.md，2026-08 修订）：当前 tool-window style 的答案是 **区域之间不画线** —— 靠 value delta + 接缝定向投射（drawer 用平面自身的 `--app-card-edge` inset cast，dock 用 `--app-pane-split` 向左投；chrome bar 底边什么都没有）；card 只有 `surface.card` 填充、well 只有 `surface.sunken`；composer 用**真实 1px border**，focus 换成 accent；popover 等真正浮层用**一层 shadow ring + depth**、不叠 border；固定控件（输入框 / chip）用真 `border`。**禁止**同一个面同时有 border 和 shadow ring（双边），**禁止**同一个边界两条线。行状态用 **`surface.hover` / `surface.selected`**（ink wash，强度绑在 `--depth-step` 上，不是 surface 台阶、不是自己挑的 alpha），按下用 `scale: var(--press-scale)` 的 `:active`，键盘 focus 由 `ui/src/globals.css` 里**唯一一条全局规则**画（会被裁就标 `data-focus-inset`，行状态代替环就标 `data-chrome-focus`，主题只调 `--color-focus-ring`）；四者各只有一个值，`check-interactive-chrome` 守着 —— 在 callsite 自己画 outline / box-shadow 环一律 build 失败。⚠️ 这条**取代**了 2026-07 的「一个边界只画一条线」—— 给每条边界都发一根 hairline 会把三栏画成线框图；也**不是**退回更早的「只靠 background delta」—— 那个模型的 delta 小到读不出来。四个 surface 锚点（`bg` / `surface` / `elevated` / `sunken`）为什么不能是一条 ladder，见 DESIGN.md §2。
 - **Grid/Flex first**：浮起的面用 surface ladder + 一条边（见上条），不手堆卡片阴影；超过两个元素的排版用 Grid / Flex，不用 `position: absolute` 手算坐标 / `<table>` 排版 / 连串 margin 凑对齐（absolute 只用于浮层与锚点）；隐式 / 单列 grid 显式写 `minmax(0,1fr)` 防宽 child 撑爆。
 - **Plugin 一定走 registry**：不直接 import 一个 builtin plugin，永远走 selector。
 - **运行时事件单向**：render 路径不回写 agent store；要"做事"调 store 上的 send / stop / resume。
@@ -231,8 +231,8 @@ candidates and active items; trusted Host forms retain add, review, edit, pin an
 The Memory backend alone owns these facts; Runtime routes admitted commands and supplies
 bounded model capabilities. Withdrawal retires the backend generation and retains its
 private data. Rebuild all clients for protocol 2026-10-12.1. Memory and Schedules use
-package version 3.0.0, Trajectory uses 2.0.0 and Usage uses 1.0.0. Approve current bytes
-for the `flame.view.ready.v2` / `flame.view.connect.v2` handshake.
+package resources built with the current bridge. Reinstall and approve current bytes
+for the `flame.view.ready.v3` / `flame.view.connect.v3` handshake.
 Packages may also declare `renameSession` actions. An admitted package row displays a
 trusted host form with the operation and captured Session ID/revision. The human submits
 the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission
@@ -450,7 +450,7 @@ The Host captures the selected period; the guest renders canonical totals and pr
 model and UTC-day buckets and can only refresh that captured query. Local filters leave
 totals intact. Zero reported usage, unpriced usage, an empty report and read failure remain
 separate states. Runtime alone folds recorded Run usage; uninstall preserves accounting.
-The shared bridge now uses `flame.view.ready.v2` / `flame.view.connect.v2` and data replies
+The shared bridge now uses `flame.view.ready.v3` / `flame.view.connect.v3` and data replies
 for both reports and pages. Rebuild clients and approve the updated 2.0.0 trajectory, memory
 and schedules packages; the former handshake and compiled Usage pane have no fallback.
 
@@ -502,7 +502,7 @@ all their data. Retirement stops remaining frames and joins accepted publication
 The native host and frontend share the current admission shape; no alternate decoder
 accepts the former unframed transport.
 
-Session, descendant-scope or host-scheme changes close the prior instance. Installation withdrawal or digest changes
+Session and descendant-scope changes close the prior instance. Host appearance changes publish a read-only token projection on the existing channel without reloading resources or business data. Installation withdrawal or digest changes
 retire its contribution lifetime, and Runtime connection replacement joins predecessor
 cleanup before registering successor contributions. Native IDs identify physical pages;
 late allocation, reply or closure cannot advance another instance. Pending reads receive
@@ -640,3 +640,7 @@ Expanding records displayed model and Tool evidence; filtering changed only the 
 observations and preserved their counts. Application and Runtime shutdown both exited
 successfully. No external provider service was contacted; the fixture's responses and
 usage were synthetic, so this check does not qualify a live provider or its accounting.
+
+## Shared presentation package
+
+Build `icons`, then `ui`, before installing the graphical client. `@flame/ui` owns the extracted controls and StyleX token declarations; product composites stay in Desktop. The Memory page is generated from `plugins/memory/src/memory.tsx` using the same package. Install its local dependencies and run `npm run build --prefix plugins/memory` after a shared UI change; the frontend gate checks the tracked resource against that build. Portable pages use the v3 ready/connect handshake and receive a closed appearance projection. Former v2 pages must be rebuilt and their changed release digests reviewed through the existing installation workflow; there is no alternate decoder. Durable plugin data formats are unchanged.

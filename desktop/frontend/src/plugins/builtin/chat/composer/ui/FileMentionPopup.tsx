@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { RefObject } from "react";
-import { Icon, OptionRow, TextButton, fileIconName, vocab } from "@/ui";
-import { face, type as typeStep } from "@/styles/tokens.stylex";
+import { Icon, OptionRow, TextButton, fileIconName } from "@/ui";
+import { vocab } from "@flame/ui";
+import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n";
 import type { FileMentions } from "../application/fileMentions";
 import { suggestionOptionId } from "../application/suggestions";

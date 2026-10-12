@@ -1,7 +1,9 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Icon, IconButton, vocab } from "@/ui";
+import { Icon } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import { BannerAction } from "./BannerAction";
 import { flattenText } from "@/plugins/builtin/agent/public/messageContent";
 import { getActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
@@ -22,7 +24,7 @@ import { showWorkspaceDock } from "@/plugins/builtin/workspace/public/navigation
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { shellStyles as sh } from "../shellStyles";
-import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const reb = stylex.create({
   plain: { fontWeight: weight.regular },
@@ -142,7 +144,7 @@ export function RunErrorBanner() {
             </div>
           </div>
           <IconButton
-            icon="x"
+            icon={iconGlyph("x")}
             size="xs"
             quiet
             title={t("runError.action.dismiss")}

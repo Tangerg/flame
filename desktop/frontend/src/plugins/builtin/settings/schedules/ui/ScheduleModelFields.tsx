@@ -2,10 +2,11 @@ import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { useModels } from "@/plugins/builtin/providers/public/queries";
 import { reasoningEffortLabel } from "@/plugins/builtin/providers/public/reasoningEffort";
-import { Button, DropdownMenu, Icon, SelectTrigger, providerDisplayName, vocab } from "@/ui";
+import { DropdownMenu, Icon, SelectTrigger, providerDisplayName } from "@/ui";
+import { Button, vocab } from "@flame/ui";
 import type { ScheduleModelSelection } from "../application/scheduleConfig";
 import { settingStyles as ss } from "../../kit/settingStyles";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({ trigger: { maxWidth: "100%" } });
 

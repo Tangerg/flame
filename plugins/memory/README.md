@@ -40,3 +40,9 @@ Build packages using [the local application workflow](../README.md). Backend
 source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugins/memory) as part
 of the local Runtime application module. Verify from `runtime` with the workspace
 enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
+
+## Shared presentation
+
+The standalone resource is generated from `src/memory.tsx`. It uses the same `@flame/ui` components and document stylesheet as Desktop. Theme selection remains with the trusted Host; the v3 carrier applies its initial projection and later updates without replacing the page or requesting memory again. Filters and pagination remain read-only, and trusted authoring stays outside the guest.
+
+Build `icons` and `ui`, run `npm ci --prefix plugins/memory`, then `npm run check --prefix plugins/memory`. Rebuild the tracked HTML after changing shared UI or this source. The resource check enforces the Runtime size bound and byte-for-byte build reproducibility.

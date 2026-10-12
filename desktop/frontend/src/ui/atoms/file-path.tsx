@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color } from "@/styles/tokens.stylex";
+import { color } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   root: { display: "flex", minWidth: 0, alignItems: "baseline" },

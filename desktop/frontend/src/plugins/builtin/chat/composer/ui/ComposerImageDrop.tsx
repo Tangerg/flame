@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import * as stylex from "@stylexjs/stylex";
 import { Icon } from "@/ui";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { composerStyles } from "./composerStyles";
 import { useT } from "@/lib/i18n";
 import { hasComposerImageTransferItems } from "../application/composerInputEvents";

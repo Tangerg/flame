@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import type { FallbackProps } from "react-error-boundary";
 import { ErrorBoundary } from "react-error-boundary";
 import { useT } from "@/lib/i18n";
-import { Button, Well } from "@/ui";
-import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { Well } from "@/ui";
+import { Button } from "@flame/ui";
+import { color, radius, space, surface, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const eb = stylex.create({
   card: {

@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { fmtTokens } from "@/lib/format";
 import { type Translate, useT } from "@/lib/i18n";
 import {
-  Button,
   Icon,
   ProviderIcon,
   RailCatalogPicker,
@@ -11,6 +10,7 @@ import {
   type CatalogPickerGroup,
   providerDisplayName,
 } from "@/ui";
+import { Button } from "@flame/ui";
 import { type SelectableModel, useModels } from "@/plugins/builtin/providers/public/queries";
 import { useRecentModelsStore, type RecentModel } from "../adapters/recentModels";
 import { AgentComposerChip } from "@/ui/agent";

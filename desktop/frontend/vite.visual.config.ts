@@ -15,6 +15,7 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react(), stylexBabel(), pluginCarrier()],
   resolve: {
+    dedupe: ["react", "react-dom", "@base-ui/react"],
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
     },

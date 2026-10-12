@@ -1,8 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
-import { Icon, vocab } from "@/ui";
+import { Icon } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import type { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
-import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { UnresolvedRunEffects } from "./UnresolvedRunEffects";
 
 const ro = stylex.create({

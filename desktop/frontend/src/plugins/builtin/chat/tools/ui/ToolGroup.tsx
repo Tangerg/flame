@@ -6,9 +6,9 @@ import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { toolGroupModel, type ToolGroupPinnedState } from "../application/toolGroupModel";
 import { ToolGroupMember } from "./ToolGroupMember";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
-import { vocab } from "@/ui";
+import { vocab } from "@flame/ui";
 
 interface Props {
   tools: ToolCall[];

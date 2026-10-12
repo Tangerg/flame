@@ -7,9 +7,10 @@ import {
   useWorkIndexActions,
   type WorkGroup,
 } from "@/plugins/builtin/navigation/public/workIndex";
-import { Button, DropdownMenu, Icon, vocab } from "@/ui";
+import { DropdownMenu, Icon } from "@/ui";
+import { Button, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 interface ProjectMenuContentProps {
   groups: readonly WorkGroup[] | undefined;

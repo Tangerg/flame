@@ -3,9 +3,9 @@ import type { Highlighter } from "shiki";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { codeStyles as cs } from "../viewStyles";
-import { vocab } from "@/ui";
+import { vocab } from "@flame/ui";
 
 function highlightLines(h: Highlighter, code: string, theme: string, path: string): string[] {
   const lang = resolveLang(h, langFromPath(path));

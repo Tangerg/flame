@@ -3,12 +3,13 @@ import { cn } from "@/lib/classNames";
 import type { ReactNode } from "react";
 import type { Scheme } from "@/lib/appearance";
 import type { ColorThemeSpec } from "@/plugins/sdk";
-import { DropdownMenu, Icon, SelectTrigger, vocab } from "@/ui";
+import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { COLOR_THEME, useExtensionPoint } from "@/plugins/sdk";
 import { SettingRow } from "../../kit";
 import { useThemePreference } from "../application/appearancePreferences";
-import { color, corner, radius, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, radius, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string; accent: string }> = {
   dark: { bg: "#0c0d0f", surface: "#16181b", accent: "#6c97ff" },

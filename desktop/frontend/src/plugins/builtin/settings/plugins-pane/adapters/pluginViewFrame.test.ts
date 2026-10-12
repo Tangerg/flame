@@ -1,7 +1,8 @@
+import { captureTheme } from "@flame/ui/theme";
 import { afterEach, expect, it, vi } from "vitest";
 import { RpcError } from "@flame/runtime-contract/client";
 import { usePluginErrorStore } from "@/plugins/sdk/errors";
-import { mountPluginViewFrame } from "./pluginViewFrame";
+import { openPluginViewFrame } from "./pluginViewFrame";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import type { PluginViewStatus } from "../application/pluginView";
 
@@ -40,13 +41,13 @@ function fixture() {
     close,
     publish: (message: unknown) => receive(message),
     mount: () =>
-      mountPluginViewFrame({
+      openPluginViewFrame({
         container: document.createElement("div"),
         carrier,
         reads,
         signal: signal.signal,
         status,
-        scheme: "light",
+        theme: captureTheme(document.documentElement, "light", 14),
       }),
     async ready() {
       const dispose = f.mount();
@@ -62,9 +63,9 @@ it("reuses the initial read and permits only the bound cursor operation", async 
   expect(f.reads.resource).toHaveBeenCalledOnce();
   expect(f.send).toHaveBeenCalledWith({
     type: "boot",
-    html: "<!doctype html>",
+    html: expect.stringContaining("<!doctype html>"),
     initial: { data: [] },
-    scheme: "light",
+    theme: captureTheme(document.documentElement, "light", 14),
   });
   expect(f.reads.read).not.toHaveBeenCalled();
   f.publish({ type: "request", request: { type: "read", cursor: "next" } });
@@ -76,7 +77,7 @@ it("reuses the initial read and permits only the bound cursor operation", async 
     stage: "protocol",
     reason: expect.stringContaining("unsupported"),
   });
-  await dispose();
+  await dispose.close();
   expect(f.close).toHaveBeenCalledOnce();
 });
 it("retires pending reads and refuses their late publication", async () => {
@@ -88,7 +89,7 @@ it("retires pending reads and refuses their late publication", async () => {
   f.signal.abort();
   expect(f.reads.read.mock.calls[0]?.[1].aborted).toBe(true);
   pending.resolve({ data: [] });
-  await dispose();
+  await dispose.close();
   expect(f.send).toHaveBeenCalledOnce();
   expect(f.close).toHaveBeenCalledOnce();
   f.publish({ type: "request", request: { type: "read" } });
@@ -106,7 +107,7 @@ it("shows a failed read without replacing recorded data with empty success", asy
     }),
   );
   expect(f.status).toHaveBeenLastCalledWith({ type: "ready" });
-  await dispose();
+  await dispose.close();
 });
 it("joins a carrier that finishes opening after retirement", async () => {
   const f = fixture();
@@ -116,7 +117,7 @@ it("joins a carrier that finishes opening after retirement", async () => {
   await vi.waitFor(() => expect(f.carrier.open).toHaveBeenCalledOnce());
   f.signal.abort();
   opened.resolve({ send: f.send, close: f.close });
-  await dispose();
+  await dispose.close();
   expect(f.close).toHaveBeenCalledOnce();
   expect(f.reads.resource).not.toHaveBeenCalled();
 });
@@ -129,7 +130,7 @@ it("rejects connection before publishing boot", async () => {
   await vi.waitFor(() => expect(f.reads.resource).toHaveBeenCalledOnce());
   f.publish({ type: "connected" });
   loaded.resolve("<!doctype html>");
-  await dispose();
+  await dispose.close();
   expect(f.status).toHaveBeenLastCalledWith({
     type: "failure",
     stage: "protocol",
@@ -154,7 +155,7 @@ it("treats publication failure as terminal rather than a failed read", async () 
       reason: "The plugin channel could not publish its result.",
     }),
   );
-  await dispose();
+  await dispose.close();
   expect(f.send).toHaveBeenCalledTimes(2);
 });
 
@@ -167,7 +168,7 @@ it("joins the pending read even when physical closure fails", async () => {
   vi.useFakeTimers();
   f.publish({ type: "request", request: { type: "read" } });
   let completed = false;
-  const disposed = dispose().catch((error) => {
+  const disposed = dispose.close().catch((error) => {
     completed = true;
     return error;
   });
@@ -192,7 +193,7 @@ it("keeps failure terminal when the carrier fails immediately after connecting",
   });
   const dispose = f.mount();
   await vi.waitFor(() => expect(f.close).toHaveBeenCalledOnce());
-  await dispose();
+  await dispose.close();
   expect(f.status.mock.calls).toEqual([
     [{ type: "loading" }],
     [{ type: "ready" }],
@@ -210,7 +211,7 @@ it("waits for qualification before loading any package resource", async () => {
   await vi.waitFor(() => expect(f.carrier.open).toHaveBeenCalledOnce());
   expect(f.reads.resource).not.toHaveBeenCalled();
   f.publish({ type: "failure", reason: "carrier unavailable" });
-  await dispose();
+  await dispose.close();
   expect(f.reads.resource).not.toHaveBeenCalled();
   expect(f.status).toHaveBeenLastCalledWith({
     type: "failure",
@@ -225,7 +226,7 @@ it("joins resource loading and an allocated page when retired during startup", a
   f.reads.resource.mockImplementation(() => loaded.promise);
   const dispose = f.mount();
   await vi.waitFor(() => expect(f.reads.resource).toHaveBeenCalledOnce());
-  const disposed = dispose();
+  const disposed = dispose.close();
   await vi.waitFor(() => expect(f.close).toHaveBeenCalledOnce());
   expect(f.reads.resource.mock.calls[0]?.[0].aborted).toBe(true);
   let completed = false;
@@ -255,7 +256,7 @@ it("settles a renderer format failure and joins its admitted read", async () => 
   });
   expect(f.reads.read.mock.calls[0]?.[1].aborted).toBe(true);
   pending.resolve({ data: [] });
-  await dispose();
+  await dispose.close();
   expect(f.close).toHaveBeenCalledOnce();
   expect(f.send).toHaveBeenCalledOnce();
 });
@@ -284,7 +285,7 @@ it("queues a successor whose predecessor reply was delivered before publication 
     expect(f.close).not.toHaveBeenCalled();
   } finally {
     acknowledged.resolve();
-    await dispose();
+    await dispose.close();
   }
 });
 
@@ -313,7 +314,7 @@ it.each(["resource", "initial"] as const)(
       expect(f.reads[stage].mock.calls[0]?.[0].aborted).toBe(false);
     } finally {
       loaded.resolve();
-      await dispose();
+      await dispose.close();
     }
   },
 );
@@ -340,7 +341,7 @@ it("does not let predecessor cleanup erase an active successor", async () => {
     reason: expect.stringContaining("pending read"),
   });
   next.resolve({ data: [] });
-  await dispose();
+  await dispose.close();
   expect(f.send).toHaveBeenCalledTimes(2);
 });
 
@@ -363,7 +364,7 @@ it("retires a failed publication without starting its queued successor", async (
       reason: expect.any(String),
     }),
   );
-  await dispose();
+  await dispose.close();
   expect(f.reads.read).toHaveBeenCalledTimes(1);
 });
 
@@ -382,7 +383,7 @@ it("joins the initial read after resource failure and preserves the failing stag
   );
   expect(f.reads.initial.mock.calls[0]![0].aborted).toBe(true);
   let settled = false;
-  const disposing = dispose().then(() => {
+  const disposing = dispose.close().then(() => {
     settled = true;
   });
   await Promise.resolve();
@@ -411,7 +412,7 @@ it("starts the guest deadline after boot publication settles", async () => {
     stage: "handshake",
     reason: expect.any(String),
   });
-  await dispose();
+  await dispose.close();
 });
 
 it("retains safe host diagnostics while withholding integration details from the guest", async () => {
@@ -435,5 +436,40 @@ it("retains safe host diagnostics while withholding integration details from the
   expect(JSON.stringify(log)).not.toContain(secret);
   expect(JSON.stringify(f.send.mock.calls)).not.toContain(secret);
   expect(f.status).toHaveBeenLastCalledWith({ type: "ready" });
-  await dispose();
+  await dispose.close();
+});
+
+it("updates appearance on the existing port without rereading business data", async () => {
+  const f = fixture();
+  const frame = await f.ready();
+  const theme = captureTheme(document.documentElement, "dark", 18);
+  frame.updateTheme(theme);
+  await vi.waitFor(() =>
+    expect(f.send).toHaveBeenLastCalledWith({ type: "reply", reply: { type: "theme", theme } }),
+  );
+  expect(f.reads.resource).toHaveBeenCalledOnce();
+  expect(f.reads.initial).toHaveBeenCalledOnce();
+  expect(f.reads.read).not.toHaveBeenCalled();
+  await frame.close();
+  const sent = f.send.mock.calls.length;
+  frame.updateTheme(captureTheme(document.documentElement, "light", 14));
+  expect(f.send).toHaveBeenCalledTimes(sent);
+});
+
+it("publishes the latest projection when appearance changes during handshake", async () => {
+  const f = fixture();
+  const boot = Promise.withResolvers<void>();
+  f.send.mockImplementationOnce(() => boot.promise);
+  const frame = f.mount();
+  await vi.waitFor(() =>
+    expect(f.send).toHaveBeenCalledWith(expect.objectContaining({ type: "boot" })),
+  );
+  const theme = captureTheme(document.documentElement, "dark", 18);
+  frame.updateTheme(theme);
+  f.publish({ type: "connected" });
+  await vi.waitFor(() =>
+    expect(f.send).toHaveBeenLastCalledWith({ type: "reply", reply: { type: "theme", theme } }),
+  );
+  boot.resolve();
+  await frame.close();
 });

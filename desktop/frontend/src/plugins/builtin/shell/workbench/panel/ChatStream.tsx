@@ -23,8 +23,8 @@ import {
   QuestionCard,
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { shellStyles as sh } from "../shellStyles";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import { vocab } from "@/ui";
+import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { vocab } from "@flame/ui";
 
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },

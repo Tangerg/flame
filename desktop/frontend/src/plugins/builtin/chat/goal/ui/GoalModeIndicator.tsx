@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useSyncExternalStore } from "react";
-import { Button, ConfirmDialog, GlyphSwap, Icon, vocab } from "@/ui";
+import { ConfirmDialog, Icon } from "@/ui";
+import { Button, GlyphSwap, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { useGoalMaterial } from "../application/goalReadModel";

@@ -16,7 +16,7 @@ import Perplexity from "./provider-marks/Perplexity.svg";
 import Together from "./provider-marks/Together.svg";
 import XAI from "./provider-marks/XAI.svg";
 import Zhipu from "./provider-marks/Zhipu.svg";
-import type { IconSize } from "@/lib/iconScale";
+import type { ProductIconSize } from "@/lib/productIconScale";
 import { Icon } from "@/ui/icons";
 
 const styles = stylex.create({
@@ -61,7 +61,13 @@ export function providerDisplayName(provider: string): string {
   );
 }
 
-export function ProviderIcon({ provider, size = "md" }: { provider: string; size?: IconSize }) {
+export function ProviderIcon({
+  provider,
+  size = "md",
+}: {
+  provider: string;
+  size?: ProductIconSize;
+}) {
   const brand = BRAND.get(provider.toLowerCase());
   if (brand) {
     return (

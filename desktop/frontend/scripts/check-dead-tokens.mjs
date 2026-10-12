@@ -26,10 +26,12 @@
 //   from dependencies are part of the reference set.
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { extname, join, relative } from "node:path";
 
 const ROOT = new URL("../", import.meta.url).pathname;
-const SOURCE_DIRS = ["src", "visual"];
+const require = createRequire(import.meta.url);
+const SOURCE_DIRS = ["src", "visual", "../../ui/src"];
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {
@@ -94,8 +96,7 @@ for (const path of files) {
 
 // The dependency stylesheets this app actually pulls in, and nothing else under node_modules.
 for (const specifier of importedSheets) {
-  const path = join(ROOT, "node_modules", specifier);
-  if (!existsSync(path)) continue;
+  const path = require.resolve(specifier);
   const text = readFileSync(path, "utf8");
   for (const match of text.matchAll(/var\(\s*(--[a-z0-9-]+)/g)) referenced.add(match[1]);
 }

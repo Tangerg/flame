@@ -3,7 +3,7 @@
 The visual specification for the desktop app: what each surface, colour, type
 step, shape and motion token is FOR.
 
-**It does not restate values.** Those live in `src/styles/globals.css` and
+**It does not restate values.** Shared vocabulary and document rules live in `../../ui`; application palette values live in `src/styles/globals.css` and
 `src/plugins/builtin/theme/themes/*.ts`, and a document that copies them is a
 document that goes stale — this one carried a 339-line palette snapshot of a
 design three revisions old, and five of its sections cited that snapshot as
@@ -379,18 +379,18 @@ and the 2026-07 seam-ring pass that gave every boundary a hairline.)
 The visual style owns the ladder (`style-shape-*`); the user's radius preference
 multiplies through.
 
-| Token      | Value  | Use                                                                                                                         |
-| ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `none`     | 0px    | Full-bleed bars                                                                                                             |
-| `2xs`      | 2px    | Small marks inside a control — key caps, checkboxes, swatches                                                               |
-| `xs`       | 4px    | Anything that is really a tag — badges, inline code                                                                         |
-| `sm`       | 6px    | Controls a hand hits directly: buttons, the segments inside a track, the tooltip tip                                        |
-| `md`       | 8px    | Cards, text fields, segmented tracks                                                                                        |
+| Token      | Value  | Use                                                                                                                                    |
+| ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `none`     | 0px    | Full-bleed bars                                                                                                                        |
+| `2xs`      | 2px    | Small marks inside a control — key caps, checkboxes, swatches                                                                          |
+| `xs`       | 4px    | Anything that is really a tag — badges, inline code                                                                                    |
+| `sm`       | 6px    | Controls a hand hits directly: buttons, the segments inside a track, the tooltip tip                                                   |
+| `md`       | 8px    | Cards, text fields, segmented tracks                                                                                                   |
 | `lg`       | 10px   | Blocks inside the conversation — code, diagrams, images, banners — and the surfaces that are the top of a panel: index rows, dock tabs |
-| `xl`       | 12px   | Every floating panel and modal, through `--floating-panel-radius`                                                           |
-| `bubble`   | 16px   | The user's own message, and the cards that answer it                                                                        |
-| `composer` | 20px   | The composer and the surfaces that echo it                                                                                  |
-| `pill`     | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row |
+| `xl`       | 12px   | Every floating panel and modal, through `--floating-panel-radius`                                                                      |
+| `bubble`   | 16px   | The user's own message, and the cards that answer it                                                                                   |
+| `composer` | 20px   | The composer and the surfaces that echo it                                                                                             |
+| `pill`     | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row            |
 
 An index row and a dock tab take `lg` rather than the control rung, and the
 distinction is what each one IS rather than how tall it is. A tab is the top of

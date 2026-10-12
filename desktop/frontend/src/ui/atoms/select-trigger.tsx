@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { Pressable, type PressableProps } from "./pressable";
 

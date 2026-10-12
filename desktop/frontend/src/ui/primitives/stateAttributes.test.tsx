@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { CheckboxPrimitive, PopoverPrimitive, TabsPrimitive } from "./index";
+import { PopoverPrimitive, TabsPrimitive } from "./index";
+import { CheckboxPrimitive } from "@flame/ui/primitives";
 
 describe("the state attributes the design system styles against", () => {
   it("marks a checked checkbox with data-checked", () => {

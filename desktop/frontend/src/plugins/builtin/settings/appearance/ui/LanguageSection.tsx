@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { DropdownMenu, Icon, SelectTrigger, SystemMessage, vocab } from "@/ui";
+import { DropdownMenu, Icon, SelectTrigger, SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useLocale, useT } from "@/lib/i18n";
 import { LOCALE, useExtensionPoint } from "@/plugins/sdk";
 import { selectLocale } from "../application/localeSelection";

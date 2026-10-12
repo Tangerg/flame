@@ -1,6 +1,8 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, IconButton, SectionLabel, vocab } from "@/ui";
+import { DataView, SectionLabel } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import { AgentWorkIndexGroupList } from "@/ui/agent";
 import { ProjectRow } from "./ui/ProjectRow";
 import { SessionList } from "./ui/SessionList";
@@ -16,7 +18,7 @@ import {
   useWorkIndexActions,
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { definePlugin } from "@/plugins/sdk";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const pj = stylex.create({
   label: { paddingLeft: space.s2, paddingRight: space.s1, paddingTop: 0, paddingBottom: space.s2 },
@@ -82,7 +84,7 @@ export function ProjectsSection() {
         className={stylex.props(pj.label).className}
         trailing={
           <IconButton
-            icon="plus"
+            icon={iconGlyph("plus")}
             size="xs"
             quiet
             title={t("workIndex.action.addProject")}

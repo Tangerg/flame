@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/classNames";
-import { radius, space, surface } from "@/styles/tokens.stylex";
+import { radius, space, surface } from "@flame/ui/tokens.stylex";
 
 type SurfaceVariant = "card" | "group" | "request" | "prompt";
 

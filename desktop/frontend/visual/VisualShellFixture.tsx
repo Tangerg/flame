@@ -10,7 +10,7 @@ import { AgentAppShell, AgentContentCard, AgentStatusPill, AgentSurfaceHeader } 
 import type { VisualWorkIndexState } from "./shellFixtureStates";
 import * as stylex from "@stylexjs/stylex";
 import { corner, fx } from "./fixtureStyles";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 
 const STATE_COPY: Record<VisualWorkIndexState, { title: string; body: string }> = {
   populated: {

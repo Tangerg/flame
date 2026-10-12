@@ -1,11 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { reveal } from "./reveal";
 import { Icon, type IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
-import { ButtonPrimitive } from "@/ui/primitives";
-import { Tooltip } from "./tooltip";
+import { ButtonPrimitive } from "@flame/ui/primitives";
+import { Tooltip } from "@flame/ui/tooltip";
 
 const chipStyles = stylex.create({
   chip: {

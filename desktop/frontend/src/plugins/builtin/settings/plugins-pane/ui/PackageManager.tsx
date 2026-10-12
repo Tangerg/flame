@@ -11,8 +11,9 @@ import type {
   PluginRequest,
 } from "@flame/runtime-contract/wire";
 import { useT } from "@/lib/i18n";
-import { DataView, PillButton, SystemMessage, TextEditorDialog, TextField, vocab } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { DataView, PillButton, SystemMessage, TextEditorDialog } from "@/ui";
+import { TextField, vocab } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 import { SettingsGroup, useAsyncFeedback } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 import { packageOperations, usePackageRealization, usePackages } from "../application/packages";

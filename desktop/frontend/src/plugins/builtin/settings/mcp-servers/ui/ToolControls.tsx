@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import {
   forgetRules,
   allowMCPTool,
@@ -7,7 +8,8 @@ import { setMCPToolExposure } from "../application/mcpServerConfig";
 import { useCommandAction } from "@/plugins/sdk";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import * as stylex from "@stylexjs/stylex";
-import { Button, DataView, EmptyState, Switch, vocab } from "@/ui";
+import { DataView, Switch } from "@/ui";
+import { Button, EmptyState, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import {
   sameMCPServer,
@@ -23,7 +25,7 @@ import {
   surface,
   type as typeStep,
   weight,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
@@ -97,7 +99,7 @@ export function ToolControls({ server }: Props) {
       </div>
       {exposure.error != null && (
         <EmptyState
-          icon="alert"
+          icon={iconGlyph("alert")}
           title={t("mcp.tools.enabled")}
           sub={t("dataView.error.sub")}
           action={<Button onClick={() => exposure.refetch()}>{t("common.retry")}</Button>}
@@ -105,7 +107,7 @@ export function ToolControls({ server }: Props) {
       )}
       {rules.error != null && (
         <EmptyState
-          icon="alert"
+          icon={iconGlyph("alert")}
           title={t("mcp.tools.autoApprove")}
           sub={t("dataView.error.sub")}
           action={<Button onClick={() => rules.refetch()}>{t("common.retry")}</Button>}

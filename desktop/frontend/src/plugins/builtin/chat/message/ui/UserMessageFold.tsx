@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { Icon, TextButton } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const FOLDED_LINES = 7;
 

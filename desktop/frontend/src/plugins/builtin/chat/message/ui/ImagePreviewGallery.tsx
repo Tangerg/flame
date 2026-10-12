@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
 import {
@@ -8,10 +9,11 @@ import {
 } from "react";
 import { useT } from "@/lib/i18n";
 import { useCommandAction } from "@/plugins/sdk";
-import { IconButton, LightboxDialog } from "@/ui";
+import { LightboxDialog } from "@/ui";
+import { IconButton } from "@flame/ui";
 import { saveInlineImage } from "../application/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "./messageContent";
-import { color, corner, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const ig = stylex.create({
   frame: {
@@ -220,7 +222,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
       <div {...stylex.props(ig.frame)} data-image-zoom={zoomPercent}>
         <div {...stylex.props(ig.topRight)}>
           <IconButton
-            icon="download"
+            icon={iconGlyph("download")}
             title={t("message.image.download")}
             aria-busy={save.busy}
             pending={save.busy}
@@ -229,7 +231,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             size="xl"
           />
           <IconButton
-            icon="x"
+            icon={iconGlyph("x")}
             title={t("message.image.close")}
             onClick={closePreview}
             variant="media"
@@ -239,7 +241,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         {hasGallery && (
           <>
             <IconButton
-              icon="chevron-left"
+              icon={iconGlyph("chevron-left")}
               title={t("message.image.previous")}
               disabled={gallery!.index === 0}
               focusableWhenDisabled
@@ -252,7 +254,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
               className={stylex.props(ig.prev).className}
             />
             <IconButton
-              icon="chevron-right"
+              icon={iconGlyph("chevron-right")}
               title={t("message.image.next")}
               disabled={gallery!.index === gallery!.items.length - 1}
               focusableWhenDisabled
@@ -286,7 +288,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         </div>
         <div {...stylex.props(ig.tray, corner.pill)}>
           <IconButton
-            icon="zoom-out"
+            icon={iconGlyph("zoom-out")}
             title={t("message.image.zoomOut")}
             disabled={zoomIndex === 0}
             focusableWhenDisabled
@@ -296,7 +298,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
           />
           <span {...stylex.props(ig.zoom, typeStep.uiSm)}>{zoomPercent}%</span>
           <IconButton
-            icon="zoom-in"
+            icon={iconGlyph("zoom-in")}
             title={t("message.image.zoomIn")}
             disabled={zoomIndex === ZOOM_STEPS.length - 1}
             focusableWhenDisabled

@@ -1,9 +1,11 @@
+import { iconGlyph } from "@/ui/icons";
 import { toolSourceLabel } from "@/lib/toolSource";
 import type { ApprovalRuleSummary } from "@/plugins/builtin/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Badge, DataView, IconButton, TextButton, vocab } from "@/ui";
-import type { Tone } from "@/lib/tone";
+import { DataView, TextButton } from "@/ui";
+import { Badge, IconButton, vocab } from "@flame/ui";
+import type { Tone } from "@flame/ui/badge";
 import {
   forgetApprovalRule,
   forgetApprovalRules,
@@ -21,7 +23,7 @@ import {
   surface,
   type as typeStep,
   weight,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { SettingRow } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
@@ -113,7 +115,7 @@ export function RulesRow() {
                 </span>
                 {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
                 <IconButton
-                  icon="x"
+                  icon={iconGlyph("x")}
                   size="xs"
                   quiet
                   className={stylex.props(vocab.hold).className}

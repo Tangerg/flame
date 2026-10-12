@@ -1,0 +1,69 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+test("packed UI and icons work without the host or a StyleX compiler", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "flame-ui-consumer-"));
+  try {
+    const archive = (url) => {
+      const packed = JSON.parse(
+        execFileSync(
+          "npm",
+          ["pack", "--ignore-scripts", "--json", "--pack-destination", dir],
+          { cwd: fileURLToPath(url), encoding: "utf8" },
+        ),
+      );
+      return path.join(dir, packed[0].filename);
+    };
+    const icons = archive(new URL("../../icons/", import.meta.url));
+    const ui = archive(new URL("../", import.meta.url));
+    await writeFile(
+      path.join(dir, "package.json"),
+      JSON.stringify({
+        private: true,
+        type: "module",
+        dependencies: {
+          "@flame/ui": `file:${ui}`,
+          "@flame/icons": `file:${icons}`,
+          react: "^19.3.0",
+          "react-dom": "^19.3.0",
+        },
+      }),
+    );
+    execFileSync(
+      "npm",
+      ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund"],
+      { cwd: dir, stdio: "pipe" },
+    );
+    await writeFile(
+      path.join(dir, "consumer.mjs"),
+      `import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Button, FontScaleProvider, IconButton, TooltipProvider } from '@flame/ui';
+import { Brain } from '@flame/icons/react';
+console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}, createElement(TooltipProvider, null, createElement(Button, null, 'Review'), createElement(IconButton, {icon: Brain, title: 'Memory'})))));
+`,
+    );
+    const html = execFileSync(process.execPath, ["consumer.mjs"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, NODE_ENV: "production" },
+    });
+    assert.match(html, /Review/);
+    assert.match(html, /aria-label="Memory"/);
+    assert.match(html, /width="20"/);
+    assert.match(html, /class="x/);
+    const css = await readFile(
+      path.join(dir, "node_modules/@flame/ui/dist/styles.css"),
+      "utf8",
+    );
+    assert.match(css, /--color-accent/);
+    assert.match(css, /:focus-visible/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

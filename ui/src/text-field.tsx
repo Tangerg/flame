@@ -1,16 +1,25 @@
 import * as stylex from "@stylexjs/stylex";
-import type { IconSize } from "@/lib/iconScale";
-import { cn } from "@/lib/classNames";
-import { color, leading, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
-import { Icon } from "@/ui/icons";
+import type { IconSize } from "./font-scale";
+import { clsx as cn } from "clsx";
+import {
+  color,
+  leading,
+  motion,
+  radius,
+  space,
+  surface,
+  type,
+} from "./tokens.stylex";
+import { Icon } from "./font-scale";
+import { Search, X } from "@flame/icons/react";
 import { Button } from "./button";
-import { WELL_SURFACE } from "./well";
+import { WELL_SURFACE } from "./well-surface";
 import {
   InputPrimitive,
   TextAreaPrimitive,
   type InputPrimitiveProps,
   type TextAreaPrimitiveProps,
-} from "@/ui/primitives";
+} from "./primitives/index";
 
 type FieldEdge = "boxed" | "bare" | "inline";
 
@@ -24,10 +33,14 @@ const styles = stylex.create({
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
     "::placeholder": { color: color.fgFaint },
-    cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "not-allowed" },
+    cursor: {
+      default: null,
+      ':is(:disabled, [aria-disabled="true"])': "not-allowed",
+    },
     opacity: {
       default: null,
-      ':is(:disabled, [aria-disabled="true"])': "var(--control-disabled-opacity)",
+      ':is(:disabled, [aria-disabled="true"])':
+        "var(--control-disabled-opacity)",
     },
   },
   boxed: {
@@ -47,7 +60,9 @@ const styles = stylex.create({
   },
   inkDefault: { color: color.fg },
   inkSoft: { color: color.fgSoft },
-  invalidBoxed: { borderColor: { default: color.negative, ":focus": color.negative } },
+  invalidBoxed: {
+    borderColor: { default: color.negative, ":focus": color.negative },
+  },
   invalidBare: { outline: `1px solid ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: "var(--font-mono)" },
@@ -56,7 +71,10 @@ const styles = stylex.create({
   inputMd: { height: "var(--control-height-md)", paddingInline: space.s2_5 },
   inputLg: { height: "var(--control-height-lg)", paddingInline: space.s3 },
   area: { resize: "vertical", lineHeight: leading.body },
-  areaProse: { lineHeight: "calc(1em + 6px)", "::placeholder": { letterSpacing: "normal" } },
+  areaProse: {
+    lineHeight: "calc(1em + 6px)",
+    "::placeholder": { letterSpacing: "normal" },
+  },
   areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
   areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
   autosize: { fieldSizing: "content", resize: "none" },
@@ -66,24 +84,47 @@ const styles = stylex.create({
     borderRadius: radius.field,
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: { default: surface.field, ":focus-within": surface.fieldFocus },
+    borderColor: {
+      default: surface.field,
+      ":focus-within": surface.fieldFocus,
+    },
     backgroundColor: surface.canvas,
     color: { default: color.fgMuted, ":focus-within": color.fg },
     transitionProperty: "color, border-color",
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
-  searchSm: { height: "var(--control-height-sm)", gap: space.s1_5, paddingInline: space.s2 },
-  searchMd: { height: "var(--control-height-md)", gap: space.s1_5, paddingInline: space.s2_5 },
-  searchLg: { height: "var(--control-height-lg)", gap: space.s2, paddingInline: space.s3 },
+  searchSm: {
+    height: "var(--control-height-sm)",
+    gap: space.s1_5,
+    paddingInline: space.s2,
+  },
+  searchMd: {
+    height: "var(--control-height-md)",
+    gap: space.s1_5,
+    paddingInline: space.s2_5,
+  },
+  searchLg: {
+    height: "var(--control-height-lg)",
+    gap: space.s2,
+    paddingInline: space.s3,
+  },
   glyph: { flexShrink: 0 },
   clear: { marginRight: "calc(var(--spacing) * -1)", flexShrink: 0 },
 });
 
 const FACE = { mono: styles.faceMono, sans: styles.faceSans } as const;
 const INK = { default: styles.inkDefault, soft: styles.inkSoft } as const;
-const INPUT_SIZE = { sm: styles.inputSm, md: styles.inputMd, lg: styles.inputLg } as const;
-const SEARCH_SIZE = { sm: styles.searchSm, md: styles.searchMd, lg: styles.searchLg } as const;
+const INPUT_SIZE = {
+  sm: styles.inputSm,
+  md: styles.inputMd,
+  lg: styles.inputLg,
+} as const;
+const SEARCH_SIZE = {
+  sm: styles.searchSm,
+  md: styles.searchMd,
+  lg: styles.searchLg,
+} as const;
 
 type FieldSize = keyof typeof INPUT_SIZE;
 
@@ -166,7 +207,9 @@ export function TextArea({
     FACE[font],
     INK[ink],
     ...edge(variant === "well" ? "bare" : variant, invalid),
-    size === "prose" ? [type.prose, styles.areaProse] : styles[size === "sm" ? "areaSm" : "areaMd"],
+    size === "prose"
+      ? [type.prose, styles.areaProse]
+      : styles[size === "sm" ? "areaSm" : "areaMd"],
     well && [WELL_SURFACE.face, type.code],
     autosize && styles.autosize,
   );
@@ -181,9 +224,16 @@ export function TextArea({
   );
 }
 
-const SEARCH_GLYPH: Record<FieldSize, IconSize> = { sm: "xs", md: "sm", lg: "md" };
+const SEARCH_GLYPH: Record<FieldSize, IconSize> = {
+  sm: "xs",
+  md: "sm",
+  lg: "md",
+};
 
-export type SearchFieldProps = Omit<TextFieldProps, "variant" | "invalid" | "size"> & {
+export type SearchFieldProps = Omit<
+  TextFieldProps,
+  "variant" | "invalid" | "size"
+> & {
   size?: FieldSize;
   onClear?: () => void;
   clearLabel?: string;
@@ -200,17 +250,27 @@ export function SearchField({
   const box = stylex.props(styles.searchBox, SEARCH_SIZE[size]);
   return (
     <label {...box} className={cn(box.className, className)}>
-      <Icon name="search" size={SEARCH_GLYPH[size]} {...stylex.props(styles.glyph)} />
-      <TextField {...props} type="search" variant="bare" font={font} size={size} />
+      <Icon
+        glyph={Search}
+        size={SEARCH_GLYPH[size]}
+        {...stylex.props(styles.glyph)}
+      />
+      <TextField
+        {...props}
+        type="search"
+        variant="bare"
+        font={font}
+        size={size}
+      />
       {onClear && props.value !== "" && (
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={onClear}
           aria-label={clearLabel}
-          {...stylex.props(styles.clear)}
+          styles={styles.clear}
         >
-          <Icon name="x" size="xs" />
+          <Icon glyph={X} size="xs" />
         </Button>
       )}
     </label>

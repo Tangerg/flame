@@ -1,9 +1,11 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { AgentRow } from "@/ui/agent";
-import { Icon, IconButton, vocab } from "@/ui";
+import { Icon } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import type { WorkProject } from "@/plugins/builtin/navigation/public/workIndex";
-import { color, corner, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, corner, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const pr = stylex.create({
   count: { fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
@@ -70,7 +72,7 @@ export function ProjectRow({
       }
       action={
         <IconButton
-          icon="plus"
+          icon={iconGlyph("plus")}
           size="sm"
           data-chrome-focus=""
           aria-label={t("project.row.newSession", { name: project.name })}

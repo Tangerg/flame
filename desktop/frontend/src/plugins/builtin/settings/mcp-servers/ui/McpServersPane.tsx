@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, gap, Icon, PillButton, vocab } from "@/ui";
+import { DataView, Icon, PillButton } from "@/ui";
+import { gap, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPServers } from "../application/mcpServerQueries";
 import { mcpServerLabel } from "@/lib/toolSource";

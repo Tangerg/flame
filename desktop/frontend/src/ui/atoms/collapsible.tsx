@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { motion as motionToken } from "@/styles/tokens.stylex";
+import { motion as motionToken } from "@flame/ui/tokens.stylex";
 import { useScrollLock } from "./use-scroll-lock";
 
 const styles = stylex.create({

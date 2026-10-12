@@ -9,9 +9,10 @@ import {
   useWorkspaceDiffMode,
   useWorkspaceFileFocus,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { Segmented, SystemMessage, vocab } from "@/ui";
+import { Segmented, SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import type { PluginViewReads, DiffViewTarget, DiffViewSnapshot } from "../application/pluginView";
 import { PackageView } from "./PackageView";
 

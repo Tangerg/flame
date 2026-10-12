@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createRef } from "react";
 import { BellOff } from "@flame/icons/react";
 import { publishUiFontSize } from "@/lib/appearance";
-import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@/lib/typography";
+import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@flame/ui/typography";
 import { Icon, ICON_NAMES, knownIconName } from "./icon";
-import { iconSizePx } from "@/lib/iconScale";
+import { productIconSizePx } from "@/lib/productIconScale";
 
 afterEach(() => {
   cleanup();
@@ -60,7 +60,7 @@ describe("Flame icon integration", () => {
             ))}
           </>,
         );
-        const pixels = iconSizePx(size, font);
+        const pixels = productIconSizePx(size, font);
         const grid = pixels < 22 ? 16 : 24;
         const svgs = [...container.querySelectorAll("svg")];
         expect(svgs).toHaveLength(names.length);

@@ -1,7 +1,7 @@
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { useRecordComposerHistory } from "@/plugins/builtin/chat/composer/public/history";
-import { TextArea } from "@/ui";
+import { TextArea } from "@flame/ui";
 import { SUGGESTION_LISTBOX_ID, suggestionOptionId } from "../application/suggestions";
 import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent";
 import { FileMentionPopup } from "./FileMentionPopup";
@@ -14,7 +14,7 @@ import { ComposerDropCue, useComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 
 interface Props {
   onSend: (input: AgentInput) => boolean;

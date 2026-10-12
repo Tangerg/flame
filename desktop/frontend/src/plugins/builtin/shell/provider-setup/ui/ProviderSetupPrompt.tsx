@@ -4,7 +4,7 @@ import { Icon, PillButton, Surface } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { needsProviderSetup, useProviders } from "@/plugins/builtin/providers/public/queries";
-import { color, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, leading, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const ps = stylex.create({
   card: { width: "100%", textAlign: "left" },

@@ -2,8 +2,9 @@ import * as stylex from "@stylexjs/stylex";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { failureDiagnostics, failureMessage } from "@/lib/diagnostics";
 import { t } from "@/lib/i18n";
-import { Button, FailureDetails } from "@/ui";
-import { color, leading, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { FailureDetails } from "@/ui";
+import { Button } from "@flame/ui";
+import { color, leading, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   page: {

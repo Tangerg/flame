@@ -2,7 +2,8 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState } from "react";
-import { Badge, Button, Icon, ProviderIcon, TextField, vocab } from "@/ui";
+import { Icon, ProviderIcon } from "@/ui";
+import { Badge, Button, TextField, vocab } from "@flame/ui";
 import {
   type ProviderConfiguration,
   useProviderMutationMaterialGeneration,
@@ -13,7 +14,7 @@ import type { ProviderCredentialsDraft } from "../application/providerDraft";
 import { useProviderDraft } from "../application/providerDrafts";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../settings/kit";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../settings/kit/settingStyles";
 
 const pr = stylex.create({

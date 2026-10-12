@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { DotTone } from "@/lib/tone";
-import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, corner, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { StatusDot } from "@/ui/atoms/status-dot";
 
 const styles = stylex.create({

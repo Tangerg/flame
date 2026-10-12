@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, gap, SectionLabel, Surface, SystemMessage, vocab } from "@/ui";
+import { DataView, SectionLabel, Surface, SystemMessage } from "@/ui";
+import { gap, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useProviderConfigs } from "../application/providerConfig";
 import { needsProviderSetup } from "../application/providerSetup";

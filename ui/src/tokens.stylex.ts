@@ -128,7 +128,10 @@ export const corner = stylex.create({
 });
 
 export const type = stylex.create({
-  ui2xs: { fontSize: "var(--fs-ui-2xs)", letterSpacing: "var(--text-ui-2xs--letter-spacing)" },
+  ui2xs: {
+    fontSize: "var(--fs-ui-2xs)",
+    letterSpacing: "var(--text-ui-2xs--letter-spacing)",
+  },
   uiXs: { fontSize: "var(--fs-ui-xs)", letterSpacing: "var(--tracking-ui)" },
   uiSm: { fontSize: "var(--fs-ui-sm)", letterSpacing: "var(--tracking-ui)" },
   uiMd: { fontSize: "var(--fs-ui-md)", letterSpacing: "var(--tracking-ui)" },
@@ -141,7 +144,10 @@ export const type = stylex.create({
     letterSpacing: "var(--tracking-display)",
     lineHeight: "var(--text-display-md--line-height)",
   },
-  code: { fontSize: "var(--fs-code)", letterSpacing: "var(--text-code--letter-spacing)" },
+  code: {
+    fontSize: "var(--fs-code)",
+    letterSpacing: "var(--text-code--letter-spacing)",
+  },
   prose: { fontSize: "var(--fs-prose)", letterSpacing: "var(--tracking-ui)" },
 });
 

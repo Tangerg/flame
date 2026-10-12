@@ -23,8 +23,9 @@ import {
   MessageVisibleMaterialProvider,
   useVisibleActionMaterialization,
 } from "./messageVisibleMaterial";
-import { Badge, reveal } from "@/ui";
-import { corner, type as typeStep } from "@/styles/tokens.stylex";
+import { reveal } from "@/ui";
+import { Badge } from "@flame/ui";
+import { corner, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles } from "./messageStyles";
 import { UserMessageFold } from "./UserMessageFold";
 

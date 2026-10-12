@@ -5,9 +5,10 @@ import { useT } from "@/lib/i18n";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
-import { Pressable, RichTooltip, vocab } from "@/ui";
+import { Pressable } from "@/ui";
+import { RichTooltip, vocab } from "@flame/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
-import { color, corner, motion, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 
 const tr = stylex.create({

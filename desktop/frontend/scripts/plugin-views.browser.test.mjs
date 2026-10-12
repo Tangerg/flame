@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { createSocket } from "node:dgram";
 import { once } from "node:events";
 import { createServer } from "vite";
 import { chromium, webkit, expect } from "@playwright/test";
+const themeModule = `/@fs${fileURLToPath(import.meta.resolve("@flame/ui/theme"))}`;
 const html = await readFile(
   new URL("../../../plugins/trajectory/views/trajectory.html", import.meta.url),
   "utf8",
@@ -45,7 +47,11 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       root: process.cwd(),
       resolve: { alias: { "@": new URL("../src", import.meta.url).pathname } },
       optimizeDeps: { noDiscovery: true, include: ["react"] },
-      server: { host: "127.0.0.1", port: 0 },
+      server: {
+        host: "127.0.0.1",
+        port: 0,
+        fs: { allow: [process.cwd(), new URL("../../../ui", import.meta.url).pathname] },
+      },
       plugins: [
         {
           name: "plugin-page-fixture",
@@ -67,14 +73,16 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
                 return;
               }
               response.setHeader("Content-Type", "text/html");
-              response.end(`<!doctype html>${csp}<div id="frame" style="height:600px"></div><script type="module">
-      import {mountPluginViewFrame} from '/src/plugins/builtin/settings/plugins-pane/adapters/pluginViewFrame.ts';
+              response.end(`<!doctype html>${csp}<link rel="stylesheet" href="/src/styles/globals.css"><style>html,body{min-width:0}</style><div id="frame" style="height:600px"></div><script type="module">
+      import {openPluginViewFrame} from '/src/plugins/builtin/settings/plugins-pane/adapters/pluginViewFrame.ts';
+      import {captureTheme} from '${themeModule}'; window.captureTheme=captureTheme;
       import {browserPluginCarrier} from '/src/platform/browserPluginCarrier.ts';
       window.mount=(html,initial,scheme="light")=>{
        window.reads=[];window.loads=0;window.failures=[];window.controller=new AbortController();
-       window.dispose=mountPluginViewFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,scheme,
+       window.frameController=openPluginViewFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,theme:captureTheme(document.documentElement,scheme,14),
         reads:{binding:{installationId:"fixture",digest:"fixture",contributionId:"fixture"},resource:async()=>{window.loads++;return html},initial:async()=>initial,read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? window.continuation ?? {data:[{type:"model",occurredAt:"2026-10-07T00:00:00Z",model:{callId:"older-call",runId:"run-2",segmentId:"segment-2",state:"failed",startedAt:"2026-10-07T00:00:00Z"}}]} : initial;}},
         status:value=>{window.viewStatus=value;if(value.type==='failure'){window.failure=value.reason;window.failures.push(value.reason)}}});
+       window.dispose=window.frameController.close;
       };
     </script>`);
             });
@@ -321,31 +329,62 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       },
       { html: memoryHTML, initial: memoryInitial },
     );
-    await frame.getByText("1 pending · 1 active on this page").waitFor();
-    assert.equal(await frame.locator("article").count(), 2);
-    assert.equal(await frame.locator("script").count(), 1);
-    await frame.getByRole("combobox", { name: "Memory status" }).selectOption("pending");
-    assert.equal(await frame.locator("article").count(), 1);
-    await frame.getByRole("combobox", { name: "Memory status" }).selectOption("");
+    await frame
+      .getByText("1 pending · 1 active on this page")
+      .waitFor()
+      .catch((error) => {
+        throw new AggregateError(
+          errors.map((message) => new Error(message)),
+          "memory guest did not render",
+          { cause: error },
+        );
+      });
+    assert.equal(await frame.locator("article[data-memory-id]").count(), 2);
+    assert.equal(await frame.locator("script").count(), 2);
+    await frame.getByRole("combobox", { name: "Memory status" }).click();
+    await frame.getByRole("option", { name: "Pending review", exact: true }).click();
+    assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
+    await frame.getByRole("combobox", { name: "Memory status" }).click();
+    await frame.getByRole("option", { name: "All statuses", exact: true }).click();
     await frame.getByRole("checkbox", { name: "Pinned only" }).check();
-    assert.equal(await frame.locator("article").count(), 1);
+    assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
     await frame.getByRole("checkbox", { name: "Pinned only" }).uncheck();
     await frame.getByRole("searchbox").fill("Candidate");
-    assert.equal(await frame.locator("article").count(), 1);
+    assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
     await frame.getByRole("searchbox").fill("");
     assert.equal(await page.evaluate(() => window.reads.length), 0);
+    const loads = await page.evaluate(() => window.loads);
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty("--color-accent", "#7344aa");
+      window.frameController.updateTheme(window.captureTheme(document.documentElement, "dark", 18));
+    });
+    await expect(frame.locator("html")).toHaveAttribute("data-flame-ui-font-size", "18");
+    assert.equal(
+      await frame
+        .locator("html")
+        .evaluate((element) => element.style.getPropertyValue("--color-accent")),
+      "#7344aa",
+    );
+    assert.equal(await page.evaluate(() => window.loads), loads);
+    assert.equal(await page.evaluate(() => window.reads.length), 0);
+    await page.setViewportSize({ width: 320, height: 700 });
+    assert.equal(
+      await frame.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth),
+      true,
+    );
     await frame.getByRole("button", { name: "Next page" }).click();
     await frame.getByText("0 memory items loaded on this page.").waitFor();
     assert.equal(await page.evaluate(() => window.reads[0].cursor), "memory-next");
     await page.evaluate(() => (window.readFailure = true));
     await frame.getByRole("button", { name: "Previous page" }).click();
     await frame.getByRole("alert").waitFor();
-    assert.equal(await frame.locator("article").count(), 0);
+    assert.equal(await frame.locator("article[data-memory-id]").count(), 0);
     assert.equal(await frame.getByRole("button", { name: "Previous page" }).isEnabled(), true);
     await page.evaluate(() => (window.readFailure = false));
     await frame.getByRole("button", { name: "Previous page" }).click();
     await frame.getByText("2 memory items loaded on this page.").waitFor();
-    assert.equal(await frame.locator("article").count(), 2);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    assert.equal(await frame.locator("article[data-memory-id]").count(), 2);
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);
@@ -363,6 +402,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       initial: usage,
     });
     await frame.getByText("Recorded usage loaded.").waitFor();
+    await page.setViewportSize({ width: 640, height: 720 });
     const scrollable = frame.getByRole("region", { name: "Scrollable usage breakdown" });
     await scrollable.focus();
     await scrollable.press("ArrowRight");
@@ -381,7 +421,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       await frame.locator("tbody").textContent(),
       "provider <script> injectedNot reported100000",
     );
-    assert.equal(await frame.locator("script").count(), 1);
+    assert.equal(await frame.locator("script").count(), 2);
     await frame.getByRole("combobox", { name: "Group by" }).selectOption("byModel");
     assert.equal(await frame.locator("tbody tr").count(), 1);
     assert.equal(await frame.locator("tbody td").first().textContent(), "0.00");
@@ -455,7 +495,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       });
       await frame.getByText("Skill read completed.").waitFor();
       assert.equal(await frame.locator("article").count(), 1);
-      assert.equal(await frame.locator("script").count(), 1);
+      assert.equal(await frame.locator("script").count(), 2);
       assert.equal(
         await frame.getByRole("button", { name: /Approve|Reject|Archive|Restore/ }).count(),
         0,
@@ -518,7 +558,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     );
     await frame.getByText("1 enabled · 1 disabled on this page").waitFor();
     assert.equal(await frame.locator("article").count(), 2);
-    assert.equal(await frame.locator("script").count(), 1);
+    assert.equal(await frame.locator("script").count(), 2);
     assert.equal(
       await frame.locator("html").evaluate((element) => element.style.colorScheme),
       "dark",
@@ -936,7 +976,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.reload();
     await page.waitForFunction(() => window.mount);
     const malicious = `<!doctype html><script>addEventListener('message',async e=>{
-     if(e.source!==parent||e.data?.type!=='flame.view.connect.v2')return;
+     if(e.source!==parent||e.data?.type!=='flame.view.connect.v3')return;
      try{parent.parent.document.documentElement.dataset.guestEscape='true'}catch{}
      try{localStorage.setItem('guestEscape','true')}catch{}
      new Image().src='${origin}/__escape';
@@ -945,7 +985,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
      try{peer=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:${peer.address().port}'}]});peer.createDataChannel('escape');await peer.setLocalDescription()}catch{}
      await new Promise(resolve=>setTimeout(resolve,600));peer?.close();
      e.ports[0].postMessage({type:'tools.invoke',sessionId:'other'});
-    });parent.postMessage('flame.view.ready.v2','*');</script>`;
+    });parent.postMessage('flame.view.ready.v3','*');</script>`;
     await page.evaluate((html) => {
       void window.mount(html, { data: [] });
     }, malicious);

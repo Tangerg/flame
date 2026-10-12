@@ -1,5 +1,7 @@
+import { iconGlyph } from "@/ui/icons";
 import { Suspense } from "react";
-import { EmptyState, SkeletonList } from "@/ui";
+import { SkeletonList } from "@/ui";
+import { EmptyState } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { useWorkspaceViews } from "@/plugins/sdk";
@@ -15,7 +17,7 @@ export function WorkspaceViewBody({ viewId }: Props) {
   if (!Body) {
     return (
       <EmptyState
-        icon="alert"
+        icon={iconGlyph("alert")}
         title={t("workspace.view.unavailable.title")}
         sub={t("workspace.view.unavailable.body", { id: viewId })}
       />

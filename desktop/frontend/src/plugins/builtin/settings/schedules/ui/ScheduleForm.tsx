@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { PillButton, Surface, TextArea, TextField, vocab } from "@/ui";
+import { PillButton, Surface } from "@/ui";
+import { TextArea, TextField, vocab } from "@flame/ui";
 import {
   createSchedule,
   updateSchedule,

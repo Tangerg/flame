@@ -26,7 +26,7 @@ tasks:
     summary: Install frontend dependencies
     deps:
       - task: install:runtime-client:deps
-      - task: build:icon-library
+      - task: build:ui-library
     run: once
     dir: frontend
     sources:
@@ -74,6 +74,36 @@ tasks:
     cmds:
       - npm run build
 
+  install:ui-library:deps:
+    summary: Install the Flame UI toolchain
+    run: once
+    dir: ../ui
+    deps:
+      - task: build:icon-library
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm ci
+
+  build:ui-library:
+    summary: Build shared controls and theme projections
+    run: once
+    dir: ../ui
+    deps:
+      - task: install:ui-library:deps
+    sources:
+      - src/**/*
+      - scripts/**/*
+      - package.json
+      - tsconfig.json
+    generates:
+      - dist/**/*
+    cmds:
+      - npm run build
+
   build:frontend:
     summary: Build the frontend project
     # A production build runs the typecheck; the dev build skips it, because in the dev
@@ -89,6 +119,9 @@ tasks:
       - "../../icons/react/*.ts"
       - "../../icons/scripts/*.mjs"
       - "../../icons/catalog.mjs"
+      - "../../ui/src/**/*"
+      - "../../ui/scripts/**/*"
+      - "../../ui/package.json"
       - exclude: node_modules/**/*
       - exclude: ../../runtime/contract/typescript/node_modules/**/*
     generates:

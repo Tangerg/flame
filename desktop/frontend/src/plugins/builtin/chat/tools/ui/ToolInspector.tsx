@@ -1,9 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { SectionLabel, vocab, Well } from "@/ui";
+import { SectionLabel, Well } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { toolInspectorModel, type ToolInspectorBody } from "../application/toolInspectorModel";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const ti = stylex.create({
   body: { paddingTop: space.s0_5 },

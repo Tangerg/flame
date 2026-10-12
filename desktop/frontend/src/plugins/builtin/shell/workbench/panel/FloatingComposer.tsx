@@ -7,9 +7,10 @@ import { useRuntimeServiceStatus } from "@/plugins/builtin/runtime/public/servic
 import { CONNECTION_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { Slot } from "@/plugins/host/Slot";
-import { SystemMessage, vocab } from "@/ui";
+import { SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import { JumpToBottomButton } from "./JumpToBottomButton";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import { readingColumn as rc } from "./readingColumn";
 
 const fc = stylex.create({

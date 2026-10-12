@@ -35,6 +35,7 @@ export default defineConfig({
       }
     : undefined,
   resolve: {
+    dedupe: ["react", "react-dom", "@base-ui/react"],
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
     },

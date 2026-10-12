@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { ChoiceList, ChoiceOption, Icon, SkeletonList, vocab } from "@/ui";
+import { ChoiceList, ChoiceOption, Icon, SkeletonList } from "@/ui";
+import { vocab } from "@flame/ui";
 import {
   APPROVAL_MODE_LABEL_KEY,
   describeApprovalMode,
@@ -12,7 +13,7 @@ import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { useId, useState } from "react";
-import { color, leading, motion, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { SettingRow } from "../../kit";
 
 const m = stylex.create({

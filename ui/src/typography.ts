@@ -16,6 +16,10 @@ export const UI_TYPE_STEPS = [
 export type UiTypeStep = (typeof UI_TYPE_STEPS)[number];
 
 export function normalizeUiFontSize(value: number | null | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return UI_FONT_SIZE_DEFAULT_PX;
-  return Math.min(UI_FONT_SIZE_MAX_PX, Math.max(UI_FONT_SIZE_MIN_PX, Math.round(value)));
+  if (typeof value !== "number" || !Number.isFinite(value))
+    return UI_FONT_SIZE_DEFAULT_PX;
+  return Math.min(
+    UI_FONT_SIZE_MAX_PX,
+    Math.max(UI_FONT_SIZE_MIN_PX, Math.round(value)),
+  );
 }

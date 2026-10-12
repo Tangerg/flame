@@ -1,6 +1,8 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Badge, DataView, EmptyState, gap, Icon, Surface, Switch, Tag, vocab } from "@/ui";
+import { DataView, Icon, Surface, Switch, Tag } from "@/ui";
+import { Badge, EmptyState, gap, vocab } from "@flame/ui";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
@@ -8,7 +10,7 @@ import { setHookTrust } from "../application/hookTrust";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { color, face, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, leading, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const hp = stylex.create({
@@ -79,7 +81,7 @@ export function HooksPane() {
   if (isError && isUnsupportedMethod(error)) {
     return (
       <EmptyState
-        icon="lightning"
+        icon={iconGlyph("lightning")}
         title={t("hooks.unavailable")}
         sub={t("hooks.unavailable.sub")}
       />

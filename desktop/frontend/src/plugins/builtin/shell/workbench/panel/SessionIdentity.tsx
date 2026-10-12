@@ -4,7 +4,7 @@ import { basename } from "@/lib/path";
 import { ContextMenu } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { writeToClipboard } from "@/lib/clipboard";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },

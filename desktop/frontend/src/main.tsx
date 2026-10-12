@@ -1,3 +1,4 @@
+import "@flame/ui/styles.css";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { createRuntimeConnection } from "./main/runtimeConnection";

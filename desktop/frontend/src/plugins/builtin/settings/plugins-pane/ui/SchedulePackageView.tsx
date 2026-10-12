@@ -4,7 +4,8 @@ import type { Page, Schedule, PluginScheduleTemplate } from "@flame/runtime-cont
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
-import { SystemMessage, vocab } from "@/ui";
+import { SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import type { PluginViewReads } from "../application/pluginView";
 import { PackageView } from "./PackageView";

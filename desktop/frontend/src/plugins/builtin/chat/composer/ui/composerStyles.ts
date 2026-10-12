@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, space, surface, weight } from "@flame/ui/tokens.stylex";
 
 export const composerStyles = stylex.create({
   editorInset: {

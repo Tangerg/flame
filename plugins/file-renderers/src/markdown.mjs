@@ -159,12 +159,11 @@ addEventListener("message", (event) => {
   if (
     event.source !== parent ||
     port ||
-    event.data?.type !== "flame.view.connect.v2" ||
-    !["light", "dark"].includes(event.data.scheme) ||
+    event.data?.type !== "flame.view.connect.v3" ||
+    !["light", "dark"].includes(event.data.theme?.scheme) ||
     event.ports.length !== 1
   )
     return;
-  document.documentElement.style.colorScheme = event.data.scheme;
   port = event.ports[0];
   port.onmessage = (message) => {
     if (message.data.type === "data" && pending) accept(message.data.data);
@@ -178,7 +177,7 @@ addEventListener("message", (event) => {
   port.start();
   accept(event.data.initial);
 });
-parent.postMessage("flame.view.ready.v2", "*");
+parent.postMessage("flame.view.ready.v3", "*");
 refresh.addEventListener("click", () => {
   if (!port || pending) return;
   pending = true;

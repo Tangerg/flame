@@ -1,9 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
-import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
-import { vocab } from "./vocabulary";
+import { color, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
+import { ButtonPrimitive, type ButtonPrimitiveProps } from "@flame/ui/primitives";
+import { vocab } from "@flame/ui/vocabulary";
 
 type TextButtonShape = "inline" | "row" | "link";
 

@@ -1,11 +1,13 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { IconName } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
-import { Icon, IconButton, vocab } from "@/ui";
+import { Icon } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
-import { face, type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
 
 export interface ViewHeaderProps {
@@ -96,14 +98,19 @@ function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHea
         {actions}
         {placement?.splittable && (
           <IconButton
-            icon="open"
+            icon={iconGlyph("open")}
             size="sm"
             title={t("workspace.view.openBeside")}
             onClick={placement.onOpenInDock}
           />
         )}
         {placement && (
-          <IconButton icon="x" size="sm" title={t("common.close")} onClick={placement.onClose} />
+          <IconButton
+            icon={iconGlyph("x")}
+            size="sm"
+            title={t("common.close")}
+            onClick={placement.onClose}
+          />
         )}
       </div>
     </AgentSurfaceHeader>

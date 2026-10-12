@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, weight } from "@flame/ui/tokens.stylex";
 
 export const viewStyles = stylex.create({
   gutter: { paddingInline: "var(--reading-gutter-wide)" },

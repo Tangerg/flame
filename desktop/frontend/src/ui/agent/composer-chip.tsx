@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color } from "@/styles/tokens.stylex";
-import { Button, type ButtonProps } from "@/ui/atoms";
+import { color } from "@flame/ui/tokens.stylex";
+import { Button, type ButtonProps } from "@flame/ui";
 import { Icon } from "@/ui/icons";
 
 interface Props extends Omit<ButtonProps, "children" | "size"> {

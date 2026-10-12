@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   line: {

@@ -36,6 +36,7 @@ const html = read("../index.html");
 const visualHtml = read("../visual/index.html");
 const modality = read(`../public/${MODALITY_FILE}`);
 const css = read("../src/styles/globals.css");
+const documentCss = read("../../../ui/src/globals.css");
 const store = read("../src/plugins/builtin/theme/adapters/appearanceStore.ts");
 const painter = read("../src/plugins/builtin/theme/adapters/documentAppearance.ts");
 const shell = read("../../application.go");
@@ -99,8 +100,8 @@ expect(
 const modalityAttr = modality.match(/setAttribute\("(data-[a-z-]+)",\s*""\)/)?.[1];
 expect(
   modalityAttr !== undefined &&
-    css.includes(`html:not([${modalityAttr}])`) &&
-    css.includes(`html[${modalityAttr}]`),
+    documentCss.includes(`html:not([${modalityAttr}])`) &&
+    documentCss.includes(`html[${modalityAttr}]`),
   `the bootstrap marks [${modalityAttr}] but globals.css does not gate both the ring and its suppression on it`,
 );
 

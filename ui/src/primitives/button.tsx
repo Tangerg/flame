@@ -1,7 +1,9 @@
 import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
 
-export type ButtonPrimitiveProps = ComponentPropsWithoutRef<typeof BaseButton> & {
+export type ButtonPrimitiveProps = ComponentPropsWithoutRef<
+  typeof BaseButton
+> & {
   children?: ReactNode;
   ref?: Ref<HTMLButtonElement>;
   pending?: boolean;

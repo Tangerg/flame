@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, motion, space, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, space, weight } from "@flame/ui/tokens.stylex";
 
 export const seamStep = stylex.create({
   none: {},

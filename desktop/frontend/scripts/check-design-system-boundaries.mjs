@@ -8,6 +8,8 @@ import * as ts from "typescript/unstable/ast";
 
 const SRC = new URL("../src/", import.meta.url).pathname;
 const ROOT = new URL("../", import.meta.url).pathname;
+const SHARED = new URL("../../../ui/src/", import.meta.url).pathname;
+const SHARED_CONFIG = new URL("../../../ui/tsconfig.json", import.meta.url).pathname;
 const TSCONFIG = resolve(ROOT, "tsconfig.json");
 const PRIMITIVES = "ui/primitives/";
 const DESIGN_SYSTEM_RINGS = ["ui/primitives/", "ui/atoms/", "ui/agent/"];
@@ -45,7 +47,7 @@ const NATIVE_INTERACTIVE_ROLES = new Set([
 // files read and the agent classes derived: the shapes are stated in the atoms themselves, so
 // an atom that stops matching its own shape means this vocabulary has drifted and the rule has
 // silently stopped matching everywhere else too.
-const TOKENS = readFileSync(new URL("../src/styles/tokens.stylex.ts", import.meta.url), "utf8");
+const TOKENS = readFileSync(new URL("../../../ui/src/tokens.stylex.ts", import.meta.url), "utf8");
 
 // Derived, never listed: a tone whose fill is renamed must break the floor rather than quietly
 // leave the rule matching nothing.
@@ -63,7 +65,7 @@ const REBUILT = [
     // A recessed block of verbatim machine text is `Well`. Nine call sites drew it in six
     // spellings before it had an atom; the mono is what separates it from a plain sunken panel.
     id: "well",
-    owner: "ui/atoms/well.tsx",
+    owner: "@flame/ui/well-surface.ts",
     message: 'hand-rolls a Well — use <Well>, or <TextArea variant="well"> to edit one',
     test: (style) =>
       style.get("backgroundColor") === "surface.sunken" &&
@@ -184,23 +186,33 @@ function closeCompiler() {
   compiler.close();
 }
 process.once("exit", closeCompiler);
-const snapshot = compiler.updateSnapshot({ openProjects: [TSCONFIG] });
+const snapshot = compiler.updateSnapshot({ openProjects: [TSCONFIG, SHARED_CONFIG] });
 const project = snapshot.getProject(TSCONFIG);
 if (!project) throw new Error("TypeScript did not load tsconfig.json");
 assertSourceCoverage(sourceFiles(SRC), project.program.getSourceFileNames());
 
+const sharedProject = snapshot.getProject(SHARED_CONFIG);
+if (!sharedProject) throw new Error("TypeScript did not load the UI project.");
+assertSourceCoverage(sourceFiles(SHARED), sharedProject.program.getSourceFileNames());
 let examined = 0;
 const shapesSeenAtOwner = new Set();
-for (const fileName of project.program.getSourceFileNames()) {
+for (const [fileName, program] of [
+  ...project.program.getSourceFileNames().map((name) => [name, project.program]),
+  ...sharedProject.program
+    .getSourceFileNames()
+    .filter((name) => resolve(name).startsWith(SHARED))
+    .map((name) => [name, sharedProject.program]),
+]) {
   const path = resolve(fileName);
-  if (!path.startsWith(SRC) || isTestFile(path)) continue;
+  const shared = path.startsWith(SHARED);
+  if ((!path.startsWith(SRC) && !shared) || isTestFile(path)) continue;
 
-  const rel = relative(SRC, path);
-  const sourceFile = project.program.getSourceFile(path);
+  const rel = shared ? `@flame/ui/${relative(SHARED, path)}` : relative(SRC, path);
+  const sourceFile = program.getSourceFile(path);
   if (!sourceFile) continue;
   examined += 1;
-  const insidePrimitives = rel.startsWith(PRIMITIVES);
-  const insideDesignSystem = DESIGN_SYSTEM_RINGS.some((prefix) => rel.startsWith(prefix));
+  const insidePrimitives = rel.startsWith(PRIMITIVES) || rel.startsWith("@flame/ui/primitives/");
+  const insideDesignSystem = shared || DESIGN_SYSTEM_RINGS.some((prefix) => rel.startsWith(prefix));
 
   function visit(node) {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
@@ -209,7 +221,9 @@ for (const fileName of project.program.getSourceFileNames()) {
         violations.push(`${rel}:${lineOf(sourceFile, node)} imports Base UI outside ui/primitives`);
       }
       if (
-        (specifier === "@/ui/primitives" || specifier.startsWith("@/ui/primitives/")) &&
+        (specifier === "@flame/ui/primitives" ||
+          specifier === "@/ui/primitives" ||
+          specifier.startsWith("@/ui/primitives/")) &&
         !insideDesignSystem
       ) {
         violations.push(

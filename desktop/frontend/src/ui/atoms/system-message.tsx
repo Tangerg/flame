@@ -1,9 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, leading, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, leading, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
-import { Button, type ButtonProps } from "./button";
+import { Button, type ButtonProps } from "@flame/ui/button";
 
 type SystemMessageVariant = "info" | "warning" | "error" | "success";
 

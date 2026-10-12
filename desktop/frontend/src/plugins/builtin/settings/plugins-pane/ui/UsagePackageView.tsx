@@ -3,9 +3,10 @@ import * as stylex from "@stylexjs/stylex";
 import type { UsageSummary, UsageSummaryRequest } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
-import { Segmented, vocab } from "@/ui";
+import { Segmented } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import type { PluginViewReads } from "../application/pluginView";
 import { PackageView } from "./PackageView";
 

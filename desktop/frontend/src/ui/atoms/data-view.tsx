@@ -1,9 +1,10 @@
+import { iconGlyph } from "@/ui/icons";
 import type { ReactNode } from "react";
 import type { IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
-import { Button } from "./button";
-import { EmptyState, type EmptyStateSize } from "./empty-state";
+import { Button } from "@flame/ui/button";
+import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
 import { SkeletonList, type SkeletonListVariant } from "./skeleton";
 
 interface EmptyConfig {
@@ -53,7 +54,7 @@ export function DataView<T>({
   if (failure != null && isUnsupportedMethod(failure)) {
     return (
       <EmptyState
-        icon={unsupported?.icon ?? "alert"}
+        icon={iconGlyph(unsupported?.icon ?? "alert")}
         title={unsupported?.title ?? t("runtime.unsupported.title")}
         sub={unsupported?.sub ?? t("runtime.unsupported.sub")}
         size={unsupported?.size}
@@ -63,7 +64,7 @@ export function DataView<T>({
   if (failure != null) {
     return (
       <EmptyState
-        icon="alert"
+        icon={iconGlyph("alert")}
         title={t("dataView.error.title")}
         sub={t("dataView.error.sub")}
         {...error}
@@ -82,7 +83,7 @@ export function DataView<T>({
     );
   }
   if (!items || items.length === 0) {
-    return empty ? <EmptyState {...empty} /> : null;
+    return empty ? <EmptyState {...empty} icon={iconGlyph(empty.icon)} /> : null;
   }
   return <>{children(items)}</>;
 }

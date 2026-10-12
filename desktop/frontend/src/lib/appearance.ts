@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "./typography";
+import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "@flame/ui/typography";
 
 export type Scheme = "dark" | "light";
 

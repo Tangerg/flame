@@ -1,4 +1,5 @@
-import { IconButton } from "@/ui";
+import { iconGlyph } from "@/ui/icons";
+import { IconButton } from "@flame/ui";
 import { useIsCurrentRootRunning, useStopCurrentRootRun } from "@/plugins/builtin/agent/public/run";
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
@@ -42,8 +43,8 @@ function SendButton() {
 
   const stopButton = (primary: boolean) => (
     <IconButton
-      icon="stop"
-      iconSize="composer"
+      icon={iconGlyph("stop")}
+      iconSize={16}
       disabled={!stop || !runtimeAvailable}
       title={t("composer.action.stop")}
       onClick={() => stop?.()}
@@ -54,8 +55,8 @@ function SendButton() {
 
   const submitButton = (label: string, enabled: boolean) => (
     <IconButton
-      icon="arrow-up"
-      iconSize="composer"
+      icon={iconGlyph("arrow-up")}
+      iconSize={16}
       disabled={!enabled}
       title={label}
       onClick={submit}

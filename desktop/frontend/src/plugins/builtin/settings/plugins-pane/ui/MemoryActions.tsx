@@ -1,8 +1,9 @@
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { PillButton, DropdownMenu, SelectTrigger, SystemMessage, TextArea, vocab } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { PillButton, DropdownMenu, SelectTrigger, SystemMessage } from "@/ui";
+import { TextArea, vocab } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 import {
   useAgentMemory,
   addAgentMemory,

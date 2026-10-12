@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, radius, space, surface } from "@/styles/tokens.stylex";
+import { color, leading, radius, space, surface } from "@flame/ui/tokens.stylex";
 
 export const shellStyles = stylex.create({
   pane: { display: "flex", minHeight: 0, flex: 1, flexDirection: "column" },

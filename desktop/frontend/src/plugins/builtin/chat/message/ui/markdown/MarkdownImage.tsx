@@ -4,7 +4,7 @@ import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { Icon, Pressable } from "@/ui";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
-import { color, radius, space, surface } from "@/styles/tokens.stylex";
+import { color, radius, space, surface } from "@flame/ui/tokens.stylex";
 
 const mi = stylex.create({
   trigger: {

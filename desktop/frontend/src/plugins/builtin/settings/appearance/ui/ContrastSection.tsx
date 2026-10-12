@@ -3,7 +3,7 @@ import { Slider } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useContrastPreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
-import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const a = stylex.create({

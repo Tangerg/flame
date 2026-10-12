@@ -1,5 +1,5 @@
 import type { ToolMetaTone } from "@/plugins/builtin/agent/public/messagePresentation";
-import { vocab } from "@/ui";
+import { vocab } from "@flame/ui";
 
 export const toolMetaInk = {
   card: { muted: vocab.muted, negative: vocab.negative },

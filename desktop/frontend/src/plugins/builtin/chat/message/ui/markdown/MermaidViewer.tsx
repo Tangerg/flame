@@ -1,8 +1,9 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { type PointerEvent, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
-import { Button, IconButton } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { Button, IconButton } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3] as const;
 
@@ -82,7 +83,7 @@ export function MermaidViewer({ svg }: { svg: string }) {
           {t("message.mermaid.fit")}
         </Button>
         <IconButton
-          icon="zoom-out"
+          icon={iconGlyph("zoom-out")}
           size="sm"
           title={t("message.mermaid.zoomOut")}
           disabled={stepIndex === 0}
@@ -99,7 +100,7 @@ export function MermaidViewer({ svg }: { svg: string }) {
           {`${Math.round((scale === "fit" ? 1 : scale) * 100)}%`}
         </Button>
         <IconButton
-          icon="zoom-in"
+          icon={iconGlyph("zoom-in")}
           size="sm"
           title={t("message.mermaid.zoomIn")}
           disabled={stepIndex === ZOOM_STEPS.length - 1}

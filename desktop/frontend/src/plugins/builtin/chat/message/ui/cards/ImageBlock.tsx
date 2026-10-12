@@ -5,7 +5,7 @@ import { Pressable } from "@/ui";
 import { imageSizeFromBase64 } from "@/plugins/builtin/chat/message/domain/imageHeader";
 import { useT } from "@/lib/i18n";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
-import { radius } from "@/styles/tokens.stylex";
+import { radius } from "@flame/ui/tokens.stylex";
 
 const ib = stylex.create({
   frame: {

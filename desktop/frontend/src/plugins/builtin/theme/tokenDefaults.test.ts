@@ -2,8 +2,8 @@ import { colord } from "colord";
 import { describe, expect, it } from "vitest";
 import { densityCssVariables } from "./kit/density";
 import { DEFAULT_UI_DENSITY } from "./kit/appearance";
-import { iconScaleCssVariables } from "@/lib/iconScale";
-import { normalizeUiFontSize } from "@/lib/typography";
+import { productIconScaleCssVariables } from "@/lib/productIconScale";
+import { normalizeUiFontSize } from "@flame/ui/typography";
 import { uiTypeLadderCssVariables } from "./kit/typeLadder";
 import { declaredInBlock, declaredInCss } from "@/test/stylesheet";
 
@@ -24,7 +24,7 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
   });
 
   it("agree on every icon size", () => {
-    const written = iconScaleCssVariables(normalizeUiFontSize(undefined));
+    const written = productIconScaleCssVariables(normalizeUiFontSize(undefined));
     expect(Object.keys(written).length).toBeGreaterThan(4);
     expect(expectDefaults(written)).toEqual([]);
   });

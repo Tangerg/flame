@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface } from "./tokens.stylex";
 
 const styles = stylex.create({
   face: {
@@ -70,7 +70,11 @@ const styles = stylex.create({
     boxShadow: "var(--shadow-modal)",
   },
   modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
-  modalTop: { insetInline: 0, top: "calc(var(--spacing) * 24)", marginInline: "auto" },
+  modalTop: {
+    insetInline: 0,
+    top: "calc(var(--spacing) * 24)",
+    marginInline: "auto",
+  },
 });
 
 export const formDialog = stylex.create({

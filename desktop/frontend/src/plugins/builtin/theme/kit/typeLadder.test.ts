@@ -3,7 +3,7 @@ import {
   UI_FONT_SIZE_DEFAULT_PX,
   UI_FONT_SIZE_MAX_PX,
   UI_FONT_SIZE_MIN_PX,
-} from "@/lib/typography";
+} from "@flame/ui/typography";
 import { uiTypeLadder, uiTypeLadderCssVariables } from "./typeLadder";
 
 describe("uiTypeLadder", () => {

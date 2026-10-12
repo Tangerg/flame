@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { Button, Icon, reveal, type ButtonProps, type IconName } from "@/ui";
+import { Icon, reveal, type IconName } from "@/ui";
+import { Button, type ButtonProps } from "@flame/ui";
 import { HoverHighlight, useHoverTrackItem } from "@/ui/atoms/hover-track";
-import { Tooltip } from "@/ui/atoms/tooltip";
-import { color, leading, motion, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { Tooltip } from "@flame/ui/tooltip";
+import { color, leading, motion, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { AgentOverflowLabel } from "./overflow-label";
 
 const rowStyles = stylex.create({

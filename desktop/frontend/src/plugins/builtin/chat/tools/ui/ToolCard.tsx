@@ -8,7 +8,7 @@ import { toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
-import { face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
 import { ToolFailureLine, ToolStatusMarks, useToolRowActions } from "./ToolRowParts";
 

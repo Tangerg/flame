@@ -2,10 +2,10 @@ import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { space, surface } from "@/styles/tokens.stylex";
+import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives";
-import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
+import { FLOATING_LAYER, FLOATING_OPTIONS } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "./option-row";
 
 const menuStyles = stylex.create({

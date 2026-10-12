@@ -1,4 +1,5 @@
-import type { DotTone, Tone } from "@/lib/tone";
+import type { DotTone } from "@/lib/tone";
+import type { Tone } from "@flame/ui/badge";
 import type { Translate } from "@/lib/i18n";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import {

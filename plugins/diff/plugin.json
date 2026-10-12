@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.diff",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Optional workspace Diff presentation over canonical Runtime reads. Workspace authority and Git baselines remain Runtime-owned.",
   "extensions": {
     "io.github.tangerg.flame": {

@@ -1,8 +1,10 @@
+import { iconGlyph } from "@/ui/icons";
 import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
-import { IconButton, PillButton, StatusDot, Switch, Tag, vocab } from "@/ui";
+import { PillButton, StatusDot, Switch, Tag } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -13,7 +15,7 @@ import { notifyError } from "@/plugins/sdk";
 import type { DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { ServerForm } from "./ServerForm";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
@@ -129,7 +131,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
                 ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
               />
               <IconButton
-                icon="edit"
+                icon={iconGlyph("edit")}
                 size="sm"
                 active={editing}
                 title={t("mcp.edit", { server: server.id.name })}

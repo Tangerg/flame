@@ -6,7 +6,8 @@ import {
   openSessionSearch,
 } from "@/plugins/builtin/command/session-search/public/actions";
 import { AgentRow } from "@/ui/agent";
-import { Kbd, vocab } from "@/ui";
+import { Kbd } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import {
   contributeWorkIndexItem,
@@ -14,7 +15,7 @@ import {
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { definePlugin, useCommandCombo } from "@/plugins/sdk";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const sb = stylex.create({
   stack: { display: "flex", flexDirection: "column", gap: space.s2 },

@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { TextButton, vocab } from "@/ui";
+import { TextButton } from "@/ui";
+import { vocab } from "@flame/ui";
 import { SessionRow } from "./SessionRow";
 import { useT } from "@/lib/i18n";
 import type { WorkIndexActions, WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const sl = stylex.create({
   more: { paddingInline: space.s2, paddingBlock: space.s1 },

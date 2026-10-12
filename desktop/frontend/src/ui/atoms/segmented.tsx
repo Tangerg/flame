@@ -11,7 +11,7 @@ import {
   surface,
   type as typeStep,
   weight,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { TabsPrimitive } from "@/ui/primitives";
 
 export interface SegmentedOption<T> {

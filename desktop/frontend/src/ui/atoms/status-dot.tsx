@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { DotTone } from "@/lib/tone";
 import { cn } from "@/lib/classNames";
-import { color, corner, motion, space } from "@/styles/tokens.stylex";
+import { color, corner, motion, space } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   base: {

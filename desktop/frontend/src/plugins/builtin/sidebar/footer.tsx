@@ -2,14 +2,15 @@ import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence, motion } from "motion/react";
 import { glyphSwapTransition } from "@/lib/motion";
 import { AgentRow, AgentWorkIndexFooter } from "@/ui/agent";
-import { Button, Icon } from "@/ui";
+import { Icon } from "@/ui";
+import { Button } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useWorkIndexActions } from "@/plugins/builtin/navigation/public/workIndex";
 import { isLightTheme, toggleThemeScheme } from "@/plugins/builtin/theme/public/scheme";
 import { Slot } from "@/plugins/host/Slot";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { useAppearance } from "@/plugins/builtin/theme/public/appearance";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const sf = stylex.create({
   centre: { display: "grid", placeItems: "center" },

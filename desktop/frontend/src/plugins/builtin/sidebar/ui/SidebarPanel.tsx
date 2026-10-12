@@ -3,7 +3,7 @@ import { AgentSurfaceHeader, AgentWorkIndexBody, AgentWorkIndexSection } from "@
 import { useWorkIndexItems } from "@/plugins/builtin/navigation/public/workIndex";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { Slot } from "@/plugins/host/Slot";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const sp = stylex.create({
   panel: { display: "flex", minHeight: 0, minWidth: 0, flex: 1, flexDirection: "column" },

@@ -1,9 +1,11 @@
+import { iconGlyph } from "@/ui/icons";
 import { PackageManager } from "./PackageManager";
 import * as stylex from "@stylexjs/stylex";
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
-import { Badge, Icon, IconButton, PillButton, TextButton, vocab } from "@/ui";
+import { Icon, PillButton, TextButton } from "@/ui";
+import { Badge, IconButton, vocab } from "@flame/ui";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
@@ -16,7 +18,7 @@ import {
   space,
   surface,
   type as typeStep,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { SettingsGroup } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
@@ -170,7 +172,12 @@ function ErrorEntry({ err }: { err: PluginError }) {
         </span>
         <div {...stylex.props(vocab.lineTight)}>
           <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{time}</span>
-          <IconButton icon="copy" size="xs" title={t("plugins.copyError")} onClick={copy} />
+          <IconButton
+            icon={iconGlyph("copy")}
+            size="xs"
+            title={t("plugins.copyError")}
+            onClick={copy}
+          />
         </div>
       </div>
       {err.detail && <pre {...stylex.props(pp.stack, typeStep.uiSm)}>{err.detail}</pre>}

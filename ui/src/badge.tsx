@@ -1,8 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
-import type { Tone } from "@/lib/tone";
-import { color, corner, face, space, surface, type, weight } from "@/styles/tokens.stylex";
+import type { Tone } from "./tone";
+import {
+  color,
+  corner,
+  face,
+  space,
+  surface,
+  type,
+  weight,
+} from "./tokens.stylex";
 
 const styles = stylex.create({
   base: {
@@ -56,3 +64,5 @@ export function Badge({
     </span>
   );
 }
+
+export type { Tone } from "./tone";

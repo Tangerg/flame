@@ -20,14 +20,16 @@ afterEach(async () => {
   await resetKernelForTest();
 });
 
-it("captures the host scheme and retires a page when that presentation changes", async () => {
+it("updates the existing page from the host appearance projection", async () => {
   publishScheme("light");
   const pages: { close: ReturnType<typeof vi.fn>; send: ReturnType<typeof vi.fn> }[] = [];
   const carrier: PluginCarrier = {
     async open(_container, _signal, receive) {
       const page = {
         close: vi.fn(async () => {}),
-        send: vi.fn(async () => receive({ type: "connected" })),
+        send: vi.fn(async (message) => {
+          if (message.type === "boot") receive({ type: "connected" });
+        }),
       };
       pages.push(page);
       receive({ type: "ready" });
@@ -36,13 +38,27 @@ it("captures the host scheme and retires a page when that presentation changes",
   };
   await fixture(carrier);
   await waitFor(() =>
-    expect(pages[0]?.send).toHaveBeenCalledWith(expect.objectContaining({ scheme: "light" })),
+    expect(pages[0]?.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "boot",
+        theme: expect.objectContaining({ scheme: "light" }),
+      }),
+    ),
   );
   act(() => publishScheme("dark"));
   await waitFor(() =>
-    expect(pages[1]?.send).toHaveBeenCalledWith(expect.objectContaining({ scheme: "dark" })),
+    expect(pages[0]?.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "reply",
+        reply: expect.objectContaining({
+          type: "theme",
+          theme: expect.objectContaining({ scheme: "dark" }),
+        }),
+      }),
+    ),
   );
-  await waitFor(() => expect(pages[0]!.close).toHaveBeenCalledOnce());
+  expect(pages).toHaveLength(1);
+  expect(pages[0]!.close).not.toHaveBeenCalled();
 });
 
 async function fixture(carrier: PluginCarrier) {

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { isCancellationReason } from "dougong";
-import { DropdownMenu, SelectTrigger, PillButton, ConfirmDialog, SystemMessage, vocab } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { DropdownMenu, SelectTrigger, PillButton, ConfirmDialog, SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCommandAction, notifyError } from "@/plugins/sdk";

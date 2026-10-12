@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 
 type KbdVariant = "cap" | "inline";
 

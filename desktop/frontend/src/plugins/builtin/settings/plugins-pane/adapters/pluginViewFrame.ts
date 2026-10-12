@@ -2,7 +2,8 @@ import { z } from "zod";
 import { validateWire } from "@flame/runtime-contract/validate";
 import type { PluginCarrier, PluginPage } from "@/foundation/pluginCarrier";
 import type { PluginViewReads, PluginViewStatus, PluginViewStage } from "../application/pluginView";
-import type { Scheme } from "@/lib/appearance";
+import type { ThemeProjection } from "@flame/ui/theme";
+import { themeBootstrapSource } from "@flame/ui/theme-bootstrap";
 import { reportViewFailure } from "./pluginViewDiagnostics";
 
 const incoming = z.discriminatedUnion("type", [
@@ -30,7 +31,7 @@ type FrameConfig<T> = {
   carrier: PluginCarrier;
   signal: AbortSignal;
   status: (value: PluginViewStatus) => void;
-  scheme: Scheme;
+  theme: ThemeProjection;
 };
 const reasons = {
   carrier: "The plugin carrier could not be opened.",
@@ -54,7 +55,20 @@ class PluginViewFrame<T> {
   private closing: Promise<void> | undefined;
   private deadline: ReturnType<typeof setTimeout> | undefined;
 
+  private theme: ThemeProjection;
+  private bootTheme: ThemeProjection | undefined;
+
+  updateTheme(theme: ThemeProjection): void {
+    this.theme = theme;
+    if (this.phase.type === "connected") {
+      void this.phase.page
+        .send({ type: "reply", reply: { type: "theme", theme } })
+        .catch((error) => this.fail("publication", reasons.publication, error));
+    }
+  }
+
   constructor(private readonly config: FrameConfig<T>) {
+    this.theme = config.theme;
     this.owned = AbortSignal.any([config.signal, this.lifetime.signal]);
     this.allocation = Promise.resolve().then(() => {
       this.owned.throwIfAborted();
@@ -136,6 +150,7 @@ class PluginViewFrame<T> {
         this.phase = { type: "connected", page: this.phase.page };
         clearTimeout(this.deadline);
         this.config.status({ type: "ready" });
+        if (this.theme !== this.bootTheme) this.updateTheme(this.theme);
         return;
       case "request":
         if (this.phase.type !== "connected") {
@@ -224,8 +239,14 @@ class PluginViewFrame<T> {
     }
     this.owned.throwIfAborted();
     this.phase = { type: "booting", page };
+    this.bootTheme = this.theme;
     await this.stage("publication", () =>
-      page.send({ type: "boot", html: loaded[0], initial: loaded[1], scheme: this.config.scheme }),
+      page.send({
+        type: "boot",
+        html: `<script>${themeBootstrapSource}</script>${loaded[0]}`,
+        initial: loaded[1],
+        theme: this.theme,
+      }),
     );
     if (this.phase.type === "booting" && !this.owned.aborted)
       this.deadline = setTimeout(
@@ -235,6 +256,6 @@ class PluginViewFrame<T> {
   }
 }
 
-export function mountPluginViewFrame<T>(config: FrameConfig<T>): () => Promise<void> {
-  return new PluginViewFrame(config).close;
+export function openPluginViewFrame<T>(config: FrameConfig<T>) {
+  return new PluginViewFrame(config);
 }

@@ -2,11 +2,12 @@ import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
-import { Icon, Loader, scrollEdges, useScrollEdges, vocab } from "@/ui";
+import { Icon, Loader, scrollEdges, useScrollEdges } from "@/ui";
+import { vocab } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
-import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
 const FOLLOW_SLACK = 24;

@@ -5,7 +5,8 @@ import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
-import { TooltipProvider } from "@/ui";
+import "@flame/ui/styles.css";
+import { TooltipProvider, FontScaleProvider } from "@flame/ui";
 import { publishMotionScale } from "@/lib/appearance";
 import { queryClient } from "@/lib/queryClient";
 import { setLocale, t } from "@/lib/i18n";
@@ -236,7 +237,9 @@ installDocumentAppearance(useAppearanceStore);
 createRoot(container).render(
   <QueryClientProvider client={queryClient}>
     <MotionConfig reducedMotion="user">
-      <TooltipProvider>{node}</TooltipProvider>
+      <FontScaleProvider fontSize={useAppearanceStore.getState().fontSize ?? 14}>
+        <TooltipProvider>{node}</TooltipProvider>
+      </FontScaleProvider>
     </MotionConfig>
   </QueryClientProvider>,
 );

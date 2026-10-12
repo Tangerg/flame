@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, corner, motion, space, surface } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface } from "@flame/ui/tokens.stylex";
 import { ProgressPrimitive } from "@/ui/primitives";
 
 type ProgressWeight = "bar" | "row" | "seam";

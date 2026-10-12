@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { ReactElement, ReactNode } from "react";
-import { ContextMenu, Icon, vocab } from "@/ui";
+import { ContextMenu, Icon } from "@/ui";
+import { vocab } from "@flame/ui";
 import {
   editAndRerunMessage,
   editMessageInComposer,

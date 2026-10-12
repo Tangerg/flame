@@ -1,9 +1,11 @@
+import { iconGlyph } from "@/ui/icons";
 import { useRef } from "react";
 
 import * as stylex from "@stylexjs/stylex";
-import { DropdownMenu, HiddenFileInput, Icon, IconButton, vocab } from "@/ui";
+import { DropdownMenu, HiddenFileInput, Icon } from "@/ui";
+import { IconButton, vocab } from "@flame/ui";
 import type { IconName } from "@/ui/icons";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolbarStyles } from "./toolbarStyles";
 import { AgentComposerChip } from "@/ui/agent";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
@@ -54,8 +56,8 @@ function ContextMenuButton() {
         <DropdownMenu.Trigger
           render={
             <IconButton
-              icon="plus"
-              iconSize="composer"
+              icon={iconGlyph("plus")}
+              iconSize={16}
               aria-label={t("composer.add")}
               title={t("composer.add")}
             />

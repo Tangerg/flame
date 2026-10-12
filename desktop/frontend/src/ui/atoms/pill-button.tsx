@@ -1,8 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
-import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
+import { color, corner, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { ButtonPrimitive, type ButtonPrimitiveProps } from "@flame/ui/primitives";
 
 type PillVariant = "outlined" | "solid" | "danger";
 

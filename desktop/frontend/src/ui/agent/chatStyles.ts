@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { leading, radius, space, surface, weight } from "@flame/ui/tokens.stylex";
 
 export const chatStyles = stylex.create({
   centre: { textAlign: "center" },

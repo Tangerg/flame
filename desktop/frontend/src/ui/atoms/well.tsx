@@ -1,19 +1,9 @@
+import { WELL_SURFACE } from "@flame/ui/well-surface";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, leading, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, type, weight } from "@flame/ui/tokens.stylex";
 import { useScrollReach } from "./use-scroll-reach";
-
-export const WELL_SURFACE = stylex.create({
-  face: {
-    borderRadius: radius.sm,
-    backgroundColor: surface.sunken,
-    paddingInline: space.s3,
-    paddingBlock: space.s2_5,
-    fontFamily: "var(--font-mono)",
-    lineHeight: leading.relaxed,
-  },
-});
 
 const styles = stylex.create({
   base: { margin: 0 },

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, space } from "@/styles/tokens.stylex";
+import { color, space } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   row: {

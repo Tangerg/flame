@@ -1,9 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
-import { Icon } from "@/ui/icons";
-import { CheckboxPrimitive } from "@/ui/primitives";
+import { clsx as cn } from "clsx";
+import { color, motion, radius, space, surface, type } from "./tokens.stylex";
+import { Icon } from "./font-scale";
+import { Check } from "@flame/icons/react";
+import { CheckboxPrimitive } from "./primitives/index";
 
 const styles = stylex.create({
   row: {
@@ -24,8 +25,14 @@ const styles = stylex.create({
     borderRadius: radius.step2xs,
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: { default: surface.controlEdge, ":is([data-checked])": color.accent },
-    backgroundColor: { default: surface.canvas, ":is([data-checked])": color.accent },
+    borderColor: {
+      default: surface.controlEdge,
+      ":is([data-checked])": color.accent,
+    },
+    backgroundColor: {
+      default: surface.canvas,
+      ":is([data-checked])": color.accent,
+    },
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
@@ -41,7 +48,13 @@ interface CheckboxProps {
   className?: string;
 }
 
-export function Checkbox({ checked, onCheckedChange, label, disabled, className }: CheckboxProps) {
+export function Checkbox({
+  checked,
+  onCheckedChange,
+  label,
+  disabled,
+  className,
+}: CheckboxProps) {
   const row = stylex.props(styles.row, type.uiMd, disabled && styles.off);
   return (
     <label {...row} className={cn(row.className, className)}>
@@ -52,7 +65,7 @@ export function Checkbox({ checked, onCheckedChange, label, disabled, className 
         {...stylex.props(styles.box)}
       >
         <CheckboxPrimitive.Indicator>
-          <Icon name="check" size="xs" {...stylex.props(styles.mark)} />
+          <Icon glyph={Check} size="xs" {...stylex.props(styles.mark)} />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       <span>{label}</span>

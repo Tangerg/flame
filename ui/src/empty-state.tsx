@@ -1,7 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties, ReactNode } from "react";
-import { color, corner, leading, space, surface, type, weight } from "@/styles/tokens.stylex";
-import { Icon, type IconName } from "@/ui/icons";
+import {
+  color,
+  corner,
+  leading,
+  space,
+  surface,
+  type,
+  weight,
+} from "./tokens.stylex";
+import { Icon, type IconGlyph } from "./font-scale";
 
 export type EmptyStateSize = "compact" | "comfortable";
 
@@ -15,8 +23,16 @@ const styles = stylex.create({
     color: color.fgFaint,
     userSelect: "none",
   },
-  rootCompact: { gap: space.s1_5, paddingInline: space.s4, paddingBlock: space.s6 },
-  rootComfortable: { gap: space.s2_5, paddingInline: space.s5, paddingBlock: space.s12 },
+  rootCompact: {
+    gap: space.s1_5,
+    paddingInline: space.s4,
+    paddingBlock: space.s6,
+  },
+  rootComfortable: {
+    gap: space.s2_5,
+    paddingInline: space.s5,
+    paddingBlock: space.s12,
+  },
   icon: {
     display: "grid",
     placeItems: "center",
@@ -25,7 +41,11 @@ const styles = stylex.create({
   },
   iconCompact: { height: space.s7, width: space.s7 },
   iconComfortable: { height: space.s10, width: space.s10 },
-  title: { fontWeight: weight.medium, letterSpacing: "normal", color: color.fg },
+  title: {
+    fontWeight: weight.medium,
+    letterSpacing: "normal",
+    color: color.fg,
+  },
   sub: {
     maxWidth: "280px",
     lineHeight: leading.body,
@@ -35,8 +55,14 @@ const styles = stylex.create({
   action: { marginTop: space.s1_5 },
 });
 
-const ROOT = { compact: styles.rootCompact, comfortable: styles.rootComfortable } as const;
-const ICON = { compact: styles.iconCompact, comfortable: styles.iconComfortable } as const;
+const ROOT = {
+  compact: styles.rootCompact,
+  comfortable: styles.rootComfortable,
+} as const;
+const ICON = {
+  compact: styles.iconCompact,
+  comfortable: styles.iconComfortable,
+} as const;
 const TITLE_TYPE = { compact: type.uiXs, comfortable: type.uiMd } as const;
 
 export function EmptyState({
@@ -47,7 +73,7 @@ export function EmptyState({
   size = "comfortable",
   style,
 }: {
-  icon?: IconName;
+  icon?: IconGlyph;
   title: string;
   sub?: string;
   action?: ReactNode;
@@ -58,7 +84,7 @@ export function EmptyState({
     <div {...stylex.props(styles.root, ROOT[size])} style={style}>
       {icon && (
         <div {...stylex.props(styles.icon, corner.pill, ICON[size])}>
-          <Icon name={icon} size={size === "compact" ? "md" : "lg"} />
+          <Icon glyph={icon} size={size === "compact" ? "md" : "lg"} />
         </div>
       )}
       <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title}</div>

@@ -1,16 +1,9 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { color, radius, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import {
-  Icon,
-  type IconName,
-  IconButton,
-  Popover,
-  ProgressBar,
-  SectionLabel,
-  toneInk,
-  vocab,
-} from "@/ui";
+import { color, radius, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { Icon, type IconName, Popover, ProgressBar, SectionLabel } from "@/ui";
+import { IconButton, toneInk, vocab } from "@flame/ui";
 import type { TaskReadoutStatus, TaskReadoutTask } from "../application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "../application/taskReadout";
 
@@ -54,7 +47,7 @@ export function TasksPill() {
       <Popover.Trigger
         render={
           <IconButton
-            icon={name}
+            icon={iconGlyph(name)}
             size="sm"
             tone={tone}
             badge={readout.runningCount}

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space, weight } from "@/styles/tokens.stylex";
+import { color, space, weight } from "@flame/ui/tokens.stylex";
 
 export const suggestionStyles = stylex.create({
   panel: {

@@ -10,9 +10,10 @@ import {
   runScheduleNow,
   type ScheduleConfig,
 } from "@/plugins/builtin/settings/schedules/public/controls";
-import { ConfirmDialog, DropdownMenu, PillButton, SelectTrigger, SystemMessage, vocab } from "@/ui";
+import { ConfirmDialog, DropdownMenu, PillButton, SelectTrigger, SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useAsyncFeedback } from "../../kit";
 

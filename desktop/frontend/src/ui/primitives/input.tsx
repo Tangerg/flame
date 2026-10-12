@@ -1,8 +1,4 @@
-import type { ComponentProps, ComponentPropsWithRef } from "react";
-import { Input } from "@base-ui/react/input";
-
-export const InputPrimitive = Input;
-export type InputPrimitiveProps = ComponentProps<typeof Input>;
+import type { ComponentPropsWithRef } from "react";
 
 export type FileInputPrimitiveProps = Omit<ComponentPropsWithRef<"input">, "type">;
 

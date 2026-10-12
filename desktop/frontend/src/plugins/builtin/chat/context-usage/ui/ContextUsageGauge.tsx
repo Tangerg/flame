@@ -1,12 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
-import { gap, Gauge, Pressable, RichTooltip, vocab } from "@/ui";
+import { Gauge, Pressable } from "@/ui";
+import { gap, RichTooltip, vocab } from "@flame/ui";
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { useCurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import { useActiveSessionId, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { useModels } from "@/plugins/builtin/providers/public/queries";
 import { contextUsageReadout } from "../application/contextUsageReadout";
-import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 
 const cu = stylex.create({

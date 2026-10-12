@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import type { ReactNode, Ref } from "react";
 import { ScrollArea } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";

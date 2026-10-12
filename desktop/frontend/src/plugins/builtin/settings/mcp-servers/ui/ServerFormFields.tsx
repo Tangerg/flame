@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { gap, TextArea, vocab } from "@/ui";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { gap, TextArea, vocab } from "@flame/ui";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface LinesFieldProps {

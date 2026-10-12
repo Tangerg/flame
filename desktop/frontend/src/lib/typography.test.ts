@@ -4,7 +4,7 @@ import {
   UI_FONT_SIZE_MAX_PX,
   UI_FONT_SIZE_MIN_PX,
   normalizeUiFontSize,
-} from "./typography";
+} from "@flame/ui/typography";
 
 describe("normalizeUiFontSize", () => {
   it("falls back to the default for absent or non-finite input", () => {

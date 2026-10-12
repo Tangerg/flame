@@ -1,8 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
-import { face } from "@/styles/tokens.stylex";
+import { face } from "@flame/ui/tokens.stylex";
 import { FilePath } from "@/ui/atoms/file-path";
-import { vocab } from "@/ui/atoms/vocabulary";
+import { vocab } from "@flame/ui/vocabulary";
 
 interface ToolTextValue {
   kind: "path" | "machine" | "prose";

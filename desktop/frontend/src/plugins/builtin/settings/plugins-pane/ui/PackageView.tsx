@@ -1,16 +1,18 @@
-import { Button } from "@/ui/atoms/button";
+import { Button } from "@flame/ui/button";
 import { reportViewFailure } from "../adapters/pluginViewDiagnostics";
 import { AgentActivityDisclosure, AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
+import { captureTheme, type ThemeProjection } from "@flame/ui/theme";
+import { useTokenRevision, useUiFontSize } from "@/lib/appearance";
 import { useScheme } from "@/lib/appearance";
 import { asyncDisposeSymbol } from "dougong";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import type { PluginViewReads, PluginViewStatus } from "../application/pluginView";
-import { mountPluginViewFrame } from "../adapters/pluginViewFrame";
-import { space, color, type as typeStep } from "@/styles/tokens.stylex";
+import { openPluginViewFrame } from "../adapters/pluginViewFrame";
+import { space, color, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   root: { width: "100%", height: "100%" },
@@ -45,6 +47,14 @@ export function PackageView<T>({
 }) {
   const t = useT();
   const scheme = useScheme();
+  const revision = useTokenRevision();
+  const fontSize = useUiFontSize();
+  const appearance = useRef<ThemeProjection | undefined>(undefined);
+  const frame = useRef<ReturnType<typeof openPluginViewFrame<T>> | undefined>(undefined);
+  useLayoutEffect(() => {
+    appearance.current = captureTheme(document.documentElement, scheme, fontSize);
+    frame.current?.updateTheme(appearance.current);
+  }, [scheme, revision, fontSize]);
   const container = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<PluginViewStatus>({ type: "loading" });
   const [showRecorded, setShowRecorded] = useState(false);
@@ -66,18 +76,18 @@ export function PackageView<T>({
         const instance = owner.lifetime("page");
         page = instance;
         setHandoff("idle");
-        instance.cleanup(
-          mountPluginViewFrame({
-            container: container.current,
-            reads,
-            carrier,
-            signal: instance.signal,
-            scheme,
-            status: (value) => {
-              if (!instance.signal.aborted) setStatus(value);
-            },
-          }),
-        );
+        const controller = openPluginViewFrame({
+          container: container.current,
+          reads,
+          carrier,
+          signal: instance.signal,
+          theme: appearance.current!,
+          status: (value) => {
+            if (!instance.signal.aborted) setStatus(value);
+          },
+        });
+        frame.current = controller;
+        instance.cleanup(controller.close);
       })()
         .catch((error) => {
           reportViewFailure(reads.binding, "retirement", error);
@@ -98,13 +108,14 @@ export function PackageView<T>({
     retry.current = start;
     start();
     return () => {
+      frame.current = undefined;
       retry.current = undefined;
       retirement.current = owner[asyncDisposeSymbol]();
       void retirement.current.catch((error) =>
         reportViewFailure(reads.binding, "retirement", error),
       );
     };
-  }, [reads, scheme, carrier, lifetime]);
+  }, [reads, carrier, lifetime]);
   return (
     <AgentWorkspaceView ariaLabel={title} className={stylex.props(styles.root).className}>
       <div {...stylex.props(styles.identity, typeStep.uiSm)}>

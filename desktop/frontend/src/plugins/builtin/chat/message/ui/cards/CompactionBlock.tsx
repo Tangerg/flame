@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, leading, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const cb = stylex.create({
   summary: {

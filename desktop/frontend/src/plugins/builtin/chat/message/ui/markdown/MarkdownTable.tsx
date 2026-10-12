@@ -1,10 +1,12 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
-import { IconButton, LightboxDialog } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { LightboxDialog } from "@/ui";
+import { IconButton } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 
 const mt = stylex.create({
   close: { position: "absolute", top: space.s2, right: space.s2 },
@@ -46,7 +48,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           kind="document"
           trigger={
             <IconButton
-              icon="maximize"
+              icon={iconGlyph("maximize")}
               size="xs"
               quiet
               aria-expanded={previewOpen}
@@ -56,7 +58,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           }
         >
           <IconButton
-            icon="x"
+            icon={iconGlyph("x")}
             size="sm"
             quiet
             onClick={() => setPreviewOpen(false)}
@@ -68,7 +70,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           </div>
         </LightboxDialog>
         <IconButton
-          icon={copied ? "check" : "copy"}
+          icon={iconGlyph(copied ? "check" : "copy")}
           size="xs"
           quiet
           onClick={() => void copy()}

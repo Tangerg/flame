@@ -1,8 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import type { RefObject } from "react";
 import { useT } from "@/lib/i18n";
-import { OptionRow, vocab } from "@/ui";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { OptionRow } from "@/ui";
+import { vocab } from "@flame/ui";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import type { useSlashSuggestions } from "../application/slashSuggestions";
 import { suggestionOptionId } from "../application/suggestions";
 import { SuggestionPopup } from "./SuggestionPopup";

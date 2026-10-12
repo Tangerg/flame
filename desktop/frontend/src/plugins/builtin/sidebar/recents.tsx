@@ -8,7 +8,7 @@ import {
   useWorkIndexActions,
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { definePlugin } from "@/plugins/sdk";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const rc = stylex.create({
   label: { paddingInline: space.s2, paddingTop: 0, paddingBottom: space.s2 },

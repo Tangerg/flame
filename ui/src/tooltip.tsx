@@ -1,8 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ReactElement, ReactNode } from "react";
-import { leading, space, type } from "@/styles/tokens.stylex";
-import { TooltipPrimitive } from "@/ui/primitives";
+import { leading, space, type } from "./tokens.stylex";
+import { TooltipPrimitive } from "./primitives/index";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
 const tip = stylex.create({
@@ -44,7 +44,13 @@ export function TooltipProvider({ children }: TooltipProviderProps) {
   );
 }
 
-export function Tooltip({ label, side = "top", sideOffset = 6, delayDuration, children }: Props) {
+export function Tooltip({
+  label,
+  side = "top",
+  sideOffset = 6,
+  delayDuration,
+  children,
+}: Props) {
   if (label == null || label === "") return <>{children}</>;
   return (
     <RichTooltip

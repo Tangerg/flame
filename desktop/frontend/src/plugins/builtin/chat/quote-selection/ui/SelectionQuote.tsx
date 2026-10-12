@@ -2,7 +2,8 @@ import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n";
-import { Button, Icon } from "@/ui";
+import { Icon } from "@/ui";
+import { Button } from "@flame/ui";
 import { appendToComposerDraft } from "@/plugins/builtin/chat/composer/public/draft";
 import { type QuoteSource, quoteText } from "../application/quoteText";
 

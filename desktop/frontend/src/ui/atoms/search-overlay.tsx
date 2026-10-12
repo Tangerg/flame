@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { DialogPrimitive } from "@/ui/primitives";
 import { Icon } from "@/ui/icons";
-import { MODAL_SCRIM, modalPanel } from "./floating-surface";
-import { color, radius, space, surface } from "@/styles/tokens.stylex";
+import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
+import { color, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { Kbd } from "./kbd";
 import { OptionRow } from "./option-row";
-import { TextField } from "./text-field";
+import { TextField } from "@flame/ui/text-field";
 
 const styles = stylex.create({
   panel: {

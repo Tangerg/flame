@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { SectionLabel, TextArea, TextButton, vocab, Well } from "@/ui";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { SectionLabel, TextButton, Well } from "@/ui";
+import { TextArea, vocab } from "@flame/ui";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const ae = stylex.create({
   head: { marginBottom: space.s1, display: "flex", alignItems: "center", gap: space.s2 },

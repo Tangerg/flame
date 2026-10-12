@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.file-renderers",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Optional read-only Markdown presentation of captured Runtime files.",
   "extensions": {
     "io.github.tangerg.flame": {
@@ -11,19 +11,28 @@
           {
             "id": "markdown",
             "title": "Markdown",
-            "selector": { "type": "fileExtension", "name": "md" },
+            "selector": {
+              "type": "fileExtension",
+              "name": "md"
+            },
             "entry": "renderers/markdown.html"
           },
           {
             "id": "markdown-long",
             "title": "Markdown",
-            "selector": { "type": "fileExtension", "name": "markdown" },
+            "selector": {
+              "type": "fileExtension",
+              "name": "markdown"
+            },
             "entry": "renderers/markdown.html"
           },
           {
             "id": "mdx",
             "title": "Markdown source",
-            "selector": { "type": "fileExtension", "name": "mdx" },
+            "selector": {
+              "type": "fileExtension",
+              "name": "mdx"
+            },
             "entry": "renderers/markdown.html"
           }
         ]

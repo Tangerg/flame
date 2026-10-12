@@ -13,23 +13,24 @@ current ownership and dependency structure.
 
 ## Directory map
 
-| Location | Responsibility |
-| --- | --- |
-| `src/main.tsx`, `src/App.tsx` | Construct the client environment, mount React, and supply the selected plugins |
-| `src/main/` | Concrete connection ownership, product plugin selection, renderer startup and shutdown, protocol client identity |
-| `src/platform/` | Browser/Wails bootstrap and actual native capabilities |
-| `src/plugins/host/` | React integration with the plugin Host, installation readiness, disposal, slots, shortcuts, error boundaries |
-| `src/plugins/sdk/` | Typed extension points, contribution policy, plugin contracts, selectors, installation state |
-| `src/plugins/builtin/` | Product feature owners and their plugin contributions |
-| `src/ui/primitives/` | Headless interaction contracts backed by Base UI |
-| `src/ui/atoms/` | Token-dressed controls and shared visual vocabulary |
-| `src/ui/agent/` | Presentation composites for the workbench and conversation |
-| `src/lib/` | Shared technical mechanisms, including query caching, navigation ports, publication identity, task lifetimes, highlighting, and telemetry |
-| `src/foundation/` | Consumer-neutral scalar contracts, including exact sequence values |
-| `src/styles/` | StyleX tokens and the existing global stylesheets |
-| `src/test/`, `visual/` | Test setup and explicit visual-fixture composition |
-| `../../runtime/contract/typescript/` | Generated wire contract and reusable HTTP/SSE client |
-| `../../icons/` | Original icon geometry, optical masters, SVG exports, and React components |
+| Location                             | Responsibility                                                                                                                            |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.tsx`, `src/App.tsx`        | Construct the client environment, mount React, and supply the selected plugins                                                            |
+| `src/main/`                          | Concrete connection ownership, product plugin selection, renderer startup and shutdown, protocol client identity                          |
+| `src/platform/`                      | Browser/Wails bootstrap and actual native capabilities                                                                                    |
+| `src/plugins/host/`                  | React integration with the plugin Host, installation readiness, disposal, slots, shortcuts, error boundaries                              |
+| `src/plugins/sdk/`                   | Typed extension points, contribution policy, plugin contracts, selectors, installation state                                              |
+| `src/plugins/builtin/`               | Product feature owners and their plugin contributions                                                                                     |
+| `../../ui/`                          | Shared UI package: first-batch controls, token declarations, document rules and appearance projection                                     |
+| `src/ui/primitives/`                 | Remaining product interaction primitives backed by Base UI                                                                                |
+| `src/ui/atoms/`                      | Product presentation composites consuming `@flame/ui`                                                                                     |
+| `src/ui/agent/`                      | Presentation composites for the workbench and conversation                                                                                |
+| `src/lib/`                           | Shared technical mechanisms, including query caching, navigation ports, publication identity, task lifetimes, highlighting, and telemetry |
+| `src/foundation/`                    | Consumer-neutral scalar contracts, including exact sequence values                                                                        |
+| `src/styles/`                        | Product stylesheets and application palette defaults                                                                                      |
+| `src/test/`, `visual/`               | Test setup and explicit visual-fixture composition                                                                                        |
+| `../../runtime/contract/typescript/` | Generated wire contract and reusable HTTP/SSE client                                                                                      |
+| `../../icons/`                       | Original icon geometry, optical masters, SVG exports, and React components                                                                |
 
 There is no graphical-client copy of the protocol implementation and no global
 client locator. `main/` constructs dependencies and passes them outward through
@@ -40,28 +41,29 @@ derived from that mapping, with every glyph supplied by `@flame/icons/react`.
 `src/lib/fileKind` owns file classification. `src/ui/icons/fileIcon` selects the
 file glyph used by the explorer, preview, and composer references.
 The theme preference owner
-publishes normalized UI font size through `lib/appearance`; `lib/iconScale`
-derives both SVG pixel sizes and CSS layout tokens. The library chooses its
-optical master from those pixels. Composer glyphs use an explicit fixed size,
+publishes normalized UI font size through `lib/appearance`. `@flame/ui/font-scale`
+owns shared icon sizing; `lib/productIconScale` projects that scale into product
+CSS and adds the fixed composer size. `@flame/icons` chooses its optical master
+from those pixels. Composer glyphs use an explicit fixed size,
 without overriding the meaning of a global size token.
 
 ## Product owners
 
-| Feature | Owns |
-| --- | --- |
-| `agent/` | Session and Run projections, streaming fold, input submission, interruption responses, recovery, and consumer-facing command/read ports |
-| `chat/composer/` | Drafts, local attachments, authoring history, explicit Run overrides, and submission intent |
-| Other `chat/` features | Conversation rendering, tool previews, message actions, Goal/Plan presentation, search, and related contributions |
-| `providers/` | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations |
-| `runtime/` | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage installation |
-| `navigation/` | Work Index projections and working-directory selection |
-| `workspace/` | Workspace materials, view navigation, file and review reads, skill/memory curation, conversation export, and subscription invalidation |
-| `settings/` features | Their own settings policies and presentation contributions |
-| `shell/workbench/` | Product composition of chat, sidebar, settings, and dock surfaces |
-| Other `shell/` features | Native chrome, notifications, status, route, and overlay contributions |
-| `sidebar/` | Work Index rendering and actions |
-| `theme/` | Appearance preferences, theme publication, and document appearance |
-| `defaults/` | Default commands, titles, roles, and accents |
+| Feature                 | Owns                                                                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent/`                | Session and Run projections, streaming fold, input submission, interruption responses, recovery, and consumer-facing command/read ports |
+| `chat/composer/`        | Drafts, local attachments, authoring history, explicit Run overrides, and submission intent                                             |
+| Other `chat/` features  | Conversation rendering, tool previews, message actions, Goal/Plan presentation, search, and related contributions                       |
+| `providers/`            | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations                         |
+| `runtime/`              | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage installation          |
+| `navigation/`           | Work Index projections and working-directory selection                                                                                  |
+| `workspace/`            | Workspace materials, view navigation, file and review reads, skill/memory curation, conversation export, and subscription invalidation  |
+| `settings/` features    | Their own settings policies and presentation contributions                                                                              |
+| `shell/workbench/`      | Product composition of chat, sidebar, settings, and dock surfaces                                                                       |
+| Other `shell/` features | Native chrome, notifications, status, route, and overlay contributions                                                                  |
+| `sidebar/`              | Work Index rendering and actions                                                                                                        |
+| `theme/`                | Appearance preferences, theme publication, and document appearance                                                                      |
+| `defaults/`             | Default commands, titles, roles, and accents                                                                                            |
 
 Providers are consumed by Composer, schedules, and setup prompts as well as
 Settings. They therefore own a top-level feature directory and contribute their
@@ -377,3 +379,7 @@ resources belong to fixture cleanup; they do not discover a default production
 connection. Native package verification follows the supported Wails target in
 [`../Taskfile.yml`](../Taskfile.yml); a successful Web bundle does not establish a
 macOS packaging result.
+
+## Shared UI and portable appearance
+
+`@flame/ui` owns shared control behavior and presentation. Desktop and Memory consume its compiled components and stylesheet. Icons remain independent; Desktop owns contributed-name metadata and supplies named glyphs to generic controls. Appearance selection and preference persistence remain in `theme/`. The carrier captures the painted document as a closed token projection and publishes it over the existing qualified channel. Appearance changes update the same guest without rereading business data. The v3 guest bootstrap is generated from the library, applies initial tokens before guest initialization, and observes subsequent projections. It cannot submit commands.

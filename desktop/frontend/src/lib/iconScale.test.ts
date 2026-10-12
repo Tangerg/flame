@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { iconScaleCssVariables, iconSizePx, type IconSize } from "./iconScale";
-import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "./typography";
+import {
+  productIconScaleCssVariables,
+  productIconSizePx,
+  type ProductIconSize,
+} from "./productIconScale";
+import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@flame/ui/typography";
 
 describe("icon sizes", () => {
   it("derives actual pixels and CSS layout variables from the same font policy", () => {
@@ -13,17 +17,17 @@ describe("icon sizes", () => {
         xl: font * 2,
         composer: 16,
       };
-      const variables = iconScaleCssVariables(font);
+      const variables = productIconScaleCssVariables(font);
       for (const [size, pixels] of Object.entries(expected)) {
-        expect(iconSizePx(size as IconSize, font)).toBe(pixels);
+        expect(productIconSizePx(size as ProductIconSize, font)).toBe(pixels);
         expect(variables[`--icon-${size}`]).toBe(`${pixels}px`);
       }
     }
   });
 
   it("normalizes missing and out-of-range font preferences", () => {
-    expect(iconSizePx("sm", null)).toBe(14);
-    expect(iconSizePx("xs", 0)).toBe(9);
-    expect(iconSizePx("xl", 100)).toBe(36);
+    expect(productIconSizePx("sm", null)).toBe(14);
+    expect(productIconSizePx("xs", 0)).toBe(9);
+    expect(productIconSizePx("xl", 100)).toBe(36);
   });
 });

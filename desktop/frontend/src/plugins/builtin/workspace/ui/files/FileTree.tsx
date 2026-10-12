@@ -2,7 +2,8 @@ import * as stylex from "@stylexjs/stylex";
 import { useId, useState } from "react";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
-import { ContextMenu, DataView, Icon, Tree, chevron, fileIconName, vocab } from "@/ui";
+import { ContextMenu, DataView, Icon, Tree, chevron, fileIconName } from "@/ui";
+import { vocab } from "@flame/ui";
 import {
   rememberWorkspaceView,
   useWorkspaceViewMemory,
@@ -14,7 +15,7 @@ import {
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useWorkingTreeFiles } from "@/plugins/builtin/workspace/application/workingTreeChanges";
 import { localWorkspace } from "../../application/ports/localWorkspace";
-import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const CHANGE_MARK: Record<WorkspaceFileChange["change"], string> = {
   add: "A",

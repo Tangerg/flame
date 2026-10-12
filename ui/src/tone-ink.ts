@@ -1,5 +1,5 @@
 import type { StyleXStyles } from "@stylexjs/stylex";
-import type { Tone } from "@/lib/tone";
+import type { Tone } from "./tone";
 import { vocab } from "./vocabulary";
 
 export const toneInk = {

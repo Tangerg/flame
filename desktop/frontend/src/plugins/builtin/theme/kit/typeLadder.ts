@@ -3,7 +3,7 @@ import {
   UI_FONT_SIZE_MIN_PX,
   UI_TYPE_STEPS,
   type UiTypeStep,
-} from "@/lib/typography";
+} from "@flame/ui/typography";
 
 export type UiTypeLadder = Readonly<Record<UiTypeStep, number>>;
 

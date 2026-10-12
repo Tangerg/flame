@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
@@ -11,20 +12,12 @@ import {
   useExpandedWorkspaceToolIds,
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
-import {
-  EmptyState,
-  Icon,
-  IconButton,
-  ScrollArea,
-  SectionLabel,
-  StatusDot,
-  toneInk,
-  vocab,
-} from "@/ui";
+import { Icon, ScrollArea, SectionLabel, StatusDot } from "@/ui";
+import { EmptyState, IconButton, toneInk, vocab } from "@flame/ui";
 import { AgentSurfaceHeader, AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { corner, face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { corner, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "../application/subagents";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 import { DelegatedRunLink } from "./DelegatedRunLink";
@@ -66,7 +59,7 @@ export function SubagentsPanel() {
         </span>
         {selectedId && (
           <IconButton
-            icon="chevron-left"
+            icon={iconGlyph("chevron-left")}
             size="sm"
             title={t("subagents.title")}
             onClick={() => openWorkspaceSubagentRun(null)}
@@ -78,9 +71,9 @@ export function SubagentsPanel() {
       ) : (
         <ScrollArea className={stylex.props(styles.scroller).className}>
           {selectedId ? (
-            <EmptyState icon="bot" title={t("subagents.unavailable")} />
+            <EmptyState icon={iconGlyph("bot")} title={t("subagents.unavailable")} />
           ) : entries.length === 0 ? (
-            <EmptyState icon="bot" title={t("subagents.empty")} />
+            <EmptyState icon={iconGlyph("bot")} title={t("subagents.empty")} />
           ) : (
             <>
               <SubagentGroup
@@ -145,7 +138,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
           <span {...stylex.props(vocab.hold, toneInk[model.ink])}>{model.statusLabel}</span>
           {model.cancelable && (
             <IconButton
-              icon="stop"
+              icon={iconGlyph("stop")}
               size="sm"
               quiet
               disabled={!available}

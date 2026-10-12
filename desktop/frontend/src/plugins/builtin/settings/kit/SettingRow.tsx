@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { type as typeStep } from "@/styles/tokens.stylex";
-import { color, space, surface } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, space, surface } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "./settingStyles";
 
 const styles = stylex.create({

@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { PopoverPrimitive } from "@/ui/primitives";
-import { FLOATING_LAYER, FLOATING_OPTIONS, FLOATING_PANEL } from "./floating-surface";
+import { FLOATING_LAYER, FLOATING_OPTIONS, FLOATING_PANEL } from "@flame/ui/floating-surface";
 
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;
 type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;

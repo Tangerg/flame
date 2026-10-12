@@ -1,11 +1,13 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
-import { EmptyState, Icon, SearchOverlay } from "@/ui";
+import { Icon, SearchOverlay } from "@/ui";
+import { EmptyState } from "@flame/ui";
 import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { matchSessions } from "../application/sessionMatches";
 import { useSessionSearchStore } from "../application/sessionSearchState";
-import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const cmd = stylex.create({
   glyph: { flexShrink: 0, color: color.fgMuted },
@@ -35,7 +37,7 @@ export function SessionSearch() {
       placeholder={t("sessionSearch.placeholder")}
       empty={
         <EmptyState
-          icon="chat"
+          icon={iconGlyph("chat")}
           size="compact"
           title={t("sessionSearch.empty.title")}
           sub={t("sessionSearch.empty.sub")}

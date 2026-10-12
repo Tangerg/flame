@@ -1,12 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
-import { DropdownMenu, Tooltip, vocab } from "@/ui";
+import { DropdownMenu } from "@/ui";
+import { Tooltip, vocab } from "@flame/ui";
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin, useCurrentMessage } from "@/plugins/sdk";
 import { canCopyMessage } from "./application/messageActionAvailability";
 import { messageCopyPayloads } from "./presentation/copyPayloads";
 import { MessageActionButton } from "./MessageActionButton";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 
 function CopyButton() {

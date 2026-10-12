@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
-import { Button, DropdownMenu, Icon, ProviderIcon, vocab } from "@/ui";
+import { DropdownMenu, Icon, ProviderIcon } from "@/ui";
+import { Button, vocab } from "@flame/ui";
 import {
   type ProviderConfiguration,
   type RoleConfigState,
@@ -13,7 +14,7 @@ import {
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../settings/kit";
-import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../settings/kit/settingStyles";
 
 const rs = stylex.create({

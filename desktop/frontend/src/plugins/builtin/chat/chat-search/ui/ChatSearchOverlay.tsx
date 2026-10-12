@@ -1,7 +1,8 @@
+import { iconGlyph } from "@/ui/icons";
 import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
-import { IconButton, TextField, vocab } from "@/ui";
+import { IconButton, TextField, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import {
@@ -11,7 +12,7 @@ import {
 } from "../adapters/searchHighlights";
 import { setChatSearchOpener } from "../application/openChatSearch";
 import { findMessageRanges } from "../adapters/messageRanges";
-import { face, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { face, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const cs = stylex.create({
   field: { height: space.s7, width: "calc(var(--spacing) * 56)", paddingInline: space.s2 },
@@ -129,7 +130,7 @@ function SessionChatSearchOverlay() {
         {total > 0 ? `${activeIndex + 1} / ${total}` : query ? "0 / 0" : ""}
       </span>
       <IconButton
-        icon="chevron-up"
+        icon={iconGlyph("chevron-up")}
         size="xs"
         title={`${t("chatSearch.prev")} (⇧⏎)`}
         aria-label={t("chatSearch.prev")}
@@ -137,7 +138,7 @@ function SessionChatSearchOverlay() {
         onClick={() => move(-1)}
       />
       <IconButton
-        icon="chevron-down"
+        icon={iconGlyph("chevron-down")}
         size="xs"
         title={`${t("chatSearch.next")} (⏎)`}
         aria-label={t("chatSearch.next")}
@@ -145,7 +146,7 @@ function SessionChatSearchOverlay() {
         onClick={() => move(1)}
       />
       <IconButton
-        icon="x"
+        icon={iconGlyph("x")}
         size="xs"
         title={`${t("common.close")} (Esc)`}
         aria-label={t("common.close")}

@@ -2,8 +2,9 @@ import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { useCustomThemePreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
-import { ColorPickerInput, vocab } from "@/ui";
-import { color, corner, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { ColorPickerInput } from "@/ui";
+import { vocab } from "@flame/ui";
+import { color, corner, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const a = stylex.create({

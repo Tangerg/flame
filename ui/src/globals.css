@@ -1,0 +1,222 @@
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    box-sizing: border-box;
+    border: 0 solid;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  hr {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  b,
+  strong {
+    font-weight: bolder;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-size: 1em;
+  }
+
+  small {
+    font-size: 80%;
+  }
+
+  sub,
+  sup {
+    position: relative;
+    vertical-align: baseline;
+    font-size: 75%;
+    line-height: 0;
+  }
+
+  sub {
+    bottom: -0.25em;
+  }
+
+  sup {
+    top: -0.5em;
+  }
+
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+
+  summary {
+    display: list-item;
+  }
+
+  ol,
+  ul,
+  menu {
+    list-style: none;
+  }
+
+  img,
+  svg,
+  video,
+  canvas,
+  audio,
+  iframe,
+  embed,
+  object {
+    display: block;
+    vertical-align: middle;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    opacity: 1;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  button,
+  input:where([type="button"], [type="reset"], [type="submit"]) {
+    appearance: button;
+  }
+  ::placeholder {
+    opacity: 1;
+    color: color-mix(in oklab, currentcolor 50%, transparent);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+html:not([data-pointer])
+  :focus-visible:not([data-chrome-focus]):not(input):not(textarea):not(
+    [contenteditable]
+  ) {
+  outline: 1.5px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+html[data-pointer] :focus-visible {
+  outline: none;
+}
+html:not([data-pointer])
+  :is([data-focus-inset]:focus-visible, [data-focus-inset] :focus-visible):not(
+    [data-chrome-focus]
+  ):not(input):not(textarea):not([contenteditable]) {
+  outline-offset: -2px;
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+html:not([data-pointer]) [data-focus-proxy]:focus-within {
+  outline: 1.5px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+/* prettier-ignore */
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity   var(--icon-swap-dur) var(--icon-swap-ease),
+    filter    var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+  will-change: opacity, filter, transform;
+}
+/* prettier-ignore */
+.t-icon-swap .t-icon[data-glyph="rest"] {
+  opacity: 1; filter: blur(0); transform: scale(1);
+}
+/* prettier-ignore */
+.t-icon-swap .t-icon[data-glyph="hover"] {
+  opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale));
+}
+/* prettier-ignore */
+:is(button, [role="button"]):is(:hover, :focus-visible) .t-icon-swap .t-icon[data-glyph="rest"] {
+  opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale));
+}
+/* prettier-ignore */
+:is(button, [role="button"]):is(:hover, :focus-visible) .t-icon-swap .t-icon[data-glyph="hover"] {
+  opacity: 1; filter: blur(0); transform: scale(1);
+}
+/* prettier-ignore */
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap .t-icon { transition: none !important; }
+}
+[data-slot="button"] svg:not([data-glyph="full"]) {
+  opacity: var(--glyph-step);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+html[data-flame-ui-theme-paint] * {
+  transition: none !important;
+}

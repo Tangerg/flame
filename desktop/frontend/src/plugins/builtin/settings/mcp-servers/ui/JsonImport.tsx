@@ -2,12 +2,13 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Icon, PillButton, Surface, TextArea, TextButton, vocab } from "@/ui";
+import { Icon, PillButton, Surface, TextButton } from "@/ui";
+import { TextArea, vocab } from "@flame/ui";
 import { useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { parseMcpImport } from "../application/mcpImport";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const ji = stylex.create({

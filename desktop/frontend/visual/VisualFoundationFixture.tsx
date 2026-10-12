@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import {
   AgentAppShell,
@@ -7,10 +8,10 @@ import {
   AgentStatusPill,
   AgentSurfaceHeader,
 } from "@/ui/agent";
-import { Button, IconButton } from "@/ui";
+import { Button, IconButton } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { fx } from "./fixtureStyles";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 
 interface VisualFoundationFixtureProps {
   sidebarOpen: boolean;
@@ -28,8 +29,8 @@ function WorkIndexFixture() {
       <AgentSurfaceHeader divider={false}>
         <span {...stylex.props(fx.semibold, fx.ink, typeStep.uiMd)}>Flame</span>
         <span {...stylex.props(fx.minRail)} />
-        <IconButton icon="search" size="sm" aria-label="Search" />
-        <IconButton icon="edit" size="sm" aria-label="New session" />
+        <IconButton icon={iconGlyph("search")} size="sm" aria-label="Search" />
+        <IconButton icon={iconGlyph("edit")} size="sm" aria-label="New session" />
       </AgentSurfaceHeader>
       <div {...stylex.props(fx.pane, fx.listPad)}>
         <div {...stylex.props(typeStep.uiXs, fx.specimenLabel)}>Work index</div>
@@ -55,7 +56,7 @@ function WorkIndexFixture() {
         </div>
       </div>
       <div {...stylex.props(fx.captionRow)}>
-        <IconButton icon="settings" size="sm" aria-label="Settings" />
+        <IconButton icon={iconGlyph("settings")} size="sm" aria-label="Settings" />
         <span {...stylex.props(fx.muted, typeStep.uiSm)}>Visual fixture</span>
       </div>
     </div>
@@ -76,7 +77,7 @@ function ComposerFixture() {
           Auto
         </Button>
         <span {...stylex.props(fx.minRail)} />
-        <IconButton icon="arrow-up" size="md" aria-label="Send" variant="primary" />
+        <IconButton icon={iconGlyph("arrow-up")} size="md" aria-label="Send" variant="primary" />
       </div>
     </AgentComposerSurface>
   );
@@ -86,7 +87,7 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
   return (
     <AgentContentCard label="Visual foundation" data-testid="content-card">
       <AgentSurfaceHeader corner="window">
-        <IconButton icon="panel-l" size="sm" aria-label="Toggle work index" />
+        <IconButton icon={iconGlyph("panel-l")} size="sm" aria-label="Toggle work index" />
         <span {...stylex.props(typeStep.uiSm, fx.mono, fx.faint)}>scope</span>
         <span {...stylex.props(fx.faint, typeStep.uiMd)}>/</span>
         <span {...stylex.props(fx.truncate, fx.semibold, fx.ink, typeStep.uiMd)}>
@@ -94,7 +95,7 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
         </span>
         <AgentStatusPill tone="idle">Ready</AgentStatusPill>
         <span {...stylex.props(fx.minRail)} />
-        <IconButton icon="panel-r" size="sm" aria-label="Open context dock" />
+        <IconButton icon={iconGlyph("panel-r")} size="sm" aria-label="Open context dock" />
       </AgentSurfaceHeader>
 
       <div {...stylex.props(fx.pane)}>

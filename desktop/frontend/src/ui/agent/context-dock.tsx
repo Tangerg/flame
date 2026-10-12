@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import {
   useLayoutEffect,
@@ -8,10 +9,10 @@ import {
   type Ref,
 } from "react";
 import { cn } from "@/lib/classNames";
-import { color, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenu } from "@/ui/atoms/menu";
-import { IconButton } from "@/ui/atoms/icon-button";
+import { IconButton } from "@flame/ui/icon-button";
 import { reveal } from "@/ui/atoms/reveal";
 import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { TabsPrimitive } from "@/ui/primitives";
@@ -247,7 +248,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
               </TabsPrimitive.Tab>
               <IconButton
                 data-reveal="hover"
-                icon="x"
+                icon={iconGlyph("x")}
                 size="xs"
                 quiet
                 title={tab.closeLabel}

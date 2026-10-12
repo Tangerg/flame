@@ -196,11 +196,17 @@ async function focusWorkbench() {
   await waitFor("focused workbench", () => evaluate("return !document.hidden"), Boolean);
 }
 
+async function visibleWorkbench() {
+  if (await evaluate("return {hidden:document.hidden}").then((state) => state.hidden))
+    await focusWorkbench();
+}
+
 async function pageWith(text) {
   await focusWorkbench();
   return waitFor(
     `native page ${text}`,
     async () => {
+      await visibleWorkbench();
       const state = await pages();
       assert.equal(state.physical, state.pages.length, "physical pages and their owner must agree");
       const visible = state.pages.filter((page) => page.visible && page.ready);
@@ -222,10 +228,12 @@ async function choosePanel(panel) {
   await clickText(panel, '[role="option"]');
   await waitFor(
     "catalog dismissal",
-    () =>
-      evaluate(
+    async () => {
+      await visibleWorkbench();
+      return evaluate(
         "return {hidden:document.hidden, popups:[...document.querySelectorAll('[data-base-ui-portal]')].map(e => ({tag:e.tagName, role:e.getAttribute('role'), open:e.hasAttribute('data-open'), ending:e.hasAttribute('data-ending-style'), animation:getComputedStyle(e).animationName, transition:getComputedStyle(e).transitionProperty}))}",
-      ),
+      );
+    },
     (value) => value.popups.length === 0,
   );
 }
@@ -377,13 +385,13 @@ async function checkTrajectoryCapacity(kind) {
   const observation = `<!doctype html><p>Native trajectory capacity</p><script>
     const summarize=${capacitySummary.toString()};
     addEventListener('message',event=>{
-      if(event.source!==parent || event.data?.type!=='flame.view.connect.v2')return;
+      if(event.source!==parent || event.data?.type!=='flame.view.connect.v3')return;
       const port=event.ports[0];
       window.nativeCapacity={initial:summarize(event.data.initial),read:()=>port.postMessage({type:'read',cursor:${JSON.stringify(continuation.nextCursor)}})};
       port.onmessage=event=>{window.nativeCapacity.reply=event.data.type==='data'?summarize(event.data.data):event.data};
       port.start();
     });
-    parent.postMessage('flame.view.ready.v2','*');
+    parent.postMessage('flame.view.ready.v3','*');
   </script>`;
   await writeFile(resource, observation);
   const remoteSource = `/fixture/capacity-${kind}`;
@@ -435,10 +443,17 @@ try {
     ["build", "-o", join(fixture, "provider"), "./testdata/plugin-workbench/provider.go"],
     { env: buildEnvironment },
   );
-  await cp(join(repository, "plugins"), join(fixture, "plugins"), { recursive: true });
   const builtPlugins = join(fixture, "managed-packages");
   await buildPlugins({ os: "linux", arch: goarch, output: builtPlugins });
-  for (const feature of ["memory", "schedules"])
+  const managed = await readdir(builtPlugins);
+  const developmentPackages = new Set(
+    managed.map((feature) => join(repository, "plugins", feature)),
+  );
+  await cp(join(repository, "plugins"), join(fixture, "plugins"), {
+    recursive: true,
+    filter: (source) => !developmentPackages.has(source),
+  });
+  for (const feature of managed)
     await cp(join(builtPlugins, feature), join(fixture, "plugins", feature), { recursive: true });
   await mkdir(join(fixture, "skills/native-user"), { recursive: true });
   await writeFile(
@@ -795,8 +810,8 @@ try {
   await tool("window_control", { action: "focus" });
   await waitFor(
     "production sessions",
-    () => evaluate(`return document.body.innerText.includes(${JSON.stringify(title)})`),
-    Boolean,
+    () => evaluate("return {text: document.body.innerText}"),
+    (body) => body.text.includes(title),
   );
   await clickText(title);
   await clickLabel("Open right workspace");

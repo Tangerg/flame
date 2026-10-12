@@ -1,7 +1,8 @@
 import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { Button, StatusDot, TextField, vocab } from "@/ui";
+import { StatusDot } from "@/ui";
+import { Button, TextField, vocab } from "@flame/ui";
 import { useT, type Translate } from "@/lib/i18n";
 import {
   applyRuntimeEndpoint,
@@ -17,7 +18,7 @@ import {
   type RuntimeServicePhase,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { SettingRow, SettingsGroup } from "../../kit";
-import { color, face, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, face, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const cp = stylex.create({

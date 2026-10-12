@@ -1,9 +1,11 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Button, Icon, IconButton, TextEditorDialog, vocab } from "@/ui";
+import { Icon, TextEditorDialog } from "@/ui";
+import { Button, IconButton, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
-import { color } from "@/styles/tokens.stylex";
+import { color } from "@flame/ui/tokens.stylex";
 
 const goalTray = stylex.create({
   material: {
@@ -30,7 +32,7 @@ import {
   runtimeCommandsAvailable,
   useRuntimeCommandsAvailable,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const gs = stylex.create({
   bar: {
@@ -163,7 +165,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
           <IconButton
             type="button"
             size="xs"
-            icon="trash"
+            icon={iconGlyph("trash")}
             quiet
             title={t("goal.action.clear")}
             disabled={controlsDisabled}
@@ -174,7 +176,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              icon={goal.status === "active" ? "pause" : "play"}
+              icon={iconGlyph(goal.status === "active" ? "pause" : "play")}
               quiet
               title={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
               disabled={controlsDisabled}
@@ -186,7 +188,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              icon="edit"
+              icon={iconGlyph("edit")}
               quiet
               title={t("goal.action.edit")}
               disabled={controlsDisabled}

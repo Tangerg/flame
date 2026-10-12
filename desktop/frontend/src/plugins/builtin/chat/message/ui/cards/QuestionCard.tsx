@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import {
@@ -9,17 +10,8 @@ import {
   type CompositionEvent,
   type KeyboardEvent,
 } from "react";
-import {
-  Badge,
-  Button,
-  ChoiceList,
-  ChoiceOption,
-  Icon,
-  IconButton,
-  Surface,
-  TextArea,
-  TextField,
-} from "@/ui";
+import { ChoiceList, ChoiceOption, Icon, Surface } from "@/ui";
+import { Badge, Button, IconButton, TextArea, TextField } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { HitlSettledRow } from "./HitlCard";
 import { useT } from "@/lib/i18n";
@@ -46,10 +38,10 @@ import {
   space,
   surface,
   type as typeStep,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 import { messageStyles as ms } from "../messageStyles";
-import { vocab } from "@/ui";
+import { vocab } from "@flame/ui";
 
 const qc = stylex.create({
   askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
@@ -336,7 +328,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
         {questions.length > 1 && (
           <div {...stylex.props(qc.pager, typeStep.uiXs)}>
             <IconButton
-              icon="chevron-left"
+              icon={iconGlyph("chevron-left")}
               size="xs"
               quiet
               disabled={activeIndex === 0}
@@ -348,7 +340,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
               {t("question.progress", { current: activeIndex + 1, total: questions.length })}
             </span>
             <IconButton
-              icon="chevron-right"
+              icon={iconGlyph("chevron-right")}
               size="xs"
               quiet
               disabled={isLastQuestion}

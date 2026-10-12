@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { TreePrimitive, type TreeItemPrimitiveProps } from "@/ui/primitives";
 
 const LEVEL_INDENT_PX = 12;

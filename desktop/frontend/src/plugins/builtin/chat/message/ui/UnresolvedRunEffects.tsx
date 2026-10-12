@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import type { AgentUnresolvedEffect } from "@/plugins/sdk/types/agentSessionView";
 import { TextButton, Well } from "@/ui";
-import { space } from "@/styles/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   root: {

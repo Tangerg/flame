@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState, type ReactNode } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
@@ -7,11 +8,11 @@ import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highl
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { reveal } from "./reveal";
 import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
 import { useT } from "@/lib/i18n";
-import { IconButton } from "./icon-button";
+import { IconButton } from "@flame/ui/icon-button";
 import type { ShikiTransformer } from "shiki";
 
 const FOCUS_INSET: ShikiTransformer[] = [
@@ -150,7 +151,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
         <span {...stylex.props(styles.spacer)} />
         {!isPreview && (
           <IconButton
-            icon={wrapCode ? "wrap-text" : "unfold-horizontal"}
+            icon={iconGlyph(wrapCode ? "wrap-text" : "unfold-horizontal")}
             size="xs"
             active={wrapCode}
             aria-pressed={wrapCode}
@@ -160,7 +161,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
         )}
         <IconButton
           data-reveal={isPreview ? "hover" : undefined}
-          icon={copied ? "check" : "copy"}
+          icon={iconGlyph(copied ? "check" : "copy")}
           size="xs"
           onClick={() => void copy()}
           tone={copied ? "success" : undefined}

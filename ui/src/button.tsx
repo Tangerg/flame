@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx as cn } from "clsx";
 import {
   color,
   corner,
@@ -13,8 +13,8 @@ import {
   surface,
   type,
   weight,
-} from "@/styles/tokens.stylex";
-import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
+} from "./tokens.stylex";
+import { ButtonPrimitive, type ButtonPrimitiveProps } from "./primitives/index";
 import { toneInk } from "./tone-ink";
 
 type ButtonVariant =
@@ -58,10 +58,26 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
 
-  xs: { height: "var(--control-height-xs)", borderRadius: radius.button, paddingInline: INSET_XS },
-  sm: { height: "var(--control-height-sm)", borderRadius: radius.button, paddingInline: INSET_SM },
-  md: { height: "var(--control-height-md)", borderRadius: radius.button, paddingInline: INSET_MD },
-  lg: { height: "var(--control-height-lg)", borderRadius: radius.button, paddingInline: INSET_LG },
+  xs: {
+    height: "var(--control-height-xs)",
+    borderRadius: radius.button,
+    paddingInline: INSET_XS,
+  },
+  sm: {
+    height: "var(--control-height-sm)",
+    borderRadius: radius.button,
+    paddingInline: INSET_SM,
+  },
+  md: {
+    height: "var(--control-height-md)",
+    borderRadius: radius.button,
+    paddingInline: INSET_MD,
+  },
+  lg: {
+    height: "var(--control-height-lg)",
+    borderRadius: radius.button,
+    paddingInline: INSET_LG,
+  },
   iconXs: {
     height: "var(--control-height-xs)",
     width: "var(--control-height-xs)",
@@ -114,7 +130,8 @@ const styles = stylex.create({
       ":hover": surface.hover,
       ":is([data-chrome-focus]):focus-visible": surface.hover,
       ':is([data-popup-open][aria-expanded="true"])': surface.selected,
-      ':is([data-popup-open][aria-expanded="true"]):hover': surface.selectedHover,
+      ':is([data-popup-open][aria-expanded="true"]):hover':
+        surface.selectedHover,
     },
     color: {
       default: color.fgMuted,
@@ -137,7 +154,10 @@ const styles = stylex.create({
       ":hover": surface.ctaHover,
       ':is(:disabled, [aria-disabled="true"])': surface.surface2,
     },
-    color: { default: color.ctaText, ':is(:disabled, [aria-disabled="true"])': color.fgFaint },
+    color: {
+      default: color.ctaText,
+      ':is(:disabled, [aria-disabled="true"])': color.fgFaint,
+    },
     opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },
   wash: { backgroundColor: "transparent" },
@@ -151,11 +171,17 @@ const styles = stylex.create({
   },
   tonal: { fontWeight: weight.semibold },
   tonalNegative: {
-    backgroundColor: { default: surface.negativeWash, ":hover": surface.negativeBadge },
+    backgroundColor: {
+      default: surface.negativeWash,
+      ":hover": surface.negativeBadge,
+    },
     color: color.negative,
   },
   tonalWarning: {
-    backgroundColor: { default: surface.warningWash, ":hover": surface.warningBadge },
+    backgroundColor: {
+      default: surface.warningWash,
+      ":hover": surface.warningBadge,
+    },
     color: color.warning,
   },
   media: { backgroundColor: surface.mediaScrim, color: color.onMedia },
@@ -201,14 +227,19 @@ const styles = stylex.create({
 
   quiet: { color: color.fgFaint },
   quietAccent: { color: { default: color.fgFaint, ":hover": color.accent } },
-  quietNegative: { color: { default: color.fgFaint, ":hover": color.negative } },
+  quietNegative: {
+    color: { default: color.fgFaint, ":hover": color.negative },
+  },
   quietSuccess: { color: { default: color.fgFaint, ":hover": color.success } },
   quietWarning: { color: { default: color.fgFaint, ":hover": color.warning } },
 
   fill: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
 
   active: {
-    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
+    backgroundColor: {
+      default: surface.selected,
+      ":hover": surface.selectedHover,
+    },
     color: color.fg,
   },
 
@@ -263,8 +294,14 @@ const VARIANT = {
   link: [styles.bare, styles.link],
 } as const;
 
-const TONAL = { negative: styles.tonalNegative, warning: styles.tonalWarning } as const;
-const WASH = { negative: styles.washNegative, warning: styles.washWarning } as const;
+const TONAL = {
+  negative: styles.tonalNegative,
+  warning: styles.tonalWarning,
+} as const;
+const WASH = {
+  negative: styles.washNegative,
+  warning: styles.washWarning,
+} as const;
 
 const QUIET_TONE = {
   negative: styles.quietNegative,
@@ -292,7 +329,12 @@ export interface ButtonVariants {
   face?: "text" | "mono";
 }
 
-function pressFor({ variant, chip, shape, round }: ButtonVariants): "scale" | "nudge" | "none" {
+function pressFor({
+  variant,
+  chip,
+  shape,
+  round,
+}: ButtonVariants): "scale" | "nudge" | "none" {
   if (variant === "link" || variant === "bare") return "none";
   if (round && variant === "primary") return "nudge";
   return chip || shape === "row" ? "none" : "scale";
@@ -324,10 +366,19 @@ export function dress({
     join === "start" && styles.joinStart,
     join === "end" && styles.joinEnd,
     VARIANT[variant],
-    variant === "tonal" && tone && tone in TONAL && TONAL[tone as keyof typeof TONAL],
-    variant === "wash" && tone && tone in WASH && WASH[tone as keyof typeof WASH],
+    variant === "tonal" &&
+      tone &&
+      tone in TONAL &&
+      TONAL[tone as keyof typeof TONAL],
+    variant === "wash" &&
+      tone &&
+      tone in WASH &&
+      WASH[tone as keyof typeof WASH],
     chip && styles.chip,
-    chipStep && [CHIP_INSET[chipStep], chipStep === "md" ? type.uiMd : type.uiSm],
+    chipStep && [
+      CHIP_INSET[chipStep],
+      chipStep === "md" ? type.uiMd : type.uiSm,
+    ],
     quiet && styles.quiet,
     quiet && tone && QUIET_TONE[tone],
     active && styles.active,
@@ -337,7 +388,10 @@ export function dress({
   ];
 }
 
-export type ButtonProps = Omit<ButtonPrimitiveProps, "children" | "data-slot" | "data-variant"> &
+export type ButtonProps = Omit<
+  ButtonPrimitiveProps,
+  "children" | "data-slot" | "data-variant"
+> &
   ButtonVariants & {
     children?: ReactNode;
     styles?: StyleXArray<StyleXStyles | null | false>;

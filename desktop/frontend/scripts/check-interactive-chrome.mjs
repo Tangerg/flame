@@ -36,6 +36,7 @@ import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
+const SHARED = new URL("../../../ui/src/", import.meta.url).pathname;
 const SRC = new URL("../src/", import.meta.url).pathname;
 
 const RULES = [
@@ -47,6 +48,7 @@ const RULES = [
     message: "hand-picked state colour — use the `surface.hover` / `surface.selected` tokens",
     appliesTo: (line, rel) =>
       rel !== "styles/globals.css" &&
+      rel !== "@flame/ui/globals.css" &&
       /":(?:hover|active|focus|focus-visible|focus-within)"|":is\(\[(?:data|aria)-[a-z-]+/.test(
         line,
       ),
@@ -97,7 +99,8 @@ const RULES = [
     // needs to see their ring. One was found by a runtime walk that happened to reach it; its
     // twin was three tab stops past where that walk stopped.
     appliesTo: (_line, rel, selector) =>
-      rel !== "styles/globals.css" || !/:focus-visible|\[data-pointer\]/.test(selector),
+      (rel !== "styles/globals.css" && rel !== "@flame/ui/globals.css") ||
+      !/:focus-visible|\[data-pointer\]/.test(selector),
   },
   {
     // Opacity as a hover answer, in either of its two forms. A REVEAL — transparent at rest,
@@ -190,7 +193,7 @@ const RULES = [
     // that has to be true.
     pattern: /transition(?:Duration|Delay|-duration|-delay)?: *"?[^";]*\b\d+m?s\b/g,
     message: "literal transition duration — use the semantic `--dur-*` ladder",
-    appliesTo: (_line, rel) => rel !== "styles/globals.css",
+    appliesTo: (_line, rel) => rel !== "styles/globals.css" && rel !== "@flame/ui/globals.css",
   },
 ];
 
@@ -219,12 +222,12 @@ function transitionsWithNoCurve(lines) {
 
 const violations = [];
 let examined = 0;
-const scanned = [...walk(SRC)];
+const scanned = [...walk(SRC), ...walk(SHARED)];
 assertSourceCoverage(sourceFiles(SRC), scanned);
 for (const path of scanned) {
   if (![".ts", ".tsx", ".css"].includes(extname(path))) continue;
   examined += 1;
-  const rel = relative(SRC, path);
+  const rel = path.startsWith(SHARED) ? `@flame/ui/${relative(SHARED, path)}` : relative(SRC, path);
   const lines = readFileSync(path, "utf8").split("\n");
   if (extname(path) !== ".css") {
     for (const line of transitionsWithNoCurve(lines)) {

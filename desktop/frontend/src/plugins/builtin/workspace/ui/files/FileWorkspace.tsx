@@ -1,3 +1,4 @@
+import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { Activity, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/clipboard";
@@ -7,19 +8,9 @@ import { isImeKey } from "@/lib/ime";
 import { useExtensionPoint } from "@/plugins/sdk";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
-import {
-  Button,
-  DataView,
-  EmptyState,
-  FilePath,
-  IconButton,
-  Popover,
-  Segmented,
-  TextButton,
-  TextField,
-  fileIconName,
-} from "@/ui";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { DataView, FilePath, Popover, Segmented, TextButton, fileIconName } from "@/ui";
+import { Button, EmptyState, IconButton, TextField } from "@flame/ui";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { localWorkspace } from "../../application/ports/localWorkspace";
 import { workspaceErrorClassifier } from "../../application/ports/workspaceErrorClassifier";
 import { useT } from "@/lib/i18n";
@@ -187,21 +178,21 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
           )}
           {!unsupported && <GoToLine onGo={(line) => openWorkspaceFile(viewer.path, line)} />}
           <IconButton
-            icon="copy"
+            icon={iconGlyph("copy")}
             size="sm"
             title={t("file.copyPath")}
             onClick={() => void copyText(viewer.path)}
           />
           {cwd && localWorkspace().available() && (
             <IconButton
-              icon="folder-open"
+              icon={iconGlyph("folder-open")}
               size="sm"
               title={t("file.reveal")}
               onClick={() => void localWorkspace().reveal(cwd, viewer.path)}
             />
           )}
           <IconButton
-            icon="arrow-left"
+            icon={iconGlyph("arrow-left")}
             size="sm"
             title={t("file.backToFiles")}
             onClick={closeWorkspaceFile}
@@ -212,7 +203,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
     >
       {unsupported ? (
         <EmptyState
-          icon={icon}
+          icon={iconGlyph(icon)}
           title={t(kind === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
           sub={t("file.unsupported.sub")}
           action={
@@ -298,7 +289,7 @@ function GoToLine({ onGo }: { onGo: (line: number) => void }) {
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
-        render={<IconButton icon="crosshair" size="sm" title={t("file.goToLine")} />}
+        render={<IconButton icon={iconGlyph("crosshair")} size="sm" title={t("file.goToLine")} />}
       />
       <Popover.Content align="end" sideOffset={6}>
         <div {...stylex.props(fp.goto)}>

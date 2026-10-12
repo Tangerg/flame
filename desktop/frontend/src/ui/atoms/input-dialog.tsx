@@ -1,10 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, type ReactNode } from "react";
 import { DialogPrimitive } from "@/ui/primitives";
-import { color, space, type, weight } from "@/styles/tokens.stylex";
-import { Button } from "./button";
-import { TextField } from "./text-field";
-import { formDialog, MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { color, space, type, weight } from "@flame/ui/tokens.stylex";
+import { Button } from "@flame/ui/button";
+import { TextField } from "@flame/ui/text-field";
+import { formDialog, MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
 
 const styles = stylex.create({
   panel: { width: "min(480px, calc(100vw - 32px))" },

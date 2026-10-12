@@ -5,16 +5,16 @@ import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { useT } from "@/lib/i18n";
-import { PillButton, SystemMessage, vocab } from "@/ui";
+import { PillButton, SystemMessage } from "@/ui";
+import { vocab } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
-import { space } from "@/styles/tokens.stylex";
+import { Panel, Toolbar } from "@flame/ui";
 import type { PluginViewReads, MemoryViewTarget } from "../application/pluginView";
 import { PackageView } from "./PackageView";
 import { MemoryActions } from "./MemoryActions";
 
 const styles = stylex.create({
   root: { height: "100%", minHeight: 0 },
-  controls: { display: "flex", gap: space.s2, padding: space.s3, flexShrink: 0 },
   page: { flex: 1, minHeight: 0 },
 });
 type Props = {
@@ -41,18 +41,20 @@ export function MemoryPackageView(props: Props) {
   const available = useRuntimeCapability("agentMemory");
   return (
     <div {...stylex.props(vocab.column, styles.root)}>
-      <div {...stylex.props(styles.controls)}>
-        {(["project", "user"] as const).map((value) => (
-          <PillButton
-            key={value}
-            size="sm"
-            variant={scope === value ? "solid" : "outlined"}
-            onClick={() => setScope(value)}
-          >
-            {t(value === "project" ? "agentMemory.scope.project" : "agentMemory.scope.user")}
-          </PillButton>
-        ))}
-      </div>
+      <Panel label={props.title}>
+        <Toolbar label={props.title}>
+          {(["project", "user"] as const).map((value) => (
+            <PillButton
+              key={value}
+              size="sm"
+              variant={scope === value ? "solid" : "outlined"}
+              onClick={() => setScope(value)}
+            >
+              {t(value === "project" ? "agentMemory.scope.project" : "agentMemory.scope.user")}
+            </PillButton>
+          ))}
+        </Toolbar>
+      </Panel>
       {!available ? (
         <SystemMessage>{t("agentMemory.unavailable.title")}</SystemMessage>
       ) : !target ? (

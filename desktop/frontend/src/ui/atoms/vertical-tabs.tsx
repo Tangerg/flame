@@ -10,7 +10,7 @@ import {
   surface,
   type,
   weight,
-} from "@/styles/tokens.stylex";
+} from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { TabsPrimitive } from "@/ui/primitives";
 import { HoverHighlight, HoverTrack, useHoverTrackItem } from "./hover-track";

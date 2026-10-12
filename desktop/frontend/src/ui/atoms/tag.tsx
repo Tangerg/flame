@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   base: {

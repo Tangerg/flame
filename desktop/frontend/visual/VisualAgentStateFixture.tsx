@@ -8,7 +8,7 @@ import { AgentAppShell, AgentRow, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualAgentState } from "./agentSessionSnapshots";
 import * as stylex from "@stylexjs/stylex";
 import { fx } from "./fixtureStyles";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 
 const STATE_LABELS: Record<VisualAgentState, string> = {
   empty: "Empty",

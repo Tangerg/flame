@@ -1,13 +1,15 @@
+import { iconGlyph } from "@/ui/icons";
 import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { AgentRow, AgentRowEditor } from "@/ui/agent";
-import { ConfirmDialog, ContextMenu, DropdownMenu, Icon, IconButton, TextField, vocab } from "@/ui";
+import { ConfirmDialog, ContextMenu, DropdownMenu, Icon } from "@/ui";
+import { IconButton, TextField, vocab } from "@flame/ui";
 import type { IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import type { WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
-import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const sr = stylex.create({
   host: { position: "relative", userSelect: "none" },
@@ -161,7 +163,7 @@ export function SessionRow({
         <DropdownMenu.Trigger
           render={
             <IconButton
-              icon="more"
+              icon={iconGlyph("more")}
               size="sm"
               data-chrome-focus=""
               aria-label={t("session.row.more", { title })}

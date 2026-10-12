@@ -1,6 +1,7 @@
+import { iconGlyph } from "@/ui/icons";
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/classNames";
-import { IconButton } from "@/ui";
+import { IconButton } from "@flame/ui";
 
 type AgentHeaderCorner = "window" | "drawer";
 
@@ -46,8 +47,8 @@ export function AgentDockToggle({
   return (
     <div className="agent-dock-control">
       <IconButton
-        icon="panel-r"
-        hoverIcon={open ? "x" : undefined}
+        icon={iconGlyph("panel-r")}
+        hoverIcon={iconGlyph(open ? "x" : undefined)}
         size="sm"
         aria-expanded={open}
         title={open ? hideLabel : showLabel}
@@ -70,7 +71,7 @@ export function AgentDrawerToggle({
 }) {
   return (
     <IconButton
-      icon="panel-l"
+      icon={iconGlyph("panel-l")}
       size="sm"
       aria-expanded={!collapsed}
       aria-label={collapsed ? expandLabel : collapseLabel}

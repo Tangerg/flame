@@ -88,7 +88,7 @@ only an already captured complete read, with its workspace, path and bounds. Ref
 reauthorizes the renderer resource and returns that snapshot. The page cannot select
 a new file. Ambiguity, truncation, failure and withdrawal preserve source presentation;
 line navigation begins in source mode. Rebuild Runtime and clients together, then
-install and approve File renderers 1.0.0 explicitly. Existing data needs no conversion.
+install and approve the current File renderers package explicitly. Existing data needs no conversion.
 
 ## Protocol 2026-10-11.2
 
@@ -106,7 +106,7 @@ The inspector remains available with a renderer and appears automatically during
 or failure. Revocation, replacement and connection withdrawal retire the page while
 preserving recorded results and the host's trusted actions.
 
-Rebuild Runtime and clients together. Install and approve Tool results 1.0.0 to enable
+Rebuild Runtime and clients together. Install and approve the current Tool results package to enable
 rich previews. There is no compiled preview adapter or automatic package installation.
 Existing durable results and admitted releases need no data conversion.
 
@@ -151,7 +151,7 @@ File-edit and header navigation consult admitted Diff contributions, opening the
 when none or several are available. Withdrawal removes the page without changing files,
 Git state, recorded Tool results or restore authority. There is no built-in Diff fallback.
 
-Rebuild Runtime and clients together and install/approve Diff 1.0.0 to expose its page.
+Rebuild Runtime and clients together and install/approve the current Diff package to expose its page.
 Runtime data needs no migration. Desktop dock preference version 1 resets the former
 layout/folding shape; it has no legacy reader or preference migration.
 
@@ -173,7 +173,7 @@ remains installation configuration. Proposal approval and rejection use trusted 
 that capture the reviewed instructions and revision. A concurrently replaced proposal
 fails its existing revision check and requires a new review.
 
-Rebuild Runtime and clients together and install/approve Skills 1.0.0 to expose its page.
+Rebuild Runtime and clients together and install/approve the current Skills package to expose its page.
 The compiled Skills view and its document cache have been removed without fallback.
 Removing the package withdraws presentation and controls while preserving managed Skills,
 pending proposals, published documents, discovery and mining. No persisted-data migration
@@ -200,11 +200,12 @@ change recorded totals. Usage pages accept refresh only, with no cursor, arbitra
 mutation authority. Withdrawal and uninstall remove presentation without changing accounting.
 The existing transport and carrier byte limits refuse oversized reports explicitly.
 
-The HTML bridge uses `flame.view.ready.v2` / `flame.view.connect.v2` and replies with
+The HTML bridge uses `flame.view.ready.v3` / `flame.view.connect.v3` and replies with
 `{type: "data", data: <canonical result>}`. It carries both bounded pages and complete
-reports directly. Rebuild all clients and install/approve trajectory, memory and schedules
-2.0.0 package bytes with the new handshake. Older handshakes and page replies have no aliases.
-Install and approve Usage 1.0.0 to expose its view in the Context Dock; the former settings
+reports directly. Rebuild all clients and first-party package resources, then reinstall
+and approve their new digests. The host grants a read-only theme projection at connection
+and publishes updates over the same port. Older handshakes and page replies have no aliases.
+Install and approve the current Usage package to expose its view in the Context Dock; the former settings
 pane has no fallback. This change requires no accounting or installation data migration.
 
 ## Protocol 2026-10-10.4
