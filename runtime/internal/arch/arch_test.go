@@ -1119,7 +1119,8 @@ func TestDeliveryHandlerMatchesRegisteredOperationCapabilities(t *testing.T) {
 	registrationCount := 0
 	factories := map[string]struct{}{
 		"query": {}, "command": {}, "commandAck": {},
-		"subscription": {}, "runSubscription": {}, "runStreamCommand": {},
+		"subscription": {}, "runSubscription": {},
+		"runStreamCommand": {}, "runStreamOwnerCommand": {},
 	}
 	walkErr := filepath.WalkDir(deliveryDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {

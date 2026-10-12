@@ -219,6 +219,21 @@ func (r *Registry) runStreamCommand[Capability, Params, Ack, Event any](
 	r.registerStream(meta, call)
 }
 
+// runStreamOwnerCommand registers a Run-opening command whose durable acceptance
+// the application commits in the opening transaction. Delivery keeps no competing
+// replay record; a same-key retry re-enters the handler, which returns the
+// original opening and re-attaches its live stream from the run identity.
+func (r *Registry) runStreamOwnerCommand[Capability, Params, Ack, Event any](
+	meta MethodMeta,
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
+) {
+	meta.Kind = KindStream
+	meta.Operation = OperationCommand
+	meta.Idempotency = IdempotencyOwnerRunStream
+	meta.ReplayCursor = ReplayCursorRun
+	r.registerStream(meta, call)
+}
+
 func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),

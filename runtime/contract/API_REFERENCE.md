@@ -25,7 +25,7 @@ Protocol `2026-10-12.1` · 110 methods
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | replayRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | replayRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |

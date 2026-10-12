@@ -373,6 +373,7 @@ func newTestHandler(rt testRuntime) *Handler {
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
 		AutomationStarts:                   noDeliveryAutomationStarts{},
+		CommandAcceptances:                 noDeliveryCommandAcceptances{},
 		Observations:                       rt,
 		Releases:                           rt,
 		RootCancellation:                   inertRunControl{},
@@ -1317,9 +1318,10 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		ExecutionTrees:      stores,
 		ChildRunStarts:      stores,
 		AutomationStarts:    inertSegmentAutomation{}, AutomationAuthority: inertSegmentAutomation{},
-		GoalRuns:    inertSegmentGoalRuns{},
-		ToolResults: inertSegmentToolResults{},
-		Tx:          s.RunInTx,
+		CommandAcceptances: inertSegmentCommandAcceptances{},
+		GoalRuns:           inertSegmentGoalRuns{},
+		ToolResults:        inertSegmentToolResults{},
+		Tx:                 s.RunInTx,
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults
@@ -1518,6 +1520,10 @@ type inertSegmentAutomation struct{}
 func (inertSegmentAutomation) Save(context.Context, runs.AutomationReceipt) error { return nil }
 func (inertSegmentAutomation) Admit(context.Context, runs.AutomationStart) error  { return nil }
 
+type inertSegmentCommandAcceptances struct{}
+
+func (inertSegmentCommandAcceptances) Save(context.Context, runs.CommandAcceptance) error { return nil }
+
 type inertSegmentGoalRuns struct{}
 
 func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
@@ -1556,6 +1562,12 @@ type noDeliveryAutomationStarts struct{}
 
 func (noDeliveryAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
 	return runs.AutomationReceipt{}, false, nil
+}
+
+type noDeliveryCommandAcceptances struct{}
+
+func (noDeliveryCommandAcceptances) Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error) {
+	return runs.CommandAcceptanceRecord{}, nil
 }
 
 func (inertRuntimeStores) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {

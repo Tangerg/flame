@@ -183,16 +183,12 @@ func decodeStoredJSON(encoded []byte, target any) error {
 	return json.Unmarshal(encoded, target, json.RejectUnknownMembers(true))
 }
 
+// runOpeningIdentity reads the run a cached opening ack re-attaches to. Only
+// runs.resume reaches the generic replay store now: runs.start owns its acceptance
+// and re-attaches from the handler, never the stored ack.
 func runOpeningIdentity(value any) (runID, segmentID string, ok bool) {
-	switch opening := value.(type) {
-	case *protocol.StartRunResponse:
-		if opening != nil {
-			return opening.RunID, opening.SegmentID, true
-		}
-	case *protocol.ResumeRunResponse:
-		if opening != nil {
-			return opening.RunID, opening.SegmentID, true
-		}
+	if opening, isResume := value.(*protocol.ResumeRunResponse); isResume && opening != nil {
+		return opening.RunID, opening.SegmentID, true
 	}
 	return "", "", false
 }

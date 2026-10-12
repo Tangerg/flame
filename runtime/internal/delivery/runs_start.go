@@ -47,14 +47,50 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		Options:        options,
 		Capabilities:   capabilities,
 		Input:          input,
+		Acceptance:     startAcceptance(ctx),
 	})
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
+	}
+	if result.Reopened {
+		return s.reattachAcceptedStart(ctx, result)
 	}
 	// Return the opening userMessage Item id so the client reconciles its
 	// optimistic bubble by exact id (same id the stream + items.list carry).
 	return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, mapRunEvents(result.Events), nil
 }
+
+// startAcceptance lifts the Endpoint-bound command identity into the application's
+// acceptance reference. It is absent for an unkeyed start and for a direct handler
+// call that never passed through the Endpoint; both open a run without a durable
+// acceptance record.
+func startAcceptance(ctx context.Context) *runs.CommandIdentity {
+	identity, ok := commandIdentityFrom(ctx)
+	if !ok {
+		return nil
+	}
+	return &runs.CommandIdentity{Key: identity.key, Fingerprint: identity.fingerprint}
+}
+
+// reattachAcceptedStart answers a retried start that found its original opening.
+// The acceptance owns the run identity; the live stream is re-attached by the same
+// path a reconnect uses, honoring any replay cursor the retry carried. A run that
+// is no longer attachable yields the identity with an empty stream so the client
+// re-reads durable state instead of failing the retry.
+func (s *Handler) reattachAcceptedStart(ctx context.Context, accepted runs.StartResult) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	response := &protocol.StartRunResponse{RunID: accepted.RunID, SegmentID: accepted.SegmentID, UserItemID: accepted.UserItemID}
+	_, events, err := s.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: accepted.RunID, SegmentID: accepted.SegmentID})
+	switch {
+	case unattachable(err):
+		return response, emptyRunEventStream, nil
+	case err != nil:
+		return nil, nil, err
+	default:
+		return response, events, nil
+	}
+}
+
+var emptyRunEventStream iter.Seq2[protocol.RunEvent, error] = func(func(protocol.RunEvent, error) bool) {}
 
 func decodeRunInput(blocks []protocol.ContentBlock) ([]transcript.ContentBlock, error) {
 	input := make([]transcript.ContentBlock, len(blocks))
@@ -86,6 +122,10 @@ func wireRunStartErr(err error) error {
 		}}
 	}
 	switch {
+	case errors.Is(err, runs.ErrCommandKeyConflict):
+		// A retried start whose key no longer pins the same request is the same
+		// refusal the generic replay store gives every other keyed command.
+		return NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key is already bound to another operation")
 	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
 		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):

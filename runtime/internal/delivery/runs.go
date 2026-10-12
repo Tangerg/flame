@@ -25,10 +25,12 @@ func registerRuns(registry *Registry) {
 		return service.ListModelInvocations(ctx, request)
 	})
 
-	// runs.start and runs.resume open a run. A same-key retry must land back on
-	// THAT run — replaying the cached ack alone would give the client a runId with
-	// no stream behind it.
-	registry.runStreamCommand(MethodMeta{
+	// runs.start opens a run and owns its acceptance: the opening transaction
+	// records the key→run binding, so a same-key retry lands back on THAT run even
+	// across a crash. runs.resume still replays its cached ack. Both re-attach the
+	// retry to the opened stream — a cached ack alone would give the client a runId
+	// with no stream behind it.
+	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsStart,
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),

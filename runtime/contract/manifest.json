@@ -230,7 +230,7 @@
       "name": "runs.start",
       "kind": "stream",
       "operation": "command",
-      "idempotency": "replayRunStream",
+      "idempotency": "ownerRunStream",
       "replayCursor": "run",
       "pagination": "none",
       "errors": [

@@ -103,18 +103,35 @@ const (
 	// that opens a run needs this: replaying the cached ack alone would hand the
 	// client a runId with no stream behind it.
 	IdempotencyReplayRunStream IdempotencyPolicy = "replayRunStream"
+
+	// IdempotencyOwnerRunStream is IdempotencyReplayRunStream's owner-committed
+	// peer: the application records this run-opening command's acceptance in the
+	// same transaction as the opening, so Runtime keeps no competing outcome. A
+	// same-key retry re-enters the handler, which returns the original opening and
+	// re-attaches its live stream. Delivery binds the command identity and routes
+	// straight to the handler; it never claims the generic replay store.
+	IdempotencyOwnerRunStream IdempotencyPolicy = "ownerRunStream"
 )
 
 // Valid reports whether i is one supported retry contract.
 func (i IdempotencyPolicy) Valid() bool {
-	return i == IdempotencyNone || i == IdempotencyReplayResponse || i == IdempotencyReplayRunStream || i == IdempotencyOwnerResponse
+	return i == IdempotencyNone || i == IdempotencyReplayResponse || i == IdempotencyReplayRunStream ||
+		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRunStream
 }
 
 // Replays reports whether this policy has durable replay semantics. Unknown
 // values never acquire replay semantics by accident; registry validation rejects
 // them before invocation starts.
 func (i IdempotencyPolicy) Replays() bool {
-	return i == IdempotencyReplayResponse || i == IdempotencyReplayRunStream || i == IdempotencyOwnerResponse
+	return i == IdempotencyReplayResponse || i == IdempotencyReplayRunStream ||
+		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRunStream
+}
+
+// OwnsOutcome reports whether the backend commits this command's mutation and its
+// settlement together, so delivery keeps no competing replay record and routes a
+// keyed retry straight back to the handler.
+func (i IdempotencyPolicy) OwnsOutcome() bool {
+	return i == IdempotencyOwnerResponse || i == IdempotencyOwnerRunStream
 }
 
 // ReplayCursorPolicy says whether a streaming method accepts the opaque run
@@ -330,16 +347,18 @@ func (m MethodMeta) validateIdentity() error {
 		)
 	}
 	switch m.Idempotency {
-	case IdempotencyNone, IdempotencyReplayResponse, IdempotencyReplayRunStream, IdempotencyOwnerResponse:
+	case IdempotencyNone, IdempotencyReplayResponse, IdempotencyReplayRunStream,
+		IdempotencyOwnerResponse, IdempotencyOwnerRunStream:
 	default:
 		return fmt.Errorf(
-			"%s: invalid idempotency policy %s; expected %s, %s, %s or %s",
+			"%s: invalid idempotency policy %s; expected %s, %s, %s, %s or %s",
 			m.Name,
 			m.Idempotency,
 			IdempotencyNone,
 			IdempotencyReplayResponse,
 			IdempotencyReplayRunStream,
 			IdempotencyOwnerResponse,
+			IdempotencyOwnerRunStream,
 		)
 	}
 	switch m.ReplayCursor {
@@ -401,16 +420,16 @@ func (m MethodMeta) validateOperationPolicy() error {
 		if m.Kind == KindUnary && m.Idempotency != IdempotencyReplayResponse && m.Idempotency != IdempotencyOwnerResponse {
 			return fmt.Errorf("%s: a unary command must replay its first response", m.Name)
 		}
-		if m.Kind == KindStream && m.Idempotency != IdempotencyReplayRunStream {
-			return fmt.Errorf("%s: a streaming run command must replay by re-attaching to its run", m.Name)
+		if m.Kind == KindStream && m.Idempotency != IdempotencyReplayRunStream && m.Idempotency != IdempotencyOwnerRunStream {
+			return fmt.Errorf("%s: a streaming run command must own or replay its run opening", m.Name)
 		}
 	}
 	if m.ReplayCursor == ReplayCursorRun {
 		switch {
 		case m.Kind != KindStream:
 			return fmt.Errorf("%s: only a streaming method may accept a run replay cursor", m.Name)
-		case m.Operation == OperationCommand && m.Idempotency != IdempotencyReplayRunStream:
-			return fmt.Errorf("%s: a cursor-aware command must replay by re-attaching to its run", m.Name)
+		case m.Operation == OperationCommand && m.Idempotency != IdempotencyReplayRunStream && m.Idempotency != IdempotencyOwnerRunStream:
+			return fmt.Errorf("%s: a cursor-aware command must own or replay its run opening", m.Name)
 		case m.Operation != OperationCommand && m.Operation != OperationSubscription:
 			return fmt.Errorf("%s: only a run command or subscription may accept a run replay cursor", m.Name)
 		}

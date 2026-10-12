@@ -140,6 +140,17 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	ctx = operation.Bind(ctx, e.idempotencyNamespace.String(), options.IdempotencyKey)
 	ctx = WithRequestMeta(ctx, options.RequestMeta)
 	ctx = withAfterEventID(ctx, options.AfterEventID)
+	// A keyed owner-run-stream command carries its acceptance into the opening
+	// transaction, so the handler needs the request's command identity. The key is
+	// optional: an unkeyed start opens a run with no durable acceptance, exactly as
+	// before. Binding only the keyed case keeps that one path un-ambient.
+	if method.Meta.Idempotency == IdempotencyOwnerRunStream && options.IdempotencyKey != "" {
+		fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
+		if err != nil {
+			return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
+		}
+		ctx = withCommandIdentity(ctx, commandIdentity{key: options.IdempotencyKey, fingerprint: fingerprint})
+	}
 	// Capability admission belongs to this request, not to the operation's stored
 	// outcome: a replay must not serve a result the caller could not have asked
 	// for, and a request refused for a missing declaration must not occupy the
@@ -149,7 +160,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	}
 	execute := func() Result { return e.execute(ctx, method, parameters) }
 	var result Result
-	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() || method.Meta.Idempotency == IdempotencyOwnerResponse {
+	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() || method.Meta.Idempotency.OwnsOutcome() {
 		result = execute()
 	} else {
 		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute, e.target)
@@ -261,6 +272,27 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 }
 
 func failed(failure *Failure) Result { return Result{Failure: failure} }
+
+// commandIdentity is the request's idempotency key and fingerprint. It reaches an
+// owner-run-stream handler through the context because the handler owns the
+// durable acceptance, while the key and fingerprint are the delivery boundary's to
+// state. The fingerprint is the one authoritative request fingerprint shared with
+// the replay store, so acceptance and replay cannot disagree on request identity.
+type commandIdentity struct {
+	key         string
+	fingerprint string
+}
+
+type commandIdentityKey struct{}
+
+func withCommandIdentity(ctx context.Context, identity commandIdentity) context.Context {
+	return context.WithValue(ctx, commandIdentityKey{}, identity)
+}
+
+func commandIdentityFrom(ctx context.Context) (commandIdentity, bool) {
+	identity, ok := ctx.Value(commandIdentityKey{}).(commandIdentity)
+	return identity, ok
+}
 
 // Call restores the typed result declared by a unary catalog entry.
 func (e *Endpoint) Call[Params, Response any](

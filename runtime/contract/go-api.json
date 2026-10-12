@@ -1105,6 +1105,10 @@
           "signature": "func(productRoot string) (DataDirectory, error)"
         },
         {
+          "name": "FirstPartyDirectory",
+          "signature": "func(executable string) (string, error)"
+        },
+        {
           "name": "OpenToken",
           "signature": "func(path string) (*Token, error)"
         },

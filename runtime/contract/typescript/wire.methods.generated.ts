@@ -533,7 +533,7 @@ export const WIRE_METHOD_POLICY = {
   "runs.start": {
     operation: "command",
     response: "stream",
-    idempotency: "replayRunStream",
+    idempotency: "ownerRunStream",
     replayCursor: "run",
     pagination: "none",
   },

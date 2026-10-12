@@ -31,6 +31,9 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	if deps.AutomationStarts == nil {
 		deps.AutomationStarts = noAutomationStarts{}
 	}
+	if deps.CommandAcceptances == nil {
+		deps.CommandAcceptances = noCommandAcceptances{}
+	}
 	starter := any(deps.RootStarts)
 	fillRunDependency(t, &deps.RootCancellation, starter, "root cancellation requester")
 	fillRunDependency(t, &deps.Continuation, starter, "waiting execution continuer")
@@ -112,4 +115,10 @@ type noAutomationStarts struct{}
 
 func (noAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
 	return runs.AutomationReceipt{}, false, nil
+}
+
+type noCommandAcceptances struct{}
+
+func (noCommandAcceptances) Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error) {
+	return runs.CommandAcceptanceRecord{}, nil
 }
