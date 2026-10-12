@@ -5,7 +5,7 @@
 Stage 1 complete: installation-owned selection and desired enablement.
 Stage 2a complete: public backend wire binding and refusal/uncertainty semantics implemented, verified and committed.
 Stage 2b complete: existing Memory/Schedules human commands retain durable original binding and reconcile through owner receipt lookup.
-Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bindings and operation reference artifacts; Reviews consumes the same immutable contracts. Independent author and regeneration-drift checks passed; local commit/main synchronization is being recorded. The generic host operation entrance and full proposal remain open.
+Stage 2c complete: Go-owned feature methods generate Schema, TypeScript data bindings and operation reference artifacts; Reviews consumes the same immutable contracts. Committed and synchronized with local main; independent author and regeneration-drift checks passed. The generic host operation entrance and full proposal remain open.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
@@ -14,6 +14,8 @@ Stage 1 commit: 869d4304.
 Incoming local main: 61645c2561b174042aa157aef21cc00cfba67a86.
 Integration commit: f5e4bdbc140ad4d24b6b723ffdfd908cdff515a3.
 Stage 2a commit: c4706b6b.
+Stage 2c commit: da20c0848b3ccb3351587c30d3cb5d622e600230.
+Stage 2c main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2b commit: 1ea49486d7f3385e11fef7e395d43c901ca0b29d.
 Stage 2b main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2a main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
@@ -195,7 +197,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
-- Stage 2c: all invoked verification processes returned terminal success. TemporaryDirectory removed the task-owned independent SDK proxy/checkouts/module cache. Formal generated Reviews contracts/data bindings remain as product artifacts. Task-generated Runtime TypeScript test cache was removed; active checkout/development dependencies remain for the continuing refactor.
+- Stage 2c: all invoked verification processes returned terminal success. TemporaryDirectory removed the task-owned independent SDK proxy/checkouts/module cache. Formal generated Reviews contracts/data bindings remain as product artifacts. Task-generated Runtime TypeScript test cache was removed. The verified slice is committed and local main was already up to date; active checkout/development dependencies remain for the continuing refactor.
 
 - Stage 2b: all invoked verification processes returned terminal success after repairs. Test-owned temporary databases/packages and helper processes were closed/removed by their owning test cleanup. No task scratch script or verification log was saved. No UI build output, shared configuration, remote publication or user-data operation was introduced. The slice was committed, incoming local main was already up to date, and the active checkout and necessary dependencies remain for the full refactor.
 
