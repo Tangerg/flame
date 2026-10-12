@@ -22,13 +22,14 @@ const menuStyles = stylex.create({
     alignContent: "start",
     rowGap: "2px",
     minWidth: "12rem",
+    maxWidth: "min(var(--available-width), calc(100dvw - var(--spacing) * 8))",
     maxHeight: "min(380px, var(--available-height))",
     overflow: "hidden auto",
     overscrollBehavior: "contain",
     scrollPaddingBlock: space.s1,
     padding: space.s1,
   },
-  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  label: { minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere" },
 });
 
 const MENU_CONTENT = [FLOATING_OPTIONS, menuStyles.content];

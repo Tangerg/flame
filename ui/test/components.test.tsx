@@ -9,12 +9,33 @@ import {
   IconButton,
   SearchField,
   TextArea,
+  TextField,
   TooltipProvider,
 } from "../dist/index.js";
 import { vocab } from "../dist/vocabulary.js";
 
 afterEach(cleanup);
 describe("shared controls", () => {
+  it("projects the field's invalid state to its accessible state", () => {
+    const view = render(<TextField invalid aria-label="Endpoint" />);
+    expect(
+      screen
+        .getByRole("textbox", { name: "Endpoint" })
+        .getAttribute("aria-invalid"),
+    ).toBe("true");
+    view.rerender(<TextField invalid={false} aria-label="Endpoint" />);
+    expect(
+      screen
+        .getByRole("textbox", { name: "Endpoint" })
+        .getAttribute("aria-invalid"),
+    ).toBeNull();
+    view.rerender(<TextArea invalid aria-label="Instructions" />);
+    expect(
+      screen
+        .getByRole("textbox", { name: "Instructions" })
+        .getAttribute("aria-invalid"),
+    ).toBe("true");
+  });
   it("keeps pending buttons keyboard focusable and blocks submission", () => {
     const click = vi.fn();
     render(

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
-import { color, space, surface } from "@flame/ui/tokens.stylex";
+import { color, space, surface, weight } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "./settingStyles";
 
 const styles = stylex.create({
@@ -14,12 +14,22 @@ const styles = stylex.create({
     paddingInline: space.s4,
     paddingBlock: space.s3,
   },
-  split: { gridTemplateColumns: "minmax(0, 1fr) auto" },
+  split: {
+    gridTemplateColumns: {
+      default: "minmax(0, 1fr) auto",
+      "@container (max-width: 560px)": "minmax(0, 1fr)",
+    },
+    rowGap: space.s3,
+  },
   stacked: { gap: space.s3 },
   top: { alignItems: "flex-start" },
   centre: { alignItems: "center" },
-  name: { color: color.fg },
-  control: { justifySelf: "end" },
+  name: { color: color.fg, fontWeight: weight.medium },
+  control: {
+    minWidth: 0,
+    maxWidth: "100%",
+    justifySelf: { default: "end", "@container (max-width: 560px)": "stretch" },
+  },
 });
 
 export function SettingRow({
@@ -50,7 +60,7 @@ export function SettingRow({
         <div id={labelId} {...stylex.props(styles.name, typeStep.uiMd)}>
           {label}
         </div>
-        <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{sub}</div>
+        <div {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{sub}</div>
       </div>
       <div {...stylex.props(!stacked && styles.control)}>{children}</div>
     </div>

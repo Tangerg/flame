@@ -63,9 +63,23 @@ export function ReadStatus<T>({
 }: ViewProps<T> & { ready: string; loading: string }) {
   const state = useRead(view);
   return (
-    <div id="status" role={state.error ? "alert" : "status"}>
-      {state.error ?? (state.pending !== undefined ? loading : ready)}
-    </div>
+    <Toolbar label="Read status">
+      <Metadata>
+        <div id="status" role={state.error ? "alert" : "status"}>
+          {state.error ?? (state.pending !== undefined ? loading : ready)}
+        </div>
+      </Metadata>
+      {state.error && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={state.pending !== undefined}
+          onClick={() => view.read(state.history)}
+        >
+          Try again
+        </Button>
+      )}
+    </Toolbar>
   );
 }
 export function Pagination<T>({

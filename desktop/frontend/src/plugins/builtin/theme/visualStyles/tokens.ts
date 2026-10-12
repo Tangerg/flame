@@ -85,7 +85,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "floating-tip-radius": "var(--shape-md)",
   "dock-tab-radius": "var(--shape-lg)",
 
-  "control-height-xs": "22px",
+  "control-height-xs": "24px",
   "control-height-sm": "26px",
   "control-height-md": "30px",
   "control-height-lg": "34px",

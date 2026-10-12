@@ -13,7 +13,8 @@ starts in source mode. Revocation or failure leaves the recorded source availabl
 
 Marked parses Markdown into tokens. The page builds a closed DOM with text nodes; authored
 HTML, MDX expressions, image embeds and URLs remain text. Code fences remain readable code.
-It shares no React instance or host imports. The generated resource is self-contained,
+Shared controls are rendered to static markup at build time from `@flame/ui`.
+It shares no React instance or host imports at runtime. The generated resource is self-contained,
 including its parser and license, and uses the qualified read-only carrier.
 
 After installing the graphical client's locked dependencies, rebuild or check the resource:
@@ -24,3 +25,7 @@ node plugins/file-renderers/build.mjs --check
 ```
 
 The source and build script own the resource. Do not edit generated `renderers/markdown.html`.
+
+Appearance comes from the Host's existing read-only projection. Shared styles,
+controls, font scale and focus rules have one owner in `@flame/ui`; Markdown
+content structure remains with this renderer. Theme changes never reread the file.

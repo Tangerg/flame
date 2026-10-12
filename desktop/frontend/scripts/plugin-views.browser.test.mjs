@@ -962,10 +962,13 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       { html: fileHTML, content: fileContent },
     );
     await page.waitForFunction(() => window.viewStatus?.type === "ready");
-    await frame.locator("article").getByRole("heading", { name: "Captured Markdown" }).waitFor();
-    assert.equal(await frame.locator("article strong").innerText(), "Strong text");
-    assert.equal(await frame.locator("article table tbody tr").count(), 1);
-    assert.equal(await frame.locator("article blockquote").innerText(), "Quoted observation");
+    await frame
+      .getByRole("main", { name: "Captured Markdown content" })
+      .getByRole("heading", { name: "Captured Markdown" })
+      .waitFor();
+    assert.equal(await frame.locator("#output strong").innerText(), "Strong text");
+    assert.equal(await frame.locator("#output table tbody tr").count(), 1);
+    assert.equal(await frame.locator("#output blockquote").innerText(), "Quoted observation");
     assert.equal(await frame.locator("img, a, object, iframe, [onclick], [onerror]").count(), 0);
     assert.equal(await frame.locator("html").evaluate(() => window.markdownEscape), undefined);
     const capturedFile = await frame.locator("#output").innerText();

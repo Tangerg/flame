@@ -570,3 +570,18 @@ ink cannot be:
 3. Run `npx tsc --noEmit && npx vitest run` after any token change.
 4. Visually verify in `wails3 dev` — type/spacing changes especially.
 5. Treat the accent as scarce: ask "is this live?" — if no, use grey.
+
+## Responsive document and shared renderers
+
+Native window geometry belongs to the Wails host. The HTML document does not
+enforce those physical minimum dimensions: browser resizing and text zoom can
+reflow content independently. At narrow widths, work navigation precedes the
+reading pane and Settings navigation precedes its content; each scroll region
+retains keyboard access. Setting rows and segmented choices reflow inside their
+actual container without changing saved appearance or navigation preferences.
+
+First-party Tool results and Markdown renderer controls are compiled from
+`@flame/ui`, including document styles and the Host's appearance projection.
+Recorded-content and Markdown grammar remain local renderer responsibilities.
+Hover icon changes use a short opacity crossfade; they do not blur or shrink
+on routine pointer movement. Reduced motion removes control and overlay movement.

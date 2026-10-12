@@ -18,6 +18,8 @@ const styles = stylex.create({
     gap: space.s3,
   },
   title: {
+    minWidth: 0,
+    flexGrow: 1,
     fontWeight: weight.semibold,
     overflowWrap: "anywhere",
     textWrap: "balance",
@@ -73,7 +75,7 @@ const styles = stylex.create({
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,144px),1fr))",
-    gap: space.s3,
+    gap: space.s4,
   },
   tile: {
     display: "grid",
@@ -161,11 +163,11 @@ export function EvidenceImage({ src, alt }: { src: string; alt: string }) {
 export function TileGrid({
   children,
   ...props
-}: ComponentPropsWithRef<"main">) {
+}: ComponentPropsWithRef<"section">) {
   return (
-    <main {...props} {...stylex.props(styles.grid)}>
+    <section {...props} {...stylex.props(styles.grid)}>
       {children}
-    </main>
+    </section>
   );
 }
 export function Tile({

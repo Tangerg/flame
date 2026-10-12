@@ -10,12 +10,12 @@ export const settingStyles = stylex.create({
   end: { display: "flex", justifyContent: "flex-end" },
 
   label: { color: color.fg, fontWeight: weight.medium },
-  hint: { color: color.fgMuted, lineHeight: leading.snug },
+  hint: { color: color.fgMuted, lineHeight: leading.body },
   hintSpaced: { marginTop: space.s1, color: color.fgMuted, lineHeight: leading.body },
 
   hoverRow: {
     borderRadius: radius.card,
-    backgroundColor: { default: null, ":hover": surface.hover },
+    backgroundColor: { default: null, ":hover": { "@media (hover: hover)": surface.hover } },
     paddingInline: space.s3,
     paddingBlock: space.s2_5,
     transitionProperty: "background-color",
@@ -54,7 +54,10 @@ export const settingStyles = stylex.create({
     justifyContent: "space-between",
     gap: space.s3,
     borderRadius: radius.card,
-    backgroundColor: { default: surface.sunken, ":hover": surface.sunkenHover },
+    backgroundColor: {
+      default: surface.sunken,
+      ":hover": { "@media (hover: hover)": surface.sunkenHover },
+    },
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
     transitionProperty: "background-color",

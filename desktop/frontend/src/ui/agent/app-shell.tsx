@@ -23,7 +23,7 @@ const styles = stylex.create({
   content: {
     position: "relative",
     display: "flex",
-    height: "100vh",
+    height: "100dvh",
     minHeight: 0,
     minWidth: 0,
     flex: 1,

@@ -47,7 +47,7 @@ const styles = stylex.create({
     borderRadius: radius.field,
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: { default: surface.field, ":focus": surface.fieldFocus },
+    borderColor: { default: surface.controlEdge, ":focus": surface.fieldFocus },
     backgroundColor: surface.canvas,
   },
   bare: { borderWidth: 0, backgroundColor: "transparent" },
@@ -67,9 +67,10 @@ const styles = stylex.create({
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: "var(--font-mono)" },
   faceSans: { fontFamily: "var(--font-sans)" },
-  inputSm: { height: "var(--control-height-sm)", paddingInline: space.s2 },
-  inputMd: { height: "var(--control-height-md)", paddingInline: space.s2_5 },
-  inputLg: { height: "var(--control-height-lg)", paddingInline: space.s3 },
+  input: { lineHeight: leading.tight },
+  inputSm: { minHeight: "var(--control-height-sm)", paddingInline: space.s2 },
+  inputMd: { minHeight: "var(--control-height-md)", paddingInline: space.s2_5 },
+  inputLg: { minHeight: "var(--control-height-lg)", paddingInline: space.s3 },
   area: { resize: "vertical", lineHeight: leading.body },
   areaProse: {
     lineHeight: "calc(1em + 6px)",
@@ -80,12 +81,15 @@ const styles = stylex.create({
   autosize: { fieldSizing: "content", resize: "none" },
   searchBox: {
     display: "flex",
+    width: "min(100%,20rem)",
+    minWidth: 0,
+    maxWidth: "100%",
     alignItems: "center",
     borderRadius: radius.field,
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: {
-      default: surface.field,
+      default: surface.controlEdge,
       ":focus-within": surface.fieldFocus,
     },
     backgroundColor: surface.canvas,
@@ -144,7 +148,10 @@ function edge(variant: FieldEdge, invalid: boolean) {
   ];
 }
 
-export type TextFieldProps = Omit<InputPrimitiveProps, "size" | "className"> &
+export type TextFieldProps = Omit<
+  InputPrimitiveProps,
+  "size" | "className" | "aria-invalid"
+> &
   SharedProps & { size?: FieldSize };
 
 export function TextField({
@@ -159,6 +166,7 @@ export function TextField({
 }: TextFieldProps) {
   const styled = stylex.props(
     styles.base,
+    styles.input,
     type.uiMd,
     FACE[font],
     INK[ink],
@@ -169,6 +177,10 @@ export function TextField({
   return (
     <InputPrimitive
       {...props}
+      aria-invalid={invalid || undefined}
+      data-chrome-focus={
+        variant === "boxed" || "data-chrome-focus" in props ? "" : undefined
+      }
       readOnly={pending || props.readOnly}
       aria-disabled={pending ? true : props["aria-disabled"]}
       data-slot="text-field"
@@ -181,7 +193,10 @@ export function TextField({
 
 type AreaSize = "sm" | "md" | "prose";
 
-export type TextAreaProps = Omit<TextAreaPrimitiveProps, "className"> &
+export type TextAreaProps = Omit<
+  TextAreaPrimitiveProps,
+  "className" | "aria-invalid"
+> &
   Omit<SharedProps, "variant"> & {
     variant?: FieldEdge | "well";
     size?: AreaSize;
@@ -216,6 +231,10 @@ export function TextArea({
   return (
     <TextAreaPrimitive
       {...props}
+      aria-invalid={invalid || undefined}
+      data-chrome-focus={
+        variant === "boxed" || "data-chrome-focus" in props ? "" : undefined
+      }
       readOnly={pending || props.readOnly}
       aria-disabled={pending ? true : props["aria-disabled"]}
       {...styled}
@@ -235,9 +254,10 @@ export type SearchFieldProps = Omit<
   "variant" | "invalid" | "size"
 > & {
   size?: FieldSize;
-  onClear?: () => void;
-  clearLabel?: string;
-};
+} & (
+    | { onClear: () => void; clearLabel: string }
+    | { onClear?: never; clearLabel?: never }
+  );
 
 export function SearchField({
   size = "md",
@@ -249,7 +269,7 @@ export function SearchField({
 }: SearchFieldProps) {
   const box = stylex.props(styles.searchBox, SEARCH_SIZE[size]);
   return (
-    <label {...box} className={cn(box.className, className)}>
+    <div {...box} className={cn(box.className, className)}>
       <Icon
         glyph={Search}
         size={SEARCH_GLYPH[size]}
@@ -261,6 +281,7 @@ export function SearchField({
         variant="bare"
         font={font}
         size={size}
+        data-chrome-focus=""
       />
       {onClear && props.value !== "" && (
         <Button
@@ -273,6 +294,6 @@ export function SearchField({
           <Icon glyph={X} size="xs" />
         </Button>
       )}
-    </label>
+    </div>
   );
 }

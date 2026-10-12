@@ -15,9 +15,11 @@ export const floatingRowStyles = stylex.create({
     borderWidth: 0,
     backgroundColor: {
       default: "transparent",
-      ":hover": surface.hover,
+      ":hover": { "@media (hover: hover)": surface.hover },
       ':is([aria-selected="true"])': surface.selected,
-      ':is([aria-selected="true"]):is(:hover, [data-highlighted])': surface.selectedHover,
+      ':is([aria-selected="true"]):is(:hover, [data-highlighted])': {
+        "@media (hover: hover)": surface.selectedHover,
+      },
       ":is([data-highlighted])": surface.hover,
     },
     paddingInline: space.s2,
@@ -41,7 +43,7 @@ export const floatingRowStyles = stylex.create({
   },
   pickWide: { "--menu-glyph": "calc(var(--spacing) * 6)" },
   sm: { minHeight: "var(--menu-row-height)", paddingBlock: "1px" },
-  md: { height: "calc(var(--spacing) * 8)" },
+  md: { minHeight: "calc(var(--spacing) * 8)", paddingBlock: space.s1 },
   lg: { minHeight: "calc(var(--spacing) * 9)", paddingBlock: space.s1_5 },
   destructive: {
     color: { default: color.negative, ":is([data-highlighted])": color.negative },

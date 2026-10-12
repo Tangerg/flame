@@ -10,7 +10,7 @@ import { TextArea } from "@flame/ui/text-field";
 import { DialogPrimitive } from "@/ui/primitives";
 
 const styles = stylex.create({
-  panel: { width: "min(560px, calc(100vw - 32px))", overflow: "hidden" },
+  panel: { width: "min(560px, calc(100dvw - 32px))" },
   leading: { marginRight: "auto" },
   form: { position: "relative", display: "flex", flexDirection: "column" },
   head: {

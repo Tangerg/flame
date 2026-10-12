@@ -105,6 +105,7 @@ export function Composer({
         />
         <TextArea
           variant="bare"
+          data-chrome-focus=""
           size="prose"
           ref={inputRef}
           aria-label={t("composer.input.label")}

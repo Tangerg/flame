@@ -21,7 +21,7 @@ const styles = stylex.create({
     justifyContent: "center",
     textAlign: "center",
     color: color.fgFaint,
-    userSelect: "none",
+    minWidth: 0,
   },
   rootCompact: {
     gap: space.s1_5,
@@ -45,9 +45,11 @@ const styles = stylex.create({
     fontWeight: weight.medium,
     letterSpacing: "normal",
     color: color.fg,
+    overflowWrap: "anywhere",
+    textWrap: "balance",
   },
   sub: {
-    maxWidth: "280px",
+    maxWidth: "min(100%,32ch)",
     lineHeight: leading.body,
     color: color.fgMuted,
     overflowWrap: "break-word",

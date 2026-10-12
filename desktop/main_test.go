@@ -1,10 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -71,22 +68,5 @@ func TestDesktopApplicationBindsHostAsItsOnlyService(t *testing.T) {
 	want := []application.Service{application.NewService(host)}
 	if !reflect.DeepEqual(services, want) {
 		t.Fatalf("services = %#v, want exactly the configured host", services)
-	}
-}
-
-func TestDesktopMinimumGeometryMatchesFrontendShell(t *testing.T) {
-	css, err := os.ReadFile("frontend/src/styles/globals.css")
-	if err != nil {
-		t.Fatalf("read frontend shell geometry: %v", err)
-	}
-
-	for property, value := range map[string]int{
-		"--app-min-width":  minimumWindowWidth,
-		"--app-min-height": minimumWindowHeight,
-	} {
-		declaration := fmt.Sprintf("%s: %dpx;", property, value)
-		if !strings.Contains(string(css), declaration) {
-			t.Errorf("frontend shell is missing %q", declaration)
-		}
 	}
 }

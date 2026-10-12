@@ -23,6 +23,8 @@ const styles = stylex.create({
   root: {
     display: "inline-flex",
     width: "fit-content",
+    maxWidth: "100%",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.s0_5,
     borderRadius: radius.segmented,
@@ -47,10 +49,13 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
     color: {
       default: color.fgMuted,
-      ":hover": color.fg,
+      ":hover": { "@media (hover: hover)": color.fg },
       ":is([data-active])": color.fg,
     },
-    "--segment-chip-edge": { default: surface.field, ":hover": surface.fieldStrong },
+    "--segment-chip-edge": {
+      default: surface.field,
+      ":hover": { "@media (hover: hover)": surface.fieldStrong },
+    },
   },
   chip: {
     position: "absolute",

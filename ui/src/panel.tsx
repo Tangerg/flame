@@ -8,8 +8,8 @@ const styles = stylex.create({
     backgroundColor: surface.canvas,
     fontFamily: "var(--font-sans)",
     lineHeight: leading.body,
-    paddingInline: space.s3,
-    paddingBlock: space.s3,
+    paddingInline: space.s4,
+    paddingBlock: space.s4,
     minWidth: 0,
   },
   toolbar: {
@@ -20,8 +20,17 @@ const styles = stylex.create({
     paddingBlock: space.s2,
     minWidth: 0,
   },
-  title: { margin: 0, fontWeight: weight.semibold, flexGrow: 1 },
+  title: {
+    margin: 0,
+    fontWeight: weight.semibold,
+    flexGrow: 1,
+    minWidth: 0,
+    overflowWrap: "anywhere",
+    textWrap: "balance",
+  },
   row: {
+    display: "grid",
+    gap: space.s1_5,
     paddingBlock: space.s3,
     minWidth: 0,
     overflowWrap: "anywhere",
@@ -56,8 +65,15 @@ export function Toolbar({
     </div>
   );
 }
-export function PanelTitle({ children }: { children: ReactNode }) {
-  return <h1 {...stylex.props(styles.title, type.uiMd)}>{children}</h1>;
+export function PanelTitle({
+  children,
+  ...props
+}: ComponentPropsWithRef<"h1">) {
+  return (
+    <h1 {...props} {...stylex.props(styles.title, type.displaySm)}>
+      {children}
+    </h1>
+  );
 }
 export function ListRow({
   children,

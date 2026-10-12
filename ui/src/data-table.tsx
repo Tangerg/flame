@@ -23,6 +23,9 @@ const styles = stylex.create({
     paddingBlock: space.s2,
     verticalAlign: "top",
     overflowWrap: "anywhere",
+    borderBottomWidth: "var(--hairline-width)",
+    borderBottomStyle: "solid",
+    borderBottomColor: surface.divider,
   },
   numeric: {
     textAlign: "end",

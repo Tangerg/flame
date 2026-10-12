@@ -157,9 +157,7 @@
   }
 }
 html:not([data-pointer])
-  :focus-visible:not([data-chrome-focus]):not(input):not(textarea):not(
-    [contenteditable]
-  ) {
+  :focus-visible:not([data-chrome-focus]):not([contenteditable]) {
   outline: 1.5px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
@@ -169,13 +167,8 @@ html[data-pointer] :focus-visible {
 html:not([data-pointer])
   :is([data-focus-inset]:focus-visible, [data-focus-inset] :focus-visible):not(
     [data-chrome-focus]
-  ):not(input):not(textarea):not([contenteditable]) {
+  ):not([contenteditable]) {
   outline-offset: -2px;
-}
-input:focus-visible,
-textarea:focus-visible {
-  outline: none;
-  box-shadow: none;
 }
 html:not([data-pointer]) [data-focus-proxy]:focus-within {
   outline: 1.5px solid var(--color-focus-ring);
@@ -186,34 +179,48 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   position: relative;
   display: inline-grid;
 }
-/* prettier-ignore */
 .t-icon-swap .t-icon {
   grid-area: 1 / 1;
-  transition:
-    opacity   var(--icon-swap-dur) var(--icon-swap-ease),
-    filter    var(--icon-swap-dur) var(--icon-swap-ease),
-    transform var(--icon-swap-dur) var(--icon-swap-ease);
-  will-change: opacity, filter, transform;
+  transition: opacity var(--dur-color) var(--ease-state);
 }
-/* prettier-ignore */
 .t-icon-swap .t-icon[data-glyph="rest"] {
-  opacity: 1; filter: blur(0); transform: scale(1);
+  opacity: 1;
 }
-/* prettier-ignore */
 .t-icon-swap .t-icon[data-glyph="hover"] {
-  opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale));
+  opacity: 0;
 }
-/* prettier-ignore */
-:is(button, [role="button"]):is(:hover, :focus-visible) .t-icon-swap .t-icon[data-glyph="rest"] {
-  opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale));
+:is(button, [role="button"]):not(:disabled):not(
+    [aria-disabled="true"]
+  ):focus-visible
+  .t-icon-swap
+  .t-icon[data-glyph="rest"] {
+  opacity: 0;
 }
-/* prettier-ignore */
-:is(button, [role="button"]):is(:hover, :focus-visible) .t-icon-swap .t-icon[data-glyph="hover"] {
-  opacity: 1; filter: blur(0); transform: scale(1);
+:is(button, [role="button"]):not(:disabled):not(
+    [aria-disabled="true"]
+  ):focus-visible
+  .t-icon-swap
+  .t-icon[data-glyph="hover"] {
+  opacity: 1;
 }
-/* prettier-ignore */
+@media (hover: hover) {
+  :is(button, [role="button"]):not(:disabled):not([aria-disabled="true"]):hover
+    .t-icon-swap
+    .t-icon[data-glyph="rest"] {
+    opacity: 0;
+  }
+  :is(button, [role="button"]):not(:disabled):not([aria-disabled="true"]):hover
+    .t-icon-swap
+    .t-icon[data-glyph="hover"] {
+    opacity: 1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .t-icon-swap .t-icon { transition: none !important; }
+  [data-starting-style],
+  [data-ending-style] {
+    scale: none !important;
+    translate: none !important;
+  }
 }
 [data-slot="button"] svg:not([data-glyph="full"]) {
   opacity: var(--glyph-step);
@@ -231,6 +238,17 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 html[data-flame-ui-theme-paint] * {
   transition: none !important;
 }
+@media (forced-colors: active) {
+  :is(
+    [role="dialog"],
+    [role="alertdialog"],
+    [role="menu"],
+    [role="listbox"],
+    [role="tooltip"]
+  ) {
+    border: var(--control-edge-width) solid CanvasText;
+  }
+}
 
 :root, .x17br98t{--x10nil9y:calc(var(--spacing) * 0.5);--x1osumsy:calc(var(--spacing) * 1);--xzfi4ko:calc(var(--spacing) * 1.5);--x1ulg6pn:calc(var(--spacing) * 2);--x1sda0om:calc(var(--spacing) * 2.5);--x1cm6geb:calc(var(--spacing) * 3);--x1xg4vaa:calc(var(--spacing) * 3.5);--xdzoat9:calc(var(--spacing) * 4);--xtlivm0:calc(var(--spacing) * 4.5);--xzqp6i3:calc(var(--spacing) * 5);--x5ee4zy:calc(var(--spacing) * 6);--x1eietr6:calc(var(--spacing) * 7);--x1kldyza:calc(var(--spacing) * 8);--x23dncy:calc(var(--spacing) * 9);--x1937251:calc(var(--spacing) * 10);--xypb5lp:calc(var(--spacing) * 11);--xommqeh:calc(var(--spacing) * 12);--xvn764i:calc(var(--spacing) * 14);--x11j7pdm:calc(var(--spacing) * 16);--xevefp1:calc(var(--spacing) * 24);}
 :root, .x18qnmde{--x1cq1kf1:var(--shape-2xs);--x1exfxwa:var(--shape-xs);--xz2fcsy:var(--surface-card-radius);--xcx11s5:var(--shape-bubble);--x1tl685s:var(--shape-sm);--x1993cwx:var(--shape-lg);--xy8l6oi:var(--field-radius);--x1x4hebg:var(--segmented-radius);--xol92qr:var(--segment-radius);--xamt2n2:var(--row-radius);--xl8tqwl:var(--button-radius);--xek8gs2:var(--floating-panel-radius);--x1pi8h2u:var(--floating-tip-radius);--xqsbuu3:var(--shape-composer);--xexaeb4:var(--shape-xl);}
@@ -245,7 +263,6 @@ html[data-flame-ui-theme-paint] * {
 .x1717udv:not(#\#){padding:0}
 .x1olij4l:not(#\#){padding:var(--xzqp6i3)}
 .x9r1u3d:not(#\#):not(#\#){border-color:transparent}
-.x19yovvj:not(#\#):not(#\#){border-color:var(--x10v3mn7)}
 .x1htm0cf:not(#\#):not(#\#){border-color:var(--x4n7gel)}
 .xswu82s:not(#\#):not(#\#){border-color:var(--xchjpsz)}
 .x2u8bby:not(#\#):not(#\#){border-radius:0}
@@ -305,6 +322,7 @@ html[data-flame-ui-theme-paint] * {
 .xgtqeih:not(#\#):not(#\#){padding-inline:var(--xdzoat9)}
 .xrvg129:not(#\#):not(#\#){padding-inline:var(--xzqp6i3)}
 .x1ku5rj1:not(#\#):not(#\#){place-items:center}
+.x1shnmph:not(#\#):not(#\#){scroll-padding-block:var(--xdzoat9)}
 .x1ux07qw:is([data-checked]):not(#\#):not(#\#){border-color:var(--x1dhxvf7)}
 .x1f4a84e:focus-within:not(#\#):not(#\#){border-color:var(--x3na58m)}
 .xevuhno:focus:not(#\#):not(#\#){border-color:var(--x3na58m)}
@@ -440,7 +458,6 @@ html[data-flame-ui-theme-paint] * {
 .xd72l3l:is([data-focused=true]):not(#\#):not(#\#):not(#\#){background-color:var(--x1ee9bvk)}
 .xei22l2:is([data-popup-open][aria-expanded="true"]):not(#\#):not(#\#):not(#\#){background-color:var(--x1ee9bvk)}
 .x140cy86:is(:disabled, [aria-disabled="true"]):not(#\#):not(#\#):not(#\#){background-color:var(--x1h6sbe9)}
-.x1n06qqt:is([data-popup-open][aria-expanded="true"]):hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1jybfbu)}
 .x1n9i5t8:is([data-highlighted]):not(#\#):not(#\#):not(#\#){background-color:var(--x1vbbvgk)}
 .x52yuh3:is([data-chrome-focus]):focus-visible:not(#\#):not(#\#):not(#\#){background-color:var(--x1vbbvgk)}
 .x7crw3x:is([data-popup-open][aria-expanded="true"]):not(#\#):not(#\#):not(#\#){color:var(--x1pykw7c)}
@@ -460,27 +477,31 @@ html[data-flame-ui-theme-paint] * {
 .x1mpkxh7:is([data-ending-style]):not(#\#):not(#\#):not(#\#){translate:0 calc(var(--spacing) * 1)}
 .xmx5w56:is([data-starting-style]):not(#\#):not(#\#):not(#\#){translate:0 calc(var(--spacing) * 1)}
 .x1duv5w0:dir(rtl):not(#\#):not(#\#):not(#\#){transform:rotate(180deg)}
-.x1n5bzlp:hover:not(#\#):not(#\#):not(#\#){background-color:transparent}
-.xx0fmrb:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1gr6l61)}
-.x1w4dc62:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1h6sbe9)}
-.xn096vf:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1jybfbu)}
-.x7jdesc:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1vbbvgk)}
-.xuaqdyw:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x28jxgc)}
-.x9r4gy2:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x2m0zm1)}
-.x1lgz2m9:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x3rsmcs)}
-.x1vyshsq:hover:not(#\#):not(#\#):not(#\#){background-color:var(--xdpk56n)}
-.x8orihw:hover:not(#\#):not(#\#):not(#\#){background-color:var(--xn7d1tm)}
-.x1dft0yy:hover:not(#\#):not(#\#):not(#\#){background-color:var(--xomxjry)}
-.x1brceqr:hover:not(#\#):not(#\#):not(#\#){color:var(--x1dhxvf7)}
-.x14ajts9:hover:not(#\#):not(#\#):not(#\#){color:var(--x1pykw7c)}
-.x1nki7mj:hover:not(#\#):not(#\#):not(#\#){color:var(--x1xxikra)}
-.xqzssu4:hover:not(#\#):not(#\#):not(#\#){color:var(--x4526dp)}
-.xlqmdu:hover:not(#\#):not(#\#):not(#\#){color:var(--x5ilnid)}
-.xro3ayy:hover:not(#\#):not(#\#):not(#\#){color:var(--xchjpsz)}
 .x1lw5gft:active:not(#\#):not(#\#):not(#\#){scale:var(--press-scale)}
 .x1lz9prm:active:not(#\#):not(#\#):not(#\#){translate:0 .5px}
+@media (hover: hover){.x4h7pc4.x4h7pc4:is([data-popup-open][aria-expanded="true"]):hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1jybfbu)}}
+@media (hover: hover){.x1h6wuyy.x1h6wuyy:hover:not(#\#):not(#\#):not(#\#){background-color:transparent}}
+@media (hover: hover){.x1qrlkpn.x1qrlkpn:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1gr6l61)}}
+@media (hover: hover){.xy0dkfd.xy0dkfd:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1h6sbe9)}}
+@media (hover: hover){.xy9lw7s.xy9lw7s:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1jybfbu)}}
+@media (hover: hover){.xs3nxlj.xs3nxlj:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x1vbbvgk)}}
+@media (hover: hover){.xzwwbbc.xzwwbbc:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x28jxgc)}}
+@media (hover: hover){.x27w7ov.x27w7ov:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x2m0zm1)}}
+@media (hover: hover){.x155j8qb.x155j8qb:hover:not(#\#):not(#\#):not(#\#){background-color:var(--x3rsmcs)}}
+@media (hover: hover){.x1aa1xz.x1aa1xz:hover:not(#\#):not(#\#):not(#\#){background-color:var(--xdpk56n)}}
+@media (hover: hover){.xam8shm.xam8shm:hover:not(#\#):not(#\#):not(#\#){background-color:var(--xn7d1tm)}}
+@media (hover: hover){.xlbsiao.xlbsiao:hover:not(#\#):not(#\#):not(#\#){background-color:var(--xomxjry)}}
+@media (hover: hover){.xzwsf49.xzwsf49:hover:not(#\#):not(#\#):not(#\#){color:var(--x1dhxvf7)}}
+@media (hover: hover){.xpu0mb8.xpu0mb8:hover:not(#\#):not(#\#):not(#\#){color:var(--x1pykw7c)}}
+@media (hover: hover){.xb7hasv.xb7hasv:hover:not(#\#):not(#\#):not(#\#){color:var(--x1xxikra)}}
+@media (hover: hover){.x8k0y8h.x8k0y8h:hover:not(#\#):not(#\#):not(#\#){color:var(--x4526dp)}}
+@media (hover: hover){.xe2kmj8.xe2kmj8:hover:not(#\#):not(#\#):not(#\#){color:var(--x5ilnid)}}
+@media (hover: hover){.x1fuzk3u.x1fuzk3u:hover:not(#\#):not(#\#):not(#\#){color:var(--xchjpsz)}}
+.xqln6xe:not(#\#):not(#\#):not(#\#):not(#\#){border-bottom-color:var(--xiv5tmk)}
 .xfrllxf:not(#\#):not(#\#):not(#\#):not(#\#){border-bottom-left-radius:0}
 .xjppbhk:not(#\#):not(#\#):not(#\#):not(#\#){border-bottom-right-radius:0}
+.x1q0q8m5:not(#\#):not(#\#):not(#\#):not(#\#){border-bottom-style:solid}
+.x8ovedo:not(#\#):not(#\#):not(#\#):not(#\#){border-bottom-width:var(--hairline-width)}
 .x1ia1hqs:not(#\#):not(#\#):not(#\#):not(#\#){border-top-left-radius:0}
 .x1a2w583:not(#\#):not(#\#):not(#\#):not(#\#){border-top-right-radius:0}
 .x1v9usgg:not(#\#):not(#\#):not(#\#):not(#\#){height:14px}
@@ -500,20 +521,28 @@ html[data-flame-ui-theme-paint] * {
 .xlklroi:not(#\#):not(#\#):not(#\#):not(#\#){margin-top:var(--xdzoat9)}
 .xifplhy:not(#\#):not(#\#):not(#\#):not(#\#){margin-top:var(--xzfi4ko)}
 .x1bsj13w:not(#\#):not(#\#):not(#\#):not(#\#){max-height:20rem}
+.xjgp2p3:not(#\#):not(#\#):not(#\#):not(#\#){max-height:calc(100dvh - var(--spacing) * 8)}
 .x1ji7a8m:not(#\#):not(#\#):not(#\#):not(#\#){max-height:min(28rem,60vh)}
 .x1374xjt:not(#\#):not(#\#):not(#\#):not(#\#){max-height:var(--available-height)}
 .x193iq5w:not(#\#):not(#\#):not(#\#):not(#\#){max-width:100%}
 .x1jkqq1h:not(#\#):not(#\#):not(#\#):not(#\#){max-width:280px}
 .x15g8yj6:not(#\#):not(#\#):not(#\#):not(#\#){max-width:75ch}
+.x79oepi:not(#\#):not(#\#):not(#\#):not(#\#){max-width:min(100%,32ch)}
+.xo70nqc:not(#\#):not(#\#):not(#\#):not(#\#){max-width:min(var(--available-width),calc(100dvw - var(--spacing) * 8))}
 .xjwf9q1:not(#\#):not(#\#):not(#\#):not(#\#){min-height:24px}
+.x1xk2grr:not(#\#):not(#\#):not(#\#):not(#\#){min-height:var(--control-height-lg)}
+.x10uwrn:not(#\#):not(#\#):not(#\#):not(#\#){min-height:var(--control-height-md)}
+.xo21sh7:not(#\#):not(#\#):not(#\#):not(#\#){min-height:var(--control-height-sm)}
 .xeuugli:not(#\#):not(#\#):not(#\#):not(#\#){min-width:0}
 .x1cxjkq6:not(#\#):not(#\#):not(#\#):not(#\#){min-width:12ch}
 .x1wu2mox:not(#\#):not(#\#):not(#\#):not(#\#){min-width:14px}
 .x80t9vs:not(#\#):not(#\#):not(#\#):not(#\#){min-width:var(--anchor-width)}
+.x1odjw0f:not(#\#):not(#\#):not(#\#):not(#\#){overflow-y:auto}
 .x1bkpikb:not(#\#):not(#\#):not(#\#):not(#\#){right:-2px}
 .x1qiirwl:not(#\#):not(#\#):not(#\#):not(#\#){top:-2px}
 .xycdtw6:not(#\#):not(#\#):not(#\#):not(#\#){top:calc(var(--spacing) * 24)}
 .xh8yej3:not(#\#):not(#\#):not(#\#):not(#\#){width:100%}
+.x1d7qok8:not(#\#):not(#\#):not(#\#):not(#\#){width:min(100%,20rem)}
 .xdvgu74:not(#\#):not(#\#):not(#\#):not(#\#){width:var(--control-height-lg)}
 .x16i16u1:not(#\#):not(#\#):not(#\#):not(#\#){width:var(--control-height-md)}
 .xczbtuz:not(#\#):not(#\#):not(#\#):not(#\#){width:var(--control-height-sm)}
@@ -537,7 +566,7 @@ html[data-flame-ui-theme-paint] * {
 .x1j6awrg:not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#)::after{position:absolute}
 .xy5mcqj:not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#)::before{z-index:-1}
 .x1wlytlt:not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#)::before{left:0}
-.x1vgi0k:not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#)::before{width:1px}</style></head><body><section aria-label="Flame icon gallery" class="x16juu0m x1luap7o xhtk421 x1ee00f7 xv0p3og xtpi9qm xeuugli x15j8rfa xkui6f"><div role="group" aria-label="Icon filters" class="x78zum5 x1a02dak x6s0dn4 xwf4dy6 xgsnlma xeuugli"><h1 class="x1ghz6dp x1x7f3ox x1iyjqo2 x15j8rfa xkui6f">Flame icon gallery</h1><input id="filter" type="search" aria-label="Filter icons" placeholder="Name or category" data-slot="text-field" data-variant="boxed" class="xh8yej3 xeuugli xz0pa4a x2gx8mu x1sbqhim x1qe0vm0 x126qsmr x11el6w4 x15j8rfa xkui6f xhtk421 x16juu0m x724mra x1279py3 x1y0btm7 x19yovvj xevuhno x1luap7o x16dqd6r xezmyx"/></div><div class="x1vgjrkm xeuugli xj0a0fe xr6xxg2 xkui6f">Original Flame drawings, shown with their canonical 24 px optical masters.</div><p id="status" role="status">Connecting…</p><main id="icons" aria-label="Canonical icon drawings" class="xrvj5dj xfxfkw1 x13f9ljs"><article data-search="brain brain brain development thinking reasoning" title="Brain" class="xrvj5dj x1mkdm3x xwf4dy6 xy8pn9 xv0p3og x14sfrta x1365ydt xj0a0fe x2b8uid xr6xxg2 xkui6f"><div class="xrvj5dj x1ku5rj1"><span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+.x1vgi0k:not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#):not(#\#)::before{width:1px}</style></head><body><section aria-label="Flame icon gallery" class="x16juu0m x1luap7o xhtk421 x1ee00f7 xgtqeih xy8pn9 xeuugli x15j8rfa xkui6f"><div role="group" aria-label="Icon filters" class="x78zum5 x1a02dak x6s0dn4 xwf4dy6 xgsnlma xeuugli"><h1 class="x1ghz6dp x1x7f3ox x1iyjqo2 xeuugli xj0a0fe x1w2vvpw xgveb3n xkui6f">Flame icon gallery</h1><input id="filter" type="search" aria-label="Filter icons" placeholder="Name or category" data-chrome-focus="" data-slot="text-field" data-variant="boxed" class="xh8yej3 xeuugli xz0pa4a x2gx8mu x1sbqhim x1qe0vm0 x126qsmr x11el6w4 x1xdzx37 x15j8rfa xkui6f xhtk421 x16juu0m x724mra x1279py3 x1y0btm7 x1htm0cf xevuhno x1luap7o x10uwrn xezmyx"/></div><div class="x1vgjrkm xeuugli xj0a0fe xr6xxg2 xkui6f">Original Flame drawings, shown with their canonical 24 px optical masters.</div><p id="status" role="status">Connecting…</p><section id="icons" aria-label="Canonical icon drawings" class="xrvj5dj xfxfkw1 xuuvoov"><article data-search="brain brain brain development thinking reasoning" title="Brain" class="xrvj5dj x1mkdm3x xwf4dy6 xy8pn9 xv0p3og x14sfrta x1365ydt xj0a0fe x2b8uid xr6xxg2 xkui6f"><div class="xrvj5dj x1ku5rj1"><span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
   <path d="M12 5.6 C12 3.85 10.7 2.5 9 2.5 C7.25 2.5 5.9 3.85 5.9 5.6 V6.1 H5.4 C3.65 6.1 2.3 7.45 2.3 9.1 C2.3 10.35 2.95 11.4 4 11.95 C2.95 12.5 2.3 13.55 2.3 14.8 C2.3 16.55 3.65 17.9 5.4 17.9 H5.9 V18.4 C5.9 20.15 7.25 21.5 9 21.5 C10.7 21.5 12 20.15 12 18.4 C12 20.15 13.3 21.5 15 21.5 C16.75 21.5 18.1 20.15 18.1 18.4 V17.9 H18.6 C20.35 17.9 21.7 16.55 21.7 14.8 C21.7 13.55 21.05 12.5 20 11.95 C21.05 11.4 21.7 10.35 21.7 9.1 C21.7 7.45 20.35 6.1 18.6 6.1 H18.1 V5.6 C18.1 3.85 16.75 2.5 15 2.5 C13.3 2.5 12 3.85 12 5.6 Z"/>
   <path d="M12 5.6 V18.4" stroke-width="1.35"/>
 </svg>
@@ -3247,7 +3276,7 @@ html[data-flame-ui-theme-paint] * {
   <path d="M8 11.5 H16 V18.75 H8 Z" stroke-width="1.25"/>
   <path d="M8.15 14 H15.85 M10.75 16.5 H13.25" stroke-width="1.25"/>
 </svg>
-</span></div><div>FileArchive</div><code>file-archive</code><div class="x1vgjrkm xeuugli xj0a0fe xr6xxg2 xkui6f">Files</div></article></main></section><script>
+</span></div><div>FileArchive</div><code>file-archive</code><div class="x1vgjrkm xeuugli xj0a0fe xr6xxg2 xkui6f">Files</div></article></section></section><script>
     const filter=document.getElementById('filter'),status=document.getElementById('status'),cards=[...document.querySelectorAll('article')];
     let connected=false;
     function render(){const query=filter.value.trim().toLocaleLowerCase();let count=0;for(const card of cards){card.hidden=!card.dataset.search.includes(query);if(!card.hidden)count++;}status.textContent=count+' of '+cards.length+' icons. Immutable package content.';}

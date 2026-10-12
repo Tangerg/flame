@@ -30,17 +30,26 @@ interface VerticalTabGroup {
 }
 
 const styles = stylex.create({
+  container: { width: "100%", height: "100%", minWidth: 0, containerType: "inline-size" },
   frame: {
     display: "grid",
     height: "100%",
     width: "100%",
-    gridTemplateColumns: "256px 1fr",
+    gridTemplateColumns: {
+      default: "256px minmax(0, 1fr)",
+      "@container (max-width: 640px)": "minmax(0, 1fr)",
+    },
+    gridTemplateRows: {
+      default: "minmax(0, 1fr)",
+      "@container (max-width: 640px)": "minmax(0, 40%) minmax(0, 1fr)",
+    },
     overflow: "hidden",
     backgroundColor: surface.canvas,
   },
   rail: {
     display: "flex",
     minHeight: 0,
+    minWidth: 0,
     flexDirection: "column",
     backgroundColor: surface.surface,
   },
@@ -51,6 +60,7 @@ const styles = stylex.create({
     flexDirection: "column",
     gap: "1px",
     overflowY: "auto",
+    overscrollBehavior: "contain",
     paddingInline: "var(--density-navigation-gutter)",
     paddingBottom: space.s6,
   },
@@ -71,7 +81,7 @@ const styles = stylex.create({
       ":is([data-active]):hover": surface.selected,
     },
     paddingInline: space.s2,
-    textAlign: "left",
+    textAlign: "start",
     fontFamily: "var(--font-sans)",
     fontWeight: weight.regular,
     lineHeight: leading.tight,
@@ -83,11 +93,18 @@ const styles = stylex.create({
   highlight: { borderRadius: radius.row },
   glyph: { flexShrink: 0 },
   label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  page: { minHeight: 0, minWidth: 0, overflowY: "auto", backgroundColor: surface.canvas },
+  page: {
+    minHeight: 0,
+    minWidth: 0,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    scrollPaddingBlock: space.s4,
+    backgroundColor: surface.canvas,
+  },
   measure: {
     marginInline: "auto",
     maxWidth: "720px",
-    paddingInline: space.s6,
+    paddingInline: { default: space.s6, "@container (max-width: 640px)": space.s4 },
     paddingBlock: space.s8,
   },
   heading: { paddingInline: space.s2, paddingBottom: space.s1, paddingTop: space.s4 },
@@ -133,37 +150,39 @@ export function VerticalTabs({
     : groups;
   const rail = stylex.props(styles.rail);
   return (
-    <TabsPrimitive.Root
-      orientation="vertical"
-      value={value ?? null}
-      onValueChange={(next) => onValueChange(next ? String(next) : undefined)}
-      {...stylex.props(styles.frame)}
-    >
-      <div data-split-side="end" {...rail} className={cn(rail.className, "pane-split")}>
-        {railHeader}
-        <TabsPrimitive.List {...stylex.props(styles.list)} aria-label={ariaLabel} activateOnFocus>
-          <HoverTrack>
-            {railGroups.length === 0 && railEmpty}
-            {railGroups.map((group) => (
-              <div key={group.id} {...stylex.props(styles.group)}>
-                <SectionLabel {...stylex.props(styles.heading)}>{group.label}</SectionLabel>
-                {group.items.map((item) => (
-                  <RailTab key={item.id} item={item} />
-                ))}
-              </div>
-            ))}
-          </HoverTrack>
-        </TabsPrimitive.List>
-      </div>
-      <div {...stylex.props(styles.page)}>
-        <div {...stylex.props(styles.measure)}>
-          {items.map((item) => (
-            <TabsPrimitive.Panel key={item.id} value={item.id}>
-              {item.content}
-            </TabsPrimitive.Panel>
-          ))}
+    <div {...stylex.props(styles.container)}>
+      <TabsPrimitive.Root
+        orientation="vertical"
+        value={value ?? null}
+        onValueChange={(next) => onValueChange(next ? String(next) : undefined)}
+        {...stylex.props(styles.frame)}
+      >
+        <div data-split-side="end" {...rail} className={cn(rail.className, "pane-split")}>
+          {railHeader}
+          <TabsPrimitive.List {...stylex.props(styles.list)} aria-label={ariaLabel} activateOnFocus>
+            <HoverTrack>
+              {railGroups.length === 0 && railEmpty}
+              {railGroups.map((group) => (
+                <div key={group.id} {...stylex.props(styles.group)}>
+                  <SectionLabel {...stylex.props(styles.heading)}>{group.label}</SectionLabel>
+                  {group.items.map((item) => (
+                    <RailTab key={item.id} item={item} />
+                  ))}
+                </div>
+              ))}
+            </HoverTrack>
+          </TabsPrimitive.List>
         </div>
-      </div>
-    </TabsPrimitive.Root>
+        <div {...stylex.props(styles.page)}>
+          <div {...stylex.props(styles.measure)}>
+            {items.map((item) => (
+              <TabsPrimitive.Panel key={item.id} value={item.id}>
+                {item.content}
+              </TabsPrimitive.Panel>
+            ))}
+          </div>
+        </div>
+      </TabsPrimitive.Root>
+    </div>
   );
 }

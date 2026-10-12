@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { renderDocument } from "../render-document.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(
@@ -34,7 +35,19 @@ assert.ok(Array.isArray(bundle));
 assert.equal(bundle.length, 1);
 const scripts = bundle[0].output.filter((entry) => entry.type === "chunk");
 assert.equal(scripts.length, 1);
-const template = await readFile(join(root, "src/markdown.html"), "utf8");
+const template = renderDocument(
+  await readFile(join(root, "src/markdown.html"), "utf8"),
+  {
+    TITLE: { id: "title", children: "Captured Markdown file" },
+    REFRESH: {
+      id: "refresh",
+      variant: "outline",
+      size: "sm",
+      disabled: true,
+      children: "Refresh captured file",
+    },
+  },
+);
 assert.equal(template.split("<!-- SCRIPT -->").length, 2);
 const html = template.replace(
   "<!-- SCRIPT -->",

@@ -13,14 +13,15 @@ import {
   useWorkspaceSettingsPaneTarget,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useSettingsPanes } from "@/plugins/sdk";
-import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { color, leading, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const sp = stylex.create({
   title: { color: color.fg, fontWeight: weight.semibold },
   blurb: {
     marginTop: space.s1_5,
     maxWidth: "60ch",
-    lineHeight: "1.5rem",
+    lineHeight: leading.body,
+    textWrap: "pretty",
     color: color.fgMuted,
   },
   body: { marginTop: space.s6, paddingBottom: space.s12 },
@@ -176,6 +177,7 @@ function SettingsRailHeader({
           value={query}
           onValueChange={onQueryChange}
           onClear={() => onQueryChange("")}
+          clearLabel={t("settings.search.clear")}
           onKeyDown={(event) => {
             if (event.key === "Escape" && query) {
               event.preventDefault();

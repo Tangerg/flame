@@ -68,6 +68,10 @@ const styles = stylex.create({
     position: "fixed",
     zIndex: "var(--layer-modal)",
     boxShadow: "var(--shadow-modal)",
+    maxHeight: "calc(100dvh - var(--spacing) * 8)",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    scrollPaddingBlock: space.s4,
   },
   modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
   modalTop: {
@@ -83,6 +87,7 @@ export const formDialog = stylex.create({
   actions: {
     marginTop: space.s4,
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "flex-end",
     gap: space.s2,

@@ -29,3 +29,10 @@ The package is private and is consumed through repository-local `file:` dependen
 ## Review preview
 
 The Desktop visual fixture renders the library with the real Flame appearance owner. Run `npm run visual:dev --prefix desktop/frontend` from the repository root and open `/visual/?fixture=atoms&theme=light` or the dark counterpart. The shared-panel specimen includes the Memory toolbar, status filter and record row. This preview uses an isolated in-memory transport and does not contact a user Runtime.
+
+Native HTML renderers may render shared controls to static markup at build time
+and embed the compiled stylesheet. The first-party Tool results and Markdown
+builders use this path without a second control or palette implementation.
+Field `invalid` owns both error styling and the accessible invalid state. Search
+clear actions require an explicit localized label. Compact controls retain a
+24px minimum target; hover effects run only on hover-capable pointers.

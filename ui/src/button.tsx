@@ -127,31 +127,44 @@ const styles = stylex.create({
   ghost: {
     backgroundColor: {
       default: "transparent",
-      ":hover": surface.hover,
+      ":hover": { "@media (hover: hover)": surface.hover },
       ":is([data-chrome-focus]):focus-visible": surface.hover,
       ':is([data-popup-open][aria-expanded="true"])': surface.selected,
-      ':is([data-popup-open][aria-expanded="true"]):hover':
-        surface.selectedHover,
+      ':is([data-popup-open][aria-expanded="true"]):hover': {
+        "@media (hover: hover)": surface.selectedHover,
+      },
     },
     color: {
       default: color.fgMuted,
-      ":hover": color.fg,
+      ":hover": { "@media (hover: hover)": color.fg },
       ':is([data-popup-open][aria-expanded="true"])': color.fg,
     },
   },
   soft: {
-    backgroundColor: { default: surface.surface2, ":hover": surface.surface3 },
-    color: { default: color.fgSoft, ":hover": color.fg },
+    backgroundColor: {
+      default: surface.surface2,
+      ":hover": { "@media (hover: hover)": surface.surface3 },
+    },
+    color: {
+      default: color.fgSoft,
+      ":hover": { "@media (hover: hover)": color.fg },
+    },
   },
   outline: {
-    borderColor: surface.field,
-    backgroundColor: { default: "transparent", ":hover": surface.hover },
-    color: { default: color.fgSoft, ":hover": color.fg },
+    borderColor: surface.controlEdge,
+    backgroundColor: {
+      default: "transparent",
+      ":hover": { "@media (hover: hover)": surface.hover },
+    },
+    color: {
+      default: color.fgSoft,
+      ":hover": { "@media (hover: hover)": color.fg },
+    },
   },
   primary: {
     backgroundColor: {
       default: surface.ctaFill,
-      ":hover": surface.ctaHover,
+      ":hover": { "@media (hover: hover)": surface.ctaHover },
       ':is(:disabled, [aria-disabled="true"])': surface.surface2,
     },
     color: {
@@ -162,37 +175,52 @@ const styles = stylex.create({
   },
   wash: { backgroundColor: "transparent" },
   washNegative: {
-    backgroundColor: { default: "transparent", ":hover": surface.negativeWash },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": { "@media (hover: hover)": surface.negativeWash },
+    },
     color: color.negative,
   },
   washWarning: {
-    backgroundColor: { default: "transparent", ":hover": surface.warningWash },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": { "@media (hover: hover)": surface.warningWash },
+    },
     color: color.warning,
   },
   tonal: { fontWeight: weight.semibold },
   tonalNegative: {
     backgroundColor: {
       default: surface.negativeWash,
-      ":hover": surface.negativeBadge,
+      ":hover": { "@media (hover: hover)": surface.negativeBadge },
     },
     color: color.negative,
   },
   tonalWarning: {
     backgroundColor: {
       default: surface.warningWash,
-      ":hover": surface.warningBadge,
+      ":hover": { "@media (hover: hover)": surface.warningBadge },
     },
     color: color.warning,
   },
   media: { backgroundColor: surface.mediaScrim, color: color.onMedia },
   mediaTray: {
-    backgroundColor: { default: "transparent", ":hover": surface.mediaScrim },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": { "@media (hover: hover)": surface.mediaScrim },
+    },
     color: color.onMedia,
   },
   raised: {
     borderWidth: 0,
-    backgroundColor: { default: surface.canvas, ":hover": surface.surface2 },
-    color: { default: color.fgSoft, ":hover": color.fg },
+    backgroundColor: {
+      default: surface.canvas,
+      ":hover": { "@media (hover: hover)": surface.surface2 },
+    },
+    color: {
+      default: color.fgSoft,
+      ":hover": { "@media (hover: hover)": color.fg },
+    },
     boxShadow: "var(--shadow-raised)",
   },
   bare: {
@@ -200,7 +228,10 @@ const styles = stylex.create({
     justifyContent: "flex-start",
     borderRadius: 0,
     borderWidth: 0,
-    backgroundColor: { default: "transparent", ":hover": "transparent" },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": { "@media (hover: hover)": "transparent" },
+    },
     paddingInline: 0,
     paddingBlock: 0,
     lineHeight: "inherit",
@@ -212,7 +243,10 @@ const styles = stylex.create({
     cursor: "pointer",
     whiteSpace: "normal",
     overflowWrap: "break-word",
-    color: { default: color.fg, ":hover": color.fgSoft },
+    color: {
+      default: color.fg,
+      ":hover": { "@media (hover: hover)": color.fgSoft },
+    },
     textDecorationLine: "underline",
     textDecorationColor: color.fgFaint,
     textDecorationStyle: "dotted",
@@ -226,19 +260,37 @@ const styles = stylex.create({
   chipMd: { paddingInline: inset(space.s2) },
 
   quiet: { color: color.fgFaint },
-  quietAccent: { color: { default: color.fgFaint, ":hover": color.accent } },
-  quietNegative: {
-    color: { default: color.fgFaint, ":hover": color.negative },
+  quietAccent: {
+    color: {
+      default: color.fgFaint,
+      ":hover": { "@media (hover: hover)": color.accent },
+    },
   },
-  quietSuccess: { color: { default: color.fgFaint, ":hover": color.success } },
-  quietWarning: { color: { default: color.fgFaint, ":hover": color.warning } },
+  quietNegative: {
+    color: {
+      default: color.fgFaint,
+      ":hover": { "@media (hover: hover)": color.negative },
+    },
+  },
+  quietSuccess: {
+    color: {
+      default: color.fgFaint,
+      ":hover": { "@media (hover: hover)": color.success },
+    },
+  },
+  quietWarning: {
+    color: {
+      default: color.fgFaint,
+      ":hover": { "@media (hover: hover)": color.warning },
+    },
+  },
 
   fill: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
 
   active: {
     backgroundColor: {
       default: surface.selected,
-      ":hover": surface.selectedHover,
+      ":hover": { "@media (hover: hover)": surface.selectedHover },
     },
     color: color.fg,
   },
