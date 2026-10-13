@@ -1,6 +1,10 @@
 package http
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+)
 
 func TestContractHasUniqueCompleteEndpoints(t *testing.T) {
 	t.Parallel()
@@ -28,6 +32,12 @@ func TestContractHasUniqueCompleteEndpoints(t *testing.T) {
 		}
 		if endpointRegistry.Endpoints[index].handler == nil {
 			t.Errorf("endpoint %q has no registered handler", endpoint.Name)
+		}
+		if endpoint.Projects != "" {
+			method, found := delivery.Contract().Lookup(endpoint.Projects)
+			if endpoint.Kind != EndpointKindResource || !found || method.Operation != delivery.OperationQuery {
+				t.Errorf("endpoint %q projects a non-query operation %q", endpoint.Name, endpoint.Projects)
+			}
 		}
 	}
 }

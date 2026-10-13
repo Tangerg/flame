@@ -22,6 +22,16 @@ export const fr: Record<string, string> = {
   "packages.providers.unknown":
     "Confirmation inconnue. Vérifiez la commande initiale {{id}} avant une autre sélection.",
   "packages.providers.reconcile": "Vérifier le résultat initial",
+  "packages.points.title": "Points d’extension",
+  "packages.points.inspect": "Inspecter les valeurs",
+  "packages.points.readOnly":
+    "Inspecter les contributions actuelles sans activer le code du plugin.",
+  "packages.points.target": "Référence de la cible",
+  "packages.points.attributes": "Attributs du contexte (JSON)",
+  "packages.points.order": "Ordre explicite des contributions (tableau JSON)",
+  "packages.points.lastInspected": "Dernière cible, ordre et valeurs inspectés",
+  "packages.points.failed": "Impossible d’inspecter ce point d’extension.",
+
   "packages.requirements.title": "Dépendances",
   "packages.requirements.inspect": "Inspecter les liaisons",
   "packages.requirements.future":

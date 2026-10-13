@@ -126,6 +126,9 @@ func (t *tsEmitter) httpEndpoints() {
 		t.line("    method: %s,", strconv.Quote(endpoint.Method))
 		t.line("    path: %s,", strconv.Quote(endpoint.Path))
 		t.line("    authentication: %s,", strconv.Quote(string(endpoint.Authentication)))
+		if endpoint.Projects != "" {
+			t.line("    projects: %s,", strconv.Quote(string(endpoint.Projects)))
+		}
 		statuses := make([]string, 0, len(endpoint.ResponseStatuses))
 		for _, status := range endpoint.ResponseStatuses {
 			statuses = append(statuses, strconv.Itoa(status))

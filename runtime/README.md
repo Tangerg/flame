@@ -157,6 +157,10 @@ object request shape is removed; clients and backend packages must be rebuilt.
 
 Plugin release projections include required `points` and `pointValues` arrays,
 and `plugins.resolvePoint` resolves the admitted consumer-owned value contract.
+Point contracts in both arrays and the query are canonical JSON strings, preserving
+numeric schema limits through Go, CLI and TypeScript serialization. The built-in
+manager inspects a reviewed target, attributes and explicit order without activation;
+results are labeled as the last inspected snapshot. No former object reader remains.
 Core clients must rebuild against the generated current shapes; backend callable
 contracts retain their independent `2026-10-13.4` identity.
 

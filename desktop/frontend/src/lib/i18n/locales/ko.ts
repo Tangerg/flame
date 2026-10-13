@@ -21,6 +21,15 @@ export const ko: Record<string, string> = {
   "packages.providers.unknown":
     "확인 결과를 알 수 없습니다. 다른 선택 전에 원래 명령 {{id}}의 결과를 확인하세요.",
   "packages.providers.reconcile": "원래 결과 확인",
+  "packages.points.title": "확장 지점",
+  "packages.points.inspect": "값 확인",
+  "packages.points.readOnly": "플러그인 코드를 실행하지 않고 현재 확장을 확인합니다.",
+  "packages.points.target": "대상 참조",
+  "packages.points.attributes": "컨텍스트 속성 (JSON)",
+  "packages.points.order": "명시적 확장 순서 (JSON 배열)",
+  "packages.points.lastInspected": "마지막으로 확인한 대상, 순서 및 값",
+  "packages.points.failed": "확장 지점을 확인할 수 없습니다.",
+
   "packages.requirements.title": "종속성",
   "packages.requirements.inspect": "연결 확인",
   "packages.requirements.future":

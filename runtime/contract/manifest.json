@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.10",
+  "protocolVersion": "2026-10-13.11",
   "features": [
     "reasoning",
     "multimodal",
@@ -1730,7 +1730,8 @@
       "responseStatuses": [
         200,
         410
-      ]
+      ],
+      "projects": "plugins.readResource"
     },
     {
       "name": "rpc",
@@ -9384,6 +9385,10 @@
       "type": "PluginPoint",
       "rules": [
         {
+          "field": "contract",
+          "constraint": "nonEmpty"
+        },
+        {
           "field": "id",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
         }
@@ -9393,8 +9398,21 @@
       "type": "PluginPointValue",
       "rules": [
         {
+          "field": "contract",
+          "constraint": "nonEmpty"
+        },
+        {
           "field": "id",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "ResolvePluginPointRequest",
+      "rules": [
+        {
+          "field": "contract",
+          "constraint": "nonEmpty"
         }
       ]
     },

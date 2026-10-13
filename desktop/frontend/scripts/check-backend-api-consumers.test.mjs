@@ -306,3 +306,111 @@ test("maps an imported SDK helper without crediting the returned binding's unuse
     ["runs.getAcceptance"],
   );
 });
+
+function consumedHTTP(sourceText) {
+  const dir = mkdtempSync(join(tmpdir(), "api-http-consumer-"));
+  try {
+    const fileName = join(dir, "probe.ts");
+    const wire = join(dir, "wire.generated.ts");
+    writeFileSync(join(dir, "package.json"), '{"type":"module"}\n');
+    writeFileSync(fileName, sourceText);
+    writeFileSync(
+      wire,
+      'export const HTTP_ENDPOINTS = { resources: { path: "/v2/resources/{lease}/*" } };',
+    );
+    const start = script.indexOf("function consumedHTTPEndpoints(call)");
+    const end = script.indexOf("\nfunction creditHTTPOperationConsumers", start);
+    const unwrapStart = script.indexOf("function unwrapExpression(expression)");
+    const unwrapEnd = script.indexOf("\nfunction wrapperPath", unwrapStart);
+    const declarationsStart = script.indexOf("function declarationsOf(symbol)");
+    const declarationsEnd = script.indexOf("\nfunction fail", declarationsStart);
+    assert.ok(start >= 0 && end > start);
+    writeFileSync(
+      join(dir, "probe.mjs"),
+      `
+import { resolve } from "node:path";
+import { API, SymbolFlags } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};
+import * as ts from ${JSON.stringify(import.meta.resolve("typescript/unstable/ast"))};
+const compiler = new API({ cwd: ${JSON.stringify(dir)} });
+try {
+  const snapshot = compiler.updateSnapshot({ openFiles: [${JSON.stringify(fileName)}] });
+  const project = snapshot.getDefaultProjectForFile(${JSON.stringify(fileName)});
+  const checker = project.checker;
+  const source = project.program.getSourceFile(${JSON.stringify(fileName)});
+  const WIRE_PATH = ${JSON.stringify(wire)};
+  ${script.slice(start, end)}
+  ${script.slice(unwrapStart, unwrapEnd)}
+  ${script.slice(declarationsStart, declarationsEnd)}
+  const found = new Set();
+  function visit(node) {
+    if (ts.isCallExpression(node)) for (const endpoint of consumedHTTPEndpoints(node)) found.add(endpoint);
+    node.forEachChild(visit);
+  }
+  visit(source);
+  console.log(JSON.stringify([...found]));
+} finally { compiler.close(); }
+`,
+    );
+    return JSON.parse(
+      execFileSync(process.execPath, [join(dir, "probe.mjs")], { encoding: "utf8" }),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("credits an imported resource URL only when consumed by module import", () => {
+  assert.deepEqual(
+    consumedHTTP(`
+    import { HTTP_ENDPOINTS as endpoints } from "./wire.generated";
+    const route = endpoints.resources.path.replace("{lease}", "token").replace("*", "index.js");
+    const url = "https://runtime" + route;
+    const loaded = import(url);
+  `),
+    ["resources"],
+  );
+  assert.deepEqual(
+    consumedHTTP(`
+    import { HTTP_ENDPOINTS } from "./wire.generated";
+    const unused = HTTP_ENDPOINTS.resources.path;
+    const loaded = import("https://unrelated/index.js");
+  `),
+    [],
+  );
+  assert.deepEqual(
+    consumedHTTP(`
+    const HTTP_ENDPOINTS = { resources: { path: "/invented" } };
+    const loaded = import(HTTP_ENDPOINTS.resources.path);
+  `),
+    [],
+  );
+});
+
+test("credits only declared query projections with actual HTTP consumption", () => {
+  const match = /function creditHTTPOperationConsumers\([^)]*\) \{[\s\S]*?\n\}/.exec(script);
+  assert.ok(match);
+  const credit = Function(`return (${match[0]})`)();
+  const consumers = new Map([
+    ["resource.read", new Set()],
+    ["resource.write", new Set()],
+  ]);
+  const errors = [];
+  const credited = credit(
+    [
+      { name: "resources", kind: "resource", projects: "resource.read" },
+      { name: "unused", kind: "resource", projects: "resource.read" },
+      { name: "invalid", kind: "resource", projects: "resource.write" },
+    ],
+    [
+      { name: "resource.read", operation: "query" },
+      { name: "resource.write", operation: "command" },
+    ],
+    new Map([["resources", new Set(["loader.ts:1"])]]),
+    consumers,
+    errors,
+  );
+  assert.deepEqual([...credited], ["resource.read"]);
+  assert.deepEqual([...consumers.get("resource.read")], ["loader.ts:1 (HTTP resources)"]);
+  assert.equal(consumers.get("resource.write").size, 0);
+  assert.deepEqual(errors, ["invalid projects an invalid Runtime query resource.write"]);
+});

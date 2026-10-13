@@ -19,6 +19,15 @@ export const zh: Record<string, string> = {
   "packages.providers.failed": "无法确认本次选择。",
   "packages.providers.unknown": "确认结果未知。做出其他选择前，请保留并核对原命令 {{id}}。",
   "packages.providers.reconcile": "核对原始结果",
+  "packages.points.title": "扩展点",
+  "packages.points.inspect": "查看贡献值",
+  "packages.points.readOnly": "读取当前贡献，不启动插件代码。",
+  "packages.points.target": "目标引用",
+  "packages.points.attributes": "上下文属性（JSON）",
+  "packages.points.order": "显式贡献顺序（JSON 数组）",
+  "packages.points.lastInspected": "上次检查的目标、顺序与贡献值",
+  "packages.points.failed": "无法检查此扩展点。",
+
   "packages.requirements.title": "依赖",
   "packages.requirements.inspect": "查看绑定",
   "packages.requirements.future":

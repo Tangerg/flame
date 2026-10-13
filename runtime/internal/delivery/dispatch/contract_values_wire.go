@@ -1075,8 +1075,12 @@ func registerPluginValues(s *Shapes) {
 		{Field: "scope", Kind: ConstraintPattern, Value: plugin.ComponentScopePattern},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
-	for _, shape := range []reflect.Type{typeOf[protocol.PluginPoint](), typeOf[protocol.PluginPointValue]()} {
-		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
+	for _, shape := range []reflect.Type{typeOf[protocol.PluginPoint](), typeOf[protocol.PluginPointValue](), typeOf[protocol.ResolvePluginPointRequest]()} {
+		constraints := []FieldConstraint{{Field: "contract", Kind: ConstraintNonEmpty}}
+		if shape != typeOf[protocol.ResolvePluginPointRequest]() {
+			constraints = append(constraints, FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginPointReference](), typeOf[protocol.PluginPointBinding]()} {
 		constraints := []FieldConstraint{

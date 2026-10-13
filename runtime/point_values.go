@@ -52,7 +52,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	if order == nil {
 		order = []protocol.PluginPointReference{}
 	}
-	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: contract.Definition(), Target: target, Attributes: contextJSON.JSON(), Order: order}, options)
+	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: string(contract.Identity().JSON()), Target: target, Attributes: contextJSON.JSON(), Order: order}, options)
 	if err != nil {
 		return nil, err
 	}

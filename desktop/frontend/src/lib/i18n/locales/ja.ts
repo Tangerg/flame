@@ -22,6 +22,15 @@ export const ja: Record<string, string> = {
   "packages.providers.unknown":
     "確認結果は不明です。別の選択を行う前に元のコマンド {{id}} を確認してください。",
   "packages.providers.reconcile": "元の結果を確認",
+  "packages.points.title": "拡張ポイント",
+  "packages.points.inspect": "値を確認",
+  "packages.points.readOnly": "プラグインコードを起動せずに現在の拡張を確認します。",
+  "packages.points.target": "対象の参照",
+  "packages.points.attributes": "コンテキスト属性（JSON）",
+  "packages.points.order": "明示的な拡張順序（JSON 配列）",
+  "packages.points.lastInspected": "前回確認した対象・順序・値",
+  "packages.points.failed": "拡張ポイントを確認できませんでした。",
+
   "packages.requirements.title": "依存関係",
   "packages.requirements.inspect": "バインドを確認",
   "packages.requirements.future":

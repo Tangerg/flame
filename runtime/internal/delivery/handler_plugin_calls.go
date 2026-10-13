@@ -25,7 +25,7 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 	if s.pluginCalls == nil {
 		return nil, NewFailure(protocol.ErrPluginUnavailable, "plugin points are unavailable")
 	}
-	contract, err := point.Admit(in.Contract)
+	contract, err := point.Parse([]byte(in.Contract))
 	if err != nil {
 		return nil, InvalidParameters(err)
 	}

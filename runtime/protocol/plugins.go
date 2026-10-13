@@ -4,7 +4,6 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/point"
 )
 
 // CallPluginRequest binds an installed contribution to the consumer's complete
@@ -403,14 +402,14 @@ type PluginOperationBinding struct {
 }
 
 type PluginPoint struct {
-	ID       string           `json:"id"`
-	Contract point.Definition `json:"contract"`
+	ID       string `json:"id"`
+	Contract string `json:"contract"`
 }
 
 type PluginPointValue struct {
-	ID       string           `json:"id"`
-	Contract point.Definition `json:"contract"`
-	Value    jsontext.Value   `json:"value"`
+	ID       string         `json:"id"`
+	Contract string         `json:"contract"`
+	Value    jsontext.Value `json:"value"`
 }
 
 type PluginPointReference struct {
@@ -419,7 +418,7 @@ type PluginPointReference struct {
 }
 
 type ResolvePluginPointRequest struct {
-	Contract   point.Definition       `json:"contract"`
+	Contract   string                 `json:"contract"`
 	Target     capability.Target      `json:"target"`
 	Attributes jsontext.Value         `json:"attributes"`
 	Order      []PluginPointReference `json:"order"`

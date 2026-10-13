@@ -2422,7 +2422,6 @@
       "imports": [
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/runtime/capability",
-        "github.com/Tangerg/flame/runtime/point",
         "time"
       ],
       "constants": [
@@ -3659,7 +3658,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.10\""
+          "value": "\"2026-10-13.11\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8975,7 +8974,7 @@
             },
             {
               "name": "Contract",
-              "type": "point.Definition",
+              "type": "string",
               "tag": "json:\"contract\""
             }
           ],
@@ -9051,7 +9050,7 @@
             },
             {
               "name": "Contract",
-              "type": "point.Definition",
+              "type": "string",
               "tag": "json:\"contract\""
             },
             {
@@ -10193,7 +10192,7 @@
           "fields": [
             {
               "name": "Contract",
-              "type": "point.Definition",
+              "type": "string",
               "tag": "json:\"contract\""
             },
             {
@@ -10210,6 +10209,12 @@
               "name": "Order",
               "type": "[]PluginPointReference",
               "tag": "json:\"order\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },

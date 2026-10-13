@@ -47,8 +47,8 @@ func writeMethodReference(b *strings.Builder, methods []methodEntry) {
 
 func writeHTTPReference(b *strings.Builder, endpoints []httpEndpointEntry) {
 	b.WriteString("\n## HTTP endpoints\n\n")
-	b.WriteString("| name | kind | method | path | authentication | response statuses | response |\n")
-	b.WriteString("| --- | --- | --- | --- | --- | --- | --- |\n")
+	b.WriteString("| name | kind | method | path | authentication | response statuses | response | projects |\n")
+	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, endpoint := range endpoints {
 		response := "—"
 		if endpoint.Response != nil {
@@ -58,9 +58,13 @@ func writeHTTPReference(b *strings.Builder, endpoints []httpEndpointEntry) {
 		for _, status := range endpoint.ResponseStatuses {
 			statuses = append(statuses, fmt.Sprint(status))
 		}
-		fmt.Fprintf(b, "| `%s` | %s | `%s` | `%s` | %s | %s | %s |\n",
+		projects := "—"
+		if endpoint.Projects != "" {
+			projects = code([]string{endpoint.Projects})
+		}
+		fmt.Fprintf(b, "| `%s` | %s | `%s` | `%s` | %s | %s | %s | %s |\n",
 			endpoint.Name, endpoint.Kind, endpoint.Method, endpoint.Path,
-			endpoint.Authentication, strings.Join(statuses, ", "), response)
+			endpoint.Authentication, strings.Join(statuses, ", "), response, projects)
 	}
 }
 

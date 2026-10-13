@@ -19,6 +19,15 @@ export const zhTW: Record<string, string> = {
   "packages.providers.failed": "無法確認本次選擇。",
   "packages.providers.unknown": "確認結果未知。進行其他選擇前，請保留並核對原命令 {{id}}。",
   "packages.providers.reconcile": "核對原始結果",
+  "packages.points.title": "擴充點",
+  "packages.points.inspect": "查看貢獻值",
+  "packages.points.readOnly": "讀取目前貢獻，不啟動外掛程式碼。",
+  "packages.points.target": "目標參照",
+  "packages.points.attributes": "上下文屬性（JSON）",
+  "packages.points.order": "明確貢獻順序（JSON 陣列）",
+  "packages.points.lastInspected": "上次檢查的目標、順序與貢獻值",
+  "packages.points.failed": "無法檢查此擴充點。",
+
   "packages.requirements.title": "相依項目",
   "packages.requirements.inspect": "查看綁定",
   "packages.requirements.future":

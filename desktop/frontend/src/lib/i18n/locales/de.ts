@@ -22,6 +22,15 @@ export const de: Record<string, string> = {
   "packages.providers.unknown":
     "Bestätigung unbekannt. Prüfen Sie den ursprünglichen Befehl {{id}} vor einer weiteren Auswahl.",
   "packages.providers.reconcile": "Ursprüngliches Ergebnis prüfen",
+  "packages.points.title": "Erweiterungspunkte",
+  "packages.points.inspect": "Werte prüfen",
+  "packages.points.readOnly": "Aktuelle Beiträge prüfen, ohne Plugin-Code zu aktivieren.",
+  "packages.points.target": "Zielreferenz",
+  "packages.points.attributes": "Kontextattribute (JSON)",
+  "packages.points.order": "Explizite Beitragsreihenfolge (JSON-Array)",
+  "packages.points.lastInspected": "Zuletzt geprüftes Ziel, Reihenfolge und Werte",
+  "packages.points.failed": "Der Erweiterungspunkt konnte nicht geprüft werden.",
+
   "packages.requirements.title": "Abhängigkeiten",
   "packages.requirements.inspect": "Bindungen prüfen",
   "packages.requirements.future":

@@ -19,6 +19,8 @@ import { settingStyles as ss } from "../../kit/settingStyles";
 import { packageOperations, usePackageRealization, usePackages } from "../application/packages";
 import { ProviderSelections } from "./ProviderSelections";
 import { ContributionRequirements } from "./ContributionRequirements";
+import { PointInspection } from "./PointInspection";
+import { pointMetadata } from "../adapters/pointContracts";
 import { PackageActions } from "./PackageActions";
 
 const styles = stylex.create({
@@ -135,6 +137,41 @@ function PackageRow({
       await refresh();
       return { ok: true };
     }, label);
+  const preview = JSON.stringify(
+    {
+      contributions: installation.selected.contributions.map((value) => ({
+        id: value.id,
+        server: value.server,
+        export: value.export,
+        contract: value.contract.reference,
+        composition: value.contract.composition,
+        requires: value.requires.map((required) => ({
+          id: required.id,
+          contract: required.contract.reference,
+          optional: required.optional,
+        })),
+      })),
+      components: installation.selected.components,
+      points: installation.selected.points.map((value) => ({
+        id: value.id,
+        ...pointMetadata(value.contract),
+      })),
+      pointValues: installation.selected.pointValues.map((value) => ({
+        id: value.id,
+        contract: pointMetadata(value.contract).reference,
+      })),
+      servers: installation.selected.servers,
+      inputs: installation.selected.inputs,
+      skills: installation.selected.skills,
+      views: installation.selected.views,
+      renderers: installation.selected.renderers,
+      inputStates: installation.inputStates,
+      disabledServers: installation.disabledServers,
+      disabledSkills: installation.disabledSkills,
+    },
+    null,
+    2,
+  );
   const save = () => {
     if (!edit) return;
     return run(t(EDIT_LABEL[edit.type]), async () => {
@@ -243,45 +280,8 @@ function PackageRow({
         </PillButton>
       </div>
       <ContributionRequirements installation={installation} operations={operations} />
-      <pre {...stylex.props(styles.preview)}>
-        {JSON.stringify(
-          {
-            contributions: installation.selected.contributions.map((value) => ({
-              id: value.id,
-              server: value.server,
-              export: value.export,
-              contract: value.contract.reference,
-              composition: value.contract.composition,
-              requires: value.requires.map((required) => ({
-                id: required.id,
-                contract: required.contract.reference,
-                optional: required.optional,
-              })),
-            })),
-            components: installation.selected.components,
-            points: installation.selected.points.map((value) => ({
-              id: value.id,
-              contract: value.contract.reference,
-              composition: value.contract.composition,
-              scope: value.contract.scope,
-            })),
-            pointValues: installation.selected.pointValues.map((value) => ({
-              id: value.id,
-              contract: value.contract.reference,
-            })),
-            servers: installation.selected.servers,
-            inputs: installation.selected.inputs,
-            skills: installation.selected.skills,
-            views: installation.selected.views,
-            renderers: installation.selected.renderers,
-            inputStates: installation.inputStates,
-            disabledServers: installation.disabledServers,
-            disabledSkills: installation.disabledSkills,
-          },
-          null,
-          2,
-        )}
-      </pre>
+      <PointInspection installation={installation} operations={operations} />
+      <pre {...stylex.props(styles.preview)}>{preview}</pre>
       {realizationMessages(t, installation.realization).map((message) => (
         <SystemMessage key={message} variant="warning">
           {message}

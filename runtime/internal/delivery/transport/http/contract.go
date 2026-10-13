@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -74,6 +76,7 @@ type EndpointSpec struct {
 	Authentication   EndpointAuthentication
 	ResponseStatuses []int
 	ResponseType     reflect.Type
+	Projects         delivery.Name
 }
 
 type endpointRegistration struct {
@@ -101,7 +104,7 @@ var endpointRegistry = struct {
 }{
 	Endpoints: []endpointRegistration{
 		{
-			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Kind: EndpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
+			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: EndpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
 			handler:      func(server *Server, w http.ResponseWriter, r *http.Request) { server.resources.ServeHTTP(w, r) },
 		},
 		{

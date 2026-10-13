@@ -174,11 +174,13 @@ func TestManifestPublishesImplementedHTTPEndpoints(t *testing.T) {
 		method   string
 		path     string
 		response string
+		projects string
 	}{
-		"rpc":       {method: "POST", path: "/v2/rpc"},
-		"info":      {method: "GET", path: "/v2/info", response: "schema.json#/$defs/RuntimeInfo"},
-		"liveness":  {method: "GET", path: "/v2/health/live", response: "schema.json#/$defs/LivenessStatus"},
-		"readiness": {method: "GET", path: "/v2/health/ready", response: "schema.json#/$defs/ReadinessStatus"},
+		"rpc":             {method: "POST", path: "/v2/rpc"},
+		"info":            {method: "GET", path: "/v2/info", response: "schema.json#/$defs/RuntimeInfo"},
+		"liveness":        {method: "GET", path: "/v2/health/live", response: "schema.json#/$defs/LivenessStatus"},
+		"readiness":       {method: "GET", path: "/v2/health/ready", response: "schema.json#/$defs/ReadinessStatus"},
+		"pluginResources": {method: "GET", path: "/v2/plugin-resources/{lease}/*", projects: "plugins.readResource"},
 	}
 	if len(generated.HTTPEndpoints) != len(want) {
 		t.Fatalf("HTTP endpoints = %d, want %d", len(generated.HTTPEndpoints), len(want))
@@ -198,6 +200,9 @@ func TestManifestPublishesImplementedHTTPEndpoints(t *testing.T) {
 		}
 		if response != expected.response {
 			t.Errorf("%s response = %q, want %q", endpoint.Name, response, expected.response)
+		}
+		if endpoint.Projects != expected.projects {
+			t.Errorf("%s projects = %q, want %q", endpoint.Name, endpoint.Projects, expected.projects)
 		}
 	}
 }

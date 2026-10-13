@@ -21,6 +21,15 @@ export const en: Record<string, string> = {
   "packages.providers.unknown":
     "Confirmation is unknown. Keep original command {{id}} before making another selection.",
   "packages.providers.reconcile": "Check original result",
+  "packages.points.title": "Extension points",
+  "packages.points.inspect": "Inspect values",
+  "packages.points.readOnly": "Inspect current contributions without activating plugin code.",
+  "packages.points.target": "Target reference",
+  "packages.points.attributes": "Context attributes (JSON)",
+  "packages.points.order": "Explicit contribution order (JSON array)",
+  "packages.points.lastInspected": "Last inspected target, order and values",
+  "packages.points.failed": "The extension point could not be inspected.",
+
   "packages.requirements.title": "Dependencies",
   "packages.requirements.inspect": "Inspect bindings",
   "packages.requirements.future":

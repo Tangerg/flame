@@ -7,6 +7,7 @@ import * as ts from "typescript/unstable/ast";
 const ROOT = process.cwd();
 const METHODS_PATH = resolve(ROOT, "../../runtime/contract/typescript/client/methods.ts");
 const SIDECAR_PATH = resolve(ROOT, "../../runtime/contract/typescript/client/sidecar.ts");
+const WIRE_PATH = resolve(ROOT, "../../runtime/contract/typescript/wire.generated.ts");
 const MANIFEST_PATH = resolve(ROOT, "../../runtime/contract/manifest.json");
 const EVENT_POLICY_PATH = resolve(
   ROOT,
@@ -99,6 +100,7 @@ const sidecarMethodMap = mappedSidecarMethods();
 
 const consumerCalls = new Map();
 const sidecarConsumerCalls = new Map();
+const httpConsumerCalls = new Map();
 const discardedResults = [];
 let mappedErrorTypeCount = 0;
 for (const fileName of program.getSourceFileNames()) {
@@ -107,6 +109,14 @@ for (const fileName of program.getSourceFileNames()) {
   const sourcePath = resolve(source.fileName);
   if (!isProductSource(sourcePath)) continue;
   visit(source, (node) => {
+    if (ts.isCallExpression(node)) {
+      for (const endpoint of consumedHTTPEndpoints(node)) {
+        const position = source.getLineAndCharacterOfPosition(node.getStart(source));
+        const locations = httpConsumerCalls.get(endpoint) ?? new Set();
+        locations.add(`${relative(ROOT, sourcePath)}:${position.line + 1}`);
+        httpConsumerCalls.set(endpoint, locations);
+      }
+    }
     if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return;
     let symbol = checker.getSymbolAtLocation(node.expression.name);
     if (!symbol) return;
@@ -166,6 +176,13 @@ const directlyConsumedOperations = new Set(
     .filter(([, consumers]) => consumers.size > 0)
     .map(([operation]) => operation),
 );
+const httpProjectedOperations = creditHTTPOperationConsumers(
+  manifest.httpEndpoints,
+  manifest.methods,
+  httpConsumerCalls,
+  operationConsumers,
+  errors,
+);
 const materializedOperations = creditMaterializedOperationConsumers(
   manifest.methods,
   operationConsumers,
@@ -183,11 +200,94 @@ if (errors.length > 0) fail(errors);
 
 const callCount =
   [...consumerCalls.values()].reduce((total, locations) => total + locations.size, 0) +
+  [...httpConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0) +
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Desktop Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
+  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Desktop Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
+
+function consumedHTTPEndpoints(call) {
+  const imports = call.expression.kind === ts.SyntaxKind.ImportKeyword;
+  let fetches = false;
+  if (ts.isIdentifier(call.expression) && call.expression.text === "fetch") {
+    const symbol = checker.getSymbolAtLocation(call.expression);
+    fetches = declarationsOf(symbol).some((declaration) =>
+      /[/\\]lib\.(dom|webworker)\.d\.ts$/.test(declaration.getSourceFile().fileName),
+    );
+  }
+  if ((!imports && !fetches) || !call.arguments[0]) return new Set();
+  const found = new Set();
+  const scanned = new Set();
+  function scan(expression) {
+    const node = unwrapExpression(expression);
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      node.name.text === "path" &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression)
+    ) {
+      let symbol = checker.getSymbolAtLocation(node.expression.expression);
+      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+      if (
+        declarationsOf(symbol).some(
+          (declaration) =>
+            ts.isVariableDeclaration(declaration) &&
+            ts.isIdentifier(declaration.name) &&
+            declaration.name.text === "HTTP_ENDPOINTS" &&
+            resolve(declaration.getSourceFile().fileName) === WIRE_PATH,
+        )
+      )
+        found.add(node.expression.name.text);
+      return;
+    }
+    if (ts.isIdentifier(node)) {
+      let symbol = checker.getSymbolAtLocation(node);
+      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+      for (const declaration of declarationsOf(symbol)) {
+        if (
+          !ts.isVariableDeclaration(declaration) ||
+          !declaration.initializer ||
+          scanned.has(declaration)
+        )
+          continue;
+        scanned.add(declaration);
+        scan(declaration.initializer);
+      }
+    } else if (ts.isTemplateExpression(node)) {
+      for (const span of node.templateSpans) scan(span.expression);
+    } else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      scan(node.left);
+      scan(node.right);
+    } else if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === "replace"
+    ) {
+      scan(node.expression.expression);
+    }
+  }
+  scan(call.arguments[0]);
+  return found;
+}
+
+function creditHTTPOperationConsumers(endpoints, methods, calls, consumers, targetErrors) {
+  const credited = new Set();
+  for (const endpoint of endpoints) {
+    if (!endpoint.projects) continue;
+    const method = methods.find((candidate) => candidate.name === endpoint.projects);
+    if (endpoint.kind !== "resource" || method?.operation !== "query") {
+      targetErrors.push(`${endpoint.name} projects an invalid Runtime query ${endpoint.projects}`);
+      continue;
+    }
+    const locations = calls.get(endpoint.name);
+    if (!locations?.size) continue;
+    credited.add(endpoint.projects);
+    for (const location of locations)
+      consumers.get(endpoint.projects).add(`${location} (HTTP ${endpoint.name})`);
+  }
+  return credited;
+}
 
 function checkOperationConsumers(
   consumersByOperation,

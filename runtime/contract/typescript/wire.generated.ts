@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.10";
+export const PROTOCOL_VERSION = "2026-10-13.11";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -43,6 +43,7 @@ export const HTTP_ENDPOINTS = {
     method: "GET",
     path: "/v2/plugin-resources/{lease}/*",
     authentication: "resourceLease",
+    projects: "plugins.readResource",
     responseStatuses: [200, 410],
   },
   rpc: {
@@ -465,17 +466,6 @@ export interface CreateScheduleRequest {
 export interface CreateSessionRequest {
   title?: string;
   workspace?: WorkspaceRef;
-}
-
-export interface Definition {
-  applicability: unknown;
-  composition: string;
-  optional: boolean;
-  ordering: string;
-  protocol: string;
-  reference: string;
-  scope: string;
-  value: unknown;
 }
 
 export interface DeleteScheduleRequest {
@@ -1307,7 +1297,7 @@ export interface PluginOperationBinding {
 }
 
 export interface PluginPoint {
-  contract: Definition;
+  contract: string;
   id: string;
 }
 
@@ -1324,7 +1314,7 @@ export interface PluginPointReference {
 }
 
 export interface PluginPointValue {
-  contract: Definition;
+  contract: string;
   id: string;
   value: unknown;
 }
@@ -1660,7 +1650,7 @@ export interface RequestMeta {
 
 export interface ResolvePluginPointRequest {
   attributes: unknown;
-  contract: Definition;
+  contract: string;
   order: PluginPointReference[];
   target: Target;
 }
