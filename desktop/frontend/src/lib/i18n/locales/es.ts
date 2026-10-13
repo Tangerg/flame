@@ -352,6 +352,7 @@ export const es: Record<string, string> = {
   "agent.steer.notApplied":
     "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",
   "agent.inputNotApplied": "Aún no aplicado",
+  "agent.acceptedRunRetired": "Los datos de la ejecución aceptada ya no están disponibles.",
   "agent.synchronizationIncomplete":
     "La sincronización está incompleta. Vuelve a abrir la sesión para reintentarlo.",
   "runtime.connection.reconnecting": "Se perdió la conexión con el runtime. Reconectando…",

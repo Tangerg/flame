@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { definePlugin } from "@/plugins/sdk";
 import { SETTINGS_PANE } from "@/plugins/sdk/kernelPoints";
@@ -68,7 +68,9 @@ describe("settingsPage", () => {
 
     expect(screen.getByTestId("appearance-body")).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("zzzz");
-    fireEvent.click(screen.getByRole("button", { name: /clear search/i }));
+    fireEvent.click(
+      within(screen.getByRole("status")).getByRole("button", { name: /clear search/i }),
+    );
     expect(screen.getAllByRole("tab")).toHaveLength(2);
   });
 

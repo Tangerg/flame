@@ -341,6 +341,7 @@ export const ja: Record<string, string> = {
   "agent.steer.notApplied":
     "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",
   "agent.inputNotApplied": "未適用",
+  "agent.acceptedRunRetired": "受理された実行のデータは利用できなくなりました。",
   "agent.synchronizationIncomplete":
     "実行の同期が完了していません。セッションを開き直して再試行してください。",
   "runtime.connection.reconnecting": "Runtime への接続が切れました。再接続しています…",

@@ -338,6 +338,7 @@ export const zhTW: Record<string, string> = {
   "agent.steer.applied": "已進入模型上下文",
   "agent.steer.notApplied": "本次執行已結束，有已接收的指令未進入模型上下文。",
   "agent.inputNotApplied": "尚未套用",
+  "agent.acceptedRunRetired": "已受理的執行資料已無法使用。",
   "agent.synchronizationIncomplete": "執行同步未完成。請重新開啟工作階段以重試。",
   "runtime.connection.reconnecting": "Runtime 連線已中斷，正在重新連線…",
   "runtime.connection.unavailable": "Runtime 暫時無法使用，Flame 會繼續嘗試連線。",

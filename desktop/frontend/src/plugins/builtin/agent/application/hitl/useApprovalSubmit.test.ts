@@ -133,7 +133,7 @@ describe("useApprovalSubmit", () => {
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_ok"));
     act(() => result.current.submit("approve"));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
-    expect(result.current.pending).toBe("approve");
+    expect(result.current.pending).toBeNull();
   });
 
   it("rolls back pending and does NOT resolve when the resume rejects (channel-a)", () => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { resolve, relative, sep } from "node:path";
+import { dirname, resolve, relative, sep } from "node:path";
 import { API, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
 
@@ -91,8 +91,10 @@ const sidecarSource = program.getSourceFile(SIDECAR_PATH);
 if (!sidecarSource) fail([`TypeScript did not load ${relative(ROOT, SIDECAR_PATH)}`]);
 
 const implementationMap = new Map();
+const bindingFactories = new Set();
+const bindingWrappers = new Set();
+mapReturnedObject("bindWorkspace", [], true);
 mapReturnedObject("createMethods", []);
-mapReturnedObject("bindWorkspace", []);
 const sidecarMethodMap = mappedSidecarMethods();
 
 const consumerCalls = new Map();
@@ -141,6 +143,7 @@ const operationConsumers = new Map([...operations].map((operation) => [operation
 for (const [wrapper, locations] of consumerCalls) {
   const mappedOperations = implementationMap.get(wrapper);
   if (!mappedOperations?.size) {
+    if (bindingWrappers.has(wrapper)) continue;
     errors.push(
       `frontend calls Methods.${wrapper}, but its implementation could not be mapped to a Runtime operation (${[...locations].join(", ")})`,
     );
@@ -282,7 +285,7 @@ function checkSidecarConsumers(expected, methods, calls, targetErrors) {
   }
 }
 
-function mapReturnedObject(functionName, prefix) {
+function mapReturnedObject(functionName, prefix, binding = false) {
   const declaration = methodsSource.statements.find(
     (statement) => ts.isFunctionDeclaration(statement) && statement.name?.text === functionName,
   );
@@ -294,6 +297,7 @@ function mapReturnedObject(functionName, prefix) {
   if (!returned || !ts.isReturnStatement(returned) || !returned.expression) {
     fail([`${functionName} must directly return its Methods object`]);
   }
+  if (binding) bindingFactories.add(declaration);
   walkImplementationObject(returned.expression, prefix);
 }
 
@@ -308,41 +312,77 @@ function walkImplementationObject(object, prefix) {
       continue;
     }
     const mapped = wireOperationsIn(property.initializer);
-    if (mapped.size === 0) continue;
     const key = path.join(".");
+    if (mapped.size === 0) {
+      if (returnsMappedBinding(property.initializer)) bindingWrappers.add(key);
+      continue;
+    }
     const current = implementationMap.get(key) ?? new Set();
     for (const operation of mapped) current.add(operation);
     implementationMap.set(key, current);
   }
 }
 
+function returnsMappedBinding(initializer) {
+  const functionBody =
+    ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)
+      ? initializer.body
+      : undefined;
+  if (
+    !functionBody ||
+    !ts.isCallExpression(functionBody) ||
+    !ts.isIdentifier(functionBody.expression)
+  )
+    return false;
+  let symbol = checker.getSymbolAtLocation(functionBody.expression);
+  if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+  return declarationsOf(symbol).some((declaration) => bindingFactories.has(declaration));
+}
+
 function wireOperationsIn(initializer) {
   const found = new Set();
   const scannedInitializers = new Set();
 
+  const scanImplementation = (node) => {
+    if (!ts.isIdentifier(node)) return;
+    let symbol = checker.getSymbolAtLocation(node);
+    if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    for (const declaration of declarationsOf(symbol)) {
+      if (
+        !resolve(declaration.getSourceFile().fileName).startsWith(
+          `${dirname(methodsSource.fileName)}${sep}`,
+        )
+      )
+        continue;
+      const implementation = ts.isVariableDeclaration(declaration)
+        ? declaration.initializer
+        : ts.isFunctionDeclaration(declaration)
+          ? declaration.body
+          : undefined;
+      if (!implementation || scannedInitializers.has(declaration)) continue;
+      scannedInitializers.add(declaration);
+      scan(implementation);
+    }
+  };
+
   const scan = (node) => {
+    if (ts.isFunctionDeclaration(node)) return;
+    if (
+      (ts.isVariableDeclaration(node) || ts.isPropertyAssignment(node)) &&
+      node.initializer &&
+      (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+    )
+      return;
     if (ts.isCallExpression(node) && node.arguments.length > 0) {
       const operation = constantString(node.arguments[0]);
       if (operation && operations.has(operation)) found.add(operation);
     }
+    if (ts.isCallExpression(node)) scanImplementation(node.expression);
     node.forEachChild(scan);
   };
 
-  const scanInitializer = (node) => {
-    if (ts.isIdentifier(node)) {
-      let symbol = checker.getSymbolAtLocation(node);
-      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-      for (const declaration of declarationsOf(symbol)) {
-        if (!ts.isVariableDeclaration(declaration) || !declaration.initializer) continue;
-        if (scannedInitializers.has(declaration)) continue;
-        scannedInitializers.add(declaration);
-        scan(declaration.initializer);
-      }
-    }
-    scan(node);
-  };
-
-  scanInitializer(initializer);
+  scanImplementation(initializer);
+  scan(initializer);
   return found;
 }
 

@@ -19,7 +19,8 @@ export type { MutationJournalScope, MutationJournalStorage } from "./durableMuta
 
 export interface MutationReservation {
   readonly idempotencyKey: string;
-  authorizeAttempt(): string;
+  lookupNamespace(): string;
+  authorizeDispatch(): string;
   track<T>(mutation: MutationPromise<T>): MutationPromise<T>;
 }
 
@@ -29,7 +30,7 @@ export interface MutationJournal {
 }
 
 export interface MutationJournalOptions {
-  storage: MutationJournalStorage;
+  storage?: MutationJournalStorage;
   scope: () => MutationJournalScope | null | undefined;
   now?: () => number;
 }
@@ -105,9 +106,13 @@ class MutationAuthority implements MutationJournal {
     const lifecycle = this.#lifecycle(identity);
     return {
       idempotencyKey: identity.entry.idempotencyKey,
-      authorizeAttempt: () => {
+      lookupNamespace: () => {
         this.#assertClaim(identity);
-        return this.#journal.authorize(identity);
+        return this.#journal.lookupNamespace(identity);
+      },
+      authorizeDispatch: () => {
+        this.#assertClaim(identity);
+        return this.#journal.authorizeDispatch(identity);
       },
       track: (mutation) => trackedMutation(mutation, lifecycle),
     };
@@ -124,8 +129,9 @@ class MutationAuthority implements MutationJournal {
     let activeAttempts = 0;
     let definitiveOutcome = false;
     const finish = (definitive: boolean) => {
+      // Retirement revokes delivery, not a result's authority over its original
+      // identity. The durable owner checks the exact record before removing it.
       activeAttempts = Math.max(0, activeAttempts - 1);
-      this.#assertClaim(identity);
       definitiveOutcome ||= definitive;
       if (activeAttempts > 0) return;
       try {
@@ -171,7 +177,14 @@ class MutationAuthority implements MutationJournal {
 }
 
 export function createMutationJournal(options: MutationJournalOptions): MutationJournal {
+  const values = new Map<string, unknown>();
+  const storage = options.storage ?? {
+    get: (key: string) => structuredClone(values.get(key)),
+    set: (key: string, value: unknown) => void values.set(key, structuredClone(value)),
+    remove: (key: string) => void values.delete(key),
+    keys: () => [...values.keys()],
+  };
   return new MutationAuthority(
-    openDurableMutationJournal({ ...options, now: options.now ?? Date.now }),
+    openDurableMutationJournal({ ...options, storage, now: options.now ?? Date.now }),
   );
 }

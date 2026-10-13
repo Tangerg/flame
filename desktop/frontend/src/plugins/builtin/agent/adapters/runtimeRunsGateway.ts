@@ -29,18 +29,18 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
 
   async start({ sessionId, ...params }: RpcRunStartParams, signal?: AbortSignal) {
     const client = this.runtimeClient();
-    const { result, events } = await this.#openings.settle(
+    const { result, observation } = await this.#openings.settle(
       runOpeningIdentity("start", { sessionId, ...params }),
       (attemptSignal) =>
         client.runs.start({ ...params, sessionId: asSessionId(sessionId) }, attemptSignal),
       { parent: signal },
     );
-    return { result: brandStartedRun(result), events };
+    return { result: brandStartedRun(result), observation };
   }
 
   async resume(params: RpcRunResumeParams, signal?: AbortSignal) {
     const client = this.runtimeClient();
-    const { result, events } = await this.#openings.settle(
+    const { result, observation } = await this.#openings.settle(
       runOpeningIdentity("resume", params),
       (attemptSignal) => client.runs.resume(params, attemptSignal),
       { parent: signal },
@@ -51,7 +51,7 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
         segmentId: asSegmentId(result.segmentId),
         ...(result.userItemId ? { userItemId: asItemId(result.userItemId) } : {}),
       },
-      events,
+      observation,
     };
   }
 

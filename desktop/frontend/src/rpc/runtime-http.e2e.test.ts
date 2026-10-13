@@ -25,6 +25,7 @@ import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createMutationJournal } from "@flame/runtime-contract/client/mutationJournal";
 import { createFlameClient, type FlameClient } from "@flame/runtime-contract/client/sdk";
 import { RpcError } from "@flame/runtime-contract/client/errors";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-contract/client/ids";
@@ -726,6 +727,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   let provider: ReturnType<typeof createHttpServer> | undefined;
   let providerGate: ProviderGate | undefined;
   let client: FlameClient | undefined;
+  let negotiated: import("@flame/runtime-contract/wire").ServerCapabilities | undefined;
   let processOutput = "";
   let runtimeExecutable = "";
   let cliExecutable = "";
@@ -840,6 +842,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
 
   const createRuntimeClient = () =>
     createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
+      capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "runtime-http-e2e", version: "1" },
@@ -849,6 +852,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
 
   const createSharedClient = () =>
     createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
+      capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "shared-client-e2e", version: "1" },
@@ -1052,10 +1056,12 @@ for await (const line of lines) {
     baseUrl = `http://127.0.0.1:${runtimePort}`;
     await startRuntimeProcess();
     client = createRuntimeClient();
+    negotiated = (await client.runtime.discover()).capabilities;
     await awaitManagedOwners();
   }, 60_000);
 
   beforeEach(async () => {
+    if (client) negotiated = (await client.runtime.discover()).capabilities;
     for (const feature of ["memory", "schedules"] as const)
       if (!managedOwners.has(feature)) await activateManagedOwner(feature);
     await awaitManagedOwners();
@@ -1425,7 +1431,7 @@ for await (const line of lines) {
       );
       const winner = accepted[0];
       if (!winner) throw new Error("no view acquired the waiting continuation");
-      const events = await collectRunEvents(winner.value.events);
+      const events = await collectRunEvents(originalOpeningEvents(winner.value));
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
         run: { status: "finished", outcome: { type: "completed" } },
@@ -1652,6 +1658,7 @@ for await (const line of lines) {
     providerGate = gate;
     const fault = faultStreamOpening("runs.start");
     const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
+      capabilities: () => negotiated,
       requestMeta: (): RequestMeta => ({
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "runtime-http-stream-cutpoint-e2e", version: "1" },
@@ -1666,10 +1673,22 @@ for await (const line of lines) {
       });
       await within(gate.arrived.promise, "the replay-cutpoint model request");
       const started = await opening;
-      expect(fault.attempts()).toBe(2);
+      expect(fault.attempts()).toBe(1);
+      expect(started.observation).toEqual({ type: "snapshot", sessionId: session.id });
+      const tail = await client.runs.subscribe({
+        runId: asRunId(started.result.runId),
+        segmentId: asSegmentId(started.result.segmentId),
+        snapshot: true,
+      });
+      expect(tail.result.snapshot?.runs).toContainEqual(
+        expect.objectContaining({
+          id: started.result.runId,
+          activeSegmentId: started.result.segmentId,
+        }),
+      );
 
       gate.release.resolve();
-      const events = await collectRunEvents(started.events);
+      const events = await collectRunEvents(tail.events);
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
         run: { status: "finished", outcome: { type: "completed" } },
@@ -1689,6 +1708,105 @@ for await (const line of lines) {
       providerGate = undefined;
       await faultClient.close();
       await client.sessions.delete(asSessionId(session.id));
+    }
+  }, 30_000);
+
+  it("queries a cold persisted opening after its replay deadline and recovers its snapshot tail", async () => {
+    if (!client || !negotiated) throw new Error("runtime client was not initialized");
+    const session = await client.sessions.create({
+      workspace: { path: root },
+      title: "cold accepted opening",
+    });
+    const entries = new Map<string, unknown>();
+    let now = Date.now();
+    const journalOptions = {
+      storage: {
+        get: (key: string) => structuredClone(entries.get(key)),
+        set: (key: string, value: unknown) => void entries.set(key, structuredClone(value)),
+        remove: (key: string) => void entries.delete(key),
+        keys: () => [...entries.keys()],
+      },
+      scope: () => ({ namespace: negotiated!.limits.idempotency.namespace, retentionSeconds: 1 }),
+      now: () => now,
+    };
+    const requestMeta = (): RequestMeta => ({
+      protocolVersion: PROTOCOL_VERSION,
+      clientInfo: { name: "cold-opening-e2e", version: "1" },
+      clientCapabilities: { features: {}, interruptTypes: ["approval", "question"] },
+    });
+    const gate = createProviderGate("E2E_RUN_REPLAY_CUTPOINT");
+    providerGate = gate;
+    const fault = faultStreamOpening("runs.start");
+    let lookups = 0;
+    const lostLookup: typeof fetch = async (input, init) => {
+      const body =
+        typeof init?.body === "string" ? (JSON.parse(init.body) as { method: string }) : undefined;
+      if (body?.method === "runs.getAcceptance" && ++lookups > 1)
+        return new Response("lookup unavailable", { status: 503 });
+      return fault.fetch(input, init);
+    };
+    const first = createFlameClient(createHttpTransport({ baseUrl, fetch: lostLookup }), {
+      requestMeta,
+      capabilities: () => negotiated,
+      mutationJournal: createMutationJournal(journalOptions),
+    });
+    let cold: FlameClient | undefined;
+    const params = {
+      sessionId: asSessionId(session.id),
+      input: [{ type: "text" as const, text: "E2E_RUN_REPLAY_CUTPOINT cold receipt." }],
+    };
+    try {
+      const pending = first.runs.start(params);
+      await expect(pending).rejects.toMatchObject({ name: "MutationLookupError" });
+      await within(gate.arrived.promise, "the cold opening model request");
+      expect(entries.size).toBe(1);
+      const evidence = structuredClone([...entries]);
+      await first.close();
+      now += 1_000;
+      cold = createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
+        requestMeta,
+        capabilities: () => negotiated,
+        mutationJournal: createMutationJournal(journalOptions),
+      });
+      const recovered = cold.runs.start(params);
+      expect(recovered.idempotencyKey).toBe(pending.idempotencyKey);
+      expect([...entries]).toEqual(evidence);
+      const opening = await recovered;
+      expect(opening.observation).toEqual({ type: "snapshot", sessionId: session.id });
+      expect(entries.size).toBe(0);
+      expect(fault.attempts()).toBe(1);
+      const receipt = await cold.runs.getAcceptance({
+        namespace: negotiated.limits.idempotency.namespace,
+        key: pending.idempotencyKey,
+        operation: "start",
+      });
+      expect(receipt).toMatchObject({ type: "accepted", ...opening.result });
+      const tail = await cold.runs.subscribe({
+        runId: asRunId(opening.result.runId),
+        segmentId: asSegmentId(opening.result.segmentId),
+        snapshot: true,
+      });
+      expect(tail.result.snapshot?.runs).toContainEqual(
+        expect.objectContaining({
+          id: opening.result.runId,
+          activeSegmentId: opening.result.segmentId,
+        }),
+      );
+      gate.release.resolve();
+      const events = await collectRunEvents(tail.events);
+      expect(events.at(-1)?.event).toMatchObject({
+        type: "segment.finished",
+        run: { status: "finished", outcome: { type: "completed" } },
+      });
+      expect(
+        await client.runs.list({ sessionId: params.sessionId }).autoPagingToArray(),
+      ).toHaveLength(1);
+    } finally {
+      gate.release.resolve();
+      providerGate = undefined;
+      await first.close();
+      await cold?.close();
+      await client.sessions.delete(params.sessionId);
     }
   }, 30_000);
 
@@ -1937,7 +2055,7 @@ for await (const line of lines) {
       input: [{ type: "text", text: "E2E_HITL ask before replaying the answer." }],
     });
     const runId = asRunId(started.result.runId);
-    const startEvents = await collectRunEvents(started.events);
+    const startEvents = await collectRunEvents(originalOpeningEvents(started));
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
@@ -1949,6 +2067,8 @@ for await (const line of lines) {
       throw new Error("Runtime did not persist the replay-cutpoint question");
     }
 
+    const gate = createProviderGate("E2E_HITL");
+    providerGate = gate;
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
       { topics: ["interrupts.changed"] },
@@ -1957,6 +2077,7 @@ for await (const line of lines) {
     const runtimeEvents = subscription.events[Symbol.asyncIterator]();
     const fault = faultStreamOpening("runs.resume");
     const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
+      capabilities: () => negotiated,
       requestMeta: (): RequestMeta => ({
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "runtime-http-hitl-resume-cutpoint-e2e", version: "1" },
@@ -1974,10 +2095,19 @@ for await (const line of lines) {
           },
         ],
       });
-      expect(fault.attempts()).toBe(2);
+      expect(fault.attempts()).toBe(1);
+      expect(resumed.observation).toEqual({ type: "snapshot", sessionId });
+      await within(gate.arrived.promise, "the resumed model request");
+      const tail = await client.runs.subscribe({
+        runId,
+        segmentId: asSegmentId(resumed.result.segmentId),
+        snapshot: true,
+      });
+      expect(tail.result.snapshot?.interrupts).toEqual([]);
+      gate.release.resolve();
       expect(resumed.result.runId).toBe(started.result.runId);
       expect(resumed.result.segmentId).not.toBe(started.result.segmentId);
-      const resumeEvents = await collectRunEvents(resumed.events);
+      const resumeEvents = await collectRunEvents(tail.events);
       expect(resumeEvents.at(-1)?.event).toMatchObject({
         type: "segment.finished",
         run: { status: "finished", outcome: { type: "completed" } },
@@ -2009,6 +2139,8 @@ for await (const line of lines) {
         ],
       });
     } finally {
+      gate.release.resolve();
+      providerGate = undefined;
       await faultClient.close();
       streamController.abort();
       await runtimeEvents.return?.();
@@ -2198,6 +2330,9 @@ for await (const line of lines) {
   it("reconciles MCP and managed-Skill moves after their responses are lost", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
+    const retainedSkills = (
+      await client.workspace({ path: root }).skills.listDiscovered()
+    ).skills.filter((skill) => !(skill.scope === "user" && skill.name === managedSkillName));
     const requestMeta = (): RequestMeta => ({
       protocolVersion: PROTOCOL_VERSION,
       clientInfo: { name: "runtime-http-resource-cutpoint-e2e", version: "1" },
@@ -2285,7 +2420,7 @@ for await (const line of lines) {
       });
       await expect(client.workspace({ path: root }).skills.listDiscovered()).resolves.toMatchObject(
         {
-          skills: [],
+          skills: retainedSkills,
         },
       );
 
@@ -2489,7 +2624,7 @@ for await (const line of lines) {
       await within(gate.arrived.promise, "the exact reasoning provider request");
       expect(gate.request?.reasoning_effort).toBe("high");
       gate.release.resolve();
-      await expect(collectRunEvents(started.events)).resolves.toSatisfy(
+      await expect(collectRunEvents(originalOpeningEvents(started))).resolves.toSatisfy(
         (events: RunEvent[]) => events.at(-1)?.event.type === "segment.finished",
       );
       await expect(client.sessions.get(asSessionId(session.id))).resolves.toMatchObject({
@@ -2521,7 +2656,7 @@ for await (const line of lines) {
       input: [{ type: "text", text: "E2E_RUN complete without tools." }],
     });
     const runId = asRunId(started.result.runId);
-    const events = await collectRunEvents(started.events);
+    const events = await collectRunEvents(originalOpeningEvents(started));
 
     expect(events.at(0)?.event.type).toBe("segment.started");
     expect(events.some((event) => event.event.type === "item.delta")).toBe(true);
@@ -2577,7 +2712,10 @@ for await (const line of lines) {
 
       gate.release.resolve();
       const [openingEvents, attachedEvents] = await within(
-        Promise.all([collectRunEvents(started.events), collectRunEvents(attached.events)]),
+        Promise.all([
+          collectRunEvents(originalOpeningEvents(started)),
+          collectRunEvents(attached.events),
+        ]),
         "both run streams to finish",
       );
       expect(openingEvents.at(-1)?.event).toMatchObject({
@@ -2619,7 +2757,7 @@ for await (const line of lines) {
       gate.release.resolve();
 
       const events = await within(
-        collectRunEvents(started.events),
+        collectRunEvents(originalOpeningEvents(started)),
         "the steered run stream to finish",
       );
       const steeredMessage = events.find(
@@ -2686,7 +2824,7 @@ for await (const line of lines) {
       await within(gate.closed.promise, "the canceled provider connection to close");
 
       const events = await within(
-        collectRunEvents(started.events),
+        collectRunEvents(originalOpeningEvents(started)),
         "the canceled run stream to finish",
       );
       expect(events.at(-1)?.event).toMatchObject({
@@ -2715,7 +2853,7 @@ for await (const line of lines) {
       sessionId: asSessionId(source.id),
       input: [{ type: "text", text: "E2E_FORK preserve this visible turn." }],
     });
-    const forkRunEvents = await collectRunEvents(started.events);
+    const forkRunEvents = await collectRunEvents(originalOpeningEvents(started));
     expect(forkRunEvents.filter((event) => event.event.type === "item.completed")).toHaveLength(2);
     const sourceRuns = await client.runs
       .list({ sessionId: asSessionId(source.id) })
@@ -2785,12 +2923,12 @@ for await (const line of lines) {
       sessionId: asSessionId(source.id),
       input: [{ type: "text", text: "E2E_PLAN preserve this plan in the archive." }],
     });
-    await collectRunEvents(first.events);
+    await collectRunEvents(originalOpeningEvents(first));
     const second = await client.runs.start({
       sessionId: asSessionId(source.id),
       input: [{ type: "text", text: "E2E_TRANSFER remove and restore this turn." }],
     });
-    await collectRunEvents(second.events);
+    await collectRunEvents(originalOpeningEvents(second));
 
     const jsonExport = await client.sessions.export(asSessionId(source.id), "json");
     if (!jsonExport.artifact) throw new Error("JSON export omitted its session artifact");
@@ -2880,7 +3018,7 @@ for await (const line of lines) {
       sessionId: asSessionId(source.id),
       input: [{ type: "text", text: "E2E_TRANSFER continue after import." }],
     });
-    const continuedEvents = await collectRunEvents(continued.events);
+    const continuedEvents = await collectRunEvents(originalOpeningEvents(continued));
     expect(continuedEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "finished", outcome: { type: "completed" } },
@@ -2908,7 +3046,7 @@ for await (const line of lines) {
       sessionId: asSessionId(session.id),
       input: [{ type: "text", text: "E2E_PLAN publish the two-step plan." }],
     });
-    const events = await collectRunEvents(started.events);
+    const events = await collectRunEvents(originalOpeningEvents(started));
     expect(
       events.some(
         (event) =>
@@ -2944,7 +3082,7 @@ for await (const line of lines) {
       sessionId,
       input: [{ type: "text", text: "E2E_PLAN_REJECTED keep the last accepted plan." }],
     });
-    const events = await collectRunEvents(started.events);
+    const events = await collectRunEvents(originalOpeningEvents(started));
     const failed = events.find(
       ({ event }) =>
         event.type === "item.completed" && event.item.type === "toolCall" && event.item.error,
@@ -2990,7 +3128,7 @@ for await (const line of lines) {
       input: [{ type: "text", text: "E2E_HITL ask before continuing." }],
     });
     const runId = asRunId(started.result.runId);
-    const startEvents = await collectRunEvents(started.events);
+    const startEvents = await collectRunEvents(originalOpeningEvents(started));
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
@@ -3023,7 +3161,7 @@ for await (const line of lines) {
     expect(resumed.result.runId).toBe(started.result.runId);
     expect(resumed.result.segmentId).not.toBe(started.result.segmentId);
     expect(resumed.result.userItemId).toBeTruthy();
-    const resumeEvents = await collectRunEvents(resumed.events);
+    const resumeEvents = await collectRunEvents(originalOpeningEvents(resumed));
     expect(resumeEvents).toContainEqual(
       expect.objectContaining({
         event: expect.objectContaining({
@@ -3077,7 +3215,7 @@ for await (const line of lines) {
       input: [{ type: "text", text: "E2E_APPROVAL run the command after approval." }],
     });
     const runId = asRunId(started.result.runId);
-    const startEvents = await collectRunEvents(started.events);
+    const startEvents = await collectRunEvents(originalOpeningEvents(started));
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
@@ -3117,7 +3255,7 @@ for await (const line of lines) {
         },
       ],
     });
-    const resumeEvents = await collectRunEvents(resumed.events);
+    const resumeEvents = await collectRunEvents(originalOpeningEvents(resumed));
     expect(resumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "finished", outcome: { type: "completed" } },
@@ -3167,7 +3305,7 @@ for await (const line of lines) {
       ],
     });
     const runId = asRunId(started.result.runId);
-    const startEvents = await collectRunEvents(started.events);
+    const startEvents = await collectRunEvents(originalOpeningEvents(started));
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
@@ -3191,6 +3329,7 @@ for await (const line of lines) {
     await killRuntimeProcess();
     await startRuntimeProcess();
     client = createRuntimeClient();
+    negotiated = (await client.runtime.discover()).capabilities;
     await awaitManagedOwners();
 
     const restored = await client.runs.get(runId);
@@ -3222,7 +3361,7 @@ for await (const line of lines) {
         },
       ],
     });
-    const firstResumeEvents = await collectRunEvents(resumed.events);
+    const firstResumeEvents = await collectRunEvents(originalOpeningEvents(resumed));
     expect(firstResumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
@@ -3274,7 +3413,7 @@ for await (const line of lines) {
         },
       ],
     });
-    const finalEvents = await collectRunEvents(completed.events);
+    const finalEvents = await collectRunEvents(originalOpeningEvents(completed));
     expect(finalEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "finished", outcome: { type: "completed" } },
@@ -3470,7 +3609,7 @@ for await (const line of lines) {
         },
       ],
     });
-    const resumeEvents = await collectRunEvents(resumed.events);
+    const resumeEvents = await collectRunEvents(originalOpeningEvents(resumed));
     expect(resumeEvents.slice(0, 2).map((frame) => frame.event)).toMatchObject([
       { type: "segment.started" },
       {
@@ -3687,12 +3826,12 @@ for await (const line of lines) {
       sessionId: asSessionId(timelineSession.id),
       input: [{ type: "text", text: "E2E_PAGE first filtered run." }],
     });
-    await collectRunEvents(firstRun.events);
+    await collectRunEvents(originalOpeningEvents(firstRun));
     const secondRun = await client.runs.start({
       sessionId: asSessionId(timelineSession.id),
       input: [{ type: "text", text: "E2E_PAGE second filtered run." }],
     });
-    await collectRunEvents(secondRun.events);
+    await collectRunEvents(originalOpeningEvents(secondRun));
 
     const sessionIds = new Set([
       timelineSession.id,
@@ -3733,7 +3872,7 @@ for await (const line of lines) {
           sessionId: asSessionId(waitingSession.id),
           input: [{ type: "text", text: `E2E_HITL pagination interrupt ${suffix}.` }],
         });
-        const events = await collectRunEvents(waiting.events);
+        const events = await collectRunEvents(originalOpeningEvents(waiting));
         expect(events.at(-1)?.event).toMatchObject({
           type: "segment.finished",
           run: { status: "waiting" },
@@ -3919,7 +4058,7 @@ for await (const line of lines) {
       sessionId: asSessionId(runSession.id),
       input: [{ type: "text", text: "E2E_MCP_TOOL invoke the live ping capability." }],
     });
-    const mcpRunEvents = await collectRunEvents(mcpRun.events);
+    const mcpRunEvents = await collectRunEvents(originalOpeningEvents(mcpRun));
     expect(mcpRunEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -3993,9 +4132,13 @@ for await (const line of lines) {
     await expect(client.skills.listLibrary()).resolves.toMatchObject({
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
     });
-    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      skills: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
-    });
+    const discoveredSkills = (await workspace.skills.listDiscovered()).skills;
+    expect(discoveredSkills).toContainEqual(
+      expect.objectContaining({ name: managedSkillName, scope: "user" }),
+    );
+    const retainedSkills = discoveredSkills.filter(
+      (skill) => !(skill.scope === "user" && skill.name === managedSkillName),
+    );
 
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
@@ -4014,7 +4157,9 @@ for await (const line of lines) {
     await expect(client.skills.listLibrary()).resolves.toMatchObject({
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "archived" })],
     });
-    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({ skills: [] });
+    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
+      skills: retainedSkills,
+    });
 
     await client.skills.restore(managedSkillName);
     await expect(nextRuntimeEvent(runtimeEvents, "skills.changed")).resolves.toMatchObject({
@@ -4024,7 +4169,7 @@ for await (const line of lines) {
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
     });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      skills: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
+      skills: discoveredSkills,
     });
 
     const projectSkillName = "external-project-skill";
@@ -4109,7 +4254,7 @@ for await (const line of lines) {
       sessionId: asSessionId(projectSession.id),
       input: [{ type: "text", text: "E2E_SKILL_PROPOSAL_PROJECT save this workflow." }],
     });
-    const projectEvents = await collectRunEvents(projectRun.events);
+    const projectEvents = await collectRunEvents(originalOpeningEvents(projectRun));
     expect(projectEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -4171,7 +4316,7 @@ for await (const line of lines) {
       sessionId: asSessionId(userSession.id),
       input: [{ type: "text", text: "E2E_SKILL_PROPOSAL_USER save this workflow." }],
     });
-    await collectRunEvents(userRun.events);
+    await collectRunEvents(originalOpeningEvents(userRun));
     await expect(nextRuntimeEvent(runtimeEvents, "skills.changed")).resolves.toMatchObject({
       type: "skills.changed",
     });
@@ -4222,7 +4367,7 @@ for await (const line of lines) {
       sessionId: asSessionId(session.id),
       input: [{ type: "text", text: "E2E_FILE_WRITE update the fixture." }],
     });
-    const events = await collectRunEvents(started.events);
+    const events = await collectRunEvents(originalOpeningEvents(started));
     expect(events.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "finished", outcome: { type: "completed" } },
@@ -4406,7 +4551,7 @@ for await (const line of lines) {
       sessionId: asSessionId(session.id),
       input: [{ type: "text", text: "E2E_USAGE produce metered output." }],
     });
-    await collectRunEvents(started.events);
+    await collectRunEvents(originalOpeningEvents(started));
     await expect(client.runs.get(asRunId(started.result.runId))).resolves.toMatchObject({
       provider: "openai-compatible",
       model: "e2e-model",
@@ -4663,6 +4808,7 @@ for await (const line of lines) {
 
     await startRuntimeProcess();
     client = createRuntimeClient();
+    negotiated = (await client.runtime.discover()).capabilities;
     await awaitManagedOwners();
 
     const afterRestart = await client.runtime.discover();
@@ -4718,7 +4864,7 @@ for await (const line of lines) {
           },
         ],
       });
-      const failedEvents = collectRunEvents(started.events);
+      const failedEvents = collectRunEvents(originalOpeningEvents(started));
       await within(openingCall.arrived.promise, "the opening model call");
       providerGate = failedCall;
       openingCall.release.resolve();
@@ -4760,7 +4906,7 @@ for await (const line of lines) {
           },
         ],
       });
-      const recoveredEvents = collectRunEvents(recovered.events);
+      const recoveredEvents = collectRunEvents(originalOpeningEvents(recovered));
       await within(recoveryCall.arrived.promise, "the provider-failure recovery model call");
       if (!recoveryCall.request) throw new Error("recovery gate did not capture its request");
       const recoveryTranscript = JSON.stringify(recoveryCall.request.messages ?? []);
@@ -4806,7 +4952,7 @@ for await (const line of lines) {
         ],
       });
       const runId = asRunId(started.result.runId);
-      const killedStream = collectRunEvents(started.events).then(
+      const killedStream = collectRunEvents(originalOpeningEvents(started)).then(
         () => undefined,
         () => undefined,
       );
@@ -4855,7 +5001,7 @@ for await (const line of lines) {
           },
         ],
       });
-      const recoveredEvents = collectRunEvents(recovered.events);
+      const recoveredEvents = collectRunEvents(originalOpeningEvents(recovered));
       await within(recoveryCall.arrived.promise, "the SIGKILL compaction recovery model call");
       if (!recoveryCall.request) throw new Error("SIGKILL recovery gate omitted its request");
       const recoveryTranscript = JSON.stringify(recoveryCall.request.messages ?? []);
@@ -4890,7 +5036,7 @@ for await (const line of lines) {
       sessionId: asSessionId(planSession.id),
       input: [{ type: "text", text: "E2E_PLAN preserve this plan across SIGKILL." }],
     });
-    await collectRunEvents(planned.events);
+    await collectRunEvents(originalOpeningEvents(planned));
 
     const goalSession = await client.sessions.create({
       workspace: { path: root },
@@ -5081,7 +5227,7 @@ for await (const line of lines) {
         input: [{ type: "text", text: "E2E_FORCE_KILL_TOOL remain active until process death." }],
       });
       const runId = asRunId(started.result.runId);
-      const drain = collectRunEvents(started.events).then(
+      const drain = collectRunEvents(originalOpeningEvents(started)).then(
         () => undefined,
         () => undefined,
       );
@@ -5154,3 +5300,10 @@ for await (const line of lines) {
     }
   }, 30_000);
 });
+
+function originalOpeningEvents<R>(
+  opening: import("@flame/runtime-contract/client").RunOpeningResult<R>,
+): AsyncIterable<RunEvent> {
+  if (opening.observation.type !== "stream") throw new Error("expected an opening stream");
+  return opening.observation.events;
+}

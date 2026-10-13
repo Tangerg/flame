@@ -15,21 +15,9 @@ interface StagedResponse {
   onError?: () => void;
 }
 
-interface ProjectionBoundary {
-  generation: bigint;
-  authoritativeRevision: bigint;
-}
-
-interface SubmittedResponseBatch {
-  openedAt: ProjectionBoundary;
-  awaitingAuthority: ProjectionBoundary | null;
-  superseded: boolean;
-  acknowledged: boolean;
-}
-
 class InterruptResponseBatch {
   readonly #responses = new Map<string, StagedResponse>();
-  #submission: SubmittedResponseBatch | null = null;
+  #submitted = false;
 
   constructor(
     readonly sessionId: string,
@@ -37,7 +25,7 @@ class InterruptResponseBatch {
   ) {}
 
   get submitting(): boolean {
-    return this.#submission !== null;
+    return this.#submitted;
   }
 
   stage(itemId: string, response: StagedResponse): void {
@@ -57,54 +45,18 @@ class InterruptResponseBatch {
     return itemIds.map((itemId) => this.#responses.get(itemId)!);
   }
 
-  submit(entry: AgentSessionViewEntry): void {
-    this.#submission = {
-      openedAt: this.#boundary(entry),
-      awaitingAuthority: null,
-      superseded: false,
-      acknowledged: false,
-    };
+  submit(): void {
+    this.#submitted = true;
   }
 
   responses(): IterableIterator<StagedResponse> {
     return this.#responses.values();
   }
 
-  openingRejectionIsStale(): boolean {
-    return this.#submission?.superseded ?? false;
-  }
-
-  acknowledge(): void {
-    if (this.#submission) this.#submission.acknowledged = true;
-  }
-
-  needsRollback(): boolean {
-    return !this.#submission?.acknowledged || !this.#submission.superseded;
-  }
-
   reconcile(entry: AgentSessionViewEntry | undefined): boolean {
+    if (this.#submitted) return false;
     const open = entry ? new Set(openResponseIds(entry, this.rootRunId)) : new Set<string>();
-    if ([...this.#responses.keys()].some((itemId) => !open.has(itemId))) {
-      if (this.#submission) this.#submission.superseded = true;
-      return true;
-    }
-
-    const submission = this.#submission;
-    if (!submission || !entry || entry.viewEpoch === submission.openedAt.generation) return false;
-
-    const current = this.#boundary(entry);
-    if (submission.awaitingAuthority?.generation !== current.generation) {
-      submission.awaitingAuthority = current;
-      return false;
-    }
-    return current.authoritativeRevision > submission.awaitingAuthority.authoritativeRevision;
-  }
-
-  #boundary(entry: AgentSessionViewEntry): ProjectionBoundary {
-    return {
-      generation: entry.viewEpoch,
-      authoritativeRevision: entry.authoritativeRevision,
-    };
+    return [...this.#responses.keys()].some((itemId) => !open.has(itemId));
   }
 }
 
@@ -152,20 +104,17 @@ class InterruptResponseCoordinator {
     });
 
     if (!batch.covers(expected)) return true;
-    batch.submit(entry);
+    batch.submit();
     const ordered = batch.ordered(expected);
     const accepted = entry.resume(
       rootRunId,
       ordered.map(({ input }) => input),
       () => {
         if (this.#batches.get(key) !== batch) return;
-        batch.acknowledge();
+        this.#batches.delete(key);
+        for (const response of batch.responses()) response.onSettled?.();
       },
-      () => {
-        const superseded = batch.openingRejectionIsStale();
-        this.#reject(batch);
-        return superseded;
-      },
+      () => this.#reject(batch),
     );
     if (!accepted && this.#batches.get(key) === batch) this.#reject(batch);
     return true;
@@ -191,8 +140,7 @@ class InterruptResponseCoordinator {
     if (this.#batches.get(key) !== batch) return;
     this.#batches.delete(key);
     for (const response of batch.responses()) {
-      if (batch.needsRollback()) response.onError?.();
-      else response.onSettled?.();
+      response.onError?.();
     }
   }
 

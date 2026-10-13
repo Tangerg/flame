@@ -13,6 +13,13 @@ export interface MutationPromise<T> extends Promise<T> {
 
 type MutationExecution<T> = (idempotencyKey: string, options: MutationAttemptOptions) => Promise<T>;
 
+export class MutationLookupError extends Error {
+  override readonly name = "MutationLookupError";
+  constructor(cause: unknown) {
+    super("command acceptance lookup failed", { cause });
+  }
+}
+
 function retryableTransportFailure(error: unknown): error is RpcTransportError {
   if (!(error instanceof RpcTransportError)) return false;
   return error.status === undefined || error.status === 408 || (error.status ?? 0) >= 500;
@@ -29,6 +36,7 @@ class MutationObservationInterruptedError extends Error {
 }
 
 export function mutationSettlementIsUnknown(error: unknown): boolean {
+  if (error instanceof MutationLookupError) return true;
   if (error instanceof MutationObservationInterruptedError) return true;
   if (error instanceof RpcProtocolError) return true;
   if (retryableTransportFailure(error)) return true;

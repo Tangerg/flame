@@ -5,6 +5,7 @@ import {
   asRunId,
   asSegmentId,
   type RunEvent,
+  type RunOpeningResult,
 } from "@flame/runtime-contract/client";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { createRunOpeningController } from "./runOpeningController";
@@ -15,10 +16,12 @@ afterEach(() => {
 
 describe("run opening controller", () => {
   it("retires an opening that ignores cancellation and disposes its late stream", async () => {
-    const opening = Promise.withResolvers<{
-      result: { runId: ReturnType<typeof asRunId>; segmentId: ReturnType<typeof asSegmentId> };
-      events: AsyncIterable<RunEvent>;
-    }>();
+    const opening = Promise.withResolvers<
+      RunOpeningResult<{
+        runId: ReturnType<typeof asRunId>;
+        segmentId: ReturnType<typeof asSegmentId>;
+      }>
+    >();
     const abortCurrent = vi.fn();
     const close = vi.fn(async () => ({ value: undefined, done: true }) as const);
     const onResult = vi.fn();
@@ -29,11 +32,10 @@ describe("run opening controller", () => {
       markInteracted: vi.fn(),
       setAbortController: vi.fn(),
       abortCurrent,
-      pump,
       setStartError: vi.fn(),
     });
 
-    controller.begin(() => opening.promise, onResult);
+    controller.begin(() => opening.promise, { onResult, observe: pump });
     expect(controller.isStarting()).toBe(true);
     controller.retire();
 
@@ -42,11 +44,14 @@ describe("run opening controller", () => {
 
     opening.resolve({
       result: { runId: asRunId("run_late"), segmentId: asSegmentId("seg_late") },
-      events: {
-        [Symbol.asyncIterator]: () => ({
-          next: async () => ({ value: undefined, done: true }) as const,
-          return: close,
-        }),
+      observation: {
+        type: "stream",
+        events: {
+          [Symbol.asyncIterator]: () => ({
+            next: async () => ({ value: undefined, done: true }) as const,
+            return: close,
+          }),
+        },
       },
     });
 
@@ -55,7 +60,7 @@ describe("run opening controller", () => {
     expect(pump).not.toHaveBeenCalled();
   });
 
-  it("suppresses a rejected opening already superseded by authoritative projection", async () => {
+  it("reports a rejected opening even when its draft callback returns true", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setStartError = vi.fn<(problem: AgentProblem) => void>();
     const onStartError = vi.fn(() => true);
@@ -70,15 +75,14 @@ describe("run opening controller", () => {
       markInteracted: vi.fn(),
       setAbortController: vi.fn(),
       abortCurrent: vi.fn(),
-      pump: vi.fn(),
       setStartError,
     });
 
-    controller.begin(() => Promise.reject(rejected), undefined, onStartError);
+    controller.begin(() => Promise.reject(rejected), { observe: vi.fn(), onStartError });
 
     await vi.waitFor(() => expect(onStartError).toHaveBeenCalledOnce());
-    expect(error).not.toHaveBeenCalled();
-    expect(setStartError).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalled();
+    expect(setStartError).toHaveBeenCalled();
   });
 
   it("keeps a post-accept stream failure out of the opening failure channel", async () => {
@@ -97,19 +101,21 @@ describe("run opening controller", () => {
       markInteracted: vi.fn(),
       setAbortController: vi.fn(),
       abortCurrent: vi.fn(),
-      pump: vi.fn(async () => {
-        throw streamFailure;
-      }),
       setStartError,
     });
 
     controller.begin(
       async () => ({
         result: { runId: asRunId("run_1"), segmentId: asSegmentId("seg_1") },
-        events: emptyEvents(),
+        observation: { type: "stream", events: emptyEvents() },
       }),
-      onResult,
-      onStartError,
+      {
+        onResult,
+        onStartError,
+        observe: async () => {
+          throw streamFailure;
+        },
+      },
     );
 
     await vi.waitFor(() => expect(onResult).toHaveBeenCalledTimes(1));
@@ -133,11 +139,12 @@ describe("run opening controller", () => {
       markInteracted: vi.fn(),
       setAbortController: vi.fn(),
       abortCurrent: vi.fn(),
-      pump: vi.fn(),
       setStartError,
     });
 
-    controller.begin(() => Promise.reject(new RpcTransportError("connection unavailable")));
+    controller.begin(() => Promise.reject(new RpcTransportError("connection unavailable")), {
+      observe: vi.fn(),
+    });
 
     await vi.waitFor(() => expect(setStartError).toHaveBeenCalledWith({ code: "transport_error" }));
   });

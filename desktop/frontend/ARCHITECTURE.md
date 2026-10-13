@@ -286,6 +286,15 @@ replay rules; the graphical application supplies its storage lifetime and render
 the outcome. A delayed result may settle its original command, but cannot
 advance a retired view generation.
 
+Start and Resume query `runs.getAcceptance` with their original namespace, key,
+and operation before delivery. The journal reserves identity independently of
+dispatch admission: replay expiry and a replaced Runtime store forbid a write,
+but do not prevent a receipt read or renew the original deadline. A failed read
+retains uncertainty; `notRecorded` never grants a fresh key. Journal records keep
+their existing format and do not persist prompt or answer bodies. A cold retry
+must supply the exact prepared parameters to reclaim their fingerprint; a known
+identity can be queried without those parameters.
+
 ## Runtime events and interruption
 
 The shared client validates wire values and owns HTTP/SSE transport. Agent fold
@@ -310,6 +319,15 @@ Runtime events. Snapshot failure after acceptance remains a synchronization
 failure; it cannot turn an accepted command into a new submission. A connection
 failure in recovery or reattachment is reported to the Runtime connection owner,
 which controls generation replacement and reconnection.
+
+The SDK returns an opening receipt separately from its observation resource:
+`stream` owns the original response stream, `snapshot` requires recovery through
+Session material, and `retired` means the original material is unavailable.
+Snapshot recovery follows the current Run and Segment from coherent material,
+without rewriting the original opening references. A retired receipt settles
+the local submission and refreshes Session material without attaching a Run
+that reused its ID. Submitted response batches settle from opening results;
+waiting-set withdrawal and projection generations cannot acknowledge them.
 
 Workspace subscriptions publish invalidation, not a second filesystem database.
 The Workspace owner manages subscription replacement and reconnect, then

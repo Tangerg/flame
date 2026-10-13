@@ -32,12 +32,15 @@ import type { Item, RunEvent, StreamEvent } from "@flame/runtime-contract/wire";
 import { RUN_EVENT_METHOD, RUNTIME_EVENT_METHOD } from "@flame/runtime-contract/client/stream";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import {
+  openingEvents,
+  respondNotRecorded,
   finishedSegment,
   waitForRequest,
 } from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { RpcMessage } from "@flame/runtime-contract/client/types";
 import { JSONRPC_VERSION } from "@flame/runtime-contract/client/types";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
+import discovery from "@flame/runtime-contract/samples/method.discover.resp.json";
 import session from "@flame/runtime-contract/samples/session.json";
 
 function runEvent(runId: string, segmentId: string, eventId: string, event: StreamEvent): RunEvent {
@@ -640,10 +643,9 @@ describe("methods factory", () => {
     expect(call).toHaveBeenCalledOnce();
 
     const replacement = methods.schedules.runNow("sch_1");
-    await expect(replacement).resolves.toMatchObject({ runId: "run_2" });
-    expect(call).toHaveBeenCalledTimes(2);
-    expect(call.mock.calls[1]?.[2]?.idempotencyKey).not.toBe(retired.idempotencyKey);
-    expect(call.mock.calls[1]?.[2]?.idempotencyNamespace).toBe("idp_runtime_store_b");
+    expect(replacement.idempotencyKey).toBe(retired.idempotencyKey);
+    await expect(replacement).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+    expect(call).toHaveBeenCalledOnce();
     persistentJournal.dispose();
   });
 
@@ -749,7 +751,7 @@ describe("methods factory", () => {
 
     expect(replayCall.mock.calls[0]?.[2]?.idempotencyKey).toBe(firstKey);
     settleFirst({ sessionId: "ses_1", runId: "run_1" });
-    await expect(first).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+    await expect(first).resolves.toMatchObject({ runId: "run_1" });
     firstJournal.dispose();
     restartedJournal.dispose();
   });
@@ -801,8 +803,8 @@ describe("methods factory", () => {
     const retiredKey = retiredCall.mock.calls[0]?.[2]?.idempotencyKey;
     expect(replacementCall.mock.calls[0]?.[2]?.idempotencyKey).toBe(retiredKey);
     settleRetired({ sessionId: "ses_1", runId: "run_1" });
-    await expect(retired).rejects.toBeInstanceOf(MutationJournalOwnershipError);
-    expect([...values.keys()].some((key) => key.startsWith("entry:"))).toBe(true);
+    await expect(retired).resolves.toMatchObject({ runId: "run_1" });
+    expect([...values.keys()].some((key) => key.startsWith("entry:"))).toBe(false);
     retiredJournal.dispose();
 
     settleReplacement({ sessionId: "ses_1", runId: "run_1" });
@@ -859,10 +861,12 @@ describe("methods factory", () => {
       .mockReturnValueOnce(unsubscribers[1]);
     const call = vi
       .fn()
+      .mockResolvedValueOnce({ type: "notRecorded" })
       .mockImplementationOnce(async (_method, _params, options: RpcCallOptions) => {
         options.onRequestRpcId?.("request_1");
         throw new RpcTransportError("opening response lost");
       })
+      .mockResolvedValueOnce({ type: "notRecorded" })
       .mockImplementationOnce(async (_method, _params, options: RpcCallOptions) => {
         options.onRequestRpcId?.("request_2");
         return {
@@ -871,11 +875,17 @@ describe("methods factory", () => {
           userItemId: "item_user_1",
         };
       });
-    const methods = createMethods({
-      call,
-      subscribe,
-      onStreamEnd,
-    } as unknown as RpcClient);
+    const methods = createMethods(
+      {
+        call,
+        subscribe,
+        onStreamEnd,
+      } as unknown as RpcClient,
+      {
+        capabilities: () =>
+          discovery.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+      },
+    );
 
     const opened = await methods.runs.start({
       sessionId: asSessionId("ses_1"),
@@ -883,18 +893,18 @@ describe("methods factory", () => {
     });
 
     expect(opened.result).toMatchObject({ runId: "run_1", segmentId: "seg_1" });
-    expect(call).toHaveBeenCalledTimes(2);
+    expect(call).toHaveBeenCalledTimes(4);
     expect(subscribe).toHaveBeenCalledTimes(2);
     expect(onStreamEnd).toHaveBeenCalledTimes(2);
     expect(unsubscribers[0]).toHaveBeenCalledTimes(2);
-    const first = call.mock.calls[0]?.[2] as RpcCallOptions;
-    const second = call.mock.calls[1]?.[2] as RpcCallOptions;
+    const first = call.mock.calls[1]?.[2] as RpcCallOptions;
+    const second = call.mock.calls[3]?.[2] as RpcCallOptions;
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
     expect(second.signal).not.toBe(first.signal);
     expect(first.signal?.aborted).toBe(true);
     expect(second.signal?.aborted).toBe(false);
 
-    await opened.events[Symbol.asyncIterator]().return?.();
+    await openingEvents(opened)[Symbol.asyncIterator]().return?.();
     expect(unsubscribers[1]).toHaveBeenCalledTimes(2);
   });
 
@@ -1115,12 +1125,16 @@ describe("methods factory", () => {
   it("runs.start returns a streaming result that ends on the root segment's segment.finished", async () => {
     const t = createMemoryTransport();
     const client = createRpcClient(t);
-    const methods = createMethods(client);
+    const methods = createMethods(client, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+    });
 
     const startPromise = methods.runs.start({
       sessionId: asSessionId("ses_1"),
       input: [{ type: "text", text: "hi" }],
     });
+    await respondNotRecorded(t, "start");
     const req = await waitForRequest(t, "runs.start");
     expect(req.params).toMatchObject({ sessionId: "ses_1" });
 
@@ -1129,7 +1143,9 @@ describe("methods factory", () => {
       id: req.id,
       result: { runId: "run_1", segmentId: "seg_1", userItemId: "item_user_1" },
     } as RpcMessage);
-    const { result, events } = await startPromise;
+    const opening = await startPromise;
+    const result = opening.result;
+    const events = openingEvents(opening);
     expect(result.runId).toBe("run_1");
 
     t.inject(
@@ -1163,19 +1179,23 @@ describe("methods factory", () => {
   it("accepts a child tail without replayed lineage and isolates another response", async () => {
     const t = createMemoryTransport();
     const client = createRpcClient(t);
-    const methods = createMethods(client);
+    const methods = createMethods(client, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+    });
 
     const startPromise = methods.runs.start({
       sessionId: asSessionId("ses_1"),
       input: [{ type: "text", text: "hi" }],
     });
+    await respondNotRecorded(t, "start");
     const req = await waitForRequest(t, "runs.start");
     t.inject({
       jsonrpc: JSONRPC_VERSION,
       id: req.id,
       result: { runId: "run_1", segmentId: "seg_1", userItemId: "item_user_1" },
     } as RpcMessage);
-    const { events } = await startPromise;
+    const events = openingEvents(await startPromise);
 
     t.inject(
       {

@@ -1,6 +1,6 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { t } from "@/lib/i18n";
-import { notifyError } from "@/plugins/sdk";
+import { notifyError, notifyInfo } from "@/plugins/sdk";
 import type { AgentDriver, AgentRunStartOptions } from "@/plugins/sdk/types";
 import {
   asItemId,
@@ -28,6 +28,8 @@ import { agentProblemFromRpcFailure } from "./rpcProblem";
 import { createSessionProjectionSynchronization } from "../application/session/sessionProjectionSynchronization";
 import { createRunCancellationController } from "./runCancellationController";
 import { revalidateRunTermination } from "../application/run/revalidateRunTermination";
+import { disposeAsyncIterable } from "@/lib/asyncOwnership";
+import type { RunOpeningResult, RunId, SegmentId } from "@flame/runtime-contract/client";
 
 export function useAgentSession(
   client: () => FlameClient,
@@ -117,9 +119,45 @@ export function useAgentSession(
       setAbortController: (ctrl) => {
         abort = ctrl;
       },
-      pump: runPump.pump,
       setStartError: (error) => store().setCommandError(sessionId, error),
     });
+
+    const recoverOpeningObservation = async (
+      opening: RunOpeningResult<{ runId: RunId; segmentId: SegmentId }>,
+      signal: AbortSignal,
+    ): Promise<void> => {
+      try {
+        const observation = opening.observation;
+        if (observation.type !== "stream" && observation.sessionId !== sessionId) {
+          throw new Error("accepted opening belongs to another Session");
+        }
+        if (observation.type === "retired") {
+          notifyInfo(t("agent.acceptedRunRetired"), { source: "session" });
+          await refreshAgentSessionProjection(sessionId, {
+            signal,
+            canCommit: () => !cancelled && !signal.aborted,
+          });
+          return;
+        }
+        if (observation.type === "stream") await disposeAsyncIterable(observation.events);
+        await startAgentSessionRecovery({
+          client: client(),
+          sessionId,
+          signal,
+          isCancelled: () => cancelled,
+          hasInteracted: () => false,
+          isFollowing: runPump.isFollowing,
+          setAbortController: (controller) => {
+            abort = controller;
+          },
+          pump: runPump.pump,
+          onSynchronizationFailed: reportSynchronizationFailure,
+        });
+      } catch (error) {
+        if (!cancelled && !signal.aborted) reportSynchronizationFailure(error);
+        throw error;
+      }
+    };
 
     const send = (input: AgentInput, options: AgentRunStartOptions = {}): boolean => {
       if (runOpening.isStarting()) return false;
@@ -128,13 +166,17 @@ export function useAgentSession(
       const wireInput = agentInputToContentBlocks(input);
       const optimistic = createOptimisticUserMessage(wireInput);
       store().appendLocalMessage(sessionId, optimistic.message);
-      runOpening.begin(
-        (signal) => driver.start(wireInput, options, signal),
-        (result) => {
-          store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
+      runOpening.begin((signal) => driver.start(wireInput, options, signal), {
+        onResult: (result, observation) => {
+          if (observation.type === "retired") store().dropMessage(sessionId, optimistic.localId);
+          else store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
         },
-        () => store().dropMessage(sessionId, optimistic.localId),
-      );
+        onStartError: () => store().dropMessage(sessionId, optimistic.localId),
+        observe: (opening, signal) =>
+          opening.observation.type === "stream"
+            ? runPump.pump({ result: opening.result, events: opening.observation.events }, signal)
+            : recoverOpeningObservation(opening, signal),
+      });
       return true;
     };
 
@@ -142,7 +184,7 @@ export function useAgentSession(
       runId: string,
       responses: InterruptResumeInput[],
       onSettled?: () => void,
-      onStartError?: () => boolean | void,
+      onStartError?: () => void,
     ): boolean => {
       if (runOpening.isStarting()) return false;
       const wireResponses: InterruptResponse[] = responses.map((response) => ({
@@ -151,8 +193,11 @@ export function useAgentSession(
       }));
       runOpening.begin(
         (signal) => driver.resume(asRunId(runId), { responses: wireResponses }, signal),
-        onSettled ? () => onSettled() : undefined,
-        onStartError,
+        {
+          onResult: onSettled ? () => onSettled() : undefined,
+          onStartError,
+          observe: recoverOpeningObservation,
+        },
       );
       return true;
     };

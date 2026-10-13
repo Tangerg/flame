@@ -68,13 +68,19 @@ type OpenMutation = <M extends WireMethodName, Result>(
   params: WireParams<M>,
   execute: (
     idempotencyKey: string,
-    attempt: { signal?: AbortSignal; idempotencyNamespace?: string },
+    attempt: MutationDelivery,
     preparedParams: WireParams<M>,
   ) => Promise<Result>,
   signal?: AbortSignal,
   requestedKey?: string,
   journalKey?: string,
 ) => MutationPromise<Result>;
+
+interface MutationDelivery {
+  signal?: AbortSignal;
+  lookupNamespace(): string | undefined;
+  authorizeDispatch(): string | undefined;
+}
 
 export function createWireCallPath(client: RpcClient, options: MethodsOptions): WireCallPath {
   const refuse = <M extends WireMethodName>(
@@ -116,7 +122,7 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     params: WireParams<M>,
     execute: (
       idempotencyKey: string,
-      attempt: { signal?: AbortSignal; idempotencyNamespace?: string },
+      attempt: MutationDelivery,
       preparedParams: WireParams<M>,
     ) => Promise<Result>,
     signal?: AbortSignal,
@@ -150,8 +156,15 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     }
     const mutation = createMutationPromise(
       (idempotencyKey, attempt) => {
-        const idempotencyNamespace = reservation?.authorizeAttempt();
-        return execute(idempotencyKey, { ...attempt, idempotencyNamespace }, preparedParams);
+        return execute(
+          idempotencyKey,
+          {
+            ...attempt,
+            lookupNamespace: () => reservation?.lookupNamespace(),
+            authorizeDispatch: () => reservation?.authorizeDispatch(),
+          },
+          preparedParams,
+        );
       },
       requestedKey ?? reservation?.idempotencyKey,
       { signal },
@@ -171,15 +184,15 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     return openMutation(
       method,
       params,
-      (idempotencyKey, attempt, preparedParams) =>
-        perform(method, preparedParams, {
+      (idempotencyKey, attempt, preparedParams) => {
+        const idempotencyNamespace = attempt.authorizeDispatch();
+        return perform(method, preparedParams, {
           ...stableCallOptions,
           ...(attempt.signal ? { signal: attempt.signal } : {}),
           idempotencyKey,
-          ...(attempt.idempotencyNamespace
-            ? { idempotencyNamespace: attempt.idempotencyNamespace }
-            : {}),
-        }),
+          ...(idempotencyNamespace ? { idempotencyNamespace } : {}),
+        });
+      },
       signal,
       idempotencyKey,
     ) as WireInvokeResult<M>;

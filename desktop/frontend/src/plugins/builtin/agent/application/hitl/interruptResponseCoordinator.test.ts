@@ -105,8 +105,8 @@ describe("interrupt response coordinator", () => {
     expect(questionSettled).not.toHaveBeenCalled();
 
     accept?.();
-    expect(approvalSettled).not.toHaveBeenCalled();
-    expect(questionSettled).not.toHaveBeenCalled();
+    expect(approvalSettled).toHaveBeenCalledOnce();
+    expect(questionSettled).toHaveBeenCalledOnce();
     expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toEqual(groups());
     seedPending([]);
     expect(approvalSettled).toHaveBeenCalledOnce();
@@ -210,7 +210,7 @@ describe("interrupt response coordinator", () => {
     dispose();
   });
 
-  it("retires a submitting batch when authoritative projection proves continuation", () => {
+  it("keeps submission uncertainty when projection withdraws the waiting set", () => {
     seedPending(groups());
     let accept: (() => void) | undefined;
     let reject: (() => boolean | void) | undefined;
@@ -241,24 +241,25 @@ describe("interrupt response coordinator", () => {
 
     seedPending([]);
 
-    expect(approvalError).toHaveBeenCalledOnce();
-    expect(questionError).toHaveBeenCalledOnce();
+    expect(approvalError).not.toHaveBeenCalled();
+    expect(questionError).not.toHaveBeenCalled();
     expect(
       interruptResponseIsStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
       }),
-    ).toBe(false);
-    expect(reject?.()).toBe(true);
+    ).toBe(true);
 
     accept?.();
-    expect(approvalSettled).not.toHaveBeenCalled();
-    expect(questionSettled).not.toHaveBeenCalled();
+    expect(approvalSettled).toHaveBeenCalledOnce();
+    expect(questionSettled).toHaveBeenCalledOnce();
+    reject?.();
+    expect(approvalError).not.toHaveBeenCalled();
     dispose();
   });
 
-  it("releases an ambiguous submission only after the successor projection keeps its barrier open", () => {
+  it("does not infer command settlement from a successor projection", () => {
     seedPending(groups());
     let retiredAccept: (() => void) | undefined;
     const retiredResume = vi.fn((_runId, _responses, onSettled) => {
@@ -307,19 +308,19 @@ describe("interrupt response coordinator", () => {
     expect(approvalError).not.toHaveBeenCalled();
 
     seedPending(groups());
-    expect(approvalError).toHaveBeenCalledOnce();
-    expect(questionError).toHaveBeenCalledOnce();
+    expect(approvalError).not.toHaveBeenCalled();
+    expect(questionError).not.toHaveBeenCalled();
     expect(
       interruptResponseIsStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
       }),
-    ).toBe(false);
+    ).toBe(true);
 
     retiredAccept?.();
-    expect(approvalSettled).not.toHaveBeenCalled();
-    expect(questionSettled).not.toHaveBeenCalled();
+    expect(approvalSettled).toHaveBeenCalledOnce();
+    expect(questionSettled).toHaveBeenCalledOnce();
   });
 
   it("does not let a retired reconciliation clear its successor's staged barrier", () => {

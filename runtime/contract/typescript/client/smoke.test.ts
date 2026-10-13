@@ -4,6 +4,8 @@ import {
   type MemoryTransport,
 } from "@flame/runtime-contract/client/transports/memory";
 import {
+  openingEvents,
+  respondNotRecorded,
   injectRunEvent,
   injectRunFinished,
   respondSuccess,
@@ -45,7 +47,10 @@ describe("smoke: v2 end-to-end happy path", () => {
   it("preserves unresolved output evidence through client export and JSON round-trip", async () => {
     transport = createMemoryTransport();
     client = createRpcClient(transport);
-    methods = createMethods(client);
+    methods = createMethods(client, {
+      capabilities: () =>
+        discoverResponse.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+    });
 
     const exporting = methods.sessions.export(asSessionId("ses_01"), "json");
     const request = await waitForRequest(transport, "sessions.export");
@@ -73,7 +78,10 @@ describe("smoke: v2 end-to-end happy path", () => {
         },
       }),
     });
-    methods = createMethods(client);
+    methods = createMethods(client, {
+      capabilities: () =>
+        discoverResponse.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+    });
 
     const discoverPromise = methods.runtime.discover();
     const discoverReq = await waitForRequest(transport, "runtime.discover");
@@ -120,6 +128,7 @@ describe("smoke: v2 end-to-end happy path", () => {
       sessionId: asSessionId("ses_1"),
       input: [{ type: "text", text: "list files" }],
     });
+    await respondNotRecorded(transport, "start");
     const startReq = await waitForRequest(transport, "runs.start");
     expect(startReq.params).toMatchObject({ sessionId: "ses_1" });
     respondSuccess(transport, startReq.id, {
@@ -127,7 +136,9 @@ describe("smoke: v2 end-to-end happy path", () => {
       segmentId: "seg_1",
       userItemId: "item_user_1",
     });
-    const { result: started, events } = await startPromise;
+    const opening = await startPromise;
+    const started = opening.result;
+    const events = openingEvents(opening);
     expect(started.runId).toBe("run_1");
     expect(started.segmentId).toBe("seg_1");
 
@@ -233,13 +244,16 @@ describe("smoke: v2 end-to-end happy path", () => {
         },
       ],
     });
+    await respondNotRecorded(transport, "resume");
     const resumeReq = await waitForRequest(transport, "runs.resume");
     expect(resumeReq.params).toMatchObject({ runId: "run_1" });
     respondSuccess(transport, resumeReq.id, {
       runId: "run_1",
       segmentId: "seg_2",
     });
-    const { result: resumed, events: resumeEvents } = await resumePromise;
+    const resumeOpening = await resumePromise;
+    const resumed = resumeOpening.result;
+    const resumeEvents = openingEvents(resumeOpening);
     expect(resumed.runId).toBe("run_1");
     expect(resumed.segmentId).toBe("seg_2");
 
@@ -300,19 +314,23 @@ describe("smoke: v2 end-to-end happy path", () => {
   it("concurrent response streams stay isolated by request identity", async () => {
     transport = createMemoryTransport();
     client = createRpcClient(transport);
-    methods = createMethods(client);
+    methods = createMethods(client, {
+      capabilities: () =>
+        discoverResponse.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+    });
 
     const startPromise = methods.runs.start({
       sessionId: asSessionId("ses_1"),
       input: [{ type: "text", text: "hi" }],
     });
+    await respondNotRecorded(transport, "start");
     const req = await waitForRequest(transport, "runs.start");
     respondSuccess(transport, req.id, {
       runId: "run_ours",
       segmentId: "seg_ours",
       userItemId: "item_user_ours",
     });
-    const { events } = await startPromise;
+    const events = openingEvents(await startPromise);
 
     setTimeout(() => {
       injectRunEvent(
@@ -348,19 +366,23 @@ describe("smoke: v2 end-to-end happy path", () => {
   it("malformed notification params terminate the stream at the generated boundary", async () => {
     transport = createMemoryTransport();
     client = createRpcClient(transport);
-    methods = createMethods(client);
+    methods = createMethods(client, {
+      capabilities: () =>
+        discoverResponse.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
+    });
 
     const startPromise = methods.runs.start({
       sessionId: asSessionId("ses_1"),
       input: [{ type: "text", text: "hi" }],
     });
+    await respondNotRecorded(transport, "start");
     const req = await waitForRequest(transport, "runs.start");
     respondSuccess(transport, req.id, {
       runId: "run_1",
       segmentId: "seg_1",
       userItemId: "item_user_1",
     });
-    const { events } = await startPromise;
+    const events = openingEvents(await startPromise);
 
     setTimeout(() => {
       transport.inject(
