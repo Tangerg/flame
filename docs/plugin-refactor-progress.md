@@ -2,15 +2,57 @@
 
 ## Current stage
 
-Stage 3p implementation committed in f82cad37. Managed entry admission captures immutable named collaborator bindings, waits for required providers' existing owned connection attempts, verifies live exports, and sends the same bindings through public SDK `operations.setup` before publishing the session or Tools. The SDK setup lifetime owns returned resources and joins cancellation/cleanup; per-session actor authority checks the captured binding instead of re-reading mutable selection. Public installed queries/new commands now carry call-scoped canonical Core callback metadata. `NewPluginCallbackCaller` uses that original calling-owner reference for invoked work and the explicit setup reference for background work. Receipt recovery continues through the original route without new collaborators.
+Stage 3q committed in af081e07 implements consumer-owned point values and a real deterministic Reviews
+analyzer consumer/producer. The pure public point contract owns value schema,
+applicability over a frozen target/context, optional absence, canonical collection
+keys and explicit selection/decoration/presentation order. Namespace-local point
+contracts and values are admitted without activating code. One Core query serves
+Go, Protocol, CLI and TypeScript; the typed helper checks the consumer schema.
 
-Local main 104f76949cee2517fae2bbb0b0d943a957baa62a was merged in ec674681. Five conflicts were resolved by preserving main's accepted-continuation/remembered-rule recovery and this branch's actor authority, original plugin command routing and provider selection. Superseded ResumeClaims and AutomationStarts were not restored. Merged Runtime/CLI/Reviews production builds and six owning test binaries compile. The SDK named setup/snapshot isolation/success-refusal/resource cleanup test passes in 6.859 seconds. Full tests/vet/races and integrated acceptance remain deferred.
+Reviews declares an optional analyzer collection and named callable dependency,
+reads its own current snapshot, invokes same-release installed analyzer bindings
+through the ordinary public callback and installed operation, then admits findings
+against that snapshot's review ID/revision. The separate analyzer package has no
+private data or Runtime internal import. It returns deterministic findings and
+cannot change Reviews' records. A checklist-only policy example was replaced
+before committing; it did not satisfy the requested executable analyzer seam.
 
-The complete proposal/review goal remains active. Full point values/Schema/applicability/optionality/order, observed dependency-state projection, execution-owned durable dependency retention, actual Tool/automatic/UI consumer migration, components, canonical models and streaming decorators remain open. Generic Tool calls still need call-scoped canonical callback preparation as part of their real consumer migration; this slice does not claim that entrance completed. Full-scope estimate remains approximately 25–30%, based on requirements, not commit count.
+Production Runtime/CLI/Reviews builds, Core/Reviews generation, shared TS types,
+changed formatting and seven affected test binaries pass. Necessary focused
+point/application checks previously passed (0.793s/0.810s); package local contract
+admission, exact analyzer routing/evidence admission and the deterministic producer
+now pass (0.929s/0.970s/1.798s). Complete installed process/callback/lifetime proof,
+full tests/vet/races and remaining platform acceptance are deferred. This does not
+close full point lifecycle, durable scoped composition, required decorator members,
+components, canonical models, streaming or complete Reviews graphical acceptance.
 
-Verification policy: development first. Compile complete slices and run only a necessary focused check resolving a concrete uncertainty. Concentrate full/race/cross-module verification at the final stage. No frontend UI/E2E/screenshot tests.
+The full proposal/review goal remains active, approximately 30% overall. Stage 3p
+and its main integration remain committed in f82cad37/ec674681. Main 7957a603 is synchronized in 765ccacd. Resume command
+receipts/current material, plugin actor isolation and original Schedules request
+verification coexist. Core projections were regenerated at 2026-10-13.5; backend
+callable identity remains 2026-10-13.4. Merged production builds, shared TS types
+and six affected test binaries compile. A necessary focused acceptance query
+check passes in 1.354s; full execution remains deferred.
+
+Verification policy: development first. Compile complete slices and run only a
+necessary focused check resolving a concrete uncertainty. Concentrate full/race/
+cross-module verification at the final stage. No frontend UI/E2E/screenshot tests.
 
 ## Completed
+
+- Stage 3q (af081e07): pure point admission/composition, immutable installed value resolution,
+  public Go/Protocol/CLI/TS query and typed consumer helper; current production and
+  owning test source compile, focused contract/value checks pass.
+- Stage 3q Reviews: real installed analyzer operation and separate deterministic
+  producer, named optional setup dependency, consumer-owned finding admission and
+  generated public contracts. Focused routing/evidence/producer checks pass;
+  installed process integration remains queued.
+- Stage 3q main integration (765ccacd): preserve main 7957a603 Resume acceptance/current Run
+  projection, actor-scoped command keys, captured new Sessions and original-request
+  verification. Adopt its accepted/retired/notRecorded vocabulary in Schedules
+  and preserve catalog-derived TS policies. No retired AutomationStarts or
+  ResumeClaims owner was restored.
+
 
 - Stage 3p: immutable named entry bindings, owned provider-attempt waiting, real SDK setup delivery, returned resource/cancellation joining, frozen managed actor permissions and call-scoped public installed-operation callbacks; f82cad37. SDK setup lifecycle execution passes; full installed acceptance remains queued.
 - Stage 3p main integration: ec674681 retains main's accepted-continuation recovery while preserving actor authority, Commands/ProviderSelections and removal of retired automation/resume-claim owners. Production builds and affected test source compilation pass.
@@ -145,7 +187,7 @@ Verification policy: development first. Compile complete slices and run only a n
 ## In progress
 
 - Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
-- Complete consumer-owned point values, Schema, scope meaning, applicability, optionality and explicit decoration/presentation ordering. Exact callable contract identity and composition metadata do not close these contracts.
+- Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
 - Replace the closed view/guest carrier with public components and shared module loading; implement the real Reviews board/analyzer/operation slice, then migrate remaining bundled consumers. No frontend UI/E2E execution is authorized.
 - Complete the canonical model execution contract, installed streaming decorators/remote next, frozen order, cancellation/backpressure and preservation of inner model evidence.
@@ -155,7 +197,7 @@ Verification policy: development first. Compile complete slices and run only a n
 
 ## Next
 
-1. Complete consumer-owned point semantics, named dependency status/retention and actual Tool/automatic/cross-plugin consumer migration over the implemented setup/frozen session bindings. Reuse the existing original command route and execution dependency owner. Unary target/caller context and Schedules durable trigger restoration are implemented; their final execution acceptance remains queued. The apiVersion:1 parser is deleted; remaining closed-view/carrier deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
+1. Complete remaining point lifecycle/scoped composition, named dependency status/retention and actual Tool/automatic/cross-plugin consumer migration over the implemented setup/frozen session bindings. Reuse the existing original command route and execution dependency owner. Unary target/caller context and Schedules durable trigger restoration are implemented; their final execution acceptance remains queued. The apiVersion:1 parser is deleted; remaining closed-view/carrier deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
 2. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 3. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
 4. Complete requirement-level audit and final clean delivery.
@@ -164,6 +206,8 @@ Verification policy: development first. Compile complete slices and run only a n
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Integrate main Resume acceptance and advance Core to .5 while keeping backend .4; original-start verification uses the same capability-aware fingerprint and plugin-scoped key | Main changes the shared command acceptance projection without replacing plugin caller authority or Schedules original captured dispatch; generated clients must agree with the merged current shape | Restoring retired automation owners, dropping actor isolation/captured request checks, hand-merging generated schemas, or dual protocol readers |
+| 2026-10-13 | Separate pure consumer-owned point values from callable capability contracts; reuse the existing JSONSchema compiler and public operation route | Values can name implementation or presentation data; the consumer owns their schema, applicability and composition while callable contracts own method admission | String-only point lookup, substrate Reviews enums, a new IDL/compiler, checklist data presented as an executable analyzer, or a second composition/receipt store |
 | 2026-10-13 | Keep named resolved collaborators immutable in the existing session owner and use them for SDK setup and nested authority | A running entry must not change provider when mutable selection changes; setup resources and canonical callback references share its owned retirement | Re-resolving a role on every nested call, a second activation/installation ledger, SDK ambient service lookup or converting business receipt identity |
 | 2026-10-13 | Merge main accepted-continuation recovery without restoring replaced automation/resume-claim owners | Preserve independent product work and its current owner while retaining unified actor/callback and original command semantics | Taking one conflict side wholesale, restoring obsolete wrappers or maintaining two acceptance owners |
 | 2026-10-13 | Gate managed entry launch by mandatory declaration bindings and gate publication by exact live exports/methods | MCP initialization alone does not prove installed contribution implementation; the existing attempt/session ledger already owns cancellation and teardown | Publishing Tools first, a second activation ledger, changing persisted enablement on handshake failure or feature-specific live admission |
@@ -250,7 +294,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Open | public SDK and installed component loader |
-| Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; complete point values/applicability/order, observed status/retention, analyzer and full acceptance remain open | runtime/capability; runtime/plugin/capability.go; capability_test.go; public point consumers and Reviews analyzer |
+| Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
 | One executable contract generation source | Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; installed contribution/component binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
@@ -280,6 +324,17 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3q development and focused contract evidence
+
+- Passed: production `go build ./runtime/... ./cli/... ./examples/plugins/reviews/backend/...`; Core Delivery and Reviews `go generate`, including both consumer and producer analyzer projections; shared Runtime TS prettier/types; Go formatting and `git diff --check`.
+- Passed necessary focused execution: pure point/applicable/required absence/order and installed value bindings (0.793s/0.810s); package local schema/value isolation and namespace confinement (0.929s); exact resolved analyzer routing plus unrelated evidence refusal (0.970s); deterministic producer snapshot/refusal behavior (1.798s). These are not actual two-process callback acceptance.
+- Passed compilation only: root Runtime, plugin Domain/Application, Delivery, architecture, CLI delivery and CLI Runtime adapter test binaries. TemporaryDirectory removes all compile outputs; Bootstrap TestMain is not executed.
+- Passed after main integration: production Runtime/CLI/Reviews builds, Core generation, shared Runtime TS types and persistence/segment/Runs/Delivery/Bootstrap/root test source compilation. Focused namespace/read/current material/original request/actor isolation checks pass (1.354s). Bootstrap TestMain was not executed.
+- Main merge resolved twenty source/projection conflicts and regenerated projections. Core advances to .5 for required point outputs and merged command acceptance request shapes; backend remains .4. Existing Schedules/current callback fixtures were migrated, preserving their original assertions.
+- Fixed: the generator initially encountered a public Descriptor basename collision and duplicate field-constraint registration; the point type is Definition and each constraint is registered once. The typed helper uses string cursor absence. The analyzer projection initially targeted a missing directory; generator ordering now creates it through the existing feature generator. The new analyzer root uses the existing extensions namespace container.
+- Full/race/vet, integrated installed activation/callback/reentrancy/retention and independent released module acceptance remain deferred. No frontend UI/E2E/screenshot tests or user-data operations.
+
 
 ### Stage 3p development and necessary focused checks
 
@@ -537,6 +592,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3q: product committed in af081e07, incoming main 7957a603 synchronized in 765ccacd. All owned generation/build/typecheck/focused/compile/commit handles are terminal; TemporaryDirectory removes compile outputs. Empty directories from the replaced uncommitted checklist-only example are removed. No native distribution, UI test, external action, credential, shared configuration or user-data mutation was introduced. Preserve the active managed checkout and canonical progress symlink. Original input SHA-256 values match the read-only baseline.
+
 - Stage 3m: product committed in beb2f5bc and main synchronized at 78f9f08b. Every owned compile/build/generation/typecheck/commit handle is terminal; temporary test binaries were removed. No native distribution, test process, external action, credential use, shared config change or user-data mutation was introduced. Preserve the active checkout, concurrent shared work and canonical progress symlink.
 
 - Stage 3l: product committed in b16bfb38 and incoming main is synchronized at 78f9f08b. All generation/build/typecheck/compilation/commit handles are terminal; temporary binaries are removed, no runtime test/native distribution or background process was launched. Preserve the active worktree, concurrent shared-checkout work and canonical progress symlink. Final execution remains deferred.
@@ -586,7 +643,7 @@ Stage 2a verification:
 
 - Stage 3p implements the previously missing provider waiting, named setup and frozen session binding seam; a compiled implementation plus SDK-only lifecycle test is not full installed activation/component acceptance.
 
-- The requirements inspection query still resolves metadata without activating code. Stage 3p setup/session binding is its real execution seam; point values/applicability/scoped composition and decoration order remain required. Query results alone are not lifecycle evidence.
+- The requirements inspection query still resolves metadata without activating code. Stage 3p setup/session binding is its real execution seam; point values/applicability/ordering now have an admitted public owner and actual analyzer consumer; durable scoped composition and executing decoration remain required. Query results alone are not lifecycle evidence.
 
 - Execute final acceptance for Stage 3m original caller retention and restoration through the actual Schedules durable request/occurrence and canonical Run callback, including response loss and restart. The private model and real dispatch path now implement it; compilation alone does not close the review requirement.
 
@@ -606,6 +663,9 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3q adds point output arrays and the public point resolution API; regenerate and rebuild consumers. Reviews' capability changes to include analyzer execution and its optional setup dependency. Rebuild both example packages together. Integrated Core protocol is .5 and backend callable protocol remains .4; rebuild generated clients. This point slice introduces no storage format or retained data changes. Complete installed lifecycle and external published module validation remain open.
+
 
 - Stage 3p requires callable backend packages to expose the new SDK setup method and to register a handler when dependencies are declared. Rebuild code/declarations together; a missing setup method/handler is refused, without an old path. Core/backend protocol remains .4 and no storage format or retained business data changes in this slice. Public SDK adds Setup/OnSetup/Close and Runtime adds the callback caller; independent published module advancement remains open. Full installed execution and changed-owner races are outstanding.
 
