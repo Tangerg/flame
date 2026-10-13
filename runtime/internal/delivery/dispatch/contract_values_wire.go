@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -1066,6 +1067,23 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CallPluginRequest](), Constraints: []FieldConstraint{
+		{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+		{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()},
+		{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+		{Field: "method", Kind: ConstraintNonEmpty},
+		{Field: "method", Kind: ConstraintMaxLength, Limit: 256},
+		{Field: "method", Kind: ConstraintIdentity},
+	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCallFailure](), Constraints: []FieldConstraint{
+		{Field: "code", Kind: ConstraintNonEmpty},
+		{Field: "code", Kind: ConstraintMaxLength, Limit: 256},
+		{Field: "message", Kind: ConstraintNonEmpty},
+	}})
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.CallPluginResponse](), Rules: []ConditionalRule{
+		{RequiredAny: []string{"output", "failure"}},
+		{When: []delivery.FieldCondition{{Field: "failure", Operator: delivery.OperatorPresent}}, Forbidden: []string{"output"}},
+	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginRendererRequest](), Constraints: []FieldConstraint{{Field: "rendererId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRenderer](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxViewTitleBytes}}})

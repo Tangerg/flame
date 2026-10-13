@@ -1,6 +1,6 @@
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";
-import { checkRequest } from "./request";
+import { checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import type { MutationJournal } from "./mutationJournal";
 import { unnegotiated } from "./preflight";
@@ -13,7 +13,6 @@ import {
 import type { RequestMeta, ServerCapabilities } from "@flame/runtime-contract/wire";
 import {
   wireMethodIsPaginated,
-  wireMethodRequiresIdempotency,
   type WireMethodName,
   type WireMutationMethodName,
   type WirePaginatedMethodName,
@@ -165,7 +164,7 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     params: WireParams<M>,
     callOptions?: RpcCallOptions,
   ): WireInvokeResult<M> => {
-    if (!wireMethodRequiresIdempotency(method)) {
+    if (!requestRequiresIdempotency(method, params)) {
       return perform(method, params, callOptions) as WireInvokeResult<M>;
     }
     const { signal, idempotencyKey, ...stableCallOptions } = callOptions ?? {};

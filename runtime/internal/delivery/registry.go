@@ -23,8 +23,10 @@ type Registry struct {
 // closure. Type erasure exists only at this private narrow waist; registrations
 // and public bindings remain fully typed.
 type Method struct {
-	Meta   MethodMeta
-	invoke func(any, context.Context, any) rawResult
+	Meta     MethodMeta
+	invoke   func(any, context.Context, any) rawResult
+	prepare  func(any, context.Context, any) (*Method, error)
+	classify func(any) (OperationKind, error)
 }
 
 type rawResult struct {
@@ -123,6 +125,73 @@ func (r *Registry) command[Capability, Params, Response any](
 	}
 	meta.ReplayCursor = ReplayCursorNone
 	r.registerUnary(meta, call)
+}
+
+// extension resolves the consumer's admitted method before delivery chooses
+// query or owner-committed command policies. No caller-supplied kind is accepted.
+func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Response, error), error)) {
+	meta.Kind = KindUnary
+	meta.Operation = OperationExtension
+	meta.Idempotency = IdempotencyOwnerResponse
+	meta.ReplayCursor = ReplayCursorNone
+	meta.Pagination = PaginationNone
+	meta.Params = reflect.TypeFor[Params]()
+	meta.Result = reflect.TypeFor[Response]()
+	r.add(meta, nil)
+	r.byName[meta.Name].classify = func(parameters any) (OperationKind, error) {
+		request, ok := parameters.(Params)
+		if !ok {
+			return "", fmt.Errorf("operation: %s received invalid parameters", meta.Name)
+		}
+		return classify(request)
+	}
+	r.byName[meta.Name].prepare = func(target any, ctx context.Context, parameters any) (*Method, error) {
+		capability, ok := target.(Capability)
+		if !ok || !capabilityAvailable(capability) {
+			return nil, fmt.Errorf("operation: target cannot handle %s", meta.Name)
+		}
+		kind, call, err := prepare(capability, ctx, parameters.(Params))
+		if err != nil {
+			return nil, err
+		}
+		expected, err := classify(parameters.(Params))
+		if err != nil {
+			return nil, err
+		}
+		if kind != expected {
+			return nil, fmt.Errorf("operation: %s resolved inconsistent semantics", meta.Name)
+		}
+		resolved := cloneMethodMeta(meta)
+		resolved.Operation = kind
+		switch kind {
+		case OperationQuery:
+			resolved.Idempotency = IdempotencyNone
+		case OperationCommand:
+			resolved.Idempotency = IdempotencyOwnerResponse
+		default:
+			return nil, fmt.Errorf("operation: %s resolved an invalid operation kind", meta.Name)
+		}
+		if call == nil {
+			return nil, fmt.Errorf("operation: %s resolved no invocation", meta.Name)
+		}
+		return &Method{Meta: resolved, invoke: func(_ any, ctx context.Context, _ any) rawResult {
+			value, err := call(ctx)
+			return rawResult{value: value, err: err}
+		}}, nil
+	}
+}
+
+// InvocationOperation projects the same admitted semantics for remote response
+// loss classification. Installation/live binding admission remains with Runtime.
+func InvocationOperation(name Name, parameters any) (OperationKind, error) {
+	method, found := contract.lookup(name)
+	if !found {
+		return "", fmt.Errorf("operation: unknown method %s", name)
+	}
+	if method.classify != nil {
+		return method.classify(parameters)
+	}
+	return method.Meta.Operation, nil
 }
 
 func (r *Registry) registerUnary[Capability, Params, Response any](

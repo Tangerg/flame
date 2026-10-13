@@ -136,6 +136,16 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if err := ctx.Err(); err != nil {
 		return failed(ProjectError(err))
 	}
+	if method.prepare != nil {
+		var err error
+		method, err = method.prepare(e.target, ctx, parameters)
+		if err != nil {
+			return failed(ProjectError(err))
+		}
+		if failure := validateOptions(method.Meta, options); failure != nil {
+			return failed(failure)
+		}
+	}
 
 	options.IdempotencyKey = operation.ScopedKey(ctx, options.IdempotencyKey)
 	ctx = operation.Bind(ctx, e.idempotencyNamespace.String(), options.IdempotencyKey)

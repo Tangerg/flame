@@ -1,6 +1,31 @@
 package protocol
 
-import "github.com/Tangerg/flame/runtime/capability"
+import (
+	"encoding/json/jsontext"
+
+	"github.com/Tangerg/flame/runtime/capability"
+)
+
+// CallPluginRequest binds an installed contribution to the consumer's complete
+// required contract. The implementation determines operation semantics.
+type CallPluginRequest struct {
+	InstallationID string                `json:"installationId"`
+	Digest         string                `json:"digest"`
+	Contribution   string                `json:"contribution"`
+	Contract       capability.Descriptor `json:"contract"`
+	Method         string                `json:"method"`
+	Input          jsontext.Value        `json:"input"`
+}
+
+type CallPluginResponse struct {
+	Output  jsontext.Value     `json:"output,omitzero"`
+	Failure *PluginCallFailure `json:"failure,omitzero"`
+}
+
+type PluginCallFailure struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
 
 type PluginProviderSelection struct {
 	Role           string `json:"role"`

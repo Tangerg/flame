@@ -7,6 +7,7 @@ import (
 
 const (
 	PluginsList               Name = "plugins.list"
+	PluginsCall               Name = "plugins.call"
 	PluginsListProviders      Name = "plugins.listProviders"
 	PluginsSelectProvider     Name = "plugins.selectProvider"
 	PluginsInstall            Name = "plugins.install"
@@ -42,6 +43,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.extension(MethodMeta{Name: PluginsCall, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, pluginCallOperation, func(s interface {
+		PreparePluginCall(context.Context, protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error)
+	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
+		return s.PreparePluginCall(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsListProviders, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPluginProviders(context.Context) (*protocol.Page[protocol.PluginProviderSelection], error)
 	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginProviderSelection], error) {

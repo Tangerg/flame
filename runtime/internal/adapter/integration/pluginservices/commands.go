@@ -70,12 +70,30 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *cap
 	}, nil)
 }
 func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[R], error) {
-	var zero commandReply[R]
-	id := operation.Identity(ctx)
 	admitted, err := jsoninput.Encode(input)
 	if err != nil {
-		return zero, err
+		return commandReply[R]{}, err
 	}
+	var value R
+	reply, err := invokeRawCommand(ctx, c, method, admitted, func(result jsoninput.Input) error {
+		if err := json.Unmarshal(result.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
+			return err
+		}
+		if validate != nil {
+			return validate(value)
+		}
+		return nil
+	}, nil, resolve, collaborators)
+	if err != nil {
+		var zero R
+		value = zero
+	}
+	return commandReply[R]{value: value, binding: reply.binding, session: reply.session}, err
+}
+
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsoninput.Input, validate func(jsoninput.Input) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[jsoninput.Input], error) {
+	var zero commandReply[jsoninput.Input]
+	id := operation.Identity(ctx)
 	command, found, err := c.routing.Find(ctx, id, method, admitted)
 	if err == nil && !found {
 		// Discovery is network I/O outside installation admission. Under that
@@ -127,6 +145,11 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		return zero, err
 	}
 	record := command.Snapshot()
+	if accepts != nil {
+		if err := accepts(record); err != nil {
+			return zero, err
+		}
+	}
 	binding, err := c.original(ctx, record)
 	if err != nil {
 		if record.Phase != plugin.CommandPrepared {
@@ -150,7 +173,6 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	if err != nil || bound.Descriptor().Kind != capability.Mutation {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
 	}
-	var value R
 	var result jsoninput.Input
 	if record.Phase == plugin.CommandPrepared {
 		metadata := sdk.ParamsBase{}
@@ -181,18 +203,13 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	if err != nil && !known {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	if err == nil {
-		if decodeErr := json.Unmarshal(result.JSON(), &value, json.RejectUnknownMembers(true)); decodeErr != nil {
-			return zero, errors.Join(plugin.ErrCommandUnconfirmed, decodeErr)
-		}
-	}
 	if err == nil && validate != nil {
-		if validationErr := validate(value); validationErr != nil {
+		if validationErr := validate(result); validationErr != nil {
 			return zero, errors.Join(plugin.ErrCommandUnconfirmed, validationErr)
 		}
 	}
 	if observeErr := c.routing.Observe(ctx, id); observeErr != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, observeErr)
 	}
-	return commandReply[R]{value: value, binding: binding, session: session}, err
+	return commandReply[jsoninput.Input]{value: result, binding: binding, session: session}, err
 }

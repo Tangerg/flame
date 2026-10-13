@@ -8,11 +8,13 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
 )
 
 type pluginRuntime interface {
+	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
 	ListPluginProviders(context.Context) ([]protocol.PluginProviderSelection, error)
 	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, replay.CommandID) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
@@ -42,6 +44,7 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 
 func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
+	root.AddCommand(newPluginCallCommand(provider))
 	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
 		if err != nil {
@@ -83,6 +86,55 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		}),
 	)
 	return root
+}
+
+func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
+	var input, key string
+	command := &cobra.Command{Use: "call", Short: "Invoke an installed contribution through its required contract", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if len(input) > 1<<20 {
+			return errors.New("plugin input exceeds 1 MiB")
+		}
+		var request protocol.CallPluginRequest
+		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+			return fmt.Errorf("plugin request: %w", err)
+		}
+		contract, err := capability.FromDescriptor(request.Contract)
+		if err != nil {
+			return err
+		}
+		method, found := contract.Method(request.Method)
+		if !found {
+			return errors.New("plugin method is absent from the required contract")
+		}
+		commandID := replay.CommandID(key)
+		if method.Kind() == capability.Mutation {
+			if commandID == "" {
+				commandID = mutation.NewCommandID()
+			}
+			if err := commandID.Validate(); err != nil {
+				return err
+			}
+		} else if commandID != "" {
+			return errors.New("plugin query cannot carry a command identity")
+		}
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		if commandID != "" {
+			if _, err := fmt.Fprintln(cmd.ErrOrStderr(), "command-id:", commandID); err != nil {
+				return err
+			}
+		}
+		result, err := runtime.CallPlugin(cmd.Context(), request, commandID)
+		if err != nil {
+			return err
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), result)
+	}}
+	command.Flags().StringVar(&input, "request", "{}", "Exact installed contribution, required contract, method and input as JSON")
+	command.Flags().StringVar(&key, "command-id", "", "Retain this identity and request to reconcile a command; queries forbid it")
+	return command
 }
 
 // pluginMutationCommand prints the canonical result the Runtime reports.

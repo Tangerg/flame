@@ -1,5 +1,5 @@
 import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
-import { checkRequest } from "./request";
+import { checkRequest, requestRequiresIdempotency } from "./request";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,
@@ -17,7 +17,6 @@ import type {
 } from "./transport";
 import {
   wireMethodAcceptsReplayCursor,
-  wireMethodRequiresIdempotency,
   wireMethodReturnsValue,
   type WireMethodName,
   type WireParams,
@@ -243,7 +242,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     callOptions: RpcCallOptions = {},
   ): Promise<WireResult<M>> {
     if (closed) throw new RpcTransportError("client closed");
-    const requiresIdempotency = wireMethodRequiresIdempotency(method);
+    const requiresIdempotency = requestRequiresIdempotency(method, params);
     if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
       throw new TypeError(`${method} does not accept an idempotency key`);
     }

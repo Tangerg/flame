@@ -17,6 +17,7 @@ type HandlerConfig struct {
 	MCP               mcpUseCases
 	Plugins           pluginUseCases
 	PluginSelections  selectionUseCases
+	PluginCalls       pluginCallUseCases
 	Approvals         approvalUseCases
 	Models            modelUseCases
 	Tools             toolUseCases
@@ -69,6 +70,7 @@ type Handler struct {
 	mcp               mcpUseCases
 	plugins           pluginUseCases
 	pluginSelections  selectionUseCases
+	pluginCalls       pluginCallUseCases
 	approvals         approvalUseCases
 	models            modelUseCases
 	tools             toolUseCases
@@ -226,6 +228,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		mcp:                      cfg.MCP,
 		plugins:                  cfg.Plugins,
 		pluginSelections:         cfg.PluginSelections,
+		pluginCalls:              cfg.PluginCalls,
 		approvals:                cfg.Approvals,
 		models:                   cfg.Models,
 		tools:                    cfg.Tools,

@@ -77,6 +77,10 @@ func TestReplayPolicyCoversEveryCommand(t *testing.T) {
 			if !meta.Idempotency.Replays() {
 				t.Errorf("%s: command has no replay protection", meta.Name)
 			}
+		case OperationExtension:
+			if meta.Idempotency != IdempotencyOwnerResponse {
+				t.Errorf("%s: extension may not acquire a competing outcome", meta.Name)
+			}
 		case OperationQuery, OperationSubscription:
 			if meta.Idempotency.Replays() {
 				t.Errorf("%s: non-command unexpectedly keeps replay state", meta.Name)

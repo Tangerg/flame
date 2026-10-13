@@ -4,6 +4,7 @@
       "path": "github.com/Tangerg/flame/runtime",
       "imports": [
         "context",
+        "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/plugin",
         "github.com/Tangerg/flame/runtime/protocol",
         "iter"
@@ -34,6 +35,10 @@
         }
       ],
       "functions": [
+        {
+          "name": "BindPluginMethod",
+          "signature": "func[P, R any](caller PluginCaller, binding PluginBinding, method *plugin.Method[P, R]) (*PluginMethod[P, R], error)"
+        },
         {
           "name": "Connect",
           "signature": "func(ctx context.Context, cfg RemoteConfig) (*Client, error)"
@@ -73,6 +78,10 @@
             {
               "name": "ArchiveSkill",
               "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error"
+            },
+            {
+              "name": "CallPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (*protocol.CallPluginResponse, error)"
             },
             {
               "name": "CancelRun",
@@ -553,6 +562,66 @@
           ]
         },
         {
+          "name": "PluginBinding",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string"
+            },
+            {
+              "name": "Digest",
+              "type": "string"
+            },
+            {
+              "name": "Contribution",
+              "type": "string"
+            },
+            {
+              "name": "Contract",
+              "type": "*capability.Contract"
+            }
+          ]
+        },
+        {
+          "name": "PluginCallOptions",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "RequestMeta",
+              "type": "protocol.RequestMeta"
+            },
+            {
+              "name": "IdempotencyKey",
+              "type": "string"
+            },
+            {
+              "name": "IdempotencyNamespace",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "PluginCaller",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "CallPlugin",
+              "signature": "func(context.Context, protocol.CallPluginRequest, PluginCallOptions) (*protocol.CallPluginResponse, error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Call",
+              "signature": "func(ctx context.Context, input P, options PluginCallOptions) (R, error)"
+            }
+          ]
+        },
+        {
           "name": "RemoteConfig",
           "kind": "struct",
           "fields": [
@@ -621,6 +690,10 @@
             {
               "name": "ArchiveSkill",
               "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error"
+            },
+            {
+              "name": "CallPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (*protocol.CallPluginResponse, error)"
             },
             {
               "name": "CancelRun",
@@ -4787,6 +4860,70 @@
           ]
         },
         {
+          "name": "CallPluginRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "Contract",
+              "type": "capability.Descriptor",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Method",
+              "type": "string",
+              "tag": "json:\"method\""
+            },
+            {
+              "name": "Input",
+              "type": "jsontext.Value",
+              "tag": "json:\"input\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "CallPluginResponse",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Output",
+              "type": "jsontext.Value",
+              "tag": "json:\"output,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*PluginCallFailure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "CancelRunRequest",
           "kind": "struct",
           "fields": [
@@ -8056,6 +8193,28 @@
           "name": "PluginActionOperation",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "PluginCallFailure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Code",
+              "type": "string",
+              "tag": "json:\"code\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
         },
         {
           "name": "PluginComponent",

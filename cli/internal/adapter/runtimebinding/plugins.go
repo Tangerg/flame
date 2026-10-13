@@ -4,10 +4,13 @@ import (
 	"context"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/capability"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type pluginBinding interface {
+	CallPlugin(context.Context, protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error)
 	ListPluginProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)
 	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, flameruntime.CommandOptions) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)
@@ -18,6 +21,43 @@ type pluginBinding interface {
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
 	RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+}
+
+func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+	options := flameruntime.PluginCallOptions{RequestMeta: r.callOptions().RequestMeta}
+	if commandID != "" {
+		command, err := r.commandOptionsFor(commandID)
+		if err != nil {
+			return nil, err
+		}
+		options.IdempotencyKey = command.IdempotencyKey
+		options.IdempotencyNamespace = command.IdempotencyNamespace
+	}
+	result, err := r.plugins.CallPlugin(ctx, request, options)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if result == nil {
+		return nil, runtimeContractViolation("plugin call returned nil")
+	}
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return nil, runtimeContractViolation("plugin call returned invalid response: %v", err)
+	}
+	if result.Failure != nil {
+		return nil, &pluginsdk.Failure{Code: result.Failure.Code, Message: result.Failure.Message}
+	}
+	contract, err := capability.FromDescriptor(request.Contract)
+	if err != nil {
+		return nil, err
+	}
+	method, found := contract.Method(request.Method)
+	if !found {
+		return nil, runtimeContractViolation("plugin call method is absent from the required contract")
+	}
+	if err := method.ValidateOutput(result.Output); err != nil {
+		return nil, runtimeContractViolation("plugin call returned invalid output: %v", err)
+	}
+	return result, nil
 }
 
 func (r *Connection) ListPluginProviders(ctx context.Context) ([]protocol.PluginProviderSelection, error) {

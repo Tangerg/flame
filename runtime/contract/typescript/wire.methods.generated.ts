@@ -14,6 +14,8 @@ import type {
   AgentMemoryReviewRequest,
   AgentMemoryUpdateRequest,
   ApprovalModeResult,
+  CallPluginRequest,
+  CallPluginResponse,
   CancelRunRequest,
   CancelRunResponse,
   ConfigurePluginRequest,
@@ -240,6 +242,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
@@ -366,6 +369,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
@@ -424,7 +428,7 @@ export function wireMethodReturnsValue(
   return (VALUE_METHOD_NAMES as readonly string[]).includes(method);
 }
 
-export type WireOperationKind = "command" | "query" | "subscription";
+export type WireOperationKind = "command" | "extension" | "query" | "subscription";
 export type WireResponseKind = "stream" | "unary";
 export type WireIdempotencyPolicy = "none" | "ownerResponse" | "ownerRunStream" | "replayResponse" | "replayRunStream";
 export type WireReplayCursorPolicy = "none" | "run";
@@ -814,6 +818,13 @@ export const WIRE_METHOD_POLICY = {
     operation: "query",
     response: "unary",
     idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.call": {
+    operation: "extension",
+    response: "unary",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1372,6 +1383,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.call": [
+    { requires: ["plugins"] },
+  ],
   "plugins.listProviders": [
     { requires: ["plugins"] },
   ],
@@ -1541,6 +1555,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
   "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };

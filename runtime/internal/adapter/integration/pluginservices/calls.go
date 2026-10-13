@@ -1,0 +1,107 @@
+package pluginservices
+
+import (
+	"context"
+	"errors"
+
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/jsoninput"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+)
+
+type installedCall struct {
+	calls   *CommandCalls
+	request plugins.CallRequest
+	method  *capability.Method
+}
+
+func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (plugins.Call, error) {
+	if request.Contract == nil {
+		return nil, plugin.ErrInvalid
+	}
+	if err := request.Installation.Validate(); err != nil {
+		return nil, err
+	}
+	if err := request.Digest.Validate(); err != nil {
+		return nil, err
+	}
+	if err := request.Contribution.Validate(); err != nil {
+		return nil, err
+	}
+	method, found := request.Contract.Method(request.Method)
+	if !found {
+		return nil, plugin.ErrInvalid
+	}
+	if err := request.Input.Validate(); err != nil {
+		return nil, errors.Join(plugin.ErrInvalid, err)
+	}
+	if method.Kind() == capability.Query {
+		if err := method.ValidateInput(request.Input); err != nil {
+			return nil, errors.Join(plugin.ErrInvalid, err)
+		}
+	}
+	return &installedCall{calls: c, request: request, method: method}, nil
+}
+
+func (c *installedCall) Kind() capability.MethodKind { return c.method.Kind() }
+
+func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBinding, error) {
+	r := c.request
+	snapshot, found, err := c.calls.installations.Get(ctx, r.Installation)
+	if err != nil {
+		return plugins.ContributionBinding{}, err
+	}
+	if !found {
+		return plugins.ContributionBinding{}, plugin.ErrNotFound
+	}
+	if snapshot.Selected.Digest() != r.Digest {
+		return plugins.ContributionBinding{}, plugin.ErrStale
+	}
+	contribution, found := snapshot.Selected.Contribution(r.Contribution)
+	if !found || contribution.Contract != r.Contract.Identity() {
+		return plugins.ContributionBinding{}, plugin.ErrUnavailable
+	}
+	if !snapshot.Installation.ServerEnabled(contribution.Server) {
+		return plugins.ContributionBinding{}, plugin.ErrDisabled
+	}
+	id, err := snapshot.Installation.ServerID(contribution.Server)
+	if err != nil {
+		return plugins.ContributionBinding{}, err
+	}
+	return plugins.ContributionBinding{InstallationID: r.Installation, Digest: r.Digest, ContributionID: contribution.ID, ServerID: id, ServerName: contribution.Server, Export: contribution.Export, Contract: contribution.Contract}, nil
+}
+
+func (c *installedCall) accepts(record plugin.CommandBinding) error {
+	r := c.request
+	if record.Provider.InstallationID != r.Installation || record.Provider.Digest != r.Digest || record.Contribution != r.Contribution || record.Contract != r.Contract.Identity() {
+		return errors.Join(idempotency.ErrKeyConflict, plugin.ErrCommandConflict)
+	}
+	return nil
+}
+
+func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
+	if c.Kind() == capability.Mutation {
+		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, nil)
+		return reply.value, err
+	}
+	location, err := c.resolve(ctx)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	session, err := c.calls.pool.ServiceSession(ctx, location.ServerID)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	exported, err := pluginsdk.ResolveCapability(ctx, session, location.Export, c.request.Contract)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	bound, err := exported.Method(c.request.Method)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	return bound.Invoke(ctx, "", c.request.Input)
+}

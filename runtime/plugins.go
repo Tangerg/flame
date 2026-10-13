@@ -6,6 +6,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+func (r *binding) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (*protocol.CallPluginResponse, error) {
+	return r.invoke[protocol.CallPluginRequest, *protocol.CallPluginResponse](ctx, delivery.PluginsCall, request, pluginCallOptions(options))
+}
+
 func (r *binding) ListPlugins(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.PluginsList, struct{}{}, callOptions(options))
 }

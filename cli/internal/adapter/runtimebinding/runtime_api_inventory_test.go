@@ -353,6 +353,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"ForgetApprovalRule":            command("approvals", "approvals delete and TUI rule deletion"),
 		"GetApprovalMode":               command("approvals", "TUI approval/status surfaces"),
 		"InstallPlugin":                 command("plugins", "plugins install"),
+		"CallPlugin":                    command("plugins", "plugins call"),
 		"RenamePluginSession":           command("plugins", "plugins rename-session"),
 		"StagePlugin":                   command("plugins", "plugins stage"),
 		"SelectPlugin":                  command("plugins", "plugins select"),

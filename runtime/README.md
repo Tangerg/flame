@@ -37,6 +37,27 @@ migration. Use a fresh data directory when upgrading.
 
 All Runtime operations enter one delivery endpoint. The Go binding avoids JSON and HTTP encoding but uses the same admission, capability, idempotency, Application, error, and event semantics as the HTTP binding.
 
+Installed unary operations use `CallPlugin` in both Go bindings, `plugins.call`
+in Protocol and `plugins call --request ...` in CLI. The request retains the
+installation, selected release digest, independent contribution ID, complete
+consumer capability, method and business input. Runtime requires exact equality
+with the declared and live export before a new call can execute. The envelope's
+query/command semantics come from that admitted method; queries reject command
+identities. Commands use the existing durable original route and private receipt,
+without a Runtime result cache. A same-identity change of installation, release,
+contribution, contract, method or input conflicts.
+
+`BindPluginMethod` binds an existing typed `plugin.Method[P, R]` and complete
+required capability to a concrete `PluginBinding`. Its `Call` uses the same
+public entrance and validates typed input and output. The TypeScript client's
+`plugins.call` uses the shared mutation identity/journal path for commands and
+the shared query path for reads. A definite business refusal projects the owner's
+code/message in `CallPluginResponse.failure`; output and failure are exclusive.
+Transport loss remains an unknown command acknowledgement and requires the
+original command identity for reconciliation. These unary entrances do not yet
+provide declared cross-plugin dependencies, origin/parent propagation, concrete
+target capture or streaming decoration; those integrations remain under development.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

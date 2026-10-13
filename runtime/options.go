@@ -17,6 +17,22 @@ type CommandOptions struct {
 	IdempotencyNamespace string
 }
 
+// PluginCallOptions carries an optional command retry identity. Query methods
+// reject it after the installed operation's contract is resolved.
+type PluginCallOptions struct {
+	RequestMeta          protocol.RequestMeta
+	IdempotencyKey       string
+	IdempotencyNamespace string
+}
+
+func pluginCallOptions(options PluginCallOptions) delivery.Options {
+	return delivery.Options{
+		RequestMeta:          currentRequestMeta(options.RequestMeta),
+		IdempotencyKey:       options.IdempotencyKey,
+		IdempotencyNamespace: options.IdempotencyNamespace,
+	}
+}
+
 // RunCommandOptions describes a Run-opening command. AfterEventID applies only
 // when an idempotent retry reattaches to the Run opened by the first attempt.
 type RunCommandOptions struct {

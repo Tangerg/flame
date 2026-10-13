@@ -19,6 +19,7 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
@@ -149,8 +150,30 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatalf("configured role failure became absence: %v", err)
 	}
 	owner.embedder = func(context.Context) (app.Embedder, error) { return nil, nil }
-	if _, err := owner.Add(operation.Bind(t.Context(), "memory.add", "keyword"), memory.ScopeProject, project, "keyword fact"); err != nil {
+	addContext := operation.Bind(t.Context(), "memory.add", "keyword")
+	if _, err := owner.Add(addContext, memory.ScopeProject, project, "keyword fact"); err != nil {
 		t.Fatal(err)
+	}
+	stored, found, err := hostsqlite.NewPluginCommandStore(host).Get(t.Context(), operation.Identity(addContext))
+	if err != nil || !found {
+		t.Fatalf("original add route: found=%v, %v", found, err)
+	}
+	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contracts.Capability, Method: rpc.Add, Input: stored.Snapshot().Input}
+	installed, err := calls.Prepare(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := installed.Invoke(addContext); err != nil {
+		t.Fatalf("installed entrance did not recover the feature owner's receipt: %v", err)
+	}
+	changed := request
+	changed.Contribution = "another-provider"
+	other, err := calls.Prepare(t.Context(), changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := other.Invoke(addContext); !errors.Is(err, idempotency.ErrKeyConflict) {
+		t.Fatalf("changed installed binding reused an original identity: %v", err)
 	}
 	items, err := owner.Search(t.Context(), project, "keyword", 5)
 	if err != nil || len(items) != 1 || items[0].Content() != "keyword fact" {

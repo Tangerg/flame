@@ -62,11 +62,12 @@ const (
 	OperationQuery        OperationKind = "query"
 	OperationCommand      OperationKind = "command"
 	OperationSubscription OperationKind = "subscription"
+	OperationExtension    OperationKind = "extension"
 )
 
 // Valid reports whether o names one supported operation semantic.
 func (o OperationKind) Valid() bool {
-	return o == OperationQuery || o == OperationCommand || o == OperationSubscription
+	return o == OperationQuery || o == OperationCommand || o == OperationSubscription || o == OperationExtension
 }
 
 func (o OperationKind) String() string {
@@ -335,15 +336,16 @@ func (m MethodMeta) validateIdentity() error {
 		)
 	}
 	switch m.Operation {
-	case OperationQuery, OperationCommand, OperationSubscription:
+	case OperationQuery, OperationCommand, OperationSubscription, OperationExtension:
 	default:
 		return fmt.Errorf(
-			"%s: invalid operation kind %s; expected %s, %s or %s",
+			"%s: invalid operation kind %s; expected %s, %s, %s or %s",
 			m.Name,
 			m.Operation,
 			OperationQuery,
 			OperationCommand,
 			OperationSubscription,
+			OperationExtension,
 		)
 	}
 	switch m.Idempotency {
@@ -408,6 +410,10 @@ func (m MethodMeta) validateOperationPolicy() error {
 		}
 	}
 	switch m.Operation {
+	case OperationExtension:
+		if m.Kind != KindUnary || m.Idempotency != IdempotencyOwnerResponse {
+			return fmt.Errorf("%s: an extension must resolve a unary owner operation", m.Name)
+		}
 	case OperationQuery:
 		if m.Kind != KindUnary || m.Idempotency != IdempotencyNone {
 			return fmt.Errorf("%s: a query must be unary and must not keep an idempotency replay", m.Name)

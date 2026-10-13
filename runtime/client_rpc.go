@@ -44,6 +44,10 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 	if !found {
 		return delivery.Result{}, delivery.NewFailure(protocol.ErrMethodNotFound, "unknown runtime operation")
 	}
+	operation, err := delivery.InvocationOperation(name, parameters)
+	if err != nil {
+		return delivery.Result{}, err
+	}
 	call, err := c.begin(ctx)
 	if err != nil {
 		return delivery.Result{}, err
@@ -54,7 +58,7 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 		if !streaming {
 			call.finish(nil)
 		}
-		if dispatched && meta.Operation == delivery.OperationCommand && err != nil && !knownTransportRefusal(err) {
+		if dispatched && operation == delivery.OperationCommand && err != nil && !knownTransportRefusal(err) {
 			err = errors.Join(ErrAcknowledgementUnknown, err)
 		}
 	}()

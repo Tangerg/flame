@@ -110,6 +110,8 @@ func parseInstallationRelease(id, digest string) (resourceid.InstallationID, fin
 
 func wirePluginError(err error) error {
 	switch {
+	case errors.Is(err, plugin.ErrCommandUnconfirmed):
+		return err
 	case errors.Is(err, plugin.ErrInvalid):
 		return InvalidParameters(err)
 	case errors.Is(err, plugin.ErrUnavailable):

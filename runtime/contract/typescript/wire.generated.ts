@@ -376,6 +376,20 @@ export interface ArtifactToolResult {
   itemId: string;
 }
 
+export interface CallPluginRequest {
+  contract: Descriptor;
+  contribution: string;
+  digest: string;
+  input: unknown;
+  installationId: string;
+  method: string;
+}
+
+export interface CallPluginResponse {
+  failure?: PluginCallFailure;
+  output?: unknown;
+}
+
 export interface CancelRunRequest {
   reason?: string;
   runId: string;
@@ -1172,6 +1186,11 @@ export interface PluginAction {
 }
 
 export type PluginActionOperation = "renameSession";
+
+export interface PluginCallFailure {
+  code: string;
+  message: string;
+}
 
 export type PluginComponent =
   | { type: "manifestField"; name: string }

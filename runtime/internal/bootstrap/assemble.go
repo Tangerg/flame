@@ -439,6 +439,7 @@ func buildAssemblyCore(
 				MCP:                    mcpCoordinator,
 				Plugins:                pluginCoordinator,
 				PluginSelections:       pluginSelections,
+				PluginCalls:            execution.tools.pluginCalls,
 				Approvals:              approvalCoordinator,
 				Models:                 modelCoordinator,
 				Tools:                  toolCoordinator,
