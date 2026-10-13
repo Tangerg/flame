@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -25,21 +26,9 @@ type requirementCatalog struct {
 }
 
 func ResolveRequirements(ctx context.Context, store Store, selections SelectionStore, installation resourceid.InstallationID, digest fingerprint.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
-	snapshots, err := store.List(ctx)
+	catalog, err := readRequirementCatalog(ctx, store, selections)
 	if err != nil {
 		return nil, err
-	}
-	choices, err := selections.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	catalog := requirementCatalog{installations: make(map[resourceid.InstallationID]plugin.Snapshot, len(snapshots)), selections: make(map[string]plugin.SelectionRecord, len(choices))}
-	for _, snapshot := range snapshots {
-		catalog.installations[snapshot.Installation.ID()] = snapshot
-	}
-	for _, choice := range choices {
-		record := choice.Snapshot()
-		catalog.selections[record.Role] = record
 	}
 	root, found := catalog.installations[installation]
 	if !found {
@@ -59,6 +48,66 @@ func ResolveRequirements(ctx context.Context, store Store, selections SelectionS
 		return nil, err
 	}
 	return catalog.collaborators(declared)
+}
+
+func readRequirementCatalog(ctx context.Context, store Store, selections SelectionStore) (requirementCatalog, error) {
+	snapshots, err := store.List(ctx)
+	if err != nil {
+		return requirementCatalog{}, err
+	}
+	choices, err := selections.List(ctx)
+	if err != nil {
+		return requirementCatalog{}, err
+	}
+	catalog := requirementCatalog{installations: make(map[resourceid.InstallationID]plugin.Snapshot, len(snapshots)), selections: make(map[string]plugin.SelectionRecord, len(choices))}
+	for _, snapshot := range snapshots {
+		catalog.installations[snapshot.Installation.ID()] = snapshot
+	}
+	for _, choice := range choices {
+		record := choice.Snapshot()
+		catalog.selections[record.Role] = record
+	}
+	return catalog, nil
+}
+
+func ResolveEntryRequirements(ctx context.Context, store Store, selections SelectionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
+	declarations := root.Selected.Declaration().Contributions
+	hasRequirements := slices.ContainsFunc(declarations, func(value plugin.Contribution) bool { return value.Server == server && len(value.Requires) > 0 })
+	if !hasRequirements {
+		return plugin.NewRequiredBindings(nil)
+	}
+	catalog, err := readRequirementCatalog(ctx, store, selections)
+	if err != nil {
+		return nil, err
+	}
+	current, found := catalog.installations[root.Installation.ID()]
+	if !found || current.Selected.Digest() != root.Selected.Digest() {
+		return nil, plugin.ErrStale
+	}
+	if !current.Installation.ServerEnabled(server) {
+		return nil, plugin.ErrDisabled
+	}
+	if err := catalog.validateEntry(current, server.String(), nil); err != nil {
+		return nil, err
+	}
+	var values []plugin.ResolvedRequirement
+	for _, contribution := range current.Selected.Declaration().Contributions {
+		if contribution.Server != server {
+			continue
+		}
+		for _, required := range contribution.Requires {
+			bindings, err := catalog.candidates(required)
+			if err != nil {
+				return nil, err
+			}
+			value := plugin.ResolvedRequirement{Contribution: contribution.ID, ID: required.ID, Contract: required.Contract, Optional: required.Optional}
+			for _, binding := range bindings {
+				value.Bindings = append(value.Bindings, plugin.BoundContribution{Provider: plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, Contribution: binding.ContributionID, Server: binding.ServerName, Export: binding.Export, Contract: binding.Contract})
+			}
+			values = append(values, value)
+		}
+	}
+	return plugin.NewRequiredBindings(values)
 }
 
 func (c requirementCatalog) binding(snapshot plugin.Snapshot, declaration plugin.Contribution) (ContributionBinding, error) {

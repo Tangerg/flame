@@ -86,7 +86,7 @@ func TestConnectionOwnerCancellationAbortsPreparationIO(t *testing.T) {
 					c.oauthSessions = &oauthLoadStore{load: func(ctx context.Context, _ mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 						return nil, "", false, read(ctx)
 					}}
-					resolve = func(context.Context, mcpserver.ID) (*Launch, error) { return NewLaunch(config, nil, nil, nil) }
+					resolve = func(context.Context, mcpserver.ID) (*Launch, error) { return NewLaunch(config, nil, nil, Admission{}) }
 				}
 				begin := (*Connections).BeginConnect
 				if phase == "authorize configuration" {
@@ -131,7 +131,7 @@ func TestConnectionOwnerRejectsExpiredPreparationBeforeCredentialIO(t *testing.T
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
 	attempt, err := c.BeginConnect(t.Context(), config.ID(), func(context.Context, mcpserver.ID) (*Launch, error) {
 		stop(cause)
-		return NewLaunch(config, nil, func() error { retired.Add(1); return nil }, nil)
+		return NewLaunch(config, nil, func() error { retired.Add(1); return nil }, Admission{})
 	})
 	if err != nil {
 		t.Fatal(err)

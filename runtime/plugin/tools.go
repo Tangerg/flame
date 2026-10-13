@@ -32,6 +32,10 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 				if err != nil {
 					return nil, err
 				}
+				ctx, err = bindCallbackMetadata(ctx, call.Params.Meta)
+				if err != nil {
+					return nil, err
+				}
 				ctx = scopemcp.WithRequestMeta(ctx, call.Params.Meta)
 			}
 			return next(ctx, method, request)

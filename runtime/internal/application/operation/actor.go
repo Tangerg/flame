@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 // Actor identifies the managed code making a nested call. It is captured by
@@ -15,6 +17,7 @@ type Actor struct {
 	release      fingerprint.Digest
 	authority    fingerprint.Digest
 	server       mcpserver.ServerName
+	bindings     *plugin.RequiredBindings
 }
 
 func NewActor(installation, release, authority, server string) (Actor, error) {
@@ -41,6 +44,15 @@ func (a Actor) InstallationID() resourceid.InstallationID { return a.installatio
 func (a Actor) Release() fingerprint.Digest               { return a.release }
 func (a Actor) Server() mcpserver.ServerName              { return a.server }
 func (a Actor) Authority() fingerprint.Digest             { return a.authority }
+
+func (a Actor) WithBindings(bindings *plugin.RequiredBindings) Actor {
+	a.bindings = bindings
+	return a
+}
+
+func (a Actor) Allows(provider plugin.Dependency, contribution plugin.ContributionID, contract jsoninput.Input) bool {
+	return a.bindings.Allows(provider, contribution, contract)
+}
 
 func (a Actor) Validate() error {
 	_, err := NewActor(a.installation.String(), a.release.String(), a.authority.String(), a.server.String())

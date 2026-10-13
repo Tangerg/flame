@@ -140,10 +140,11 @@ type Callbacks struct {
 	closeErr    error
 	serveErr    error
 	rpc         http.Handler
+	rpcReady    chan struct{}
 }
 
 func NewCallbacks() *Callbacks {
-	return &Callbacks{activations: make(map[*sdk.ClientSession]*callbackActivation), credentials: make(map[string]*callbackActivation), done: make(chan struct{})}
+	return &Callbacks{activations: make(map[*sdk.ClientSession]*callbackActivation), credentials: make(map[string]*callbackActivation), done: make(chan struct{}), rpcReady: make(chan struct{})}
 }
 
 func (c *Callbacks) AdmitSession(session *sdk.ClientSession) {
@@ -207,6 +208,21 @@ func (c *Callbacks) PublishRPC(handler http.Handler) error {
 		return errors.New("plugin: runtime RPC publication is closed")
 	}
 	c.rpc = handler
+	close(c.rpcReady)
+	return nil
+}
+
+func (c *Callbacks) WaitRPC(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return errors.Join(ctx.Err(), context.Cause(ctx))
+	case <-c.rpcReady:
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed || c.rpc == nil {
+		return ErrStaleCall
+	}
 	return nil
 }
 
@@ -343,6 +359,9 @@ func (c *Callbacks) Close() error {
 		return c.closeErr
 	}
 	c.closed = true
+	if c.rpc == nil {
+		close(c.rpcReady)
+	}
 	sessions := make([]*sdk.ClientSession, 0, len(c.activations))
 	for session := range c.activations {
 		sessions = append(sessions, session)

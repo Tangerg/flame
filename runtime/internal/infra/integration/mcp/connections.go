@@ -12,6 +12,7 @@ import (
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -60,8 +61,9 @@ type sessionCloseAttempt struct {
 }
 
 type ownedSession struct {
-	closeFn func() error
-	close   *sessionCloseAttempt
+	closeFn  func() error
+	close    *sessionCloseAttempt
+	bindings *plugin.RequiredBindings
 }
 
 // Connections owns the live MCP server sessions + reconnect. The tool sink
@@ -136,7 +138,7 @@ func (c *Connections) current(name mcpserver.ID, session *sdkmcp.ClientSession) 
 	return configuredServer != nil && configuredServer.session == session
 }
 
-func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup sessionCleanup) {
+func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup sessionCleanup, bindings *plugin.RequiredBindings) {
 	if session == nil {
 		return
 	}
@@ -147,7 +149,7 @@ func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 		if c.callbacks != nil {
 			c.callbacks.AdmitSession(session)
 		}
-		c.sessions[session] = &ownedSession{closeFn: func() error {
+		c.sessions[session] = &ownedSession{bindings: bindings, closeFn: func() error {
 			if c.callbacks != nil {
 				c.callbacks.RevokeSession(session)
 			}
@@ -177,6 +179,21 @@ func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) (err e
 
 var ErrUnavailable = errors.New("mcp: exact backend connection is unavailable")
 
+func (c *Connections) Requirements(session *sdkmcp.ClientSession) (*plugin.RequiredBindings, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	owned := c.sessions[session]
+	if c.closed || owned == nil || owned.close != nil {
+		return nil, ErrUnavailable
+	}
+	for _, server := range c.servers {
+		if server.session == session {
+			return owned.bindings, nil
+		}
+	}
+	return nil, ErrUnavailable
+}
+
 func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -188,4 +205,40 @@ func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Serv
 		return nil, ErrUnavailable
 	}
 	return configured.session, nil
+}
+
+// WaitSession joins the already owned attempt; it never starts or retries one.
+func (c *Connections) WaitSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
+	for {
+		c.mu.Lock()
+		if err := c.cancellationErr(ctx); c.closed || err != nil {
+			c.mu.Unlock()
+			return nil, errors.Join(ErrUnavailable, err)
+		}
+		configured := c.find(current.ID())
+		if configured == nil {
+			c.mu.Unlock()
+			return nil, ErrUnavailable
+		}
+		if configured.session != nil && configured.config.Server.SameConnection(current) {
+			session := configured.session
+			c.mu.Unlock()
+			return session, nil
+		}
+		attempt := configured.attempt
+		c.mu.Unlock()
+		if attempt == nil {
+			return nil, ErrUnavailable
+		}
+		select {
+		case <-ctx.Done():
+			return nil, errors.Join(ctx.Err(), context.Cause(ctx))
+		case <-c.lifetime.Done():
+			return nil, errors.Join(c.lifetime.Err(), context.Cause(c.lifetime))
+		case <-attempt.done:
+			if attempt.err != nil {
+				return nil, errors.Join(ErrUnavailable, attempt.err)
+			}
+		}
+	}
 }

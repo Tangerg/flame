@@ -104,7 +104,10 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 	session, cleanupSession, err := dial(ctx, c.lifetime, c.client, prepared)
 	step := mcpserver.FailureConnection
 	var verifiedTools []Executable
-	if err == nil && prepared.admit != nil {
+	c.mu.Lock()
+	c.ownSessionLocked(session, cleanupSession, prepared.admission.Bindings)
+	c.mu.Unlock()
+	if err == nil && prepared.admission.Run != nil {
 		step = mcpserver.FailureConfiguration
 		admissionCtx := ctx
 		if duration, bounded := cfg.HandshakeTimeout.Duration(); bounded {
@@ -112,7 +115,7 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 			admissionCtx, cancel = context.WithTimeout(ctx, duration)
 			defer cancel()
 		}
-		err = admitSession(admissionCtx, session, prepared.admit)
+		err = admitSession(admissionCtx, session, prepared.admission.Run)
 	}
 	if err == nil {
 		// Prove the session is usable before publishing it as connected.
@@ -122,7 +125,6 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 	c.mu.Lock()
 	// Authorization may expire while waiting for the publication lock.
 	err = errors.Join(err, c.cancellationErr(ctx))
-	c.ownSessionLocked(session, cleanupSession)
 	current := c.currentAttempt(attempt) && c.cancellationErr(attempt.ctx) == nil
 	closed := c.closed
 	if closed || !current {

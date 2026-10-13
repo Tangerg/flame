@@ -127,3 +127,34 @@ func TestRequirementsValidateOtherContributionsSharingTheEntry(t *testing.T) {
 		t.Fatalf("sibling entry dependency: %v", err)
 	}
 }
+
+func TestEntryRequirementsFreezeTheSelectedProviderForTheUseInterval(t *testing.T) {
+	contract := requirementContract(t, "consumer", capability.Collection)
+	model := requirementContract(t, "model", capability.Selection)
+	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: model.Identity()})
+	first := requirementSnapshot(t, testsupport.InstallationID(t), "first", model)
+	second := requirementSnapshot(t, testsupport.InstallationID(t), "second", model)
+	choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: "model", Installation: first.Installation.ID(), Contribution: "operations"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := requirementInstallations{snapshots: []plugin.Snapshot{root, first, second}}
+	selections := requirementSelections{values: []plugin.ProviderSelection{choice}}
+	bound, err := ResolveEntryRequirements(t.Context(), store, selections, root, testsupport.ServerName("backend"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	selections.values[0], err = plugin.NewProviderSelection(plugin.SelectionRecord{Role: "model", Installation: second.Installation.ID(), Contribution: "operations"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	future, err := ResolveEntryRequirements(t.Context(), store, selections, root, testsupport.ServerName("backend"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := plugin.Dependency{InstallationID: first.Installation.ID(), Digest: first.Selected.Digest()}
+	replacement := plugin.Dependency{InstallationID: second.Installation.ID(), Digest: second.Selected.Digest()}
+	if !bound.Allows(original, "operations", model.Identity()) || bound.Allows(replacement, "operations", model.Identity()) || !future.Allows(replacement, "operations", model.Identity()) {
+		t.Fatal("selection change retargeted an existing dependency projection")
+	}
+}

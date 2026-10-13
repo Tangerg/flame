@@ -85,7 +85,7 @@ func TestStartupShutdownRetainsSessionRetirementDiagnostics(t *testing.T) {
 	failure := errors.New("launch resource retirement failed")
 	var retired atomic.Int32
 	c, err := Open(t.Context(), t.Context(), []ServerConfig{cfg}, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
-		return NewLaunch(cfg, nil, func() error { retired.Add(1); return failure }, nil)
+		return NewLaunch(cfg, nil, func() error { retired.Add(1); return failure }, Admission{})
 	}, nil, NewClient())
 	if err != nil {
 		t.Fatal(err)
@@ -120,9 +120,9 @@ func TestStartupToleratesIndependentHandshakeTimeout(t *testing.T) {
 	healthy := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
 	connections, err := Open(t.Context(), t.Context(), []ServerConfig{timedOut, healthy}, nil, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
 		if name == timedOut.ID() {
-			return NewLaunch(timedOut, nil, nil, nil)
+			return NewLaunch(timedOut, nil, nil, Admission{})
 		}
-		return NewLaunch(healthy, nil, nil, nil)
+		return NewLaunch(healthy, nil, nil, Admission{})
 	}, nil, NewClient())
 	if err != nil {
 		t.Fatal(err)

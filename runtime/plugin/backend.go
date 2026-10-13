@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"io"
 	"slices"
 	"strings"
 	"sync"
@@ -80,20 +81,29 @@ type Backend struct {
 	methods      map[string]boundMethod
 	capabilities map[string]*capability.Contract
 	published    bool
+	closeDone    chan struct{}
+	closeErr     error
+	closed       bool
+	setup        func(context.Context, Setup) (io.Closer, error)
+	activations  map[*sdk.ServerSession]*setupActivation
+	setupJoins   sync.WaitGroup
 }
 
 func NewBackend(server *sdk.Server) (*Backend, error) {
 	if server == nil {
 		return nil, errors.New("plugin: MCP server is required")
 	}
-	b := &Backend{server: server, methods: map[string]boundMethod{}, capabilities: map[string]*capability.Contract{}}
+	b := &Backend{server: server, methods: map[string]boundMethod{}, capabilities: map[string]*capability.Contract{}, activations: map[*sdk.ServerSession]*setupActivation{}, closeDone: make(chan struct{})}
+	if err := b.registerSetup(); err != nil {
+		return nil, err
+	}
 	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*Result[jsontext.Value], error) {
 		if params == nil || params.Protocol != capability.Protocol {
 			return nil, errors.New("plugin: current backend protocol is required")
 		}
 		b.mu.RLock()
 		method, found := b.methods[params.Method]
-		ready := b.published
+		ready := b.published && !b.closed
 		exportErr := b.checkCapability(params)
 		b.mu.RUnlock()
 		if !ready || !found {
@@ -115,7 +125,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		}
 		b.mu.RLock()
 		defer b.mu.RUnlock()
-		if !b.published {
+		if !b.published || b.closed {
 			return nil, errors.New("plugin: backend is not published")
 		}
 		methods := make([]capability.MethodDescriptor, 0, len(b.methods))
@@ -138,7 +148,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 func (b *Backend) Publish() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.published {
+	if b.published || b.closed {
 		return errors.New("plugin: backend is already published")
 	}
 	if len(b.methods) == 0 {
@@ -157,7 +167,7 @@ func (b *Backend) register(method boundMethod) error {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.published {
+	if b.published || b.closed {
 		return errors.New("plugin: published backend cannot change exports")
 	}
 	if _, found := b.methods[method.contract.Name()]; found {

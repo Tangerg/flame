@@ -37,7 +37,7 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			input, err := NewLaunch(config, nil, func() error { retired.Add(1); return retirementErr }, nil)
+			input, err := NewLaunch(config, nil, func() error { retired.Add(1); return retirementErr }, Admission{})
 			if strings.HasSuffix(refusal, "authorization") {
 				c.servers = []*server{{id: config.ID(), config: config}}
 				if err != nil {
@@ -69,7 +69,7 @@ func TestSessionLedgerOwnsLaunchResourceThroughDetachAndShutdown(t *testing.T) {
 	t.Cleanup(transport.Close)
 	var retired atomic.Int32
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
-	input, err := NewLaunch(config, nil, func() error { retired.Add(1); return nil }, nil)
+	input, err := NewLaunch(config, nil, func() error { retired.Add(1); return nil }, Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,12 +104,12 @@ func TestLaunchAdmissionFailureWithdrawsSessionAndRetiresResource(t *testing.T) 
 			var retired atomic.Int32
 			refusal := errors.New("declaration mismatch")
 			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
-			input, err := NewLaunch(config, nil, func() error { retired.Add(1); return nil }, func(context.Context, *sdkmcp.ClientSession) error {
+			input, err := NewLaunch(config, nil, func() error { retired.Add(1); return nil }, Admission{Run: func(context.Context, *sdkmcp.ClientSession) error {
 				if panics {
 					panic("admission failed")
 				}
 				return refusal
-			})
+			}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -136,7 +136,7 @@ func TestStartupAdmissionFailureRetiresTheUnlaunchedResource(t *testing.T) {
 	c, err := Open(t.Context(), t.Context(), []ServerConfig{config}, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
 		other := config.Clone()
 		other.Name = testsupport.ServerName("other")
-		return NewLaunch(other, nil, func() error { retired.Add(1); return nil }, nil)
+		return NewLaunch(other, nil, func() error { retired.Add(1); return nil }, Admission{})
 	}, nil, NewClient())
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +167,7 @@ func TestRelocatedStdioCannotBypassConnectionInvariants(t *testing.T) {
 		{Command: "server", Dir: "bad\x00directory"},
 	} {
 		retired := 0
-		input, err := NewLaunch(config, &invalid, func() error { retired++; return nil }, nil)
+		input, err := NewLaunch(config, &invalid, func() error { retired++; return nil }, Admission{})
 		if input != nil {
 			_ = input.Close()
 		}
@@ -179,7 +179,7 @@ func TestRelocatedStdioCannotBypassConnectionInvariants(t *testing.T) {
 
 func TestLaunchFormattingRedactsExecutionCredentials(t *testing.T) {
 	secret := "private-execution-credential"
-	input, err := NewLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"TOKEN": secret}}}, &Stdio{Command: "server", Env: map[string]string{"TOKEN": secret}}, func() error { return nil }, nil)
+	input, err := NewLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"TOKEN": secret}}}, &Stdio{Command: "server", Env: map[string]string{"TOKEN": secret}}, func() error { return nil }, Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestLaunchFormattingRedactsExecutionCredentials(t *testing.T) {
 
 func TestCopyingALaunchDoesNotDuplicateItsClaim(t *testing.T) {
 	retired := 0
-	input, err := NewLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}, nil, func() error { retired++; return nil }, nil)
+	input, err := NewLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}, nil, func() error { retired++; return nil }, Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestRetainedInstallationDescriptorCannotLaunchWithoutExecutionContent(t *te
 	}
 	config := ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}
 	retired := 0
-	if input, err := NewLaunch(config, nil, func() error { retired++; return nil }, nil); err == nil || input != nil || retired != 1 {
+	if input, err := NewLaunch(config, nil, func() error { retired++; return nil }, Admission{}); err == nil || input != nil || retired != 1 {
 		t.Fatalf("retained installation descriptor acquired an unverified launch: %v, retired=%d", err, retired)
 	}
 	if err := probe(t.Context(), config); err == nil {

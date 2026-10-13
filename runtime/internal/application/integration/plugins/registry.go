@@ -134,22 +134,21 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 		if !exists {
 			return mcpapp.Launch{}, mcpapp.ErrUnknownServer
 		}
+		var requirements *plugin.RequiredBindings
 		if snapshot.Installation.ServerEnabled(id.Name()) {
-			for _, contribution := range snapshot.Selected.Declaration().Contributions {
-				if contribution.Server == id.Name() && len(contribution.Requires) > 0 {
-					if _, err := ResolveRequirements(ctx, r.installations, r.selections, installationID, snapshot.Selected.Digest(), contribution.ID); err != nil {
-						return mcpapp.Launch{}, err
-					}
-					break
-				}
+			requirements, err = ResolveEntryRequirements(ctx, r.installations, r.selections, snapshot, id.Name())
+			if err != nil {
+				return mcpapp.Launch{}, err
 			}
 		}
 		connection, found, err = r.packages.Connection(ctx, snapshot.Installation, snapshot.Selected, id.Name())
 		if err == nil && found {
+			connection.Requirements = requirements
 			connection.Exports = make(map[string]jsoninput.Input)
 			for _, contribution := range snapshot.Selected.Declaration().Contributions {
 				if contribution.Server == id.Name() {
 					connection.Exports[contribution.Export] = contribution.Contract
+					connection.Contributions = append(connection.Contributions, contribution)
 				}
 			}
 		}

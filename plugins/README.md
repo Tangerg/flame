@@ -17,14 +17,24 @@ the enabled members. `plugins requirements --request '{"installationId":"…","d
 projects these bindings through the same Runtime Go/Protocol/TypeScript query.
 An absent optional collaborator has an empty binding list. Required activation
 edges are checked across all contributions sharing an executable entry; optional
-collection members do not introduce startup edges. Fresh cross-plugin installed
-calls must match the caller entry's declared dependencies. Decoration composition,
-setup-time binding and lifetime freezing are still pending; this query does not
-activate a backend or freeze future selection changes. Managed connection admission
-checks required declaration bindings before acquiring launch resources. Callable
-backends must publish the exact declared capability export set and method contracts
-before the connection owner publishes their session or Tools. Refused handshakes
-retire the session and leased executable without changing desired enablement.
+collection members do not introduce startup edges. Managed admission captures
+one immutable dependency set, waits for required providers' already owned connection
+attempts, verifies the exact backend exports and methods, and sends the named set
+through `operations.setup` before publishing the session or Tools. Fresh cross-plugin
+installed calls check this captured set; a later selection changes a future
+activation without changing an existing binding. Failed setup retires callbacks,
+session and leased executable without changing desired enablement. The inspection
+query resolves current metadata and does not activate code.
+
+Backend authors register `Backend.OnSetup` before `Publish`. `Setup.Contributions`
+returns detached named bindings; an optional absence has an empty list. Return a
+closer for acquired resources and honor the setup lifetime's cancellation. It is
+closed once after failure or session retirement; `Backend.Close` cancels and joins
+all setup lifetimes. Setup prepares registrations and collaborators; irreversible
+business effects belong to explicit operations with their command/receipt contract.
+Full point value/applicability/order semantics, dependency status projection and
+consumer/stream/component migration remain pending.
+
 
 Build target-specific packages from the repository's local `go.work`:
 

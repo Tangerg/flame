@@ -173,6 +173,7 @@ func RegisterClient(client *sdk.Client) error {
 		return errors.New("plugin: client is required")
 	}
 	return errors.Join(
+		sdk.AddSendingCustomMethod[*setupParams, *Result[bool]](client, setupMethod),
 		sdk.AddSendingCustomMethod[*invokeParams, *Result[jsontext.Value]](client, invokeMethod),
 		sdk.AddSendingCustomMethod[*describeParams, *Result[Description]](client, describeMethod),
 	)

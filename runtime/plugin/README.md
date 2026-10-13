@@ -46,6 +46,28 @@ the server. Missing or duplicate exports and later registration are refused.
 backend protocol. Semantic operation names are entries in that description;
 they are no longer separate MCP methods.
 
+Installed entry admission captures one immutable set of named dependencies,
+waits for required providers' existing owned attempts, and verifies the complete
+live export set. It then calls `SetUp` before the connection owner publishes the
+session or Tools. Register `Backend.OnSetup` before `Publish` when dependencies
+are declared. The handler receives `Setup`, whose `Contributions` method returns
+detached contribution/dependency/binding projections, including explicit optional
+absence. Return an `io.Closer` for acquired resources. The supplied context spans
+the setup/session lifetime; cancellation and cleanup are joined on failure,
+retirement or `Backend.Close`. Do not perform irreversible business operations to
+register an entry.
+
+Setup callback metadata supplies a canonical Runtime RPC reference for declared
+collaborators. `runtime.NewPluginCallbackCaller` and `runtime.BindPluginMethod`
+create typed installed dependency calls from the supplied exact bindings. Invoked
+operations use their calling-owner callback; background work uses the captured
+activation reference. An invoked operation missing its call callback is refused.
+Fresh installed queries/commands carry call-scoped canonical callback metadata;
+receipt lookup retains its original route without acquiring new collaborators.
+Managed nested calls are checked against the session's immutable bindings, not a
+later selection. Actual Tool/automatic/UI consumer migration, complete point
+policies, durable execution projections and streaming remain open.
+
 `BindCapability(export, contract)` associates a named export with those existing
 handlers and checks its complete required set before publication. Several exports
 may share a handler; there is still one semantic method and business receipt
@@ -151,13 +173,13 @@ The current repository workspace builds the evolving SDK source. Independent
 published consumers need a Runtime version containing this package; the older
 version still named by application module metadata does not contain it.
 
-This package currently supplies backend wire primitives. Runtime's existing
-Memory/Schedules commands retain original installed routing before dispatch and
-reconcile through this lookup. Generic installed-provider proxies, full point descriptors,
-generic contribution declaration and component bindings remain separate unfinished
-parts of the unified-plugin refactor. A direct backend session is not a public
-installed-provider proxy. Canonical Core callbacks use the existing typed Runtime
-Client and the same Delivery Endpoint as ordinary host calls.
+This package supplies backend wire and setup primitives. The public Runtime
+`CallPlugin` entrance and typed `BindPluginMethod` proxy retain exact installed
+routing and reuse the existing receipt owner. Canonical Core callbacks use the
+ordinary typed Runtime Client and Delivery Endpoint. A direct backend session
+does not supply those installed guarantees. Full point values/applicability/order,
+actual all-consumer migration, component bindings and decorators remain unfinished
+parts of the unified-plugin refactor.
 
 ## Unary host callbacks
 
@@ -199,7 +221,7 @@ owner and actual managed connection retain call and installation authority.
 Memory search and maintenance now use this public unary transport. Memory owns
 its two-call policy and captured model collaborators. Real-process tests prove
 MCP → callback → nested MCP reentrancy without a Desktop relay. This slice does
-not yet provide installed dependency/entry rendezvous or remote decorator
+not yet prove full installed activation/dependency acceptance or remote decorator
 continuations. Canonical Runtime RPC/SSE callbacks now share the ordinary
 Endpoint/Client, and Schedules uses them for durable Run acceptance. Complete
 installed dependency binding and streaming decorators remain

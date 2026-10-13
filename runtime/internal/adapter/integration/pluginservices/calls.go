@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 type installedCall struct {
@@ -81,36 +82,9 @@ func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBindin
 	if !snapshot.Installation.ServerEnabled(contribution.Server) {
 		return plugins.ContributionBinding{}, plugin.ErrDisabled
 	}
-	if _, err := c.calls.Resolve(ctx, r.Installation, r.Digest, r.Contribution); err != nil {
-		return plugins.ContributionBinding{}, err
-	}
 	if actor, managed := operation.ActorFrom(ctx); managed {
-		consumer, found, err := c.calls.installations.Get(ctx, actor.InstallationID())
-		if err != nil {
-			return plugins.ContributionBinding{}, err
-		}
-		if !found || consumer.Selected.Digest() != actor.Release() {
-			return plugins.ContributionBinding{}, plugin.ErrUnavailable
-		}
-		declared := false
-		for _, entry := range consumer.Selected.Declaration().Contributions {
-			if entry.Server != actor.Server() {
-				continue
-			}
-			collaborators, err := c.calls.Resolve(ctx, actor.InstallationID(), actor.Release(), entry.ID)
-			if err != nil {
-				return plugins.ContributionBinding{}, err
-			}
-			for _, collaborator := range collaborators {
-				for _, provider := range collaborator.Bindings {
-					if provider.InstallationID == r.Installation && provider.Digest == r.Digest && provider.ContributionID == r.Contribution && provider.Contract == r.Contract.Identity() {
-						declared = true
-					}
-				}
-			}
-		}
-		if !declared {
-			return plugins.ContributionBinding{}, fmt.Errorf("%w: plugin call is outside the activation's declared requirements", plugin.ErrInvalid)
+		if !actor.Allows(plugin.Dependency{InstallationID: r.Installation, Digest: r.Digest}, r.Contribution, r.Contract.Identity()) {
+			return plugins.ContributionBinding{}, fmt.Errorf("%w: plugin call is outside the activation's captured requirements", plugin.ErrInvalid)
 		}
 	}
 	id, err := snapshot.Installation.ServerID(contribution.Server)
@@ -130,7 +104,9 @@ func (c *installedCall) accepts(record plugin.CommandBinding) error {
 
 func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 	if c.Kind() == capability.Mutation {
-		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, nil, func(plugins.ContributionBinding) capability.Target { return c.request.Target })
+		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+			return c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
+		}, func(plugins.ContributionBinding) capability.Target { return c.request.Target })
 		return reply.value, err
 	}
 	location, err := c.resolve(ctx)
@@ -157,5 +133,10 @@ func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 	if err != nil {
 		return jsoninput.Input{}, err
 	}
-	return bound.Invoke(ctx, "", c.request.Input)
+	metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	defer release()
+	return bound.InvokeWithMetadata(ctx, "", c.request.Input, metadata)
 }

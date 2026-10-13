@@ -792,7 +792,7 @@ func TestOpenReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 				}
 				for _, config := range configs {
 					if config.ID() == name {
-						return NewLaunch(config, nil, nil, nil)
+						return NewLaunch(config, nil, nil, Admission{})
 					}
 				}
 				return nil, mcpserver.ErrUnknownServer
@@ -1029,7 +1029,7 @@ func testOpen(ctx, lifetime context.Context, servers []ServerConfig, oauthSessio
 	c, err := Open(ctx, lifetime, servers, oauthSessions, func(_ context.Context, name mcpserver.ID) (*Launch, error) {
 		for _, config := range servers {
 			if config.ID() == name {
-				return NewLaunch(config, nil, nil, nil)
+				return NewLaunch(config, nil, nil, Admission{})
 			}
 		}
 		return nil, mcpserver.ErrUnknownServer
@@ -1151,7 +1151,7 @@ func TestExecutableIsCurrentOnlyWhileItsSessionServesTheSource(t *testing.T) {
 
 func mustLaunch(t testing.TB, config ServerConfig) *Launch {
 	t.Helper()
-	launch, err := NewLaunch(config, nil, nil, nil)
+	launch, err := NewLaunch(config, nil, nil, Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}

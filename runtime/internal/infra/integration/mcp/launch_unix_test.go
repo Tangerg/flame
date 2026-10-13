@@ -36,7 +36,7 @@ func TestStdioLaunchResourceRetiresAfterTheProcessGroup(t *testing.T) {
 			processErr = errors.New("execution content retired before process teardown")
 		}
 		return errors.Join(processErr, os.Remove(marker))
-	}, nil)
+	}, Admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
