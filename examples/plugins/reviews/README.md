@@ -85,8 +85,8 @@ flame --runtime-url http://127.0.0.1:17171 sessions show '<session-id>' --json
 
 ## Mutation and recovery
 
-Runtime supplies its canonical logical Tool call ID in MCP request metadata under
-`io.github.tangerg.flame/invocationId`. The backend never derives this identity
+Runtime supplies its calling-owner context, including its canonical logical Tool call ID, in MCP request metadata under
+`io.github.tangerg.flame/invocation`. The backend never derives this identity
 from the provider's ToolCall ID, review revision, or user arguments. This metadata
 is a projection of execution identity, not a credential or approval grant.
 

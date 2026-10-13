@@ -11,11 +11,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	inframcp "github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -62,7 +63,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := binding.Call(t.Context(), invocation); err == nil {
+	if _, err := binding.Call(operation.Start(t.Context(), capability.Model, "test.model", "read"), invocation); err == nil {
 		t.Fatal("failed reply appeared successful")
 	}
 	if calls.Load() != 1 || settlements.Load() != 1 {
@@ -70,7 +71,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	}
 	server.Enabled = false
 	registry.set(server)
-	if _, err := binding.Call(t.Context(), invocation); err == nil {
+	if _, err := binding.Call(operation.Start(t.Context(), capability.Model, "test.model", "read"), invocation); err == nil {
 		t.Fatal("withdrawn source dispatched")
 	}
 	if calls.Load() != 1 || settlements.Load() != 1 {
@@ -129,7 +130,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				if err != nil {
 					return err
 				}
-				_, err = binding.Call(t.Context(), invocation)
+				_, err = binding.Call(operation.Start(t.Context(), capability.Model, "test.model", "read"), invocation)
 				return err
 			}
 			if err := invoke(retained); err != nil {
@@ -244,7 +245,7 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = binding.Call(t.Context(), invocation)
+		_, err = binding.Call(operation.Start(t.Context(), capability.Model, "test.model", "read"), invocation)
 		return err
 	}
 	var replacement []toolcontract.Tool
@@ -314,7 +315,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := binding.Call(t.Context(), invocation); err != nil {
+	if _, err := binding.Call(operation.Start(t.Context(), capability.Model, "test.model", "read"), invocation); err != nil {
 		t.Fatalf("reconnect published superseded executable: %v", err)
 	}
 	if oldCalls.Load() != 0 || currentCalls.Load() != 1 {

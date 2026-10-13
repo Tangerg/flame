@@ -6,7 +6,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -61,7 +61,7 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 	for _, id := range []string{"logical-first", "logical-second", ""} {
 		meta := map[string]any{}
 		if id != "" {
-			meta["io.github.tangerg.flame/invocationId"] = id
+			meta["test.example/opaque-context"] = id
 		}
 		output, err := binding.Call(scopemcp.WithRequestMeta(t.Context(), meta), invocation)
 		if err != nil {
@@ -71,7 +71,7 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 		if err := json.Unmarshal(output.Details, &received); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(received["io.github.tangerg.flame/invocationId"], meta["io.github.tangerg.flame/invocationId"]) {
+		if !reflect.DeepEqual(received["test.example/opaque-context"], meta["test.example/opaque-context"]) {
 			t.Fatalf("received invocation identity = %v, want %v", received, meta)
 		}
 	}

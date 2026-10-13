@@ -51,7 +51,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 	if err != nil {
 		return "", nil, InvalidParameters(err)
 	}
-	call, err := s.pluginCalls.Prepare(ctx, plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input})
+	call, err := s.pluginCalls.Prepare(ctx, plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target})
 	if err != nil {
 		return "", nil, wirePluginError(err)
 	}

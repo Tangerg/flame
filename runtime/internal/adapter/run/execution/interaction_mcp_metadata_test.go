@@ -6,18 +6,17 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 func TestMCPMetadataProjectsLogicalCallIdentityAcrossReusedProviderIDs(t *testing.T) {
 	var identities []string
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "reviews_update_review"}, func(ctx context.Context, _ struct{}) (string, error) {
-		id, _ := scopemcp.RequestMetaFromContext(ctx)[pluginsdk.InvocationKey].(string)
+		id := operation.Identity(ctx)
 		identities = append(identities, id)
 		return "updated", nil
 	})

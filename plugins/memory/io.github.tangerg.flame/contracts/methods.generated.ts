@@ -148,4 +148,4 @@ export const METHODS = {
   "flame.memory/search.v1": { kind: "query", target: "installation" },
   "flame.memory/update.v1": { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.3", reference: "memory", composition: "selection", scope: "installation", contract: "547ce81e9f70f369f493d8f4be8664a077f5e8655df976d3e3ecc7f47a8dcfaa" } as const;
+export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.4", reference: "memory", composition: "selection", scope: "installation", contract: "e977f7d643be3646dd6ecdf99bfe6097d10cab59a95288dc29f356ac054d6f99" } as const;

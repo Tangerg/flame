@@ -24,6 +24,7 @@ type PluginBinding struct {
 	Digest         string
 	Contribution   string
 	Contract       *capability.Contract
+	Target         capability.Target
 }
 
 type PluginMethod[P, R any] struct {
@@ -43,6 +44,12 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	}
 	if !found || required.Identity() != actual.Identity() {
 		return nil, errors.New("runtime: typed method differs from its required capability")
+	}
+	if err := binding.Target.Validate(); err != nil {
+		return nil, err
+	}
+	if binding.Target.Scope != required.Descriptor().Target {
+		return nil, errors.New("runtime: plugin target differs from its method contract")
 	}
 	if err := protocol.ValidateWireTree(protocol.PluginReleaseRequest{InstallationID: binding.InstallationID, Digest: binding.Digest}); err != nil {
 		return nil, err
@@ -68,7 +75,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options PluginCa
 	if err := m.method.ValidateInput(inputJSON); err != nil {
 		return zero, err
 	}
-	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: m.binding.Contract.Descriptor(), Method: m.method.Name(), Input: inputJSON.JSON()}, options)
+	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: m.binding.Contract.Descriptor(), Method: m.method.Name(), Input: inputJSON.JSON(), Target: m.binding.Target}, options)
 	if err != nil {
 		return zero, err
 	}

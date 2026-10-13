@@ -12,7 +12,8 @@ import (
 )
 
 type pluginCallTarget struct {
-	ids []string
+	ids         []string
+	invocations []capability.Invocation
 }
 
 func (*pluginCallTarget) Discover(context.Context) (*protocol.DiscoverResponse, error) {
@@ -23,6 +24,11 @@ func (s *pluginCallTarget) PreparePluginCall(_ context.Context, request protocol
 	kind, err := pluginCallOperation(request)
 	return kind, func(ctx context.Context) (*protocol.CallPluginResponse, error) {
 		s.ids = append(s.ids, operation.Identity(ctx))
+		invocation, err := operation.Capture(ctx, request.Target)
+		if err != nil {
+			return nil, err
+		}
+		s.invocations = append(s.invocations, invocation)
 		return &protocol.CallPluginResponse{Output: []byte(`{"revision":2}`)}, nil
 	}, err
 }
@@ -32,14 +38,18 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: contract.Descriptor(), Method: "review.update", Input: []byte(`{"revision":2}`)}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: contract.Descriptor(), Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: []byte(`{"revision":2}`)}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
+	ctx := operation.Adopt(t.Context(), "parent-tool", capability.Model, "run_owner")
 	for range 2 {
-		result := endpoint.Invoke(t.Context(), PluginsCall, request, Options{IdempotencyKey: "original"})
+		result := endpoint.Invoke(ctx, PluginsCall, request, Options{IdempotencyKey: "original"})
 		if result.Failure != nil {
 			t.Fatal(result.Failure)
 		}
+	}
+	if target.invocations[0].Origin != capability.Model || target.invocations[0].Parent != "parent-tool" || target.invocations[0].Target != request.Target || target.invocations[0] != target.invocations[1] {
+		t.Fatalf("nested public call lost its calling owner: %+v", target.invocations)
 	}
 	if len(target.ids) != 2 || target.ids[0] == "" || target.ids[0] != target.ids[1] {
 		t.Fatalf("owner invocation identities = %v", target.ids)

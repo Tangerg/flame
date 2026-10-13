@@ -17,6 +17,7 @@ type CallRequest struct {
 	Contract     *capability.Contract
 	Method       string
 	Input        jsoninput.Input
+	Target       capability.Target
 }
 
 // Call retains an admitted consumer contract until its concrete invocation ends.

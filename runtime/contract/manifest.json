@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.3",
+  "protocolVersion": "2026-10-13.4",
   "features": [
     "reasoning",
     "multimodal",
@@ -9297,6 +9297,26 @@
         {
           "field": "method",
           "constraint": "identity"
+        },
+        {
+          "field": "target.scope",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "target.scope",
+          "constraint": "identity"
+        },
+        {
+          "field": "target.scope",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "target.reference",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "target.reference",
+          "constraint": "pattern(\"^[^\\\\p{Cc}]*$\")"
         }
       ]
     },

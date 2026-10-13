@@ -297,7 +297,18 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := json.Unmarshal(encoded, &evidence); err != nil {
 		t.Fatal(err)
 	}
-	identity, _ := evidence.Request.Params.Meta["io.github.tangerg.flame/invocationId"].(string)
+	invocationData, err := json.Marshal(evidence.Request.Params.Meta[pluginsdk.InvocationMetadataKey])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var invocation capability.Invocation
+	if err := json.Unmarshal(invocationData, &invocation); err != nil {
+		t.Fatal(err)
+	}
+	identity := invocation.ID
+	if invocation.Origin != capability.Model || invocation.Parent == "" || invocation.Target.Scope != "installation" {
+		t.Fatalf("calling-owner evidence was lost: %+v", invocation)
+	}
 	if identity == "" || identity == "provider-reused" || evidence.Response.Result.IsError || evidence.Response.Result.StructuredContent == nil {
 		t.Fatalf("probe did not witness the canonical committed invocation: %s", encoded)
 	}
@@ -364,7 +375,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if _, found, err := original.ReadReceipt(ctx, "never-dispatched", input); err != nil || found {
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
-	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: sdk.Meta{"io.github.tangerg.flame/invocationId": "new-inspected-call"}})
+	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "new-inspected-call", Origin: capability.Model, Parent: invocation.Parent, Target: invocation.Target}}})
 	if err != nil || !stale.IsError {
 		t.Fatalf("a replacement call bypassed the original revision: %+v, %v", stale, err)
 	}

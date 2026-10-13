@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -26,7 +27,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	}
 	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
 	resolve := func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }
-	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve)
+	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve, capturedCommand)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,11 +38,11 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) {
 		t.Fatal("same identity resolved a current provider")
 		return provider, nil
-	})
+	}, capturedCommand)
 	if err != nil || replay.Snapshot() != bound.Snapshot() {
 		t.Fatalf("original binding = %v, %v", replay, err)
 	}
-	if _, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":4}`), resolve); !errors.Is(err, plugin.ErrCommandConflict) {
+	if _, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":4}`), resolve, capturedCommand); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("changed input = %v", err)
 	}
 	refused := errors.New("original provider unavailable")
@@ -105,7 +106,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
 		bound := make(chan error, 1)
 		go func() {
-			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil })
+			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }, capturedCommand)
 			bound <- err
 		}()
 		synctest.Wait()
@@ -133,4 +134,9 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 			t.Fatalf("change missed committed dependency: %v", err)
 		}
 	})
+}
+
+func capturedCommand(binding plugins.ContributionBinding) (capability.Invocation, error) {
+	invocation := capability.Invocation{ID: "command", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: binding.InstallationID.String()}}
+	return invocation, invocation.Validate()
 }

@@ -69,6 +69,11 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 }
 
 func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, meta sdk.ParamsBase) (*Result[jsontext.Value], error) {
+	var err error
+	meta, err = invocationMetadata(ctx, meta)
+	if err != nil {
+		return nil, err
+	}
 	if b == nil {
 		return nil, errors.New("plugin: operation binding is required")
 	}

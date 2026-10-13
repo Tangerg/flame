@@ -3,15 +3,12 @@ package plugin
 import (
 	"context"
 	"errors"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
-
-const InvocationKey = "io.github.tangerg.flame/invocationId"
 
 // RegisterTools retains Scope's frozen Tool contracts and failure semantics.
 // MCP metadata carries Runtime's logical identity; model arguments never own it.
@@ -31,6 +28,10 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 					return nil, err
 				}
 				ctx = context.WithValue(ctx, requestInputKey{}, input)
+				ctx, err = bindInvocationMetadata(ctx, call.Params.Meta, nil)
+				if err != nil {
+					return nil, err
+				}
 				ctx = scopemcp.WithRequestMeta(ctx, call.Params.Meta)
 			}
 			return next(ctx, method, request)
@@ -40,11 +41,8 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 }
 
 func InvocationID(ctx context.Context) (string, error) {
-	id, _ := scopemcp.RequestMetaFromContext(ctx)[InvocationKey].(string)
-	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
-		return "", errors.New("plugin: bounded logical invocation identity is required")
-	}
-	return id, nil
+	invocation, err := InvocationFromContext(ctx)
+	return invocation.ID, err
 }
 
 // ToolCommandID separates model Tool receipt identities from human command keys

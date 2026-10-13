@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -16,9 +17,8 @@ import (
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	"github.com/google/uuid"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/google/uuid"
 )
 
 type Dispatcher struct {
@@ -35,6 +35,14 @@ func NewDispatcher(service *Schedules, callbacks *pluginsdk.Callbacks, publish i
 }
 func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession, snapshot schedule.RunRequestSnapshot) (app.RunReference, error) {
 	request, err := schedule.RestoreRunRequest(snapshot)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	invocation, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: binding.InstallationID.String()})
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -103,6 +111,7 @@ func (d *Dispatcher) RunWorker(ctx context.Context) {
 	}
 }
 func (d *Dispatcher) pass(ctx context.Context) {
+	ctx = operation.Start(ctx, capability.Automatic, "schedules.scan", uuid.NewString())
 	binding, session, err := contributionSession(ctx, d.service.installations, d.service.commands.selections, d.service.pool, d.service.contracts.Capability)
 	if errors.Is(err, errInactive) {
 		return
@@ -111,7 +120,7 @@ func (d *Dispatcher) pass(ctx context.Context) {
 		slog.ErrorContext(ctx, "schedule: backend admission failed", "error", err)
 		return
 	}
-	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, d.openRuntime)
+	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](ctx, d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, d.openRuntime)
 	if err != nil {
 		slog.ErrorContext(ctx, "schedule: durable scan failed", "error", err)
 		return

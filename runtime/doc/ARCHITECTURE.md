@@ -146,7 +146,7 @@ MCP catalog validation, disabled-tool policy, discovery grouping, and automatic 
 MCP management reads, connected Tool counts, and execution publication derive from the same admitted Scope Tool snapshot. Listing never performs another remote discovery; reconnect replaces the snapshot for all three consumers. Scope Binding compiles each schema before a connection or probe succeeds, and Scope Registry admits the prospective catalog across connected servers. Runtime retains remote identity, description, and catalog-capacity policy. Diagnostic and MCP metadata carry Scope ToolDefinition directly; Delivery alone projects schemas to protocol objects while preserving exact numeric literals. Runtime has no parallel schema value type or parser.
 
 An admitted MCP Tool call receives Runtime's existing logical call identity in
-request metadata as `io.github.tangerg.flame/invocationId`. It is the same bounded
+request metadata as the ID in `io.github.tangerg.flame/invocation`, beside origin, parent and concrete target. It is the same bounded
 identity committed with the Tool attempt, derived from Scope attribution and
 retained across approval and continuation; a provider's correlation ID is not a
 business retry identity. The Scope MCP adapter forwards this per-call projection.

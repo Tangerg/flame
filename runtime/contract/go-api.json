@@ -580,6 +580,10 @@
             {
               "name": "Contract",
               "type": "*capability.Contract"
+            },
+            {
+              "name": "Target",
+              "type": "capability.Target"
             }
           ]
         },
@@ -1177,6 +1181,11 @@
       ],
       "constants": [
         {
+          "name": "Automatic",
+          "type": "Origin",
+          "value": "\"automatic\""
+        },
+        {
           "name": "Collection",
           "type": "Composition",
           "value": "\"collection\""
@@ -1187,6 +1196,16 @@
           "value": "\"decoration\""
         },
         {
+          "name": "Human",
+          "type": "Origin",
+          "value": "\"human\""
+        },
+        {
+          "name": "Model",
+          "type": "Origin",
+          "value": "\"model\""
+        },
+        {
           "name": "Mutation",
           "type": "MethodKind",
           "value": "\"command\""
@@ -1194,7 +1213,7 @@
         {
           "name": "Protocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-13.3\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-13.4\""
         },
         {
           "name": "Query",
@@ -1303,6 +1322,38 @@
           ]
         },
         {
+          "name": "Invocation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Origin",
+              "type": "Origin",
+              "tag": "json:\"origin\""
+            },
+            {
+              "name": "Parent",
+              "type": "string",
+              "tag": "json:\"parent,omitzero\""
+            },
+            {
+              "name": "Target",
+              "type": "Target",
+              "tag": "json:\"target\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "Method",
           "kind": "struct",
           "methods": [
@@ -1378,6 +1429,33 @@
           "name": "MethodKind",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "Origin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Target",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
         }
       ]
     },
@@ -1515,9 +1593,9 @@
       ],
       "constants": [
         {
-          "name": "InvocationKey",
+          "name": "InvocationMetadataKey",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/invocationId\""
+          "value": "\"io.github.tangerg.flame/invocation\""
         },
         {
           "name": "ReceiptMethod",
@@ -1559,6 +1637,10 @@
         {
           "name": "Describe",
           "signature": "func(ctx context.Context, session *mcp.ClientSession) (Description, error)"
+        },
+        {
+          "name": "InvocationFromContext",
+          "signature": "func(ctx context.Context) (capability.Invocation, error)"
         },
         {
           "name": "InvocationID",
@@ -1627,6 +1709,10 @@
         {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
+        },
+        {
+          "name": "WithInvocation",
+          "signature": "func(ctx context.Context, invocation capability.Invocation) (context.Context, error)"
         }
       ],
       "types": [
@@ -3290,7 +3376,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.3\""
+          "value": "\"2026-10-13.4\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4892,6 +4978,11 @@
               "name": "Input",
               "type": "jsontext.Value",
               "tag": "json:\"input\""
+            },
+            {
+              "name": "Target",
+              "type": "capability.Target",
+              "tag": "json:\"target\""
             }
           ],
           "methods": [

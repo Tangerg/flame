@@ -85,6 +85,10 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 			return nil, fmt.Errorf("plugin: %s input: %w", m.Name(), err)
 		}
 		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
+		ctx, err = bindInvocationMetadata(ctx, params.Meta, m.contract)
+		if err != nil {
+			return nil, err
+		}
 		ctx, err = bindCallbackMetadata(ctx, params.Meta)
 		if err != nil {
 			return nil, err

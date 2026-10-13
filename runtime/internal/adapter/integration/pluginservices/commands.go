@@ -83,7 +83,9 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 			return validate(value)
 		}
 		return nil
-	}, nil, resolve, collaborators)
+	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) capability.Target {
+		return capability.Target{Scope: "installation", Reference: binding.InstallationID.String()}
+	})
 	if err != nil {
 		var zero R
 		value = zero
@@ -91,9 +93,12 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding, session: reply.session}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsoninput.Input, validate func(jsoninput.Input) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[jsoninput.Input], error) {
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsoninput.Input, validate func(jsoninput.Input) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error), target func(plugins.ContributionBinding) capability.Target) (commandReply[jsoninput.Input], error) {
 	var zero commandReply[jsoninput.Input]
 	id := operation.Identity(ctx)
+	capture := func(binding plugins.ContributionBinding) (capability.Invocation, error) {
+		return operation.Capture(ctx, target(binding))
+	}
 	command, found, err := c.routing.Find(ctx, id, method, admitted)
 	if err == nil && !found {
 		// Discovery is network I/O outside installation admission. Under that
@@ -136,7 +141,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 				return current, err
 			}
 			return current, nil
-		})
+		}, capture)
 	}
 	if errors.Is(err, plugin.ErrCommandConflict) {
 		return zero, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, err))
@@ -145,10 +150,21 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		return zero, err
 	}
 	record := command.Snapshot()
+	invocation, err := capture(plugins.ContributionBinding{InstallationID: record.Provider.InstallationID})
+	if err != nil {
+		return zero, err
+	}
+	if invocation != record.Invocation {
+		return zero, errors.Join(idempotency.ErrKeyConflict, plugin.ErrCommandConflict)
+	}
 	if accepts != nil {
 		if err := accepts(record); err != nil {
 			return zero, err
 		}
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, record.Invocation)
+	if err != nil {
+		return zero, err
 	}
 	binding, err := c.original(ctx, record)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -19,7 +20,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	store := sqlite.NewPluginCommandStore(db)
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	contract := testsupport.CommandContract(t, "review.update", "workspace")
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: capability.Invocation{ID: "command", Origin: capability.Human, Target: capability.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,6 +59,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	}
 	changed = command.Snapshot()
 	changed.Contract = testsupport.CommandContract(t, "review.update", "another")
+	changed.Invocation.Target.Scope = "another"
 	other, err = plugin.RestoreCommand(changed)
 	if err != nil {
 		t.Fatal(err)
@@ -95,12 +97,12 @@ func TestPluginCommandHistoryNeverEvictsEarlierIdentityOrCapsLifetimeUsage(t *te
 	t.Cleanup(func() { _ = db.Close() })
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	_, err = db.ExecContext(t.Context(), `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
-INSERT INTO plugin_commands SELECT 'command-'||n,'review.update',?,?,?,?,'backend','dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", "installation").String(), provider.InstallationID.String(), provider.Digest.String())
+INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,phase) SELECT 'command-'||n,'review.update',?,?,?,?,'backend','original-provider','operations',json_object('id','command-'||n,'origin','human','target',json_object('scope','installation','reference',?)),'dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", "installation").String(), provider.InstallationID.String(), provider.Digest.String(), provider.InstallationID.String())
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := sqlite.NewPluginCommandStore(db)
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: capability.Invocation{ID: "new", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

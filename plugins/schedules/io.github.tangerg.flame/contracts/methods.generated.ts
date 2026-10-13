@@ -141,4 +141,4 @@ export const METHODS = {
   "flame.schedules/scan.v1": { kind: "command", target: "installation" },
   "flame.schedules/update.v1": { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.3", reference: "schedules", composition: "selection", scope: "installation", contract: "4d7aea1d3523648bf0b036b047e8d553c7bb774bcdd38c5df9b0b88d264caaf7" } as const;
+export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.4", reference: "schedules", composition: "selection", scope: "installation", contract: "5de2734b3816b47c2098b46125bf0afcaaab2105a3c3381725291f86fd2a0159" } as const;

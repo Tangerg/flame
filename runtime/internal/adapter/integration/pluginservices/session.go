@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/capability"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -33,6 +34,17 @@ func contributionSession(ctx context.Context, store plugins.Store, selections pl
 
 func query[P, R any](ctx context.Context, location plugins.ContributionBinding, session *sdk.ClientSession, method *pluginsdk.Method[P, R], input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
+	if operation.Identity(ctx) == "" {
+		ctx = operation.Bind(ctx, "plugins.query", "")
+	}
+	invocation, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: location.InstallationID.String()})
+	if err != nil {
+		return zero, err
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	if err != nil {
+		return zero, err
+	}
 	contract, err := capability.Parse(location.Contract.JSON())
 	if err != nil {
 		return zero, err

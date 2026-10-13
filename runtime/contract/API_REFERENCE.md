@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-13.3` · 112 methods
+Protocol `2026-10-13.4` · 112 methods
 
 ## Methods
 
@@ -974,6 +974,11 @@ TypeScript validator from this single registry projection.
 | `CallPluginRequest` | `method` | `nonEmpty` |
 | `CallPluginRequest` | `method` | `maxLength(256)` |
 | `CallPluginRequest` | `method` | `identity` |
+| `CallPluginRequest` | `target.scope` | `nonEmpty` |
+| `CallPluginRequest` | `target.scope` | `identity` |
+| `CallPluginRequest` | `target.scope` | `maxLength(256)` |
+| `CallPluginRequest` | `target.reference` | `nonEmpty` |
+| `CallPluginRequest` | `target.reference` | `pattern("^[^\\p{Cc}]*$")` |
 | `PluginCallFailure` | `code` | `nonEmpty` |
 | `PluginCallFailure` | `code` | `maxLength(256)` |
 | `PluginCallFailure` | `message` | `nonEmpty` |

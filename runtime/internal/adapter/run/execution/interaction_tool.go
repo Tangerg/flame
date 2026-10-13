@@ -9,20 +9,19 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-
+	"github.com/Tangerg/flame/runtime/capability"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type observedInteractionTool struct {
@@ -87,6 +86,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, errors.New("execution: Tool call has no calling Interaction member")
 	}
 	ctx = runExecutionContext(ctx, o.session.scope, o.start)
+	ctx = operation.Adopt(ctx, callID, capability.Model, member.MemberID)
 	ctx = runinput.WithCapabilities(ctx, o.start.InterruptKinds)
 	if err := o.session.awaitDispatchSegment(ctx); err != nil {
 		return corechat.ToolOutput{}, err
@@ -124,11 +124,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		callErr = failure
 	} else {
-		if o.ref.Kind() == tool.MCPKind {
-			ctx = scopemcp.WithRequestMeta(ctx, map[string]any{
-				pluginsdk.InvocationKey: callID,
-			})
-		}
 		ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
 			return interaction.AdvertiseTools(ctx, names...)
 		})

@@ -44,4 +44,4 @@ export const METHODS = {
   "io.github.tangerg.flame.examples/reviews.list": { kind: "query", target: "installation" },
   "io.github.tangerg.flame.examples/reviews.update": { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.3", reference: "io.github.tangerg.flame.examples/reviews", composition: "collection", scope: "installation", contract: "4b98b5f26de26d6803dea7a3f3757b82c910257239ceb5d18106a80d95e2fcc7" } as const;
+export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.4", reference: "io.github.tangerg.flame.examples/reviews", composition: "collection", scope: "installation", contract: "a92c80a725917b8084836bb557213884974de555fe06731ac30b076d1efc778c" } as const;

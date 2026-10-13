@@ -18,6 +18,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -96,7 +97,15 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			remote := sdk.NewServer(&sdk.Implementation{Name: "feature-owner"}, nil)
 			remote.AddTool(&sdk.Tool{Name: "search", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
-				if request.Params.Meta[pluginsdk.InvocationKey] != "original-logical-call" || request.Params.Meta["owner-meta"] != "retained" {
+				encodedInvocation, err := json.Marshal(request.Params.Meta[pluginsdk.InvocationMetadataKey])
+				if err != nil {
+					return nil, err
+				}
+				var invocation capability.Invocation
+				if err := json.Unmarshal(encodedInvocation, &invocation); err != nil {
+					return nil, err
+				}
+				if invocation.ID != "original-logical-call" || invocation.Origin != capability.Model || invocation.Parent != "run_owner" || invocation.Target.Reference != installation.ID().String() || request.Params.Meta["owner-meta"] != "retained" {
 					return nil, errors.New("original invocation metadata was lost")
 				}
 				if contract == memoryContracts.Capability {
@@ -162,7 +171,8 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				t.Fatal(err)
 			}
 			ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{WorkspaceCWD: "/captured/workspace"})
-			ctx = scopemcp.WithRequestMeta(ctx, map[string]any{pluginsdk.InvocationKey: "original-logical-call", "owner-meta": "retained"})
+			ctx = operation.Adopt(ctx, "original-logical-call", capability.Model, "run_owner")
+			ctx = scopemcp.WithRequestMeta(ctx, map[string]any{"owner-meta": "retained"})
 			if _, err := bound.Call(ctx, invocation); err == nil || !strings.Contains(err.Error(), "response unavailable after dispatch") {
 				t.Fatalf("prepared metadata/callback did not reach the dispatch boundary: %v", err)
 			}

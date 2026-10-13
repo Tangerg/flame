@@ -323,6 +323,11 @@ func (c CallPluginRequest) ValidateWire() error {
 		requiredText("method", c.Method),
 		maxLength("method", c.Method, 256),
 		identity("method", c.Method),
+		requiredText("target.scope", c.Target.Scope),
+		identity("target.scope", c.Target.Scope),
+		maxLength("target.scope", c.Target.Scope, 256),
+		requiredText("target.reference", c.Target.Reference),
+		requiredTextPattern("target.reference", c.Target.Reference, "^[^\\p{Cc}]*$"),
 	)
 }
 

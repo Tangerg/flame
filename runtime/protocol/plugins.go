@@ -15,6 +15,7 @@ type CallPluginRequest struct {
 	Contract       capability.Descriptor `json:"contract"`
 	Method         string                `json:"method"`
 	Input          jsontext.Value        `json:"input"`
+	Target         capability.Target     `json:"target"`
 }
 
 type CallPluginResponse struct {

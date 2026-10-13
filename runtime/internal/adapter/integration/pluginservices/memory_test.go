@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -158,13 +159,16 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil || !found {
 		t.Fatalf("original add route: found=%v, %v", found, err)
 	}
-	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contracts.Capability, Method: rpc.Add, Input: stored.Snapshot().Input}
+	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contracts.Capability, Method: rpc.Add, Input: stored.Snapshot().Input, Target: stored.Snapshot().Invocation.Target}
 	installed, err := calls.Prepare(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := installed.Invoke(addContext); err != nil {
 		t.Fatalf("installed entrance did not recover the feature owner's receipt: %v", err)
+	}
+	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), capability.Model, "parent-tool")); !errors.Is(err, idempotency.ErrKeyConflict) {
+		t.Fatalf("changed calling origin reused an original identity: %v", err)
 	}
 	changed := request
 	changed.Contribution = "another-provider"

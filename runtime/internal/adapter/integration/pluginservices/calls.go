@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -33,6 +34,12 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 	}
 	method, found := request.Contract.Method(request.Method)
 	if !found {
+		return nil, plugin.ErrInvalid
+	}
+	if err := request.Target.Validate(); err != nil {
+		return nil, errors.Join(plugin.ErrInvalid, err)
+	}
+	if request.Target.Scope != method.Descriptor().Target || request.Target.Scope == "installation" && request.Target.Reference != request.Installation.String() {
 		return nil, plugin.ErrInvalid
 	}
 	if err := request.Input.Validate(); err != nil {
@@ -84,7 +91,7 @@ func (c *installedCall) accepts(record plugin.CommandBinding) error {
 
 func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 	if c.Kind() == capability.Mutation {
-		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, nil)
+		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, nil, func(plugins.ContributionBinding) capability.Target { return c.request.Target })
 		return reply.value, err
 	}
 	location, err := c.resolve(ctx)
@@ -100,6 +107,14 @@ func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 		return jsoninput.Input{}, err
 	}
 	bound, err := exported.Method(c.request.Method)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	invocation, err := operation.Capture(ctx, c.request.Target)
+	if err != nil {
+		return jsoninput.Input{}, err
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
 	if err != nil {
 		return jsoninput.Input{}, err
 	}

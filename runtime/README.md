@@ -40,12 +40,12 @@ All Runtime operations enter one delivery endpoint. The Go binding avoids JSON a
 Installed unary operations use `CallPlugin` in both Go bindings, `plugins.call`
 in Protocol and `plugins call --request ...` in CLI. The request retains the
 installation, selected release digest, independent contribution ID, complete
-consumer capability, method and business input. Runtime requires exact equality
-with the declared and live export before a new call can execute. The envelope's
+consumer capability, method, concrete target and business input. Runtime requires
+exact equality with the declared and live export before a new call can execute. The envelope's
 query/command semantics come from that admitted method; queries reject command
 identities. Commands use the existing durable original route and private receipt,
 without a Runtime result cache. A same-identity change of installation, release,
-contribution, contract, method or input conflicts.
+contribution, contract, method, target, calling origin, parent or input conflicts.
 
 `BindPluginMethod` binds an existing typed `plugin.Method[P, R]` and complete
 required capability to a concrete `PluginBinding`. Its `Call` uses the same
@@ -54,9 +54,12 @@ public entrance and validates typed input and output. The TypeScript client's
 the shared query path for reads. A definite business refusal projects the owner's
 code/message in `CallPluginResponse.failure`; output and failure are exclusive.
 Transport loss remains an unknown command acknowledgement and requires the
-original command identity for reconciliation. These unary entrances do not yet
-provide declared cross-plugin dependencies, origin/parent propagation, concrete
-target capture or streaming decoration; those integrations remain under development.
+original command identity for reconciliation. Delivery and execution adapters
+establish human, model and automatic origins; nested callbacks inherit the
+captured origin and parent. Command routes persist this evidence separately from
+business input and backends receive it as invocation metadata. Declared
+cross-plugin dependencies, durable trigger-origin propagation and streaming
+decoration remain under development.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
@@ -83,7 +86,7 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.3
+## Protocol 2026-10-13.4
 
 Memory and Schedules are optional, complete managed plugin backends. Their
 Local contribution declarations bind independent IDs to exact contracts and

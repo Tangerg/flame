@@ -3,9 +3,9 @@ package plugin
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/capability"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 )
@@ -35,6 +35,7 @@ type CommandBinding struct {
 	Provider     Dependency
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
+	Invocation   capability.Invocation
 }
 
 type Command struct{ record CommandBinding }
@@ -65,9 +66,18 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if !found || method.Kind() != capability.Mutation {
 		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
 	}
+	if err := record.Invocation.Validate(); err != nil {
+		return nil, err
+	}
+	if record.Invocation.ID != record.ID || record.Invocation.Target.Scope != method.Descriptor().Target {
+		return nil, fmt.Errorf("%w: command invocation differs from its identity or target contract", ErrInvalid)
+	}
 	record.Contract = contract.Identity()
 	if err := record.Provider.Validate(); err != nil {
 		return nil, err
+	}
+	if record.Invocation.Target.Scope == "installation" && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
+		return nil, fmt.Errorf("%w: command target differs from its installation", ErrInvalid)
 	}
 	if err := record.Server.Validate(); err != nil {
 		return nil, err

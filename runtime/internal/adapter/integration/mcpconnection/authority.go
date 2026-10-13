@@ -3,13 +3,18 @@ package mcpconnection
 import (
 	"context"
 	"errors"
+	"maps"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	chat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type sourceRegistry interface {
@@ -30,6 +35,22 @@ func (t authorizedTool) Unwrap() toolcontract.Tool { return t.Tool }
 func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 	if err := t.admit(ctx); err != nil {
 		return chat.ToolOutput{}, err
+	}
+	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
+		captured, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: installation.String()})
+		if err != nil {
+			return chat.ToolOutput{}, err
+		}
+		metadata := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+		metadata[pluginsdk.InvocationMetadataKey] = captured
+		ctx = scopemcp.WithRequestMeta(ctx, metadata)
+		ctx, err = pluginsdk.WithInvocation(ctx, captured)
+		if err != nil {
+			return chat.ToolOutput{}, err
+		}
 	}
 	if t.prepare == nil {
 		return t.Tool.Call(ctx, invocation)

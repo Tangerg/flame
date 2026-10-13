@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.3";
+export const PROTOCOL_VERSION = "2026-10-13.4";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -383,6 +383,7 @@ export interface CallPluginRequest {
   input: unknown;
   installationId: string;
   method: string;
+  target: Target;
 }
 
 export interface CallPluginResponse {
@@ -2054,6 +2055,11 @@ export interface SubscriptionLimits {
 }
 
 export type SuppressibleRunEventType = "segment.progress" | "item.delta";
+
+export interface Target {
+  reference: string;
+  scope: string;
+}
 
 export interface TestProviderRequest {
   provider: string;

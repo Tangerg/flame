@@ -1,13 +1,11 @@
 package dispatch
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"reflect"
-
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -18,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -1074,6 +1073,11 @@ func registerPluginValues(s *Shapes) {
 		{Field: "method", Kind: ConstraintNonEmpty},
 		{Field: "method", Kind: ConstraintMaxLength, Limit: 256},
 		{Field: "method", Kind: ConstraintIdentity},
+		{Field: "target.scope", Kind: ConstraintNonEmpty},
+		{Field: "target.scope", Kind: ConstraintIdentity},
+		{Field: "target.scope", Kind: ConstraintMaxLength, Limit: 256},
+		{Field: "target.reference", Kind: ConstraintNonEmpty},
+		{Field: "target.reference", Kind: ConstraintPattern, Value: `^[^\p{Cc}]*$`},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCallFailure](), Constraints: []FieldConstraint{
 		{Field: "code", Kind: ConstraintNonEmpty},

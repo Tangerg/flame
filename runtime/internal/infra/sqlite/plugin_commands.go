@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	json "encoding/json/v2"
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -18,8 +19,8 @@ func NewPluginCommandStore(db *sql.DB) *PluginCommandStore { return &PluginComma
 
 func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	var record plugin.CommandBinding
-	var installation, digest, input, contract, server, contribution string
-	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &record.Phase)
+	var installation, digest, input, contract, server, contribution, invocation string
+	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &invocation, &record.Phase)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -44,6 +45,9 @@ func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Comman
 	if record.Contribution, err = plugin.ParseContributionID(contribution); err != nil {
 		return nil, false, err
 	}
+	if err := json.Unmarshal([]byte(invocation), &record.Invocation, json.RejectUnknownMembers(true)); err != nil {
+		return nil, false, err
+	}
 	command, err := plugin.RestoreCommand(record)
 	return command, err == nil, err
 }
@@ -60,7 +64,7 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		}
 		if found {
 			old := previous.Snapshot()
-			if old.Method != r.Method || old.Input != r.Input || old.Contract != r.Contract || old.Provider != r.Provider || old.Server != r.Server || old.Contribution != r.Contribution || old.Export != r.Export {
+			if old.Method != r.Method || old.Input != r.Input || old.Contract != r.Contract || old.Provider != r.Provider || old.Server != r.Server || old.Contribution != r.Contribution || old.Export != r.Export || old.Invocation != r.Invocation {
 				return plugin.ErrCommandConflict
 			}
 			_, err = Connection(ctx, s.db).ExecContext(ctx, `UPDATE plugin_commands SET phase=? WHERE id=?`, r.Phase, r.ID)
@@ -69,7 +73,11 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		if r.Phase != plugin.CommandPrepared {
 			return plugin.ErrInvalid
 		}
-		_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,phase) VALUES(?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, r.Phase)
+		invocation, err := json.Marshal(r.Invocation)
+		if err != nil {
+			return err
+		}
+		_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), r.Phase)
 		return err
 	})
 }

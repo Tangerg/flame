@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -37,7 +38,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 		t.Helper()
 		meta := sdk.Meta{}
 		if id != "" {
-			meta[pluginsdk.InvocationKey] = id
+			meta[pluginsdk.InvocationMetadataKey] = capability.Invocation{ID: id, Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}
 		}
 		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: args, Meta: meta})
 		if err != nil {
@@ -125,15 +126,15 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	capability, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
+	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
-	updateMethod, err := contracts.Update.Bind(capability)
+	updateMethod, err := contracts.Update.Bind(exported)
 	if err != nil {
 		t.Fatal(err)
 	}
-	listMethod, err := contracts.List.Bind(capability)
+	listMethod, err := contracts.List.Bind(exported)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
 		t.Fatalf("typed update = %+v, %v", accepted, err)
 	}
-	replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: sdk.Meta{pluginsdk.InvocationKey: "shared-command"}})
+	replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "shared-command", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}}})
 	if err != nil || replayed.IsError {
 		t.Fatalf("Tool replay = %+v, %v", replayed, err)
 	}
@@ -204,7 +205,7 @@ func TestUnexpectedStoreFailureRemainsProtocolFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: sdk.Meta{pluginsdk.InvocationKey: "original"}})
+	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "original", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}}})
 	if err == nil || result != nil {
 		t.Fatalf("unexpected store failure became a definite tool result: %+v, %v", result, err)
 	}
