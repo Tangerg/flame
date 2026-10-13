@@ -97,7 +97,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			var resolve func(context.Context) (app.Embedder, error)
 			if input.EmbeddingSpace != "" {
 				resolve = func(context.Context) (app.Embedder, error) {
-					return managedmcp.RemoteModels{Grant: input.Grant, Space: input.EmbeddingSpace}, nil
+					return rpc.RemoteModels{Grant: input.Grant, Space: input.EmbeddingSpace}, nil
 				}
 			}
 			read, err := app.NewReadModel(store, resolve)
@@ -132,7 +132,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
-			consolidator, err := maintenance.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, managedmcp.RemoteModels{Grant: input.Grant}, maintenance.MemoryCurationPolicyValues{})
+			consolidator, err := maintenance.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, rpc.RemoteModels{Grant: input.Grant}, maintenance.MemoryCurationPolicyValues{})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
@@ -155,14 +155,14 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 type toolSearch struct{ store Store }
 
 func (s toolSearch) Search(ctx context.Context, project, query string, topK int) ([]memory.Item, error) {
-	scope, err := managedmcp.MemoryScope(ctx)
+	scope, err := rpc.MemoryScope(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var embed func(context.Context) (app.Embedder, error)
 	if scope.EmbeddingSpace != "" {
 		embed = func(context.Context) (app.Embedder, error) {
-			return managedmcp.RemoteModels{Grant: scope.Grant, Space: scope.EmbeddingSpace}, nil
+			return rpc.RemoteModels{Grant: scope.Grant, Space: scope.EmbeddingSpace}, nil
 		}
 	}
 	read, err := app.NewReadModel(s.store, embed)

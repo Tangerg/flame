@@ -1,16 +1,20 @@
-package managedmcp
+package rpc
 
 import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
 
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 const ToolScopeKey = "io.github.tangerg.flame/memory-scope.v1"
 
-type ToolScope struct{ CWD, Grant, EmbeddingSpace string }
+type ToolScope struct {
+	CWD, EmbeddingSpace string
+	Grant               pluginsdk.CallbackRef
+}
 
 func MemoryScope(ctx context.Context) (ToolScope, error) {
 	encoded, err := json.Marshal(scopemcp.RequestMetaFromContext(ctx)[ToolScopeKey])

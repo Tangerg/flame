@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
@@ -28,7 +27,7 @@ import (
 type Memory struct {
 	installations plugins.Store
 	pool          *mcpconnection.Pool
-	models        *managedmcp.Models
+	callbacks     *pluginsdk.Callbacks
 	utility       models.AuxiliaryResolver
 	embedder      func(context.Context) (app.Embedder, error)
 	history       ConversationReader
@@ -42,7 +41,7 @@ type ConversationReader interface {
 type MemoryConfig struct {
 	Installations plugins.Store
 	Connections   *mcpconnection.Pool
-	Models        *managedmcp.Models
+	Callbacks     *pluginsdk.Callbacks
 	Utility       models.AuxiliaryResolver
 	Embeddings    func(context.Context) (app.Embedder, error)
 	Conversation  ConversationReader
@@ -54,7 +53,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	for _, required := range []struct {
 		name  string
 		value any
-	}{{"installation store", config.Installations}, {"connections", config.Connections}, {"models", config.Models}, {"utility resolver", config.Utility}, {"embedding resolver", config.Embeddings}, {"conversation reader", config.Conversation}} {
+	}{{"installation store", config.Installations}, {"connections", config.Connections}, {"callbacks", config.Callbacks}, {"utility resolver", config.Utility}, {"embedding resolver", config.Embeddings}, {"conversation reader", config.Conversation}} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("memory: %s is required", required.name)
 		}
@@ -62,7 +61,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	if config.Commands == nil {
 		return nil, errors.New("memory: command routing is required")
 	}
-	return &Memory{installations: config.Installations, pool: config.Connections, models: config.Models, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
+	return &Memory{installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
 }
 func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
 	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
@@ -144,7 +143,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 		slog.WarnContext(ctx, "memory: resolve optional embedding role", "error", err)
 		embedder = nil
 	}
-	grant, release, err := m.models.Grant(ctx, session, nil, embedder)
+	grant, release, err := rpc.GrantModels(ctx, m.callbacks, session, nil, embedder)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +182,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	grant, release, err := m.models.Grant(ctx, session, func(ctx context.Context, prompt managedmcp.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(ctx, m.callbacks, session, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 		return m.utility.Complete(ctx, models.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
 	}, nil)
 	if err != nil {

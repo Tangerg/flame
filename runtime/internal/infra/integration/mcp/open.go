@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"go.opentelemetry.io/otel"
 )
@@ -17,7 +17,7 @@ var tracer = otel.Tracer("scope/flame/infra/integration/mcp")
 
 // Optional sources must not gate Runtime construction; accepted attempts belong to its lifetime.
 func Open(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions OAuthSessionStore,
-	configuration func(context.Context, mcpserver.ID) (*Launch, error), models *managedmcp.Models, client *sdkmcp.Client,
+	configuration func(context.Context, mcpserver.ID) (*Launch, error), callbacks *pluginsdk.Callbacks, client *sdkmcp.Client,
 ) (result *Connections, err error) {
 	if dependency.Missing(ctx) {
 		return nil, errors.New("mcp: startup context is required")
@@ -47,7 +47,7 @@ func Open(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions O
 		}
 		servers[index] = srv
 	}
-	c := &Connections{lifetime: lifetime, models: models, client: client, oauthSessions: oauthSessions}
+	c := &Connections{lifetime: lifetime, callbacks: callbacks, client: client, oauthSessions: oauthSessions}
 	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
 	}

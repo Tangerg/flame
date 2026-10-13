@@ -6,9 +6,8 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
@@ -70,11 +69,11 @@ type ownedSession struct {
 // that changes a server's live outcome, so no reader can observe a settled
 // status whose tools the sink has not received, or the reverse.
 type Connections struct {
-	lifetime context.Context
-	models   *managedmcp.Models
-	mu       sync.Mutex
-	servers  []*server
-	client   *sdkmcp.Client
+	lifetime  context.Context
+	callbacks *pluginsdk.Callbacks
+	mu        sync.Mutex
+	servers   []*server
+	client    *sdkmcp.Client
 	// onTools is the tool sink; nil until SetToolSink; guarded by mu. It runs
 	// while mu is held, so it must be an in-memory publication that never
 	// blocks or calls back into Connections.
@@ -145,12 +144,12 @@ func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 		c.sessions = make(map[*sdkmcp.ClientSession]*ownedSession)
 	}
 	if c.sessions[session] == nil {
-		if c.models != nil {
-			c.models.AdmitSession(session)
+		if c.callbacks != nil {
+			c.callbacks.AdmitSession(session)
 		}
 		c.sessions[session] = &ownedSession{closeFn: func() error {
-			if c.models != nil {
-				c.models.RevokeSession(session)
+			if c.callbacks != nil {
+				c.callbacks.RevokeSession(session)
 			}
 			return retireSession(session, cleanup)
 		}}

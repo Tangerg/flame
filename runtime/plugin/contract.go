@@ -77,7 +77,11 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) str
 	if backend == nil || handler == nil {
 		return errors.New("plugin: backend and method handler are required")
 	}
-	return backend.register(boundMethod{descriptor: m.Descriptor(), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
+	return backend.register(m.bind(classify, handler))
+}
+
+func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
+	return boundMethod{descriptor: m.Descriptor(), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
 		encoded, err := json.Marshal(struct {
 			sdk.ParamsBase
 			Input     jsontext.Value `json:"input"`
@@ -128,7 +132,7 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) str
 			return nil, err
 		}
 		return &result, nil
-	}})
+	}}
 }
 
 func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, input P) (R, error) {

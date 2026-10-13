@@ -5,7 +5,7 @@ import (
 
 	model "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -22,9 +22,9 @@ func (h capturedHistory) Read(ctx context.Context, id string) (Conversation, err
 	return Conversation{len(messages), modeltext.RenderTranscript(messages)}, err
 }
 
-func capturedCompletion(client chat.Model) managedmcp.Completion {
+func capturedCompletion(client chat.Model) rpc.Completion {
 	resolver := model.AuxiliaryResolver(func(context.Context) (chat.Model, error) { return client, nil })
-	return func(ctx context.Context, prompt managedmcp.Prompt) (string, error) {
+	return func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 		return resolver.Complete(ctx, model.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
 	}
 }

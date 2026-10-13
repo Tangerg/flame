@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -21,7 +21,7 @@ type modelEnvironment struct {
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	liveEmbedder       *modeladapter.RoleEmbedder
-	modelBroker        *managedmcp.Models
+	callbacks          *pluginsdk.Callbacks
 }
 
 func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
@@ -59,6 +59,6 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		embeddingResolver:  embeddingResolver,
 	}
 	environment.liveEmbedder = liveEmbedder
-	environment.modelBroker = managedmcp.NewModels()
+	environment.callbacks = pluginsdk.NewCallbacks()
 	return environment, nil
 }

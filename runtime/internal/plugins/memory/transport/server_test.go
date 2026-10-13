@@ -13,7 +13,6 @@ import (
 
 	workspace "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
@@ -28,10 +27,15 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	broker := managedmcp.NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	broker.AdmitSession(session)
 	operations := []string{}
-	grant, release, err := broker.Grant(t.Context(), session, func(_ context.Context, prompt managedmcp.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(t.Context(), broker, session, func(_ context.Context, prompt rpc.Prompt) (string, error) {
 		operations = append(operations, prompt.Operation)
 		if prompt.Operation == "memory.extract" {
 			return "- use local workspace mode\n- verify backend restart", nil
@@ -127,11 +131,16 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		t.Fatal(err)
 	}
 	store, session, closeBackend := connectMemoryBackend(t, path)
-	broker := managedmcp.NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	broker.AdmitSession(session)
 	curating := make(chan struct{})
 	joined := make(chan struct{})
-	grant, release, err := broker.Grant(ctx, session, func(ctx context.Context, prompt managedmcp.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(ctx, broker, session, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 		if prompt.Operation == "memory.extract" {
 			return "- automatic proposal", nil
 		}
@@ -202,7 +211,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
-	fresh, releaseFresh, err := broker.Grant(ctx, session, func(_ context.Context, prompt managedmcp.Prompt) (string, error) {
+	fresh, releaseFresh, err := rpc.GrantModels(ctx, broker, session, func(_ context.Context, prompt rpc.Prompt) (string, error) {
 		if prompt.Operation != "memory.curate" {
 			t.Errorf("pending recovery repeated extraction: %s", prompt.Operation)
 		}
@@ -259,11 +268,16 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_maintenance_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
 		t.Fatal(err)
 	}
-	broker := managedmcp.NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	broker.AdmitSession(session)
 	defer broker.RevokeSession(session)
 	var calls atomic.Int32
-	grant, release, err := broker.Grant(t.Context(), session, func(context.Context, managedmcp.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(t.Context(), broker, session, func(context.Context, rpc.Prompt) (string, error) {
 		calls.Add(1)
 		return "- durable ledger fact", nil
 	}, nil)

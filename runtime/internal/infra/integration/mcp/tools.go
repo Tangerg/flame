@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -107,11 +105,10 @@ func (t Executable) Unwrap() toolcontract.Tool             { return t.Tool }
 func (t Executable) SourceFingerprint() fingerprint.Digest { return t.config.AuthorityFingerprint() }
 func (t Executable) SourceConfig() ServerConfig            { return t.config.Clone() }
 
-// BindModels grants only the connection generation that admitted this tool.
-func (t Executable) BindModels(ctx context.Context, models *managedmcp.Models, embed managedmcp.Embeddings) (string, func(), error) {
+// CallbackSession binds collaborators to the connection generation that admitted this tool.
+func (t Executable) CallbackSession() (*sdkmcp.ClientSession, error) {
 	if !t.Current() {
-		return "", nil, fmt.Errorf("mcp: model authority connection was withdrawn")
+		return nil, fmt.Errorf("mcp: callback authority connection was withdrawn")
 	}
-	token, release, err := models.Grant(ctx, t.session, nil, embed)
-	return token, release, err
+	return t.session, nil
 }

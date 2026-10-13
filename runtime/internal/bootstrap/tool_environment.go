@@ -12,8 +12,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	inframcp "github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/scope/core/chat"
 	scopemcp "github.com/Tangerg/scope/mcp"
 
@@ -72,7 +72,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		ctx,
 		deps.lifetime,
 		deps.mcp.servers,
-		cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.modelBroker,
+		cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks,
 		func(ctx context.Context, source inframcp.Executable) (context.Context, func(), error) {
 			cwd, attached := executionctx.WorkspaceCWD(ctx)
 			if !attached {
@@ -83,7 +83,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 				slog.WarnContext(ctx, "memory: optional embedding role unavailable", "error", err)
 				embedder = nil
 			}
-			grant, release, err := source.BindModels(ctx, deps.modelServices.modelBroker, embedder)
+			session, err := source.CallbackSession()
+			if err != nil {
+				return nil, nil, err
+			}
+			grant, release, err := rpc.GrantModels(ctx, deps.modelServices.callbacks, session, nil, embedder)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -95,7 +99,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 			if metadata == nil {
 				metadata = make(map[string]any)
 			}
-			metadata[managedmcp.ToolScopeKey] = managedmcp.ToolScope{CWD: cwd, Grant: grant, EmbeddingSpace: space}
+			metadata[rpc.ToolScopeKey] = rpc.ToolScope{CWD: cwd, Grant: grant, EmbeddingSpace: space}
 			return scopemcp.WithRequestMeta(ctx, metadata), release, nil
 		},
 		deps.publish,
@@ -110,7 +114,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		// must outlive that deadline and return only when the pool generation has
 		// actually settled, so a timed-out Instance retains and later joins it.
 		closers: []*teardown.Step{teardown.Terminal(func(ctx context.Context) error {
-			return mcpPool.Shutdown(context.WithoutCancel(ctx))
+			return errors.Join(mcpPool.Shutdown(context.WithoutCancel(ctx)), deps.modelServices.callbacks.Close())
 		})},
 	}
 	environment.admission = plugins.NewAdmission()
@@ -122,7 +126,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Models: deps.modelServices.modelBroker, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Invalidations: deps.publish, Commands: commandCalls})
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Invalidations: deps.publish, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}

@@ -101,7 +101,7 @@ credentials or standing approval grants.
 The current SDK requires `BackendProtocol` on invocation and description. It is
 a public wire contract identity, separate from internal build or data-directory
 versions. Only this current protocol is interpreted. Installed declaration/token
-matching and activation-bound host callbacks remain part of the continuing refactor.
+matching remains part of the continuing refactor.
 
 The [Reviews backend](../../examples/plugins/reviews/backend/server.go) binds Tool
 and typed method entrances to the same private owner. Its tests prove shared
@@ -112,7 +112,44 @@ version still named by application module metadata does not contain it.
 
 This package currently supplies backend wire primitives. Runtime's existing
 Memory/Schedules commands retain original installed routing before dispatch and
-reconcile through this lookup. Generic installed-provider proxies, host callbacks, point descriptors,
+reconcile through this lookup. Generic installed-provider proxies, Runtime callback
+catalog binding, point descriptors,
 generic contribution declaration and component bindings remain separate unfinished
 parts of the unified-plugin refactor. A direct backend session is not a public
 installed-provider proxy, and these primitives do not authorize core Runtime calls.
+
+## Unary host callbacks
+
+`Callbacks` owns one lazily opened loopback endpoint for a headless Runtime
+instance. Its owner admits each concrete MCP connection generation and revokes
+that generation before closing its transport. `Open` binds an owning call context,
+explicit request/response capacities and immutable `Callback` operations. It
+returns an ephemeral `CallbackRef` and an idempotent release function. The same
+endpoint serves concurrent calls; activation credentials and call references
+cannot be exchanged between them.
+
+`NewCallback` binds an existing typed `Method` to its actual use-case handler.
+`CallHost` uses that method's exact structural contract and the same value/refusal
+envelope as backend invocation. Input admission, output validation, original JSON
+and query/command identity rules share the existing implementation. The endpoint
+does not discover undeclared operations or assign a model-call budget.
+
+Handlers receive the owning context's target, origin and parent projections.
+Network input cannot replace them. No callback-owner lock is held across user
+code or nested I/O. Call release, owner cancellation, connection retirement and
+Runtime closure withdraw new admission, cancel active requests and join them.
+Retirement cancels every sibling before waiting for any one sibling. Released
+references return `ErrStaleCall`; unknown transport or handler failures never
+become a business refusal or authorize automatic retry.
+
+The reference contains live connection credentials. Do not log it, put it in a
+package or expose its loopback address to browser components. Call `Close` from
+the Runtime's teardown owner, after operation admission has stopped; handlers
+must not synchronously join their own callback lifetime.
+
+Memory search and maintenance now use this public unary transport. Memory owns
+its two-call policy and captured model collaborators. Real-process tests prove
+MCP → callback → nested MCP reentrancy without a Desktop relay. This slice does
+not yet provide installed dependency/entry rendezvous, named Runtime Delivery
+catalog callbacks, streaming or remote decorator continuations; those remain
+required parts of the complete plugin refactor.

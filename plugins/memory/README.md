@@ -14,11 +14,14 @@ selects one installation/contribution for new calls. Runtime connects its human
 `agentMemory.*` operations, Run context reads and source-qualified `search_memory`
 Tool to that exact generation. Closing a view cannot stop this process.
 
-Optional model work uses an invocation-scoped, unguessable loopback capability
-issued only to this backend. Its two-call budget covers extraction plus curation
-or query plus corpus embedding. It accepts only bounded Memory operations, carries
-no Runtime bearer or provider credential, and is canceled and joined when the
-invocation or backend generation ends. Standard MCP sampling is not used. A
+Optional model work uses the public SDK's invocation-scoped `CallbackRef`, bound
+to this concrete backend generation. Runtime owns one lazily opened loopback
+callback endpoint, shared by concurrent calls. Memory's RPC adapter owns its
+two-call budget for extraction plus curation or query plus corpus embedding; the
+public endpoint imposes no Memory policy. The reference carries no Runtime bearer
+or provider credential and expires when the owning call or backend generation
+ends. Withdrawal cancels and joins admitted callbacks, including incomplete
+request bodies. Standard MCP sampling is not used. A
 missing or failed optional embedder preserves keyword ranking; a storage failure
 remains an error.
 

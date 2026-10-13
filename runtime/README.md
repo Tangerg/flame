@@ -73,6 +73,15 @@ commands and packaged views use the same backend as model Tools and maintenance.
 The host retains no Memory ledger or Schedule store. With no available selected owner, human
 operations return `plugin_unavailable`; optional Memory context is absent.
 
+The public `plugin.Callbacks` binding owns one lazily opened loopback endpoint for
+this Runtime instance. MCP session retirement withdraws its callback references,
+cancels all admitted sibling calls before joining them, then closes the backend
+transport. Memory search and maintenance use this same unary binding and own
+their model budget in Memory's RPC adapter. Public typed operations can bind
+other call-scoped collaborators without importing Memory. Installed dependency
+rendezvous, Runtime Delivery catalog callbacks and streaming decorators remain
+open parts of the unified-plugin refactor.
+
 `plugins.listProviders` and `plugins.selectProvider` expose the same composition
 owner through the Go binding and Runtime Protocol. CLI uses `plugins providers`
 and `plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`.

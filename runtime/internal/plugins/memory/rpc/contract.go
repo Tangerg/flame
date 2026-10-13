@@ -53,18 +53,20 @@ type ItemsInput struct {
 	Project string
 }
 type SearchInput struct {
-	Project, Query        string
-	TopK                  int
-	Grant, EmbeddingSpace string
+	Project, Query string
+	TopK           int
+	Grant          pluginsdk.CallbackRef
+	EmbeddingSpace string
 }
 type Conversation struct {
 	MessageCount int
 	Transcript   string
 }
 type MaintenanceInput struct {
-	SessionID, Project, Grant string
-	Compacted                 bool
-	Conversation              Conversation
+	SessionID, Project string
+	Grant              pluginsdk.CallbackRef
+	Compacted          bool
+	Conversation       Conversation
 }
 type MaintenanceResult struct{ Published bool }
 type Ack struct{}

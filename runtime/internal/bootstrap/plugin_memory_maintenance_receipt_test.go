@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -47,10 +46,15 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 		return session
 	}
 	session := connect(true)
-	broker := managedmcp.NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	broker.AdmitSession(session)
 	var calls atomic.Int32
-	grant, release, err := broker.Grant(ctx, session, func(context.Context, managedmcp.Prompt) (string, error) {
+	grant, release, err := memoryrpc.GrantModels(ctx, broker, session, func(context.Context, memoryrpc.Prompt) (string, error) {
 		calls.Add(1)
 		return "- retained publication", nil
 	}, nil)

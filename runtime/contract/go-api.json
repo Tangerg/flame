@@ -1248,6 +1248,12 @@
           "value": "\"io.github.tangerg.flame/commands.get\""
         }
       ],
+      "variables": [
+        {
+          "name": "ErrStaleCall",
+          "type": "error"
+        }
+      ],
       "functions": [
         {
           "name": "Call",
@@ -1256,6 +1262,10 @@
         {
           "name": "CallCommand",
           "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, name string, id string, input P) (R, error)"
+        },
+        {
+          "name": "CallHost",
+          "signature": "func[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error)"
         },
         {
           "name": "DecodeReply",
@@ -1276,6 +1286,14 @@
         {
           "name": "NewBinding",
           "signature": "func(session *mcp.ClientSession, descriptor MethodDescriptor) (*Binding, error)"
+        },
+        {
+          "name": "NewCallback",
+          "signature": "func[P, R any](method *Method[P, R], classify func(error) string, handler func(context.Context, Command[P]) (R, error)) (Callback, error)"
+        },
+        {
+          "name": "NewCallbacks",
+          "signature": "func() *Callbacks"
         },
         {
           "name": "NewMethod",
@@ -1352,6 +1370,78 @@
             {
               "name": "ValidateInput",
               "signature": "func(input jsoninput.Input) error"
+            }
+          ]
+        },
+        {
+          "name": "Callback",
+          "kind": "struct"
+        },
+        {
+          "name": "CallbackLimits",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MaxRequestBytes",
+              "type": "int64"
+            },
+            {
+              "name": "MaxResponseBytes",
+              "type": "int64"
+            }
+          ]
+        },
+        {
+          "name": "CallbackRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Endpoint",
+              "type": "string",
+              "tag": "json:\"endpoint\""
+            },
+            {
+              "name": "Credential",
+              "type": "string",
+              "tag": "json:\"credential\""
+            },
+            {
+              "name": "Call",
+              "type": "string",
+              "tag": "json:\"call\""
+            },
+            {
+              "name": "MaxResponseBytes",
+              "type": "int64",
+              "tag": "json:\"maxResponseBytes\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Callbacks",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "AdmitSession",
+              "signature": "func(session *mcp.ClientSession)"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "Open",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
+            },
+            {
+              "name": "RevokeSession",
+              "signature": "func(session *mcp.ClientSession)"
             }
           ]
         },

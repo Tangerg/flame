@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
@@ -64,7 +64,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	if err != nil {
 		return "", toolfailure.Definite(fmt.Errorf("search_memory: %w", err))
 	}
-	scope, err := managedmcp.MemoryScope(ctx)
+	scope, err := rpc.MemoryScope(ctx)
 	if err != nil {
 		return "", toolfailure.Definite(err)
 	}

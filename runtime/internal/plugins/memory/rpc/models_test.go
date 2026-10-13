@@ -1,9 +1,8 @@
-package managedmcp
+package rpc
 
 import (
 	"context"
 	"errors"
-	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -21,7 +20,7 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	token := strings.Repeat("a", 64)
-	_, err := (RemoteModels{Grant: "http://127.0.0.1:1/" + token}).Complete(ctx, testPrompt())
+	_, err := (RemoteModels{Grant: pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}}).Complete(ctx, testPrompt())
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled transport lost its cause: %v", err)
 	}
@@ -31,17 +30,23 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 }
 
 func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
-	broker := NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
 	var calls atomic.Int32
-	grant, release, err := broker.Grant(t.Context(), session, func(context.Context, Prompt) (string, error) { calls.Add(1); return "fact", nil }, nil)
+	grant, release, err := GrantModels(t.Context(), broker, session, func(context.Context, Prompt) (string, error) { calls.Add(1); return "fact", nil }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	endpoint, _ := url.Parse(grant)
-	if _, err := broker.complete(t.Context(), new(sdk.ClientSession), endpoint.Path[1:], testPrompt()); err == nil {
+	foreign := grant
+	foreign.Credential = strings.Repeat("0", 64)
+	if _, err := (RemoteModels{Grant: foreign}).Complete(t.Context(), testPrompt()); err == nil {
 		t.Fatal("another connection borrowed model authority")
 	}
 	remote := RemoteModels{Grant: grant}
@@ -64,12 +69,17 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 	}
 }
 func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
-	broker := NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
 	entered := make(chan struct{})
 	settled := make(chan struct{})
-	grant, release, err := broker.Grant(t.Context(), session, func(ctx context.Context, _ Prompt) (string, error) {
+	grant, release, err := GrantModels(t.Context(), broker, session, func(ctx context.Context, _ Prompt) (string, error) {
 		close(entered)
 		<-ctx.Done()
 		close(settled)
@@ -93,13 +103,18 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 	}
 }
 func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
-	broker := NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	server := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
 	binding, err := pluginsdk.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := pluginsdk.RegisterServer(binding, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant string) (string, error) {
+	if err := pluginsdk.RegisterServer(binding, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant pluginsdk.CallbackRef) (string, error) {
 		return (RemoteModels{Grant: grant}).Complete(ctx, testPrompt())
 	}); err != nil {
 		t.Fatal(err)
@@ -123,22 +138,27 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	}
 	defer session.Close()
 	broker.AdmitSession(session)
-	grant, release, err := broker.Grant(t.Context(), session, func(context.Context, Prompt) (string, error) { return "durable fact", nil }, nil)
+	grant, release, err := GrantModels(t.Context(), broker, session, func(context.Context, Prompt) (string, error) { return "durable fact", nil }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	value, err := pluginsdk.Call[string, string](t.Context(), session, "flame.memory/test.v1", grant)
+	value, err := pluginsdk.Call[pluginsdk.CallbackRef, string](t.Context(), session, "flame.memory/test.v1", grant)
 	if err != nil || value != "durable fact" {
 		t.Fatalf("round trip=%q %v", value, err)
 	}
 }
 func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
-	broker := NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	ctx, cancel := context.WithCancel(t.Context())
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
-	grant, release, err := broker.Grant(ctx, session, func(context.Context, Prompt) (string, error) { return "", errors.New("must not be called") }, nil)
+	grant, release, err := GrantModels(ctx, broker, session, func(context.Context, Prompt) (string, error) { return "", errors.New("must not be called") }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,11 +182,16 @@ func (e *boundedEmbeddings) Embed(_ context.Context, texts []string) ([][]float3
 }
 
 func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
-	broker := NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	embedder := new(boundedEmbeddings)
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
-	grant, release, err := broker.Grant(t.Context(), session, nil, embedder)
+	grant, release, err := GrantModels(t.Context(), broker, session, nil, embedder)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,16 +207,21 @@ func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
 }
 
 func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
-	broker := NewModels()
+	broker := pluginsdk.NewCallbacks()
+	t.Cleanup(func() {
+		if err := broker.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
 	broker.RevokeSession(session)
-	grant, release, err := broker.Grant(t.Context(), session, nil, nil)
+	grant, release, err := GrantModels(t.Context(), broker, session, nil, nil)
 	if err == nil {
 		release()
-		t.Fatalf("retired connection issued model capability %q", grant)
+		t.Fatalf("retired connection issued model capability %+v", grant)
 	}
-	if grant != "" || release != nil {
+	if grant != (pluginsdk.CallbackRef{}) || release != nil {
 		t.Fatal("refused grant retained model authority")
 	}
 }
@@ -208,11 +238,16 @@ func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
 		{"input exceeds envelope", func(p *Prompt) { p.MaxInputBytes = len(p.UserPrompt) - 1 }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			broker := NewModels()
+			broker := pluginsdk.NewCallbacks()
+			t.Cleanup(func() {
+				if err := broker.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			session := new(sdk.ClientSession)
 			broker.AdmitSession(session)
 			var calls atomic.Int32
-			grant, release, err := broker.Grant(t.Context(), session, func(context.Context, Prompt) (string, error) {
+			grant, release, err := GrantModels(t.Context(), broker, session, func(context.Context, Prompt) (string, error) {
 				calls.Add(1)
 				return "fact", nil
 			}, nil)

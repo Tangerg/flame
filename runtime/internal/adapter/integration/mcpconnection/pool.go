@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -36,7 +35,7 @@ func Open(
 	lifetime context.Context,
 	servers []mcpserver.Server,
 	oauthSessions mcp.OAuthSessionStore, registry sourceRegistry,
-	models *managedmcp.Models,
+	callbacks *pluginsdk.Callbacks,
 	memoryContext MemoryContext,
 	publish invalidation.Publish,
 ) (*Pool, error) {
@@ -52,7 +51,7 @@ func Open(
 	if err := pluginsdk.RegisterClient(client); err != nil {
 		return nil, err
 	}
-	inner, err := mcp.Open(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch, models, client)
+	inner, err := mcp.Open(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch, callbacks, client)
 	if err != nil {
 		return nil, err
 	}

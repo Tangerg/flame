@@ -1,0 +1,427 @@
+package plugin
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net"
+	"net/http"
+	"net/url"
+	"sync"
+	"time"
+
+	"github.com/Tangerg/flame/runtime/jsoninput"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+)
+
+var ErrStaleCall = errors.New("plugin: callback call is no longer active")
+
+// Callback is an immutable binding to an existing operation contract. The
+// handler owns its business behavior, effect identities and resource budget.
+type Callback struct{ method boundMethod }
+
+func NewCallback[P, R any](method *Method[P, R], classify func(error) string, handler func(context.Context, Command[P]) (R, error)) (Callback, error) {
+	if method == nil || handler == nil {
+		return Callback{}, errors.New("plugin: callback method and handler are required")
+	}
+	bound := method.bind(classify, func(ctx context.Context, _ *sdk.ServerSession, command Command[P]) (R, error) {
+		return handler(ctx, command)
+	})
+	contract, err := methodContract(bound.descriptor)
+	if err != nil {
+		return Callback{}, err
+	}
+	bound.contract = contract.Digest()
+	return Callback{method: bound}, nil
+}
+
+// CallbackRef is an ephemeral projection of one activation and owning call.
+// It must not be logged, put in a package or reused after the call ends.
+type CallbackRef struct {
+	Endpoint         string `json:"endpoint"`
+	Credential       string `json:"credential"`
+	Call             string `json:"call"`
+	MaxResponseBytes int64  `json:"maxResponseBytes"`
+}
+
+func (r CallbackRef) Validate() error {
+	endpoint, err := url.Parse(r.Endpoint)
+	if err != nil || endpoint.Scheme != "http" || endpoint.Hostname() != "127.0.0.1" || endpoint.Port() == "" || endpoint.Path != "/" || endpoint.RawQuery != "" || endpoint.User != nil || endpoint.Fragment != "" || r.MaxResponseBytes <= 0 || r.MaxResponseBytes == math.MaxInt64 {
+		return errors.New("plugin: callback reference is invalid")
+	}
+	for _, token := range []string{r.Credential, r.Call} {
+		if len(token) != 64 {
+			return errors.New("plugin: callback reference is invalid")
+		}
+		if _, err := hex.DecodeString(token); err != nil {
+			return errors.New("plugin: callback reference is invalid")
+		}
+	}
+	return nil
+}
+
+type CallbackLimits struct {
+	MaxRequestBytes  int64
+	MaxResponseBytes int64
+}
+
+type callbackActivation struct {
+	credential string
+	calls      map[string]*callbackCall
+	retiring   bool
+	done       chan struct{}
+}
+
+type callbackCall struct {
+	context  context.Context
+	cancel   context.CancelCauseFunc
+	methods  map[string]boundMethod
+	limits   CallbackLimits
+	pending  sync.WaitGroup
+	done     chan struct{}
+	stop     func() bool
+	released bool
+}
+
+// Callbacks owns one lazily opened loopback endpoint for the Runtime instance.
+// Connection retirement withdraws admission before canceling and joining user
+// code. No owner lock is held while a handler performs I/O or a nested call.
+type Callbacks struct {
+	mu          sync.Mutex
+	activations map[*sdk.ClientSession]*callbackActivation
+	credentials map[string]*callbackActivation
+	server      *http.Server
+	endpoint    string
+	served      chan struct{}
+	closed      bool
+	done        chan struct{}
+	closeErr    error
+	serveErr    error
+}
+
+func NewCallbacks() *Callbacks {
+	return &Callbacks{activations: make(map[*sdk.ClientSession]*callbackActivation), credentials: make(map[string]*callbackActivation), done: make(chan struct{})}
+}
+
+func (c *Callbacks) AdmitSession(session *sdk.ClientSession) {
+	if session == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.closed && c.activations[session] == nil {
+		activation := &callbackActivation{credential: callbackToken(), calls: make(map[string]*callbackCall), done: make(chan struct{})}
+		c.activations[session] = activation
+		c.credentials[activation.credential] = activation
+	}
+}
+
+func callbackToken() string {
+	var token [32]byte
+	if _, err := rand.Read(token[:]); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(token[:])
+}
+
+func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error) {
+	if ctx == nil || session == nil || limits.MaxRequestBytes <= 0 || limits.MaxResponseBytes <= 0 || limits.MaxResponseBytes == math.MaxInt64 || len(callbacks) == 0 {
+		return CallbackRef{}, nil, errors.New("plugin: callback context, session, capacities and operations are required")
+	}
+	methods := make(map[string]boundMethod, len(callbacks))
+	for _, callback := range callbacks {
+		method := callback.method
+		if method.invoke == nil || methods[method.descriptor.Name].invoke != nil {
+			return CallbackRef{}, nil, errors.New("plugin: callback operations must be valid and unique")
+		}
+		methods[method.descriptor.Name] = method
+	}
+	c.mu.Lock()
+	activation := c.activations[session]
+	if c.closed || activation == nil || activation.retiring {
+		c.mu.Unlock()
+		return CallbackRef{}, nil, ErrStaleCall
+	}
+	if c.serveErr != nil {
+		c.mu.Unlock()
+		return CallbackRef{}, nil, fmt.Errorf("plugin: callback endpoint stopped: %w", c.serveErr)
+	}
+	if err := ctx.Err(); err != nil {
+		c.mu.Unlock()
+		return CallbackRef{}, nil, errors.Join(err, context.Cause(ctx))
+	}
+	if c.server == nil {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			c.mu.Unlock()
+			return CallbackRef{}, nil, fmt.Errorf("plugin: open callback endpoint: %w", err)
+		}
+		c.server = &http.Server{Handler: http.HandlerFunc(c.serve)}
+		c.endpoint = "http://" + listener.Addr().String() + "/"
+		c.served = make(chan struct{})
+		server, served := c.server, c.served
+		go func() {
+			defer close(served)
+			if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+				c.mu.Lock()
+				c.serveErr = err
+				for _, activation := range c.activations {
+					for _, call := range activation.calls {
+						call.cancel(err)
+					}
+				}
+				c.mu.Unlock()
+			}
+		}()
+	}
+	lifetime, cancel := context.WithCancelCause(ctx)
+	call := &callbackCall{context: lifetime, cancel: cancel, methods: methods, limits: limits, done: make(chan struct{})}
+	id := callbackToken()
+	activation.calls[id] = call
+	release := func() { c.release(activation, id, call) }
+	call.stop = context.AfterFunc(lifetime, release)
+	ref := CallbackRef{Endpoint: c.endpoint, Credential: activation.credential, Call: id, MaxResponseBytes: limits.MaxResponseBytes}
+	c.mu.Unlock()
+	return ref, release, nil
+}
+
+func (c *Callbacks) release(activation *callbackActivation, id string, call *callbackCall) {
+	c.mu.Lock()
+	owned := c.withdrawCallLocked(call)
+	c.mu.Unlock()
+	c.finishCall(activation, id, call, owned)
+}
+
+func (c *Callbacks) withdrawCallLocked(call *callbackCall) bool {
+	if call.released {
+		return false
+	}
+	call.released = true
+	call.stop()
+	call.cancel(ErrStaleCall)
+	return true
+}
+
+func (c *Callbacks) finishCall(activation *callbackActivation, id string, call *callbackCall, owned bool) {
+	if !owned {
+		<-call.done
+		return
+	}
+	call.pending.Wait()
+	c.mu.Lock()
+	delete(activation.calls, id)
+	c.mu.Unlock()
+	close(call.done)
+}
+
+func (c *Callbacks) RevokeSession(session *sdk.ClientSession) {
+	c.mu.Lock()
+	activation := c.activations[session]
+	if activation == nil {
+		c.mu.Unlock()
+		return
+	}
+	if activation.retiring {
+		c.mu.Unlock()
+		<-activation.done
+		return
+	}
+	activation.retiring = true
+	delete(c.credentials, activation.credential)
+	type retiringCall struct {
+		call  *callbackCall
+		owned bool
+	}
+	calls := make(map[string]retiringCall, len(activation.calls))
+	for id, call := range activation.calls {
+		calls[id] = retiringCall{call, c.withdrawCallLocked(call)}
+	}
+	c.mu.Unlock()
+	for id, call := range calls {
+		c.finishCall(activation, id, call.call, call.owned)
+	}
+	c.mu.Lock()
+	delete(c.activations, session)
+	c.mu.Unlock()
+	close(activation.done)
+}
+
+func (c *Callbacks) Close() error {
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		<-c.done
+		return c.closeErr
+	}
+	c.closed = true
+	sessions := make([]*sdk.ClientSession, 0, len(c.activations))
+	for session := range c.activations {
+		sessions = append(sessions, session)
+		for _, call := range c.activations[session].calls {
+			call.cancel(ErrStaleCall)
+		}
+	}
+	server, served := c.server, c.served
+	c.mu.Unlock()
+	for _, session := range sessions {
+		c.RevokeSession(session)
+	}
+	if server != nil {
+		c.closeErr = server.Close()
+		<-served
+		c.mu.Lock()
+		c.closeErr = errors.Join(c.closeErr, c.serveErr)
+		c.mu.Unlock()
+	}
+	close(c.done)
+	return c.closeErr
+}
+
+func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost || r.URL.Path != "/" || r.URL.RawQuery != "" {
+		http.NotFound(w, r)
+		return
+	}
+	c.mu.Lock()
+	activation := c.credentials[r.Header.Get("Authorization")]
+	var call *callbackCall
+	if activation != nil {
+		call = activation.calls[r.Header.Get("Flame-Call")]
+	}
+	if c.closed || call == nil || call.released || call.context.Err() != nil {
+		c.mu.Unlock()
+		http.Error(w, "callback call is no longer active", http.StatusGone)
+		return
+	}
+	call.pending.Add(1)
+	c.mu.Unlock()
+	defer call.pending.Done()
+	lifetime, cancel := context.WithCancelCause(call.context)
+	stop := context.AfterFunc(r.Context(), func() { cancel(context.Cause(r.Context())) })
+	bodyClosed := make(chan struct{})
+	closeBody := context.AfterFunc(lifetime, func() {
+		defer close(bodyClosed)
+		_ = http.NewResponseController(w).SetReadDeadline(time.Now())
+		_ = r.Body.Close()
+	})
+	defer func() {
+		stop()
+		if !closeBody() {
+			<-bodyClosed
+		}
+		cancel(nil)
+	}()
+	// The owner context supplies target, origin and parent projections. The
+	// network request can cancel them, but cannot replace them with input fields.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, call.limits.MaxRequestBytes))
+	var wire invokeParams
+	if err == nil {
+		err = json.Unmarshal(body, &wire, json.RejectUnknownMembers(true))
+	}
+	method, found := call.methods[wire.Method]
+	if err != nil || !found || wire.Contract != method.contract {
+		http.Error(w, "callback contract or input refused", http.StatusBadRequest)
+		return
+	}
+	if lifetime.Err() != nil {
+		http.Error(w, "callback call is no longer active", http.StatusGone)
+		return
+	}
+	result, err := method.invoke(lifetime, nil, &wire)
+	if err != nil {
+		http.Error(w, "callback operation could not be confirmed", http.StatusUnprocessableEntity)
+		return
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil || int64(len(encoded)) > call.limits.MaxResponseBytes {
+		http.Error(w, "callback response capacity exceeded", http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(encoded)
+}
+
+func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error) {
+	var zero R
+	if err := ref.Validate(); err != nil {
+		return zero, err
+	}
+	if method == nil {
+		return zero, errors.New("plugin: callback method is required")
+	}
+	if method.config.Kind == Mutation {
+		if err := validateCommandID(id); err != nil {
+			return zero, err
+		}
+	} else if id != "" {
+		return zero, errors.New("plugin: query must not carry a command identity")
+	}
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		return zero, err
+	}
+	if err := method.input.Validate(admitted.JSON()); err != nil {
+		return zero, err
+	}
+	contract, err := methodContract(method.Descriptor())
+	if err != nil {
+		return zero, err
+	}
+	encoded, err := json.Marshal(invokeParams{Protocol: BackendProtocol, Method: method.Name(), Contract: contract.Digest(), Input: admitted.JSON(), CommandID: id})
+	if err != nil {
+		return zero, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, ref.Endpoint, bytes.NewReader(encoded))
+	if err != nil {
+		return zero, err
+	}
+	request.Header.Set("Authorization", ref.Credential)
+	request.Header.Set("Flame-Call", ref.Call)
+	request.Header.Set("Content-Type", "application/json")
+	transport := &http.Transport{Proxy: nil}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(request)
+	if err != nil {
+		if failure, ok := errors.AsType[*url.Error](err); ok {
+			return zero, fmt.Errorf("plugin: callback transport: %w", errors.Join(failure.Err, ctx.Err(), context.Cause(ctx)))
+		}
+		return zero, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, ref.MaxResponseBytes+1))
+	if err != nil {
+		return zero, err
+	}
+	if int64(len(body)) > ref.MaxResponseBytes {
+		return zero, errors.New("plugin: callback response capacity exceeded")
+	}
+	if response.StatusCode == http.StatusGone {
+		return zero, ErrStaleCall
+	}
+	if response.StatusCode != http.StatusOK {
+		return zero, fmt.Errorf("plugin: callback could not be confirmed (%d)", response.StatusCode)
+	}
+	var result Result[jsontext.Value]
+	if err := json.Unmarshal(body, &result, json.RejectUnknownMembers(true)); err != nil {
+		return zero, err
+	}
+	if _, err := result.value(method.Name()); err != nil {
+		return zero, err
+	}
+	if err := method.output.Validate(result.valueJSON); err != nil {
+		return zero, fmt.Errorf("plugin: callback output: %w", err)
+	}
+	typed, err := decodeBoundResult[R](&result)
+	if err != nil {
+		return zero, err
+	}
+	return typed.value(method.Name())
+}

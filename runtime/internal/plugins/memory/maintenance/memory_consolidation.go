@@ -10,10 +10,10 @@ import (
 	"time"
 
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
@@ -91,7 +91,7 @@ type Conversation struct {
 }
 
 type completion interface {
-	Complete(context.Context, managedmcp.Prompt) (string, error)
+	Complete(context.Context, rpc.Prompt) (string, error)
 }
 
 type messageReader interface {
@@ -272,7 +272,7 @@ transient state, one-off observations, and facts already obvious from source.
 If nothing deserves the append-only memory ledger, respond exactly NO_FACTS.
 Otherwise output at most ` + strconv.Itoa(agentmemory.MaxFactsPerBatch) + ` bullets,
 ordered from most important to least important, without a preamble or code fence.`
-	text, err := m.client.Complete(ctx, managedmcp.Prompt{
+	text, err := m.client.Complete(ctx, rpc.Prompt{
 		Operation:    "memory.extract",
 		SystemPrompt: prompt, UserPrompt: transcript,
 		MaxInputBytes: modeltext.ModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
@@ -313,7 +313,7 @@ If no facts remain useful, respond exactly NO_MEMORY.`
 	for _, fact := range pending {
 		fmt.Fprintf(&input, "[%s #%d] %s\n", fact.Day, fact.Sequence, fact.Content)
 	}
-	text, err := m.client.Complete(ctx, managedmcp.Prompt{
+	text, err := m.client.Complete(ctx, rpc.Prompt{
 		Operation:    "memory.curate",
 		SystemPrompt: systemPrompt, UserPrompt: input.String(),
 		MaxInputBytes: modeltext.ModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
