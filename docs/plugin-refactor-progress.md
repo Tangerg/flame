@@ -2,7 +2,7 @@
 
 ## Current stage
 
-Stage 3w adds actual built-in package provider management and dependency inspection.
+Stage 3w, committed in 2b692d52, adds actual built-in package provider management and dependency inspection.
 Shared TS methods now expose the existing listProviders/selectProvider query/command
 catalog bindings; no Core/backend protocol or storage change. Runtime remains the
 selection owner. The manager reads recorded role choices, derives visible candidates
@@ -33,14 +33,19 @@ readResource and resolvePoint; requirements/list/selection have actual consumers
 Full/vet/race/backend lifecycle execution remains final-phase work. Source/build
 checks do not prove graphical execution or cross-reload recovery.
 
-Product commit, main synchronization and round cleanup are in progress. Full
+Main b5160b5f is integrated. Discovery keeps the branch's existing actual capacity
+bound and close/cancellation error preservation; Skills regression uses the built
+Memory package and does not restore removed Usage/approval APIs. Integrated production
+Runtime/CLI/Reviews build and Bootstrap/Runs/segment test source compilation pass.
+Owned dist and temporary compile outputs are removed; all handles are terminal.
+User proposal/review/draft hashes remain unchanged. Full
 proposal/review/P01-P48 scope remains active, including point inspection/HTTP query
 projection, remaining carrier migration, observed dependency retention, canonical
 models/stream decorators and final requirement-level verification.
 
 ## Completed
 
-- Stage 3w: existing public provider APIs gain shared TS bindings and real built-in
+- Stage 3w (2b692d52): existing public provider APIs gain shared TS bindings and real built-in
   manager controls; declared dependencies have actual public binding inspection.
   Unknown commands retain identity; Runtime alone advances provider selection.
 - Stage 3w: DataQuery provider projection/notice invalidation, joined/canceled I/O,
@@ -390,6 +395,12 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 ## Verification
 
 ### Stage 3w development and provider client contracts
+
+- Passed after main b5160b5f integration: production Runtime/CLI/Reviews build and
+  Bootstrap/Runs/segment test source compilation. Two conflicts retain stronger
+  existing discovery capacity/cleanup behavior and adopt the actual built package.
+  No Bootstrap TestMain, provider real-process or crash test execution is claimed.
+
 
 - Passed: shared Runtime TS and Desktop type checks; changed source lint; complete
   eight-locale check (1,046 keys); production Vite build. No backend source/schema
@@ -762,6 +773,13 @@ Stage 2a verification:
 - Resolved commit failure: the restored commit-msg hook prefixed an absolute linked-worktree message path with PWD. The corrected hook passed shell syntax validation, accepted a valid message and rejected an invalid message through both absolute and relative paths. Its temporary message fixtures were removed.
 
 ### Round cleanup
+
+- Stage 3w: retain formal manager/shared-client/IO/localization sources and necessary
+  dependencies. Product 2b692d52 is committed and main b5160b5f integrated. Owned
+  dist, temporary compile outputs and source/client test handles are terminal/removed.
+  No UI/E2E/screenshot/native execution, external publication, credentials, shared
+  configuration or user-data mutation. Keep managed worktree and progress symlink.
+
 
 - Stage 3v: product a8d757ec and main merge/checker repair f1401198 are committed.
   Formal Diff ESM/SDK/contract/source and necessary dependencies remain. Owned
