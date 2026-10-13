@@ -1,9 +1,9 @@
 package reviews
 
 import (
- "github.com/Tangerg/flame/runtime/capability"
 	"encoding/json"
 	"errors"
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	"reflect"
 	"testing"
 
@@ -92,7 +92,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		if err == nil {
 			t.Fatal("changed binding adopted an earlier receipt")
 		}
-		if _, known := errors.AsType[*capability.Refusal](err); known {
+		if _, known := errors.AsType[*contractsdk.Refusal](err); known {
 			t.Fatalf("binding error fabricated a known mutation result: %v", err)
 		}
 	}

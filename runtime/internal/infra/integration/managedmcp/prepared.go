@@ -1,11 +1,11 @@
 package managedmcp
 
 import (
- "github.com/Tangerg/flame/runtime/capability"
 	"bytes"
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
