@@ -82,16 +82,8 @@ func mustNewEffects(cfg Config) *Effects {
 	if dependency.Missing(cfg.ToolResults) {
 		cfg.ToolResults = inertToolResults{}
 	}
-	interrupts := &fakeInterrupts{}
 	if dependency.Missing(cfg.Interrupts) {
-		cfg.Interrupts = interrupts
-	}
-	if dependency.Missing(cfg.ResumeClaims) {
-		if claims, ok := cfg.Interrupts.(ResumeClaimStore); ok {
-			cfg.ResumeClaims = claims
-		} else {
-			cfg.ResumeClaims = interrupts
-		}
+		cfg.Interrupts = &fakeInterrupts{}
 	}
 	if dependency.Missing(cfg.Sessions) {
 		cfg.Sessions = &fakeSession{}

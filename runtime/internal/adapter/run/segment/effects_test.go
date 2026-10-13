@@ -126,11 +126,18 @@ func mustResumeOpening(
 	commitID runtimeidentity.CommitID,
 	resume run.TreeResumeDraft,
 	events []runs.EventCommit,
+	acceptance ...runs.ResumeAcceptance,
 ) runs.OpeningCommit {
 	t.Helper()
 	opening, err := runs.NewResumeOpeningCommit(commitID, resume, events)
 	if err != nil {
 		t.Fatalf("NewResumeOpeningCommit: %v", err)
+	}
+	for _, accepted := range acceptance {
+		opening, err = opening.WithResumeAcceptance(accepted)
+		if err != nil {
+			t.Fatalf("WithResumeAcceptance: %v", err)
+		}
 	}
 	return opening
 }
@@ -759,7 +766,6 @@ type fakeStores struct {
 
 func testEffects(stores *fakeStores, cfg Config) *Effects {
 	cfg.Interrupts = stores.interrupts
-	cfg.ResumeClaims = stores.interrupts
 	cfg.Sessions = stores.session
 	cfg.Transcript = stores.transcript
 	cfg.ToolResults = stores.toolResults

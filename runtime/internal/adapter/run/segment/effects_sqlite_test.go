@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -40,15 +39,15 @@ func segmentTestCost(t *testing.T, usd float64) accounting.Cost {
 
 const checkpointBuildID = testsupport.BuildID
 
-// mustResumeClaim claims pending with the Items it names, read from the
-// transcript the way Resume reads them before the claim.
-func mustResumeClaim(
+// mustResumeAcceptance reads the Items a pending hand-off names the way Resume
+// reads them before acceptance, then binds them to the answer set the opening
+// transaction consumes.
+func mustResumeAcceptance(
 	t testing.TB,
 	items *sqlite.TranscriptStore,
-	commitID runtimeidentity.CommitID,
 	pending runs.Pending,
 	answers []runs.InterruptAnswer,
-) runs.ResumeClaimCommit {
+) runs.ResumeAcceptance {
 	t.Helper()
 	itemsByID := make(map[string]transcript.Item)
 	for _, open := range pending.Interrupts {
@@ -59,28 +58,15 @@ func mustResumeClaim(
 		itemsByID[open.ItemID] = item
 	}
 	sessionID := itemsByID[pending.Interrupts[0].ItemID].SessionID()
-	claim, err := runs.NewResumeClaimCommit(commitID, sessionID, pending, itemsByID, answers)
+	acceptance, err := runs.NewResumeAcceptance(sessionID, pending, itemsByID, answers)
 	if err != nil {
-		t.Fatalf("prepare Resume claim: %v", err)
+		t.Fatalf("prepare Resume acceptance: %v", err)
 	}
-	return claim
-}
-
-func claimResumeForTest(
-	t *testing.T,
-	store *persistence.InterruptStore,
-	pending runs.Pending,
-) {
-	t.Helper()
-	_, found, err := store.ClaimResume(t.Context(), pending.RootRunID)
-	if err != nil || !found {
-		t.Fatalf("claim resume for test: found=%t err=%v", found, err)
-	}
+	return acceptance
 }
 
 // TestCommitOpeningResumePreservesAnswerClaimOnRollback proves the continuation
-// opening leaves its already-claimed hand-off untouched when Run-state
-// validation fails.
+// opening leaves its open hand-off unconsumed when Run-state validation fails.
 func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
@@ -113,7 +99,15 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	if openErr := ints.Open(ctx, stalePending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
 	}
-	claimResumeForTest(t, ints, stalePending)
+	if appendErr := history.AppendItem(ctx, singleRunQuestionItem(t, "ses_1", stalePending)); appendErr != nil {
+		t.Fatalf("seed question Item: %v", appendErr)
+	}
+	acceptance := mustResumeAcceptance(t, history, stalePending, []runs.InterruptAnswer{{
+		InterruptItemID: stalePending.Bindings[0].InterruptItemID,
+		MemberID:        stalePending.Bindings[0].MemberID,
+		RequestID:       stalePending.Bindings[0].RequestID,
+		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
+	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
 		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
@@ -121,16 +115,13 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	resume := testsupport.MustResumeRuns(
 		time.Now().UTC(), []run.Run{parkedRunRecord("run_stale", "ses_1", createdAt)}, []string{"seg_next"},
 	)
-	opening := mustResumeOpening(t, testCommitID("run_commit_stale_resume"), resume, nil)
+	opening := mustResumeOpening(t, testCommitID("run_commit_stale_resume"), resume, nil, acceptance)
 	err = effects.CommitOpening(ctx, opening)
 	if err == nil {
 		t.Fatal("CommitOpening must reject an interrupt that does not own the active run")
 	}
-	if _, found, getErr := ints.Get(ctx, "run_stale"); getErr != nil || found {
-		t.Fatalf("rolled-back interrupt found=%v err=%v, want hidden claim", found, getErr)
-	}
-	if err := ints.RequireResumeClaim(ctx, "run_stale"); err != nil {
-		t.Fatalf("rolled-back resume claim: %v", err)
+	if _, found, getErr := ints.Get(ctx, "run_stale"); getErr != nil || !found {
+		t.Fatalf("rolled-back interrupt found=%v err=%v, want the open set intact", found, getErr)
 	}
 }
 
@@ -161,7 +152,15 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	if openErr := ints.Open(ctx, pending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
 	}
-	claimResumeForTest(t, ints, pending)
+	if appendErr := history.AppendItem(ctx, singleRunQuestionItem(t, "ses_1", pending)); appendErr != nil {
+		t.Fatalf("seed question Item: %v", appendErr)
+	}
+	acceptance := mustResumeAcceptance(t, history, pending, []runs.InterruptAnswer{{
+		InterruptItemID: pending.Bindings[0].InterruptItemID,
+		MemberID:        pending.Bindings[0].MemberID,
+		RequestID:       pending.Bindings[0].RequestID,
+		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
+	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
 		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
@@ -181,20 +180,24 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
 		})},
 	}}
-	opening := mustResumeOpening(t, testCommitID("run_commit_resume"), resume, openingEvents)
+	opening := mustResumeOpening(t, testCommitID("run_commit_resume"), resume, openingEvents, acceptance)
 	err = effects.CommitOpening(ctx, opening)
 	if err != nil {
 		t.Fatalf("CommitOpening: %v", err)
 	}
 	if _, found, getErr := ints.Get(ctx, "run_1"); getErr != nil || found {
-		t.Fatalf("interrupt found=%v err=%v, accepted claim must remain hidden", found, getErr)
+		t.Fatalf("interrupt found=%v err=%v, the accepted open set must be consumed", found, getErr)
 	}
-	if err := ints.RequireResumeClaim(ctx, "run_1"); err != nil {
-		t.Fatalf("accepted resume claim: %v", err)
+	answered, found, itemErr := history.Item(ctx, "item_question")
+	if itemErr != nil || !found {
+		t.Fatalf("answered question Item = found:%t err:%v", found, itemErr)
+	}
+	if question, ok := answered.Question(); !ok || !reflect.DeepEqual(question.Answers, [][]string{{"continue"}}) {
+		t.Fatalf("accepted question answers = %+v", question)
 	}
 	recorded, listErr := history.List(ctx, "ses_1")
-	if listErr != nil || len(recorded) != 1 {
-		t.Fatalf("history items=%d err=%v, want the opening projection", len(recorded), listErr)
+	if listErr != nil || len(recorded) != 2 {
+		t.Fatalf("history items=%d err=%v, want the question and opening projections", len(recorded), listErr)
 	}
 	var stateName string
 	if err := db.QueryRowContext(ctx, `SELECT state FROM runs WHERE run_id = ?`, "run_1").Scan(&stateName); err != nil || stateName != "running" {
@@ -205,7 +208,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		t.Fatalf("exact CommitOpening replay = %v, want idempotent success", err)
 	}
 	recorded, listErr = history.List(ctx, "ses_1")
-	if listErr != nil || len(recorded) != 1 {
+	if listErr != nil || len(recorded) != 2 {
 		t.Fatalf("history after exact replay items=%d err=%v, want unchanged", len(recorded), listErr)
 	}
 	if err := db.QueryRowContext(ctx, `SELECT state FROM runs WHERE run_id = ?`, "run_1").Scan(&stateName); err != nil || stateName != "running" {
@@ -335,7 +338,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		CallID: "model_call_1", SegmentID: "seg_model", State: runs.ModelInvocationCompleted,
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
-	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
+	usage := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}}
 	wrongSegment := testsupport.MustProgressedRun(
 		run.Draft{RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_wrong", CreatedAt: startedAt},
 		testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), 0, finishedAt,
@@ -644,7 +647,7 @@ func TestCommitOpeningResumesRunTreeAtomically(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := newOpeningResumeFixture(t, test.suspendRoot)
-			opening := mustResumeOpening(t, testCommitID("run_commit_tree_resume"), fixture.resume, nil)
+			opening := mustResumeOpening(t, testCommitID("run_commit_tree_resume"), fixture.resume, nil, fixture.acceptance)
 			err := fixture.effects.CommitOpening(fixture.ctx, opening)
 			if test.wantError {
 				assertOpeningResumeRollback(t, fixture, err)
@@ -661,6 +664,7 @@ type openingResumeFixture struct {
 	interrupts *persistence.InterruptStore
 	effects    *Effects
 	resume     run.TreeResumeDraft
+	acceptance runs.ResumeAcceptance
 }
 
 func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixture {
@@ -724,8 +728,21 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("put pending: %v", err)
 	}
-	claimResumeForTest(t, interruptStore, pending)
-	effects := sqliteEffects(sqliteOpeningStores{interrupts: interruptStore}, Config{
+	transcriptStore := sqlite.NewTranscriptStore(database)
+	childQuestion, err := transcript.NewQuestion(transcript.ItemIdentity{
+		SessionID: "session_1", RunID: "run_child", ItemID: "item_child", OccurredAt: time.Unix(1, 0).UTC(),
+	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}})
+	if err != nil {
+		t.Fatalf("new child question Item: %v", err)
+	}
+	if appendErr := transcriptStore.AppendItem(ctx, childQuestion); appendErr != nil {
+		t.Fatalf("seed child question Item: %v", appendErr)
+	}
+	acceptance := mustResumeAcceptance(t, transcriptStore, pending, []runs.InterruptAnswer{{
+		InterruptItemID: "item_child", MemberID: "member_child", RequestID: "request_child",
+		Resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
+	}})
+	effects := sqliteEffects(sqliteOpeningStores{interrupts: interruptStore, transcript: transcriptStore}, Config{
 		State: runStore,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, database, fn)
@@ -733,6 +750,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	})
 	return openingResumeFixture{
 		ctx: ctx, database: database, interrupts: interruptStore, effects: effects,
+		acceptance: acceptance,
 		resume: testsupport.MustResumeRuns(
 			time.Now().UTC(), []run.Run{childRun, rootRun},
 			[]string{"segment_child_resumed", "segment_root_resumed"},
@@ -747,7 +765,11 @@ func assertOpeningResumeRollback(t *testing.T, fixture openingResumeFixture, com
 	}
 	assertStoredRunState(t, fixture.database, "run_child", "waiting")
 	assertStoredRunState(t, fixture.database, "run_root", "running")
-	assertResumeClaimRemainsHidden(t, fixture)
+	// The whole acceptance rolled back, so the open set the opening would have
+	// consumed is intact.
+	if _, found, err := fixture.interrupts.Get(fixture.ctx, "run_root"); err != nil || !found {
+		t.Fatalf("pending after rolled-back opening found=%v err=%v, want the open set intact", found, err)
+	}
 }
 
 func assertOpeningResumeCommit(t *testing.T, fixture openingResumeFixture, commitError error) {
@@ -757,16 +779,8 @@ func assertOpeningResumeCommit(t *testing.T, fixture openingResumeFixture, commi
 	}
 	assertStoredRunState(t, fixture.database, "run_child", "running")
 	assertStoredRunState(t, fixture.database, "run_root", "running")
-	assertResumeClaimRemainsHidden(t, fixture)
-}
-
-func assertResumeClaimRemainsHidden(t *testing.T, fixture openingResumeFixture) {
-	t.Helper()
 	if _, found, err := fixture.interrupts.Get(fixture.ctx, "run_root"); err != nil || found {
-		t.Fatalf("pending after opening found=%v err=%v, want hidden claim", found, err)
-	}
-	if err := fixture.interrupts.RequireResumeClaim(fixture.ctx, "run_root"); err != nil {
-		t.Fatalf("resume claim after opening: %v", err)
+		t.Fatalf("pending after opening found=%v err=%v, want the accepted open set consumed", found, err)
 	}
 }
 
@@ -1152,508 +1166,6 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	}
 }
 
-func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	ctx := t.Context()
-	createdAt := time.Unix(1, 0).UTC()
-	claimedAt := createdAt.Add(2 * time.Second)
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	transcriptStore := sqlite.NewTranscriptStore(db)
-	pending := singleRunPending(
-		t,
-		"run_claim", "session_claim", "member_claim", "request_claim", "item_claim", createdAt.Add(time.Second),
-	)
-	questionItem := singleRunQuestionItem(t, "session_claim", pending)
-	if appendItemErr := transcriptStore.AppendItem(ctx, questionItem); appendItemErr != nil {
-		t.Fatalf("seed question Item: %v", appendItemErr)
-	}
-	root, _ := pending.RootContinuation()
-	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: root.MemberID,
-		Payload:      []byte(`{"opaque":"tree"}`),
-		BuildID:      checkpointBuildID,
-		SessionID:    "session_claim",
-	}
-	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
-		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
-	}
-	runStore := sqlite.NewRunStore(db)
-	if admitErr := runStore.Admit(ctx, run.Draft{
-		RunID: pending.RootRunID, SessionID: "session_claim", SegmentID: "segment_claim",
-		ModelSelection: testsupport.DefaultModelSelection(),
-		Capabilities:   questionCapabilities(), CreatedAt: createdAt,
-	}); admitErr != nil {
-		t.Fatalf("admit claim root Run: %v", admitErr)
-	}
-	runningRoot, found, err := runStore.Run(ctx, pending.RootRunID)
-	if err != nil || !found {
-		t.Fatalf("read claim root Run: found=%t err=%v", found, err)
-	}
-	waitingRoot, err := runningRoot.Suspend(pending.CreatedAt)
-	if err != nil {
-		t.Fatalf("park claim root Run: %v", err)
-	}
-	if suspendErr := runStore.Suspend(
-		ctx, waitingRoot, "segment_claim", runtimeidentity.CommitID{},
-	); suspendErr != nil {
-		t.Fatalf("persist claim root park: %v", suspendErr)
-	}
-	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
-		t.Fatalf("open interrupt: %v", openErr)
-	}
-	effects := mustNewEffects(Config{
-		Interrupts:          interruptStore,
-		ResumeClaims:        interruptStore,
-		ExecutorCheckpoints: checkpointStore,
-		ItemReplacer:        transcriptStore,
-		State:               runStore,
-		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
-		},
-	})
-	answers := []runs.InterruptAnswer{{
-		InterruptItemID: pending.Bindings[0].InterruptItemID,
-		MemberID:        pending.Bindings[0].MemberID,
-		RequestID:       pending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
-	}}
-	claim := mustResumeClaim(
-		t, transcriptStore, testCommitID("run_commit_resume_claim"), pending, answers,
-	)
-	replacements, err := claim.ItemReplacements()
-	if err != nil {
-		t.Fatalf("prepare question replacement: %v", err)
-	}
-	storedQuestion, found, err := transcriptStore.Item(ctx, questionItem.ID())
-	if err != nil || !found {
-		t.Fatalf("stored question Item = found:%t err:%v", found, err)
-	}
-	if !reflect.DeepEqual(storedQuestion.Snapshot(), replacements[0].Expected().Snapshot()) {
-		storedValue, _ := storedQuestion.Question()
-		expectedValue, _ := replacements[0].Expected().Question()
-		t.Fatalf("stored/expected question differ:\n stored: %#v\nexpected: %#v\nitems: %#v / %#v", storedValue, expectedValue, storedQuestion.Snapshot(), replacements[0].Expected().Snapshot())
-	}
-
-	stale := pending
-	stale.ExecutorID = "turn_stale"
-	staleClaim := mustResumeClaim(
-		t, transcriptStore, testCommitID("run_commit_stale_resume_claim"), stale, answers,
-	)
-	if _, claimResumeErr := effects.ClaimResume(ctx, staleClaim); claimResumeErr == nil {
-		t.Fatal("ClaimResume accepted a stale waiting hand-off")
-	}
-	if _, getFound, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || !getFound {
-		t.Fatalf("interrupt after rolled-back claim = found:%t err:%v", getFound, getErr)
-	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, root.MemberID); loadCheckpointErr != nil {
-		t.Fatalf("checkpoint after rolled-back claim: %v", loadCheckpointErr)
-	}
-
-	claimed, err := effects.ClaimResume(ctx, claim)
-	if err != nil {
-		t.Fatalf("ClaimResume: %v", err)
-	}
-	if !reflect.DeepEqual(claimed, checkpoint) {
-		t.Fatalf("claimed resume = %+v", claimed)
-	}
-	if _, getFound, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || getFound {
-		t.Fatalf("open interrupt after claim = found:%t err:%v, want hidden", getFound, getErr)
-	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, root.MemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
-		t.Fatalf("checkpoint after claim = %v, want not found", loadCheckpointErr)
-	}
-	answeredItem, found, err := transcriptStore.Item(ctx, questionItem.ID())
-	if err != nil || !found {
-		t.Fatalf("answered question Item = found:%t err:%v", found, err)
-	}
-	answeredQuestion, _ := answeredItem.Question()
-	if !reflect.DeepEqual(answeredQuestion.Answers, [][]string{{"continue"}}) {
-		t.Fatalf("answered question = %+v", answeredQuestion)
-	}
-	var state string
-	if err := db.QueryRowContext(ctx,
-		`SELECT state FROM interrupts WHERE root_run_id = ?`,
-		pending.RootRunID,
-	).Scan(&state); err != nil {
-		t.Fatalf("read answer claim: %v", err)
-	}
-	if state != "resuming" {
-		t.Fatalf("answer claim state=%q", state)
-	}
-
-	next := pending
-	next.Interrupts[0].ItemID = "item_next"
-	next.Bindings[0].InterruptItemID = "item_next"
-	next.Bindings[0].RequestID = "request_next"
-	next.CreatedAt = claimedAt.Add(time.Second)
-	seedPending(t, db, "session_claim", next, questionCapabilities())
-	if err := interruptStore.Open(ctx, next); err != nil {
-		t.Fatalf("advance to next quiescent barrier: %v", err)
-	}
-	if got, found, err := interruptStore.Get(ctx, next.RootRunID); err != nil || !found || !reflect.DeepEqual(got, next) {
-		t.Fatalf("next interrupt = found:%t value:%+v err:%v", found, got, err)
-	}
-	if err := db.QueryRowContext(ctx,
-		`SELECT state FROM interrupts WHERE root_run_id = ?`,
-		next.RootRunID,
-	).Scan(&state); err != nil {
-		t.Fatalf("read advanced barrier: %v", err)
-	}
-	if state != "open" {
-		t.Fatalf("advanced barrier state=%q", state)
-	}
-}
-
-func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	ctx := t.Context()
-	createdAt := time.Unix(20, 0).UTC()
-	pending := singleRunPending(
-		t, "run_approval_claim", "session_approval_claim", "member_approval_claim",
-		"request_approval_claim", "item_approval_claim", createdAt.Add(time.Second),
-	)
-	arguments, err := tool.ArgumentsFromMap(map[string]any{
-		"command": "go test ./...", "description": "Run tests",
-	})
-	if err != nil {
-		t.Fatalf("tool arguments: %v", err)
-	}
-	invocation := transcript.ToolInvocation{Name: "shell", Arguments: arguments}
-	approvalCapabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
-	pending.Interrupts[0].Approval = &runs.ApprovalReview{Risk: tool.RiskHigh}
-	pending.Bindings[0].ToolCallID = "call_approval_claim"
-	if validateErr := pending.Validate(); validateErr != nil {
-		t.Fatalf("approval Pending: %v", validateErr)
-	}
-
-	interrupts := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	checkpoints := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	transcriptStore := sqlite.NewTranscriptStore(db)
-	runStore := sqlite.NewRunStore(db)
-	toolItem, err := transcript.NewToolCall(transcript.ItemIdentity{
-		SessionID: "session_approval_claim", RunID: pending.RootRunID,
-		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.CreatedAt,
-	}, invocation, tool.SafetyClassExec)
-	if err != nil {
-		t.Fatalf("new ToolCall: %v", err)
-	}
-	if appendItemErr := transcriptStore.AppendItem(ctx, toolItem); appendItemErr != nil {
-		t.Fatalf("seed ToolCall: %v", appendItemErr)
-	}
-	root, _ := pending.RootContinuation()
-	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: root.MemberID, Payload: []byte(`{"opaque":"tree"}`),
-		BuildID: checkpointBuildID, SessionID: "session_approval_claim",
-	}
-	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
-		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
-	}
-	if admitErr := runStore.Admit(ctx, run.Draft{
-		RunID: pending.RootRunID, SessionID: "session_approval_claim", SegmentID: "segment_approval_claim",
-		ModelSelection: testsupport.DefaultModelSelection(),
-		Capabilities:   approvalCapabilities, CreatedAt: createdAt,
-	}); admitErr != nil {
-		t.Fatalf("admit Run: %v", admitErr)
-	}
-	runningRoot, found, err := runStore.Run(ctx, pending.RootRunID)
-	if err != nil || !found {
-		t.Fatalf("read Run: found=%t err=%v", found, err)
-	}
-	waitingRoot, err := runningRoot.Suspend(pending.CreatedAt)
-	if err != nil {
-		t.Fatalf("park Run: %v", err)
-	}
-	if suspendErr := runStore.Suspend(
-		ctx, waitingRoot, "segment_approval_claim", runtimeidentity.CommitID{},
-	); suspendErr != nil {
-		t.Fatalf("persist Run park: %v", suspendErr)
-	}
-	if openErr := interrupts.Open(ctx, pending); openErr != nil {
-		t.Fatalf("open interrupt: %v", openErr)
-	}
-	answer := runs.InterruptAnswer{
-		InterruptItemID: pending.Bindings[0].InterruptItemID,
-		MemberID:        pending.Bindings[0].MemberID, RequestID: pending.Bindings[0].RequestID,
-		Resolution: interrupt.Resolution{Approved: true},
-	}
-	claim := mustResumeClaim(
-		t,
-		transcriptStore,
-		testCommitID("run_commit_approval_claim"),
-		pending,
-		[]runs.InterruptAnswer{answer},
-	)
-	newEffects := func(state RunStore) *Effects {
-		return mustNewEffects(Config{
-			ResumeClaims: interrupts, ExecutorCheckpoints: checkpoints,
-			ItemReplacer: transcriptStore, State: state,
-			Tx: func(ctx context.Context, fn func(context.Context) error) error {
-				return sqlite.RunInTx(ctx, db, fn)
-			},
-		})
-	}
-
-	markerErr := errors.New("write approval claim marker")
-	if _, claimResumeErr := newEffects(failingWaitingRunWriter{
-		RunStore: runStore, recordErr: markerErr,
-	}).ClaimResume(ctx, claim); !errors.Is(claimResumeErr, markerErr) {
-		t.Fatalf("ClaimResume rollback error = %v, want marker failure", claimResumeErr)
-	}
-	rolledBack, found, err := transcriptStore.Item(ctx, toolItem.ID())
-	if err != nil || !found || rolledBack.ApprovalDecision() != "" {
-		t.Fatalf("ToolCall after rollback = found:%t decision:%q err:%v", found, rolledBack.ApprovalDecision(), err)
-	}
-	if _, getFound, getErr := interrupts.Get(ctx, pending.RootRunID); getErr != nil || !getFound {
-		t.Fatalf("Pending after rollback = found:%t err:%v", getFound, getErr)
-	}
-	if _, loadCheckpointErr := checkpoints.LoadCheckpoint(ctx, root.MemberID); loadCheckpointErr != nil {
-		t.Fatalf("checkpoint after rollback: %v", loadCheckpointErr)
-	}
-
-	if _, claimResumeErr := newEffects(runStore).ClaimResume(ctx, claim); claimResumeErr != nil {
-		t.Fatalf("ClaimResume: %v", claimResumeErr)
-	}
-	resolved, found, err := transcriptStore.Item(ctx, toolItem.ID())
-	if err != nil || !found || resolved.ApprovalDecision() != approval.Allow {
-		t.Fatalf("resolved ToolCall = found:%t decision:%q err:%v", found, resolved.ApprovalDecision(), err)
-	}
-	if _, found, err := interrupts.Get(ctx, pending.RootRunID); err != nil || found {
-		t.Fatalf("Pending after commit = found:%t err:%v", found, err)
-	}
-	if _, err := checkpoints.LoadCheckpoint(ctx, root.MemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
-		t.Fatalf("checkpoint after commit = %v, want not found", err)
-	}
-	requireSQLiteHealthy(t, ctx, db)
-}
-
-func TestClaimResumeReconcilesAmbiguousCommit(t *testing.T) {
-	fixture := newResumeClaimSQLiteFixture(t, "ambiguous")
-	receiptErr := errors.New("lost resume claim commit receipt")
-	commitCtx, cancelCommit := context.WithCancel(fixture.ctx)
-	t.Cleanup(cancelCommit)
-	effects := fixture.effects(func(ctx context.Context, fn func(context.Context) error) error {
-		if err := sqlite.RunInTx(ctx, fixture.db, fn); err != nil {
-			return err
-		}
-		cancelCommit()
-		return receiptErr
-	}, fixture.runStore)
-
-	claimed, err := effects.ClaimResume(commitCtx, fixture.claim)
-	if err != nil {
-		t.Fatalf("ClaimResume after lost COMMIT receipt: %v", err)
-	}
-	if !reflect.DeepEqual(claimed, fixture.checkpoint) {
-		t.Fatalf("reconciled claim = %+v", claimed)
-	}
-	matched, err := fixture.runStore.RunCommitCommitted(
-		fixture.ctx,
-		fixture.claim.SessionID(),
-		fixture.pending.RootRunID,
-		"",
-		fixture.claim.CommitID(),
-	)
-	if err != nil || !matched {
-		t.Fatalf("resume claim commit marker = %t err=%v, want exact match", matched, err)
-	}
-	matched, err = fixture.runStore.RunCommitCommitted(
-		fixture.ctx,
-		fixture.claim.SessionID(),
-		fixture.pending.RootRunID,
-		"",
-		testCommitID(fixture.claim.CommitID().String()+"_other"),
-	)
-	if err != nil || matched {
-		t.Fatalf("different resume claim commit marker = %t err=%v, want no match", matched, err)
-	}
-	assertResumeClaimCommitted(t, fixture)
-	requireSQLiteHealthy(t, fixture.ctx, fixture.db)
-}
-
-func TestClaimResumeRollsBackWhenCommitMarkerFails(t *testing.T) {
-	fixture := newResumeClaimSQLiteFixture(t, "marker_rollback")
-	markerErr := errors.New("write resume claim commit marker")
-	effects := fixture.effects(
-		func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, fixture.db, fn)
-		},
-		failingWaitingRunWriter{RunStore: fixture.runStore, recordErr: markerErr},
-	)
-
-	if _, err := effects.ClaimResume(fixture.ctx, fixture.claim); !errors.Is(err, markerErr) {
-		t.Fatalf("ClaimResume error = %v, want marker failure", err)
-	}
-	gotPending, found, err := fixture.interrupts.Get(fixture.ctx, fixture.pending.RootRunID)
-	if err != nil || !found || !reflect.DeepEqual(gotPending, fixture.pending) {
-		t.Fatalf("interrupt after marker rollback = found:%t value:%+v err:%v", found, gotPending, err)
-	}
-	gotCheckpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID)
-	if err != nil || !executorCheckpointValuesEqual(gotCheckpoint, fixture.checkpoint) {
-		t.Fatalf("checkpoint after marker rollback = %+v err=%v", gotCheckpoint, err)
-	}
-	gotQuestion, found, err := fixture.transcript.Item(fixture.ctx, fixture.question.ID())
-	if err != nil || !found {
-		t.Fatalf("question after marker rollback = found:%t err:%v", found, err)
-	}
-	question, ok := gotQuestion.Question()
-	if !ok || len(question.Answers) != 0 {
-		t.Fatalf("question after marker rollback = %+v, want unanswered", question)
-	}
-	matched, err := fixture.runStore.RunCommitCommitted(
-		fixture.ctx,
-		fixture.claim.SessionID(),
-		fixture.pending.RootRunID,
-		"",
-		fixture.claim.CommitID(),
-	)
-	if err != nil || matched {
-		t.Fatalf("resume claim marker after rollback = %t err=%v, want absent", matched, err)
-	}
-	requireSQLiteHealthy(t, fixture.ctx, fixture.db)
-}
-
-type resumeClaimSQLiteFixture struct {
-	ctx         context.Context
-	db          *sql.DB
-	pending     runs.Pending
-	answers     []runs.InterruptAnswer
-	claim       runs.ResumeClaimCommit
-	checkpoint  runs.ExecutorCheckpoint
-	question    transcript.Item
-	interrupts  *persistence.InterruptStore
-	checkpoints *persistence.ExecutorCheckpointStore
-	transcript  *sqlite.TranscriptStore
-	runStore    *sqlite.RunStore
-}
-
-func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteFixture {
-	t.Helper()
-	database, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	ctx := t.Context()
-	createdAt := time.Unix(10, 0).UTC()
-	interrupts := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
-	checkpoints := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database))
-	transcriptStore := sqlite.NewTranscriptStore(database)
-	runStore := sqlite.NewRunStore(database)
-	pending := singleRunPending(
-		t,
-		"run_claim_"+suffix,
-		"session_claim_"+suffix,
-		"member_claim_"+suffix,
-		"request_claim_"+suffix,
-		"item_claim_"+suffix,
-		createdAt.Add(time.Second),
-	)
-	questionItem := singleRunQuestionItem(t, "session_claim_"+suffix, pending)
-	if appendItemErr := transcriptStore.AppendItem(ctx, questionItem); appendItemErr != nil {
-		t.Fatalf("seed question Item: %v", appendItemErr)
-	}
-	root, found := pending.RootContinuation()
-	if !found {
-		t.Fatal("fixture Pending has no root continuation")
-	}
-	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: root.MemberID,
-		Payload:      []byte(`{"opaque":"tree"}`),
-		BuildID:      checkpointBuildID,
-		SessionID:    "session_claim_" + suffix,
-	}
-	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
-		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
-	}
-	if admitErr := runStore.Admit(ctx, run.Draft{
-		RunID: pending.RootRunID, SessionID: "session_claim_" + suffix, SegmentID: "segment_claim_" + suffix,
-		ModelSelection: testsupport.DefaultModelSelection(),
-		Capabilities:   questionCapabilities(), CreatedAt: createdAt,
-	}); admitErr != nil {
-		t.Fatalf("admit claim root Run: %v", admitErr)
-	}
-	runningRoot, found, err := runStore.Run(ctx, pending.RootRunID)
-	if err != nil || !found {
-		t.Fatalf("read claim root Run: found=%t err=%v", found, err)
-	}
-	waitingRoot, err := runningRoot.Suspend(pending.CreatedAt)
-	if err != nil {
-		t.Fatalf("park claim root Run: %v", err)
-	}
-	if err := runStore.Suspend(
-		ctx, waitingRoot, "segment_claim_"+suffix, runtimeidentity.CommitID{},
-	); err != nil {
-		t.Fatalf("persist claim root park: %v", err)
-	}
-	if openErr := interrupts.Open(ctx, pending); openErr != nil {
-		t.Fatalf("open interrupt: %v", openErr)
-	}
-	answers := []runs.InterruptAnswer{{
-		InterruptItemID: pending.Bindings[0].InterruptItemID,
-		MemberID:        pending.Bindings[0].MemberID,
-		RequestID:       pending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
-	}}
-	claim := mustResumeClaim(
-		t,
-		transcriptStore,
-		testCommitID("run_commit_resume_claim_"+suffix),
-		pending,
-		answers,
-	)
-	return resumeClaimSQLiteFixture{
-		ctx: ctx, db: database, pending: pending, answers: answers,
-		claim:      claim,
-		checkpoint: checkpoint, question: questionItem, interrupts: interrupts,
-		checkpoints: checkpoints, transcript: transcriptStore, runStore: runStore,
-	}
-}
-
-func (r resumeClaimSQLiteFixture) effects(tx Transactor, state RunStore) *Effects {
-	return mustNewEffects(Config{
-		Interrupts:          r.interrupts,
-		ResumeClaims:        r.interrupts,
-		ExecutorCheckpoints: r.checkpoints,
-		ItemReplacer:        r.transcript,
-		State:               state,
-		Tx:                  tx,
-	})
-}
-
-func assertResumeClaimCommitted(t *testing.T, fixture resumeClaimSQLiteFixture) {
-	t.Helper()
-	if _, found, err := fixture.interrupts.Get(fixture.ctx, fixture.pending.RootRunID); err != nil || found {
-		t.Fatalf("open interrupt after claim = found:%t err:%v, want hidden", found, err)
-	}
-	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
-		t.Fatalf("checkpoint after claim = %v, want not found", err)
-	}
-	answeredItem, found, err := fixture.transcript.Item(fixture.ctx, fixture.question.ID())
-	if err != nil || !found {
-		t.Fatalf("answered question Item = found:%t err:%v", found, err)
-	}
-	answeredQuestion, ok := answeredItem.Question()
-	if !ok || !reflect.DeepEqual(answeredQuestion.Answers, [][]string{{"continue"}}) {
-		t.Fatalf("answered question = %+v", answeredQuestion)
-	}
-}
-
-func executorCheckpointValuesEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID &&
-		slices.Equal(left.Payload, right.Payload) &&
-		left.BuildID == right.BuildID &&
-		left.SessionID == right.SessionID
-}
-
 func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 	for _, test := range []struct {
 		name                 string
@@ -1736,12 +1248,6 @@ func newTerminalCheckpointFixture(
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
-	if _, found, err := interruptStore.ClaimResume(
-		ctx,
-		pending.RootRunID,
-	); err != nil || !found {
-		t.Fatalf("seed answer claim: found=%t err=%v", found, err)
-	}
 	var checkpointDeleter ExecutorCheckpointStore = checkpointStore
 	if failCheckpointDeletion {
 		checkpointDeleter = failingExecutorCheckpointStore{
@@ -1803,8 +1309,8 @@ func assertTerminalCheckpointRollback(t *testing.T, fixture terminalCheckpointFi
 		fixture.ctx,
 		`SELECT state FROM interrupts WHERE root_run_id = ?`,
 		fixture.pending.RootRunID,
-	).Scan(&state); err != nil || state != "resuming" {
-		t.Fatalf("answer claim after rollback = state:%q err:%v", state, err)
+	).Scan(&state); err != nil || state != "open" {
+		t.Fatalf("interrupt after rollback = state:%q err:%v", state, err)
 	}
 }
 
@@ -2467,8 +1973,12 @@ type sqliteOpeningStores struct {
 
 func sqliteEffects(stores sqliteOpeningStores, cfg Config) *Effects {
 	cfg.Interrupts = stores.interrupts
-	cfg.ResumeClaims = stores.interrupts
-	cfg.Transcript = stores.transcript
+	if stores.transcript != nil {
+		cfg.Transcript = stores.transcript
+		if cfg.ItemReplacer == nil {
+			cfg.ItemReplacer = stores.transcript
+		}
+	}
 	return mustNewEffects(cfg)
 }
 
@@ -2784,7 +2294,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		return runInTxErr
 	}
 	ambiguousEffects := mustNewEffects(ambiguousConfig)
-	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
+	usage := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}}
 	commit := runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_complete"),

@@ -110,9 +110,6 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Projection.ChildStarts == nil {
 		deps.Projection.ChildStarts = effects
 	}
-	if deps.Projection.ResumeClaims == nil {
-		deps.Projection.ResumeClaims = effects
-	}
 	if deps.Projection.Events == nil {
 		deps.Projection.Events = effects
 	}

@@ -31,11 +31,11 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: written.OccurredAt(),
 		Tool: &transcript.ToolInvocation{Name: "write"},
 	})
-	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_approval"), fixtureSessionID, pending, items, answers,
+	claim, err := NewResumeAcceptance(
+		fixtureSessionID, pending, items, answers,
 	)
 	if err != nil {
-		t.Fatalf("NewResumeClaimCommit: %v", err)
+		t.Fatalf("NewResumeAcceptance: %v", err)
 	}
 	replacements, err := claim.ItemReplacements()
 	if err != nil {
@@ -78,11 +78,11 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 		Resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"yes"}}},
 	}}
 
-	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_question"), fixtureSessionID, pending, items, answers,
+	claim, err := NewResumeAcceptance(
+		fixtureSessionID, pending, items, answers,
 	)
 	if err != nil {
-		t.Fatalf("NewResumeClaimCommit: %v", err)
+		t.Fatalf("NewResumeAcceptance: %v", err)
 	}
 	delete(items, "item_grandchild")
 	pending.Continuations[0].MemberID = "member_changed"

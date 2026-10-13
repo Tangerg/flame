@@ -390,7 +390,6 @@ func newTestHandler(rt testRuntime) *Handler {
 			Openings:                    projectionWriter,
 			ChildStarts:                 projectionWriter,
 			Checkpoints:                 projectionWriter,
-			ResumeClaims:                projectionWriter,
 			Events:                      projectionWriter,
 			Barriers:                    projectionWriter,
 			WaitingSubtreeCancellations: projectionWriter,
@@ -1087,10 +1086,6 @@ func (inertRuntimeStores) GetInterrupt(context.Context, string) (runs.Pending, b
 	return runs.Pending{}, false, nil
 }
 
-func (inertRuntimeStores) ClaimResume(context.Context, string) (runs.Pending, bool, error) {
-	return runs.Pending{}, false, nil
-}
-func (inertRuntimeStores) RequireResumeClaim(context.Context, string) error  { return nil }
 func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error { return nil }
 func (inertRuntimeStores) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
@@ -1264,13 +1259,6 @@ func nonNilRunsegmentInterrupts(store *persistence.InterruptStore, fallback iner
 	return store
 }
 
-func nonNilRunsegmentResumeClaims(store *persistence.InterruptStore, fallback inertRuntimeStores) segment.ResumeClaimStore {
-	if store == nil {
-		return fallback
-	}
-	return store
-}
-
 func nonNilRunsegmentSessions(store *sqlite.SessionStore, fallback inertRuntimeStores) segment.SessionStore {
 	if store == nil {
 		return fallback
@@ -1305,7 +1293,6 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 	state := s.runStore()
 	cfg := segment.Config{
 		Interrupts:          nonNilRunsegmentInterrupts(s.interrupts, stores),
-		ResumeClaims:        nonNilRunsegmentResumeClaims(s.interrupts, stores),
 		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
 		Transcript:          nonNilRunsegmentTranscript(s.hist, stores),
 		ItemReplacer:        nonNilRunsegmentItems(s.hist, stores),

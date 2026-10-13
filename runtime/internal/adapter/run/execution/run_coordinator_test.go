@@ -54,13 +54,6 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	fillRunDependency(t, &deps.Session.Terminations, sessions, "run termination committer")
 	projection := any(deps.Projection.Openings)
 	fillRunDependency(t, &deps.Projection.ChildStarts, projection, "child run start committer")
-	if deps.Projection.ResumeClaims == nil {
-		if value, ok := projection.(runs.ResumeClaimCommitter); ok {
-			deps.Projection.ResumeClaims = value
-		} else {
-			deps.Projection.ResumeClaims = inertRunProjection{}
-		}
-	}
 	fillRunDependency(t, &deps.Projection.Events, projection, "event committer")
 	fillRunDependency(t, &deps.Projection.Barriers, projection, "tree barrier committer")
 	fillRunDependency(t, &deps.Projection.Checkpoints, projection, "waiting checkpoint reader")
@@ -87,10 +80,6 @@ func testDefaultSelection() modelref.Selection {
 }
 
 type inertRunProjection struct{}
-
-func (inertRunProjection) ClaimResume(context.Context, runs.ResumeClaimCommit) (runs.ExecutorCheckpoint, error) {
-	return runs.ExecutorCheckpoint{}, errors.New("inert Run projection")
-}
 
 func (inertRunProjection) CommitWaitingSubtreeCancellation(
 	context.Context,
