@@ -1518,7 +1518,9 @@
         "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/jsoninput",
         "github.com/Tangerg/go-sdk/mcp",
+        "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/tool",
+        "github.com/invopop/jsonschema",
         "io",
         "net/http"
       ],
@@ -1532,6 +1534,21 @@
           "name": "InvocationMetadataKey",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/invocation\""
+        },
+        {
+          "name": "ModelCanceled",
+          "type": "ModelFailureCode",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "ModelDeadlineExceeded",
+          "type": "ModelFailureCode",
+          "value": "\"deadline_exceeded\""
+        },
+        {
+          "name": "ModelFailed",
+          "type": "ModelFailureCode",
+          "value": "\"failed\""
         },
         {
           "name": "ReceiptMethod",
@@ -1563,6 +1580,10 @@
           "signature": "func[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error)"
         },
         {
+          "name": "CallModel",
+          "signature": "func(ctx context.Context, ref CallbackRef, id string, request *chat.Request) (*chat.Response, error)"
+        },
+        {
           "name": "CallbackFromContext",
           "signature": "func(ctx context.Context) (CallbackRef, error)"
         },
@@ -1587,6 +1608,10 @@
           "signature": "func(ctx context.Context) (string, error)"
         },
         {
+          "name": "ModelMethod",
+          "signature": "func() (*Method[chat.Request, ModelResult], error)"
+        },
+        {
           "name": "NewBackend",
           "signature": "func(server *mcp.Server) (*Backend, error)"
         },
@@ -1609,6 +1634,10 @@
         {
           "name": "NewMethod",
           "signature": "func[P, R any](config MethodConfig) (*Method[P, R], error)"
+        },
+        {
+          "name": "NewModelCallback",
+          "signature": "func(call func(context.Context, Command[chat.Request]) (*chat.Response, error)) (Callback, error)"
         },
         {
           "name": "ReadReceipt",
@@ -1956,6 +1985,65 @@
             {
               "name": "Description",
               "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "ModelFailure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Code",
+              "type": "ModelFailureCode",
+              "tag": "json:\"code\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\" jsonschema:\"pattern=\\\\S\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            },
+            {
+              "name": "Is",
+              "signature": "func(target error) bool"
+            }
+          ]
+        },
+        {
+          "name": "ModelFailureCode",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ModelResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Response",
+              "type": "*chat.Response",
+              "tag": "json:\"response,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*ModelFailure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "JSONSchemaExtend",
+              "signature": "func(schema *jsonschema.Schema)"
             }
           ]
         },

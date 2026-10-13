@@ -172,6 +172,15 @@ must adopt the current topic; no alias or double publication remains. Scoped
 subscriptions, model streaming, wider Tool/dependency lifecycle and final acceptance
 remain active work.
 
+The public plugin SDK now supplies a captured unary model contract over Scope's
+complete request/response and the existing callback endpoint. Its result keeps
+validated inner response evidence even when an outer operation fails. A public
+external-package subprocess verifies model calls, full usage and causal cancellation
+without private imports or a Desktop relay. This is a foundation for the continuing
+canonical model execution migration; production Interaction/auxiliary/Memory paths,
+installed streaming decorators/remote next and durable inner evidence are still open.
+No model execution Core method or streaming support is inferred from this unary API.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

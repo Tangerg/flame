@@ -254,5 +254,32 @@ Activate starts owned business work once per session only after successful setup
 The connection supervisor joins resources after failed setup/start or withdrawal.
 A lost activation acknowledgement cannot issue Start twice in the same lifetime.
 Managed background owners can call NotifyPluginChange for their own declared
-contribution. It publishes an outcome-free resync through the existing invalidation
+contribution. It publishes plugins.dataChanged through the existing invalidation
 owner; no new event bus or plugin business store is created.
+
+## Captured model calls
+
+ModelMethod publishes flame.model/call.v1 using Scope chat.Request and the complete
+Scope chat.Response, under the existing authenticated callback lifetime. CallModel
+takes an explicit caller-owned call ID, validates and snapshots the request before
+transport, and validates detached response evidence. NewModelCallback adapts an
+admitted call owner's behavior to this contract. The caller owns exact model
+selection, admission, budgets and identity fencing; the SDK does not resolve a
+different provider or establish another replay/result store.
+
+ModelResult retains a valid known inner Response alongside ModelFailure when an
+outer operation fails. Failure alone is also valid; an empty outcome is refused.
+Usage, reasoning, actual model metadata and absent versus explicit zero accounting
+remain Scope-owned fields. Cancellation/deadline categories retain errors.Is
+semantics across the callback; other failures remain explicit. CallModel performs
+one delivery with no automatic provider retry. A lost acknowledgement is not proof
+that no model work occurred; the owning invocation must preserve that uncertainty.
+
+The external-package subprocess regression consumes only public SDK/Scope APIs and
+the existing callback endpoint, without a Desktop relay. This proves the unary
+contract and callback path, not installation-wide model composition or streaming.
+Memory's narrower completion/embedding grant and production Interaction/auxiliary
+entrypoints remain actual consumers awaiting migration through the complete model
+execution/streaming owner. Stream aggregation, remote next, frozen decorator order,
+backpressure/cancellation and durable inner evidence remain explicit work. No unary
+descriptor advertises streaming before that path exists.
