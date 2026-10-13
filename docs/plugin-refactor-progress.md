@@ -334,6 +334,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3b: every module/race/real-process/isolated-author handle returned a terminal result. Test cleanup closes callback endpoints, connections, helper executables and databases. TemporaryDirectory removed both independent-author attempts, archives, file proxies and module caches. No scratch script, shared configuration edit, frontend artifact or background verification remains. The managed checkout is committed and clean; preserve it and its dependencies for the full goal. Original input hashes remain unchanged.
+
 - Stage 3a: all invoked module, targeted race and fixture handles returned terminal results. Existing test cleanup closes private databases, model grants, transports and managed processes. No scratch scripts/artifacts, new worktree, shared config edits or background task checks remain. Input hashes are unchanged; retain the active managed checkout and dependencies for the full goal.
 
 - Stage 2h: all module, architecture, targeted race and isolated-author handles are terminal. Both temporary SDK archive/author/module-cache fixtures were removed by their temporary-directory lifetime, including the failed fixture. Test cleanup owns backend processes and databases. Original proposal/review hashes remain unchanged; no shared checkout product source, user data, external state or credentialed service changed. Keep the active checkout and its development dependencies for the full goal.
@@ -369,6 +371,8 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3b replaces Memory wire grant URLs with typed ephemeral CallbackRef values and removes private Models/BindModels APIs. In-repository producers/consumers are migrated without an old grant reader. External compiled Memory backends require rebuild. The independently verified public SDK archive is a source snapshot; published module metadata, installed callback rendezvous and canonical Delivery linkage remain final-delivery requirements.
 
 - Stage 3a adds plugin_provider_selections and removes exclusive-enable admission. Existing data directories are refused and retained; use a fresh directory. External automation that formerly enabled a backend to select it must explicitly call plugins.selectProvider. Missing/disabled/uninstalled selections remain unavailable instead of following enabled candidates. Public Go/Protocol/CLI consumers are updated; generic declaration/point and graphical selection workflows remain open.
 
