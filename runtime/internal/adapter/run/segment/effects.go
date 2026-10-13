@@ -55,20 +55,12 @@ type GoalRunRecorder interface {
 }
 
 // InterruptStore is the run-segment lifecycle view of the interrupt registry.
-// It opens a new quiescent barrier and removes any prior answer claim when the
-// owning root terminalizes. Resume claiming remains a narrower, separate port.
+// It opens a new quiescent barrier and consumes the open hand-off when a
+// continuation accepts its answers or the owning root terminalizes.
 type InterruptStore interface {
 	Open(ctx context.Context, p runs.Pending) error
 	Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
 	Delete(ctx context.Context, rootRunID string) error
-}
-
-// ResumeClaimStore atomically changes one open hand-off into a durable,
-// nonrecoverable answer claim. It is separate from ordinary barrier mutation so
-// callers that never resume a Run do not acquire that lifecycle capability.
-type ResumeClaimStore interface {
-	ClaimResume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
-	RequireResumeClaim(ctx context.Context, rootRunID string) error
 }
 
 // TranscriptStore is the run-segment append side of durable transcript
@@ -218,7 +210,6 @@ type ConversationStore interface {
 type Config struct {
 	ExecutionTrees      runs.ExecutionTreeStore
 	Interrupts          InterruptStore
-	ResumeClaims        ResumeClaimStore
 	Sessions            SessionStore
 	AutomationAuthority AutomationAuthority
 	AutomationStarts    AutomationStartStore
@@ -242,7 +233,6 @@ type Config struct {
 type Effects struct {
 	executionTrees      runs.ExecutionTreeStore
 	interrupts          InterruptStore
-	resumeClaims        ResumeClaimStore
 	sessions            SessionStore
 	automationAuthority AutomationAuthority
 	automationStarts    AutomationStartStore
@@ -264,7 +254,6 @@ type Effects struct {
 var (
 	_ runs.OpeningCommitter                    = (*Effects)(nil)
 	_ runs.ChildRunStartCommitter              = (*Effects)(nil)
-	_ runs.ResumeClaimCommitter                = (*Effects)(nil)
 	_ runs.EventCommitter                      = (*Effects)(nil)
 	_ runs.TreeBarrierCommitter                = (*Effects)(nil)
 	_ runs.WaitingCheckpointReader             = (*Effects)(nil)
@@ -282,7 +271,6 @@ func New(cfg Config) (*Effects, error) {
 		value any
 	}{
 		{"interrupt store", cfg.Interrupts},
-		{"resume claim store", cfg.ResumeClaims},
 		{"session store", cfg.Sessions},
 		{"transcript store", cfg.Transcript},
 		{"item replacer", cfg.ItemReplacer},
@@ -308,7 +296,6 @@ func New(cfg Config) (*Effects, error) {
 	}
 	return &Effects{
 		interrupts:          cfg.Interrupts,
-		resumeClaims:        cfg.ResumeClaims,
 		sessions:            cfg.Sessions,
 		automationAuthority: cfg.AutomationAuthority,
 		automationStarts:    cfg.AutomationStarts,

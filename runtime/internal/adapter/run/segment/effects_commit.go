@@ -112,137 +112,11 @@ type childRunStartReservationPayload struct {
 	RootRunID       string `json:"rootRunId"`
 }
 
-type preparedResumeClaim struct {
-	claim            runs.ResumeClaimCommit
-	root             runs.Continuation
-	itemReplacements []transcript.Replacement
-}
-
-// ClaimResume is the waiting-answer linearization point. Loading the exact
-// checkpoint, consuming the exact Pending value, and deleting that checkpoint
-// share one storage transaction. No executor operation occurs in this method.
-func (e *Effects) ClaimResume(
-	ctx context.Context,
-	claim runs.ResumeClaimCommit,
-) (runs.ExecutorCheckpoint, error) {
-	prepared, err := prepareResumeClaim(claim)
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	var checkpoint runs.ExecutorCheckpoint
-	err = e.runInTx(ctx, func(ctx context.Context) error {
-		return e.applyResumeClaim(ctx, prepared, &checkpoint)
-	})
-	if err == nil {
-		return checkpoint, nil
-	}
-	return e.reconcileResumeClaim(ctx, claim, checkpoint, err)
-}
-
-func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, error) {
-	pending := claim.Pending()
-	root, ok := pending.RootContinuation()
-	if !ok {
-		return preparedResumeClaim{}, errors.New("segment: resume claim has no root continuation")
-	}
-	itemReplacements, err := claim.ItemReplacements()
-	if err != nil {
-		return preparedResumeClaim{}, fmt.Errorf("segment: prepare answered interrupts: %w", err)
-	}
-	return preparedResumeClaim{claim: claim, root: root, itemReplacements: itemReplacements}, nil
-}
-
-func (e *Effects) applyResumeClaim(
-	ctx context.Context,
-	prepared preparedResumeClaim,
-	checkpoint *runs.ExecutorCheckpoint,
-) error {
-	pending := prepared.claim.Pending()
-	loaded, err := e.loadResumeCheckpoint(ctx, prepared)
-	if err != nil {
-		return err
-	}
-	if err := e.consumeResumePending(ctx, prepared.claim); err != nil {
-		return err
-	}
-	for _, replacement := range prepared.itemReplacements {
-		if err := e.itemReplacer.ReplaceItem(ctx, replacement); err != nil {
-			return fmt.Errorf("segment: record answered interrupt %q: %w", replacement.Expected().ID(), err)
-		}
-	}
-	if err := e.executorCheckpoints.DeleteCheckpoints(
-		ctx, prepared.claim.SessionID(), []string{prepared.root.MemberID},
-	); err != nil {
-		return fmt.Errorf("segment: invalidate claimed executor checkpoint: %w", err)
-	}
-	*checkpoint = loaded.Clone()
-	if err := e.runState.RecordWaitingRunCommit(
-		ctx, prepared.claim.SessionID(), pending.RootRunID, prepared.claim.CommitID(),
-	); err != nil {
-		return fmt.Errorf("segment: record resume claim commit receipt: %w", err)
-	}
-	return nil
-}
-
-func (e *Effects) loadResumeCheckpoint(
-	ctx context.Context,
-	prepared preparedResumeClaim,
-) (runs.ExecutorCheckpoint, error) {
-	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
-	}
-	if err := loaded.ValidateOwnership(
-		prepared.root.MemberID, prepared.claim.SessionID(),
-	); err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	return loaded, nil
-}
-
-func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeClaimCommit) error {
-	pending := claim.Pending()
-	consumed, found, err := e.resumeClaims.ClaimResume(ctx, pending.RootRunID)
-	if err != nil {
-		return fmt.Errorf("segment: consume resume Pending: %w", err)
-	}
-	if !found {
-		return runs.ErrInterruptNotOpen
-	}
-	if !reflect.DeepEqual(consumed, pending) {
-		return errors.New("segment: waiting hand-off changed before answer claim")
-	}
-	return nil
-}
-
-func (e *Effects) reconcileResumeClaim(
-	ctx context.Context,
-	claim runs.ResumeClaimCommit,
-	checkpoint runs.ExecutorCheckpoint,
-	commitErr error,
-) (runs.ExecutorCheckpoint, error) {
-	pending := claim.Pending()
-	settled, settleErr := e.reconcileRunCommit(
-		ctx, claim.SessionID(), pending.RootRunID, "", claim.CommitID(),
-	)
-	if !settled {
-		return runs.ExecutorCheckpoint{}, errors.Join(commitErr, settleErr)
-	}
-	if err := checkpoint.Validate(); err != nil {
-		return runs.ExecutorCheckpoint{}, errors.Join(
-			commitErr,
-			errors.New("segment: committed resume claim checkpoint is unavailable to this caller"),
-			err,
-		)
-	}
-	return checkpoint, nil
-}
-
 // CommitOpening accepts one segment atomically. A fresh segment admits its Run;
-// a continuation resumes the existing Runs after a prior ResumeClaim consumed
-// the waiting hand-off and invalidated its checkpoint. The
-// opening transcript projections land in that same transaction, so Start cannot
-// acknowledge a segment whose durable opening is missing.
+// a continuation consumes the waiting hand-off, settles its answered Items, and
+// resumes the existing Runs in this one transaction. The opening transcript
+// projections land in that same transaction, so Start cannot acknowledge a
+// segment whose durable opening is missing.
 func (e *Effects) CommitOpening(ctx context.Context, opening runs.OpeningCommit) error {
 	err := e.runInTx(ctx, func(ctx context.Context) error {
 		return e.commitOpening(ctx, opening)
@@ -269,6 +143,9 @@ func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit)
 			return err
 		}
 	case resuming:
+		if err := e.acceptResumeAnswers(ctx, opening); err != nil {
+			return err
+		}
 		if err := e.resumeTree(ctx, resume); err != nil {
 			return err
 		}
@@ -665,12 +542,42 @@ func (e *Effects) applyProgress(ctx context.Context, commit runs.EventCommit) er
 	return nil
 }
 
+// acceptResumeAnswers consumes the exact open interrupt set and settles its
+// answered Items in the opening transaction. The waiting checkpoint is retained:
+// it remains the accepted continuation's execution context until a terminal
+// write-set or the next barrier replaces it. A continuation opening without an
+// answer write-set resumes a tree whose answers were not re-settled here.
+func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningCommit) error {
+	acceptance, present := opening.ResumeAcceptance()
+	if !present {
+		return nil
+	}
+	expected := acceptance.Pending()
+	consumed, found, err := e.interrupts.Consume(ctx, expected.RootRunID)
+	if err != nil {
+		return fmt.Errorf("segment: consume accepted interrupt set: %w", err)
+	}
+	if !found {
+		return runs.ErrInterruptNotOpen
+	}
+	if !reflect.DeepEqual(consumed, expected) {
+		return errors.New("segment: waiting hand-off changed before answer acceptance")
+	}
+	replacements, err := acceptance.ItemReplacements()
+	if err != nil {
+		return fmt.Errorf("segment: prepare answered interrupts: %w", err)
+	}
+	for _, replacement := range replacements {
+		if err := e.itemReplacer.ReplaceItem(ctx, replacement); err != nil {
+			return fmt.Errorf("segment: record answered interrupt %q: %w", replacement.Expected().ID(), err)
+		}
+	}
+	return nil
+}
+
 func (e *Effects) resumeTree(ctx context.Context, resume run.TreeResumeDraft) error {
 	if err := resume.Validate(); err != nil {
 		return fmt.Errorf("segment: invalid tree resume: %w", err)
-	}
-	if err := e.resumeClaims.RequireResumeClaim(ctx, resume.RootRunID()); err != nil {
-		return fmt.Errorf("segment: require accepted answer claim: %w", err)
 	}
 	for _, run := range resume.Runs {
 		if err := e.runState.Resume(ctx, run); err != nil {

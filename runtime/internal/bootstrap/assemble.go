@@ -179,7 +179,6 @@ func buildAssemblyCore(
 	lifetime.runEffectTasks = runEffectTasks
 	runSegmentConfig := segment.Config{
 		Interrupts:          cfg.Stores.Interrupts,
-		ResumeClaims:        cfg.Stores.Interrupts,
 		Sessions:            cfg.Stores.Sessions,
 		Transcript:          cfg.Stores.Transcript,
 		ItemReplacer:        cfg.Stores.Transcript,
@@ -243,7 +242,6 @@ func buildAssemblyCore(
 			Openings:                    runSegmentEffects,
 			ChildStarts:                 runSegmentEffects,
 			Checkpoints:                 runSegmentEffects,
-			ResumeClaims:                runSegmentEffects,
 			Events:                      runSegmentEffects,
 			Barriers:                    runSegmentEffects,
 			WaitingSubtreeCancellations: runSegmentEffects,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 )
 
 // stagedExecutionHandoff is the unique owner of an executor after staging and
@@ -57,77 +56,4 @@ func (s *stagedExecutionHandoff) abandonWithin(
 		)
 	}
 	return cause
-}
-
-// claimedResumeAttempt owns the durable claim and, once staged, its executor
-// hand-off. A failed claim is made durably lost before its executor is released;
-// an accepted Segment consumes the staged executor instead.
-type claimedResumeAttempt struct {
-	sessionID    string
-	pending      Pending
-	terminations TerminationCommitter
-	nowUTC       func() time.Time
-	staged       *stagedExecutionHandoff
-	settled      bool
-}
-
-func (c *Coordinator) ownClaimedResume(sessionID string, pending Pending) *claimedResumeAttempt {
-	return &claimedResumeAttempt{
-		sessionID:    sessionID,
-		pending:      pending,
-		terminations: c.terminations,
-		nowUTC:       c.publications.nowUTC,
-	}
-}
-
-func (c *claimedResumeAttempt) ownStagedExecution(
-	releases ExecutionReleaser,
-	ref ExecutorRef,
-) {
-	if c.staged != nil {
-		panic("runs: claimed resume staged more than one execution")
-	}
-	c.staged = ownStagedExecution(releases, ref)
-}
-
-func (c *claimedResumeAttempt) accept() {
-	if c.settled {
-		panic("runs: claimed resume settled more than once")
-	}
-	if c.staged == nil {
-		panic("runs: claimed resume accepted without a staged execution")
-	}
-	c.staged.transfer()
-	c.settled = true
-}
-
-func (c *claimedResumeAttempt) fail(ctx context.Context, cause error) error {
-	if c.settled {
-		return cause
-	}
-	if cause == nil {
-		cause = errors.New("runs: claimed resume exited without accepting its execution")
-	}
-	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), runCleanupTimeout)
-	defer cancel()
-	if err := c.terminations.ApplyClaimedRunLost(
-		cleanupCtx,
-		c.sessionID,
-		c.pending,
-		c.nowUTC(),
-	); err != nil {
-		// The durable waiting boundary still names this executor. Releasing it
-		// before RunLost commits would leave that authoritative state unusable.
-		return errors.Join(
-			cause,
-			fmt.Errorf(
-				"runs: recover claimed resume %q as lost: %w",
-				c.pending.RootRunID,
-				err,
-			),
-		)
-	}
-	c.settled = true
-	result := fmt.Errorf("%w: %w", ErrRunNotFound, cause)
-	return c.staged.abandonWithin(cleanupCtx, result, "lost continuation")
 }

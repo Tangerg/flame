@@ -2,50 +2,46 @@ package runs
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"maps"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-// ResumeClaimCommit is the answer linearization write-set. Its transaction
-// consumes the exact waiting hand-off and deletes the old checkpoint before an
-// executor may be restored or signaled. A crash after this commit therefore
-// has no recoverable pre-answer snapshot and boot reconciliation must mark the
-// still-nonterminal tree lost.
-type ResumeClaimCommit struct {
-	// CommitID identifies the complete answer-claim transaction. The checkpoint
-	// returned by a successful claim remains a one-shot in-memory hand-off.
-	commitID runtimeidentity.CommitID
-	// sessionID is the Session of the parked root Run read before the claim.
+// ResumeAcceptance is the answer write-set an opening transaction accepts
+// together with its continuation. It binds one validated answer set to the exact
+// waiting hand-off it consumes and derives the transcript compare-and-swap the
+// acceptance settles. It carries no transaction identity or receipt: the opening
+// it travels with owns both, so the answers, consumed open set, and Segment
+// opening commit as one fact.
+type ResumeAcceptance struct {
+	// sessionID is the Session of the parked root Run read before acceptance.
 	sessionID string
 	expected  Pending
-	// items are the Items the hand-off names, read before the claim. They own
+	// items are the Items the hand-off names, read before acceptance. They own
 	// what each answered interrupt asked.
 	items   map[string]transcript.Item
 	answers []InterruptAnswer
 }
 
-// NewResumeClaimCommit binds one validated answer set to the exact waiting
-// hand-off and stable transaction identity that consumes it.
-func NewResumeClaimCommit(
-	commitID runtimeidentity.CommitID,
+// NewResumeAcceptance binds one validated answer set to the exact waiting
+// hand-off that consumes it.
+func NewResumeAcceptance(
 	sessionID string,
 	expected Pending,
 	items map[string]transcript.Item,
 	answers []InterruptAnswer,
-) (ResumeClaimCommit, error) {
-	claim := ResumeClaimCommit{
-		commitID: commitID, sessionID: sessionID, expected: expected.Clone(), items: maps.Clone(items),
+) (ResumeAcceptance, error) {
+	acceptance := ResumeAcceptance{
+		sessionID: sessionID, expected: expected.Clone(), items: maps.Clone(items),
 		answers: cloneInterruptAnswers(answers),
 	}
-	if err := claim.Validate(); err != nil {
-		return ResumeClaimCommit{}, err
+	if err := acceptance.Validate(); err != nil {
+		return ResumeAcceptance{}, err
 	}
-	return claim, nil
+	return acceptance, nil
 }
 
 func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
@@ -57,23 +53,20 @@ func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
 	return owned
 }
 
-func (r ResumeClaimCommit) Validate() error {
-	if err := r.commitID.Validate(); err != nil {
-		return fmt.Errorf("runs: resume claim: %w", err)
-	}
+func (r ResumeAcceptance) Validate() error {
 	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("runs: resume claim Pending: %w", err)
+		return fmt.Errorf("runs: resume acceptance Pending: %w", err)
 	}
 	if err := resourceid.ValidateSession(r.sessionID); err != nil {
-		return fmt.Errorf("runs: resume claim: %w", err)
+		return fmt.Errorf("runs: resume acceptance: %w", err)
 	}
 	interrupts, err := r.expected.ProjectInterrupts(r.items)
 	if err != nil {
-		return fmt.Errorf("runs: resume claim: %w", err)
+		return fmt.Errorf("runs: resume acceptance: %w", err)
 	}
 	if len(r.answers) != len(r.expected.Bindings) {
 		return fmt.Errorf(
-			"runs: resume claim has %d answers for %d boundaries",
+			"runs: resume acceptance has %d answers for %d boundaries",
 			len(r.answers), len(r.expected.Bindings),
 		)
 	}
@@ -81,35 +74,33 @@ func (r ResumeClaimCommit) Validate() error {
 		binding := r.expected.Bindings[index]
 		if answer.InterruptItemID != binding.InterruptItemID || answer.MemberID != binding.MemberID ||
 			answer.RequestID != binding.RequestID {
-			return fmt.Errorf("runs: resume claim answer[%d] differs from its pending boundary", index)
+			return fmt.Errorf("runs: resume acceptance answer[%d] differs from its pending boundary", index)
 		}
 		if err := answer.validateResolution(interrupts[index]); err != nil {
-			return fmt.Errorf("runs: resume claim answer[%d]: %w", index, err)
+			return fmt.Errorf("runs: resume acceptance answer[%d]: %w", index, err)
 		}
 	}
 	if _, err := r.ItemReplacements(); err != nil {
-		return fmt.Errorf("runs: resume claim Item projections: %w", err)
+		return fmt.Errorf("runs: resume acceptance Item projections: %w", err)
 	}
 	return nil
 }
 
-// SessionID returns the Session of the claimed tree's root Run.
-func (r ResumeClaimCommit) SessionID() string { return r.sessionID }
+// SessionID returns the Session of the accepted tree's root Run.
+func (r ResumeAcceptance) SessionID() string { return r.sessionID }
 
-// CommitID returns the stable answer-claim transaction identity.
-func (r ResumeClaimCommit) CommitID() runtimeidentity.CommitID { return r.commitID }
-
-// Pending returns an isolated snapshot of the exact waiting hand-off consumed by the claim.
-func (r ResumeClaimCommit) Pending() Pending { return r.expected.Clone() }
+// Pending returns an isolated snapshot of the exact waiting hand-off the acceptance consumes.
+func (r ResumeAcceptance) Pending() Pending { return r.expected.Clone() }
 
 // Answers returns the isolated executor-bound answer set in canonical Pending order.
-func (r ResumeClaimCommit) Answers() []InterruptAnswer { return cloneInterruptAnswers(r.answers) }
+func (r ResumeAcceptance) Answers() []InterruptAnswer { return cloneInterruptAnswers(r.answers) }
 
-// ItemReplacements derives the transcript compare-and-swap write-set the claim
-// settles: each Question Item read before the claim carries its accepted
-// answers, and each reviewed ToolCall carries its verdict. The persistence port
-// only executes these replacements in the same transaction as the claim.
-func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) {
+// ItemReplacements derives the transcript compare-and-swap write-set the
+// acceptance settles: each Question Item read before acceptance carries its
+// accepted answers, and each reviewed ToolCall carries its full resolution. The
+// persistence port executes these replacements in the same transaction that
+// consumes the open set and opens the continuation.
+func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
 	for _, answer := range r.answers {
 		answersByItem[answer.InterruptItemID] = answer
@@ -149,7 +140,7 @@ func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) 
 
 // approvalCalls relates each reviewed Item to its executor call. The accepted
 // verdict belongs to the committed Item, not to this routing projection.
-func (r ResumeClaimCommit) approvalCalls() map[string]string {
+func (r ResumeAcceptance) approvalCalls() map[string]string {
 	calls := make(map[string]string)
 	for index, open := range r.expected.Interrupts {
 		if open.Kind() != interrupt.Approval {

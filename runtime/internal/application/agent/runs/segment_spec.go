@@ -39,7 +39,11 @@ type segmentSpec struct {
 	Automation         *AutomationStart
 	// CommandAcceptance binds an externally initiated command to this fresh
 	// admission; its run_opening acceptance commits in the opening transaction.
-	CommandAcceptance  *CommandIdentity
+	CommandAcceptance *CommandIdentity
+	// ResumeAcceptance is the answer write-set a continuation opening consumes in
+	// the same transaction: the open interrupt set and its settled Item
+	// replacements commit with the resumed tree.
+	ResumeAcceptance   *ResumeAcceptance
 	CreatedAt          time.Time
 	OpeningUserText    string
 	Input              []transcript.ContentBlock

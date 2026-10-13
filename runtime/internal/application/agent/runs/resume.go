@@ -11,10 +11,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// Resume validates one complete response set, atomically consumes the waiting
-// hand-off and invalidates its checkpoint, stages the exact live/restored tree,
-// then durably opens the continuation Segment. That opening accepts the command;
-// semantic answer submission continues behind the Run lifecycle supervisor.
+// Resume validates one complete response set, then opens the continuation in one
+// acceptance transaction that consumes the waiting hand-off, settles its answered
+// Items, and resumes the tree together. The execution context checkpoint is
+// retained for that accepted continuation. Staging reconstructs the live/restored
+// tree before acceptance without any durable effect; semantic answer submission
+// continues behind the Run lifecycle supervisor after the opening commits.
 func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result StartResult, err error) {
 	cmd = cmd.clone()
 	addressed, found, err := c.runs.Run(ctx, cmd.RunID)
@@ -85,33 +87,36 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		}
 	}
 
-	claim, err := NewResumeClaimCommit(newRunCommitID(), sessionID, pending, itemsByID, answers)
+	acceptance, err := NewResumeAcceptance(sessionID, pending, itemsByID, answers)
 	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
+		return StartResult{}, fmt.Errorf("runs: prepare resume acceptance: %w", err)
 	}
-	checkpoint, err := c.resumeClaims.ClaimResume(ctx, claim)
+	rootContinuation, ok := pending.RootContinuation()
+	if !ok {
+		return StartResult{}, errors.New("runs: pending interrupt set has no root continuation")
+	}
+	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootContinuation.MemberID)
 	if err != nil {
 		return StartResult{}, err
-	}
-	attempt := c.ownClaimedResume(sessionID, pending)
-	defer func() {
-		err = attempt.fail(ctx, err)
-		if err != nil {
-			result = StartResult{}
-		}
-	}()
-	if validateClaimedCheckpointErr := validateClaimedCheckpoint(checkpoint, pending, sessionID); validateClaimedCheckpointErr != nil {
-		return StartResult{}, validateClaimedCheckpointErr
 	}
 	waiting, err := waitingContinuationFromPending(pending, checkpoint, parkedRuns, sess)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
 	}
+	// Staging reconstructs in-memory executor state and commits nothing durable.
+	// The open interrupt set is consumed only by the acceptance opening below, so a
+	// failure before that commit leaves the Run recoverable as waiting.
 	ref, err := c.continuation.StageContinuation(ctx, waiting)
 	if err != nil {
 		return StartResult{}, err
 	}
-	attempt.ownStagedExecution(c.releases, ref)
+	staged := ownStagedExecution(c.releases, ref)
+	defer func() {
+		if err != nil {
+			err = staged.abandon(ctx, err, "unaccepted continuation")
+			result = StartResult{}
+		}
+	}()
 	segmentID := c.newSegmentID()
 	var committedInput *CommittedUserInput
 	if len(cmd.Input) > 0 {
@@ -120,13 +125,12 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 			Content: transcript.CloneContent(cmd.Input),
 		}
 	}
-	pendingCopy := pending
-	continuation, err := treeContinuationFromPending(pendingCopy, parkedRuns, itemsByID)
+	continuation, err := treeContinuationFromPending(pending, parkedRuns, itemsByID)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
-	continuation.approvalCalls = claim.approvalCalls()
-	replacements, err := claim.ItemReplacements()
+	continuation.approvalCalls = acceptance.approvalCalls()
+	replacements, err := acceptance.ItemReplacements()
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
@@ -134,6 +138,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		item := replacement.State()
 		continuation.items[item.ID()] = item
 	}
+	// One acceptance transaction consumes the open set, settles its answered Items,
+	// resumes the tree, and opens the continuation Segment. Executor activation is
+	// detached and owned by the accepted Run lifecycle.
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:            cmd.RunID,
 		SegmentID:        segmentID,
@@ -143,6 +150,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		ExecutorID:       ref.ExecutorID,
 		Input:            cmd.Input,
 		Continuation:     continuation,
+		ResumeAcceptance: &acceptance,
 		admission:        &runAdmission,
 		DetachActivation: true,
 		BeginExecution: func(beginCtx context.Context) error {
@@ -154,9 +162,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
-	// A successful opening transferred the staged tree to the Segment lifecycle.
-	// On failure, the attempt still owns it and compensates durable state first.
-	attempt.accept()
+	// The opening committed the acceptance and transferred the staged tree to the
+	// Segment lifecycle.
+	staged.transfer()
 	// The continuation is durably accepted, which consumed the whole open set: the
 	// run is running again and nothing in this session is waiting on a person.
 	for _, continuation := range pending.Continuations {
@@ -174,15 +182,4 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		result.UserItemID = committedInput.ItemID
 	}
 	return result, nil
-}
-
-func validateClaimedCheckpoint(checkpoint ExecutorCheckpoint, expected Pending, sessionID string) error {
-	if err := checkpoint.Validate(); err != nil {
-		return err
-	}
-	root, ok := expected.RootContinuation()
-	if !ok {
-		return errors.New("runs: claimed continuation has no root")
-	}
-	return checkpoint.ValidateOwnership(root.MemberID, sessionID)
 }

@@ -78,28 +78,8 @@ func (i *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pe
 	return pending, true, nil
 }
 
-func (i *InterruptStore) ClaimResume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
-	record, found, err := i.storage.ClaimResume(ctx, rootRunID)
-	if err != nil || !found {
-		return runs.Pending{}, found, err
-	}
-	pending := pendingValue(record)
-	if err := pending.Validate(); err != nil {
-		return runs.Pending{}, false, err
-	}
-	return pending, true, nil
-}
-
-func (i *InterruptStore) RequireResumeClaim(ctx context.Context, rootRunID string) error {
-	return i.storage.RequireResumeClaim(ctx, rootRunID)
-}
-
 func (i *InterruptStore) Delete(ctx context.Context, rootRunID string) error {
 	return i.storage.Delete(ctx, rootRunID)
-}
-
-func (i *InterruptStore) DeleteResumeClaim(ctx context.Context, rootRunID, rootMemberID string) error {
-	return i.storage.DeleteResumeClaim(ctx, rootRunID, rootMemberID)
 }
 
 func pendingValues(records []sqlite.InterruptRecord) ([]runs.Pending, error) {

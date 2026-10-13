@@ -73,28 +73,6 @@ func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string,
 	return err
 }
 
-// ApplyClaimedRunLost ends the exact hand-off already owned by a successful
-// Resume claim. It uses the Pending value returned by that claim; the ordinary
-// open-interrupt projection intentionally does not expose a resuming row.
-func (c *Coordinator) ApplyClaimedRunLost(ctx context.Context, sessionID string, pending runs.Pending, finishedAt time.Time) error {
-	if finishedAt.IsZero() {
-		return fmt.Errorf("sessions: terminalize claimed Resume %q: finished time is required", pending.RootRunID)
-	}
-	if err := pending.Validate(); err != nil {
-		return fmt.Errorf("sessions: terminalize claimed Resume %q: %w", pending.RootRunID, err)
-	}
-	_, err := c.terminalizePendingRun(
-		ctx,
-		sessionID,
-		pending,
-		finishedAt,
-		rundomain.OutcomeLost,
-		"",
-		true,
-	)
-	return err
-}
-
 func (c *Coordinator) terminalizeParkedRun(ctx context.Context, sessionID, runID string, finishedAt time.Time, outcome rundomain.Outcome, detail string) (rundomain.Run, error) {
 	if finishedAt.IsZero() {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", runID)
@@ -106,7 +84,7 @@ func (c *Coordinator) terminalizeParkedRun(ctx context.Context, sessionID, runID
 	if !found {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: open interrupt not found for session %q", runID, sessionID)
 	}
-	return c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, outcome, detail, false)
+	return c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, outcome, detail)
 }
 
 func (c *Coordinator) terminalizePendingRun(
@@ -116,7 +94,6 @@ func (c *Coordinator) terminalizePendingRun(
 	finishedAt time.Time,
 	outcome rundomain.Outcome,
 	detail string,
-	resumeClaimed bool,
 ) (rundomain.Run, error) {
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
 	if err != nil {
@@ -129,7 +106,6 @@ func (c *Coordinator) terminalizePendingRun(
 	plan, rootRun, err := (parkedRunTerminalization{
 		sessionID: sessionID, rootRunID: pending.RootRunID, finishedAt: finishedAt,
 		outcome: outcome, detail: detail, pending: pending, snapshot: snapshot,
-		resumeClaimed:        resumeClaimed,
 		conversationMessages: messages,
 	}).build()
 	if err != nil {

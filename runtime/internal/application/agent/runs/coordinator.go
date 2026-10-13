@@ -51,7 +51,6 @@ type Coordinator struct {
 	interrupts                         PendingInterruptReader
 	terminations                       TerminationCommitter
 	childStarts                        ChildRunStartCommitter
-	resumeClaims                       ResumeClaimCommitter
 	checkpoints                        WaitingCheckpointReader
 	waitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
 	isolation                          IsolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
@@ -156,7 +155,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"run termination committer", deps.Session.Terminations},
 		{"opening committer", deps.Projection.Openings},
 		{"child run start committer", deps.Projection.ChildStarts},
-		{"resume claim committer", deps.Projection.ResumeClaims},
 		{"event committer", deps.Projection.Events},
 		{"tree barrier committer", deps.Projection.Barriers},
 		{"waiting checkpoint reader", deps.Projection.Checkpoints},
@@ -197,7 +195,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		interrupts:                         deps.Session.Interrupts,
 		terminations:                       deps.Session.Terminations,
 		childStarts:                        deps.Projection.ChildStarts,
-		resumeClaims:                       deps.Projection.ResumeClaims,
 		checkpoints:                        deps.Projection.Checkpoints,
 		waitingSubtreeCancellations:        deps.Projection.WaitingSubtreeCancellations,
 		runs:                               deps.Runs,
@@ -543,6 +540,12 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	}
 	if err != nil {
 		return nil, err
+	}
+	if spec.ResumeAcceptance != nil {
+		opening, err = opening.WithResumeAcceptance(*spec.ResumeAcceptance)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if spec.CommandAcceptance != nil {
 		admission, ok := opening.Admission()

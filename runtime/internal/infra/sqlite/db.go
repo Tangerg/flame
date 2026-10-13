@@ -312,8 +312,8 @@ func currentSchema() []string {
 		// interrupt set; interrupt_bindings maps each item to the private executor
 		// boundary it answers; continuations carries every waiting Run's
 		// application/executor hand-off. All three are closed JSON values. Answer
-		// claim changes the row to resuming; the next barrier replaces it and a
-		// terminal/recovery write-set deletes it.
+		// acceptance consumes (deletes) the row in the same transaction that opens
+		// the continuation; the next barrier inserts a fresh row.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS interrupts (
 			root_run_id        TEXT    PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 			executor_id        TEXT    NOT NULL,
@@ -327,10 +327,9 @@ func currentSchema() []string {
 			interrupt_bindings TEXT   NOT NULL,
 			created_at         INTEGER NOT NULL,
 			state              TEXT    NOT NULL DEFAULT '%[1]s',
-			CHECK (state IN ('%[1]s', '%[2]s'))
+			CHECK (state IN ('%[1]s'))
 		)`,
 			interruptStateOpen.databaseValue(),
-			interruptStateResuming.databaseValue(),
 		),
 		`CREATE INDEX IF NOT EXISTS idx_interrupts_state
 			ON interrupts(state, created_at, root_run_id)`,

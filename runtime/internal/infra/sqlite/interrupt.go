@@ -18,10 +18,7 @@ import (
 
 type interruptState string
 
-const (
-	interruptStateOpen     interruptState = "open"
-	interruptStateResuming interruptState = "resuming"
-)
+const interruptStateOpen interruptState = "open"
 
 func (i interruptState) databaseValue() string { return string(i) }
 
@@ -157,7 +154,8 @@ func NewInterruptStore(db *sql.DB) *InterruptStore {
 
 // Open records a newly reached barrier. An existing root Run or executor root
 // is an identity conflict; a barrier is replaced only after its owner consumes
-// the previous one in the same application transaction.
+// the previous one (Consume) in the same application transaction, so this insert
+// never updates a surviving row.
 func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 	if err := p.validateStorageShape(); err != nil {
 		return fmt.Errorf("sqlite: open interrupt: %w", err)
@@ -180,19 +178,8 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		return err
 	}
 	result, err := Connection(ctx, i.db).ExecContext(ctx,
-		`INSERT INTO interrupts(root_run_id, executor_id, root_member_id, payload, continuations, interrupt_bindings, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(root_run_id) DO UPDATE SET
-		   executor_id = excluded.executor_id,
-		   root_member_id = excluded.root_member_id,
-		   payload = excluded.payload,
-		   continuations = excluded.continuations,
-		   interrupt_bindings = excluded.interrupt_bindings,
-		   created_at = excluded.created_at,
-		   state = ?
-		 WHERE interrupts.state = ?
-		   AND interrupts.executor_id = excluded.executor_id
-		   AND interrupts.root_member_id = excluded.root_member_id`,
+		`INSERT INTO interrupts(root_run_id, executor_id, root_member_id, payload, continuations, interrupt_bindings, created_at, state)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.RootRunID,
 		p.ExecutorID,
 		root.MemberID,
@@ -201,7 +188,6 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		string(bindings),
 		p.CreatedAt.UnixNano(),
 		interruptStateOpen.databaseValue(),
-		interruptStateResuming.databaseValue(),
 	)
 	if isUniqueViolation(err) {
 		return fmt.Errorf(
@@ -364,54 +350,6 @@ func (i *InterruptStore) Consume(ctx context.Context, runID string) (InterruptRe
 	return p, true, nil
 }
 
-// ClaimResume atomically changes one exact open hand-off into a nonrecoverable
-// resuming record. Open reads exclude the row until a new waiting boundary
-// replaces it or terminal cleanup deletes it.
-func (i *InterruptStore) ClaimResume(ctx context.Context, runID string) (InterruptRecord, bool, error) {
-	if err := resourceid.ValidateRun(runID); err != nil {
-		return InterruptRecord{}, false, fmt.Errorf("sqlite: claim resume: %w", err)
-	}
-	row := Connection(ctx, i.db).QueryRowContext(ctx,
-		`UPDATE interrupts
-		    SET state = ?
-		  WHERE root_run_id = ? AND state = ?
-		  RETURNING `+interruptColumns,
-		interruptStateResuming.databaseValue(),
-		runID,
-		interruptStateOpen.databaseValue(),
-	)
-	record, err := scanPending(row)
-	if errors.Is(err, sql.ErrNoRows) {
-		return InterruptRecord{}, false, nil
-	}
-	if err != nil {
-		return InterruptRecord{}, false, err
-	}
-	return record, true, nil
-}
-
-// RequireResumeClaim proves that the exact root hand-off crossed the answer
-// claim linearization point before its Run tree is reopened.
-func (i *InterruptStore) RequireResumeClaim(ctx context.Context, runID string) error {
-	if err := resourceid.ValidateRun(runID); err != nil {
-		return fmt.Errorf("sqlite: require resume claim: %w", err)
-	}
-	var state interruptState
-	err := Connection(ctx, i.db).QueryRowContext(ctx,
-		`SELECT state FROM interrupts WHERE root_run_id = ?`, runID,
-	).Scan(&state)
-	if errors.Is(err, sql.ErrNoRows) {
-		return errors.New("sqlite: resume claim does not exist")
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect resume claim: %w", err)
-	}
-	if state != interruptStateResuming {
-		return fmt.Errorf("sqlite: interrupt for root Run %q is %q, not %s", runID, state, interruptStateResuming)
-	}
-	return nil
-}
-
 func (i *InterruptStore) Delete(ctx context.Context, runID string) error {
 	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
@@ -420,34 +358,6 @@ func (i *InterruptStore) Delete(ctx context.Context, runID string) error {
 		`DELETE FROM interrupts WHERE root_run_id = ?`, runID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
-	}
-	return nil
-}
-
-// DeleteResumeClaim consumes only the answer claim owned by a failed Resume.
-// It leaves ordinary open reads unchanged and cannot delete a replacement open
-// barrier that reuses the same root Run identity.
-func (i *InterruptStore) DeleteResumeClaim(ctx context.Context, runID, rootMemberID string) error {
-	if err := resourceid.ValidateRun(runID); err != nil {
-		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
-	}
-	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
-		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
-	}
-	result, err := Connection(ctx, i.db).ExecContext(ctx,
-		`DELETE FROM interrupts
-		  WHERE root_run_id = ? AND root_member_id = ? AND state = ?`,
-		runID, rootMemberID, interruptStateResuming.databaseValue(),
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
-	}
-	deleted, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect deleted Resume claim: %w", err)
-	}
-	if deleted != 1 {
-		return fmt.Errorf("sqlite: matching resuming interrupt for root Run %q was not found", runID)
 	}
 	return nil
 }

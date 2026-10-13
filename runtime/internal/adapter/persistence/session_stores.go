@@ -476,7 +476,6 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 			ctx,
 			root,
 			terminal.CheckpointRootID(),
-			terminal.ConsumesClaimedResume(),
 		); err != nil {
 			return err
 		}
@@ -500,7 +499,6 @@ func (s *SessionStores) clearParkedRunState(
 	ctx context.Context,
 	root rundomain.Run,
 	checkpointRootID string,
-	resumeClaimed bool,
 ) error {
 	if checkpointRootID != "" {
 		if err := s.executorCheckpoints.DeleteCheckpoints(ctx, root.SessionID(), []string{checkpointRootID}); err != nil {
@@ -509,11 +507,7 @@ func (s *SessionStores) clearParkedRunState(
 	}
 	// Delete the interrupt before the terminal write: while it exists the Run is
 	// parked on it, and a Run cannot be both finished and waiting.
-	if resumeClaimed {
-		if err := s.interrupts.DeleteResumeClaim(ctx, root.ID(), checkpointRootID); err != nil {
-			return err
-		}
-	} else if err := s.interrupts.Delete(ctx, root.ID()); err != nil {
+	if err := s.interrupts.Delete(ctx, root.ID()); err != nil {
 		return err
 	}
 	return s.deleteChildRunStarts(ctx, root.SessionID())

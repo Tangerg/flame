@@ -56,41 +56,16 @@ type TerminalPlan struct {
 	// the same transaction before the terminal Run watermark is committed.
 	messages         []chat.Message
 	checkpointRootID runtimeidentity.MemberID
-	// ResumeClaimed requires persistence to consume the resuming interrupt owned
-	// by a failed Resume attempt. Ordinary parked termination consumes an open
-	// interrupt instead.
-	resumeClaimed bool
 }
 
-// NewTerminalPlan owns the complete durable projection for an ordinary parked
-// Run termination. A Goal-owned root Run is applied to its Goal by the same
+// NewTerminalPlan owns the complete durable projection for a parked Run
+// termination. A Goal-owned root Run is applied to its Goal by the same
 // transaction, read from the root Run itself.
 func NewTerminalPlan(
 	runs []rundomain.Replacement,
 	items []transcript.Item,
 	messages []chat.Message,
 	checkpointRootID string,
-) (TerminalPlan, error) {
-	return newTerminalPlan(runs, items, messages, checkpointRootID, false)
-}
-
-// NewClaimedResumeTerminalPlan owns the complete durable projection for a
-// Resume claim whose executor state proved unrestorable.
-func NewClaimedResumeTerminalPlan(
-	runs []rundomain.Replacement,
-	items []transcript.Item,
-	messages []chat.Message,
-	checkpointRootID string,
-) (TerminalPlan, error) {
-	return newTerminalPlan(runs, items, messages, checkpointRootID, true)
-}
-
-func newTerminalPlan(
-	runs []rundomain.Replacement,
-	items []transcript.Item,
-	messages []chat.Message,
-	checkpointRootID string,
-	resumeClaimed bool,
 ) (TerminalPlan, error) {
 	checkpointRoot, err := runtimeidentity.ParseMember(checkpointRootID)
 	if err != nil {
@@ -101,7 +76,6 @@ func newTerminalPlan(
 		items:            slices.Clone(items),
 		messages:         cloneSnapshotMessages(messages),
 		checkpointRootID: checkpointRoot,
-		resumeClaimed:    resumeClaimed,
 	}
 	if err := terminal.validate(); err != nil {
 		return TerminalPlan{}, err
@@ -129,9 +103,6 @@ func (t TerminalPlan) Messages() []chat.Message { return cloneSnapshotMessages(t
 
 // CheckpointRootID returns the canonical executor checkpoint root consumed by the plan.
 func (t TerminalPlan) CheckpointRootID() string { return t.checkpointRootID.String() }
-
-// ConsumesClaimedResume reports whether the plan consumes a claimed Resume hand-off.
-func (t TerminalPlan) ConsumesClaimedResume() bool { return t.resumeClaimed }
 
 // validate proves that the parked-tree terminal write-set is complete,
 // canonical, owner-bound, and carries exactly the Goal accounting fact implied
@@ -163,10 +134,6 @@ func (t TerminalPlan) validate() error {
 		ownedRuns[run.ID()] = struct{}{}
 		actualOrder = append(actualOrder, run.ID())
 		members = append(members, rundomain.TreeMember{RunID: run.ID(), Lineage: run.Lineage()})
-	}
-	rootOutcome, _ := root.Outcome()
-	if t.resumeClaimed && rootOutcome != rundomain.OutcomeLost {
-		return errors.New("sessions: claimed Resume terminal plan must recover a lost Run")
 	}
 	tree, err := rundomain.NewTree(root.ID(), members)
 	if err != nil {
