@@ -2,45 +2,63 @@
 
 ## Current stage
 
-Stage 4h (d7ae9dee) migrates the optional Markdown file renderer to ordinary public
-ESM components. The three extension declarations share one module/export, using
-file scope and fileRenderer placement. Runtime admits normalized selectors and
-namespace resources without evaluating code, clones selector projections, and
-refuses the former file HTML declaration. Core is 2026-10-14.4; backend wire stays
-2026-10-14.2 and private business formats do not change.
+Stage 4i (3f18d71b) migrates the optional Tool results package to ordinary public ESM
+components. Its 24 declarations share one export, with toolResult scope and
+technical toolResultRenderer placement. The existing consumer keeps exact-name
+precedence, shape matching and ambiguity; running/absent results stay generic.
+Core is 2026-10-14.5; backend wire stays 2026-10-14.2 and private business formats
+and recorded outcomes do not change.
 
-The public SDK supplies frozen CapturedFile data from one accepted Runtime read.
-Navigation never retargets it. The existing Workspace file-renderer point preserves
-matching/ambiguity and source inspection. Partial/truncated reads bypass module
-loading. Loading, render failure and retired context retain the recorded source.
-The same exact-release resources, component lifetime and shared React/SDK/UI module
-graph serve this component. Marked is a declared bundled private dependency, with
-its license retained in namespace resources. Authored HTML/MDX, URLs and images
-render as text, without executing file content.
+The SDK owns CapturedToolResult and RecordedFileChange types. The Desktop reducer's
+mutable read model derives from them; ordinary components receive detached frozen
+captures including original call/Run IDs, argument/result bytes, status, error and
+nested ranges/changes. Navigation never replaces captured data. The component keeps
+filtering, incremental expansion, line numbers, ANSI and error/warning text styles
+inside the existing height budget. Result bytes never become HTML, executable URLs
+or Tool replay. Loading/failure/withdrawal retain the generic recorded inspector.
 
-Delete the file HTML source/resource/builder, FilePackageRenderer and file carrier
-read adapter/cases. Tool-result HTML remains only for its next owning migration;
-no compatibility reader or file HTML branch remains. Update public/module docs and
-build entrypoints with the new declarations. External component/protocol consumers
-must rebuild and reinstall changed packages at the new digest.
+Delete the HTML renderer declaration/model/array/read operation and Go/TS binding,
+HTML source/resource/builders, graphical carrier adapters, browser/native guest/page
+IPC, probes and their exclusive tests/tasks. Remove shared UI guest theme/bootstrap
+exports, their token inventory and now-unused direct compiler dependency. Ordinary
+components use the actual shared React/UI provider graph and existing resource lease.
+Old metadata is refused without an alias or compatibility reader. Source integrity,
+private receipts, accepted Runs and package/credential authority retain their owners.
 
-Production Runtime/CLI/Reviews Go builds, SDK/bundled/Desktop TypeScript, targeted
-lint, exact component ESM reproduction, Desktop Vite and layer checks pass. File
-selector admission/code-nonexecution and immutable projection/retired HTML refusal
-checks pass (0.632s/0.456s). Bootstrap test source compiles into a temporary binary;
-its full native execution is deferred. API source gate remains 102/102. Markdown
-ESM is 47,527 bytes. No frontend UI/E2E/screenshot tests were added or run; full,
-vet, race and native process verification stay in the final consolidated phase.
+The migrated resource security regression exposed bare filesystem errors for missing
+or escaped component resources. Public ReadResource now preserves their causes while
+classifying unavailable resources consistently; invalid inputs/cancellation keep
+their categories. Changed bytes, symlink/missing resources and cancellation checks
+pass, without weakening assertions.
+
+Production Runtime/CLI/Reviews builds, SDK/UI/bundled/Desktop types, targeted lint,
+UI build, exact ESM reproduction, Desktop Vite and layer checks pass. Domain selectors
+and immutable projections pass (0.428s); admission/retired HTML/resource integrity and
+cancellation pass (0.610s). Dependency rule passes (0.792s); CLI API inventory passes
+(25.400s). API source coverage is 101/101 after deleting one obsolete operation.
+Bootstrap/installation/execution and Wails Desktop test sources compile into removed
+temporary binaries. Native linking reports deployment-version/duplicate-library
+warnings; supported platform task qualification remains final work. Tool ESM is
+4,116 bytes. No frontend UI/E2E/screenshot tests were added or run. Full/vet/race and
+native process execution remain concentrated at final verification.
 
 Main 993eb865 remains integrated; merge is already up to date. Original proposal,
-review and draft hashes remain unchanged. Temporary binaries, failed-install log
-and owned Desktop dist are removed. The full goal remains active. Next replace
-Tool-result/action carriers and actual CLI/Core facades; finish scoped dependencies,
-canonical model decorators/streaming, cross-generation recovery, independent author
-parity and all P01-P48/final acceptance.
+review and draft hashes remain unchanged. Owned dist/temp binaries and empty retired
+directories are removed. The full goal remains active. Next migrate contextual
+Actions and actual CLI/Core facades, then complete scoped dependencies, canonical
+model decorators/streaming, cross-generation recovery, independent author parity and
+all P01-P48/final acceptance.
 
 ## Completed
 
+- Stage 4i (3f18d71b): public recorded Tool-result ESM and frozen SDK context; retain
+  exact/shape matching, generic inspection, filtering, rows, ANSI and original evidence.
+- Stage 4i: delete all remaining HTML renderer APIs/models/resources/builders and
+  browser/native guests, IPC, appearance bootstrap and exclusive probes/tests/tasks.
+- Stage 4i: derive mutable client Tool projection from public record types; preserve
+  resource error causes/cancellation and migrate security regression to ordinary JS.
+- Stage 4i: Core .5/generated consumers and public docs updated; source/type/build and
+  focused checks pass, native test sources compile; final execution remains open.
 - Stage 4h (d7ae9dee): public file-scoped Markdown ESM component, frozen accepted-read
   context and normalized selector admission; preserve source, ambiguity and bounds.
 - Stage 4h: delete file HTML source/resource/builder and graphical carrier/read cases;
@@ -321,7 +339,7 @@ parity and all P01-P48/final acceptance.
 - Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
-- The last business View carrier is removed. Replace remaining renderer/action carriers through ordinary public components and operations; complete their real owning lifecycle. No frontend UI/E2E execution is authorized.
+- All business View and renderer HTML carriers are removed. Replace remaining contextual actions/Core facades through ordinary public components and operations; complete their real owning lifecycle. No frontend UI/E2E execution is authorized.
 - Complete the canonical model execution contract, installed streaming decorators/remote next, frozen order, cancellation/backpressure and preservation of inner model evidence.
 - Retain and execute final acceptance for Stage 3i business-only Memory input and missing-callback admission; Stage 3k installed public calls/refusal/recovery; Stage 3l original target/caller metadata; Stage 3m durable Schedules trigger propagation; Stage 3n dependency resolution/cycles; Stage 3o activation publication/retirement; Stage 3p provider waiting, setup/callback/authority/lifetime integration. Compilation is not runtime acceptance. Stage 3m has implemented the earlier durable handoff gap.
 - Complete public independent-author/module packaging, final declaration/activation/package integrity audit, deletion audit and all requirement-level verification. Current-source author builds do not establish availability of a published Runtime module.
@@ -329,7 +347,7 @@ parity and all P01-P48/final acceptance.
 
 ## Next
 
-1. Retire remaining renderer/action carriers and Core business facades by migrating
+1. Retire remaining contextual action and Core business facades by migrating
    their real consumers. Preserve original binding/receipt/Run ownership and delete
    each replaced API/carrier in its owning slice. Retain Stage 4g native process
    acceptance for the final consolidated phase.
@@ -342,6 +360,8 @@ parity and all P01-P48/final acceptance.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Tool renderers use ordinary components over public frozen recorded data; retire all guest machinery | Current installed presentation is not historical execution authority; the result and its Run remain with existing owners | Historical script installation, Tool replay, old readRenderer aliases, duplicate Tool projection schemas or preserving unused native/page channels |
+| 2026-10-14 | Resource unavailability preserves its I/O cause and cancellation category at the public adapter | Ordinary ESM resources require the same integrity/refusal guarantee as the removed carrier | Weakening symlink/missing assertions, leaking bytes on error, replacing cancellation with unavailable or swallowing the underlying failure |
 | 2026-10-14 | File renderers use ordinary components over frozen accepted reads | The read is already owned by Runtime; a carrier refresh is not another file access owner, and a component needs the same public module/lifetime contract as other placements | File HTML compatibility, live navigation retargeting, backend activation for static data or a second file store |
 | 2026-10-14 | Successful setup precedes explicit once-per-session ActivationResource start | Provisional registration must not advance business work; lost activation acknowledgement cannot duplicate the loop | Starting the loop inside setup, browser wake-ups, a second host timer or another scheduler |
 | 2026-10-14 | Schedules owns clock/scan/original private recovery, with host driver/export deletion | Enabled own installations must recover captures independently of provider selection or UI; manual receipt belongs to the original private command | Selected-only host scanning, public time/dispatch exports, rereading changed definitions, new identities or a competing receipt store |
@@ -461,10 +481,10 @@ Status is open until code and appropriate verification prove the requirement.
 | --- | --- | --- |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and file HTML in Stage 4h; Tool renderer/action and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
+| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i; contextual action and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | File-scoped Markdown, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | File-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining action placements and final lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -495,6 +515,28 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4i public Tool results and all guest machinery deletion
+
+- Passed: Runtime/CLI/Reviews production Go builds; SDK/UI/bundled/Desktop TypeScript;
+  targeted lint, UI build, exact ESM reproduction, Vite and layer gate. API source gate
+  101/101 (88 graphical, six Go headless, six materialized, one HTTP), three sidecars
+  and 15 existing topics. Removed readRenderer accounts for the changed operation count.
+- Passed: Domain component selectors/immutable projection (0.428s); retired HTML
+  refusal, independent sibling admission, byte integrity, escaped/missing resource
+  refusal and preserved cancellation (pluginpackage 0.610s). Initial migrated security
+  failure exposed missing unavailability classification; production boundary repaired,
+  original assertions retained. No active failure remains in these executed checks.
+- Passed: unchanged dependency rule (0.792s) and CLI public API inventory (25.400s).
+  Bootstrap, installation, execution and native Desktop test sources compile into
+  temporary binaries, removed afterward. Source compilation does not prove native
+  component execution or supported package qualification. Native linker emits macOS
+  deployment-version and duplicate-library warnings under the direct compile command.
+- Deleted: retired guest/frame/renderer/theme tests and probes/build entries only.
+  Surviving frontend fixtures follow the component contract without new UI tests or
+  execution. Generic inspection, source access and current business/receipt owners stay.
+- Not run: full Go/vet/race, installed native process/lifecycle acceptance and package
+  qualification (final consolidated phase); all frontend UI/E2E/screenshot work excluded.
 
 ### Stage 4h public file components and retired carrier deletion
 
@@ -1321,6 +1363,13 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 4i advances Core to 2026-10-14.5 and removes readRenderer, the HTML DTO/array
+  and guest IPC; rebuild generated clients and reinstall Tool results. Shared UI theme
+  projection/bootstrap exports are removed; external authors use ordinary provider
+  context. Backend wire, private business formats and recorded outcomes stay unchanged.
+  Direct native compilation warnings require supported platform packaging verification
+  in the final phase. Original read-only draft still documents retired carrier history;
+  it is intentionally untouched and does not govern the current implementation.
 - Stage 4h advances Core to 2026-10-14.4 and adds component file scope/selector;
   rebuild all generated consumers and reinstall changed packages. Former file HTML
   metadata is refused without an alias or compatibility reader. Backend wire and
