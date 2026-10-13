@@ -2,43 +2,55 @@
 
 ## Current stage
 
-Stage 4b is committed in 3ce298ec. Shared installed/feature command routing now
-publishes the existing Memory/Schedules read invalidations after admitted dispatch
-and original receipt reconciliation, including uncertain outcomes. Captured full
-contract identity selects the feature consumer; reference names are insufficient.
-Binding/origin conflicts and pre-dispatch refusal do not publish a change notice.
-The notice means reads may be stale; private receipts still own business outcomes.
-Former Memory/Schedules adapter publication is removed to avoid duplicate producers.
-Schedules command notices now refresh the whole schedule projection.
+Stage 4c (0c0ecad2) migrates Skills to an ordinary 9508-byte prebuilt public
+component with canonical discovery/document/library/proposal reads and human
+archive/restore/approve/reject commands. Client scope captures the optional workspace;
+the personal library works without one. Confirmations retain inspected instructions
+and revision. Unknown acknowledgement retains the original mutation key/promise/
+retry closure and blocks new commands/catalog changes. Accepted same-target reads
+survive failures; navigation cancels and clears the old target's presentation.
 
-Local main 993eb865 is integrated in 712801fb. Its original Schedule Tool result
-recovery uses the existing capability-bound receipt query and captured installation,
-release, authority and raw Tool arguments. Recovery reconstructs the normal Tool
-output from the historical private result without invoking creation. The separate
-originalCreateResult method, digest-based receipt reader and duplicate connection
-waiter are superseded by the current SDK/connection owners. Original waiting joins
-an owned attempt and refuses replacement authority.
+The component consumes existing public Runtime skills/plugins/file notices with
+its captured workspace watch. Subscription and read retirement use the component
+signal and existing contribution I/O joining. Subscription failure is explicit and
+manual refresh remains available. No business outcome or visibility owner is added.
 
-The focused dispatch check exposed lookup ordering that hid an existing key conflict
-behind a missing changed Run. ecda9dc8 checks the durable original command first;
-new admission validates the captured trigger within that transaction, while replay
-still verifies its calling owner. Receipt conflicts project a typed command_conflict.
-Core .14, backend .4, generated contracts and private storage formats are unchanged.
+The Skills HTML/view kind, four dedicated plugins.readSkill* APIs and generated
+contracts, private Host controls/curation generation/gateway and unused catalog
+DataQuery projections are deleted together. Retired GUI carrier tests/fixtures are
+removed, and backend resource/withdrawal/curation/revision regression source migrates
+to the current component and canonical owners. Core advances to .15; backend .4 and
+private Skill formats are unchanged. Rebuild clients and installed artifacts together.
 
-Production Go builds and focused Memory notice/receipt, Schedule historical result/
-input conflict, dispatch atomicity, private admission and authority checks pass.
-Execution and Bootstrap test source compiles without running their process suites.
-No frontend source changed and no UI/E2E test was added or run. Full tests, vet,
-race, process recovery and requirement-level acceptance remain queued for the final
-concentrated verification phase. Original design input hashes are unchanged.
+Public SDK isErrorType comes from the actual shared Host module. A separately bundled
+RPC error class would fail the host client's instanceof classification. The component
+now imports that shared helper. The API gate scans the owning component project as
+well as Desktop, because installed ESM has no static Desktop import; genuine typed
+calls supply 103/103 operation coverage without exceptions or placeholder calls.
 
-Overall remaining-work estimate is about 60% complete, not a measured acceptance
-pass rate. Schedules/Skills/renderers/actions, scoped dependency retention, complete
-consumer migration, canonical model decorators/streaming, cross-generation command
-recovery and independent author/final P01-P48 acceptance remain open. Stage 4a's
-ordinary bound Memory component and other completed component migrations are retained.
+Production Go, SDK/contract/plugin/Desktop types, changed lint, exact component
+rebuilds, Vite, layer graph and 1014-key/eight-locale checks pass. Canonical Skill
+capability/retired-method dispatch passes in 0.690s; exact release/retired view-kind
+checks pass in 0.743s; 14 API-checker regressions pass in 0.742s. Bootstrap and owning
+test source compile without native process execution. SDK lint's existing assertion
+warnings are repaired without changing their contracts; execution remains queued.
+No frontend UI/E2E tests were added or run. Main 993eb865 is already integrated.
+
+Full scope remains active: Schedules/renderers/actions, scoped dependency retention,
+all-consumer migration, canonical model decorators/streaming, cross-generation
+mutation recovery, independent author parity and final P01-P48 acceptance. Estimated
+overall delivery remains around 60%; a source/build slice is not full acceptance.
+Original proposal, review and old draft hashes remain unchanged.
 
 ## Completed
+
+- Stage 4c (0c0ecad2): ordinary Skills component over canonical public reads and
+  library/proposal commands, frozen target/revision confirmation, original uncertain
+  command handle and owner-notice subscription with canceled/joined I/O.
+- Stage 4c: delete its HTML/kind/four read APIs, private controls/curation generation/
+  gateway and unused read projections; migrate backend lifecycle/curation fixtures.
+- Stage 4c: shared SDK Core-error classification preserves Host class identity;
+  API coverage includes the actual production component project and remains strict.
 
 - Stage 4b (3ce298ec): common command-route consumer invalidation for public and
   feature entrances, exact contract matching, unknown-outcome refresh and removal
@@ -279,7 +291,7 @@ ordinary bound Memory component and other completed component migrations are ret
 
 ## Next
 
-1. Continue Schedules/Skills and renderer/action migration to public components
+1. Continue Schedules and renderer/action migration to public components
    and installed operation contracts; remove each replaced carrier/API in its slice.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
@@ -290,6 +302,9 @@ ordinary bound Memory component and other completed component migrations are ret
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Skills consumes canonical Core operations directly from a public client-scoped component | The existing owners already admit discovery, library and revision-based proposal decisions; personal library inspection does not require a project | Another backend/store, four read wrappers, private Host forms, a curation generation or copied DataQuery catalogs |
+| 2026-10-13 | Classify Core errors through the shared Host SDK module | Bundling another RpcError constructor breaks instanceof checks on errors from the existing Runtime client | Structural guesses, copied RPC classes or feature-specific error wrappers |
+| 2026-10-13 | Scan the actual owning production component project for typed API consumers | Installed ESM is loaded from release resources and has no static Desktop import | Dummy imports/calls, counting visual fixtures or adding operation exemptions |
 | 2026-10-13 | Observe admitted command routing once and project exact captured contracts into existing read invalidations | Public components bypassed feature adapter notices; uncertain dispatch can leave another projection stale | Business switches in generic dispatch, duplicate feature publishers, outcome copies or treating a notice as success |
 | 2026-10-13 | Recover Schedule Tool output through the current bound receipt using original raw arguments | Tool argument translation must not replace persisted evidence or lose the original export/source authority | A separate originalCreateResult RPC, restored ServiceKind dispatch, digest-only receipt storage or a duplicate connection waiter |
 | 2026-10-13 | Memory components bind their own declared contribution and generated complete capability | Public UI must enter the same private business/receipt owner without a current-provider wrapper or fabricated host result | Private Desktop Memory controls, plugin readMemory envelope, copied item state, tools.invoke or UI-only backend routing |
@@ -398,7 +413,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -429,6 +444,30 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4c public Skills component and retired wrappers
+
+- Passed: current production Runtime/CLI/Reviews Go build; SDK, Runtime contract,
+  bundled component and Desktop types; Runtime contract and changed source lint.
+- Passed: exact prebuilt component rebuilds (Skills 9508 bytes), Vite production
+  build, 103/103 API fact families, 14 API-checker regression cases, layer graph
+  (1179 modules/3836 edges) and 1014-key/eight-locale consistency.
+- Passed: canonical Skill reads require the Skill capability independently of
+  plugin presentation, and all four retired operations are method_not_found (0.690s).
+  Current exact-release authority/path checks and retired Skills kind refusal pass
+  (0.743s). Bootstrap/resource/curation and owning test sources compile.
+- Resolved: retired projection/visual fixture references and a mistaken wire scope
+  constant initially prevented compilation; all migrated source now compiles.
+  The API checker initially omitted dynamically loaded component sources. It now
+  scans their real project and credits only typed calls to canonical methods.
+- Resolved: runtime-contract composite check stopped at three existing assertion
+  lint warnings before any test execution. Preserve equivalent assertions with an
+  awaited resource rejection and recorded provider-read arguments; lint now passes.
+- Not run: full/vet/race/native process/recovery checks, queued for final concentrated
+  verification. Frontend UI/E2E/screenshot execution is excluded by user; obsolete
+  carrier cases/fixtures are deleted, with no new graphical tests.
+- Passed: gofmt, git diff --check and original input hashes. Core .15 is generated
+  from the current source; private Skill storage and backend .4 are unchanged.
 
 ### Stage 4b shared invalidation and incoming-main recovery integration
 
@@ -929,6 +968,13 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 4c: product 0c0ecad2 committed and main already integrated. All owned
+  generation/build/type/lint/focused/source-compile/commit handles are terminal.
+  TemporaryDirectory removes test binaries and exact-rebuild probes. Owned frontend
+  dist and empty retired Skills directories are removed. Keep formal ESM/contracts/
+  regressions/docs and development dependencies for the active full goal. No shared
+  source/configuration, original input, external state, credentials or user data changed.
+
 - Stage 4b: formal command changes, main integration and dispatch correction are
   committed. All build/focused/source-compile handles are terminal; temporary test
   binaries and fixture processes/databases are removed by their owning lifetimes.
@@ -1082,6 +1128,14 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 4c advances Core to .15 and removes all Skills-specific read/kind/carrier
+  contracts. Rebuild Runtime/CLI/TS/SDK/Host/packages together. Components should use
+  shared SDK error classification to preserve the current client's class identity.
+  Runtime Skill formats remain unchanged; package withdrawal preserves business data.
+  Actual installed notice consumption and new-window/Runtime-generation mutation
+  journal recovery still require final acceptance. The current retained in-render
+  promise/key does not by itself prove cross-generation recovery.
 
 - Stage 4b emits coarse read invalidation for every admitted Memory/Schedules
   command attempt/reconciliation, including no-change and uncertain outcomes.
