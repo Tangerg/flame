@@ -111,6 +111,14 @@ func (r *runPublications) publishWaitingSubtreeCanceled(
 	)
 }
 
+// publishApprovalsChanged reports that an acceptance transaction persisted one or
+// more standing approval rules. The rule write rides the opening transaction, so
+// nothing in the approvals use case sees it; without this notice a client would
+// never learn the remembered decision exists.
+func (r *runPublications) publishApprovalsChanged() {
+	r.invalidations.Notify(invalidation.Notice{Resource: invalidation.Approvals})
+}
+
 // publishGoalMoved reports a run terminal whose commit also charged the session's
 // goal. The accounting rides the run's transaction, so nothing in the goal use case
 // sees this write — without a notice here, a client would watch a goal spend its

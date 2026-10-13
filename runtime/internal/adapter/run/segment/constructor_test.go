@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/core/chat"
@@ -81,6 +82,9 @@ func mustNewEffects(cfg Config) *Effects {
 	}
 	if dependency.Missing(cfg.ToolResults) {
 		cfg.ToolResults = inertToolResults{}
+	}
+	if dependency.Missing(cfg.RememberedRules) {
+		cfg.RememberedRules = inertRememberedRules{}
 	}
 	if dependency.Missing(cfg.Interrupts) {
 		cfg.Interrupts = &fakeInterrupts{}
@@ -205,6 +209,10 @@ func (inertGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
 type inertToolResults struct{}
 
 func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type inertRememberedRules struct{}
+
+func (inertRememberedRules) Put(context.Context, approval.Rule) error { return nil }
 
 type unusedExecutionTrees struct{}
 

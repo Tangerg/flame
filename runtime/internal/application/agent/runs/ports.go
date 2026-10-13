@@ -9,7 +9,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -103,12 +105,43 @@ type WorkingContextInput struct {
 // or privately query application persistence.
 type WaitingExecutionContinuer interface {
 	StageContinuation(ctx context.Context, continuation WaitingContinuation) (ExecutorRef, error)
+	// DeriveRememberedRules validates each candidate's confirmed arguments against
+	// its frozen tool invocation on the staged tree and derives the canonical rule
+	// subject. A candidate whose arguments do not satisfy that invocation is
+	// omitted: its approval still proceeds one-shot and its Tool fails at
+	// execution, so no rule is remembered for an invocation that cannot run.
+	// Authority is validated and the rules are persisted by the acceptance owner,
+	// not here.
+	DeriveRememberedRules(
+		ctx context.Context,
+		ref ExecutorRef,
+		candidates []RememberedRuleCandidate,
+	) ([]approval.RememberRequest, error)
 	BeginContinuation(
 		ctx context.Context,
 		ref ExecutorRef,
 		answers []InterruptAnswer,
 		input *CommittedUserInput,
 	) error
+}
+
+// RememberedRuleCandidate is one accepted approval answer that requested a
+// standing rule. Request carries the authority skeleton the acceptance owner
+// assembled from the frozen interrupt binding and the chosen scope; Subject is
+// empty until the execution boundary derives it from the confirmed arguments.
+// CallID is the frozen executor call identity the arguments are validated under.
+type RememberedRuleCandidate struct {
+	Request            approval.RememberRequest
+	CallID             string
+	EffectiveArguments tool.Arguments
+}
+
+// ApprovalRulePreparer validates one remembered-rule request against the current
+// source authority and derives its durable rule without persisting it. The
+// acceptance transaction persists the returned rule; a changed authority rejects
+// the whole Resume.
+type ApprovalRulePreparer interface {
+	PrepareRule(ctx context.Context, request approval.RememberRequest) (approval.Rule, error)
 }
 
 // WaitingExecutionRestorer reconstructs one exact committed waiting tree

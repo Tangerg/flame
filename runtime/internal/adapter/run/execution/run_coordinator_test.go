@@ -9,8 +9,17 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
+
+// inertApprovalRulePreparer derives a rule without a source-authority check so an
+// execution coordinator test exercises acceptance without a live approval policy.
+type inertApprovalRulePreparer struct{}
+
+func (inertApprovalRulePreparer) PrepareRule(_ context.Context, request approval.RememberRequest) (approval.Rule, error) {
+	return request.Rule()
+}
 
 type passthroughRunWorkingContext struct{}
 
@@ -33,6 +42,9 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	}
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}
+	}
+	if deps.ApprovalRules == nil {
+		deps.ApprovalRules = inertApprovalRulePreparer{}
 	}
 	starter := any(deps.RootStarts)
 	fillRunDependency(t, &deps.RootCancellation, starter, "root cancellation requester")

@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -71,6 +72,14 @@ type TranscriptStore interface {
 
 type ItemReplacer interface {
 	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
+}
+
+// RememberedRuleStore persists a standing approval rule inside the acceptance
+// transaction. The rule was already derived and validated against its frozen
+// source authority by the acceptance owner; this store only writes it so it lands
+// atomically with the answer, consumed open set, and Segment opening.
+type RememberedRuleStore interface {
+	Put(ctx context.Context, rule approval.Rule) error
 }
 
 type ToolResultStore interface {
@@ -217,6 +226,7 @@ type Config struct {
 	GoalRuns            GoalRunRecorder
 	Transcript          TranscriptStore
 	ItemReplacer        ItemReplacer
+	RememberedRules     RememberedRuleStore
 	ToolResults         ToolResultStore
 	ModelInvocations    ModelInvocationJournal
 	ToolInvocations     ToolInvocationJournal
@@ -240,6 +250,7 @@ type Effects struct {
 	goalRuns            GoalRunRecorder
 	transcript          TranscriptStore
 	itemReplacer        ItemReplacer
+	rememberedRules     RememberedRuleStore
 	toolResults         ToolResultStore
 	modelInvocations    ModelInvocationJournal
 	toolInvocations     ToolInvocationJournal
@@ -274,6 +285,7 @@ func New(cfg Config) (*Effects, error) {
 		{"session store", cfg.Sessions},
 		{"transcript store", cfg.Transcript},
 		{"item replacer", cfg.ItemReplacer},
+		{"remembered rule store", cfg.RememberedRules},
 		{"model invocation journal", cfg.ModelInvocations},
 		{"tool invocation journal", cfg.ToolInvocations},
 		{"conversation store", cfg.Conversation},
@@ -303,6 +315,7 @@ func New(cfg Config) (*Effects, error) {
 		goalRuns:            cfg.GoalRuns,
 		transcript:          cfg.Transcript,
 		itemReplacer:        cfg.ItemReplacer,
+		rememberedRules:     cfg.RememberedRules,
 		toolResults:         cfg.ToolResults,
 		modelInvocations:    cfg.ModelInvocations,
 		toolInvocations:     cfg.ToolInvocations,

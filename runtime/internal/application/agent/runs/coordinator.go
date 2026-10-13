@@ -41,6 +41,7 @@ type Coordinator struct {
 	workingContexts                    WorkingContextComposer
 	models                             ModelAdmitter
 	continuation                       WaitingExecutionContinuer
+	approvalRules                      ApprovalRulePreparer
 	waitingRestorer                    WaitingExecutionRestorer
 	steering                           RunningExecutionSteerer
 	runningSubtreeCanceler             RunningSubtreeCanceler
@@ -98,6 +99,7 @@ type Dependencies struct {
 	WorkingContexts                    WorkingContextComposer
 	Models                             ModelAdmitter
 	Continuation                       WaitingExecutionContinuer
+	ApprovalRules                      ApprovalRulePreparer
 	WaitingRestorer                    WaitingExecutionRestorer
 	Steering                           RunningExecutionSteerer
 	RunningSubtreeCanceler             RunningSubtreeCanceler
@@ -144,6 +146,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"working context composer", deps.WorkingContexts},
 		{"model admitter", deps.Models},
 		{"waiting execution continuer", deps.Continuation},
+		{"approval rule preparer", deps.ApprovalRules},
 		{"waiting execution restorer", deps.WaitingRestorer},
 		{"running execution steerer", deps.Steering},
 		{"running subtree canceler", deps.RunningSubtreeCanceler},
@@ -185,6 +188,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		workingContexts:                    deps.WorkingContexts,
 		models:                             deps.Models,
 		continuation:                       deps.Continuation,
+		approvalRules:                      deps.ApprovalRules,
 		waitingRestorer:                    deps.WaitingRestorer,
 		steering:                           deps.Steering,
 		runningSubtreeCanceler:             deps.RunningSubtreeCanceler,

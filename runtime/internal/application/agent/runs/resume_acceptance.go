@@ -3,6 +3,7 @@ package runs
 import (
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -24,6 +25,10 @@ type ResumeAcceptance struct {
 	// what each answered interrupt asked.
 	items   map[string]transcript.Item
 	answers []InterruptAnswer
+	// rememberedRules are the standing rules derived from the answered approvals
+	// and already validated against their frozen source authority. The acceptance
+	// transaction persists them atomically with the answers it settles.
+	rememberedRules []approval.Rule
 }
 
 // NewResumeAcceptance binds one validated answer set to the exact waiting
@@ -94,6 +99,24 @@ func (r ResumeAcceptance) Pending() Pending { return r.expected.Clone() }
 
 // Answers returns the isolated executor-bound answer set in canonical Pending order.
 func (r ResumeAcceptance) Answers() []InterruptAnswer { return cloneInterruptAnswers(r.answers) }
+
+// WithRememberedRules binds the standing rules the acceptance persists together
+// with its answers. Each rule is already derived from a confirmed invocation and
+// validated against its frozen source authority, so this only records them on an
+// isolated copy of the acceptance.
+func (r ResumeAcceptance) WithRememberedRules(rules []approval.Rule) (ResumeAcceptance, error) {
+	for index, rule := range rules {
+		if err := rule.Validate(); err != nil {
+			return ResumeAcceptance{}, fmt.Errorf("runs: resume acceptance rule[%d]: %w", index, err)
+		}
+	}
+	r.rememberedRules = slices.Clone(rules)
+	return r, nil
+}
+
+// RememberedRules returns an isolated copy of the standing rules the acceptance
+// persists in its transaction.
+func (r ResumeAcceptance) RememberedRules() []approval.Rule { return slices.Clone(r.rememberedRules) }
 
 // ItemReplacements derives the transcript compare-and-swap write-set the
 // acceptance settles: each Question Item read before acceptance carries its

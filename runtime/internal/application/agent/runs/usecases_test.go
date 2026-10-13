@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -187,6 +188,8 @@ type fakeExecutionPorts struct {
 	prepareWaiting    func(WaitingSubtreeCancellationRequest) (PreparedWaitingSubtreeCancellation, error)
 	restoreWaiting    []WaitingContinuation
 	restoreErr        error
+	ruleCandidates    []RememberedRuleCandidate
+	deriveRulesErr    error
 }
 
 type blockingOpeningEffects struct {
@@ -255,6 +258,35 @@ func (f *fakeExecutionPorts) StageContinuation(_ context.Context, continuation W
 		return f.rehydrated, nil
 	}
 	return ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
+}
+
+func (f *fakeExecutionPorts) DeriveRememberedRules(
+	_ context.Context,
+	_ ExecutorRef,
+	candidates []RememberedRuleCandidate,
+) ([]approval.RememberRequest, error) {
+	f.ruleCandidates = candidates
+	if f.deriveRulesErr != nil {
+		return nil, f.deriveRulesErr
+	}
+	requests := make([]approval.RememberRequest, 0, len(candidates))
+	for _, candidate := range candidates {
+		request := candidate.Request
+		request.Subject = approval.InvocationSubject(candidate.EffectiveArguments.Canonical())
+		requests = append(requests, request)
+	}
+	return requests, nil
+}
+
+// stubApprovalRulePreparer derives each rule without a source-authority check, so
+// an answer-set test exercises the acceptance path without a live policy.
+type stubApprovalRulePreparer struct{ err error }
+
+func (s stubApprovalRulePreparer) PrepareRule(_ context.Context, request approval.RememberRequest) (approval.Rule, error) {
+	if s.err != nil {
+		return approval.Rule{}, s.err
+	}
+	return request.Rule()
 }
 
 func (f *fakeExecutionPorts) RestoreWaitingExecution(

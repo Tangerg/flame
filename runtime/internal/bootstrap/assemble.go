@@ -200,6 +200,7 @@ func buildAssemblyCore(
 	}
 	runSegmentConfig.GoalRuns = goalRuns
 	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
+	runSegmentConfig.RememberedRules = cfg.Stores.ApprovalRules
 	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
@@ -226,6 +227,7 @@ func buildAssemblyCore(
 		Conversation:                       execution.conversation.messages,
 		Models:                             modelcatalog.Selections{},
 		Continuation:                       execution.executor,
+		ApprovalRules:                      policy.approvals,
 		WaitingRestorer:                    execution.executor,
 		Steering:                           execution.executor,
 		RunningSubtreeCanceler:             execution.executor,

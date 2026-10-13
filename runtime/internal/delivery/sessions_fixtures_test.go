@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -381,6 +382,7 @@ func newTestHandler(rt testRuntime) *Handler {
 		WorkingContexts:                    passthroughRunWorkingContext{},
 		Models:                             passthroughRunWorkingContext{},
 		Continuation:                       rt,
+		ApprovalRules:                      inertDeliveryApprovalRules{},
 		WaitingRestorer:                    inertRunControl{},
 		Steering:                           rt,
 		RunningSubtreeCanceler:             rt,
@@ -554,6 +556,9 @@ func (executionStub) StageContinuation(_ context.Context, continuation runs.Wait
 func (executionStub) BeginContinuation(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, *runs.CommittedUserInput) error {
 	return nil
 }
+func (executionStub) DeriveRememberedRules(context.Context, runs.ExecutorRef, []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
+	return nil, nil
+}
 func (executionStub) Release(context.Context, runs.ExecutorRef) error { return nil }
 func (executionStub) CancelRunningSubtree(context.Context, runs.ExecutorRef, string, string) error {
 	return nil
@@ -602,6 +607,14 @@ func (s stubRuntime) BeginContinuation(
 	input *runs.CommittedUserInput,
 ) error {
 	return s.executionController().BeginContinuation(ctx, ref, answers, input)
+}
+
+func (s stubRuntime) DeriveRememberedRules(
+	ctx context.Context,
+	ref runs.ExecutorRef,
+	candidates []runs.RememberedRuleCandidate,
+) ([]approval.RememberRequest, error) {
+	return s.executionController().DeriveRememberedRules(ctx, ref, candidates)
 }
 
 func (s stubRuntime) ValidateRootStart(req runs.RootExecutionStart) error {
@@ -1308,6 +1321,7 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		CommandAcceptances: inertSegmentCommandAcceptances{},
 		GoalRuns:           inertSegmentGoalRuns{},
 		ToolResults:        inertSegmentToolResults{},
+		RememberedRules:    inertSegmentRememberedRules{},
 		Tx:                 s.RunInTx,
 	}
 	if s.toolResults != nil {
@@ -1518,6 +1532,18 @@ func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return n
 type inertSegmentToolResults struct{}
 
 func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type inertSegmentRememberedRules struct{}
+
+func (inertSegmentRememberedRules) Put(context.Context, approval.Rule) error { return nil }
+
+// inertDeliveryApprovalRules derives a rule without a source-authority check so a
+// delivery lifecycle test exercises acceptance without a live approval policy.
+type inertDeliveryApprovalRules struct{}
+
+func (inertDeliveryApprovalRules) PrepareRule(_ context.Context, request approval.RememberRequest) (approval.Rule, error) {
+	return request.Rule()
+}
 
 type emptyModelInvocations struct{}
 

@@ -572,6 +572,14 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 			return fmt.Errorf("segment: record answered interrupt %q: %w", replacement.Expected().ID(), err)
 		}
 	}
+	// The standing rules are derived and authority-checked by the acceptance owner.
+	// Persisting them here binds them to the same transaction as the answers and
+	// consumed open set, so a rule never survives an acceptance that rolled back.
+	for _, rule := range acceptance.RememberedRules() {
+		if err := e.rememberedRules.Put(ctx, rule); err != nil {
+			return fmt.Errorf("segment: persist remembered approval rule %q: %w", rule.ID, err)
+		}
+	}
 	return nil
 }
 
