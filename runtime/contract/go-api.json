@@ -3476,7 +3476,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.18\""
+          "value": "\"2026-10-14.19\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -3674,11 +3674,6 @@
           "value": "\"waiting\""
         },
         {
-          "name": "RuntimeAgentMemoryChanged",
-          "type": "RuntimeEventType",
-          "value": "\"agentMemory.changed\""
-        },
-        {
           "name": "RuntimeApprovalsChanged",
           "type": "RuntimeEventType",
           "value": "\"approvals.changed\""
@@ -3719,6 +3714,11 @@
           "value": "\"plan.changed\""
         },
         {
+          "name": "RuntimePluginDataChanged",
+          "type": "RuntimeEventType",
+          "value": "\"plugins.dataChanged\""
+        },
+        {
           "name": "RuntimePluginsChanged",
           "type": "RuntimeEventType",
           "value": "\"plugins.changed\""
@@ -3732,11 +3732,6 @@
           "name": "RuntimeRunsChanged",
           "type": "RuntimeEventType",
           "value": "\"runs.changed\""
-        },
-        {
-          "name": "RuntimeSchedulesChanged",
-          "type": "RuntimeEventType",
-          "value": "\"schedules.changed\""
         },
         {
           "name": "RuntimeSessionsChanged",
@@ -3914,11 +3909,6 @@
           "value": "\"mcp\""
         },
         {
-          "name": "TopicAgentMemoryChanged",
-          "type": "RuntimeTopic",
-          "value": "\"agentMemory.changed\""
-        },
-        {
           "name": "TopicApprovalsChanged",
           "type": "RuntimeTopic",
           "value": "\"approvals.changed\""
@@ -3959,6 +3949,11 @@
           "value": "\"plan.changed\""
         },
         {
+          "name": "TopicPluginDataChanged",
+          "type": "RuntimeTopic",
+          "value": "\"plugins.dataChanged\""
+        },
+        {
           "name": "TopicPluginsChanged",
           "type": "RuntimeTopic",
           "value": "\"plugins.changed\""
@@ -3967,11 +3962,6 @@
           "name": "TopicRunsChanged",
           "type": "RuntimeTopic",
           "value": "\"runs.changed\""
-        },
-        {
-          "name": "TopicSchedulesChanged",
-          "type": "RuntimeTopic",
-          "value": "\"schedules.changed\""
         },
         {
           "name": "TopicSessionsChanged",
@@ -10034,11 +10024,6 @@
               "name": "Servers",
               "type": "[]MCPServerID",
               "tag": "json:\"servers,omitempty\""
-            },
-            {
-              "name": "ScheduleIDs",
-              "type": "[]string",
-              "tag": "json:\"scheduleIds,omitempty\""
             },
             {
               "name": "SessionIDs",

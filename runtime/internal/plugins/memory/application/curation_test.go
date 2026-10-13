@@ -70,7 +70,7 @@ func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	if err != nil || !published {
 		t.Fatalf("Reconcile = (%t, %v), want (true, nil)", published, err)
 	}
-	if len(notices) != 1 || notices[0].Resource != invalidation.AgentMemory {
+	if len(notices) != 1 || notices[0].Resource != invalidation.PluginData {
 		t.Fatalf("notices = %+v, want one AgentMemory invalidation", notices)
 	}
 
@@ -182,7 +182,7 @@ func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	store := &singleWinnerCurationStore{}
 	var notices atomic.Int32
 	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
-		if notice.Resource != invalidation.AgentMemory {
+		if notice.Resource != invalidation.PluginData {
 			t.Errorf("notice = %+v, want AgentMemory", notice)
 		}
 		notices.Add(1)

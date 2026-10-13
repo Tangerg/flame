@@ -23,7 +23,7 @@ type WorkspaceEventType =
   | "skills.changed"
   | "plugins.changed"
   | "mcp.changed"
-  | "schedules.changed"
+  | "plugins.dataChanged"
   | "sessions.changed"
   | "runs.changed"
   | "plan.changed"
@@ -32,7 +32,6 @@ type WorkspaceEventType =
   | "hooks.changed"
   | "models.changed"
   | "approvals.changed"
-  | "agentMemory.changed"
   | "resync";
 
 type WorkspaceTopic = Exclude<WorkspaceEventType, "resync">;
@@ -144,8 +143,6 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
       return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
     case "mcp.changed":
       return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
-    case "schedules.changed":
-      return [];
     case "sessions.changed":
       return ["sessions"];
     case "runs.changed":
@@ -162,7 +159,7 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
       return ["providers", "models", "utilityRole", "embeddingRole"];
     case "approvals.changed":
       return ["approvalMode", "approvalRules"];
-    case "agentMemory.changed":
+    case "plugins.dataChanged":
       return ["agentMemory"];
     case "resync": {
       if (!ev.topics?.length) return ["all"];

@@ -161,7 +161,15 @@ original JSON, then commits private acceptance and the original runNow receipt i
 one transaction. Recovery never rereads an edited/deleted definition or creates a
 new command. Cron acceptance uses the existing private occurrence owner. The backend
 publishes an authenticated contribution notice through plugins.notifyChange; current
-readers receive the existing resync notice and reread rather than infer success.
+readers receive plugins.dataChanged and reread rather than infer success.
+
+Core .19 uses this generic plugin-data topic for command dispatch/recovery,
+authenticated background notices and installed Tool calls. No first-party contract
+match chooses a business topic, and no Schedule record IDs or results enter the
+event. The ordinary component subscribes under its captured lifetime and refreshes
+its bound owner; installation lifecycle remains plugins.changed. Private mutation
+notices still follow actual commits. Rebuild current Go/TS/ESM consumers together;
+the retired schedules.changed topic has no alias or double publication.
 No second scheduler, receipt store or compatibility reader exists. Native restart,
 withdrawal and non-selected-entry acceptance remain final verification requirements.
 

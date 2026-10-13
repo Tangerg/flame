@@ -36,9 +36,8 @@ const (
 	// Goals — a session's autonomous goal changed.
 	Goals Resource = "goals"
 	// PlanState — the session-scoped Plan projection was committed.
-	PlanState Resource = "plan"
-	// Schedules — an editable scheduled run was created, updated, or deleted.
-	Schedules Resource = "schedules"
+	PlanState  Resource = "plan"
+	PluginData Resource = "pluginData"
 	// Hooks — a project's lifecycle-hook trust decision changed.
 	Hooks Resource = "hooks"
 	// Skills — the managed Skill library or proposal collection changed.
@@ -49,16 +48,14 @@ const (
 	Models Resource = "models"
 	// Approvals — the default approval mode or remembered approval rules changed.
 	Approvals Resource = "approvals"
-	// AgentMemory — the agent-memory review collection changed.
-	AgentMemory Resource = "agentMemory"
 )
 
 // Valid reports whether r belongs to the invalidation vocabulary.
 func (r Resource) Valid() bool {
 	return r == Plugins || r == Resync || r == Sessions || r == Runs || r == Interrupts ||
-		r == Goals || r == PlanState || r == Schedules ||
+		r == Goals || r == PlanState || r == PluginData ||
 		r == Hooks || r == Skills || r == MCP || r == Models ||
-		r == Approvals || r == AgentMemory
+		r == Approvals
 }
 
 func (r Resource) String() string {
@@ -72,18 +69,16 @@ func (r Resource) String() string {
 // narrow to. Empty ID sets mean "every member of this resource may be stale",
 // which is the honest answer when a mutation's scope is not enumerable.
 type Notice struct {
-	Resource    Resource
-	SessionIDs  []string
-	RunIDs      []string
-	ScheduleIDs []string
-	Servers     []mcpserver.ID
+	Resource   Resource
+	SessionIDs []string
+	RunIDs     []string
+	Servers    []mcpserver.ID
 }
 
 // Clone returns an owned notice snapshot for publication boundaries.
 func (n Notice) Clone() Notice {
 	n.SessionIDs = slices.Clone(n.SessionIDs)
 	n.RunIDs = slices.Clone(n.RunIDs)
-	n.ScheduleIDs = slices.Clone(n.ScheduleIDs)
 	n.Servers = slices.Clone(n.Servers)
 	return n
 }
@@ -98,11 +93,6 @@ func InSession(resource Resource, sessionID string, runIDs ...string) Notice {
 // once, such as a bulk lifecycle mutation.
 func InSessions(resource Resource, ids ...string) Notice {
 	return Notice{Resource: resource, SessionIDs: slices.Clone(ids)}
-}
-
-// ForSchedules marks editable schedule reads that may be stale.
-func ForSchedules(ids ...string) Notice {
-	return Notice{Resource: Schedules, ScheduleIDs: slices.Clone(ids)}
 }
 
 // ForMCP is the notice for MCP registry and live-connection changes.

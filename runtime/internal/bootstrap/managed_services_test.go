@@ -63,7 +63,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSchedulesChanged}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicPluginDataChanged}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if subscription.Failure != nil {
 		t.Fatal(subscription.Failure)
 	}
@@ -74,7 +74,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 				changed <- err
 				return
 			}
-			if event.(protocol.RuntimeEvent).Type == protocol.RuntimeSchedulesChanged {
+			if event.(protocol.RuntimeEvent).Type == protocol.RuntimePluginDataChanged {
 				changed <- nil
 				return
 			}
@@ -203,7 +203,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	}
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	changed := managedServiceChange(t, r, protocol.TopicAgentMemoryChanged)
+	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "committed before transport loss"})
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {
@@ -313,7 +313,7 @@ func managedServiceChange(t *testing.T, r *poMCPRuntime, topic protocol.RuntimeT
 				return
 			}
 			value := event.(protocol.RuntimeEvent)
-			if topic == protocol.TopicAgentMemoryChanged && value.Type == protocol.RuntimeAgentMemoryChanged || topic == protocol.TopicSchedulesChanged && value.Type == protocol.RuntimeSchedulesChanged {
+			if topic == protocol.TopicPluginDataChanged && value.Type == protocol.RuntimePluginDataChanged {
 				changed <- nil
 				return
 			}
@@ -342,7 +342,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
-	changed := managedServiceChange(t, r, protocol.TopicSchedulesChanged)
+	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	request := scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured schedule", Instructions: "inspect captured work", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath})
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-create", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {

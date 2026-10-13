@@ -55,7 +55,7 @@ export const WIRE_SAMPLES: readonly WireSample[] = [
   { file: "rtevent.files-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.skills-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.mcp-changed.json", shape: "RuntimeEvent" },
-  { file: "rtevent.schedules-changed.json", shape: "RuntimeEvent" },
+  { file: "rtevent.plugin-data-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.plan-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.resync.json", shape: "RuntimeEvent" },
   { file: "ws.diff.json", shape: "Diff" },

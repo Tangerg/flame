@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.18";
+export const PROTOCOL_VERSION = "2026-10-14.19";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1635,7 +1635,7 @@ export type RuntimeEvent =
   | { type: "skills.changed"; names?: string[]; sequence: number }
   | { type: "plugins.changed"; sequence: number }
   | { type: "mcp.changed"; sequence: number; servers?: MCPServerID[] }
-  | { type: "schedules.changed"; scheduleIds?: string[]; sequence: number }
+  | { type: "plugins.dataChanged"; sequence: number }
   | { type: "sessions.changed"; sequence: number; sessionIds?: string[] }
   | { type: "runs.changed"; runIds?: string[]; sequence: number; sessionIds?: string[] }
   | { type: "plan.changed"; sequence: number; sessionIds?: string[] }
@@ -1644,14 +1644,13 @@ export type RuntimeEvent =
   | { type: "hooks.changed"; sequence: number }
   | { type: "models.changed"; sequence: number }
   | { type: "approvals.changed"; sequence: number }
-  | { type: "agentMemory.changed"; sequence: number }
   | { type: "resync"; sequence: number; topics: RuntimeTopic[]; watchIds?: string[] };
 
 export interface RuntimeEventNotification {
   event: RuntimeEvent;
 }
 
-export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
+export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "resync";
 
 export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
@@ -1689,7 +1688,7 @@ export interface RuntimeSubscribeRequest {
 export interface RuntimeSubscribeResponse {
 }
 
-export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
+export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -2209,8 +2208,8 @@ export const WIRE_ENUMS = {
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
-  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
-  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
+  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "resync"],
+  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],

@@ -581,7 +581,7 @@ describe("streamRuntimeEvents — response-stream ownership", () => {
       "rpc_sessions",
     );
     emitRuntime(
-      { type: "schedules.changed", sequence: 1, scheduleIds: ["schedule_1"] },
+      { type: "plugins.dataChanged", sequence: 1 },
       "rpc_schedules",
     );
 
@@ -590,7 +590,7 @@ describe("streamRuntimeEvents — response-stream ownership", () => {
       done: false,
     });
     await expect(schedulesIterator.next()).resolves.toMatchObject({
-      value: { type: "schedules.changed" },
+      value: { type: "plugins.dataChanged" },
       done: false,
     });
 

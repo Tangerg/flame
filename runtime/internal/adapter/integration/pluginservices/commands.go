@@ -25,14 +25,13 @@ type CommandCalls struct {
 	selections    plugins.SelectionStore
 	pool          *mcpconnection.Pool
 	routing       *plugins.Commands
-	changed       func(plugin.CommandBinding)
 }
 
-func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands, changed func(plugin.CommandBinding), publish invalidation.Publish) (*CommandCalls, error) {
+func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
 	if dependency.Missing(store) || dependency.Missing(selections) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
-	return &CommandCalls{publish: publish, installations: store, selections: selections, pool: pool, routing: routing, changed: changed}, nil
+	return &CommandCalls{publish: publish, installations: store, selections: selections, pool: pool, routing: routing}, nil
 }
 
 type commandReply[T any] struct {
@@ -169,8 +168,8 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if err != nil {
 		return zero, err
 	}
-	if record.Phase != plugin.CommandPrepared && c.changed != nil {
-		defer c.changed(record)
+	if record.Phase != plugin.CommandPrepared {
+		defer c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	}
 	binding, err := c.original(ctx, record)
 	if err != nil {
@@ -213,9 +212,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		if err != nil {
 			return zero, err
 		}
-		if c.changed != nil {
-			defer c.changed(record)
-		}
+		defer c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 		result, err = bound.InvokeWithMetadata(ctx, id, record.Input, metadata)
 	} else {
 		var found bool
@@ -256,6 +253,6 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	if !found || owner.Server != actor.Server() {
 		return plugin.ErrUnavailable
 	}
-	c.publish.Notify(invalidation.Notice{Resource: invalidation.Resync})
+	c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return nil
 }

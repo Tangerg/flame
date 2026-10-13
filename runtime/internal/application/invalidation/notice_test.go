@@ -11,24 +11,20 @@ import (
 func TestNoticeConstructorsOwnCallerIdentifiers(t *testing.T) {
 	sessionIDs := []string{"session"}
 	runIDs := []string{"run"}
-	scheduleIDs := []string{"schedule"}
 	server := testsupport.UserMCPServer("server")
 	serverIDs := []mcpserver.ID{server}
 
 	inSession := InSession(Runs, sessionIDs[0], runIDs...)
 	inSessions := InSessions(Sessions, sessionIDs...)
-	schedules := ForSchedules(scheduleIDs...)
 	servers := ForMCP(serverIDs...)
 	runIDs[0] = "changed"
 	sessionIDs[0] = "changed"
-	scheduleIDs[0] = "changed"
 	serverIDs[0] = testsupport.UserMCPServer("changed")
 
 	if !slices.Equal(inSession.RunIDs, []string{"run"}) ||
 		!slices.Equal(inSessions.SessionIDs, []string{"session"}) ||
-		!slices.Equal(schedules.ScheduleIDs, []string{"schedule"}) ||
 		!slices.Equal(servers.Servers, []mcpserver.ID{server}) {
-		t.Fatalf("constructed notices observed caller mutation: %+v %+v %+v %+v", inSession, inSessions, schedules, servers)
+		t.Fatalf("constructed notices observed caller mutation: %+v %+v %+v", inSession, inSessions, servers)
 	}
 }
 

@@ -29,6 +29,7 @@ import (
 	memorysqlite "github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/transport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -109,11 +110,8 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatal(err)
 	}
 	var notices []invalidation.Notice
-	commandInvalidations, err := CommandInvalidations(func(notice invalidation.Notice) { notices = append(notices, notice) })
-	if err != nil {
-		t.Fatal(err)
-	}
-	calls, err := NewCommandCalls(store, selections, pool, routing, commandInvalidations, nil)
+	publication := invalidation.Publish(func(notice invalidation.Notice) { notices = append(notices, notice) })
+	calls, err := NewCommandCalls(store, selections, pool, routing, publication)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,8 +155,22 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatalf("configured role failure became absence: %v", err)
 	}
 	owner.embedder = func(context.Context) (app.Embedder, error) { return nil, nil }
+	if err := callbacks.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("human memory addition unexpectedly called Runtime RPC: %s", r.URL.Path)
+		http.Error(w, "unexpected callback", http.StatusBadRequest)
+	})); err != nil {
+		t.Fatal(err)
+	}
 	addContext := operation.Bind(t.Context(), "memory.add", "keyword")
-	if _, err := owner.Add(addContext, memory.ScopeProject, project, "keyword fact"); err != nil {
+	addition, err := jsoninput.Encode(rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "keyword fact"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contracts.Capability, Method: rpc.Add, Input: addition, Target: capability.Target{Scope: "installation", Reference: installation.ID().String()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := publicAdd.Invoke(addContext); err != nil {
 		t.Fatal(err)
 	}
 	stored, found, err := hostsqlite.NewPluginCommandStore(host).Get(t.Context(), operation.Identity(addContext))
@@ -174,7 +186,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if _, err := installed.Invoke(addContext); err != nil {
 		t.Fatalf("installed entrance did not recover the feature owner's receipt: %v", err)
 	}
-	if len(notices) != beforeRecovery+1 || notices[len(notices)-1].Resource != invalidation.AgentMemory {
+	if len(notices) != beforeRecovery+1 || notices[len(notices)-1].Resource != invalidation.PluginData {
 		t.Fatalf("public command recovery did not invalidate its consumer reads: %+v", notices)
 	}
 	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), capability.Model, "parent-tool")); !errors.Is(err, idempotency.ErrKeyConflict) {
@@ -212,7 +224,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if _, err := installed.Invoke(unconfirmedContext); !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 		t.Fatalf("missing original receipt was not retained as uncertainty: %v", err)
 	}
-	if len(notices) != beforeRecovery+2 || notices[len(notices)-1].Resource != invalidation.AgentMemory {
+	if len(notices) != beforeRecovery+2 || notices[len(notices)-1].Resource != invalidation.PluginData {
 		t.Fatal("unconfirmed original command did not invalidate consumer reads")
 	}
 	items, err := owner.Search(t.Context(), project, "keyword", 5)

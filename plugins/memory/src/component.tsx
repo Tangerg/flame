@@ -282,6 +282,33 @@ export function Memory({ context }: { context: ComponentContext }) {
     void load(signal);
     return () => owner.abort();
   }, [context.signal, load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = AbortSignal.any([context.signal, controller.signal]);
+    const watch = async () => {
+      try {
+        const subscription = await context.runtime.runtimeEvents.subscribe(
+          { topics: ["plugins.dataChanged"] },
+          signal,
+        );
+        if (signal.aborted) return;
+        void load(signal);
+        for await (const event of subscription.events) {
+          if (signal.aborted) break;
+          if (event.type === "plugins.dataChanged" || event.type === "resync")
+            void load(signal);
+        }
+      } catch (error) {
+        if (!signal.aborted)
+          setRead((previous) => ({
+            ...previous,
+            error: error instanceof Error ? error.message : "Memory updates could not be observed.",
+          }));
+      }
+    };
+    void context.track(watch());
+    return () => controller.abort();
+  }, [context, load]);
   const current =
     read.accepted?.scope === scope && read.accepted.cwd === cwd
       ? read.accepted

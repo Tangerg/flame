@@ -87,11 +87,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		})},
 	}
 	environment.admission = admission
-	commandInvalidations, err := pluginservices.CommandInvalidations(deps.publish)
-	if err != nil {
-		return environment, err
-	}
-	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, mcpPool, commands, commandInvalidations, deps.publish)
+	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, mcpPool, commands, deps.publish)
 	if err != nil {
 		return environment, err
 	}

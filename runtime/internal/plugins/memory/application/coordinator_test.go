@@ -283,7 +283,7 @@ func TestCommittedAgentMemoryMutationsPublishInvalidations(t *testing.T) {
 		t.Fatalf("duplicate Add published notices = %+v", notices)
 	}
 	for _, notice := range notices {
-		if notice.Resource != invalidation.AgentMemory {
+		if notice.Resource != invalidation.PluginData {
 			t.Fatalf("notice = %+v, want agent memory", notice)
 		}
 	}

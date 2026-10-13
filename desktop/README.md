@@ -335,3 +335,10 @@ Capacity and reject capacity drift, cumulative overflow, empty continuation and
 repeated cursors under one captured binding. Workspace/ordinary-component page
 width uses the backend default. Notification migration and final process/lifecycle
 acceptance are open; no UI/E2E tests run here.
+
+Core .19 replaces agentMemory.changed and schedules.changed with the generic
+plugins.dataChanged topic. Workspace Memory and ordinary Memory/Schedules components
+reread their captured business owner on that signal or resync. Memory's external
+change subscription is owned by its component generation, tracked and aborted on
+retirement; a subscription failure remains visible without replacing accepted data.
+The event has no business records/IDs. Installation lifecycle stays plugins.changed.

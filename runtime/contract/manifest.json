@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.18",
+  "protocolVersion": "2026-10-14.19",
   "features": [
     "reasoning",
     "multimodal",
@@ -2644,7 +2644,7 @@
       "type": "mcp.changed"
     },
     {
-      "type": "schedules.changed"
+      "type": "plugins.dataChanged"
     },
     {
       "type": "sessions.changed"
@@ -2669,9 +2669,6 @@
     },
     {
       "type": "approvals.changed"
-    },
-    {
-      "type": "agentMemory.changed"
     },
     {
       "type": "resync"
@@ -4082,12 +4079,9 @@
           ]
         },
         {
-          "tag": "schedules.changed",
+          "tag": "plugins.dataChanged",
           "required": [
             "sequence"
-          ],
-          "optional": [
-            "scheduleIds"
           ]
         },
         {
@@ -4151,12 +4145,6 @@
         },
         {
           "tag": "approvals.changed",
-          "required": [
-            "sequence"
-          ]
-        },
-        {
-          "tag": "agentMemory.changed",
           "required": [
             "sequence"
           ]
@@ -9384,14 +9372,6 @@
           "constraint": "uniqueItems"
         },
         {
-          "field": "scheduleIds",
-          "constraint": "nonEmptyItems"
-        },
-        {
-          "field": "scheduleIds",
-          "constraint": "uniqueItems"
-        },
-        {
           "field": "sessionIds",
           "constraint": "nonEmptyItems"
         },
@@ -9422,18 +9402,6 @@
         {
           "field": "watchIds",
           "constraint": "uniqueItems"
-        },
-        {
-          "field": "scheduleIds",
-          "constraint": "identityItems"
-        },
-        {
-          "field": "scheduleIds",
-          "constraint": "maxItemLength(256)"
-        },
-        {
-          "field": "scheduleIds",
-          "constraint": "prefixItems(\"sch_\")"
         },
         {
           "field": "sessionIds",
@@ -9874,7 +9842,7 @@
       "shape": "RuntimeEvent"
     },
     {
-      "file": "rtevent.schedules-changed.json",
+      "file": "rtevent.plugin-data-changed.json",
       "shape": "RuntimeEvent"
     },
     {

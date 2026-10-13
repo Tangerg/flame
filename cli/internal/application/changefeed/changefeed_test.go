@@ -12,10 +12,9 @@ import (
 func TestTopicsReturnsAnOwnedCompleteInventory(t *testing.T) {
 	t.Parallel()
 	want := []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicSchedulesChanged,
+		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged,
 		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged,
 		protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged,
-		protocol.TopicAgentMemoryChanged,
 	}
 	got := Topics()
 	if !slices.Equal(got, want) {

@@ -1701,7 +1701,6 @@ func TestOperationalResourceIdentitiesAreExactAndBounded(t *testing.T) {
 		{name: "segment padding", shape: "SubscribeRunRequest", field: "segmentId", value: SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1 "}},
 		{name: "session oversized", shape: "GetSessionRequest", field: "sessionId", value: GetSessionRequest{SessionID: strings.Repeat("界", MaximumResourceIdentityCharacters+1)}},
 		{name: "run oversized", shape: "GetRunRequest", field: "runId", value: GetRunRequest{RunID: strings.Repeat("r", MaximumResourceIdentityCharacters+1)}},
-		{name: "schedule event prefix", shape: "RuntimeEvent", field: "scheduleIds[0]", value: RuntimeEvent{Type: RuntimeSchedulesChanged, Sequence: 1, ScheduleIDs: []string{"other_1"}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

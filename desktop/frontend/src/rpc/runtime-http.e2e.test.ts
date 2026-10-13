@@ -2109,7 +2109,7 @@ for await (const line of lines) {
     const workspace = client.workspace({ path: workspaceRoot });
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
-      { topics: ["agentMemory.changed"] },
+      { topics: ["plugins.dataChanged"] },
       streamController.signal,
     );
     const events = subscription.events[Symbol.asyncIterator]();
@@ -2124,8 +2124,8 @@ for await (const line of lines) {
         }),
       );
       memoryId = added.id;
-      await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
-        type: "agentMemory.changed",
+      await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
+        type: "plugins.dataChanged",
       });
       await expect(
         readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data })),
@@ -2140,8 +2140,8 @@ for await (const line of lines) {
           Pinned: true,
         }),
       );
-      await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
-        type: "agentMemory.changed",
+      await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
+        type: "plugins.dataChanged",
       });
       await expect(
         readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data })),
@@ -2160,8 +2160,8 @@ for await (const line of lines) {
         deleteInstalledMemory(faultClient, added.id),
       );
       memoryId = undefined;
-      await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
-        type: "agentMemory.changed",
+      await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
+        type: "plugins.dataChanged",
       });
       expect(
         (
@@ -4103,7 +4103,7 @@ for await (const line of lines) {
     const workspace = client.workspace({ path: workspaceRoot });
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
-      { topics: ["agentMemory.changed", "sessions.changed"] },
+      { topics: ["plugins.dataChanged", "sessions.changed"] },
       streamController.signal,
     );
     const runtimeEvents = subscription.events[Symbol.asyncIterator]();
@@ -4112,8 +4112,8 @@ for await (const line of lines) {
       cwd: workspaceRoot,
       content: "project memory marker",
     });
-    await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
-      type: "agentMemory.changed",
+    await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
+      type: "plugins.dataChanged",
     });
     expect(project).toMatchObject({
       scope: "project",
@@ -4143,8 +4143,8 @@ for await (const line of lines) {
       scope: "user",
       content: "user memory marker",
     });
-    await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
-      type: "agentMemory.changed",
+    await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
+      type: "plugins.dataChanged",
     });
     expect(user).toMatchObject({ scope: "user", origin: "user", status: "active" });
     await expect(
@@ -4163,8 +4163,8 @@ for await (const line of lines) {
       Content: "project memory marker updated",
       Pinned: true,
     });
-    await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
-      type: "agentMemory.changed",
+    await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
+      type: "plugins.dataChanged",
     });
     expect(updated).toMatchObject({
       id: project.id,
@@ -4187,12 +4187,12 @@ for await (const line of lines) {
     );
 
     await deleteInstalledMemory(client, project.id);
-    await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
-      type: "agentMemory.changed",
+    await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
+      type: "plugins.dataChanged",
     });
     await deleteInstalledMemory(client, user.id);
-    await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
-      type: "agentMemory.changed",
+    await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
+      type: "plugins.dataChanged",
     });
     expect(
       (

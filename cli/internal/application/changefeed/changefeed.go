@@ -243,18 +243,17 @@ func (s Subscription) validateResyncScope(event Event) error {
 }
 
 type Event struct {
-	Type        protocol.RuntimeEventType
-	Sequence    uint64
-	WatchID     string
-	Workspace   string
-	Paths       []string
-	Names       []string
-	Servers     []protocol.MCPServerID
-	ScheduleIDs []string
-	SessionIDs  []string
-	RunIDs      []string
-	Topics      []protocol.RuntimeTopic
-	WatchIDs    []string
+	Type       protocol.RuntimeEventType
+	Sequence   uint64
+	WatchID    string
+	Workspace  string
+	Paths      []string
+	Names      []string
+	Servers    []protocol.MCPServerID
+	SessionIDs []string
+	RunIDs     []string
+	Topics     []protocol.RuntimeTopic
+	WatchIDs   []string
 }
 
 func (e Event) Validate() error {

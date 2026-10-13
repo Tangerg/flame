@@ -414,7 +414,7 @@ func registerEventUnions(s *Shapes) {
 			{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
 			{Tag: string(protocol.RuntimePluginsChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"servers"}},
-			{Tag: string(protocol.RuntimeSchedulesChanged), Required: []string{"sequence"}, Optional: []string{"scheduleIds"}},
+			{Tag: string(protocol.RuntimePluginDataChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeSessionsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
 			{Tag: string(protocol.RuntimeRunsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
 			{Tag: string(protocol.RuntimePlanChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
@@ -423,7 +423,7 @@ func registerEventUnions(s *Shapes) {
 			{Tag: string(protocol.RuntimeHooksChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeModelsChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeApprovalsChanged), Required: []string{"sequence"}},
-			{Tag: string(protocol.RuntimeAgentMemoryChanged), Required: []string{"sequence"}},
+
 			// Resync names what went stale rather than saying "everything": a client that
 			// subscribed broadly should not reload unrelated resources because one watch
 			// overflowed.

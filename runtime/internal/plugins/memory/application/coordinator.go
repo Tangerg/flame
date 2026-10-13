@@ -62,7 +62,7 @@ func (c *Coordinator) Review(ctx context.Context, id string, decision domain.Rev
 	if err := c.store.Review(ctx, itemID, decision, c.now()); err != nil {
 		return err
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
+	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if err != nil {
 		return domain.Item{}, err
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
+	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return item, nil
 }
 
@@ -94,7 +94,7 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	if err := c.store.Delete(ctx, itemID); err != nil {
 		return err
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
+	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return nil
 }
 
@@ -112,7 +112,7 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 		return domain.Item{}, err
 	}
 	if changed {
-		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
+		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	}
 	return item, nil
 }

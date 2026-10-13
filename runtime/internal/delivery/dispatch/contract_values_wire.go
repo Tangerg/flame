@@ -878,7 +878,7 @@ func registerRuntimeValues(s *Shapes) {
 		{Field: "sequence", Kind: ConstraintMaximum, Limit: protocol.MaximumRuntimeEventSequence},
 	}
 	for _, field := range []string{
-		"paths", "names", "servers", "scheduleIds", "sessionIds", "runIds",
+		"paths", "names", "servers", "sessionIds", "runIds",
 		"topics", "watchIds",
 	} {
 		eventConstraints = append(eventConstraints,
@@ -887,9 +887,6 @@ func registerRuntimeValues(s *Shapes) {
 		)
 	}
 	eventConstraints = append(eventConstraints,
-		FieldConstraint{Field: "scheduleIds", Kind: ConstraintIdentityItems},
-		FieldConstraint{Field: "scheduleIds", Kind: ConstraintMaxItemLength, Limit: protocol.MaximumResourceIdentityCharacters},
-		FieldConstraint{Field: "scheduleIds", Kind: ConstraintPrefixItems, Value: protocol.IDPrefixSchedule},
 		FieldConstraint{Field: "sessionIds", Kind: ConstraintIdentityItems},
 		FieldConstraint{Field: "sessionIds", Kind: ConstraintMaxItemLength, Limit: protocol.MaximumResourceIdentityCharacters},
 		FieldConstraint{Field: "runIds", Kind: ConstraintIdentityItems},

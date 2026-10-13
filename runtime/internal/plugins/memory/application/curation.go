@@ -71,7 +71,7 @@ func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Pub
 		return false, err
 	}
 	if published {
-		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
+		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	}
 	return published, nil
 }

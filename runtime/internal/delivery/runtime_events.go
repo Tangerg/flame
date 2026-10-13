@@ -50,10 +50,8 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{
 			Type: protocol.RuntimePlanChanged, SessionIDs: notice.SessionIDs,
 		}, true
-	case invalidation.Schedules:
-		return protocol.RuntimeEvent{
-			Type: protocol.RuntimeSchedulesChanged, ScheduleIDs: notice.ScheduleIDs,
-		}, true
+	case invalidation.PluginData:
+		return protocol.RuntimeEvent{Type: protocol.RuntimePluginDataChanged}, true
 	case invalidation.Hooks:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeHooksChanged}, true
 	case invalidation.Skills:
@@ -66,8 +64,6 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{Type: protocol.RuntimeModelsChanged}, true
 	case invalidation.Approvals:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeApprovalsChanged}, true
-	case invalidation.AgentMemory:
-		return protocol.RuntimeEvent{Type: protocol.RuntimeAgentMemoryChanged}, true
 	default:
 		return protocol.RuntimeEvent{}, false
 	}

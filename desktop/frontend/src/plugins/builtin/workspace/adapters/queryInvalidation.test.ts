@@ -111,7 +111,7 @@ describe("workspace session projection invalidation", () => {
   });
 
   it("refreshes every read affected by external settings mutations", () => {
-    for (const type of ["models.changed", "approvals.changed", "agentMemory.changed"] as const) {
+    for (const type of ["models.changed", "approvals.changed", "plugins.dataChanged"] as const) {
       invalidateWorkspaceEvent({ type, sequence: 1 });
     }
 

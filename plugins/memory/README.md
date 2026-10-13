@@ -98,6 +98,13 @@ capacity and management page width. Input Limit and output Rows bounds derive fr
 MaxManagementPageItems; omitting Limit uses that owner's default. Complete collectors
 must retain the captured binding/capacity, reject drift/cumulative overflow and never
 return partial success on continuation failure. Core exports no Memory capacity.
+
+External read refresh uses the generic plugins.dataChanged signal. The ordinary
+component retains a tracked generation-owned subscription, cancels it on retirement
+and rereads its bound owner on change/resync. Private commit/curation and generic
+command recovery notices carry no result or business records. A lost acknowledgement
+can invalidate reads but cannot settle the original command. Subscription failure
+remains visible while accepted data is retained.
 The backend publishes the named `memory` capability. Runtime validates the full
 contract and declared export for queries and captures the contribution/export and
 complete capability for original command recovery. Public installed operation

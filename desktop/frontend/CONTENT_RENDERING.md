@@ -2089,7 +2089,7 @@ type RuntimeEvent =
       watchId?: string; workspace?: { path: string } }
   | { type: "skills.changed";     sequence: number; names?: string[] }
   | { type: "mcp.changed";        sequence: number; serverIds?: string[] }
-  | { type: "schedules.changed";  sequence: number; scheduleIds?: string[] }
+  | { type: "plugins.dataChanged"; sequence: number }
   | { type: "sessions.changed";   sequence: number; sessionIds?: string[] }
   | { type: "runs.changed";       sequence: number; runIds?: string[]; sessionIds?: string[] }
   | { type: "plan.changed";       sequence: number; sessionIds?: string[] }
@@ -2103,7 +2103,7 @@ type RuntimeEvent =
 | `files.changed` | G 区文件树 / diff / 评审工作台 |
 | `skills.changed` | G 区 Skill 列表与草稿 |
 | `mcp.changed` | H 设置 MCP 面板 |
-| `schedules.changed` | H 设置定时任务面板 |
+| `plugins.dataChanged` | Plugin-owned reads, including Memory and Schedules |
 | `sessions.changed` | A 侧栏 |
 | `runs.changed` | A 侧栏状态点 / G 区 run 列表 |
 | `plan.changed` | **C3 Plan 常驻条** |

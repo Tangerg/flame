@@ -1238,7 +1238,7 @@ describe("methods factory", () => {
     const sessions = await sessionsPromise;
 
     const schedulesPromise = methods.runtimeEvents.subscribe({
-      topics: ["schedules.changed"],
+      topics: ["plugins.dataChanged"],
     });
     await Promise.resolve();
     const schedulesRequest = t
@@ -1277,9 +1277,8 @@ describe("methods factory", () => {
         method: RUNTIME_EVENT_METHOD,
         params: {
           event: {
-            type: "schedules.changed",
+            type: "plugins.dataChanged",
             sequence: 1,
-            scheduleIds: ["sch_01"],
           },
         },
       },
@@ -1291,7 +1290,7 @@ describe("methods factory", () => {
       value: { type: "sessions.changed" },
     });
     await expect(schedulesIterator.next()).resolves.toMatchObject({
-      value: { type: "schedules.changed" },
+      value: { type: "plugins.dataChanged" },
     });
 
     t.endStream("runtime.subscribe", sessionsRequest.id);
@@ -1318,7 +1317,7 @@ describe("methods factory", () => {
     const sessions = await sessionsPromise;
 
     const schedulesPromise = methods.runtimeEvents.subscribe({
-      topics: ["schedules.changed"],
+      topics: ["plugins.dataChanged"],
     });
     await Promise.resolve();
     const schedulesRequest = t
@@ -1351,13 +1350,13 @@ describe("methods factory", () => {
       {
         jsonrpc: JSONRPC_VERSION,
         method: RUNTIME_EVENT_METHOD,
-        params: { event: { type: "schedules.changed", sequence: 1 } },
+        params: { event: { type: "plugins.dataChanged", sequence: 1 } },
       },
       undefined,
       schedulesRequest!.id,
     );
     await expect(schedulesIterator.next()).resolves.toMatchObject({
-      value: { type: "schedules.changed" },
+      value: { type: "plugins.dataChanged" },
     });
 
     t.endStream("runtime.subscribe", schedulesRequest!.id);

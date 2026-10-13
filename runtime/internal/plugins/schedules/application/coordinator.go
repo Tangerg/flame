@@ -144,7 +144,7 @@ func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedul
 	if err := c.store.Insert(ctx, created); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: create: %w", err)
 	}
-	c.invalidations.Notify(invalidation.ForSchedules(created.ID()))
+	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return created, nil
 }
 
@@ -217,7 +217,7 @@ func (c *Coordinator) updateExisting(
 	if err := c.store.Update(ctx, replacement); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID(), err)
 	}
-	c.invalidations.Notify(invalidation.ForSchedules(updated.ID()))
+	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return updated, nil
 }
 
@@ -230,7 +230,7 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("schedules: delete %q: %w", id, err)
 	}
 	if deleted {
-		c.invalidations.Notify(invalidation.ForSchedules(id))
+		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	}
 	return nil
 }

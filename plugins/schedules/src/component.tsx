@@ -128,14 +128,14 @@ export function Schedules({ context }: { context: ComponentContext }) {
     const watch = async () => {
       try {
         const subscription = await context.runtime.runtimeEvents.subscribe(
-          { topics: ["schedules.changed"] },
+          { topics: ["plugins.dataChanged"] },
           signal,
         );
         if (signal.aborted) return;
         void refresh();
         for await (const event of subscription.events) {
           if (signal.aborted) break;
-          if (event.type === "schedules.changed" || event.type === "resync")
+          if (event.type === "plugins.dataChanged" || event.type === "resync")
             void refresh();
         }
       } catch (error) {

@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -30,10 +29,6 @@ type ToolPreparationConfig struct {
 
 func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPreparation, error) {
 	memoryContracts, err := rpc.NewContracts()
-	if err != nil {
-		return nil, err
-	}
-	schedulesContracts, err := schedulerpc.NewContracts()
 	if err != nil {
 		return nil, err
 	}
@@ -73,15 +68,10 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 				return executable.Call(scoped, invocation)
 			}, release, nil
 		}
-		if snapshot.Selected.HasImplementation(source.Name, schedulesContracts.Capability) {
-			// A lost reply may follow a commit. This notice asks for a new owner
-			// read and supplies no competing success or business state.
-			return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-				defer config.Invalidations.Notify(invalidation.ForSchedules())
-				return call(invocation)
-			}, func() {}, nil
-		}
-		return call, func() {}, nil
+		return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+			defer config.Invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+			return call(invocation)
+		}, func() {}, nil
 	}, nil
 }
 

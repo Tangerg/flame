@@ -19,18 +19,14 @@ func TestEveryInvalidationResourceIsPublishable(t *testing.T) {
 		invalidation.Interrupts,
 		invalidation.Goals,
 		invalidation.PlanState,
-		invalidation.Schedules,
+		invalidation.PluginData,
 		invalidation.Hooks,
 		invalidation.Skills,
 		invalidation.MCP,
 		invalidation.Models,
 		invalidation.Approvals,
-		invalidation.AgentMemory,
 	} {
 		notice := invalidation.Notice{Resource: resource, SessionIDs: []string{"ses_1"}}
-		if resource == invalidation.Schedules {
-			notice = invalidation.ForSchedules("sch_1")
-		}
 		ev, ok := runtimeEventFor(notice)
 		if !ok {
 			t.Fatalf("resource %q has no runtime event", resource)
@@ -44,9 +40,7 @@ func TestEveryInvalidationResourceIsPublishable(t *testing.T) {
 		if sessionScoped && !slices.Equal(ev.SessionIDs, []string{"ses_1"}) {
 			t.Fatalf("resource %q dropped the session scope: %+v", resource, ev.SessionIDs)
 		}
-		if resource == invalidation.Schedules && !slices.Equal(ev.ScheduleIDs, []string{"sch_1"}) {
-			t.Fatalf("schedule invalidation dropped its scope: %+v", ev.ScheduleIDs)
-		}
+
 	}
 }
 

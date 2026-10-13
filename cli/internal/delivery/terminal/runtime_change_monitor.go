@@ -361,8 +361,8 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	if r.resources.mcp || r.resources.approvals {
 		candidates = append(candidates, protocol.TopicMCPChanged)
 	}
-	if r.resources.schedules {
-		candidates = append(candidates, protocol.TopicSchedulesChanged)
+	if r.resources.schedules || r.resources.agentMemory {
+		candidates = append(candidates, protocol.TopicPluginDataChanged)
 	}
 	if r.resources.hooks {
 		candidates = append(candidates, protocol.TopicHooksChanged)
@@ -372,9 +372,6 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	}
 	if r.resources.approvals {
 		candidates = append(candidates, protocol.TopicApprovalsChanged)
-	}
-	if r.resources.agentMemory {
-		candidates = append(candidates, protocol.TopicAgentMemoryChanged)
 	}
 	if r.observesWorkspace() {
 		candidates = append([]protocol.RuntimeTopic{protocol.TopicFilesChanged}, candidates...)

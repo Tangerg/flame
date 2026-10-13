@@ -18,8 +18,8 @@ const (
 	// RuntimeMCPChanged — an MCP server's registration or connection changed.
 	RuntimeMCPChanged     RuntimeEventType = "mcp.changed"
 	RuntimePluginsChanged RuntimeEventType = "plugins.changed"
-	// RuntimeSchedulesChanged — a schedule was created, edited, deleted or fired.
-	RuntimeSchedulesChanged RuntimeEventType = "schedules.changed"
+	// RuntimePluginDataChanged asks plugin consumers to reread their business owner.
+	RuntimePluginDataChanged RuntimeEventType = "plugins.dataChanged"
 	// RuntimeSessionsChanged — a session was created, renamed, deleted or its
 	// lifecycle moved.
 	RuntimeSessionsChanged RuntimeEventType = "sessions.changed"
@@ -39,8 +39,6 @@ const (
 	RuntimeModelsChanged RuntimeEventType = "models.changed"
 	// RuntimeApprovalsChanged — the default approval mode or remembered rules changed.
 	RuntimeApprovalsChanged RuntimeEventType = "approvals.changed"
-	// RuntimeAgentMemoryChanged — the agent-memory review collection changed.
-	RuntimeAgentMemoryChanged RuntimeEventType = "agentMemory.changed"
 	// RuntimeResync — the stream could not keep every change, so what a client holds
 	// may be stale. It names the topics and watches affected; the remedy is to read
 	// them again.
@@ -53,20 +51,19 @@ const (
 type RuntimeTopic string
 
 const (
-	TopicFilesChanged       = RuntimeTopic(RuntimeFilesChanged)
-	TopicSkillsChanged      = RuntimeTopic(RuntimeSkillsChanged)
-	TopicMCPChanged         = RuntimeTopic(RuntimeMCPChanged)
-	TopicPluginsChanged     = RuntimeTopic(RuntimePluginsChanged)
-	TopicSchedulesChanged   = RuntimeTopic(RuntimeSchedulesChanged)
-	TopicSessionsChanged    = RuntimeTopic(RuntimeSessionsChanged)
-	TopicRunsChanged        = RuntimeTopic(RuntimeRunsChanged)
-	TopicPlanChanged        = RuntimeTopic(RuntimePlanChanged)
-	TopicGoalsChanged       = RuntimeTopic(RuntimeGoalsChanged)
-	TopicInterruptsChanged  = RuntimeTopic(RuntimeInterruptsChanged)
-	TopicHooksChanged       = RuntimeTopic(RuntimeHooksChanged)
-	TopicModelsChanged      = RuntimeTopic(RuntimeModelsChanged)
-	TopicApprovalsChanged   = RuntimeTopic(RuntimeApprovalsChanged)
-	TopicAgentMemoryChanged = RuntimeTopic(RuntimeAgentMemoryChanged)
+	TopicFilesChanged      = RuntimeTopic(RuntimeFilesChanged)
+	TopicSkillsChanged     = RuntimeTopic(RuntimeSkillsChanged)
+	TopicMCPChanged        = RuntimeTopic(RuntimeMCPChanged)
+	TopicPluginsChanged    = RuntimeTopic(RuntimePluginsChanged)
+	TopicPluginDataChanged = RuntimeTopic(RuntimePluginDataChanged)
+	TopicSessionsChanged   = RuntimeTopic(RuntimeSessionsChanged)
+	TopicRunsChanged       = RuntimeTopic(RuntimeRunsChanged)
+	TopicPlanChanged       = RuntimeTopic(RuntimePlanChanged)
+	TopicGoalsChanged      = RuntimeTopic(RuntimeGoalsChanged)
+	TopicInterruptsChanged = RuntimeTopic(RuntimeInterruptsChanged)
+	TopicHooksChanged      = RuntimeTopic(RuntimeHooksChanged)
+	TopicModelsChanged     = RuntimeTopic(RuntimeModelsChanged)
+	TopicApprovalsChanged  = RuntimeTopic(RuntimeApprovalsChanged)
 )
 
 // RuntimeTopics returns the closed subscribable set in declaration order. It is
@@ -75,10 +72,10 @@ const (
 // the protocol vocabulary for another.
 func RuntimeTopics() []RuntimeTopic {
 	return []RuntimeTopic{
-		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicPluginsChanged, TopicSchedulesChanged,
+		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicPluginsChanged, TopicPluginDataChanged,
 		TopicSessionsChanged, TopicRunsChanged, TopicPlanChanged, TopicGoalsChanged,
 		TopicInterruptsChanged, TopicHooksChanged,
-		TopicModelsChanged, TopicApprovalsChanged, TopicAgentMemoryChanged,
+		TopicModelsChanged, TopicApprovalsChanged,
 	}
 }
 
@@ -153,8 +150,6 @@ type RuntimeEvent struct {
 	Names []string `json:"names,omitempty"`
 	// mcp.changed
 	Servers []MCPServerID `json:"servers,omitempty"`
-	// schedules.changed
-	ScheduleIDs []string `json:"scheduleIds,omitempty"`
 	// sessions.changed / runs.changed / plan.changed / goals.changed /
 	// interrupts.changed — the resources to read again.
 	SessionIDs []string `json:"sessionIds,omitempty"`

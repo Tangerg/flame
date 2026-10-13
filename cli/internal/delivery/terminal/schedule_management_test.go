@@ -499,12 +499,12 @@ func TestSchedulesChangedRefetchesOnlyTheOpenScheduleReader(t *testing.T) {
 	service := newScheduleServiceStub()
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicSchedulesChanged},
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicPluginDataChanged},
 	}
 	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Schedules: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "schedule invalidation subscription")
-	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicSchedulesChanged {
+	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicPluginDataChanged {
 		t.Fatalf("schedule subscription = %+v", subscription)
 	}
 	host.Type("/schedules")
@@ -515,13 +515,12 @@ func TestSchedulesChangedRefetchesOnlyTheOpenScheduleReader(t *testing.T) {
 	service.schedules[0].Title = "Updated repository review"
 	service.mu.Unlock()
 	source.events <- changefeed.Event{
-		Type: protocol.RuntimeSchedulesChanged, Sequence: 1,
-		ScheduleIDs: []string{"sch_review"},
+		Type: protocol.RuntimePluginDataChanged, Sequence: 1,
 	}
-	awaitSignal(t, source.applied, "schedules.changed delivery")
+	awaitSignal(t, source.applied, "plugins.dataChanged delivery")
 	host.Shows(t, "Updated repository review")
 	if service.reads.Load() <= baseline {
-		t.Fatal("schedules.changed did not refetch the open schedule projection")
+		t.Fatal("plugins.dataChanged did not refetch the open schedule projection")
 	}
 	stop()
 }

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.18` · 95 methods
+Protocol `2026-10-14.19` · 95 methods
 
 ## Methods
 
@@ -463,7 +463,7 @@ Forbidden on every variant: `durable`.
 | `skills.changed` | `sequence` | `names` |
 | `plugins.changed` | `sequence` | — |
 | `mcp.changed` | `sequence` | `servers` |
-| `schedules.changed` | `sequence` | `scheduleIds` |
+| `plugins.dataChanged` | `sequence` | — |
 | `sessions.changed` | `sequence` | `sessionIds` |
 | `runs.changed` | `sequence` | `runIds`, `sessionIds` |
 | `plan.changed` | `sequence` | `sessionIds` |
@@ -472,7 +472,6 @@ Forbidden on every variant: `durable`.
 | `hooks.changed` | `sequence` | — |
 | `models.changed` | `sequence` | — |
 | `approvals.changed` | `sequence` | — |
-| `agentMemory.changed` | `sequence` | — |
 | `resync` | `sequence`, `topics` | `watchIds` |
 
 ### `ArtifactOutcome`
@@ -1116,8 +1115,6 @@ TypeScript validator from this single registry projection.
 | `RuntimeEvent` | `names` | `uniqueItems` |
 | `RuntimeEvent` | `servers` | `nonEmptyItems` |
 | `RuntimeEvent` | `servers` | `uniqueItems` |
-| `RuntimeEvent` | `scheduleIds` | `nonEmptyItems` |
-| `RuntimeEvent` | `scheduleIds` | `uniqueItems` |
 | `RuntimeEvent` | `sessionIds` | `nonEmptyItems` |
 | `RuntimeEvent` | `sessionIds` | `uniqueItems` |
 | `RuntimeEvent` | `runIds` | `nonEmptyItems` |
@@ -1126,9 +1123,6 @@ TypeScript validator from this single registry projection.
 | `RuntimeEvent` | `topics` | `uniqueItems` |
 | `RuntimeEvent` | `watchIds` | `nonEmptyItems` |
 | `RuntimeEvent` | `watchIds` | `uniqueItems` |
-| `RuntimeEvent` | `scheduleIds` | `identityItems` |
-| `RuntimeEvent` | `scheduleIds` | `maxItemLength(256)` |
-| `RuntimeEvent` | `scheduleIds` | `prefixItems("sch_")` |
 | `RuntimeEvent` | `sessionIds` | `identityItems` |
 | `RuntimeEvent` | `sessionIds` | `maxItemLength(256)` |
 | `RuntimeEvent` | `runIds` | `identityItems` |

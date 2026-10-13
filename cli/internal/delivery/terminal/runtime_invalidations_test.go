@@ -300,10 +300,10 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
-		source := runtimeResourceChangeSource(protocol.TopicAgentMemoryChanged)
+		source := runtimeResourceChangeSource(protocol.TopicPluginDataChanged)
 		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
 		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicAgentMemoryChanged)
+		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicPluginDataChanged)
 		host.Type("/memory project")
 		host.Press(input.Enter)
 		host.Shows(t, "confirm release steps")
@@ -312,8 +312,8 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		memory.project[0].Content = "confirm externally revised release steps"
 		memory.project[0].UpdatedAt = time.Now()
 		memory.mu.Unlock()
-		source.events <- changefeed.Event{Type: protocol.RuntimeAgentMemoryChanged, Sequence: 1}
-		awaitSignal(t, source.applied, "agentMemory.changed delivery")
+		source.events <- changefeed.Event{Type: protocol.RuntimePluginDataChanged, Sequence: 1}
+		awaitSignal(t, source.applied, "plugins.dataChanged delivery")
 		host.Shows(t, "confirm externally revised release steps")
 		host.Hides(t, "confirm release steps")
 		stop()
@@ -2081,7 +2081,7 @@ func TestRuntimeInvalidationScope(t *testing.T) {
 		{name: "files", event: changefeed.Event{Type: protocol.RuntimeFilesChanged}},
 		{name: "session resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, want: true},
 		{name: "goal resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicGoalsChanged}}, want: true},
-		{name: "schedule resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicSchedulesChanged}}},
+		{name: "schedule resync", event: changefeed.Event{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicPluginDataChanged}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

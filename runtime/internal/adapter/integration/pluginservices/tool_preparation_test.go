@@ -141,7 +141,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				return embedder, nil
 			}
 			prepare, err := NewToolPreparation(ToolPreparationConfig{Installations: store, Callbacks: callbacks, Embeddings: resolve, Invalidations: func(notice invalidation.Notice) {
-				if notice.Resource == invalidation.Schedules {
+				if notice.Resource == invalidation.PluginData {
 					notices.Add(1)
 				}
 			}})

@@ -154,6 +154,24 @@ default page width. Regenerate canonical JSON, Go/TS and ordinary ESM together;
 backend protocol and private storage/receipt formats remain unchanged. No Core
 capacity alias remains. Business notification migration and final acceptance are open.
 
+Core 2026-10-14.19 replaces agentMemory.changed and schedules.changed with the
+generic plugins.dataChanged topic, without business IDs or results. The existing
+command route publishes after dispatch/recovery, including unknown outcomes; it
+does not match first-party contracts to decide whose reads may be stale. Generic
+backend change notices retain authenticated current actor/release/server/contribution
+admission and publish this signal instead of forcing a global Core resync. Installed
+Tool calls use the same stale-data vocabulary without a Schedule-specific branch.
+Private mutation owners publish only after actual change/commit. CLI/workspace and
+ordinary Memory/Schedules consumers reread their owners; installation lifecycle
+remains plugins.changed. No event can settle a command or advance business state.
+
+Remove the old topics, Schedule event IDs/constructor, closed contract observer and
+generated schema/sample/exports together. Rebuild Go/TS/SDK/ordinary ESM packages;
+backend wire and private storage/receipt formats are unchanged. External subscribers
+must adopt the current topic; no alias or double publication remains. Scoped
+subscriptions, model streaming, wider Tool/dependency lifecycle and final acceptance
+remain active work.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

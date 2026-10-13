@@ -23,7 +23,7 @@
       "files.changed",
       "skills.changed",
       "mcp.changed",
-      "schedules.changed",
+      "plugins.dataChanged",
       "sessions.changed",
       "runs.changed",
       "plan.changed",

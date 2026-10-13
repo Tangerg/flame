@@ -304,3 +304,9 @@ under the captured binding and reject cumulative overflow or empty continuation.
 Page width uses the backend default, and the publisher alone derives row/request
 limits from its business constants. Notification migration and final acceptance
 are still open.
+
+Core .19 replaces Memory/Schedule-specific change topics with plugins.dataChanged.
+The CLI subscribes once when either reader exists and refreshes both through their
+public owner reads. The event contains no business state or record IDs. Unknown
+installed command outcomes still invalidate reads without claiming success; ordinary
+resync and subscription gap/partition behavior remain unchanged.

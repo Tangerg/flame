@@ -3,7 +3,6 @@ package schedules
 import (
 	"context"
 	"errors"
-	"slices"
 	"testing"
 	"time"
 
@@ -42,7 +41,7 @@ func (i *invalidationScheduleStore) Delete(context.Context, string) (bool, error
 	return i.deleteFound, nil
 }
 
-func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
+func TestCommittedScheduleMutationsPublishDataInvalidations(t *testing.T) {
 	store := &invalidationScheduleStore{
 		runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
 			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "@daily",
@@ -75,13 +74,13 @@ func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 		t.Fatalf("Delete: %v", err)
 	}
 
-	want := []string{"sch_created", "sch_updated", "sch_deleted"}
-	if len(notices) != len(want) {
-		t.Fatalf("notices = %+v, want %d", notices, len(want))
+	want := 3
+	if len(notices) != want {
+		t.Fatalf("notices = %+v, want %d", notices, want)
 	}
 	for i, notice := range notices {
-		if notice.Resource != invalidation.Schedules || !slices.Equal(notice.ScheduleIDs, []string{want[i]}) {
-			t.Fatalf("notice %d = %+v, want schedule %q", i, notice, want[i])
+		if notice.Resource != invalidation.PluginData {
+			t.Fatalf("notice %d = %+v, want generic plugin-data invalidation", i, notice)
 		}
 	}
 }

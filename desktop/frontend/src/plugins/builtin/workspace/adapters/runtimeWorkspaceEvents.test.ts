@@ -32,7 +32,7 @@ beforeEach(() => {
     "files.changed",
     "skills.changed",
     "mcp.changed",
-    "schedules.changed",
+    "plugins.dataChanged",
     "sessions.changed",
     "runs.changed",
     "interrupts.changed",
@@ -41,7 +41,7 @@ beforeEach(() => {
     "hooks.changed",
     "models.changed",
     "approvals.changed",
-    "agentMemory.changed",
+    "plugins.dataChanged",
   ]) {
     supportedTopics.add(topic);
   }
@@ -129,7 +129,7 @@ describe("runtime workspace event subscription", () => {
           "hooks.changed",
           "models.changed",
           "approvals.changed",
-          "agentMemory.changed",
+          "plugins.dataChanged",
         ]),
         watches: [{ watchId: "active-session", workspace: { path: "/canonical/repo" } }],
       }),

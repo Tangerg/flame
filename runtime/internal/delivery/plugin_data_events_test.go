@@ -7,16 +7,16 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestScheduleInvalidationProjectsToARuntimeSignal(t *testing.T) {
+func TestPluginDataInvalidationProjectsToARuntimeSignal(t *testing.T) {
 	notifier := &testNotification[invalidation.Notice]{}
 	s := &Handler{workspaceHub: newWorkspaceHub()}
 	s.observeInvalidations(notifier.Observe)
 	events, unsubscribe := s.workspaceHub.subscribe()
 	defer unsubscribe()
 
-	notifier.Publish(invalidation.ForSchedules("sch_1"))
+	notifier.Publish(invalidation.Notice{Resource: invalidation.PluginData})
 	got := <-events
-	if got.Type != protocol.RuntimeSchedulesChanged || len(got.ScheduleIDs) != 1 || got.ScheduleIDs[0] != "sch_1" {
+	if got.Type != protocol.RuntimePluginDataChanged {
 		t.Fatalf("runtime event = %+v", got)
 	}
 }
