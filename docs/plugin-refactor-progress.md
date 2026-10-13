@@ -31,6 +31,8 @@ Stage 2g commit: 0a696aa5de5e7c694e01f09d3d840d28da1e0181.
 Stage 2h commit: a3b82f77e7a2ffa792ba3926d94f746fd9c84835.
 Stage 3a commit: 859c840bf6593db20f3ea2a4c9613374722389a4.
 Stage 3b commit: e392b751117a8b67f8c04ef8e4984ab594ebbf58.
+Stage 3c commit: de2e91c70ba4fc5751a83e0220e673f21957d0b3.
+Stage 3c main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86; the managed checkout is clean after recording this milestone.
 Memory external-effect identity correction commit: 597321f6.
 Stage 3b main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 3a main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
