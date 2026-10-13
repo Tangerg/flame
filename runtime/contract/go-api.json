@@ -6,6 +6,7 @@
         "context",
         "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/plugin",
+        "github.com/Tangerg/flame/runtime/point",
         "github.com/Tangerg/flame/runtime/protocol",
         "iter"
       ],
@@ -48,8 +49,16 @@
           "signature": "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
         },
         {
+          "name": "NewPluginCallbackCaller",
+          "signature": "func(activation plugin.CallbackRef) (*PluginCallbackCaller, error)"
+        },
+        {
           "name": "Open",
           "signature": "func(ctx context.Context, cfg Config) (*Runtime, error)"
+        },
+        {
+          "name": "ResolvePointValues",
+          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *point.Contract, target capability.Target, attributes any, order []protocol.PluginPointReference, options CallOptions) ([]PointValue[T], error)"
         }
       ],
       "types": [
@@ -388,6 +397,10 @@
               "signature": "func(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error)"
             },
             {
+              "name": "ResolvePluginPoint",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
+            },
+            {
               "name": "ResolvePluginRequirements",
               "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
             },
@@ -610,6 +623,16 @@
           ]
         },
         {
+          "name": "PluginCallbackCaller",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "CallPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (result *protocol.CallPluginResponse, err error)"
+            }
+          ]
+        },
+        {
           "name": "PluginCaller",
           "kind": "interface",
           "methods": [
@@ -626,6 +649,38 @@
             {
               "name": "Call",
               "signature": "func(ctx context.Context, input P, options PluginCallOptions) (R, error)"
+            }
+          ]
+        },
+        {
+          "name": "PointResolver",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "ResolvePluginPoint",
+              "signature": "func(context.Context, protocol.ResolvePluginPointRequest, CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
+            }
+          ]
+        },
+        {
+          "name": "PointValue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string"
+            },
+            {
+              "name": "Digest",
+              "type": "string"
+            },
+            {
+              "name": "Contribution",
+              "type": "string"
+            },
+            {
+              "name": "Value",
+              "type": "T"
             }
           ]
         },
@@ -1006,6 +1061,10 @@
             {
               "name": "RenamePluginSession",
               "signature": "func(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "ResolvePluginPoint",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
             },
             {
               "name": "ResolvePluginRequirements",
@@ -1595,8 +1654,10 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/jsoninput",
+        "github.com/Tangerg/flame/runtime/protocol",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/tool",
+        "io",
         "net/http"
       ],
       "constants": [
@@ -1715,8 +1776,16 @@
           "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *capability.Contract) (*CapabilityBinding, error)"
         },
         {
+          "name": "SetUp",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, contributions []SetupContribution, metadata mcp.ParamsBase) error"
+        },
+        {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
+        },
+        {
+          "name": "VerifyCapabilities",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, required []CapabilityExport) error"
         },
         {
           "name": "WithInvocation",
@@ -1731,6 +1800,14 @@
             {
               "name": "BindCapability",
               "signature": "func(name string, contract *capability.Contract) error"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "OnSetup",
+              "signature": "func(handler func(context.Context, Setup) (io.Closer, error)) error"
             },
             {
               "name": "Publish",
@@ -1867,6 +1944,10 @@
             {
               "name": "RevokeSession",
               "signature": "func(session *mcp.ClientSession)"
+            },
+            {
+              "name": "WaitRPC",
+              "signature": "func(ctx context.Context) error"
             }
           ]
         },
@@ -2125,6 +2206,214 @@
               "signature": "func(data []byte) error"
             }
           ]
+        },
+        {
+          "name": "Setup",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Contributions",
+              "signature": "func() ([]SetupContribution, error)"
+            }
+          ]
+        },
+        {
+          "name": "SetupContribution",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Export",
+              "type": "string",
+              "tag": "json:\"export\""
+            },
+            {
+              "name": "Requires",
+              "type": "[]SetupDependency",
+              "tag": "json:\"requires\""
+            }
+          ]
+        },
+        {
+          "name": "SetupDependency",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Contract",
+              "type": "capability.Descriptor",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Optional",
+              "type": "bool",
+              "tag": "json:\"optional\""
+            },
+            {
+              "name": "Bindings",
+              "type": "[]protocol.PluginOperationBinding",
+              "tag": "json:\"bindings\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/runtime/point",
+      "imports": [
+        "encoding/json/jsontext",
+        "github.com/Tangerg/flame/runtime/capability",
+        "github.com/Tangerg/flame/runtime/jsoninput"
+      ],
+      "constants": [
+        {
+          "name": "CanonicalKeys",
+          "type": "Ordering",
+          "value": "\"canonicalKeys\""
+        },
+        {
+          "name": "ExplicitList",
+          "type": "Ordering",
+          "value": "\"explicitList\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "Admit",
+          "signature": "func(descriptor Definition) (*Contract, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(data []byte) (*Contract, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Context",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Target",
+              "type": "capability.Target",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Attributes",
+              "type": "jsontext.Value",
+              "tag": "json:\"attributes\""
+            }
+          ]
+        },
+        {
+          "name": "Contract",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Applicable",
+              "signature": "func(context Context) (bool, error)"
+            },
+            {
+              "name": "Compose",
+              "signature": "func(values []Value, order []string) ([]Value, error)"
+            },
+            {
+              "name": "Definition",
+              "signature": "func() Definition"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "ValidateValue",
+              "signature": "func(value jsoninput.Input) error"
+            }
+          ]
+        },
+        {
+          "name": "Definition",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            },
+            {
+              "name": "Composition",
+              "type": "capability.Composition",
+              "tag": "json:\"composition\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Optional",
+              "type": "bool",
+              "tag": "json:\"optional\""
+            },
+            {
+              "name": "Ordering",
+              "type": "Ordering",
+              "tag": "json:\"ordering\""
+            },
+            {
+              "name": "Value",
+              "type": "jsontext.Value",
+              "tag": "json:\"value\""
+            },
+            {
+              "name": "Applicability",
+              "type": "jsontext.Value",
+              "tag": "json:\"applicability\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Clone",
+              "signature": "func() Definition"
+            }
+          ]
+        },
+        {
+          "name": "Ordering",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Value",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Key",
+              "type": "string"
+            },
+            {
+              "name": "Data",
+              "type": "jsoninput.Input"
+            }
+          ]
         }
       ]
     },
@@ -2133,6 +2422,7 @@
       "imports": [
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/runtime/capability",
+        "github.com/Tangerg/flame/runtime/point",
         "time"
       ],
       "constants": [
@@ -8602,6 +8892,109 @@
           ]
         },
         {
+          "name": "PluginPoint",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Contract",
+              "type": "point.Definition",
+              "tag": "json:\"contract\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginPointBinding",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "Value",
+              "type": "jsontext.Value",
+              "tag": "json:\"value\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginPointReference",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginPointValue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Contract",
+              "type": "point.Definition",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Value",
+              "type": "jsontext.Value",
+              "tag": "json:\"value\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "PluginPresentation",
           "kind": "defined",
           "underlying": "string"
@@ -8688,6 +9081,16 @@
               "name": "Contributions",
               "type": "[]PluginContribution",
               "tag": "json:\"contributions\""
+            },
+            {
+              "name": "Points",
+              "type": "[]PluginPoint",
+              "tag": "json:\"points\""
+            },
+            {
+              "name": "PointValues",
+              "type": "[]PluginPointValue",
+              "tag": "json:\"pointValues\""
             },
             {
               "name": "Servers",
@@ -9686,6 +10089,32 @@
               "name": "ClientCapabilities",
               "type": "*ClientCapabilities",
               "tag": "json:\"clientCapabilities,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ResolvePluginPointRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Contract",
+              "type": "point.Definition",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Target",
+              "type": "capability.Target",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Attributes",
+              "type": "jsontext.Value",
+              "tag": "json:\"attributes\""
+            },
+            {
+              "name": "Order",
+              "type": "[]PluginPointReference",
+              "tag": "json:\"order\""
             }
           ]
         },

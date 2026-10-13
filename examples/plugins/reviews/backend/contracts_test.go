@@ -51,7 +51,7 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 	if err := json.Unmarshal(schemaData, &document); err != nil {
 		t.Fatal(err)
 	}
-	descriptors := []capability.MethodDescriptor{contracts.List.Descriptor(), contracts.Update.Descriptor()}
+	descriptors := contracts.Capability.Descriptor().Methods
 	if len(methods) != len(descriptors) {
 		t.Fatal("generated method surface differs from its backend owner")
 	}

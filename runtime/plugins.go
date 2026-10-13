@@ -14,6 +14,10 @@ func (r *binding) ResolvePluginRequirements(ctx context.Context, request protoco
 	return r.invoke[protocol.ResolvePluginRequirementsRequest, *protocol.Page[protocol.PluginCollaborator]](ctx, delivery.PluginsResolveRequirements, request, callOptions(options))
 }
 
+func (r *binding) ResolvePluginPoint(ctx context.Context, request protocol.ResolvePluginPointRequest, options CallOptions) (*protocol.Page[protocol.PluginPointBinding], error) {
+	return r.invoke[protocol.ResolvePluginPointRequest, *protocol.Page[protocol.PluginPointBinding]](ctx, delivery.PluginsResolvePoint, request, callOptions(options))
+}
+
 func (r *binding) ListPlugins(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.PluginsList, struct{}{}, callOptions(options))
 }

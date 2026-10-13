@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/point"
 )
 
 // CallPluginRequest binds an installed contribution to the consumer's complete
@@ -102,6 +103,8 @@ type PluginRelease struct {
 	Version       string                    `json:"version,omitempty"`
 	Description   string                    `json:"description,omitempty"`
 	Contributions []PluginContribution      `json:"contributions"`
+	Points        []PluginPoint             `json:"points"`
+	PointValues   []PluginPointValue        `json:"pointValues"`
 	Servers       []PluginServerDeclaration `json:"servers"`
 	Inputs        []PluginInput             `json:"inputs"`
 	Themes        []PluginTheme             `json:"themes"`
@@ -409,4 +412,34 @@ type PluginOperationBinding struct {
 	Digest         string                `json:"digest"`
 	Contribution   string                `json:"contribution"`
 	Contract       capability.Descriptor `json:"contract"`
+}
+
+type PluginPoint struct {
+	ID       string           `json:"id"`
+	Contract point.Definition `json:"contract"`
+}
+
+type PluginPointValue struct {
+	ID       string           `json:"id"`
+	Contract point.Definition `json:"contract"`
+	Value    jsontext.Value   `json:"value"`
+}
+
+type PluginPointReference struct {
+	InstallationID string `json:"installationId"`
+	Contribution   string `json:"contribution"`
+}
+
+type ResolvePluginPointRequest struct {
+	Contract   point.Definition       `json:"contract"`
+	Target     capability.Target      `json:"target"`
+	Attributes jsontext.Value         `json:"attributes"`
+	Order      []PluginPointReference `json:"order"`
+}
+
+type PluginPointBinding struct {
+	InstallationID string         `json:"installationId"`
+	Digest         string         `json:"digest"`
+	Contribution   string         `json:"contribution"`
+	Value          jsontext.Value `json:"value"`
 }

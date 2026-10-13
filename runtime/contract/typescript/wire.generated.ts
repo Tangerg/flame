@@ -460,6 +460,17 @@ export interface CreateSessionRequest {
   workspace?: WorkspaceRef;
 }
 
+export interface Definition {
+  applicability: unknown;
+  composition: string;
+  optional: boolean;
+  ordering: string;
+  protocol: string;
+  reference: string;
+  scope: string;
+  value: unknown;
+}
+
 export interface DeleteScheduleRequest {
   id: string;
 }
@@ -1127,6 +1138,8 @@ export type PageOfPluginCollaborator = Page<PluginCollaborator>;
 
 export type PageOfPluginInstallation = Page<PluginInstallation>;
 
+export type PageOfPluginPointBinding = Page<PluginPointBinding>;
+
 export type PageOfPluginProviderSelection = Page<PluginProviderSelection>;
 
 export type PageOfProvider = Page<Provider>;
@@ -1267,6 +1280,29 @@ export interface PluginOperationBinding {
   installationId: string;
 }
 
+export interface PluginPoint {
+  contract: Definition;
+  id: string;
+}
+
+export interface PluginPointBinding {
+  contribution: string;
+  digest: string;
+  installationId: string;
+  value: unknown;
+}
+
+export interface PluginPointReference {
+  contribution: string;
+  installationId: string;
+}
+
+export interface PluginPointValue {
+  contract: Definition;
+  id: string;
+  value: unknown;
+}
+
 export type PluginPresentation = "admitted" | "withheld";
 
 export interface PluginProviderSelection {
@@ -1289,6 +1325,8 @@ export interface PluginRelease {
   digest: string;
   inputs: PluginInput[];
   name: string;
+  pointValues: PluginPointValue[];
+  points: PluginPoint[];
   renderers: PluginRenderer[];
   servers: PluginServerDeclaration[];
   skills: PluginSkill[];
@@ -1589,6 +1627,13 @@ export interface RequestMeta {
   clientCapabilities?: ClientCapabilities;
   clientInfo?: ClientInfo;
   protocolVersion?: string;
+}
+
+export interface ResolvePluginPointRequest {
+  attributes: unknown;
+  contract: Definition;
+  order: PluginPointReference[];
+  target: Target;
 }
 
 export interface ResolvePluginRequirementsRequest {

@@ -1066,6 +1066,19 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
+	for _, shape := range []reflect.Type{typeOf[protocol.PluginPoint](), typeOf[protocol.PluginPointValue]()} {
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
+	}
+	for _, shape := range []reflect.Type{typeOf[protocol.PluginPointReference](), typeOf[protocol.PluginPointBinding]()} {
+		constraints := []FieldConstraint{
+			{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+			{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+		}
+		if shape == typeOf[protocol.PluginPointBinding]() {
+			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()})
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	}
 	for _, shape := range []reflect.Type{typeOf[protocol.ResolvePluginRequirementsRequest](), typeOf[protocol.PluginOperationBinding]()} {
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: []FieldConstraint{
 			{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},

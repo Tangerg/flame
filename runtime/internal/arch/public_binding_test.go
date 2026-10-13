@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "capability", "jsoninput", "localruntime", "plugin", "protocol"}
+	want := []string{".", "capability", "jsoninput", "localruntime", "plugin", "point", "protocol"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -98,6 +98,7 @@ import (
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/localruntime"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/flame/runtime/point"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -120,6 +121,8 @@ var _ = jsoninput.Encode[struct{}]
 var _ = pluginsdk.RequestInput
 var _ = pluginsdk.NewCallbacks
 var _ pluginsdk.CallbackRef
+var _ = point.Admit
+var _ = flameruntime.ResolvePointValues[struct{}]
 
 func TestLocalContractAdmission(t *testing.T) {
 	contract, err := capability.New(capability.Config{Reference: "example.com/records", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "records/read", Kind: capability.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})

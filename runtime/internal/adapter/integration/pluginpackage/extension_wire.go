@@ -1,6 +1,7 @@
 package pluginpackage
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -19,6 +20,17 @@ type wireRequirement struct {
 	ID       plugin.ContributionID `json:"id"`
 	Contract string                `json:"contract"`
 	Optional bool                  `json:"optional"`
+}
+
+type wirePoint struct {
+	ID       plugin.ContributionID `json:"id"`
+	Contract string                `json:"contract"`
+}
+
+type wirePointValue struct {
+	ID       plugin.ContributionID `json:"id"`
+	Contract string                `json:"contract"`
+	Value    jsontext.Value        `json:"value"`
 }
 
 type wireInput struct {
@@ -101,5 +113,5 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 	return plugin.Theme{ID: v.ID, Title: v.Title, Scheme: plugin.ThemeScheme(v.Scheme), Colors: colors}, nil
 }
 
-var declarationFields = []string{"protocol", "inputs", "contributions", "contributes"}
+var declarationFields = []string{"protocol", "inputs", "contributions", "contributes", "points", "pointValues"}
 var presentationFields = []string{"views", "renderers", "actions", "themes"}

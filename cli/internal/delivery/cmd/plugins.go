@@ -14,6 +14,7 @@ import (
 )
 
 type pluginRuntime interface {
+	ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest) ([]protocol.PluginPointBinding, error)
 	ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) ([]protocol.PluginCollaborator, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
 	ListPluginProviders(context.Context) ([]protocol.PluginProviderSelection, error)
@@ -47,6 +48,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
 	root.AddCommand(newPluginCallCommand(provider))
 	root.AddCommand(newPluginRequirementsCommand(provider))
+	root.AddCommand(newPluginPointCommand(provider))
 	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
 		if err != nil {
@@ -114,6 +116,33 @@ func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
 		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginCollaborator]{Data: values})
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Exact installation, release digest and contribution as JSON")
+	return command
+}
+
+func newPluginPointCommand(provider runtimeProvider) *cobra.Command {
+	var input string
+	command := &cobra.Command{Use: "point", Short: "Resolve values of a consumer-defined point", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if len(input) > 1<<20 {
+			return errors.New("plugin input exceeds 1 MiB")
+		}
+		var request protocol.ResolvePluginPointRequest
+		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+			return err
+		}
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := runtime.ResolvePluginPoint(cmd.Context(), request)
+		if err != nil {
+			return err
+		}
+		if values == nil {
+			values = []protocol.PluginPointBinding{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginPointBinding]{Data: values})
+	}}
+	command.Flags().StringVar(&input, "request", "{}", "Consumer point contract, captured target, attributes and explicit order as JSON")
 	return command
 }
 

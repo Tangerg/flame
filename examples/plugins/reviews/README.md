@@ -12,17 +12,17 @@ deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares no graphical view or host action.
 
 The backend uses the public Go binding in `github.com/Tangerg/flame/runtime/plugin`.
-Its typed `reviews.list` and `reviews.update` operations share the same
-private use cases and receipt owner as the model Tools. These are backend method
-bindings; a general installed-provider host operation entrance is still pending.
+Its typed list and update operations share the same private use cases and receipt
+owner as the model Tools. The public installed operation entrance is available
+through Runtime Go, Runtime Protocol, `plugins call`, and the TypeScript client.
 
-The exports use the SDK's single invocation transport. Server setup binds both
-contracts and the read-only receipt query to one Backend, binds the `reviews`
+The exports use the SDK's single invocation transport. Server setup binds the review list, update and analyzer operations
+and the read-only receipt query to one Backend, binds the `reviews`
 capability export, then publishes it before
 starting MCP. Discovery carries the current backend protocol and exact generated
 method schemas; the former per-operation MCP endpoints are not registered.
 
-`backend/contracts.go` owns the two method descriptions, typed bindings and
+`backend/contracts.go` owns the method descriptions, typed bindings and
 the consumer's callable capability contract. The pure public `runtime/capability`
 package admits that contract; `runtime/plugin` binds it to MCP without a second
 schema or fingerprint owner.
@@ -35,8 +35,8 @@ The canonical capability descriptor supplies the same contract for live export
 resolution, original-binding restoration and the generated TypeScript token.
 Schema and method references are presentation projections. Capability calls and
 receipt queries carry the original export identity; omitting it is refused before
-the business owner. The package still lacks the generic installed contribution
-declaration and graphical component entry required by the complete proposal.
+the business owner. The package declares its generic installed contribution and analyzer point.
+The ordinary graphical component remains an outstanding part of the full slice.
 
 The backend owns one example review in `PLUGIN_DATA/reviews.sqlite`. Runtime
 owns execution and approval; its stored Tool results are historical observations,
@@ -82,6 +82,40 @@ After a fresh backend read in that Session, the CLI reads the same recorded resu
 ```sh
 flame --runtime-url http://127.0.0.1:17171 sessions show '<session-id>' --json
 ```
+
+## Analyzer composition
+
+Reviews declares a consumer-owned collection point in
+`backend/analyzers.go`. The typed value names an analyzer contribution in the
+same installed release. The point owns its schema, installation scope, canonical
+key ordering, optional absence and applicability to an open review. Its generated
+contract is packaged with both the consumer and the independent analyzer.
+
+The separate `analyzer/package` contributes an implementation of Reviews' typed
+Analyze capability. It receives only an inspected snapshot and returns findings
+with that review ID and revision; it does not open Reviews' private data.
+Reviews declares the named optional `analyzers` capability dependency, so Core
+checks cross-plugin calls against the entry's frozen setup bindings.
+
+The Reviews analyzer query reads one current snapshot, resolves applicable point
+values through its call-scoped Core callback, invokes their exact installed
+release/contribution through `BindPluginMethod`, and admits finding evidence
+before returning it. An unavailable implementation or invalid result fails the
+query; it does not become an empty successful analysis. An optional empty
+collection and an inapplicable resolved review return an empty finding list.
+The query does not change the review or create another receipt store.
+
+Build and install the analyzer following [its instructions](analyzer/README.md).
+Enable it before activating Reviews so it is in Reviews' frozen optional setup
+collection. Reload Reviews when deliberately changing that collection.
+Call `io.github.tangerg.flame.examples/reviews.analyzers` on
+`review-operations` through `plugins call`, with the selected Reviews installation,
+digest, generated capability descriptor, an installation target and `{}` input.
+This uses the same public invocation path as other installed operations.
+
+Complete installed process/callback acceptance, graphical interaction and
+independent published module validation remain required; compilation is not
+proof of those lifecycles.
 
 ## Mutation and recovery
 

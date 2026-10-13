@@ -1,6 +1,8 @@
 import type {
   CallPluginRequest,
   CallPluginResponse,
+  ResolvePluginPointRequest,
+  PluginPointBinding,
   ResolvePluginRequirementsRequest,
   PluginCollaborator,
   PluginInstallation,
@@ -297,6 +299,10 @@ export interface Methods {
     };
   };
   plugins: {
+    resolvePoint: (
+      request: ResolvePluginPointRequest,
+      signal?: AbortSignal,
+    ) => Promise<Page<PluginPointBinding>>;
     resolveRequirements: (
       request: ResolvePluginRequirementsRequest,
       signal?: AbortSignal,
@@ -595,6 +601,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      resolvePoint: (request, signal) => call("plugins.resolvePoint", request, { signal }),
       resolveRequirements: (request, signal) =>
         call("plugins.resolveRequirements", request, { signal }),
       call: (request, options) => call("plugins.call", request, options),

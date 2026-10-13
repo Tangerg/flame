@@ -5,7 +5,20 @@
       "id": "review-operations",
       "server": "reviews",
       "export": "reviews",
-      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json",
+      "requires": [
+        {
+          "id": "analyzers",
+          "contract": "io.github.tangerg.flame/contracts/analyzer-capability.generated.json",
+          "optional": true
+        }
+      ]
+    }
+  ],
+  "points": [
+    {
+      "id": "analyzers",
+      "contract": "io.github.tangerg.flame/contracts/analyzers.generated.json"
     }
   ]
 }

@@ -102,6 +102,8 @@ type Declaration struct {
 	Description   string
 	Servers       []Server
 	Contributions []Contribution
+	Points        []Point
+	PointValues   []PointValue
 	Inputs        []Input
 	Themes        []Theme
 	Views         []ViewDeclaration
@@ -112,6 +114,8 @@ type Declaration struct {
 }
 
 func (d Declaration) clone() Declaration {
+	d.Points = slices.Clone(d.Points)
+	d.PointValues = slices.Clone(d.PointValues)
 	d.Servers = slices.Clone(d.Servers)
 	for index := range d.Servers {
 		d.Servers[index] = d.Servers[index].clone()
@@ -161,6 +165,16 @@ func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, er
 	}
 	for _, contribution := range declaration.Contributions {
 		if err := builder.AdmitContribution(contribution); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, value := range declaration.Points {
+		if err := builder.AdmitPoint(value); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, value := range declaration.PointValues {
+		if err := builder.AdmitPointValue(value); err != nil {
 			return Release{}, err
 		}
 	}

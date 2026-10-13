@@ -1,5 +1,13 @@
 [
   {
+    "name": "io.github.tangerg.flame.examples/reviews.analyzers",
+    "kind": "query",
+    "target": "installation",
+    "description": "Analyze the current review through its installed analyzer collection and return admitted findings.",
+    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersInput",
+    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersOutput"
+  },
+  {
     "name": "io.github.tangerg.flame.examples/reviews.list",
     "kind": "query",
     "target": "installation",

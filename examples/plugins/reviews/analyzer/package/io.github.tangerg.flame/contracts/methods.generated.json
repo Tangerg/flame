@@ -1,0 +1,10 @@
+[
+  {
+    "name": "io.github.tangerg.flame.examples/reviews.analyze",
+    "kind": "query",
+    "target": "installation",
+    "description": "Analyze an inspected review snapshot and return findings without changing its records.",
+    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput",
+    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput"
+  }
+]

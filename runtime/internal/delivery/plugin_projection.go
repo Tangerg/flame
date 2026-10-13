@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/point"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -62,6 +63,22 @@ func presentPluginDiagnostic(v plugin.Diagnostic) (protocol.PluginDiagnostic, er
 func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error) {
 	v := release.Declaration()
 	result := protocol.PluginRelease{Digest: release.Digest().String(), Name: v.Name, Version: v.Version, Description: v.Description}
+	result.Points = make([]protocol.PluginPoint, 0, len(v.Points))
+	for _, value := range v.Points {
+		contract, err := point.Parse(value.Contract.JSON())
+		if err != nil {
+			return protocol.PluginRelease{}, err
+		}
+		result.Points = append(result.Points, protocol.PluginPoint{ID: value.ID.String(), Contract: contract.Definition()})
+	}
+	result.PointValues = make([]protocol.PluginPointValue, 0, len(v.PointValues))
+	for _, value := range v.PointValues {
+		contract, err := point.Parse(value.Contract.JSON())
+		if err != nil {
+			return protocol.PluginRelease{}, err
+		}
+		result.PointValues = append(result.PointValues, protocol.PluginPointValue{ID: value.ID.String(), Contract: contract.Definition(), Value: value.Value.JSON()})
+	}
 	result.Contributions = make([]protocol.PluginContribution, 0, len(v.Contributions))
 	for _, value := range v.Contributions {
 		contract, err := capability.Parse(value.Contract.JSON())

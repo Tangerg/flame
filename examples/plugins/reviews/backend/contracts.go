@@ -1,6 +1,10 @@
 package reviews
 
 //go:generate sh -c "go run ./cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../package/io.github.tangerg.flame/contracts --ts ../client"
+//go:generate sh -c "go run ./cmd/contracts --analyzers > ../package/io.github.tangerg.flame/contracts/analyzers.generated.json"
+//go:generate sh -c "go run ./cmd/contracts --analyzer-capability | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../analyzer/package/io.github.tangerg.flame/contracts --ts ../analyzer/client"
+//go:generate sh -c "go run ./cmd/contracts --analyzers > ../analyzer/package/io.github.tangerg.flame/contracts/analyzers.generated.json"
+//go:generate sh -c "go run ./cmd/contracts --analyzer-capability > ../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"
 
 import (
 	"github.com/Tangerg/flame/runtime/capability"
@@ -11,6 +15,7 @@ type Contracts struct {
 	Capability *capability.Contract
 	List       *pluginsdk.Method[struct{}, ListResult]
 	Update     *pluginsdk.Method[Update, UpdateResult]
+	Analyzers  *pluginsdk.Method[struct{}, Analysis]
 }
 
 type ListResult struct {
@@ -32,9 +37,13 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	contract, err := capability.New(capability.Config{Reference: "io.github.tangerg.flame.examples/reviews", Composition: capability.Collection, Scope: "installation"}, list.Descriptor(), update.Descriptor())
+	analyzers, err := pluginsdk.NewMethod[struct{}, Analysis](pluginsdk.MethodConfig{Name: "io.github.tangerg.flame.examples/reviews.analyzers", Kind: capability.Query, Target: "installation", Description: "Analyze the current review through its installed analyzer collection and return admitted findings."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	return Contracts{List: list, Update: update, Capability: contract}, nil
+	contract, err := capability.New(capability.Config{Reference: "io.github.tangerg.flame.examples/reviews", Composition: capability.Collection, Scope: "installation"}, list.Descriptor(), update.Descriptor(), analyzers.Descriptor())
+	if err != nil {
+		return Contracts{}, err
+	}
+	return Contracts{List: list, Update: update, Analyzers: analyzers, Capability: contract}, nil
 }

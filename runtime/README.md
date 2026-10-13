@@ -728,6 +728,17 @@ provider after update or uninstall. History is not evicted or capped by an arbit
 lifetime command count. The pure public jsoninput value normalizes object order
 without rounding numbers or replacing original request evidence with decoded DTOs.
 The host and private stores persist this input; fingerprints are derived projections.
+The pure public `point` package owns consumer-defined value schema, scope,
+applicability, optional absence and composition ordering. Namespace declarations
+publish `points` and `pointValues` using local contract files. Installation admits
+these without starting code. `ResolvePluginPoint` and `plugins point` return
+immutable installation/release/value bindings through the ordinary Delivery
+Endpoint; `ResolvePointValues[T]` checks the consumer's typed schema before
+decoding them. Explicit order belongs to the consumer's composition owner.
+This value projection does not execute decorators or persist scoped composition.
+The Reviews analyzer example interprets a value as a same-release callable
+contribution and invokes it through its declared optional capability dependency.
+
 The pure public `capability` package owns local callable metadata, schemas and
 canonical identity. It imports no MCP transport or Runtime internals. The public
 `plugin` SDK, callbacks, actual feature bindings and generator consume that owner;

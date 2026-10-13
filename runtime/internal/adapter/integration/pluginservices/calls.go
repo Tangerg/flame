@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/flame/runtime/point"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -59,6 +60,10 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 
 func (c *CommandCalls) Resolve(ctx context.Context, installation resourceid.InstallationID, digest fingerprint.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
 	return plugins.ResolveRequirements(ctx, c.installations, c.selections, installation, digest, contribution)
+}
+
+func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *point.Contract, target point.Context, order []plugins.PointReference) ([]plugins.PointBinding, error) {
+	return plugins.ResolvePoint(ctx, c.installations, contract, target, order)
 }
 
 func (c *installedCall) Kind() capability.MethodKind { return c.method.Kind() }

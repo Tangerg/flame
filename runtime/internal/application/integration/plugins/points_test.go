@@ -1,0 +1,55 @@
+package plugins
+
+import (
+	"encoding/json/jsontext"
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/runtime/point"
+)
+
+func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t *testing.T) {
+	contract, err := point.Admit(point.Definition{Protocol: capability.Protocol, Reference: "reviews.analyzers", Composition: capability.Collection, Scope: "installation", Optional: true, Ordering: point.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, err := jsoninput.Parse([]byte(`{"title":"evidence"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	makeSnapshot := func(name string, declaration plugin.Declaration) plugin.Snapshot {
+		declaration.Name = name
+		release, err := plugin.NewRelease(testsupport.Digest(name), declaration)
+		if err != nil {
+			t.Fatal(err)
+		}
+		installation, err := plugin.New(testsupport.InstallationID(t), name, release)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := installation.Enable(release); err != nil {
+			t.Fatal(err)
+		}
+		return plugin.Snapshot{Installation: installation, Selected: release}
+	}
+	consumer := makeSnapshot("reviews", plugin.Declaration{Points: []plugin.Point{{ID: "analyzers", Contract: contract.Identity()}}})
+	producer := makeSnapshot("checklist", plugin.Declaration{PointValues: []plugin.PointValue{{ID: "evidence", Contract: contract.Identity(), Value: value}}})
+	store := requirementInstallations{snapshots: []plugin.Snapshot{producer, consumer}}
+	context := point.Context{Target: capability.Target{Scope: "installation", Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+	bindings, err := ResolvePoint(t.Context(), store, contract, context, nil)
+	if err != nil || len(bindings) != 1 || bindings[0].Reference.Installation != producer.Installation.ID() || bindings[0].Digest != producer.Selected.Digest() || bindings[0].Value != value {
+		t.Fatalf("installed point binding: %+v, %v", bindings, err)
+	}
+	store.snapshots = []plugin.Snapshot{producer}
+	if _, err := ResolvePoint(t.Context(), store, contract, context, nil); err == nil {
+		t.Fatal("producer manufactured an undeclared consumer point")
+	}
+	producer.Installation.Disable()
+	store.snapshots = []plugin.Snapshot{producer, consumer}
+	if bindings, err := ResolvePoint(t.Context(), store, contract, context, nil); err != nil || len(bindings) != 0 {
+		t.Fatalf("disabled optional contributor: %+v, %v", bindings, err)
+	}
+}

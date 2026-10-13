@@ -83,6 +83,7 @@ import type {
   PageOfPendingInterruptSet,
   PageOfPluginCollaborator,
   PageOfPluginInstallation,
+  PageOfPluginPointBinding,
   PageOfPluginProviderSelection,
   PageOfProvider,
   PageOfRunRef,
@@ -113,6 +114,7 @@ import type {
   ReadPluginUsageRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
+  ResolvePluginPointRequest,
   ResolvePluginRequirementsRequest,
   ResolveWorkspaceRequest,
   ResumeRunRequest,
@@ -244,6 +246,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.resolvePoint",
   "plugins.resolveRequirements",
   "plugins.call",
   "plugins.listProviders",
@@ -372,6 +375,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.resolvePoint",
   "plugins.resolveRequirements",
   "plugins.call",
   "plugins.listProviders",
@@ -819,6 +823,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.resolvePoint": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1394,6 +1405,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.resolvePoint": [
+    { requires: ["plugins"] },
+  ],
   "plugins.resolveRequirements": [
     { requires: ["plugins"] },
   ],
@@ -1569,6 +1583,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.resolvePoint": { params: ResolvePluginPointRequest; result: PageOfPluginPointBinding };
   "plugins.resolveRequirements": { params: ResolvePluginRequirementsRequest; result: PageOfPluginCollaborator };
   "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };

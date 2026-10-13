@@ -9,6 +9,7 @@ const (
 	PluginsList                Name = "plugins.list"
 	PluginsCall                Name = "plugins.call"
 	PluginsResolveRequirements Name = "plugins.resolveRequirements"
+	PluginsResolvePoint        Name = "plugins.resolvePoint"
 	PluginsListProviders       Name = "plugins.listProviders"
 	PluginsSelectProvider      Name = "plugins.selectProvider"
 	PluginsInstall             Name = "plugins.install"
@@ -44,6 +45,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsResolvePoint, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error)
+	}, ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {
+		return s.ResolvePluginPoint(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsResolveRequirements, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error)
 	}, ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {

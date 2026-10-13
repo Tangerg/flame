@@ -353,6 +353,7 @@ func TestSharedCapabilitiesStayPure(t *testing.T) {
 func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
 	root := moduleRoot(t)
 	forbidExternalImports(t, filepath.Join(root, "capability"), frameworkImports)
+	forbidExternalImports(t, filepath.Join(root, "point"), frameworkImports)
 	checked := make(map[string]bool)
 	err := walkProductionGoFiles(filepath.Join(root, "internal"), func(path string, _ *ast.File) error {
 		directory := filepath.Dir(path)
@@ -1905,7 +1906,7 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput", "capability":
+	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput", "capability", "point":
 		return ringValue
 	case "internal/cancellation", "internal/capture", "internal/completion", "internal/idempotency", "internal/keylock":
 		return ringMechanism

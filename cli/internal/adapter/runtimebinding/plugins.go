@@ -10,6 +10,7 @@ import (
 )
 
 type pluginBinding interface {
+	ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)
 	ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error)
 	ListPluginProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)
@@ -22,6 +23,14 @@ type pluginBinding interface {
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
 	RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+}
+
+func (r *Connection) ResolvePluginPoint(ctx context.Context, request protocol.ResolvePluginPointRequest) ([]protocol.PluginPointBinding, error) {
+	page, err := r.plugins.ResolvePluginPoint(ctx, request, r.callOptions())
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	return requireCompletePage("resolve plugin point", page)
 }
 
 func (r *Connection) ResolvePluginRequirements(ctx context.Context, request protocol.ResolvePluginRequirementsRequest) ([]protocol.PluginCollaborator, error) {

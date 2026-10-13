@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/runtime/point"
 	"io/fs"
 	"maps"
 	"os"
@@ -199,6 +201,34 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			value.Requires = append(value.Requires, plugin.Requirement{ID: required.ID, Contract: dependency.Identity(), Optional: required.Optional})
 		}
 		return release.AdmitContribution(value)
+	})
+	readPoint := func(resource string) (*point.Contract, error) {
+		if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
+			return nil, plugin.ErrInvalid
+		}
+		body, err := read(ctx, root, resource, MaxManifestBytes)
+		if err != nil {
+			return nil, err
+		}
+		return point.Parse(body)
+	}
+	admitContributions(members["points"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "points"}, func(w wirePoint) error {
+		contract, err := readPoint(w.Contract)
+		if err != nil {
+			return err
+		}
+		return release.AdmitPoint(plugin.Point{ID: w.ID, Contract: contract.Identity()})
+	})
+	admitContributions(members["pointValues"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "pointValues"}, func(w wirePointValue) error {
+		contract, err := readPoint(w.Contract)
+		if err != nil {
+			return err
+		}
+		value, err := jsoninput.Parse(w.Value)
+		if err != nil {
+			return err
+		}
+		return release.AdmitPointValue(plugin.PointValue{ID: w.ID, Contract: contract.Identity(), Value: value})
 	})
 	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {

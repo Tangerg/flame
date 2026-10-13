@@ -18,6 +18,7 @@ var publicPackagePaths = []string{
 	runtimeModulePath + "/jsoninput",
 	runtimeModulePath + "/localruntime",
 	runtimeModulePath + "/plugin",
+	runtimeModulePath + "/point",
 	runtimeModulePath + "/protocol",
 }
 

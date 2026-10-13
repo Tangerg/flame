@@ -11,12 +11,45 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/flame/runtime/point"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type pluginCallUseCases interface {
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	Resolve(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
+	ResolvePoint(context.Context, *point.Contract, point.Context, []plugins.PointReference) ([]plugins.PointBinding, error)
+}
+
+func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {
+	if s.pluginCalls == nil {
+		return nil, NewFailure(protocol.ErrPluginUnavailable, "plugin points are unavailable")
+	}
+	contract, err := point.Admit(in.Contract)
+	if err != nil {
+		return nil, InvalidParameters(err)
+	}
+	order := make([]plugins.PointReference, 0, len(in.Order))
+	for _, value := range in.Order {
+		installation, err := resourceid.ParseInstallation(value.InstallationID)
+		if err != nil {
+			return nil, InvalidParameters(err)
+		}
+		contribution, err := plugin.ParseContributionID(value.Contribution)
+		if err != nil {
+			return nil, InvalidParameters(err)
+		}
+		order = append(order, plugins.PointReference{Installation: installation, Contribution: contribution})
+	}
+	values, err := s.pluginCalls.ResolvePoint(ctx, contract, point.Context{Target: in.Target, Attributes: in.Attributes}, order)
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	result := make([]protocol.PluginPointBinding, 0, len(values))
+	for _, value := range values {
+		result = append(result, protocol.PluginPointBinding{InstallationID: value.Reference.Installation.String(), Digest: value.Digest.String(), Contribution: value.Reference.Contribution.String(), Value: value.Value.JSON()})
+	}
+	return protocol.NewPage(result), nil
 }
 
 func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {

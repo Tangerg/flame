@@ -3,7 +3,11 @@ package reviews
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
+	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/capability"
+	"io"
 
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -65,6 +69,31 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := backend.OnSetup(func(_ context.Context, setup pluginsdk.Setup) (io.Closer, error) {
+		values, err := setup.Contributions()
+		if err != nil {
+			return nil, err
+		}
+		required, err := NewAnalyzerContracts()
+		if err != nil {
+			return nil, err
+		}
+		for _, value := range values {
+			if value.Export != "reviews" || len(value.Requires) != 1 || value.Requires[0].ID != "analyzers" || !value.Requires[0].Optional {
+				return nil, fmt.Errorf("reviews: named optional analyzers dependency is required")
+			}
+			actual, err := capability.FromDescriptor(value.Requires[0].Contract)
+			if err != nil {
+				return nil, err
+			}
+			if actual.Identity() != required.Capability.Identity() {
+				return nil, fmt.Errorf("reviews: analyzer setup contract differs from the consumer")
+			}
+		}
+		return nil, nil
+	}); err != nil {
+		return nil, err
+	}
 	if err := pluginsdk.RegisterTools(server, list, update); err != nil {
 		return nil, err
 	}
@@ -84,6 +113,31 @@ func NewServer(store *Store) (*sdk.Server, error) {
 			return UpdateResult{}, err
 		}
 		return store.Update(ctx, command.ID, command.Input, admitted)
+	}); err != nil {
+		return nil, err
+	}
+	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (result Analysis, resultErr error) {
+		current, err := store.List(ctx)
+		if err != nil {
+			return Analysis{}, err
+		}
+		if len(current) != 1 {
+			return Analysis{}, fmt.Errorf("reviews: expected the owned example review")
+		}
+		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		if err != nil {
+			return Analysis{}, err
+		}
+		ref, err := pluginsdk.CallbackFromContext(ctx)
+		if err != nil {
+			return Analysis{}, err
+		}
+		client, err := flameruntime.ConnectCallback(ctx, ref)
+		if err != nil {
+			return Analysis{}, err
+		}
+		defer func() { resultErr = errors.Join(resultErr, client.Close()) }()
+		return AnalyzeReview(ctx, client, invocation.Target, current[0])
 	}); err != nil {
 		return nil, err
 	}

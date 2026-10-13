@@ -79,6 +79,9 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 	if slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool { return current.ID == value.ID }) {
 		return refuse(DiagnosticInvalidDeclaration, "duplicate contribution %q", value.ID)
 	}
+	if slices.ContainsFunc(b.declaration.PointValues, func(current PointValue) bool { return current.ID == value.ID }) {
+		return refuse(DiagnosticInvalidDeclaration, "duplicate contribution %q", value.ID)
+	}
 	if slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool {
 		return current.Server == value.Server && current.Export == value.Export && current.Contract != value.Contract
 	}) {

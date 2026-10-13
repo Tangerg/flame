@@ -1,0 +1,81 @@
+package runtime
+
+import (
+	"context"
+	json "encoding/json/v2"
+	"errors"
+
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/runtime/point"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/scope/core/jsonschema"
+)
+
+type PointResolver interface {
+	ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest, CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)
+}
+
+type PointValue[T any] struct {
+	InstallationID string
+	Digest         string
+	Contribution   string
+	Value          T
+}
+
+// ResolvePointValues checks the consumer's typed schema against its published
+// point before decoding immutable installed bindings into consumer-owned values.
+func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *point.Contract, target capability.Target, attributes any, order []protocol.PluginPointReference, options CallOptions) ([]PointValue[T], error) {
+	if dependency.Missing(caller) || contract == nil {
+		return nil, errors.New("runtime: point resolver and admitted contract are required")
+	}
+	schema, err := jsonschema.For[T]()
+	if err != nil {
+		return nil, err
+	}
+	actual, err := jsoninput.Parse(schema.JSON())
+	if err != nil {
+		return nil, err
+	}
+	required, err := jsoninput.Parse(contract.Definition().Value)
+	if err != nil {
+		return nil, err
+	}
+	if actual != required {
+		return nil, errors.New("runtime: consumer type differs from its point value schema")
+	}
+	contextJSON, err := jsoninput.Encode(attributes)
+	if err != nil {
+		return nil, err
+	}
+	if order == nil {
+		order = []protocol.PluginPointReference{}
+	}
+	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: contract.Definition(), Target: target, Attributes: contextJSON.JSON(), Order: order}, options)
+	if err != nil {
+		return nil, err
+	}
+	if page == nil || page.NextCursor != "" {
+		return nil, ErrInvalidResponse
+	}
+	if err := protocol.ValidateWireTree(*page); err != nil {
+		return nil, errors.Join(ErrInvalidResponse, err)
+	}
+	values := make([]PointValue[T], 0, len(page.Data))
+	for _, binding := range page.Data {
+		input, err := jsoninput.Parse(binding.Value)
+		if err != nil {
+			return nil, errors.Join(ErrInvalidResponse, err)
+		}
+		if err := contract.ValidateValue(input); err != nil {
+			return nil, errors.Join(ErrInvalidResponse, err)
+		}
+		var value T
+		if err := json.Unmarshal(input.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
+			return nil, errors.Join(ErrInvalidResponse, err)
+		}
+		values = append(values, PointValue[T]{InstallationID: binding.InstallationID, Digest: binding.Digest, Contribution: binding.Contribution, Value: value})
+	}
+	return values, nil
+}
