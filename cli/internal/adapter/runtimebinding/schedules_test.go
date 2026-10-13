@@ -14,18 +14,19 @@ import (
 
 type scheduleBindingStub struct {
 	pluginBinding
-	queries       []protocol.CallPluginRequest
-	providerReads int
-	provider      string
-	t             *testing.T
-	now           time.Time
-	actions       []string
-	keys          map[string]struct{}
-	created       protocol.CreateScheduleRequest
-	updated       protocol.UpdateScheduleRequest
-	createResult  *protocol.Schedule
-	updateResult  *protocol.Schedule
-	list          func(protocol.PageQuery) *protocol.Page[protocol.Schedule]
+	queries          []protocol.CallPluginRequest
+	protocolOverride string
+	providerReads    int
+	provider         string
+	t                *testing.T
+	now              time.Time
+	actions          []string
+	keys             map[string]struct{}
+	created          protocol.CreateScheduleRequest
+	updated          protocol.UpdateScheduleRequest
+	createResult     *protocol.Schedule
+	updateResult     *protocol.Schedule
+	list             func(protocol.PageQuery) *protocol.Page[protocol.Schedule]
 }
 
 const scheduleInstallation = "12345678-1234-1234-1234-123456789abc"
@@ -45,7 +46,11 @@ func (s *scheduleBindingStub) ListPlugins(_ context.Context, options flameruntim
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	return protocol.NewPage([]protocol.PluginInstallation{{ID: scheduleInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "schedules-provider", Contract: contracts.Descriptor()}}}}}), nil
+	descriptor := contracts.Descriptor()
+	if s.protocolOverride != "" {
+		descriptor.Protocol = s.protocolOverride
+	}
+	return protocol.NewPage([]protocol.PluginInstallation{{ID: scheduleInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "schedules-provider", Contract: descriptor}}}}}), nil
 }
 func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	s.assertMeta(options.RequestMeta)
@@ -348,4 +353,12 @@ func TestScheduleReadRejectsDuplicateRowsAcrossPublicPages(t *testing.T) {
 	caller := &Connection{plugins: stub, meta: requestMeta("test")}
 	_, err := caller.Schedules(t.Context())
 	requireRuntimeContractViolation(t, err)
+}
+
+func TestScheduleReadRefusesAnotherPublishedProtocol(t *testing.T) {
+	stub := &scheduleBindingStub{t: t, protocolOverride: "retired"}
+	caller := &Connection{plugins: stub, meta: requestMeta("test")}
+	if _, err := caller.Schedules(t.Context()); err == nil || len(stub.queries) != 0 {
+		t.Fatal("metadata protocol was rewritten before query admission")
+	}
 }

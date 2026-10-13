@@ -201,7 +201,11 @@ func (r *Connection) selectedSchedules(ctx context.Context) (protocol.CallPlugin
 			if contribution.ID != selected.Contribution {
 				continue
 			}
-			actual, err := capability.New(capability.Config{Reference: contribution.Contract.Reference, Composition: contribution.Contract.Composition, Scope: contribution.Contract.Scope}, contribution.Contract.Methods...)
+			encoded, err := json.Marshal(contribution.Contract)
+			if err != nil {
+				return protocol.CallPluginRequest{}, runtimeContractViolation("schedule contribution contract: %v", err)
+			}
+			actual, err := capability.Parse(encoded)
 			if err != nil {
 				return protocol.CallPluginRequest{}, errors.Join(protocol.ErrPluginUnavailable, err)
 			}
