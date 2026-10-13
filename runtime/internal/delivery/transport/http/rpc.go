@@ -1,7 +1,9 @@
 package http
 
 import (
+	"context"
 	json "encoding/json/v2"
+	"errors"
 	"io"
 	"mime"
 	"net/http"
@@ -11,8 +13,23 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 )
+
+type rpcHandler struct{ router *dispatch.Router }
+
+// NewRPCHandler binds the existing RPC/SSE transport to one canonical Endpoint.
+// The enclosing listener owns authentication and request lifetime; this handler
+// owns no listener, independent registry or business policy.
+func NewRPCHandler(endpoint *delivery.Endpoint) (http.Handler, error) {
+	router, err := dispatch.New(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return &rpcHandler{router: router}, nil
+}
 
 // maxRPCBodyBytes caps the JSON-RPC request body to avoid trivial
 // DoS via a giant payload. 4 MB matches typical reasonable runs.start
@@ -23,7 +40,10 @@ const maxRPCBodyBytes = 4 << 20
 // Wire encode/decode goes through transport.DecodeMessage /
 // EncodeMessage — those wrap the MCP SDK's jsonrpc package, which
 // owns the conformant JSON-RPC 2.0 implementation.
-func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
+func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	lifetime, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	r = r.WithContext(lifetime)
 	// Transport-layer preconditions: unsupported media
 	// type ⇒ 415, oversized body ⇒ 413 — both rejected before we spend
 	// effort decoding. Content-Type is only enforced when present (a
@@ -41,6 +61,10 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	// overflows surfaces as 413 rather than silently truncating.
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxRPCBodyBytes+1))
 	if err != nil {
+		if _, tooLarge := errors.AsType[*http.MaxBytesError](err); tooLarge {
+			writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
+			return
+		}
 		recordError(r.Context(), "rpc.read-request", err)
 		writeProblem(w, problemInvalidRequest, "request body could not be read", false)
 		return
@@ -88,7 +112,7 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	// (session_not_found / invalid_params …) leaves EventStream nil and
 	// falls through to the single-shot application/json reply below.
 	if result.EventStream != nil {
-		s.serveStream(w, r, result.Response, result.EventStream, methodLabel)
+		serveStream(w, r, result.Response, result.EventStream, methodLabel, cancel)
 		return
 	}
 

@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"sync"
 	"time"
 
@@ -82,7 +83,7 @@ type callbackActivation struct {
 type callbackCall struct {
 	context  context.Context
 	cancel   context.CancelCauseFunc
-	methods  map[string]boundMethod
+	handler  http.Handler
 	limits   CallbackLimits
 	pending  sync.WaitGroup
 	done     chan struct{}
@@ -104,6 +105,7 @@ type Callbacks struct {
 	done        chan struct{}
 	closeErr    error
 	serveErr    error
+	rpc         http.Handler
 }
 
 func NewCallbacks() *Callbacks {
@@ -132,8 +134,8 @@ func callbackToken() string {
 }
 
 func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error) {
-	if ctx == nil || session == nil || limits.MaxRequestBytes <= 0 || limits.MaxResponseBytes <= 0 || limits.MaxResponseBytes == math.MaxInt64 || len(callbacks) == 0 {
-		return CallbackRef{}, nil, errors.New("plugin: callback context, session, capacities and operations are required")
+	if len(callbacks) == 0 {
+		return CallbackRef{}, nil, errors.New("plugin: callback operations are required")
 	}
 	methods := make(map[string]boundMethod, len(callbacks))
 	for _, callback := range callbacks {
@@ -142,6 +144,52 @@ func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits
 			return CallbackRef{}, nil, errors.New("plugin: callback operations must be valid and unique")
 		}
 		methods[method.descriptor.Name] = method
+	}
+	return c.open(ctx, session, limits, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		serveCallback(w, r, methods, limits)
+	}))
+}
+
+// PublishRPC publishes the canonical Runtime RPC transport once before any
+// backend can receive its reference. Publication owns the startup dependency
+// knot; it does not construct another Endpoint or register business methods.
+func (c *Callbacks) PublishRPC(handler http.Handler) error {
+	if handler == nil {
+		return errors.New("plugin: runtime RPC handler is required")
+	}
+	switch value := reflect.ValueOf(handler); value.Kind() {
+	case reflect.Pointer, reflect.Func, reflect.Map, reflect.Slice:
+		if value.IsNil() {
+			return errors.New("plugin: runtime RPC handler is required")
+		}
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed || c.rpc != nil {
+		return errors.New("plugin: runtime RPC publication is closed")
+	}
+	c.rpc = handler
+	return nil
+}
+
+// OpenRPC captures one call lifetime for the already published Runtime contract.
+func (c *Callbacks) OpenRPC(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits) (CallbackRef, func(), error) {
+	c.mu.Lock()
+	handler := c.rpc
+	c.mu.Unlock()
+	if handler == nil {
+		return CallbackRef{}, nil, errors.New("plugin: runtime RPC is not published")
+	}
+	return c.open(ctx, session, limits, handler)
+}
+
+func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, handler http.Handler) (CallbackRef, func(), error) {
+	if ctx == nil || session == nil || limits.MaxRequestBytes <= 0 || limits.MaxResponseBytes <= 0 || limits.MaxResponseBytes == math.MaxInt64 {
+		return CallbackRef{}, nil, errors.New("plugin: callback context, session and capacities are required")
 	}
 	c.mu.Lock()
 	activation := c.activations[session]
@@ -182,7 +230,7 @@ func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits
 		}()
 	}
 	lifetime, cancel := context.WithCancelCause(ctx)
-	call := &callbackCall{context: lifetime, cancel: cancel, methods: methods, limits: limits, done: make(chan struct{})}
+	call := &callbackCall{context: lifetime, cancel: cancel, handler: handler, limits: limits, done: make(chan struct{})}
 	id := callbackToken()
 	activation.calls[id] = call
 	release := func() { c.release(activation, id, call) }
@@ -285,7 +333,7 @@ func (c *Callbacks) Close() error {
 }
 
 func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || r.URL.Path != "/" || r.URL.RawQuery != "" {
+	if r.Method != http.MethodPost || r.URL.RawQuery != "" {
 		http.NotFound(w, r)
 		return
 	}
@@ -304,12 +352,15 @@ func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
 	c.mu.Unlock()
 	defer call.pending.Done()
 	lifetime, cancel := context.WithCancelCause(call.context)
-	stop := context.AfterFunc(r.Context(), func() { cancel(context.Cause(r.Context())) })
+	networkContext, body := r.Context(), r.Body
+	stop := context.AfterFunc(networkContext, func() { cancel(context.Cause(networkContext)) })
 	bodyClosed := make(chan struct{})
 	closeBody := context.AfterFunc(lifetime, func() {
 		defer close(bodyClosed)
-		_ = http.NewResponseController(w).SetReadDeadline(time.Now())
-		_ = r.Body.Close()
+		controller := http.NewResponseController(w)
+		_ = controller.SetReadDeadline(time.Now())
+		_ = controller.SetWriteDeadline(time.Now())
+		_ = body.Close()
 	})
 	defer func() {
 		stop()
@@ -320,27 +371,33 @@ func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
 	}()
 	// The owner context supplies target, origin and parent projections. The
 	// network request can cancel them, but cannot replace them with input fields.
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, call.limits.MaxRequestBytes))
+	request := r.WithContext(lifetime)
+	request.Body = http.MaxBytesReader(w, body, call.limits.MaxRequestBytes)
+	call.handler.ServeHTTP(w, request)
+}
+
+func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]boundMethod, limits CallbackLimits) {
+	body, err := io.ReadAll(r.Body)
 	var wire invokeParams
 	if err == nil {
 		err = json.Unmarshal(body, &wire, json.RejectUnknownMembers(true))
 	}
-	method, found := call.methods[wire.Method]
+	method, found := methods[wire.Method]
 	if err != nil || !found || wire.Contract != method.contract {
 		http.Error(w, "callback contract or input refused", http.StatusBadRequest)
 		return
 	}
-	if lifetime.Err() != nil {
+	if r.Context().Err() != nil {
 		http.Error(w, "callback call is no longer active", http.StatusGone)
 		return
 	}
-	result, err := method.invoke(lifetime, nil, &wire)
+	result, err := method.invoke(r.Context(), nil, &wire)
 	if err != nil {
 		http.Error(w, "callback operation could not be confirmed", http.StatusUnprocessableEntity)
 		return
 	}
 	encoded, err := json.Marshal(result)
-	if err != nil || int64(len(encoded)) > call.limits.MaxResponseBytes {
+	if err != nil || int64(len(encoded)) > limits.MaxResponseBytes {
 		http.Error(w, "callback response capacity exceeded", http.StatusUnprocessableEntity)
 		return
 	}

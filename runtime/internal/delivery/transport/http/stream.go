@@ -39,7 +39,7 @@ const streamWriteTimeout = 30 * time.Second
 // run stream ends (terminal segment.finished → the source sequence is drained)
 // or the client disconnects — a disconnect only detaches; the run keeps
 // running server-side and the client resumes via runs.subscribe.
-func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Response, events iter.Seq[dispatch.StreamFrame], methodLabel string) {
+func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Response, events iter.Seq[dispatch.StreamFrame], methodLabel string, cancel context.CancelFunc) {
 	// Proxy hints + observability headers before NewHTTPWriter — the
 	// library adds Content-Type: text/event-stream itself and leaves our
 	// stricter Cache-Control intact (it only fills no-cache when unset).
@@ -71,7 +71,9 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *trans
 	// run subscription aborts / the workspace channel closes) so the range ends;
 	// the send is ctx-guarded so a stalled write cannot strand this goroutine.
 	frames := make(chan dispatch.StreamFrame)
+	settled := make(chan struct{})
 	go func() {
+		defer close(settled)
 		defer close(frames)
 		defer recoverStreamSourceDefect(ctx)
 		for frame := range events {
@@ -81,6 +83,10 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *trans
 				return
 			}
 		}
+	}()
+	defer func() {
+		cancel()
+		<-settled
 	}()
 
 	ticker := time.NewTicker(heartbeatInterval)

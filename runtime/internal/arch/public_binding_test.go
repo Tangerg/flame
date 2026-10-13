@@ -100,6 +100,7 @@ import (
 )
 
 var _ = flameruntime.Open
+var _ = flameruntime.ConnectCallback
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ protocol.RunEvent
@@ -115,6 +116,8 @@ var _ = pluginsdk.Resolve
 var _ *pluginsdk.Binding
 var _ = jsoninput.Encode[struct{}]
 var _ = pluginsdk.RequestInput
+var _ = pluginsdk.NewCallbacks
+var _ pluginsdk.CallbackRef
 
 func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	if _, err := runtime.Discover(ctx, flameruntime.CallOptions{}); err != nil {

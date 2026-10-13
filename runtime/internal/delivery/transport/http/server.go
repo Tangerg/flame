@@ -13,17 +13,11 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const serverReadHeaderTimeout = 10 * time.Second
-
-type messageDispatcher interface {
-	Dispatch(ctx context.Context, message transport.Message) dispatch.Result
-}
 
 type Server struct {
 	info     RuntimeInfo
@@ -33,8 +27,8 @@ type Server struct {
 	corsOrigins  []string
 	healthProbes []*healthProbeRunner
 
-	router messageDispatcher
-	web    http.Handler
+	rpc http.Handler
+	web http.Handler
 
 	httpServer   *http.Server
 	handlerCtx   context.Context
@@ -107,7 +101,7 @@ func NewServer(cfg Config) (*Server, error) {
 	if serverID == "" {
 		serverID = cfg.ServerInfo.Name + "/" + cfg.ServerInfo.Version
 	}
-	router, err := dispatch.New(cfg.Endpoint)
+	rpc, err := NewRPCHandler(cfg.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +111,7 @@ func NewServer(cfg Config) (*Server, error) {
 		localToken:   cfg.LocalToken,
 		corsOrigins:  slices.Clone(cfg.CORSOrigins),
 		healthProbes: newHealthProbeRunners(cfg.HealthProbes),
-		router:       router,
+		rpc:          rpc,
 		web:          cfg.WebApplication,
 		handlerCtx:   handlerCtx,
 		stopHandlers: stopHandlers,

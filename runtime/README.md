@@ -78,9 +78,14 @@ this Runtime instance. MCP session retirement withdraws its callback references,
 cancels all admitted sibling calls before joining them, then closes the backend
 transport. Memory search and maintenance use this same unary binding and own
 their model budget in Memory's RPC adapter. Public typed operations can bind
-other call-scoped collaborators without importing Memory. Installed dependency
-rendezvous, Runtime Delivery catalog callbacks and streaming decorators remain
-open parts of the unified-plugin refactor.
+other call-scoped collaborators without importing Memory. Bootstrap publishes
+the canonical RPC/SSE handler exactly once after the one Delivery Endpoint is
+built and before workers start. `OpenRPC` captures that transport's call lifetime;
+backend authors use `ConnectCallback` and the ordinary typed Runtime Client.
+Closing a client detaches observation; callback retirement cancels and joins its
+stream source. Message limits bound replies/frames, not an entire stream.
+Installed dependency rendezvous, Schedules backend Run submission, canonical
+model execution and streaming decorators remain open parts of the refactor.
 
 `plugins.listProviders` and `plugins.selectProvider` expose the same composition
 owner through the Go binding and Runtime Protocol. CLI uses `plugins providers`

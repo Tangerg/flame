@@ -2,13 +2,16 @@ package bootstrap
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -20,6 +23,7 @@ type runtimeApplication struct {
 	sessions         *sessions.Coordinator
 	workers          runtimeWorkers
 	idempotencyStore idempotency.Store
+	callbacks        *pluginsdk.Callbacks
 }
 
 type runtimeWorkers struct {
@@ -65,6 +69,19 @@ func (h *runtimeApplication) newDeliveryEndpoint(
 		Lifetime:             lifetime,
 	})
 	if err != nil {
+		return nil, err
+	}
+	rpc, err := flamehttp.NewRPCHandler(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	mux := http.NewServeMux()
+	for _, entry := range flamehttp.Contract().Endpoints {
+		if entry.Kind == flamehttp.EndpointKindRPC {
+			mux.Handle(entry.Method+" "+entry.Path, rpc)
+		}
+	}
+	if err := h.callbacks.PublishRPC(mux); err != nil {
 		return nil, err
 	}
 	return endpoint, nil

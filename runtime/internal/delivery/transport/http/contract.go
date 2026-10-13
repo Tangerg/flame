@@ -104,7 +104,7 @@ var endpointRegistry = struct {
 				Authentication:   EndpointAuthenticationLocalToken,
 				ResponseStatuses: []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent},
 			},
-			handler: (*Server).serveRPC,
+			handler: func(server *Server, w http.ResponseWriter, r *http.Request) { server.rpc.ServeHTTP(w, r) },
 		},
 		{
 			EndpointSpec: EndpointSpec{

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 // ErrInvalidResponse identifies an incompatible or malformed Runtime reply.
@@ -43,6 +44,7 @@ type Client struct {
 	binding
 	endpoint        string
 	token           string
+	callbackCall    string
 	http            *http.Client
 	maxMessageBytes int
 	mu              sync.Mutex
@@ -96,6 +98,26 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 		},
 	}
 	client.binding.caller = client
+	return client, nil
+}
+
+// ConnectCallback uses the ordinary typed Runtime binding over a captured
+// backend call. Its connection never uses a proxy, follows a redirect or
+// changes the owning call. Closing observation does not cancel an accepted Run.
+func ConnectCallback(ctx context.Context, ref pluginsdk.CallbackRef) (*Client, error) {
+	if err := ref.Validate(); err != nil {
+		return nil, err
+	}
+	limit := int(ref.MaxResponseBytes)
+	if int64(limit) != ref.MaxResponseBytes {
+		return nil, errors.New("runtime: callback message capacity is not representable")
+	}
+	client, err := Connect(ctx, RemoteConfig{Endpoint: ref.Endpoint, Token: ref.Credential, MaxMessageBytes: limit})
+	if err != nil {
+		return nil, err
+	}
+	client.http.Transport.(*http.Transport).Proxy = nil
+	client.callbackCall = ref.Call
 	return client, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -47,6 +48,42 @@ func newTestCallbacks(t *testing.T) *Callbacks {
 }
 
 var callbackTestLimits = CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}
+
+func TestRPCPublicationPrecedesReferencesAndCannotBeReplaced(t *testing.T) {
+	host := newTestCallbacks(t)
+	session := new(sdk.ClientSession)
+	host.AdmitSession(session)
+	if _, _, err := host.OpenRPC(t.Context(), session, callbackTestLimits); err == nil {
+		t.Fatal("unpublished transport issued a usable reference")
+	}
+	var absent http.HandlerFunc
+	for _, handler := range []http.Handler{nil, absent} {
+		if err := host.PublishRPC(handler); err == nil {
+			t.Fatal("absent transport was published")
+		}
+	}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	if err := host.PublishRPC(handler); err != nil {
+		t.Fatal(err)
+	}
+	if err := host.PublishRPC(handler); err == nil {
+		t.Fatal("published transport was replaced")
+	}
+	_, release, err := host.OpenRPC(t.Context(), session, callbackTestLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release()
+	if err := host.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := host.PublishRPC(handler); err == nil {
+		t.Fatal("closed transport was republished")
+	}
+	if _, _, err := host.OpenRPC(t.Context(), session, callbackTestLimits); !errors.Is(err, ErrStaleCall) {
+		t.Fatalf("closed transport issued a reference: %v", err)
+	}
+}
 
 func TestCallbacksShareEndpointAndRetainCallAuthority(t *testing.T) {
 	host := newTestCallbacks(t)

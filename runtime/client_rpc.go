@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
@@ -74,7 +75,10 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 	request.GetBody = nil
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
-	if c.token != "" {
+	if c.callbackCall != "" {
+		request.Header.Set("Authorization", c.token)
+		request.Header.Set("Flame-Call", c.callbackCall)
+	} else if c.token != "" {
 		request.Header.Set("Authorization", "Bearer "+c.token)
 	}
 	for header, value := range map[string]string{
@@ -99,6 +103,9 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 	}
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != http.StatusOK {
+		if c.callbackCall != "" && response.StatusCode == http.StatusGone {
+			return delivery.Result{}, pluginsdk.ErrStaleCall
+		}
 		return delivery.Result{}, call.readError(decodeTransportError(response, mediaType, c.maxMessageBytes))
 	}
 	if err != nil {
@@ -246,6 +253,9 @@ func decodeTransportError(response *http.Response, mediaType string, limit int) 
 }
 
 func knownTransportRefusal(err error) bool {
+	if errors.Is(err, pluginsdk.ErrStaleCall) {
+		return true
+	}
 	problem, ok := errors.AsType[*TransportError](err)
 	if !ok {
 		return false

@@ -4,6 +4,7 @@
       "path": "github.com/Tangerg/flame/runtime",
       "imports": [
         "context",
+        "github.com/Tangerg/flame/runtime/plugin",
         "github.com/Tangerg/flame/runtime/protocol",
         "iter"
       ],
@@ -36,6 +37,10 @@
         {
           "name": "Connect",
           "signature": "func(ctx context.Context, cfg RemoteConfig) (*Client, error)"
+        },
+        {
+          "name": "ConnectCallback",
+          "signature": "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
         },
         {
           "name": "Open",
@@ -1219,7 +1224,8 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/runtime/jsoninput",
         "github.com/Tangerg/go-sdk/mcp",
-        "github.com/Tangerg/scope/core/tool"
+        "github.com/Tangerg/scope/core/tool",
+        "net/http"
       ],
       "constants": [
         {
@@ -1438,6 +1444,14 @@
             {
               "name": "Open",
               "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
+            },
+            {
+              "name": "OpenRPC",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits) (CallbackRef, func(), error)"
+            },
+            {
+              "name": "PublishRPC",
+              "signature": "func(handler http.Handler) error"
             },
             {
               "name": "RevokeSession",

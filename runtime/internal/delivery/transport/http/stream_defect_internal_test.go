@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	stdhttp "net/http"
@@ -46,10 +47,13 @@ func TestStreamSourceDefectEndsOneStreamNotTheProcess(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(stdhttp.MethodPost, "/v2/rpc", nil)
+	ctx, cancel := context.WithCancel(request.Context())
+	defer cancel()
+	request = request.WithContext(ctx)
 	served := make(chan struct{})
 	go func() {
 		defer close(served)
-		(&Server{}).serveStream(recorder, request, ack, events, "runs.start")
+		serveStream(recorder, request, ack, events, "runs.start", cancel)
 	}()
 	select {
 	case <-served:

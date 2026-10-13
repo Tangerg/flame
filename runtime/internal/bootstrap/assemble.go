@@ -472,6 +472,7 @@ func buildAssemblyCore(
 				invalidations: policy.invalidations.Publish,
 			},
 			idempotencyStore: cfg.Stores.Idempotency,
+			callbacks:        execution.models.callbacks,
 		},
 		lifetime: lifetime,
 	}

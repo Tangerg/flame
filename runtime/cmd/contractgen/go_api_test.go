@@ -23,7 +23,7 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 	}) {
 		t.Fatal("Runtime public API does not contain Open returning *Runtime")
 	}
-	if len(binding.Imports) != 3 || slices.ContainsFunc(binding.Imports, func(path string) bool {
+	if !slices.Equal(binding.Imports, []string{"context", runtimeModulePath + "/plugin", runtimeModulePath + "/protocol", "iter"}) || slices.ContainsFunc(binding.Imports, func(path string) bool {
 		return strings.Contains(path, "/internal/")
 	}) {
 		t.Fatalf("Runtime public imports = %v", binding.Imports)
@@ -45,6 +45,11 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 		return function.Name == "Connect" && strings.Contains(function.Signature, "(*Client, error)")
 	}) {
 		t.Fatal("Runtime public API does not contain Connect returning *Client")
+	}
+	if !slices.ContainsFunc(binding.Functions, func(function publicGoFunction) bool {
+		return function.Name == "ConnectCallback" && function.Signature == "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
+	}) {
+		t.Fatal("Runtime public API does not contain the typed callback Client entrance")
 	}
 
 	localRuntime := publicGoPackageByPath(t, api, runtimeModulePath+"/localruntime")
