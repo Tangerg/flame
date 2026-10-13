@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -19,23 +18,8 @@ import (
 // agentMemoryUseCases is Delivery's consumer-side port. Its methods express
 // complete review use cases, rather than exposing the domain store workflow.
 type agentMemoryUseCases interface {
-	Review(ctx context.Context, id string, decision agentmemory.ReviewDecision) error
 	Update(ctx context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error)
 	Add(ctx context.Context, scope agentmemory.Scope, cwd, content string) (agentmemory.Item, error)
-}
-
-// ReviewAgentMemory approves or rejects a pending proposal (agentMemory.review).
-func (s *Handler) ReviewAgentMemory(ctx context.Context, in protocol.AgentMemoryReviewRequest) error {
-	var decision agentmemory.ReviewDecision
-	switch in.Decision {
-	case protocol.AgentMemoryReviewApprove:
-		decision = agentmemory.ReviewApprove
-	case protocol.AgentMemoryReviewReject:
-		decision = agentmemory.ReviewReject
-	default:
-		return NewFailure(protocol.ErrInvalidParams, "decision must be \"approve\" or \"reject\"")
-	}
-	return mapAgentMemoryErr(s.agentMemory.Review(ctx, in.ID, decision))
 }
 
 // UpdateAgentMemory edits and/or pins an item (agentMemory.update).
@@ -99,12 +83,8 @@ func mapAgentMemoryErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, pagination.ErrInvalidCursor), errors.Is(err, pagination.ErrInvalidLimit), errors.Is(err, pagination.ErrCursorTooLarge):
-		return wirePageError(err)
 	case errors.Is(err, agentmemory.ErrNotFound), errors.Is(err, agentmemory.ErrNotVisible):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "no such memory item")
-	case errors.Is(err, agentmemory.ErrNotPending):
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "memory item is not pending review")
 	case errors.Is(err, agentmemory.ErrTargetFull):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:

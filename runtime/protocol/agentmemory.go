@@ -44,21 +44,6 @@ const (
 	AgentMemoryStatusPending AgentMemoryStatus = "pending"
 )
 
-// AgentMemoryReviewRequest — agentMemory.review body. decision is
-// "approve" | "reject".
-type AgentMemoryReviewRequest struct {
-	ID       string                    `json:"id"`
-	Decision AgentMemoryReviewDecision `json:"decision"`
-}
-
-// AgentMemoryReviewDecision is the explicit user verdict for a pending fact.
-type AgentMemoryReviewDecision string
-
-const (
-	AgentMemoryReviewApprove AgentMemoryReviewDecision = "approve"
-	AgentMemoryReviewReject  AgentMemoryReviewDecision = "reject"
-)
-
 // AgentMemoryUpdateRequest — agentMemory.update body. A nil field is unchanged.
 type AgentMemoryUpdateRequest struct {
 	ID      string  `json:"id"`

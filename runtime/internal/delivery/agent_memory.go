@@ -7,20 +7,11 @@ import (
 )
 
 const (
-	AgentMemoryReview Name = "agentMemory.review"
 	AgentMemoryUpdate Name = "agentMemory.update"
 	AgentMemoryAdd    Name = "agentMemory.add"
 )
 
 func registerAgentMemory(registry *Registry) {
-
-	registry.commandAck(MethodMeta{Idempotency: IdempotencyOwnerResponse,
-		Name: AgentMemoryReview, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest) error
-	}, ctx context.Context, request protocol.AgentMemoryReviewRequest) error {
-		return service.ReviewAgentMemory(ctx, request)
-	})
 
 	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
 		Name: AgentMemoryUpdate, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),

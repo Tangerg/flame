@@ -365,10 +365,6 @@
               "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
             },
             {
-              "name": "ReviewAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
-            },
-            {
               "name": "RollbackSession",
               "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error)"
             },
@@ -965,10 +961,6 @@
             {
               "name": "ResumeRun",
               "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "ReviewAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
             },
             {
               "name": "RollbackSession",
@@ -2380,16 +2372,6 @@
           "value": "\"user\""
         },
         {
-          "name": "AgentMemoryReviewApprove",
-          "type": "AgentMemoryReviewDecision",
-          "value": "\"approve\""
-        },
-        {
-          "name": "AgentMemoryReviewReject",
-          "type": "AgentMemoryReviewDecision",
-          "value": "\"reject\""
-        },
-        {
           "name": "AgentMemoryScopeProject",
           "type": "AgentMemoryScope",
           "value": "\"project\""
@@ -3552,7 +3534,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.13\""
+          "value": "\"2026-10-14.14\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4484,33 +4466,6 @@
           "name": "AgentMemoryOrigin",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "AgentMemoryReviewDecision",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "AgentMemoryReviewRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Decision",
-              "type": "AgentMemoryReviewDecision",
-              "tag": "json:\"decision\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
         },
         {
           "name": "AgentMemoryScope",

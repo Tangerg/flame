@@ -1,7 +1,4 @@
-import {
-  type AgentMemoryAddInput,
-  type AgentMemoryReviewDecision,
-} from "./ports/agentMemoryGateway";
+import { type AgentMemoryAddInput, type ReviewDecision } from "./ports/agentMemoryGateway";
 import {
   useAgentMemory as useAgentMemoryQuery,
   type AgentMemoryEntry,
@@ -16,10 +13,7 @@ export function useAgentMemory(enabled: boolean, scope: AgentMemoryQuery["scope"
   return useAgentMemoryQuery(enabled ? agentMemoryQuery(scope, cwd) : undefined);
 }
 
-export async function reviewAgentMemory(
-  id: string,
-  decision: AgentMemoryReviewDecision,
-): Promise<void> {
+export async function reviewAgentMemory(id: string, decision: ReviewDecision): Promise<void> {
   await AgentMemoryMutationOwner.current().review(id, decision);
 }
 

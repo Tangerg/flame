@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.13";
+export const PROTOCOL_VERSION = "2026-10-14.14";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -241,13 +241,6 @@ export interface AgentMemoryItem {
 }
 
 export type AgentMemoryOrigin = "auto" | "user";
-
-export type AgentMemoryReviewDecision = "approve" | "reject";
-
-export interface AgentMemoryReviewRequest {
-  decision: AgentMemoryReviewDecision;
-  id: string;
-}
 
 export type AgentMemoryScope = "project" | "user";
 
@@ -2179,7 +2172,6 @@ export interface WorkspaceSummary {
 export const WIRE_ENUMS = {
   AgentDocScope: ["cwd", "projectRoot", "home"],
   AgentMemoryOrigin: ["auto", "user"],
-  AgentMemoryReviewDecision: ["approve", "reject"],
   AgentMemoryScope: ["project", "user"],
   AgentMemoryStatus: ["active", "pending"],
   ApprovalDecision: ["approve", "deny"],

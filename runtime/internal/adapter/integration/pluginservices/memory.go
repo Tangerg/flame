@@ -81,10 +81,6 @@ func (m *Memory) Update(ctx context.Context, id string, content *string, pinned 
 	item, err := memory.RestoreItem(value.value)
 	return item, err
 }
-func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDecision) error {
-	_, err := invokeCommand[rpc.ReviewInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Review, rpc.ReviewInput{ID: id, Decision: decision}, nil)
-	return rpc.DecodeError(err)
-}
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
 	ctx = operation.Start(ctx, capability.Automatic, "memory.context", uuid.NewString())
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)

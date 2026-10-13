@@ -309,5 +309,11 @@ Runtime mutation journal before any new selected-provider read, including after
 gateway/client generation replacement. The acknowledgement decoder precedes intent
 retirement. The cache rereads its current owner after acknowledgement; an original
 provider's receipt cannot directly remove a row in another provider's projection.
-Core deletion and its DTO are removed without an alias. Review/update/add and final
-process/lifecycle acceptance remain under migration; no UI/E2E tests run here.
+Core deletion and its DTO are removed without an alias. Workspace review now also
+uses the generated installed operation and one item intent shared by approve/reject.
+Changed decision is refused before provider preparation while its original outcome
+is uncertain. The empty owner acknowledgement is validated before settlement and
+the current cache owner is reread. Core review/request/global decision enum and its
+invalid_params translation are removed; not_pending remains an explicit publisher
+refusal. Update/add and final process/lifecycle acceptance remain under migration;
+no UI/E2E tests run here.

@@ -1,6 +1,6 @@
-import type { AgentMemoryReviewDecision, AgentMemoryScope } from "@flame/runtime-contract/wire";
+import type { AgentMemoryScope } from "@flame/runtime-contract/wire";
 
-export type { AgentMemoryReviewDecision };
+export type ReviewDecision = "approve" | "reject";
 import type { AgentMemoryEntry } from "../workspaceQueries";
 
 export interface AgentMemoryAddInput {
@@ -10,7 +10,7 @@ export interface AgentMemoryAddInput {
 }
 
 export interface AgentMemoryGateway {
-  review(id: string, decision: AgentMemoryReviewDecision): Promise<void>;
+  review(id: string, decision: ReviewDecision): Promise<void>;
   updateContent(id: string, content: string): Promise<AgentMemoryEntry>;
   setPinned(id: string, pinned: boolean): Promise<AgentMemoryEntry>;
   delete(id: string): Promise<void>;

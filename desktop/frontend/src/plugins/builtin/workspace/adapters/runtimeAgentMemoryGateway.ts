@@ -1,7 +1,7 @@
 import type { AgentMemoryGateway } from "../application/ports/agentMemoryGateway";
 import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/client";
 import type { AgentMemoryEntry } from "../application/workspaceQueries";
-import { deleteInstalledMemory } from "../public/memory";
+import { deleteInstalledMemory, reviewInstalledMemory } from "../public/memory";
 import { AgentMemoryMutationOwner } from "../application/agentMemoryMutationOwner";
 
 export function agentMemoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
@@ -21,7 +21,7 @@ export function agentMemoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
 function runtimeAgentMemoryGateway(client: FlameClient): AgentMemoryGateway {
   return {
     async review(id, decision) {
-      await client.agentMemory.review(id, decision);
+      await reviewInstalledMemory(client, id, decision);
     },
     async updateContent(id, content) {
       return agentMemoryEntry(await client.agentMemory.update({ id, content }));

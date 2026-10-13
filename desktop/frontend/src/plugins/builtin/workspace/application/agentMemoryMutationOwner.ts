@@ -5,7 +5,7 @@ import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type {
   AgentMemoryAddInput,
-  AgentMemoryReviewDecision,
+  ReviewDecision,
   AgentMemoryGateway,
 } from "./ports/agentMemoryGateway";
 import {
@@ -28,7 +28,7 @@ class AgentMemoryMutationGeneration {
     this.#gateway = gateway;
   }
 
-  review(id: string, decision: AgentMemoryReviewDecision): Promise<void> {
+  review(id: string, decision: ReviewDecision): Promise<void> {
     return this.#run(id, { execute: () => this.#gateway.review(id, decision) });
   }
 
@@ -96,7 +96,7 @@ export class AgentMemoryMutationOwner {
     return owner;
   }
 
-  review(id: string, decision: AgentMemoryReviewDecision): Promise<void> {
+  review(id: string, decision: ReviewDecision): Promise<void> {
     return this.#generation.review(id, decision);
   }
 

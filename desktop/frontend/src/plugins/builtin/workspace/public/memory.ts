@@ -1,3 +1,4 @@
+import type { ReviewDecision } from "../application/ports/agentMemoryGateway";
 export {
   useAgentMemory,
   addAgentMemory,
@@ -114,17 +115,37 @@ export async function deleteInstalledMemory(
       `memory-delete:${id}`,
       { contract: CAPABILITY_JSON, method: "flame.memory/delete.v1", input },
       () => selectMemoryBinding(client, signal),
-      (output) => {
-        if (
-          !output ||
-          typeof output !== "object" ||
-          Array.isArray(output) ||
-          Object.keys(output).length !== 0
-        )
-          throw new Error("memory deletion acknowledgement is invalid");
-        return output as MethodOutputs["flame.memory/delete.v1"];
-      },
+      decodeMemoryAcknowledgement,
       signal,
     )
     .then(() => undefined);
+}
+
+export function reviewInstalledMemory(
+  client: FlameClient,
+  id: string,
+  decision: ReviewDecision,
+  signal?: AbortSignal,
+): Promise<void> {
+  const input: MethodInputs["flame.memory/review.v1"] = { Decision: decision, ID: id };
+  return client.plugins
+    .command(
+      `memory-review:${id}`,
+      { contract: CAPABILITY_JSON, method: "flame.memory/review.v1", input },
+      () => selectMemoryBinding(client, signal),
+      decodeMemoryAcknowledgement,
+      signal,
+    )
+    .then(() => undefined);
+}
+
+function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memory/delete.v1"] {
+  if (
+    !output ||
+    typeof output !== "object" ||
+    Array.isArray(output) ||
+    Object.keys(output).length !== 0
+  )
+    throw new Error("memory command acknowledgement is invalid");
+  return output as MethodOutputs["flame.memory/delete.v1"];
 }

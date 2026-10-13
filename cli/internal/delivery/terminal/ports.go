@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -121,7 +122,7 @@ type Schedules interface {
 
 type AgentMemory interface {
 	Items(context.Context, conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error)
-	Review(context.Context, string, protocol.AgentMemoryReviewDecision) error
+	PrepareReview(context.Context, string, memory.ReviewDecision) (protocol.CallPluginRequest, error)
 	Update(context.Context, protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)

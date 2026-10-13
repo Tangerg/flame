@@ -274,6 +274,11 @@ ID or an unambiguous prefix among pending deletions; an invalid acknowledgement
 retains the original intent. Desktop deletion now also uses the installed operation
 and its existing client journal restores the original route before any new provider
 preparation. Core DeleteAgentMemory/agentMemory.delete and their DTO are removed.
-Review, update and add remain under migration; their Core APIs still serve real
+CLI/workspace review also uses the published operation. Approve and reject share
+one logical intent per item; an unconfirmed decision must be reconciled before an
+opposite decision can be submitted. Pending full/prefix IDs resolve before current
+workspace/catalog reads, and original decision/request/key survive restart.
+Core ReviewAgentMemory/agentMemory.review, its request and global decision enum
+are removed. Update and add remain under migration; their Core APIs serve real
 consumers. Uncertain requests from retired Core contracts are not translated into
 fresh public commands.

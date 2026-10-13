@@ -554,13 +554,6 @@ func (u UsageSummaryRequest) ValidateWire() error {
 	)
 }
 
-func (a AgentMemoryReviewRequest) ValidateWire() error {
-	return collectWireViolations("AgentMemoryReviewRequest",
-		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
-		closedEnum("decision", string(a.Decision), []string{"approve", "reject"}, false),
-	)
-}
-
 func (a AgentMemoryUpdateRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryUpdateRequest",
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),

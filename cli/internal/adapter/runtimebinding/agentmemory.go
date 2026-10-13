@@ -17,7 +17,6 @@ import (
 )
 
 type agentMemoryBinding interface {
-	ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest, flameruntime.CommandOptions) error
 	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 }
@@ -85,15 +84,12 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	return items, nil
 }
 
-func (a *AgentMemory) Review(ctx context.Context, id string, decision protocol.AgentMemoryReviewDecision) error {
-	r := a.runtime
-	id = strings.TrimSpace(id)
-	request := protocol.AgentMemoryReviewRequest{ID: id, Decision: decision}
-	if err := request.ValidateWire(); err != nil {
-		return err
+func (a *AgentMemory) PrepareReview(ctx context.Context, id string, decision memory.ReviewDecision) (protocol.CallPluginRequest, error) {
+	input, err := jsoninput.Encode(memory.ReviewV1Input{ID: strings.TrimSpace(id), Decision: string(decision)})
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
 	}
-	options := r.commandOptions()
-	return classifyError(r.agentMemory.ReviewAgentMemory(ctx, request, options))
+	return a.prepareCommand(ctx, memory.ReviewV1Method, input)
 }
 
 func (a *AgentMemory) Update(ctx context.Context, request protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error) {
@@ -111,7 +107,11 @@ func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.Ca
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	bound, err := a.runtime.selectedInstalledCall(ctx, memory.CapabilityJSON, memory.DeleteV1Method)
+	return a.prepareCommand(ctx, memory.DeleteV1Method, input)
+}
+
+func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jsoninput.Input) (protocol.CallPluginRequest, error) {
+	bound, err := a.runtime.selectedInstalledCall(ctx, memory.CapabilityJSON, name)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -119,12 +119,12 @@ func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.Ca
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	method, found := contract.Method(memory.DeleteV1Method)
+	method, found := contract.Method(name)
 	if !found {
 		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 	}
 	if err := method.ValidateInput(input); err != nil {
-		return protocol.CallPluginRequest{}, fmt.Errorf("delete agent memory: %w", err)
+		return protocol.CallPluginRequest{}, fmt.Errorf("agent memory command: %w", err)
 	}
 	bound.Input = input.JSON()
 	return bound, nil

@@ -91,8 +91,18 @@ Journal records contain original routing and salted input/intent fingerprints;
 they do not store authored input or business results. A typed decoder runs before
 settlement, and only witnessed owner refusals can settle as business failures.
 Core's removed requests are not converted or resent under a new command identity.
-Business storage and backend protocol remain unchanged. Remaining review/update/add
+Business storage and backend protocol remain unchanged. Remaining update/add
 and all-consumer/restart/native acceptance are still open.
+
+Core 2026-10-14.14 removes the Memory review method/request/global decision enum,
+delivery mapping and selected-role forwarder. CLI and workspace review consume the
+generated publisher input and the same private business/receipt owner. Approve and
+reject use one logical intent per item; changed decision cannot turn an uncertain
+review into another command. CLI recovery precedes workspace/catalog reads, keeps
+the original decision and refuses ambiguous pending prefixes. Clients own their
+review choices as presentation values; Runtime has no universal plugin-review enum.
+The public not_pending owner refusal replaces the former Core invalid_params
+translation. Retired requests receive no compatibility alias or automatic conversion.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a

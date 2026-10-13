@@ -1,6 +1,8 @@
+import { OperationFailure } from "@flame/runtime-contract/client";
 import {
   deleteInstalledMemory,
   readInstalledMemory,
+  reviewInstalledMemory,
 } from "../plugins/builtin/workspace/public/memory";
 // @vitest-environment-options { "url": "http://localhost:5173/" }
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
@@ -4168,8 +4170,8 @@ for await (const line of lines) {
         }),
       ],
     });
-    await expect(client.agentMemory.review(project.id, "approve")).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+    await expect(reviewInstalledMemory(client, project.id, "approve")).rejects.toSatisfy(
+      (error: unknown) => error instanceof OperationFailure && error.code === "not_pending",
     );
 
     await deleteInstalledMemory(client, project.id);

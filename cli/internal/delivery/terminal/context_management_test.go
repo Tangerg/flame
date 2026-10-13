@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/cli/internal/domain/memory"
+	memorycontract "github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -31,12 +31,12 @@ type agentMemoryServiceStub struct {
 	project []protocol.AgentMemoryItem
 	user    []protocol.AgentMemoryItem
 	added   chan string
-	review  chan protocol.AgentMemoryReviewDecision
+	review  chan memorycontract.ReviewDecision
 }
 
 type blockingAgentMemoryReviewService struct {
 	AgentMemory
-	started  chan protocol.AgentMemoryReviewDecision
+	started  chan memorycontract.ReviewDecision
 	release  chan struct{}
 	canceled chan struct{}
 }
@@ -62,18 +62,21 @@ func (b *blockingAgentMemoryUpdateService) Update(
 	}
 }
 
-func (b *blockingAgentMemoryReviewService) Review(
-	ctx context.Context,
-	id string,
-	decision protocol.AgentMemoryReviewDecision,
-) error {
-	b.started <- decision
+func (b *blockingAgentMemoryReviewService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+	if request.Method != memorycontract.ReviewV1Method {
+		return b.AgentMemory.CallPlugin(ctx, request, commandID)
+	}
+	var input memorycontract.ReviewV1Input
+	if err := json.Unmarshal(request.Input, &input); err != nil {
+		return nil, err
+	}
+	b.started <- memorycontract.ReviewDecision(input.Decision)
 	select {
 	case <-b.release:
-		return b.AgentMemory.Review(ctx, id, decision)
+		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	case <-ctx.Done():
 		close(b.canceled)
-		return context.Cause(ctx)
+		return nil, context.Cause(ctx)
 	}
 }
 
@@ -90,7 +93,7 @@ func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 			Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, Pinned: true,
 			CreatedAt: now, UpdatedAt: now,
 		}},
-		added: make(chan string, 1), review: make(chan protocol.AgentMemoryReviewDecision, 1),
+		added: make(chan string, 1), review: make(chan memorycontract.ReviewDecision, 1),
 	}
 }
 
@@ -106,9 +109,9 @@ func (a *agentMemoryServiceStub) Items(_ context.Context, target conversation.Me
 	return append([]protocol.AgentMemoryItem(nil), a.project...), nil
 }
 
-func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision protocol.AgentMemoryReviewDecision) error {
-	if err := (protocol.AgentMemoryReviewRequest{ID: id, Decision: decision}).ValidateWire(); err != nil {
-		return err
+func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, decision memorycontract.ReviewDecision) error {
+	if decision != memorycontract.ReviewApprove && decision != memorycontract.ReviewReject {
+		return errors.New("invalid review decision")
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -119,7 +122,7 @@ func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision p
 		if a.project[index].Status != protocol.AgentMemoryStatusPending {
 			return errors.New("not pending")
 		}
-		if decision == protocol.AgentMemoryReviewReject {
+		if decision == memorycontract.ReviewReject {
 			a.project = append(a.project[:index], a.project[index+1:]...)
 		} else {
 			a.project[index].Status = protocol.AgentMemoryStatusActive
@@ -156,20 +159,36 @@ func (a *agentMemoryServiceStub) Update(_ context.Context, request protocol.Agen
 	return protocol.AgentMemoryItem{}, errors.New("not found")
 }
 
+func (*agentMemoryServiceStub) PrepareReview(_ context.Context, id string, decision memorycontract.ReviewDecision) (protocol.CallPluginRequest, error) {
+	return boundMemoryRequest(memorycontract.ReviewV1Method, memorycontract.ReviewV1Input{ID: id, Decision: string(decision)})
+}
 func (*agentMemoryServiceStub) PrepareDelete(_ context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(memory.DeleteV1Input{ID: id})
+	return boundMemoryRequest(memorycontract.DeleteV1Method, memorycontract.DeleteV1Input{ID: id})
+}
+func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, error) {
+	input, err := jsoninput.Encode(value)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: memory.DeleteV1Method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: input.JSON()}, nil
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: input.JSON()}, nil
 }
 
 func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
-	if request.Method != memory.DeleteV1Method || commandID == "" {
+	if (request.Method != memorycontract.DeleteV1Method && request.Method != memorycontract.ReviewV1Method) || commandID == "" {
 		return nil, errors.New("invalid memory command")
 	}
-	var input memory.DeleteV1Input
+	if request.Method == memorycontract.ReviewV1Method {
+		var input memorycontract.ReviewV1Input
+		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+			return nil, err
+		}
+		if err := a.reviewItem(context.Background(), input.ID, memorycontract.ReviewDecision(input.Decision)); err != nil {
+			return nil, err
+		}
+		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	}
+	var input memorycontract.DeleteV1Input
 	if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
@@ -279,7 +298,7 @@ func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	host.Shows(t, "Approve agent memory")
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	if got := awaitValue(t, memory.review, "agent memory review"); got != protocol.AgentMemoryReviewApprove {
+	if got := awaitValue(t, memory.review, "agent memory review"); got != memorycontract.ReviewApprove {
 		t.Fatalf("review = %q", got)
 	}
 	host.Shows(t, "Agent memory · project")
@@ -291,7 +310,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	backend := runtimefixture.New()
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryReviewService{
-		AgentMemory: base, started: make(chan protocol.AgentMemoryReviewDecision, 1),
+		AgentMemory: base, started: make(chan memorycontract.ReviewDecision, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
@@ -308,7 +327,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	host.Shows(t, "Approve agent memory")
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	if decision := awaitValue(t, memory.started, "agent memory review"); decision != protocol.AgentMemoryReviewApprove {
+	if decision := awaitValue(t, memory.started, "agent memory review"); decision != memorycontract.ReviewApprove {
 		t.Fatalf("review decision = %q", decision)
 	}
 	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
@@ -327,7 +346,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	default:
 	}
 	release()
-	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != protocol.AgentMemoryReviewApprove {
+	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != memorycontract.ReviewApprove {
 		t.Fatalf("committed review decision = %q", decision)
 	}
 	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeProject, Workspace: "/tmp/demo/store"})

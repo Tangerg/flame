@@ -93,7 +93,6 @@ import type {
   SkillProposal,
   SkillProposalRef,
   AgentMemoryItem,
-  AgentMemoryReviewDecision,
   AgentMemoryScope,
   AgentMemoryUpdateRequest,
   Goal,
@@ -368,7 +367,6 @@ export interface Methods {
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
   agentMemory: {
-    review: (id: string, decision: AgentMemoryReviewDecision) => MutationPromise<void>;
     update: (params: AgentMemoryUpdateRequest) => MutationPromise<AgentMemoryItem>;
     add: (params: AgentMemoryTarget & { content: string }) => MutationPromise<AgentMemoryItem>;
   };
@@ -678,11 +676,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       summary: (params, signal) => call("usage.summary", params ?? {}, { signal }),
     },
     agentMemory: {
-      review: (id, decision) =>
-        call("agentMemory.review", {
-          id,
-          decision,
-        }),
       update: (params) => call("agentMemory.update", params),
       add: (params) => call("agentMemory.add", params),
     },

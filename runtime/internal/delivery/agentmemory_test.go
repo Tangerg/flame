@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	memoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
@@ -28,17 +26,10 @@ func serverAgentMemoryItemID(digit byte) agentmemory.ItemID {
 // recordingAgentMemory captures application use cases driven by agentMemory.*
 // handlers, so Delivery's wire mapping is tested without a persistence port.
 type recordingAgentMemory struct {
-	listScope agentmemory.Scope
-	listCWD   string
-	items     []agentmemory.Item
-
-	reviewID string
-	decision agentmemory.ReviewDecision
 	pinnedID string
 	pinned   bool
 	editedID string
 	editedTx string
-	deleted  string
 
 	addScope   agentmemory.Scope
 	addCWD     string
@@ -46,16 +37,6 @@ type recordingAgentMemory struct {
 
 	getItem agentmemory.Item
 	err     error
-}
-
-func (r *recordingAgentMemory) List(_ context.Context, input memoryapp.ListInput) (pagination.Page[agentmemory.Item], error) {
-	r.listScope, r.listCWD = input.Scope, input.CWD
-	return pagination.Page[agentmemory.Item]{Rows: r.items}, nil
-}
-
-func (r *recordingAgentMemory) Review(_ context.Context, id string, decision agentmemory.ReviewDecision) error {
-	r.reviewID, r.decision = id, decision
-	return nil
 }
 
 func (r *recordingAgentMemory) Update(_ context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error) {
@@ -71,40 +52,12 @@ func (r *recordingAgentMemory) Update(_ context.Context, id string, content *str
 	return r.getItem, nil
 }
 
-func (r *recordingAgentMemory) Delete(_ context.Context, id string) error {
-	r.deleted = id
-	return nil
-}
-
 func (r *recordingAgentMemory) Add(_ context.Context, scope agentmemory.Scope, cwd, content string) (agentmemory.Item, error) {
 	r.addScope, r.addCWD, r.addContent = scope, cwd, content
 	if r.err != nil {
 		return agentmemory.Item{}, r.err
 	}
 	return testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: serverAgentMemoryItemID('1'), Scope: scope, Content: content, Origin: agentmemory.OriginUser, Status: agentmemory.StatusActive}), nil
-}
-
-func TestAgentMemoryReviewMapsDecision(t *testing.T) {
-	rec := &recordingAgentMemory{}
-	s := newTestHandler(&stubRuntime{})
-	s.agentMemory = rec
-
-	approveID := serverAgentMemoryItemID('a').String()
-	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: approveID, Decision: "approve"}); err != nil {
-		t.Fatal(err)
-	}
-	if rec.reviewID != approveID || rec.decision != agentmemory.ReviewApprove {
-		t.Fatalf("approve → %q %v", rec.reviewID, rec.decision)
-	}
-	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: serverAgentMemoryItemID('b').String(), Decision: "reject"}); err != nil {
-		t.Fatal(err)
-	}
-	if rec.decision != agentmemory.ReviewReject {
-		t.Fatalf("reject → %v", rec.decision)
-	}
-	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: serverAgentMemoryItemID('c').String(), Decision: "bogus"}); !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("bogus decision → %v, want invalid_params", err)
-	}
 }
 
 func TestAgentMemoryUpdateAndAdd(t *testing.T) {

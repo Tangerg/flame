@@ -2,12 +2,14 @@ package terminal
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/installedcommand"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -147,10 +149,27 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 }
 
 func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
+	if a.agentMemory == nil {
+		return errors.New("this runtime composition has no agent memory service")
+	}
 	action, verb := "Reject", "rejecting"
-	decision := protocol.AgentMemoryReviewReject
+	decision := memory.ReviewReject
 	if approve {
-		action, verb, decision = "Approve", "approving", protocol.AgentMemoryReviewApprove
+		action, verb, decision = "Approve", "approving", memory.ReviewApprove
+	}
+	_, identity, err := parseAgentMemoryReference(argument)
+	if err != nil {
+		return err
+	}
+	if pending, found, err := a.pendingMemoryItemCommand(memory.ReviewV1Method, memoryReviewIntent(""), identity); err != nil {
+		return err
+	} else if found {
+		id := strings.TrimPrefix(pending.Intent, memoryReviewIntent(""))
+		if _, err := retainedMemoryReview(pending.Request, id, decision); err != nil {
+			return err
+		}
+		a.reviewAgentMemory(nil, id, decision)
+		return nil
 	}
 	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		if item.Status != protocol.AgentMemoryStatusPending {
@@ -161,7 +180,7 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 			action+" agent memory",
 			action+" pending item "+item.ID+"?",
 			action,
-			func() { a.reviewAgentMemory(target, item.ID, decision) },
+			func() { a.reviewAgentMemory(&target, item.ID, decision) },
 		)
 	})
 }
@@ -174,28 +193,51 @@ func (a *app) PrepareDeleteAgentMemory(argument string) error {
 	if err != nil {
 		return err
 	}
-	if a.workbench != nil {
-		var ids []string
-		for _, pending := range a.workbench.PendingInstalledCommands() {
-			id, found := strings.CutPrefix(pending.Intent, "memory-delete:")
-			if found && pending.Request.Method == memory.DeleteV1Method && strings.HasPrefix(id, identity) {
-				ids = append(ids, id)
-			}
-		}
-		if len(ids) != 0 {
-			id, err := resolveByID(ids, identity, "pending agent memory deletion", func(id string) string { return id })
-			if err != nil {
-				return err
-			}
-			a.deleteAgentMemory(nil, id)
-			return nil
-		}
+	if pending, found, err := a.pendingMemoryItemCommand(memory.DeleteV1Method, memoryDeletionIntent(""), identity); err != nil {
+		return err
+	} else if found {
+		a.deleteAgentMemory(nil, strings.TrimPrefix(pending.Intent, memoryDeletionIntent("")))
+		return nil
 	}
 	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.confirmAction("Delete agent memory", "Delete item "+item.ID+" permanently?", "Delete permanently", func() {
 			a.deleteAgentMemory(&target, item.ID)
 		})
 	})
+}
+
+func (a *app) pendingMemoryItemCommand(method, prefix, identity string) (workbench.PendingInstalledCommand, bool, error) {
+	if a.workbench == nil {
+		return workbench.PendingInstalledCommand{}, false, nil
+	}
+	var matches []workbench.PendingInstalledCommand
+	for _, pending := range a.workbench.PendingInstalledCommands() {
+		id, found := strings.CutPrefix(pending.Intent, prefix)
+		if found && pending.Request.Method == method && strings.HasPrefix(id, identity) {
+			matches = append(matches, pending)
+		}
+	}
+	if len(matches) == 0 {
+		return workbench.PendingInstalledCommand{}, false, nil
+	}
+	pending, err := resolveByID(matches, identity, "pending agent memory command", func(pending workbench.PendingInstalledCommand) string {
+		return strings.TrimPrefix(pending.Intent, prefix)
+	})
+	return pending, err == nil, err
+}
+
+func retainedMemoryReview(request protocol.CallPluginRequest, id string, decision memory.ReviewDecision) (memory.ReviewV1Input, error) {
+	var input memory.ReviewV1Input
+	if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		return memory.ReviewV1Input{}, fmt.Errorf("pending agent memory review input is invalid: %w", err)
+	}
+	if input.ID != id || (input.Decision != string(memory.ReviewApprove) && input.Decision != string(memory.ReviewReject)) {
+		return memory.ReviewV1Input{}, errors.New("pending agent memory review identity or decision is invalid")
+	}
+	if input.Decision != string(decision) {
+		return input, fmt.Errorf("agent memory %s has an unconfirmed %s review; retry /memory-%s %s to reconcile the original command", id, input.Decision, input.Decision, id)
+	}
+	return input, nil
 }
 
 func (a *app) loadAgentMemoryItem(argument, label string, apply func(conversation.MemoryTarget, protocol.AgentMemoryItem)) error {
@@ -336,24 +378,45 @@ func (a *app) updateAgentMemory(target conversation.MemoryTarget, request protoc
 	return nil
 }
 
-func (a *app) reviewAgentMemory(target conversation.MemoryTarget, id string, decision protocol.AgentMemoryReviewDecision) {
+func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, decision memory.ReviewDecision) {
 	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
-	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (string, error) { return id, a.agentMemory.Review(ctx, id, decision) },
+	if !a.runApplicationOperation(agentMemoryOperation, false,
+		func(ctx context.Context) (string, error) {
+			if a.workbench != nil {
+				if pending, found := a.workbench.PendingInstalledCommand(memoryReviewIntent(id)); found {
+					if _, err := retainedMemoryReview(pending.Request, id, decision); err != nil {
+						return "", err
+					}
+				}
+			}
+			_, err := installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryReviewIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.agentMemory.PrepareReview(ctx, id, decision)
+			}, func(*protocol.CallPluginResponse) (memory.ReviewV1Output, error) { return memory.ReviewV1Output{}, nil })
+			return id, err
+		},
 		func(reviewed string, err error) {
 			if err != nil {
-				a.message(label + " failed: " + err.Error())
+				message := label + " failed: " + err.Error()
+				if a.workbench != nil {
+					if pending, found := a.workbench.PendingInstalledCommand(memoryReviewIntent(id)); found {
+						original, _ := retainedMemoryReview(pending.Request, id, decision)
+						if original.Decision != "" {
+							message += " · retry /memory-" + original.Decision + " " + id + " to reconcile the original command"
+						}
+					}
+				}
+				a.message(message)
 				return
 			}
 			outcome := "rejected"
-			if decision == protocol.AgentMemoryReviewApprove {
+			if decision == memory.ReviewApprove {
 				outcome = "approved"
 			}
 			a.message("agent memory " + outcome + " · " + reviewed)
-			if a.session.context.current(presentation) {
-				a.showAgentMemory(target)
+			if target != nil && a.session.context.current(presentation) {
+				a.showAgentMemory(*target)
 			}
 		},
 	) {
@@ -393,3 +456,4 @@ func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
 }
 
 func memoryDeletionIntent(id string) string { return "memory-delete:" + id }
+func memoryReviewIntent(id string) string   { return "memory-review:" + id }
