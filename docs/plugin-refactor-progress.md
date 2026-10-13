@@ -2,53 +2,64 @@
 
 ## Current stage
 
-Stage 4j (9f30bd16) replaces the closed plugin action vocabulary with ordinary
-Session-scoped components at sessionAction placement. Trajectory provides its own
-naming form alongside its trajectory export in the same ESM. The existing Session
-row menus consume local admitted metadata and load the module only when opened.
-The click captures accepted ID/revision/title as frozen public CapturedSession data;
-navigation and refreshed row data never retarget the open form. The shared modal
-container owns focus/closing, while the plugin owns its form and public calls.
+Stage 4k (44baab0b/69255d53) migrates actual CLI Schedule catalog reads to the public
+installed operation. The reader captures selected installation/contribution, digest
+and the complete publisher contract once, then calls plugins.call for every page.
+Role changes cannot splice another provider into the traversal. The published protocol
+is parsed exactly rather than reconstructed as the current protocol; mismatched
+metadata fails before dispatch. Requested-page/request-count bounds and repeated-ID
+rejection remain. Typed publisher output is projected into the existing terminal
+read model; no old wire reader or second Schedule fact store is introduced.
 
-The component calls canonical sessions.update, which is also used by built-in
-Session editing and the existing CLI session rename. It submits the inspected
-revision and title. Unknown acknowledgement retains the original MutationPromise
-and same-key retry, blocking a new edit until settlement. Accepted responses alone
-produce saved state. Revision refusal retains the inspected target/draft; reopening
-is explicit. Closing supported observation does not retract an accepted Core command.
-Component context sources now use named constructor inputs rather than another
-optional positional target argument.
+Feature contractgen now emits a Go projection for the actual CLI consumer alongside
+canonical capability JSON, schemas and TS from the same Go-owned contracts. Required
+fields, optional false/zero values, maps, timestamps and full-width integer bounds
+remain typed. Numeric/cross-field validation stays with the canonical capability and
+business owner. The generated CLI source imports no private backend package. Unsupported
+Go shapes/configuration fail explicitly, and input overwrite is checked before writes.
+The Schedules contract's semantic identity is unchanged; regenerated JSON/TS formatting
+now reflects its generator. Backend publication still lives under Runtime internal and
+full independent-author packaging remains open.
 
-Delete Action/ActionOperation/AuthorizeAction, old declaration/parser/projection,
-release action arrays, title-only DTO, plugins.renameSession and Go/TS/CLI wrappers,
-private Host PackageActions and retired exclusive cases. Preserve canonical Session
-revision/persistence/event/command owners. Old closed metadata is refused without
-aliases; unresolved former wrapper requests retain original evidence and are not
-translated into another method or command. Core is 2026-10-14.6; backend remains
-2026-10-14.2. No private business/storage format changes or data conversion occurs.
+Delete schedules.list, its Core Go/TS binding, delivery/port and selected-role read
+forwarder. Remaining Schedule mutation Core entrances are real consumers and remain
+only until their recovery-safe migration; this read cutover does not claim completion
+of the business platform. Canonical capture/receipt/Run ownership is unchanged. Core
+is 2026-10-14.7, backend stays 2026-10-14.2; private business/storage formats are unchanged.
 
-Production Runtime/CLI/Reviews builds, SDK/shared-client/bundled/Desktop TypeScript,
-targeted lint, exact ESM reproduction, Vite and layer checks pass. Domain placement
-admission (0.602s), package metadata/code-nonexecution/old action refusal (0.510s),
-and the shared RPC client's original Session edit/revision/key retry (220ms) pass.
-Bootstrap and CLI command/binding test sources compile into removed temp binaries;
-canonical restart/receipt execution remains final work. Source gate is 100/100
-(87 graphical, six Go headless, six materialized, one HTTP), with three sidecars and
-15 topics. Trajectory ESM is 10,174 bytes. Locale gate passes 983 keys/eight locales;
-removed action strings and four unused former carrier strings found by the gate.
-No frontend UI/E2E/screenshot tests were added or run. Full/vet/race and supported
-native/process acceptance remain concentrated at final verification.
+Removing the sole standalone PageQuery entrance exposed a generator omission: named
+embedded public pagination owners disappeared while their flattened fields survived.
+The walker now retains the same-package named embedded owner and its public validator,
+without a handwritten TS type. A backend contract regression proves owner and flattened
+request fields remain. Existing native backend/source probes use public installed
+queries; retired frontend Core-reader cases are removed while unrelated cursor/HITL
+cases remain. No frontend UI/E2E/screenshot tests were added or run.
+
+Production Runtime/CLI/Reviews builds, Desktop types/Vite and source/layer checks pass.
+Feature generation checks pass (0.540s); embedded pagination owner regression passes
+(0.841s). CLI operation/pagination/frozen-provider/duplicate checks pass (5.935s), and
+strict published-protocol refusal/frozen-reader checks pass (6.331s). Bootstrap, Runtime
+and delivery test sources compile into removed temporary binaries. Native execution,
+credentialed live probes and full/vet/race remain final-phase obligations. Source gate
+is 99/99 after deletion (87 graphical, five Go headless, six materialized, one HTTP),
+with three sidecars and 15 topics. No active failure remains in executed checks.
 
 Main 993eb865 remains integrated; merge is already up to date. Original proposal,
-review and draft hashes remain unchanged. Owned dist and temporary binaries are
-removed; the worktree is clean after this anchor commit. The full goal remains
-active. Next unify actual CLI/Core Memory/Schedules and Tool/cross-plugin consumers,
-retaining original bound recovery, then complete scoped dependencies, canonical
-model decorators/streaming, cross-generation recovery, independent author parity
-and all P01-P48/final acceptance.
+review and draft hashes remain unchanged. Owned Desktop dist/temp binaries are removed.
+The full goal remains active. Next migrate actual Schedule mutations and Memory/Core
+facades with original bound command recovery, then complete Tool/cross-plugin consumers,
+scoped dependencies, canonical model decorators/streaming, cross-generation recovery,
+independent author parity and all P01-P48/final acceptance.
 
 ## Completed
 
+- Stage 4k (44baab0b/69255d53): real CLI public installed Schedule reads with one
+  captured provider/contract across pages and exact published protocol refusal.
+- Stage 4k: delete Core schedules.list/Go/TS/port/selected-role read forwarding;
+  generate typed CLI Go from the publisher contract used by canonical JSON and TS.
+- Stage 4k: preserve embedded public pagination owner generation; migrate backend
+  native/source probes and remove retired frontend facade cases. Necessary focused
+  checks and production compilation pass; final execution and mutation migration open.
 - Stage 4j (9f30bd16): ordinary contextual Session component placement, local menu
   contribution and frozen accepted target; Trajectory owns its canonical naming form.
 - Stage 4j: remove closed action declaration/enum/array, wrapper API/DTO/Go/TS/CLI
@@ -365,6 +376,9 @@ and all P01-P48/final acceptance.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | CLI Schedule catalog captures the selected installed contract once and uses public calls | Cursor continuation belongs to that concrete owner; reselecting per page can mix different business catalogs | Retaining schedules.list, importing private producer types, choosing another enabled provider or refreshing a selection mid-traversal |
+| 2026-10-14 | Publisher contracts generate typed CLI Go through the same feature pipeline | Independent consumers need concrete request/output types without a handwritten second schema owner | Raw JSON as the CLI business model, duplicated structs/descriptors, float-rounding uint64 bounds or silently replacing the advertised protocol |
+| 2026-10-14 | Named embedded public DTOs stay in the generated wire graph | Removing one standalone method must not erase a public embedded owner still used by other requests | A hand-written PageQuery TS type, retaining a dead API to keep generation working or deleting valid pagination checks |
 | 2026-10-14 | Contextual actions are ordinary Session components; business calls use canonical operations | The plugin owns its form, while Session revision/command/receipt remain with their existing owner; local menus need no I/O | Closed action enums, a special rename RPC/CLI wrapper, private Host forms, querying a new revision to construct a menu or retargeting an open draft |
 | 2026-10-14 | Capture accepted Session ID/revision/title when opening the action and retain the original uncertain mutation | Navigation and response loss cannot change the submitted business intent or fabricate success | Reading current navigation after await, changing command identity on retry, optimistic saved state or silently adopting a conflicting revision |
 | 2026-10-14 | Tool renderers use ordinary components over public frozen recorded data; retire all guest machinery | Current installed presentation is not historical execution authority; the result and its Run remain with existing owners | Historical script installation, Tool replay, old readRenderer aliases, duplicate Tool projection schemas or preserving unused native/page channels |
@@ -489,13 +503,13 @@ Status is open until code and appropriate verification prove the requirement.
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; remaining Core facade migration and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
+| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; CLI Schedule list now uses that entrance with frozen pagination; mutations/all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
-| One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; installed contribution/component binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
+| One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Built-in manager provider/dependency/point inspection and localized optional-module recovery implemented; final lifecycle acceptance open | PackageManager.tsx; ProviderSelections.tsx; ContributionRequirements.tsx; PointInspection.tsx; InstalledComponent.tsx; CLI |
 | Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method/capability/export contract verified; strict local declaration and real feature export binding implemented; named dependency resolution/public projection and fresh cross-plugin declaration checks now compile; managed launch/export publication gates now compile; provider waiting and setup/frozen bindings now implemented with SDK lifecycle execution; complete integrated activation, observed status/retention and all-consumer acceptance open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
@@ -522,6 +536,27 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4k CLI installed Schedule reads and Core reader deletion
+
+- Passed: production Runtime/CLI/Reviews builds, Desktop typecheck/Vite and source/layer
+  gates. Source coverage 99/99, with three sidecars/15 topics and no operation exemptions.
+- Passed: feature generation/type frames/maps/time/optional/full-width integer checks
+  (0.540s); named embedded pagination owner and flattened fields regression (0.841s).
+  The initial PageQuery TS disappearance is repaired in the walker, without an alias
+  or handwritten client shape. Schedules capability JSON is semantically unchanged.
+- Passed: actual CLI public read/remaining operations and pagination, frozen provider
+  across pages and duplicate-row refusal (5.935s); strict advertised-protocol refusal
+  before query and read regressions (6.331s). Caller metadata/query identity stays typed.
+- Passed: Bootstrap, Runtime and delivery test-source compilation into temporary
+  binaries, removed afterward. Native/live backend probes now use installed reads;
+  source compilation does not establish final process/restart/credentialed acceptance.
+- Deleted: frontend old Core reader cases only; unrelated cursor/HITL cases remain.
+  Initial compile errors from the nonexistent capability.Admit constructor and stale
+  standalone PageQuery projection were repaired. An accidental unrelated Memory
+  expectation edit was restored before commit; no valid assertion was weakened.
+- Not run: full Go/vet/race, native/backend process execution, live credentialed probes
+  and final author/deletion audit; all frontend UI/E2E/screenshot execution excluded.
 
 ### Stage 4j contextual Session components and closed action deletion
 
@@ -1393,6 +1428,12 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 4k advances Core to 2026-10-14.7 and removes schedules.list/public bindings.
+  External consumers must rebuild and bind the installed publisher list operation.
+  Backend wire and private storage/business formats do not change. Generated Go types
+  are schema projections, not another owner; exact capability still validates I/O.
+  Schedule mutations still use Core facades and require original-bound recovery during
+  their next cutover. Independent backend source/publication parity remains open.
 - Stage 4j advances Core to 2026-10-14.6 and removes the plugin rename wrapper/DTO,
   action enum/array/declaration and CLI subcommand; external Go/TS/CLI consumers must
   rebuild and use canonical Session editing or the public installed business entrance.
