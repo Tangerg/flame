@@ -64,7 +64,6 @@ export type WireTypeName =
   | "ContentBlock"
   | "ContentBlockType"
   | "CreateMCPAuthorizationAttemptRequest"
-  | "CreateScheduleRequest"
   | "CreateSessionRequest"
   | "DeleteSessionRequest"
   | "Descriptor"
@@ -1012,29 +1011,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   CreateMCPAuthorizationAttemptRequest: object({
     server: ref(() => CHECKS.MCPServerID),
   }, ["server"]),
-  CreateScheduleRequest: allOf([
-    object({
-      cron: allOf([text(), minLength(1)]),
-      instructions: allOf([text(), pattern("\\S")]),
-      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      title: text(),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-    }, ["cron", "instructions"]),
-    ifThen(
-      fields({}, ["provider"]),
-      fields({}, ["model"]),
-    ),
-    ifThen(
-      fields({}, ["model"]),
-      fields({}, ["provider"]),
-    ),
-    ifThen(
-      fields({}, ["reasoningEffort"]),
-      fields({}, ["model", "provider"]),
-    ),
-  ]),
   CreateSessionRequest: object({
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -4529,7 +4505,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "approval.setMode": ref(() => CHECKS.SetApprovalModeRequest),
   "approval.listRules": ref(() => CHECKS.ListApprovalRulesRequest),
   "approval.forgetRule": ref(() => CHECKS.ForgetApprovalRuleRequest),
-  "schedules.create": ref(() => CHECKS.CreateScheduleRequest),
   "schedules.update": ref(() => CHECKS.UpdateScheduleRequest),
   "goals.start": ref(() => CHECKS.StartGoalRequest),
   "goals.update": ref(() => CHECKS.UpdateGoalRequest),
@@ -4641,7 +4616,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "approval.setMode": ref(() => CHECKS.ApprovalModeResult),
   "approval.listRules": ref(() => CHECKS.ListApprovalRulesResult),
   "approval.forgetRule": object({}, []),
-  "schedules.create": ref(() => CHECKS.Schedule),
   "schedules.update": ref(() => CHECKS.Schedule),
   "goals.start": ref(() => CHECKS.Goal),
   "goals.update": ref(() => CHECKS.Goal),

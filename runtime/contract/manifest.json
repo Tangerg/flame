@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.9",
+  "protocolVersion": "2026-10-14.10",
   "features": [
     "reasoning",
     "multimodal",
@@ -1137,22 +1137,6 @@
       "pagination": "none"
     },
     {
-      "name": "schedules.create",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "workspace_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "schedules"
-      ]
-    },
-    {
       "name": "schedules.update",
       "kind": "unary",
       "operation": "command",
@@ -1582,7 +1566,6 @@
           "runs.start",
           "runs.subscribe",
           "runtime.subscribe",
-          "schedules.create",
           "schedules.update",
           "sessions.export",
           "sessions.exportTrajectory",
@@ -1852,7 +1835,6 @@
           "plugins.setEnablement",
           "plugins.stage",
           "plugins.uninstall",
-          "schedules.create",
           "schedules.update"
         ]
       },
@@ -2052,7 +2034,6 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
-          "schedules.create",
           "schedules.update",
           "sessions.create",
           "sessions.update",
@@ -2663,16 +2644,6 @@
         {
           "requires": [
             "plugins"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "schedules.create",
-      "rules": [
-        {
-          "requires": [
-            "schedules"
           ]
         }
       ]
@@ -5391,45 +5362,6 @@
     },
     {
       "type": "StartGoalRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "provider",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "model"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "model",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "reasoningEffort",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider",
-            "model"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "CreateScheduleRequest",
       "rules": [
         {
           "when": [
@@ -9623,43 +9555,6 @@
           "field": "revision",
           "constraint": "maximum(9007199254740991)"
         },
-        {
-          "field": "instructions",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "cron",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "provider",
-          "constraint": "identity"
-        },
-        {
-          "field": "provider",
-          "constraint": "maxLength(64)"
-        },
-        {
-          "field": "model",
-          "constraint": "identity"
-        },
-        {
-          "field": "model",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "reasoningEffort",
-          "constraint": "identity"
-        },
-        {
-          "field": "reasoningEffort",
-          "constraint": "maxLength(32)"
-        }
-      ]
-    },
-    {
-      "type": "CreateScheduleRequest",
-      "rules": [
         {
           "field": "instructions",
           "constraint": "pattern(\"\\\\S\")"

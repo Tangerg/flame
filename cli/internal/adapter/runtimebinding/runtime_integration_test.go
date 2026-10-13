@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/capability"
@@ -807,15 +808,23 @@ func requireIntegrationMCPServer(
 
 func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	create := protocol.CreateScheduleRequest{
+	create := schedule.CreateV1Input{
 		Title: "Adapter schedule", Instructions: "review the workspace",
-		Workspace: &protocol.WorkspaceRef{Path: workspace}, Cron: "0 9 * * 1-5",
+		CWD: workspace, Enabled: true, ModelSelection: map[string]string{}, Cron: "0 9 * * 1-5",
 	}
-	created, err := runtime.Create(t.Context(), create)
+	creation, err := runtime.PrepareCreate(t.Context(), create)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply, err := runtime.CallPlugin(t.Context(), creation, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := runtime.DecodeCreate(reply)
 	if err != nil {
 		t.Fatalf("Create schedule: %v", err)
 	}
-	create.Workspace.Path = "/caller-reused-create"
+	create.CWD = "/caller-reused-create"
 	if created.Workspace == nil || created.Workspace.Path != workspace || created.NextRunAt == nil {
 		t.Fatalf("created schedule is incomplete: %+v", created)
 	}

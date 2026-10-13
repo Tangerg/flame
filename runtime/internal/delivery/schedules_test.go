@@ -71,35 +71,6 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	return s
 }
 
-func TestCreateScheduleBuildsEnabledDomainSchedule(t *testing.T) {
-	reg := &fakeScheduleRegistry{}
-	s := handlerWithSchedules(t, reg)
-	cwd := t.TempDir()
-
-	got, err := s.CreateSchedule(context.Background(), protocol.CreateScheduleRequest{
-		Title: "Morning", Instructions: "Summarize the repo",
-		Workspace: &protocol.WorkspaceRef{Path: cwd}, Cron: "@daily",
-		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "high",
-	})
-	if err != nil {
-		t.Fatalf("create schedule: %v", err)
-	}
-	if len(reg.created) != 1 {
-		t.Fatalf("created %d schedule(s), want 1", len(reg.created))
-	}
-	created := reg.created[0]
-	if !created.Enabled() || created.Instructions() != "Summarize the repo" || created.CWD() != canonicalWorkspacePath(t, cwd) || created.Cron() != "@daily" ||
-		created.ModelSelection().Provider() != "openai" || created.ModelSelection().Model() != "gpt-5.6-sol" || created.ModelSelection().ReasoningEffort() != "high" {
-		t.Fatalf("created = %+v", created)
-	}
-	if created.NextRunAt().IsZero() {
-		t.Fatal("created.NextRunAt is zero, want computed first run")
-	}
-	if got.ID != "sch_created" || got.NextRunAt == nil {
-		t.Fatalf("wire schedule = %+v, want id and nextRunAt", got)
-	}
-}
-
 func TestMissingScheduleIsAResourceFailure(t *testing.T) {
 	endpoint := mustNewEndpoint(t, handlerWithSchedules(t, &fakeScheduleRegistry{}), EndpointConfig{})
 	for _, tc := range []struct {
@@ -121,22 +92,6 @@ func TestMissingScheduleIsAResourceFailure(t *testing.T) {
 	}
 }
 
-func TestCreateScheduleRejectsUnavailableCWD(t *testing.T) {
-	reg := &fakeScheduleRegistry{}
-	s := handlerWithSchedules(t, reg)
-
-	_, err := s.CreateSchedule(context.Background(), protocol.CreateScheduleRequest{
-		Instructions: "Summarize the repo",
-		Workspace:    &protocol.WorkspaceRef{Path: t.TempDir() + "/missing"}, Cron: "@daily",
-	})
-	if !errors.Is(err, protocol.ErrWorkspaceUnavailable) {
-		t.Fatalf("create schedule workspace err = %v, want ErrWorkspaceUnavailable", err)
-	}
-	if len(reg.created) != 0 {
-		t.Fatalf("created %d schedule(s), want 0", len(reg.created))
-	}
-}
-
 func TestWorkspaceMutationFailuresMatchPublishedContracts(t *testing.T) {
 	root := t.TempDir()
 	missing := protocol.WorkspaceRef{Path: root + "/missing"}
@@ -150,7 +105,6 @@ func TestWorkspaceMutationFailuresMatchPublishedContracts(t *testing.T) {
 		method Name
 		params any
 	}{
-		{SchedulesCreate, protocol.CreateScheduleRequest{Instructions: "Review", Cron: "@daily", Workspace: &missing}},
 		{SchedulesUpdate, protocol.UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Workspace: &missing}},
 		{HooksSetTrust, protocol.SetHookTrustRequest{ProjectRoot: missing.Path, Trusted: true}},
 	} {

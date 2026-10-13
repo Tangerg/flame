@@ -23,8 +23,8 @@ type featureGo struct {
 // Go types are projections of the same admitted schemas as TS. Constraints stay
 // in the canonical descriptor; callers validate it before decoding typed output.
 func buildFeatureGo(artifacts featureArtifacts, output featureGoOutput) ([]byte, error) {
-	if !token.IsIdentifier(output.Package) || !token.IsIdentifier(output.Prefix) || !unicode.IsUpper([]rune(output.Prefix)[0]) {
-		return nil, fmt.Errorf("feature Go package and exported prefix are required")
+	if !token.IsIdentifier(output.Package) || (output.Prefix != "" && (!token.IsIdentifier(output.Prefix) || !unicode.IsUpper([]rune(output.Prefix)[0]))) {
+		return nil, fmt.Errorf("feature Go package and optional exported prefix must be identifiers")
 	}
 	emitter := featureGo{names: map[string]string{}}
 	for name := range artifacts.definitions {
@@ -46,9 +46,7 @@ func buildFeatureGo(artifacts featureArtifacts, output featureGoOutput) ([]byte,
 			fmt.Fprintf(&body, "type %s %s\n\n", emitter.names[name], value)
 		}
 	}
-	prefixRunes := []rune(output.Prefix)
-	prefixRunes[0] = unicode.ToLower(prefixRunes[0])
-	prefix := string(prefixRunes)
+	prefix := output.Prefix
 	fmt.Fprintf(&body, "const %sCapabilityJSON = %s\n\n", prefix, strconv.Quote(string(artifacts.capability.Identity().JSON())))
 	seen := map[string]bool{}
 	for _, method := range artifacts.methods {

@@ -49,20 +49,7 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 	}
 	values := make([]protocol.Schedule, 0, len(page.Rows))
 	for _, row := range page.Rows {
-		value, err := scheduledomain.Restore(row)
-		if err != nil {
-			r.t.Fatal(err)
-		}
-		out := protocol.Schedule{ID: value.ID(), Title: value.Title(), Instructions: value.Instructions(), Cron: value.Cron(), Revision: value.Revision(), CreatedAt: value.CreatedAt(), Enabled: value.Enabled(), Provider: value.ModelSelection().Provider(), Model: value.ModelSelection().Model(), ReasoningEffort: value.ModelSelection().ReasoningEffort()}
-		if value.CWD() != "" {
-			out.Workspace = &protocol.WorkspaceRef{Path: value.CWD()}
-		}
-		if !value.NextRunAt().IsZero() {
-			out.NextRunAt = new(value.NextRunAt())
-		}
-		if !value.LastRunAt().IsZero() {
-			out.LastRunAt = new(value.LastRunAt())
-		}
+		out := projectScheduleSnapshot(r, row)
 		values = append(values, out)
 	}
 	return protocol.NewPageWithCursor(values, page.NextCursor)
@@ -90,4 +77,46 @@ func readScheduleRun(r *poMCPRuntime, request protocol.CallPluginRequest, key st
 		r.t.Fatal(err)
 	}
 	return &value
+}
+
+func scheduleCreateRequest(r *poMCPRuntime, draft scheduledomain.Draft) protocol.CallPluginRequest {
+	r.t.Helper()
+	request := scheduleQuery(r, protocol.PageQuery{})
+	input, err := json.Marshal(draft)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	request.Method, request.Input = schedulerpc.Create, input
+	return request
+}
+func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *protocol.Schedule {
+	r.t.Helper()
+	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
+	if reply.Failure != nil {
+		r.t.Fatal(reply.Failure)
+	}
+	var snapshot scheduledomain.Snapshot
+	if err := json.Unmarshal(reply.Output, &snapshot); err != nil {
+		r.t.Fatal(err)
+	}
+	row := projectScheduleSnapshot(r, snapshot)
+	return &row
+}
+func projectScheduleSnapshot(r *poMCPRuntime, snapshot scheduledomain.Snapshot) protocol.Schedule {
+	r.t.Helper()
+	value, err := scheduledomain.Restore(snapshot)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	row := protocol.Schedule{ID: value.ID(), Title: value.Title(), Instructions: value.Instructions(), Cron: value.Cron(), Enabled: value.Enabled(), CreatedAt: value.CreatedAt(), Revision: value.Revision(), Provider: value.ModelSelection().Provider(), Model: value.ModelSelection().Model(), ReasoningEffort: value.ModelSelection().ReasoningEffort()}
+	if value.CWD() != "" {
+		row.Workspace = &protocol.WorkspaceRef{Path: value.CWD()}
+	}
+	if !value.NextRunAt().IsZero() {
+		row.NextRunAt = new(value.NextRunAt())
+	}
+	if !value.LastRunAt().IsZero() {
+		row.LastRunAt = new(value.LastRunAt())
+	}
+	return row
 }

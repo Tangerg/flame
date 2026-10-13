@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -108,7 +109,8 @@ type Skills interface {
 // A form hands its fresh request to the operation that invokes this port.
 type Schedules interface {
 	Schedules(context.Context) ([]protocol.Schedule, error)
-	Create(context.Context, protocol.CreateScheduleRequest) (protocol.Schedule, error)
+	PrepareCreate(context.Context, schedule.CreateV1Input) (protocol.CallPluginRequest, error)
+	DecodeCreate(*protocol.CallPluginResponse) (protocol.Schedule, error)
 	Update(context.Context, protocol.UpdateScheduleRequest) (protocol.Schedule, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)

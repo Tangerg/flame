@@ -61,16 +61,16 @@ business input and backends receive it as invocation metadata. Declared
 cross-plugin dependencies, durable trigger-origin propagation and streaming
 decoration remain under development.
 
-Schedules catalog reads, deletions and manual execution now use the installed contribution's
-published operations. The former `ListSchedules`, `DeleteSchedule`, `RunScheduleNow`
-Go methods and `schedules.list`, `schedules.delete`, `schedules.runNow` Protocol methods
-are removed. They retain the same backend business transition and private receipt owner. The CLI retains
-its original command request in its workbench before sending; reconciliation
-keeps that installation and release even after selection changes or client restart.
-Manual execution receives Runtime callbacks through the generic installed call;
-the backend owns capture/reconciliation and Runtime owns the accepted Run.
-Create and update Core facades remain under migration. External consumers
-of the removed methods must adopt `CallPlugin`; there is no compatibility alias.
+Schedules reads, creation, deletion and manual execution use the installed
+contribution's published operations. The former `ListSchedules`, `CreateSchedule`,
+`DeleteSchedule`, `RunScheduleNow` Go methods and their Protocol entrances are
+removed. Backend business transitions and private receipts retain their owners.
+The CLI persists original intent before dispatch and keeps its installation,
+release and inputs across selection changes, acknowledgement loss and restart.
+The generic installed call supplies Runtime callbacks; the backend owns manual
+capture/reconciliation and Runtime owns the accepted Run. The update Core facade
+remains under migration. External consumers of removed methods must use
+`CallPlugin`; no compatibility alias or old-method request translation exists.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a

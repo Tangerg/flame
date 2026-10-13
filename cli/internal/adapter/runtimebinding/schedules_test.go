@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -23,7 +24,7 @@ type scheduleBindingStub struct {
 	now              time.Time
 	actions          []string
 	keys             map[string]struct{}
-	created          protocol.CreateScheduleRequest
+	created          schedule.CreateV1Input
 	updated          protocol.UpdateScheduleRequest
 	createResult     *protocol.Schedule
 	updateResult     *protocol.Schedule
@@ -43,7 +44,7 @@ func (s *scheduleBindingStub) ListPluginProviders(_ context.Context, options fla
 }
 func (s *scheduleBindingStub) ListPlugins(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	s.assertMeta(options.RequestMeta)
-	contracts, err := capability.Parse([]byte(schedulesCapabilityJSON))
+	contracts, err := capability.Parse([]byte(schedule.CapabilityJSON))
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -55,34 +56,56 @@ func (s *scheduleBindingStub) ListPlugins(_ context.Context, options flameruntim
 }
 func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	s.assertMeta(options.RequestMeta)
-	if request.InstallationID != scheduleInstallation || request.Target.Reference != scheduleInstallation || request.Target.Scope != "installation" || request.Contract != schedulesCapabilityJSON {
+	if request.InstallationID != scheduleInstallation || request.Target.Reference != scheduleInstallation || request.Target.Scope != "installation" || request.Contract != schedule.CapabilityJSON {
 		s.t.Fatalf("unbound schedule query: %+v", request)
 	}
-	if request.Method == schedulesRunNowV1Method {
-		var input SchedulesRunNowV1Input
+	if request.Method == schedule.CreateV1Method {
+		var input schedule.CreateV1Input
 		if err := json.Unmarshal(request.Input, &input); err != nil {
 			s.t.Fatal(err)
 		}
-		s.assertCommand("run:"+input.ID, flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
-		output, err := jsoninput.Encode(SchedulesRunNowV1Output{SessionID: "ses_headless", RunID: "run_headless"})
+		s.assertCommand("create", flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		s.created = input
+		row := wireSchedule(s.now, "sch_created")
+		row.Title, row.Instructions, row.Cron = input.Title, input.Instructions, input.Cron
+		row.Provider, row.Model, row.ReasoningEffort = input.ModelSelection["provider"], input.ModelSelection["model"], input.ModelSelection["reasoningEffort"]
+		if input.CWD != "" {
+			row.Workspace = &protocol.WorkspaceRef{Path: input.CWD}
+		}
+		if s.createResult != nil {
+			row = cloneSchedule(*s.createResult)
+		}
+		output, err := jsoninput.Encode(schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, CWD: input.CWD, ModelSelection: input.ModelSelection, CreatedAt: row.CreatedAt, NextRunAt: *row.NextRunAt, Revision: row.Revision})
 		if err != nil {
 			s.t.Fatal(err)
 		}
 		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
 	}
-	if request.Method == schedulesDeleteV1Method {
-		var input SchedulesDeleteV1Input
+	if request.Method == schedule.RunNowV1Method {
+		var input schedule.RunNowV1Input
+		if err := json.Unmarshal(request.Input, &input); err != nil {
+			s.t.Fatal(err)
+		}
+		s.assertCommand("run:"+input.ID, flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		output, err := jsoninput.Encode(schedule.RunNowV1Output{SessionID: "ses_headless", RunID: "run_headless"})
+		if err != nil {
+			s.t.Fatal(err)
+		}
+		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
+	}
+	if request.Method == schedule.DeleteV1Method {
+		var input schedule.DeleteV1Input
 		if err := json.Unmarshal(request.Input, &input); err != nil {
 			s.t.Fatal(err)
 		}
 		s.assertCommand("delete:"+input.ID, flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
 	}
-	if request.Method != schedulesListV1Method || options.IdempotencyKey != "" {
+	if request.Method != schedule.ListV1Method || options.IdempotencyKey != "" {
 		s.t.Fatal("invalid schedule query")
 	}
 	s.queries = append(s.queries, request)
-	var input SchedulesListV1Input
+	var input schedule.ListV1Input
 	if err := json.Unmarshal(request.Input, &input); err != nil {
 		s.t.Fatal(err)
 	}
@@ -104,9 +127,9 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 	if page == nil {
 		return nil, nil
 	}
-	value := SchedulesListV1Output{NextCursor: page.NextCursor}
+	value := schedule.ListV1Output{NextCursor: page.NextCursor}
 	for _, row := range page.Data {
-		snapshot := SchedulesCreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, CreatedAt: row.CreatedAt, Revision: row.Revision, ModelSelection: map[string]string{"provider": row.Provider, "model": row.Model, "reasoningEffort": row.ReasoningEffort}}
+		snapshot := schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, CreatedAt: row.CreatedAt, Revision: row.Revision, ModelSelection: map[string]string{"provider": row.Provider, "model": row.Model, "reasoningEffort": row.ReasoningEffort}}
 		if row.Workspace != nil {
 			snapshot.CWD = row.Workspace.Path
 		}
@@ -119,28 +142,13 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		value.Rows = append(value.Rows, snapshot)
 	}
 	if value.Rows == nil {
-		value.Rows = make([]SchedulesCreateV1Output, 0)
+		value.Rows = make([]schedule.CreateV1Output, 0)
 	}
 	encoded, err := jsoninput.Encode(value)
 	if err != nil {
 		s.t.Fatal(err)
 	}
 	return &protocol.CallPluginResponse{Output: encoded.JSON()}, nil
-}
-
-func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol.CreateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
-	s.assertCommand("create", options)
-	s.created = request
-	s.created.Workspace = cloneWorkspaceRef(request.Workspace)
-	if s.createResult != nil {
-		result := cloneSchedule(*s.createResult)
-		return &result, nil
-	}
-	created := wireSchedule(s.now, "sch_created")
-	created.Title, created.Instructions, created.Cron = request.Title, request.Instructions, request.Cron
-	created.Provider, created.Model, created.ReasoningEffort = request.Provider, request.Model, request.ReasoningEffort
-	created.Workspace = cloneWorkspaceRef(request.Workspace)
-	return &created, nil
 }
 
 func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol.UpdateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
@@ -236,16 +244,23 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	if err != nil || len(listed) != 2 || listed[0].ID != "sch_2" || listed[1].ID != "sch_1" {
 		t.Fatalf("public Schedules = (%+v, %v)", listed, err)
 	}
-	candidate := protocol.CreateScheduleRequest{
-		Title: "Daily review", Instructions: "review everything", Workspace: &protocol.WorkspaceRef{Path: "/workspace"},
-		Provider: "deepseek", Model: "deepseek-v4-flash", ReasoningEffort: "high", Cron: "0 9 * * *",
+	candidate := schedule.CreateV1Input{
+		Title: "Daily review", Instructions: "review everything", CWD: "/workspace", Enabled: true,
+		ModelSelection: map[string]string{"provider": "deepseek", "model": "deepseek-v4-flash", "reasoningEffort": "high"}, Cron: "0 9 * * *",
 	}
-	created, err := runtime.Create(t.Context(), candidate)
+	creation, err := runtime.PrepareCreate(t.Context(), candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	createdReply, err := runtime.CallPlugin(t.Context(), creation, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := runtime.DecodeCreate(createdReply)
 	if err != nil || created.ID != "sch_created" {
 		t.Fatalf("Create = (%+v, %v)", created, err)
 	}
-	if stub.created.Workspace == nil || stub.created.Workspace.Path != "/workspace" ||
-		stub.created.Model != candidate.Model || stub.created.ReasoningEffort != candidate.ReasoningEffort {
+	if stub.created.CWD != "/workspace" || stub.created.ModelSelection["model"] != candidate.ModelSelection["model"] || stub.created.ModelSelection["reasoningEffort"] != candidate.ModelSelection["reasoningEffort"] {
 		t.Fatalf("create request = %+v", stub.created)
 	}
 	title := "Updated"
@@ -405,5 +420,30 @@ func TestScheduleRunNowRequiresACompleteCoreReference(t *testing.T) {
 	value, err := r.DecodeRunNow(&protocol.CallPluginResponse{Output: []byte(`{"SessionID":"ses_original","RunID":"run_original"}`)})
 	if err != nil || value.SessionID != "ses_original" || value.RunID != "run_original" {
 		t.Fatalf("accepted Core reference: %+v, %v", value, err)
+	}
+}
+
+func TestScheduleCreateCapturesPublishedInputWithoutBorrowingCallerState(t *testing.T) {
+	stub := &scheduleBindingStub{t: t}
+	r := &Connection{plugins: stub, meta: requestMeta("test"), workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
+		Ref: protocol.WorkspaceRef{Path: "/resolved"}, ProjectRoot: "/resolved", Availability: protocol.WorkspaceAvailable,
+	}}}
+	input := schedule.CreateV1Input{Title: "original", Instructions: "inspect", CWD: "/authored", Cron: "@daily", Enabled: true, ModelSelection: map[string]string{"provider": "deepseek", "model": "original"}}
+	request, err := r.PrepareCreate(t.Context(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if input.CWD != "/authored" {
+		t.Fatal("workspace resolution mutated the authored draft")
+	}
+	input.Title, input.CWD = "replacement", "/replacement"
+	input.ModelSelection["model"] = "replacement"
+	stub.provider = "replacement-installation"
+	var captured schedule.CreateV1Input
+	if err := json.Unmarshal(request.Input, &captured); err != nil {
+		t.Fatal(err)
+	}
+	if captured.Title != "original" || captured.CWD != "/resolved" || captured.ModelSelection["model"] != "original" || !captured.Enabled || request.InstallationID != scheduleInstallation || request.Method != schedule.CreateV1Method || request.Contract != schedule.CapabilityJSON {
+		t.Fatalf("creation changed its captured intent or owner: %+v, %+v", captured, request)
 	}
 }

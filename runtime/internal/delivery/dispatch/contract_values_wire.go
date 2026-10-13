@@ -858,13 +858,6 @@ func registerScheduleValues(s *Shapes) {
 		Constraints: scheduleConstraints,
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.CreateScheduleRequest](),
-		Constraints: append([]FieldConstraint{
-			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
-			{Field: "cron", Kind: ConstraintNonEmpty},
-		}, modelSelectionIdentities()...),
-	})
-	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.UpdateScheduleRequest](),
 		Constraints: append(append(requiredScheduleIdentity("id"), []FieldConstraint{
 			{Field: "expectedRevision", Kind: ConstraintPositive},

@@ -70,7 +70,6 @@ export type {
   Provider,
   ProviderConfigChange,
   Schedule,
-  CreateScheduleRequest,
   AgentMemoryItem,
   ApprovalRule,
   ToolRef,

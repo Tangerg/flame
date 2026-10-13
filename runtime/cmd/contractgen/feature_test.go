@@ -230,13 +230,22 @@ func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := string(generated)
-	for _, required := range []string{"Revision uint64", "At", "time.Time", "map[string]string", "*bool", "*int64", "exampleReadV1Method", "18446744073709551615"} {
+	for _, required := range []string{"Revision uint64", "At", "time.Time", "map[string]string", "*bool", "*int64", "ExampleReadV1Method", "18446744073709551615"} {
 		if !strings.Contains(source, required) {
 			t.Fatalf("Go projection lost %s", required)
 		}
 	}
 	if _, err := parser.ParseFile(token.NewFileSet(), "generated.go", generated, parser.AllErrors); err != nil {
 		t.Fatal(err)
+	}
+	scoped, err := buildFeatureGo(artifacts, featureGoOutput{Package: "consumer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{"const CapabilityJSON", "const ReadV1Method", "type ReadV1Input"} {
+		if !strings.Contains(string(scoped), required) {
+			t.Fatalf("package-scoped projection lost %s", required)
+		}
 	}
 	for _, output := range []featureGoOutput{{Package: "consumer; bad", Prefix: "Example"}, {Package: "consumer", Prefix: "lowercase"}} {
 		if _, err := buildFeatureGo(artifacts, output); err == nil {

@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-10-14.9",
+    "version": "2026-10-14.10",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -6090,127 +6090,6 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/ForgetApprovalRuleRequest"
-          }
-        ]
-      }
-    },
-    {
-      "name": "schedules.create",
-      "paramStructure": "by-name",
-      "params": [
-        {
-          "name": "title",
-          "schema": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "instructions",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "pattern": "\\S"
-          }
-        },
-        {
-          "name": "workspace",
-          "schema": {
-            "$ref": "#/components/schemas/WorkspaceRef"
-          }
-        },
-        {
-          "name": "provider",
-          "schema": {
-            "type": "string",
-            "maxLength": 64,
-            "pattern": "^[^\\p{C}\\p{Z}]*$"
-          }
-        },
-        {
-          "name": "model",
-          "schema": {
-            "type": "string",
-            "maxLength": 256,
-            "pattern": "^[^\\p{C}\\p{Z}]*$"
-          }
-        },
-        {
-          "name": "reasoningEffort",
-          "schema": {
-            "type": "string",
-            "maxLength": 32,
-            "pattern": "^[^\\p{C}\\p{Z}]*$"
-          }
-        },
-        {
-          "name": "cron",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        {
-          "name": "_meta",
-          "schema": {
-            "$ref": "#/components/schemas/RequestMeta"
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "$ref": "schema.json#/$defs/Schedule"
-        }
-      },
-      "errors": [
-        {
-          "code": -32045,
-          "message": "plugin_unavailable"
-        },
-        {
-          "code": -32005,
-          "message": "workspace_unavailable"
-        },
-        {
-          "code": -32006,
-          "message": "capability_not_negotiated"
-        }
-      ],
-      "x-flame-kind": "unary",
-      "x-flame-operation": "command",
-      "x-flame-idempotency": "ownerResponse",
-      "x-flame-replayCursor": "none",
-      "x-flame-pagination": "none",
-      "x-flame-features": [
-        "schedules"
-      ],
-      "x-flame-capabilityRules": [
-        {
-          "requires": [
-            "schedules"
-          ]
-        }
-      ],
-      "x-flame-requestFrame": {
-        "properties": {
-          "_meta": {
-            "$ref": "#/components/schemas/RequestMeta"
-          },
-          "cron": {},
-          "instructions": {},
-          "model": {},
-          "provider": {},
-          "reasoningEffort": {},
-          "title": {},
-          "workspace": {
-            "$ref": "#/components/schemas/WorkspaceRef"
-          }
-        },
-        "unevaluatedProperties": false,
-        "allOf": [
-          {
-            "$ref": "schema.json#/$defs/CreateScheduleRequest"
           }
         ]
       }

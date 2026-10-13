@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -41,20 +42,13 @@ func newScheduleFormDraft(mode scheduleFormMode, scheduled protocol.Schedule, de
 	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, enabled: true}
 }
 
-func (s scheduleFormDraft) candidate() (protocol.CreateScheduleRequest, error) {
-	request := protocol.CreateScheduleRequest{
-		Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions),
-		Provider: s.provider, Model: s.model, Cron: strings.TrimSpace(s.cron),
+func (s scheduleFormDraft) candidate() (schedule.CreateV1Input, error) {
+	if err := validateScheduleModelPair(s.provider, s.model); err != nil {
+		return schedule.CreateV1Input{}, err
 	}
-	workspace := strings.TrimSpace(s.workspace)
-	if workspace != "" {
-		request.Workspace = &protocol.WorkspaceRef{Path: workspace}
-	}
-	if err := validateScheduleModelPair(request.Provider, request.Model); err != nil {
-		return protocol.CreateScheduleRequest{}, err
-	}
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.CreateScheduleRequest{}, err
+	request := schedule.CreateV1Input{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), Enabled: true, ModelSelection: map[string]string{"provider": s.provider, "model": s.model}}
+	if request.Instructions == "" || request.Cron == "" {
+		return schedule.CreateV1Input{}, errors.New("instructions and cron are required")
 	}
 	return request, nil
 }

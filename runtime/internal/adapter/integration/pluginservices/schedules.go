@@ -130,14 +130,7 @@ func NewSchedules(store plugins.Store, pool *mcpconnection.Pool, commands *Comma
 	}
 	return &Schedules{contracts: contracts, installations: store, pool: pool, commands: commands}, nil
 }
-func (s *Schedules) Create(ctx context.Context, input schedule.Draft) (schedule.Schedule, error) {
-	value, err := invokeCommand[schedule.Draft, schedule.Snapshot](ctx, s.commands, s.contracts.Capability, rpc.Create, input, func(value schedule.Snapshot) error { _, err := schedule.Restore(value); return err })
-	if err != nil {
-		return schedule.Schedule{}, rpc.DecodeError(err)
-	}
-	saved, err := schedule.Restore(value.value)
-	return saved, err
-}
+
 func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedule.Schedule, error) {
 	value, err := invokeCommand[rpc.UpdateInput, schedule.Snapshot](ctx, s.commands, s.contracts.Capability, rpc.Update, rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: rpc.EncodeModelPatch(input.Patch.ModelSelection)}, func(value schedule.Snapshot) error { _, err := schedule.Restore(value); return err })
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulesqlite "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -85,7 +86,7 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
-	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {

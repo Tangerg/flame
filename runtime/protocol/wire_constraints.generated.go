@@ -457,23 +457,6 @@ func (f ForgetApprovalRuleRequest) ValidateWire() error {
 	)
 }
 
-func (c CreateScheduleRequest) ValidateWire() error {
-	return collectWireViolations("CreateScheduleRequest",
-		requiredTextPattern("instructions", c.Instructions, "\\S"),
-		requiredText("cron", c.Cron),
-		identity("provider", c.Provider),
-		maxLength("provider", c.Provider, 64),
-		identity("model", c.Model),
-		maxLength("model", c.Model, 256),
-		identity("reasoningEffort", c.ReasoningEffort),
-		maxLength("reasoningEffort", c.ReasoningEffort, 32),
-		requiredWhen(wireFieldPresent(c, "provider"), "model", c),
-		requiredWhen(wireFieldPresent(c, "model"), "provider", c),
-		requiredWhen(wireFieldPresent(c, "reasoningEffort"), "provider", c),
-		requiredWhen(wireFieldPresent(c, "reasoningEffort"), "model", c),
-	)
-}
-
 func (u UpdateScheduleRequest) ValidateWire() error {
 	return collectWireViolations("UpdateScheduleRequest",
 		requiredText("id", u.ID),

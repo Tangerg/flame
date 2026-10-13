@@ -15,6 +15,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
+	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -39,16 +40,12 @@ const (
 
 func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
-	created, err := fixture.runtime.CreateSchedule(fixture.ctx, protocol.CreateScheduleRequest{
-		Title:        "Live DeepSeek Schedule E2E",
-		Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.",
-		Workspace:    &protocol.WorkspaceRef{Path: fixture.workspace},
-		Cron:         "0 0 1 1 *",
-	}, flameruntime.CommandOptions{})
+	creation := fixtureScheduleCreateRequest(t, fixture, scheduledomain.Draft{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *"})
+	created, err := fixtureScheduleCreate(fixture, creation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Revision != 1 || created.LastRunAt != nil || created.NextRunAt == nil {
+	if created.Revision != 1 || !created.LastRunAt.IsZero() || created.NextRunAt.IsZero() {
 		t.Fatalf("created Schedule = %+v, want pristine revision one", created)
 	}
 
@@ -153,7 +150,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if current.ID != created.ID || current.Revision != created.Revision+1 || current.LastRunAt.IsZero() {
 		t.Fatalf("Schedule after manual Run: %+v", current)
 	}
-	if created.NextRunAt == nil || !current.NextRunAt.Equal(*created.NextRunAt) {
+	if created.NextRunAt.IsZero() || !current.NextRunAt.Equal(created.NextRunAt) {
 		t.Fatalf("Schedule next cursor: %v, want %v", current.NextRunAt, created.NextRunAt)
 	}
 }
@@ -877,6 +874,31 @@ func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPlugi
 		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value scheduleapp.RunReference
+	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	return &value, nil
+}
+
+func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, draft scheduledomain.Draft) protocol.CallPluginRequest {
+	t.Helper()
+	request := fixtureScheduleRunRequest(t, fixture, "")
+	input, err := json.Marshal(draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Method, request.Input = schedulerpc.Create, input
+	return request
+}
+func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*scheduledomain.Snapshot, error) {
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, flameruntime.PluginCallOptions{IdempotencyKey: "live-deepseek-create-schedule"})
+	if err != nil {
+		return nil, err
+	}
+	if reply.Failure != nil {
+		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+	}
+	var value scheduledomain.Snapshot
 	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}

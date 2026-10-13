@@ -17,28 +17,6 @@ import (
 // backend worker fires. A schedule stores the final instructions
 // text, so the runtime fires it without resolving a template.
 
-// CreateSchedule adds an enabled schedule (schedules.create), computing its
-// first due time from the cron.
-func (s *Handler) CreateSchedule(ctx context.Context, in protocol.CreateScheduleRequest) (*protocol.Schedule, error) {
-	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
-	if err != nil {
-		return nil, mapScheduleErr(err, "")
-	}
-	created, err := s.schedules.Create(ctx, schedule.Draft{
-		Title:          in.Title,
-		Instructions:   in.Instructions,
-		CWD:            workspaceRefPath(in.Workspace),
-		ModelSelection: selection,
-		Cron:           in.Cron,
-		Enabled:        true,
-	})
-	if err != nil {
-		return nil, mapScheduleErr(err, "")
-	}
-	wire := presentSchedule(created)
-	return &wire, nil
-}
-
 // UpdateSchedule applies a revision-guarded partial patch. The schedule use case
 // recomputes due time when cron or enabled changes and clears it when disabled.
 func (s *Handler) UpdateSchedule(ctx context.Context, in protocol.UpdateScheduleRequest) (*protocol.Schedule, error) {

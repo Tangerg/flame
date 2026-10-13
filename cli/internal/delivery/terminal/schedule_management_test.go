@@ -14,7 +14,9 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
@@ -22,7 +24,7 @@ import (
 type scheduleServiceStub struct {
 	mu        sync.Mutex
 	schedules []protocol.Schedule
-	created   chan protocol.CreateScheduleRequest
+	created   chan schedule.CreateV1Input
 	updated   chan protocol.UpdateScheduleRequest
 	deleted   chan string
 	run       chan string
@@ -39,7 +41,7 @@ type blockingScheduleRunService struct {
 
 func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
 	var input struct {
-		ID string `json:"id"`
+		ID string `json:"ID"`
 	}
 	if err := json.Unmarshal(request.Input, &input); err != nil {
 		return nil, err
@@ -70,7 +72,7 @@ func newScheduleServiceStub() *scheduleServiceStub {
 			Workspace: &protocol.WorkspaceRef{Path: "/workspace"}, Cron: "0 * * * *", Enabled: true,
 			NextRunAt: &next, CreatedAt: now, Revision: 1,
 		}},
-		created: make(chan protocol.CreateScheduleRequest, 1), updated: make(chan protocol.UpdateScheduleRequest, 4),
+		created: make(chan schedule.CreateV1Input, 1), updated: make(chan protocol.UpdateScheduleRequest, 4),
 		deleted: make(chan string, 1), run: make(chan string, 1), now: now,
 	}
 }
@@ -86,16 +88,13 @@ func (s *scheduleServiceStub) Schedules(context.Context) ([]protocol.Schedule, e
 	return result, nil
 }
 
-func (s *scheduleServiceStub) Create(_ context.Context, request protocol.CreateScheduleRequest) (protocol.Schedule, error) {
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.Schedule{}, err
-	}
+func (s *scheduleServiceStub) create(request schedule.CreateV1Input) (protocol.Schedule, error) {
 	s.created <- request
 	next := s.now.Add(2 * time.Hour)
 	created := protocol.Schedule{
 		ID: "sch_created", Title: request.Title, Instructions: request.Instructions,
-		Workspace: cloneWorkspaceRef(request.Workspace), Provider: request.Provider, Model: request.Model,
-		ReasoningEffort: request.ReasoningEffort, Cron: request.Cron,
+		Workspace: &protocol.WorkspaceRef{Path: request.CWD}, Provider: request.ModelSelection["provider"], Model: request.ModelSelection["model"],
+		ReasoningEffort: request.ModelSelection["reasoningEffort"], Cron: request.Cron,
 		Enabled: true, NextRunAt: &next, CreatedAt: s.now, Revision: 1,
 	}
 	s.mu.Lock()
@@ -126,26 +125,46 @@ func (s *scheduleServiceStub) Update(_ context.Context, request protocol.UpdateS
 	return protocol.Schedule{}, errors.New("schedule not found")
 }
 
-func (s *scheduleServiceStub) PrepareDelete(_ context.Context, id string) (protocol.CallPluginRequest, error) {
-	contract, err := capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)}, capability.MethodDescriptor{Name: "flame.schedules/runNow.v1", Kind: capability.Mutation, Target: "installation", Description: "Run a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{"sessionId":{"type":"string"},"runId":{"type":"string"}},"required":["sessionId","runId"],"additionalProperties":false}`)})
-	if err != nil {
-		return protocol.CallPluginRequest{}, err
-	}
-	input, err := json.Marshal(struct {
-		ID string `json:"id"`
-	}{id})
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: input}, err
+func boundScheduleRequest(method string, input any) (protocol.CallPluginRequest, error) {
+	encoded, err := jsoninput.Encode(input)
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: encoded.JSON()}, err
 }
+func (s *scheduleServiceStub) PrepareCreate(_ context.Context, request schedule.CreateV1Input) (protocol.CallPluginRequest, error) {
+	return boundScheduleRequest(schedule.CreateV1Method, request)
+}
+func (s *scheduleServiceStub) PrepareDelete(_ context.Context, id string) (protocol.CallPluginRequest, error) {
+	return boundScheduleRequest(schedule.DeleteV1Method, schedule.DeleteV1Input{ID: id})
+}
+func (s *scheduleServiceStub) DecodeCreate(reply *protocol.CallPluginResponse) (protocol.Schedule, error) {
+	var value schedule.CreateV1Output
+	if err := json.Unmarshal(reply.Output, &value); err != nil {
+		return protocol.Schedule{}, err
+	}
+	return protocol.Schedule{ID: value.ID, Title: value.Title, Instructions: value.Instructions, Workspace: &protocol.WorkspaceRef{Path: value.CWD}, Cron: value.Cron, Enabled: !value.NextRunAt.IsZero(), NextRunAt: &value.NextRunAt, CreatedAt: value.CreatedAt, Revision: value.Revision, Provider: value.ModelSelection["provider"], Model: value.ModelSelection["model"]}, nil
+}
+
 func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ replay.CommandID) (*protocol.CallPluginResponse, error) {
+	if request.Method == schedule.CreateV1Method {
+		var input schedule.CreateV1Input
+		if err := json.Unmarshal(request.Input, &input); err != nil {
+			return nil, err
+		}
+		row, err := s.create(input)
+		if err != nil {
+			return nil, err
+		}
+		output, err := jsoninput.Encode(schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, CWD: input.CWD, Cron: row.Cron, ModelSelection: input.ModelSelection, NextRunAt: *row.NextRunAt, CreatedAt: row.CreatedAt, Revision: row.Revision})
+		return &protocol.CallPluginResponse{Output: output.JSON()}, err
+	}
 	var input struct {
-		ID string `json:"id"`
+		ID string `json:"ID"`
 	}
 	if err := json.Unmarshal(request.Input, &input); err != nil {
 		return nil, err
 	}
 	if request.Method == "flame.schedules/runNow.v1" {
 		s.run <- input.ID
-		return &protocol.CallPluginResponse{Output: []byte(`{"sessionId":"ses_scheduled","runId":"run_scheduled"}`)}, nil
+		return &protocol.CallPluginResponse{Output: []byte(`{"SessionID":"ses_scheduled","RunID":"run_scheduled"}`)}, nil
 	}
 	if err := s.delete(input.ID); err != nil {
 		return nil, err
@@ -171,10 +190,7 @@ func (s *scheduleServiceStub) PrepareRunNow(ctx context.Context, id string) (pro
 	return request, err
 }
 func (s *scheduleServiceStub) DecodeRunNow(reply *protocol.CallPluginResponse) (conversation.RunReference, error) {
-	var value struct {
-		SessionID string `json:"sessionId"`
-		RunID     string `json:"runId"`
-	}
+	var value schedule.RunNowV1Output
 	err := json.Unmarshal(reply.Output, &value)
 	return conversation.RunReference{SessionID: value.SessionID, RunID: value.RunID}, err
 }
@@ -270,8 +286,8 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Daily audit")
 	created := awaitValue(t, service.created, "schedule creation")
-	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.Workspace == nil ||
-		created.Provider != "deepseek" || created.Model != "deepseek-v4-flash" {
+	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.CWD == "" ||
+		created.ModelSelection["provider"] != "deepseek" || created.ModelSelection["model"] != "deepseek-v4-flash" {
 		t.Fatalf("created schedule candidate = %+v", created)
 	}
 	stop()

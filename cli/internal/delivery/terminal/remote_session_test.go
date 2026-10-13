@@ -442,7 +442,7 @@ func TestScheduleFormsPreserveForeignRuntimeWorkspaceReferences(t *testing.T) {
 	const path = `D:\server\scheduled`
 	draft := scheduleFormDraft{instructions: "review", workspace: path, cron: defaultScheduleCron}
 	request, err := draft.candidate()
-	if err != nil || request.Workspace == nil || request.Workspace.Path != path {
+	if err != nil || request.CWD != path {
 		t.Fatalf("remote schedule candidate = %+v, %v", request, err)
 	}
 	original := protocol.Schedule{ID: "sch_review", Revision: 1, Instructions: "review", Cron: defaultScheduleCron}

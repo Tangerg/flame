@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -25,7 +26,6 @@ const (
 )
 
 type scheduleBinding interface {
-	CreateSchedule(context.Context, protocol.CreateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
 	UpdateSchedule(context.Context, protocol.UpdateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
 }
 
@@ -42,7 +42,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 	}
 	for {
 		cursor := cursors.Current()
-		input, err := jsoninput.Encode(SchedulesListV1Input{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
+		input, err := jsoninput.Encode(schedule.ListV1Input{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 		if err != nil {
 			return nil, classifyError(err)
 		}
-		var page SchedulesListV1Output
+		var page schedule.ListV1Output
 		if err := json.Unmarshal(reply.Output, &page, json.RejectUnknownMembers(true)); err != nil {
 			return nil, runtimeContractViolation("list schedules output: %v", err)
 		}
@@ -64,18 +64,9 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 				return nil, runtimeContractViolation("list schedules repeats %q", row.ID)
 			}
 			seenIDs[row.ID] = struct{}{}
-			value := protocol.Schedule{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, Enabled: !row.NextRunAt.IsZero(), CreatedAt: row.CreatedAt, Revision: row.Revision, Provider: row.ModelSelection["provider"], Model: row.ModelSelection["model"], ReasoningEffort: row.ModelSelection["reasoningEffort"]}
-			if row.CWD != "" {
-				value.Workspace = &protocol.WorkspaceRef{Path: row.CWD}
-			}
-			if !row.NextRunAt.IsZero() {
-				value.NextRunAt = &row.NextRunAt
-			}
-			if !row.LastRunAt.IsZero() {
-				value.LastRunAt = &row.LastRunAt
-			}
-			if err := protocol.ValidateWireTree(value); err != nil {
-				return nil, runtimeContractViolation("list schedules row: %v", err)
+			value, err := projectSchedule(row)
+			if err != nil {
+				return nil, err
 			}
 			schedules = append(schedules, value)
 		}
@@ -89,20 +80,30 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 	}
 }
 
-func (r *Connection) Create(ctx context.Context, request protocol.CreateScheduleRequest) (protocol.Schedule, error) {
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.Schedule{}, fmt.Errorf("create schedule: %w", err)
-	}
-	options := r.commandOptions()
-	if request.Workspace != nil {
-		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: request.Workspace.Path})
-		if resolveErr != nil {
-			return protocol.Schedule{}, fmt.Errorf("create schedule workspace: %w", resolveErr)
+func (r *Connection) PrepareCreate(ctx context.Context, request schedule.CreateV1Input) (protocol.CallPluginRequest, error) {
+	if request.CWD != "" {
+		resolved, err := r.Resolve(ctx, workspace.ResolveRequest{Path: request.CWD})
+		if err != nil {
+			return protocol.CallPluginRequest{}, fmt.Errorf("create schedule workspace: %w", err)
 		}
-		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
+		request.CWD = resolved.Path
 	}
-	created, err := r.schedules.CreateSchedule(ctx, request, options)
-	return scheduleResult("create schedule", "", created, err)
+	input, err := jsoninput.Encode(request)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	return r.prepareSchedulesCommand(ctx, schedule.CreateV1Method, input)
+}
+
+func (r *Connection) DecodeCreate(reply *protocol.CallPluginResponse) (protocol.Schedule, error) {
+	if reply == nil {
+		return protocol.Schedule{}, runtimeContractViolation("create schedule returned nil")
+	}
+	var result schedule.CreateV1Output
+	if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
+		return protocol.Schedule{}, runtimeContractViolation("create schedule output: %v", err)
+	}
+	return projectSchedule(result)
 }
 
 func (r *Connection) Update(ctx context.Context, request protocol.UpdateScheduleRequest) (protocol.Schedule, error) {
@@ -122,19 +123,19 @@ func (r *Connection) Update(ctx context.Context, request protocol.UpdateSchedule
 }
 
 func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(SchedulesDeleteV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsoninput.Encode(schedule.DeleteV1Input{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	return r.prepareSchedulesCommand(ctx, schedulesDeleteV1Method, input)
+	return r.prepareSchedulesCommand(ctx, schedule.DeleteV1Method, input)
 }
 
 func (r *Connection) PrepareRunNow(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(SchedulesRunNowV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsoninput.Encode(schedule.RunNowV1Input{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	return r.prepareSchedulesCommand(ctx, schedulesRunNowV1Method, input)
+	return r.prepareSchedulesCommand(ctx, schedule.RunNowV1Method, input)
 }
 
 func (r *Connection) prepareSchedulesCommand(ctx context.Context, name string, input jsoninput.Input) (protocol.CallPluginRequest, error) {
@@ -161,7 +162,7 @@ func (r *Connection) DecodeRunNow(reply *protocol.CallPluginResponse) (conversat
 	if reply == nil {
 		return conversation.RunReference{}, runtimeContractViolation("run schedule now returned nil")
 	}
-	var result SchedulesRunNowV1Output
+	var result schedule.RunNowV1Output
 	if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
 		return conversation.RunReference{}, runtimeContractViolation("run schedule now output: %v", err)
 	}
@@ -190,7 +191,7 @@ func (r *Connection) selectedSchedules(ctx context.Context) (protocol.CallPlugin
 	if r.plugins == nil {
 		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 	}
-	required, err := capability.Parse([]byte(schedulesCapabilityJSON))
+	required, err := capability.Parse([]byte(schedule.CapabilityJSON))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -236,8 +237,25 @@ func (r *Connection) selectedSchedules(ctx context.Context) (protocol.CallPlugin
 			if actual.Identity() != required.Identity() {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution.ID, Contract: schedulesCapabilityJSON, Method: schedulesListV1Method, Target: capability.Target{Scope: required.Descriptor().Scope, Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution.ID, Contract: schedule.CapabilityJSON, Method: schedule.ListV1Method, Target: capability.Target{Scope: required.Descriptor().Scope, Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
+}
+
+func projectSchedule(row schedule.CreateV1Output) (protocol.Schedule, error) {
+	value := protocol.Schedule{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, Enabled: !row.NextRunAt.IsZero(), CreatedAt: row.CreatedAt, Revision: row.Revision, Provider: row.ModelSelection["provider"], Model: row.ModelSelection["model"], ReasoningEffort: row.ModelSelection["reasoningEffort"]}
+	if row.CWD != "" {
+		value.Workspace = &protocol.WorkspaceRef{Path: row.CWD}
+	}
+	if !row.NextRunAt.IsZero() {
+		value.NextRunAt = &row.NextRunAt
+	}
+	if !row.LastRunAt.IsZero() {
+		value.LastRunAt = &row.LastRunAt
+	}
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return protocol.Schedule{}, runtimeContractViolation("schedule snapshot: %v", err)
+	}
+	return value, nil
 }

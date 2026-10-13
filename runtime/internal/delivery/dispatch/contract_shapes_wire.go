@@ -710,7 +710,6 @@ func registerObjectConstraints(s *Shapes) {
 	for _, target := range []reflect.Type{
 		typeOf[protocol.StartRunRequest](),
 		typeOf[protocol.StartGoalRequest](),
-		typeOf[protocol.CreateScheduleRequest](),
 		typeOf[protocol.Schedule](),
 	} {
 		rules := modelSelectionRules

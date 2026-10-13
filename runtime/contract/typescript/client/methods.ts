@@ -83,7 +83,6 @@ import type {
   RunAcceptance,
   GetRunAcceptanceRequest,
   Schedule,
-  CreateScheduleRequest,
   UpdateScheduleRequest,
   Plan,
   Session,
@@ -391,7 +390,6 @@ export interface Methods {
     forgetRule: (id: string) => MutationPromise<void>;
   };
   schedules: {
-    create: (params: CreateScheduleRequest) => MutationPromise<Schedule>;
     update: (params: UpdateScheduleRequest) => MutationPromise<Schedule>;
   };
 }
@@ -700,7 +698,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       forgetRule: (id) => call("approval.forgetRule", { id }),
     },
     schedules: {
-      create: (params) => call("schedules.create", params),
       update: (params) => call("schedules.update", params),
     },
   };

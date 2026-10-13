@@ -121,10 +121,6 @@
               "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options CommandOptions) (*protocol.MCPServer, error)"
             },
             {
-              "name": "CreateSchedule",
-              "signature": "func(ctx context.Context, request protocol.CreateScheduleRequest, options CommandOptions) (*protocol.Schedule, error)"
-            },
-            {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options CommandOptions) (*protocol.Session, error)"
             },
@@ -737,10 +733,6 @@
             {
               "name": "CreateMCPServer",
               "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options CommandOptions) (*protocol.MCPServer, error)"
-            },
-            {
-              "name": "CreateSchedule",
-              "signature": "func(ctx context.Context, request protocol.CreateScheduleRequest, options CommandOptions) (*protocol.Schedule, error)"
             },
             {
               "name": "CreateSession",
@@ -3589,7 +3581,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.9\""
+          "value": "\"2026-10-14.10\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -5468,53 +5460,6 @@
               "name": "Server",
               "type": "MCPServerID",
               "tag": "json:\"server\""
-            }
-          ]
-        },
-        {
-          "name": "CreateScheduleRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Title",
-              "type": "string",
-              "tag": "json:\"title,omitempty\""
-            },
-            {
-              "name": "Instructions",
-              "type": "string",
-              "tag": "json:\"instructions\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            },
-            {
-              "name": "Provider",
-              "type": "string",
-              "tag": "json:\"provider,omitempty\""
-            },
-            {
-              "name": "Model",
-              "type": "string",
-              "tag": "json:\"model,omitempty\""
-            },
-            {
-              "name": "ReasoningEffort",
-              "type": "string",
-              "tag": "json:\"reasoningEffort,omitempty\""
-            },
-            {
-              "name": "Cron",
-              "type": "string",
-              "tag": "json:\"cron\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
             }
           ]
         },

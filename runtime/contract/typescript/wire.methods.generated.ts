@@ -20,7 +20,6 @@ import type {
   CancelRunResponse,
   ConfigurePluginRequest,
   CreateMCPAuthorizationAttemptRequest,
-  CreateScheduleRequest,
   CreateSessionRequest,
   DeleteSessionRequest,
   Diff,
@@ -257,7 +256,6 @@ const METHOD_NAMES = [
   "approval.setMode",
   "approval.listRules",
   "approval.forgetRule",
-  "schedules.create",
   "schedules.update",
   "goals.start",
   "goals.update",
@@ -370,7 +368,6 @@ const VALUE_METHOD_NAMES = [
   "approval.getMode",
   "approval.setMode",
   "approval.listRules",
-  "schedules.create",
   "schedules.update",
   "goals.start",
   "goals.update",
@@ -949,13 +946,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "schedules.create": {
-    operation: "command",
-    response: "unary",
-    idempotency: "ownerResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "schedules.update": {
     operation: "command",
     response: "unary",
@@ -1332,9 +1322,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.uninstall": [
     { requires: ["plugins"] },
   ],
-  "schedules.create": [
-    { requires: ["schedules"] },
-  ],
   "schedules.update": [
     { requires: ["schedules"] },
   ],
@@ -1451,7 +1438,6 @@ export interface WireShapes {
   "approval.setMode": { params: SetApprovalModeRequest; result: ApprovalModeResult };
   "approval.listRules": { params: ListApprovalRulesRequest; result: ListApprovalRulesResult };
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
-  "schedules.create": { params: CreateScheduleRequest; result: Schedule };
   "schedules.update": { params: UpdateScheduleRequest; result: Schedule };
   "goals.start": { params: StartGoalRequest; result: Goal };
   "goals.update": { params: UpdateGoalRequest; result: Goal };

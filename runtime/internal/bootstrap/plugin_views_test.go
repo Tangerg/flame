@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -228,7 +229,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
-		r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "Inspect", Instructions: "Inspect current work", Cron: cron}, fmt.Sprintf("create-%d", index))
+		readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron}), fmt.Sprintf("create-%d", index))
 	}
 	contracts, err := schedulerpc.NewContracts()
 	if err != nil {

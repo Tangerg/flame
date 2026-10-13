@@ -24,17 +24,6 @@ type Schedule struct {
 	Revision        uint64        `json:"revision"`
 }
 
-// CreateScheduleRequest — schedules.create body. A new schedule is enabled.
-type CreateScheduleRequest struct {
-	Title           string        `json:"title,omitempty"`
-	Instructions    string        `json:"instructions"`
-	Workspace       *WorkspaceRef `json:"workspace,omitzero"`
-	Provider        string        `json:"provider,omitempty"`
-	Model           string        `json:"model,omitempty"`
-	ReasoningEffort string        `json:"reasoningEffort,omitempty"`
-	Cron            string        `json:"cron"`
-}
-
 // ScheduleWorkspaceMode selects the Runtime-owned workspace binding for a
 // schedule update. Omitting it preserves the current binding.
 type ScheduleWorkspaceMode string

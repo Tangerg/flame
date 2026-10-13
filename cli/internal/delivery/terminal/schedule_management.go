@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/installedcommand"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -81,6 +82,12 @@ func schedulesDocument(schedules []protocol.Schedule) readerDocument {
 func (a *app) OpenScheduleCreateForm() error {
 	if a.schedules == nil {
 		return errors.New("this runtime composition has no schedule service")
+	}
+	if a.workbench != nil {
+		if _, pending := a.workbench.PendingInstalledCommand("schedule-create"); pending {
+			a.createSchedule(schedule.CreateV1Input{})
+			return nil
+		}
 	}
 	a.openScheduleForm(scheduleFormCreate, protocol.Schedule{})
 	return nil
@@ -231,14 +238,24 @@ func resolveSchedule(schedules []protocol.Schedule, identity string) (protocol.S
 	}
 }
 
-func (a *app) createSchedule(request protocol.CreateScheduleRequest) {
+func (a *app) createSchedule(request schedule.CreateV1Input) {
 	presentation := a.session.context
 	a.status.note("creating schedule")
 	started := a.runApplicationOperation(scheduleOperation, false,
-		func(ctx context.Context) (protocol.Schedule, error) { return a.schedules.Create(ctx, request) },
+		func(ctx context.Context) (protocol.Schedule, error) {
+			return installedcommand.Execute(ctx, a.schedules, a.workbench, "schedule-create", a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.schedules.PrepareCreate(ctx, request)
+			}, a.schedules.DecodeCreate)
+		},
 		func(created protocol.Schedule, err error) {
 			if err != nil {
-				a.message("create schedule failed: " + err.Error())
+				message := "create schedule failed: " + err.Error()
+				if a.workbench != nil {
+					if _, pending := a.workbench.PendingInstalledCommand("schedule-create"); pending {
+						message += " · retry /schedule-create to reconcile the original command"
+					}
+				}
+				a.message(message)
 				return
 			}
 			a.reportScheduleMutation("schedule created · "+created.ID, presentation)

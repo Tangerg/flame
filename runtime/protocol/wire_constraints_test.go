@@ -717,10 +717,6 @@ func TestScheduleInstructionsMustContainNonWhitespace(t *testing.T) {
 	t.Parallel()
 
 	blank := " \n\t"
-	assertConstraintField(t, ValidateWireTree(CreateScheduleRequest{
-		Instructions: blank,
-		Cron:         "@daily",
-	}), "CreateScheduleRequest", "instructions")
 	assertConstraintField(t, ValidateWireTree(UpdateScheduleRequest{
 		ID:               "sch_1",
 		ExpectedRevision: 1,
@@ -1597,9 +1593,6 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 	goalSelectionErr := goalStart.ValidateWire()
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "provider")
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "model")
-
-	scheduleCreate := CreateScheduleRequest{Instructions: "run", Cron: "0 0 * * *", Model: "model"}
-	assertConstraintField(t, scheduleCreate.ValidateWire(), "CreateScheduleRequest", "provider")
 
 	schedule := Schedule{ID: "sch_1", Instructions: "run", Cron: "@daily", Revision: 1, Provider: "provider"}
 	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "model")

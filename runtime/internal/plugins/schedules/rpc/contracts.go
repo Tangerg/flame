@@ -1,6 +1,6 @@
 package rpc
 
-//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/schedulescontracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../../../../plugins/schedules/io.github.tangerg.flame/contracts --ts ../../../../../plugins/schedules/io.github.tangerg.flame/contracts --go-out ../../../../../cli/internal/adapter/runtimebinding/schedules_contract.generated.go --go-package runtimebinding --go-prefix Schedules"
+//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/schedulescontracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../../../../plugins/schedules/io.github.tangerg.flame/contracts --ts ../../../../../plugins/schedules/io.github.tangerg.flame/contracts --go-out ../../../../../cli/internal/domain/schedule/contract.generated.go --go-package schedule"
 
 import (
 	"github.com/Tangerg/flame/runtime/capability"

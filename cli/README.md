@@ -237,17 +237,22 @@ required callable contract once, then page through `plugins.call`. The CLI's Go
 request/output projection is generated from the same publisher contracts as TS;
 no private backend package is imported. Selection changes cannot mix providers
 inside one traversal. Cursor/request/row bounds and duplicate ID rejection remain.
-Schedule deletion and manual execution use public installed operations. Before dispatch, the
-CLI workbench persists the original installation, release, contribution, contract,
-target, input bytes and command ID. After a lost acknowledgement or restart,
-`/schedule-delete <original-full-id>` or `/schedule-run <original-full-id>` resumes that request without reading the
-current provider. Startup reports unresolved intents. An unavailable original
-owner, expired replay guarantee or changed Runtime store leaves the intent
-unconfirmed; it cannot resubmit the command to another installation. Only an owner
-acknowledgement or business refusal retires it. This record contains no business
-result. Manual execution decodes the publisher's generated output and validates
-the Core Session/Run reference before retiring intent. It returns the existing
-Runtime acceptance; the Run survives terminal navigation and closure. A settled
-command permits a new manual execution with a new identity. Create and update
-entrances remain under migration. The retired `schedules.list`, `schedules.delete`
-and `schedules.runNow` Core operations have no aliases.
+Schedule creation, deletion and manual execution use public installed operations.
+Before dispatch, the CLI workbench persists the original installation, release,
+contribution, contract, target, input bytes and command ID. After a lost
+acknowledgement or restart, `/schedule-create`, `/schedule-delete <original-full-id>`
+or `/schedule-run <original-full-id>` reconciles that request before current
+provider discovery. An unresolved creation reuses the original draft instead of
+opening a fresh form. Startup reports pending intents. An unavailable original
+owner, expired replay guarantee or changed Runtime store leaves intent unconfirmed;
+it cannot resubmit the command to another installation. Only a decoded owner
+acknowledgement or business refusal retires it. This record contains no result.
+
+Forms and the binding adapter use the same generated publisher Go projection in
+`internal/domain/schedule`; no private backend import or handwritten create DTO
+is needed. Workspace resolution precedes initial capture and is never repeated for
+pending intent. The publisher still owns schedule validation, creation and receipt.
+Manual execution returns the existing Core Session/Run reference; a settled command
+permits a later new intent. The update entrance remains under migration. Retired
+`schedules.list`, `schedules.create`, `schedules.delete` and `schedules.runNow`
+Core operations have no aliases.

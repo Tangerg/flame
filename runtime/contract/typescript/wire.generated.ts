@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.9";
+export const PROTOCOL_VERSION = "2026-10-14.10";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -451,16 +451,6 @@ export type ContentBlockType = "text" | "image";
 
 export interface CreateMCPAuthorizationAttemptRequest {
   server: MCPServerID;
-}
-
-export interface CreateScheduleRequest {
-  cron: string;
-  instructions: string;
-  model?: string;
-  provider?: string;
-  reasoningEffort?: string;
-  title?: string;
-  workspace?: WorkspaceRef;
 }
 
 export interface CreateSessionRequest {
