@@ -2692,7 +2692,7 @@ func (p PluginClientComponent) ValidateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("scope", p.Scope, "^(installation|workspace|session|client)$"),
+		requiredTextPattern("scope", p.Scope, "^(installation|workspace|session|client|file)$"),
 	)
 }
 

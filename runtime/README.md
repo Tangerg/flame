@@ -293,16 +293,20 @@ Diagnostics is an ordinary component consuming an explicit public client-telemet
 collaborator; no Runtime diagnostics view kind or HTML resource remains. Its local
 buffer and Runtime accounting retain their separate owners.
 
-## Protocol 2026-10-11.3
+## File components
 
-`renderers` now admits exact, normalized file-extension selectors. The optional
-[File renderers package](../plugins/file-renderers/plugin.json) replaces compiled
-Markdown file rendering. Runtime still owns file access; the trusted host supplies
-only an already captured complete read, with its workspace, path and bounds. Refresh
-reauthorizes the renderer resource and returns that snapshot. The page cannot select
-a new file. Ambiguity, truncation, failure and withdrawal preserve source presentation;
-line navigation begins in source mode. Rebuild Runtime and clients together, then
-install and enable the current File renderers package explicitly. Existing data needs no conversion.
+The optional [File renderers package](../plugins/file-renderers/plugin.json) supplies
+ordinary prebuilt ESM components. Each uses `scope: "file"`, `placement: "fileRenderer"`
+and an exact normalized file-extension `selector`. These selectors are not admitted
+through the former HTML renderer declaration. Invalid scopes, missing selectors and
+callable-resource mismatches are refused during metadata admission without evaluating
+module code. Selector projections are detached from admitted immutable metadata.
+
+Runtime still owns file access. The client supplies one frozen accepted read, with its
+workspace, path and bounds. Navigation never replaces that captured data. Ambiguity,
+partial/truncated reads, loading, failure and withdrawal retain the existing source
+presentation; line navigation begins in source mode. Shared React/SDK/UI and exact
+release resource leases are the same as for other installed components.
 
 ## Protocol 2026-10-11.2
 
@@ -412,6 +416,16 @@ Failed reads retain the last accepted report and label its actual period. Refres
 reuses the selected query. Disablement/uninstall withdraws presentation and resources
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
+
+## Protocol 2026-10-14.4
+
+Core adds optional component selector metadata and file scope. Rebuild generated
+Go/Protocol/TS consumers and reinstall the File renderers package at its new digest.
+The former file HTML declaration, resource, builder and graphical carrier are removed
+without an alias or old reader. Markdown is an ordinary ESM component using frozen
+public captured-file data. Tool-result HTML and contextual actions remain separate
+migration work. Backend wire remains 2026-10-14.2; private business formats do not change.
+Native loading/retirement acceptance and final full/vet/race verification remain open.
 
 ## Protocol 2026-10-14.3 and plugin backend 2026-10-14.2
 

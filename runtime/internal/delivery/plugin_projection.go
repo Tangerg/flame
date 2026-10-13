@@ -64,7 +64,11 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	result := protocol.PluginRelease{Digest: release.Digest().String(), Name: v.Name, Version: v.Version, Description: v.Description}
 	result.Components = make([]protocol.PluginClientComponent, 0, len(v.Components))
 	for _, value := range v.Components {
-		result.Components = append(result.Components, protocol.PluginClientComponent{ID: value.ID.String(), Title: value.Title, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material})
+		var selector *protocol.PluginRendererSelector
+		if value.Selector != nil {
+			selector = &protocol.PluginRendererSelector{Type: protocol.PluginRendererSelectorType(value.Selector.Kind), Name: value.Selector.Name}
+		}
+		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material})
 	}
 	result.Points = make([]protocol.PluginPoint, 0, len(v.Points))
 	for _, value := range v.Points {

@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
@@ -59,33 +60,33 @@ func TestOptionalRendererUsesSelectedImmutableBytes(t *testing.T) {
 	refused(request, protocol.ErrPluginDisabled)
 }
 
-func TestFileRendererUsesSelectedImmutableBytes(t *testing.T) {
+func TestFileComponentUsesSelectedImmutableBytes(t *testing.T) {
 	r := poMCPOpen(t, poMCPConfig(t))
 	source, err := filepath.Abs("../../../plugins/file-renderers")
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-file-renderer").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 {
-		t.Fatalf("admission: %+v", installed.Selected.Diagnostics)
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-file-component").(*protocol.PluginInstallation)
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 3 || len(installed.Selected.Renderers) != 0 {
+		t.Fatalf("file component admission: %+v", installed.Selected)
 	}
-	request := protocol.ReadPluginRendererRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, RendererID: "markdown"}
-	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-file-renderer")
-	resource := r.must(delivery.PluginsReadRenderer, request, "").(*protocol.PluginViewResource)
-	authored, err := os.ReadFile(filepath.Join(source, "renderers", "markdown.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resource.HTML != string(authored) {
-		t.Fatal("file renderer did not use the admitted bytes")
-	}
-	var found bool
-	for _, renderer := range installed.Selected.Renderers {
-		if renderer.ID == "markdown" {
-			found = renderer.Selector.Type == protocol.PluginRendererFileExtension && renderer.Selector.Name == "md"
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-file-component")
+	for _, component := range installed.Selected.Components {
+		if component.Scope != "file" || component.Placement != "fileRenderer" || component.Selector == nil || component.Selector.Type != protocol.PluginRendererFileExtension {
+			t.Fatalf("file selector: %+v", component)
 		}
-	}
-	if !found {
-		t.Fatal("file extension consumer was not admitted")
+		request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+		resource := r.must(delivery.PluginsReadResource, request, "").(*protocol.PluginResource)
+		body, err := base64.StdEncoding.DecodeString(resource.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		authored, err := os.ReadFile(filepath.Join(source, component.Entry))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != string(authored) {
+			t.Fatal("file component differs from admitted resource")
+		}
 	}
 }

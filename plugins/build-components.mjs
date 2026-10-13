@@ -27,7 +27,11 @@ for (const directory of await readdir(root, { withFileTypes: true })) {
       "utf8",
     ),
   );
-  assert.equal(declaration.components.length, 1);
+  assert.ok(declaration.components.length > 0);
+  assert.equal(
+    new Set(declaration.components.map((entry) => entry.entry)).size,
+    1,
+  );
   const target = dirname(
     fileURLToPath(
       new URL(`${directory.name}/${declaration.components[0].entry}`, root),

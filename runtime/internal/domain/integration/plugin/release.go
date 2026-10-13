@@ -116,6 +116,12 @@ func (d Declaration) clone() Declaration {
 	d.Points = slices.Clone(d.Points)
 	d.PointValues = slices.Clone(d.PointValues)
 	d.Components = slices.Clone(d.Components)
+	for i := range d.Components {
+		if d.Components[i].Selector != nil {
+			copy := *d.Components[i].Selector
+			d.Components[i].Selector = &copy
+		}
+	}
 	d.Servers = slices.Clone(d.Servers)
 	for index := range d.Servers {
 		d.Servers[index] = d.Servers[index].clone()

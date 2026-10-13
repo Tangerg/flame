@@ -1,7 +1,12 @@
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { ComponentModules } from "./adapters/componentModules";
-import { InstalledComponent, ComponentBoundary, ComponentLoading } from "./ui/InstalledComponent";
+import {
+  InstalledComponent,
+  InstalledFileComponent,
+  ComponentBoundary,
+  ComponentLoading,
+} from "./ui/InstalledComponent";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
@@ -14,12 +19,9 @@ import {
   WORKSPACE_FILE_RENDERER,
 } from "@/plugins/sdk/kernelPoints";
 import { ToolResultPackage } from "./ui/ToolResultPackage";
-import { FilePackageRenderer } from "./ui/FilePackageRenderer";
-import {
-  createRecordedRendererReads,
-  type ToolResultSnapshot,
-  type FileSnapshot,
-} from "./adapters/rendererReads";
+import { RecordedFileComponent } from "./ui/RecordedFileComponent";
+import type { CapturedFile } from "@flame/plugin-sdk";
+import { createRecordedRendererReads, type ToolResultSnapshot } from "./adapters/rendererReads";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -89,6 +91,52 @@ function createPackageReconciler(
               contract: contribution.contract,
             }
           : undefined;
+
+        if (entry.placement === "fileRenderer") {
+          if (!entry.selector || entry.selector.type !== "fileExtension")
+            throw new Error("File component requires an extension selector");
+          const File = lazy(async () => {
+            const loaded = await modules.component(
+              moduleScope,
+              client,
+              currentRuntimeEndpoint(),
+              generation,
+              installation,
+              entry,
+            );
+            return {
+              default: ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) => (
+                <InstalledFileComponent
+                  entry={loaded.component}
+                  resources={loaded.signal}
+                  runtime={client}
+                  binding={binding}
+                  lifetime={lifetime}
+                  file={file}
+                  fallback={fallback}
+                />
+              ),
+            };
+          });
+          const id = `package:${installation.id}:${entry.id}`;
+          lifetime.contribute(
+            WORKSPACE_FILE_RENDERER,
+            {
+              id,
+              title: `${release.name} · ${entry.title}`,
+              extension: entry.selector.name,
+              component: (props) => (
+                <ComponentBoundary fallback={props.fallback}>
+                  <Suspense fallback={props.fallback}>
+                    <RecordedFileComponent {...props} entry={File} />
+                  </Suspense>
+                </ComponentBoundary>
+              ),
+            },
+            { key: id },
+          );
+          continue;
+        }
         const View = lazy(async () => {
           const loaded = await modules.component(
             moduleScope,
@@ -138,29 +186,6 @@ function createPackageReconciler(
         };
         const id = `package:${installation.id}:${renderer.id}`;
         const title = `${release.name} · ${renderer.title}`;
-        if (renderer.selector.type === "fileExtension") {
-          const reads = (file: FileSnapshot["file"]) =>
-            createRecordedRendererReads(client.plugins, binding, { format: "flame.file.v1", file });
-          lifetime.contribute(
-            WORKSPACE_FILE_RENDERER,
-            {
-              id,
-              title,
-              extension: renderer.selector.name,
-              component: (props) => (
-                <FilePackageRenderer
-                  {...props}
-                  reads={reads}
-                  title={title}
-                  lifetime={lifetime}
-                  carrier={carrier}
-                />
-              ),
-            },
-            { key: id },
-          );
-          continue;
-        }
         const reads = (tool: ToolResultSnapshot["tool"]) =>
           createRecordedRendererReads(client.plugins, binding, {
             format: "flame.tool-result.v1",

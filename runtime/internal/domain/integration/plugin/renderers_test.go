@@ -54,13 +54,24 @@ func TestRendererAdmissionAndReleaseCopies(t *testing.T) {
 	}
 }
 
-func TestFileRendererIsOnlyADeclaration(t *testing.T) {
-	valid := Renderer{ID: "markdown", Title: "Markdown", Selector: RendererSelector{Kind: RendererFileExtension, Name: "md"}, Entry: "renderers/markdown.html"}
-	release, err := NewRelease(fingerprint.Strings("file-renderer"), Declaration{Name: "file-renderer", Renderers: []Renderer{valid}})
+func TestFileRendererRequiresAPublicComponent(t *testing.T) {
+	legacy := Renderer{ID: "markdown", Title: "Markdown", Selector: RendererSelector{Kind: RendererFileExtension, Name: "md"}, Entry: "renderers/markdown.html"}
+	if _, err := NewRelease(fingerprint.Strings("retired-file"), Declaration{Name: "retired", Renderers: []Renderer{legacy}}); err == nil {
+		t.Fatal("retired HTML file renderer was admitted")
+	}
+	selector := RendererSelector{Kind: RendererFileExtension, Name: "md"}
+	component := ClientComponent{ID: "markdown", Title: "Markdown", Scope: "file", Placement: "fileRenderer", Entry: Namespace + "/components/component.js", Export: "Markdown", Selector: &selector}
+	release, err := NewRelease(fingerprint.Strings("file-component"), Declaration{Name: "file-component", Components: []ClientComponent{component}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := release.Declaration().Renderers[0]; got != valid {
-		t.Fatalf("renderer: %+v", got)
+	selector.Name = "changed"
+	projection := release.Declaration()
+	if projection.Components[0].Selector.Name != "md" {
+		t.Fatal("author changed admitted selector")
+	}
+	projection.Components[0].Selector.Name = "projection edit"
+	if release.Declaration().Components[0].Selector.Name != "md" {
+		t.Fatal("projection changed admitted selector")
 	}
 }

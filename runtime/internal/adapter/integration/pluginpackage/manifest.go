@@ -252,7 +252,11 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if _, err := read(ctx, root, w.Entry, MaxPackageBytes); err != nil {
 			return err
 		}
-		return release.AdmitComponent(plugin.ClientComponent{ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
+		var selector *plugin.RendererSelector
+		if w.Selector != nil {
+			selector = &plugin.RendererSelector{Kind: plugin.RendererSelectorKind(w.Selector.Type), Name: w.Selector.Name}
+		}
+		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component == "renderers" {

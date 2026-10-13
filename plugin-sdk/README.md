@@ -21,6 +21,12 @@ components retain their required focus projection. Memory uses this scope to kee
 memory available without a workspace while capturing project targets explicitly.
 `WorkspaceContext.focus` is optional for client scope; focus consumers require it.
 
+File-scoped renderers receive `context.file`, a frozen `CapturedFile` containing
+one accepted Runtime read and its workspace, path and bounds. It is recorded data;
+navigation does not retarget it. Loading, failure and retirement retain the existing
+source inspection. Partial/truncated reads remain in source mode. The Markdown
+component is the concrete consumer; its parser is bundled while React/SDK/UI stay shared.
+
 Session-scoped components receive `context.sessionId`, a frozen projection of the
 existing navigation owner. They call public Session operations directly. A changed
 Session remounts the instance and cancels/joins its old reads; rendering never becomes

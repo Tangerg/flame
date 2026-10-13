@@ -1,7 +1,6 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { ReadPluginRendererRequest } from "@flame/runtime-contract/wire";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import type { WorkspaceFileRendererProps } from "@/plugins/sdk/types/workspace";
 import type { PluginViewReads } from "../application/pluginView";
 
 export interface ToolResultSnapshot {
@@ -9,12 +8,7 @@ export interface ToolResultSnapshot {
   tool: ToolCall;
 }
 
-export interface FileSnapshot {
-  format: "flame.file.v1";
-  file: Omit<WorkspaceFileRendererProps, "fallback">;
-}
-
-export function createRecordedRendererReads<T extends ToolResultSnapshot | FileSnapshot>(
+export function createRecordedRendererReads<T extends ToolResultSnapshot>(
   plugins: Pick<FlameClient["plugins"], "readRenderer">,
   binding: Readonly<ReadPluginRendererRequest>,
   record: T,

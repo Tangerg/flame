@@ -75,3 +75,36 @@ func TestComponentAdmissionPreservesTargetScopeAndNavigationKey(t *testing.T) {
 		})
 	}
 }
+
+func TestFileComponentSelectorAdmissionDoesNotEvaluateCode(t *testing.T) {
+	for _, test := range []struct {
+		name, scope, selector string
+		admitted              bool
+	}{
+		{"valid", "file", `{"type":"fileExtension","name":"md"}`, true},
+		{"wrong scope", "workspace", `{"type":"fileExtension","name":"md"}`, false},
+		{"missing", "file", `null`, false},
+		{"wrong selector", "file", `{"type":"toolName","name":"read"}`, false},
+		{"invalid extension", "file", `{"type":"fileExtension","name":"../md"}`, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source := writePackage(t, map[string]string{
+				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.file","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"file","title":"File","scope":"` + test.scope + `","placement":"fileRenderer","selector":` + test.selector + `,"entry":"io.github.tangerg.flame/components/component.js","export":"File"}]`),
+				"io.github.tangerg.flame/components/component.js": `throw new Error("installation must not evaluate renderer code");`,
+			})
+			release, err := publishPackage(t.Context(), testReleases(t), source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			declaration := release.Declaration()
+			if test.admitted {
+				if len(declaration.Components) != 1 || len(declaration.Diagnostics) != 0 || len(declaration.Servers) != 0 {
+					t.Fatalf("file component: %+v", declaration)
+				}
+			} else if len(declaration.Components) != 0 || len(declaration.Diagnostics) != 1 {
+				t.Fatalf("invalid file component admitted: %+v", declaration)
+			}
+		})
+	}
+}

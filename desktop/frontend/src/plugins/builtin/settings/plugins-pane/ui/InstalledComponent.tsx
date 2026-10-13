@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
-import type { ComponentContext, WorkspaceContext } from "@flame/plugin-sdk";
+import type { CapturedFile, ComponentContext, WorkspaceContext } from "@flame/plugin-sdk";
 import {
   useActiveSessionId,
   useActiveSessionWorkspace,
@@ -20,13 +20,23 @@ import type { PluginOperationBinding } from "@flame/runtime-contract/wire";
 import { trackContributionIO } from "@/plugins/sdk/contributionIO";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 
-export class ComponentBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+export class ComponentBoundary extends Component<
+  { children: ReactNode; fallback?: ReactNode },
+  { failed: boolean }
+> {
   override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
   override render() {
-    return this.state.failed ? <ComponentRecovery failure="render" /> : this.props.children;
+    return this.state.failed ? (
+      <>
+        {this.props.fallback}
+        <ComponentRecovery failure="render" />
+      </>
+    ) : (
+      this.props.children
+    );
   }
 }
 
@@ -56,6 +66,7 @@ class ComponentInstance {
     private resources: AbortSignal,
     private workspace?: WorkspaceContext,
     private sessionId?: string,
+    private file?: CapturedFile,
   ) {
     this.context = this.capture();
   }
@@ -64,6 +75,12 @@ class ComponentInstance {
     return Object.freeze({
       runtime: this.runtime,
       sessionId: this.sessionId,
+      file: this.file
+        ? Object.freeze({
+            ...this.file,
+            workspace: this.file.workspace ? Object.freeze({ ...this.file.workspace }) : undefined,
+          })
+        : undefined,
       workspace: this.workspace
         ? Object.freeze({
             ref: Object.freeze({ ...this.workspace.ref }),
@@ -102,23 +119,33 @@ function RenderingComponent({
   resources,
   workspace,
   sessionId,
-}: ComponentProps & { workspace?: WorkspaceContext; sessionId?: string }) {
+  file,
+  fallback,
+}: ComponentProps & { workspace?: WorkspaceContext; sessionId?: string; file?: CapturedFile }) {
   const instance = useMemo(
-    () => new ComponentInstance(runtime, binding, lifetime, resources, workspace, sessionId),
-    [runtime, binding, lifetime, resources, workspace, sessionId],
+    () => new ComponentInstance(runtime, binding, lifetime, resources, workspace, sessionId, file),
+    [runtime, binding, lifetime, resources, workspace, sessionId, file],
   );
   const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   const Entry = entry;
   return (
-    <ComponentBoundary>
-      <Suspense fallback={<ComponentLoading />}>
-        {context ? <Entry context={context} /> : <ComponentRecovery failure="connection" />}
+    <ComponentBoundary fallback={fallback}>
+      <Suspense fallback={fallback ?? <ComponentLoading />}>
+        {context ? (
+          <Entry context={context} />
+        ) : (
+          <>
+            {fallback}
+            <ComponentRecovery failure="connection" />
+          </>
+        )}
       </Suspense>
     </ComponentBoundary>
   );
 }
 
 type ComponentProps = {
+  fallback?: ReactNode;
   entry: ComponentType<{ context: ComponentContext }>;
   runtime: FlameClient;
   binding: PluginOperationBinding | undefined;
@@ -190,4 +217,12 @@ export function InstalledComponent({ scope, ...props }: ComponentProps & { scope
   if (scope === "workspace") return <WorkspaceComponent {...props} />;
   if (scope === "installation") return <RenderingComponent {...props} />;
   throw new Error("The component context scope is unsupported.");
+}
+
+// A renderer receives the exact accepted read; navigation never changes its data.
+export function InstalledFileComponent({
+  file,
+  ...props
+}: ComponentProps & { file: CapturedFile }) {
+  return <RenderingComponent {...props} file={file} />;
 }

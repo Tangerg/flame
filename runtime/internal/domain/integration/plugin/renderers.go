@@ -62,9 +62,7 @@ func (b *Builder) AdmitRenderer(renderer Renderer) error {
 			return refuse(DiagnosticInvalidDeclaration, "renderer %q result shape", renderer.ID)
 		}
 	case RendererFileExtension:
-		if !fileExtensionPattern.MatchString(selector.Name) {
-			return refuse(DiagnosticInvalidDeclaration, "renderer %q file extension", renderer.ID)
-		}
+		return refuse(DiagnosticInvalidDeclaration, "file renderers require a component")
 	default:
 		return refuse(DiagnosticInvalidDeclaration, "renderer %q selector", renderer.ID)
 	}

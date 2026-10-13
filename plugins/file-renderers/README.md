@@ -1,31 +1,32 @@
 # File renderers
 
-An optional first-party Markdown renderer for complete Runtime file reads. Install this
-directory and enable it through the local application.
-It supplies `md`, `markdown` and `mdx` file-extension declarations. Equally ranked matches
-remain ambiguous and keep the host's source view.
+An optional first-party Markdown component for complete Runtime file reads. Install
+this directory and enable it through the local application. It declares `md`,
+`markdown` and `mdx` extension selectors with file scope and `fileRenderer` placement.
+Equally ranked matches remain ambiguous and retain the source view.
 
-The trusted host reads the file and captures `flame.file.v1`: its Runtime workspace,
-requested path, content, start line, total lines and truncation marker. The page cannot
-choose another file or invoke a tool. Refresh reauthorizes its renderer and repeats the
-same captured read. Truncated and partial reads retain source presentation; line navigation
-starts in source mode. Disablement or failure leaves the recorded source available.
+Runtime owns file access. The client supplies `context.file`, a frozen projection of
+one accepted read: workspace, requested path, content, start line, total lines and
+truncation. The component does not read another file or follow current navigation.
+Partial and truncated reads use the existing source view before loading the module;
+line navigation starts in source mode. Loading, render failure, connection retirement
+and disablement preserve the recorded source.
 
-Marked parses Markdown into tokens. The page builds a closed DOM with text nodes; authored
-HTML, MDX expressions, image embeds and URLs remain text. Code fences remain readable code.
-Shared controls are rendered to static markup at build time from `@flame/ui`.
-It shares no React instance or host imports at runtime. The generated resource is self-contained,
-including its parser and license, and uses the qualified read-only carrier.
+Marked parses Markdown tokens. React renders semantic elements with text content;
+authored HTML, MDX expressions, images and URLs remain text. Code fences remain
+readable code. This is ordinary trusted workbench code, using shared React, the public
+SDK and `@flame/ui`. Marked is a declared private dependency bundled in the ESM;
+its license is retained in the namespace resources.
 
-After installing the graphical client's locked dependencies, rebuild or check the resource:
+Build shared UI dependencies and rebuild or check the component from the repository:
 
 ```sh
-node plugins/file-renderers/build.mjs
-node plugins/file-renderers/build.mjs --check
+node plugins/build-components.mjs
+node plugins/build-components.mjs --check
 ```
 
-The source and build script own the resource. Do not edit generated `renderers/markdown.html`.
-
-Appearance comes from the Host's existing read-only projection. Shared styles,
-controls, font scale and focus rules have one owner in `@flame/ui`; Markdown
-content structure remains with this renderer. Theme changes never reread the file.
+The source owns the generated namespace-local `components/component.js`. The three
+extension declarations share that module and export. Do not edit generated resources.
+The exact release resource lease and client generation are the same as other installed
+components. Code replacement may require a window reload; logical disposal does not
+claim JavaScript module unloading. Appearance remains owned by shared UI and the client.

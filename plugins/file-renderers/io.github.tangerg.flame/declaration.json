@@ -1,34 +1,32 @@
 {
   "protocol": "io.github.tangerg.flame/backend/2026-10-14.2",
-  "contributes": {
-    "renderers": [
-      {
-        "id": "markdown",
-        "title": "Markdown",
-        "selector": {
-          "type": "fileExtension",
-          "name": "md"
-        },
-        "entry": "renderers/markdown.html"
-      },
-      {
-        "id": "markdown-long",
-        "title": "Markdown",
-        "selector": {
-          "type": "fileExtension",
-          "name": "markdown"
-        },
-        "entry": "renderers/markdown.html"
-      },
-      {
-        "id": "mdx",
-        "title": "Markdown source",
-        "selector": {
-          "type": "fileExtension",
-          "name": "mdx"
-        },
-        "entry": "renderers/markdown.html"
-      }
-    ]
-  }
+  "components": [
+    {
+      "id": "markdown",
+      "title": "Markdown",
+      "scope": "file",
+      "placement": "fileRenderer",
+      "selector": { "type": "fileExtension", "name": "md" },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Markdown"
+    },
+    {
+      "id": "markdown-long",
+      "title": "Markdown",
+      "scope": "file",
+      "placement": "fileRenderer",
+      "selector": { "type": "fileExtension", "name": "markdown" },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Markdown"
+    },
+    {
+      "id": "mdx",
+      "title": "Markdown source",
+      "scope": "file",
+      "placement": "fileRenderer",
+      "selector": { "type": "fileExtension", "name": "mdx" },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Markdown"
+    }
+  ]
 }

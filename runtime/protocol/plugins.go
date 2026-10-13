@@ -375,14 +375,15 @@ type PluginPointBinding struct {
 }
 
 type PluginClientComponent struct {
-	ID           string `json:"id"`
-	Title        string `json:"title"`
-	Scope        string `json:"scope"`
-	Placement    string `json:"placement"`
-	Entry        string `json:"entry"`
-	Export       string `json:"export"`
-	Contribution string `json:"contribution,omitzero"`
-	Material     string `json:"material,omitzero"`
+	Selector     *PluginRendererSelector `json:"selector,omitzero"`
+	ID           string                  `json:"id"`
+	Title        string                  `json:"title"`
+	Scope        string                  `json:"scope"`
+	Placement    string                  `json:"placement"`
+	Entry        string                  `json:"entry"`
+	Export       string                  `json:"export"`
+	Contribution string                  `json:"contribution,omitzero"`
+	Material     string                  `json:"material,omitzero"`
 }
 
 type OpenPluginResourcesRequest struct {

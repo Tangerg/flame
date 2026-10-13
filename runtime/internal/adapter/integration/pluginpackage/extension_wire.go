@@ -35,6 +35,7 @@ type wirePointValue struct {
 }
 
 type wireComponent struct {
+	Selector     *wireRendererSelector  `json:"selector,omitzero"`
 	ID           plugin.ContributionID  `json:"id"`
 	Title        string                 `json:"title"`
 	Scope        string                 `json:"scope"`

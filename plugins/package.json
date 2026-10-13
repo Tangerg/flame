@@ -3,29 +3,30 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build-components.mjs && node tool-results/build.mjs && node file-renderers/build.mjs",
+    "build": "node build-components.mjs && node tool-results/build.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src test */src/*.tsx build-*.mjs render-*.mjs */build.mjs --deny-warnings",
     "format:check": "prettier --check src test */src/*.tsx tool-results/src/result.html build-*.mjs render-*.mjs */build.mjs package.json tsconfig.json",
-    "check:resources": "node build-components.mjs --check && node tool-results/build.mjs --check && node file-renderers/build.mjs --check",
+    "check:resources": "node build-components.mjs --check && node tool-results/build.mjs --check",
     "test": "node --test test/read-view.test.ts",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run check:resources"
   },
   "dependencies": {
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "@flame/ui": "file:../ui",
     "@flame/icons": "file:../icons",
+    "@flame/plugin-sdk": "file:../plugin-sdk",
     "@flame/runtime-contract": "file:../runtime/contract/typescript",
-    "@flame/plugin-sdk": "file:../plugin-sdk"
+    "@flame/ui": "file:../ui",
+    "marked": "18.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "typescript": "^7.0.2",
-    "rolldown": "^1.2.13",
-    "@types/node": "^26.6.5",
     "oxlint": "^1.87.0",
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "rolldown": "^1.2.13",
+    "typescript": "^7.0.2"
   }
 }

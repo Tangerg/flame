@@ -70,8 +70,9 @@ separate published Go modules or first-party version resolution.
 
 First-party components consume the shared `@flame/ui` and public SDK. Each
 component owns its read requests, accepted pagination history and local drafts;
-failed reads retain the last accepted snapshot and cursor. File/Tool HTML renderers
-still use `src/read-view.ts` and the shared appearance bridge. Memory, Schedules, Skills, Diagnostics, Trajectory, Diff, Usage and Icon gallery are ordinary
+failed reads retain the last accepted snapshot and cursor. Tool HTML renderers
+still use `src/read-view.ts` and the shared appearance bridge. File renderers use
+ordinary components over the public frozen captured-file context. Memory, Schedules, Skills, Diagnostics, Trajectory, Diff, Usage and Icon gallery are ordinary
 React components built through the public SDK. Usage reads the existing public
 Runtime accounting query; Diff reads the canonical workspace query using a captured
 public context. Trajectory reads canonical Session history through a frozen public
@@ -95,6 +96,6 @@ npm run check --prefix plugins
 prebuilt ESM into its declared namespace resource. `--check` verifies exact
 reproducibility. The graphical loader supplies the actual shared host modules.
 
-The retired HTML view build path is removed. File/Tool renderers retain their owning
-builds until their public-component migration. Reinstall changed packages and
+The retired HTML view and file-renderer build paths are removed. Tool renderers
+retain their owning build until their public-component migration. Reinstall changed packages and
 explicitly select their new digests.

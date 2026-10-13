@@ -2460,7 +2460,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     material: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     placement: text(),
-    scope: allOf([text(), pattern("^(installation|workspace|session|client)$")]),
+    scope: allOf([text(), pattern("^(installation|workspace|session|client|file)$")]),
+    selector: ref(() => CHECKS.PluginRendererSelector),
     title: text(),
   }, ["entry", "export", "id", "placement", "scope", "title"]),
   PluginCollaborator: object({

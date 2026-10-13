@@ -27,7 +27,17 @@ export interface WorkspaceContext {
   readonly focus?: Readonly<{ path: string; revision: bigint }>;
 }
 
+export interface CapturedFile {
+  readonly workspace?: Readonly<WorkspaceRef>;
+  readonly path: string;
+  readonly content: string;
+  readonly startLine: number;
+  readonly totalLines: number;
+  readonly truncated: boolean;
+}
+
 export interface ComponentContext {
+  readonly file?: Readonly<CapturedFile>;
   readonly runtime: FlameClient;
   readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;

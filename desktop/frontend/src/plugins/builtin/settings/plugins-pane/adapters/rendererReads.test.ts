@@ -66,30 +66,4 @@ describe("the captured recorded result", () => {
       "renderer resource changed",
     );
   });
-  it("refreshes only the captured file and Runtime workspace", async () => {
-    const file = {
-      cwd: "/runtime/workspace",
-      path: "notes.md",
-      content: "# Recorded",
-      startLine: 1,
-      totalLines: 1,
-    };
-    const readRenderer = vi.fn(async () => ({ html: "<html></html>" }));
-    const reads = createRecordedRendererReads({ readRenderer }, binding, {
-      format: "flame.file.v1",
-      file,
-    });
-    file.cwd = "/replacement";
-    file.content = "# Later";
-    await reads.resource(new AbortController().signal);
-    const loaded = await reads.initial(new AbortController().signal);
-    loaded.file.content = "guest edit";
-    expect((await reads.read(undefined, new AbortController().signal)).file).toEqual({
-      cwd: "/runtime/workspace",
-      path: "notes.md",
-      content: "# Recorded",
-      startLine: 1,
-      totalLines: 1,
-    });
-  });
 });
