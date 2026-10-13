@@ -357,11 +357,11 @@ func TestChildRunStartReservationUsesAdapterOwnedCanonicalPayload(t *testing.T) 
 	}
 }
 
-func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
+func TestCommitOpeningAppliesDecidedRunResume(t *testing.T) {
 	now := time.Now().UTC()
 	ints := &fakeInterrupts{pending: singleRunPending(
 		t, "run_1", "ses_1", "member_1", "request_1", "item_1", now,
-	), resumeClaimed: true}
+	)}
 	stores := &fakeStores{interrupts: ints, transcript: &fakeTranscript{}}
 	runState := &fakeRunState{}
 	tx := &fakeTx{}
@@ -959,8 +959,7 @@ func (f *fakeTranscript) AppendItem(_ context.Context, it transcript.Item) error
 }
 
 type fakeInterrupts struct {
-	pending       runs.Pending
-	resumeClaimed bool
+	pending runs.Pending
 }
 
 func (f *fakeInterrupts) Open(_ context.Context, p runs.Pending) error {
@@ -988,21 +987,6 @@ func (f *fakeInterrupts) Delete(_ context.Context, runID string) error {
 		return transcript.ErrIdentityConflict
 	}
 	f.pending = runs.Pending{}
-	return nil
-}
-
-func (f *fakeInterrupts) ClaimResume(_ context.Context, runID string) (runs.Pending, bool, error) {
-	if f.pending.RootRunID != runID || f.resumeClaimed {
-		return runs.Pending{}, false, nil
-	}
-	f.resumeClaimed = true
-	return f.pending, true, nil
-}
-
-func (f *fakeInterrupts) RequireResumeClaim(_ context.Context, runID string) error {
-	if !f.resumeClaimed || f.pending.RootRunID != runID {
-		return errors.New("fake: resume claim is unavailable")
-	}
 	return nil
 }
 

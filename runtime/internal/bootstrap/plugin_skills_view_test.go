@@ -79,10 +79,7 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 	missing := detail
 	missing.Name = "absent"
 	refuse(delivery.PluginsReadSkill, missing, protocol.ErrSkillNotFound)
-	memorySource, err := filepath.Abs("../../../plugins/memory")
-	if err != nil {
-		t.Fatal(err)
-	}
+	memorySource := filepath.Join(firstPartyPackages, "memory")
 	memory := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: memorySource}, "install-memory").(*protocol.PluginInstallation)
 	memoryView := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: memory.ID, Digest: memory.Selected.Digest}, ViewID: "memory"}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: memory.ID, Enabled: true}, "enable-memory")
