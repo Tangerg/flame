@@ -50,7 +50,7 @@ function deliver<T>(
 ): MutationPromise<T> {
   return reservation.track(
     createMutationPromise(async () => {
-      reservation.authorizeAttempt();
+      reservation.authorizeDispatch();
       return execute();
     }, reservation.idempotencyKey),
   );
@@ -131,7 +131,7 @@ describe("mutation journal", () => {
     expect(storage.keys()).toEqual([]);
   });
 
-  it("fences every late settlement when the connection owner retires its predecessor", async () => {
+  it("settles the original identity after retirement without granting another delivery", async () => {
     const storage = new MemoryStorage();
     const predecessor = journal(storage);
     const firstReservation = predecessor.reserve("runs.start", {
@@ -151,10 +151,11 @@ describe("mutation journal", () => {
     const replay = deliver(replayReservation, () => replayResult.promise);
 
     firstResult.resolve("late predecessor result");
-    await expect(first).rejects.toBeInstanceOf(MutationJournalOwnershipError);
-    expect(storage.keys()).toHaveLength(1);
+    await expect(first).resolves.toBe("late predecessor result");
+    expect(storage.keys()).toEqual([]);
+    await expect(first.retry()).rejects.toBeInstanceOf(MutationJournalOwnershipError);
     predecessor.dispose();
-    expect(storage.keys()).toHaveLength(1);
+    expect(storage.keys()).toEqual([]);
 
     replayResult.resolve("successor result");
     await expect(replay).resolves.toBe("successor result");
@@ -291,12 +292,14 @@ describe("mutation journal", () => {
     const old = predecessor.reserve("runs.start", { prompt: "hello" })!;
 
     namespace = "idp_runtime_store_b";
-    expect(() => old.authorizeAttempt()).toThrow(MutationJournalOwnershipError);
+    expect(() => old.authorizeDispatch()).toThrow(MutationJournalOwnershipError);
     const successor = journal(storage, () => scope(namespace));
     const replacement = successor.reserve("runs.start", { prompt: "hello" })!;
 
-    expect(replacement.idempotencyKey).not.toBe(old.idempotencyKey);
-    expect(storage.keys()).toHaveLength(2);
+    expect(replacement.idempotencyKey).toBe(old.idempotencyKey);
+    expect(replacement.lookupNamespace()).toBe("idp_runtime_store_a");
+    expect(() => replacement.authorizeDispatch()).toThrow(MutationJournalOwnershipError);
+    expect(storage.keys()).toHaveLength(1);
     predecessor.dispose();
     namespace = "idp_runtime_store_a";
     const recovered = journal(storage, () => scope(namespace)).reserve("runs.start", {

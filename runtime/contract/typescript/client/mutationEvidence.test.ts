@@ -31,7 +31,7 @@ it.each(["AbortError", "TimeoutError"])("retains an in-progress command after %s
   const mutation = reservation.track(
     createMutationPromise(
       async () => {
-        reservation.authorizeAttempt();
+        reservation.authorizeDispatch();
         throw new RpcError({
           message: "still running",
           data: { type: "idempotency_in_progress", retryAfterSeconds: 2 },
@@ -76,11 +76,10 @@ it("refuses expired replay without deleting evidence or issuing a replacement ke
   const before = durable.keys().map((key) => [key, durable.get(key)]);
   now = 2_000;
   const restarted = openDurableMutationJournal(options);
-  expect(() => restarted.reserve("runs.start", { text: "hello" }, undefined, () => false)).toThrow(
-    MutationJournalError,
-  );
-  expect(() =>
-    restarted.reserve("runs.start", { text: "hello" }, original.entry.idempotencyKey, () => false),
-  ).toThrow(MutationJournalError);
+  const recovered = restarted.reserve("runs.start", { text: "hello" }, undefined, () => false)!;
+  expect(recovered.entry).toEqual(original.entry);
+  expect(restarted.lookupNamespace(recovered)).toBe("runtime-store");
+  expect(() => restarted.authorizeDispatch(recovered)).toThrow(MutationJournalError);
+  restarted.retain(recovered);
   expect(durable.keys().map((key) => [key, durable.get(key)])).toEqual(before);
 });

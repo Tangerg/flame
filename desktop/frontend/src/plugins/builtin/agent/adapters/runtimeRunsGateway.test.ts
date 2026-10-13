@@ -36,7 +36,7 @@ describe("runtimeRunsGateway", () => {
               segmentId: asSegmentId("seg_retired"),
               userItemId: asItemId("item_retired"),
             },
-            events: noEvents(),
+            observation: { type: "stream" as const, events: noEvents() },
           }),
           { idempotencyKey: "retired-run-start", retry: vi.fn() },
         ) as MutationPromise<{
@@ -45,7 +45,7 @@ describe("runtimeRunsGateway", () => {
             segmentId: ReturnType<typeof asSegmentId>;
             userItemId: ReturnType<typeof asItemId>;
           };
-          events: AsyncIterable<RunEvent>;
+          observation: { type: "stream"; events: AsyncIterable<RunEvent> };
         }>,
     );
     const retiredStart = vi.fn(
@@ -69,7 +69,7 @@ describe("runtimeRunsGateway", () => {
               segmentId: asSegmentId("seg_successor"),
               userItemId: asItemId("item_successor"),
             },
-            events: noEvents(),
+            observation: { type: "stream" as const, events: noEvents() },
           }),
           { idempotencyKey: "successor-run-start", retry: vi.fn() },
         ) as ReturnType<FlameClient["runs"]["start"]>,
@@ -104,7 +104,7 @@ describe("runtimeRunsGateway", () => {
                 segmentId: asSegmentId("seg_1"),
                 userItemId: asItemId("item_1"),
               },
-              events: noEvents(),
+              observation: { type: "stream" as const, events: noEvents() },
             };
           }
           await new Promise<never>((_resolve, reject) => {
@@ -143,7 +143,7 @@ describe("runtimeRunsGateway", () => {
       Object.assign(
         Promise.resolve({
           result: { runId: asRunId("run_1"), segmentId: asSegmentId("seg_retired") },
-          events: noEvents(),
+          observation: { type: "stream" as const, events: noEvents() },
         }),
         { idempotencyKey: "retired-run-resume", retry: vi.fn() },
       ),
@@ -164,7 +164,7 @@ describe("runtimeRunsGateway", () => {
       Object.assign(
         Promise.resolve({
           result: { runId: asRunId("run_1"), segmentId: asSegmentId("seg_successor") },
-          events: noEvents(),
+          observation: { type: "stream" as const, events: noEvents() },
         }),
         { idempotencyKey: "successor-run-resume", retry: vi.fn() },
       ),

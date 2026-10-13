@@ -242,17 +242,11 @@ describe("useAgentSession run timing guards", () => {
       finishedAt: "2026-07-30T02:00:01.000Z",
     });
     const cancel = vi.fn(() => cancellation.promise);
+    const readSnapshot = vi.fn().mockResolvedValue({ items: [], runs: [], interrupts: [] });
     runtimeClient = () =>
       ({
         sessions: {
-          snapshot: vi.fn().mockResolvedValue({
-            items: [],
-            runs: [canceledRun],
-            interrupts: [],
-            plan: {
-              sessionId: SID,
-            },
-          }),
+          snapshot: readSnapshot,
         },
         runs: {
           cancel,
@@ -264,7 +258,7 @@ describe("useAgentSession run timing guards", () => {
     const resume = vi.fn((_: unknown, __: unknown, signal: AbortSignal) =>
       Promise.resolve({
         result: { runId: "run_resume", segmentId: "seg_resume" },
-        events: abortRejectingEvents(signal),
+        observation: { type: "stream", events: abortRejectingEvents(signal) },
       }),
     );
     const driver = {
@@ -285,6 +279,7 @@ describe("useAgentSession run timing guards", () => {
     });
 
     await waitFor(() => expect(onSettled).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(readSnapshot).toHaveBeenCalledTimes(2));
     act(() => {
       useAgentStore.getState().applyRunEvents(SID, [startedRunEvent("run_resume", "seg_resume")]);
     });
@@ -299,6 +294,7 @@ describe("useAgentSession run timing guards", () => {
       "running",
     );
 
+    readSnapshot.mockResolvedValue({ items: [], runs: [canceledRun], interrupts: [] });
     cancellation.resolve({ type: "root", run: canceledRun });
     await waitFor(() => {
       expect(selectCurrentRootRun(useAgentStore.getState().sessions[SID]!.view)?.status).toBe(
@@ -593,6 +589,108 @@ describe("useAgentSession durable recovery", () => {
   });
   afterEach(() => {
     useAgentStore.getState().dropSession(RID);
+  });
+
+  it("settles an accepted resume before failed observation and recovers without another submission", async () => {
+    const { readSnapshot, subscribe } = stubClient();
+    const onConnectionLost = vi.fn();
+    const resume = vi.fn().mockResolvedValue({
+      result: { runId: "run_accepted", segmentId: "seg_original" },
+      observation: { type: "snapshot", sessionId: RID },
+    });
+    const driver = { ...parkedDriver().driver, resume } as AgentDriver;
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, onConnectionLost));
+    await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
+    readSnapshot.mockRejectedValueOnce(new RpcConnectionError("accepted observation lost"));
+    const settled = vi.fn();
+    const rejected = vi.fn();
+    act(() => {
+      useAgentStore.getState().sessions[RID]!.resume!("run_accepted", [], settled, rejected);
+    });
+    await waitFor(() => expect(onConnectionLost).toHaveBeenCalledOnce());
+    expect(settled).toHaveBeenCalledOnce();
+    expect(settled.mock.invocationCallOrder[0]).toBeLessThan(
+      readSnapshot.mock.invocationCallOrder[1]!,
+    );
+    expect(rejected).not.toHaveBeenCalled();
+    expect(useAgentStore.getState().sessions[RID]!.problem.commandError).toBeNull();
+    await act(async () => {
+      await useAgentStore.getState().sessions[RID]!.synchronize!("after-live");
+    });
+    expect(resume).toHaveBeenCalledOnce();
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(readSnapshot).toHaveBeenCalledTimes(3);
+  });
+
+  it("observes the current Segment from Session material while retaining the original opening Segment", async () => {
+    const current = runRef({ id: "run_accepted", sessionId: RID, activeSegmentId: "seg_current" });
+    const { readSnapshot, subscribe } = stubClient({}, { runs: [current] });
+    readSnapshot.mockResolvedValueOnce(materialSnapshot());
+    subscribe.mockImplementation((params, signal) =>
+      Promise.resolve({
+        result: {
+          ...(params as { runId: string; segmentId: string }),
+          snapshot: materialSnapshot({ runs: [current] }),
+        },
+        events: abortRejectingEvents(signal),
+      }),
+    );
+    const start = vi.fn().mockResolvedValue({
+      result: { runId: "run_accepted", segmentId: "seg_original", userItemId: "item_original" },
+      observation: { type: "snapshot", sessionId: RID },
+    });
+    const driver = { ...parkedDriver().driver, start } as AgentDriver;
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
+    act(() => {
+      useAgentStore.getState().sessions[RID]!.send!(agentTextInput("original"));
+    });
+    await waitFor(() =>
+      expect(subscribe).toHaveBeenCalledWith(
+        { runId: "run_accepted", segmentId: "seg_current", snapshot: true },
+        expect.any(AbortSignal),
+      ),
+    );
+    expect(
+      selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.activeSegmentId,
+    ).toBe("seg_current");
+    expect(start).toHaveBeenCalledOnce();
+    expect((await start.mock.results[0]!.value).result.segmentId).toBe("seg_original");
+  });
+
+  it("refreshes a retired opening without attaching replacement material that reused its Run ID", async () => {
+    useNotificationStore.setState({ log: [] });
+    const replacement = runRef({
+      id: "run_reused",
+      sessionId: RID,
+      activeSegmentId: "seg_replacement",
+    });
+    const { readSnapshot, subscribe } = stubClient({}, { runs: [replacement] });
+    readSnapshot.mockResolvedValueOnce(materialSnapshot());
+    const start = vi.fn().mockResolvedValue({
+      result: { runId: "run_reused", segmentId: "seg_original", userItemId: "item_original" },
+      observation: { type: "retired", sessionId: RID },
+    });
+    const driver = { ...parkedDriver().driver, start } as AgentDriver;
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
+    act(() => {
+      useAgentStore.getState().sessions[RID]!.send!(agentTextInput("original"));
+    });
+    await waitFor(() => expect(readSnapshot).toHaveBeenCalledTimes(2));
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledOnce();
+    expect(useAgentStore.getState().sessions[RID]!.view.messages).toEqual([]);
+    expect(useNotificationStore.getState().log).toContainEqual(
+      expect.objectContaining({
+        level: "info",
+        plugin: "session",
+        message: "The accepted run is no longer available.",
+      }),
+    );
+    expect(
+      selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.activeSegmentId,
+    ).toBe("seg_replacement");
   });
 
   it("hands failed recovery back to the Runtime connection owner", async () => {

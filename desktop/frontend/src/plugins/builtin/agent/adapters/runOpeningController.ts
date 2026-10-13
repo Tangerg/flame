@@ -1,5 +1,5 @@
 import { disposeAsyncIterable } from "@/lib/asyncOwnership";
-import type { RunEvent, RunId, SegmentId, StreamingResult } from "@flame/runtime-contract/client";
+import type { RunId, SegmentId, RunOpeningResult } from "@flame/runtime-contract/client";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "./rpcProblem";
@@ -12,16 +12,18 @@ interface RunOpeningControllerOptions {
   markInteracted: () => void;
   setAbortController: (controller: AbortController) => void;
   abortCurrent: () => void;
-  pump: (stream: StreamingResult<RunOpening, RunEvent>, signal: AbortSignal) => Promise<void>;
   setStartError: (error: AgentProblem) => void;
 }
 
 export interface RunOpeningController {
   isStarting: () => boolean;
   begin: <Result extends RunOpening>(
-    run: (signal: AbortSignal) => Promise<StreamingResult<Result, RunEvent>>,
-    onResult?: (result: Result) => void,
-    onStartError?: () => boolean | void,
+    run: (signal: AbortSignal) => Promise<RunOpeningResult<Result>>,
+    callbacks: {
+      observe: (opening: RunOpeningResult<Result>, signal: AbortSignal) => Promise<void>;
+      onResult?: (result: Result, observation: RunOpeningResult<Result>["observation"]) => void;
+      onStartError?: () => void;
+    },
   ) => void;
   retire: () => void;
 }
@@ -32,16 +34,17 @@ export function createRunOpeningController({
   markInteracted,
   setAbortController,
   abortCurrent,
-  pump,
   setStartError,
 }: RunOpeningControllerOptions): RunOpeningController {
   let starting = false;
   let openingLease: object = {};
   let endActiveSpan: (() => void) | null = null;
+  let releaseActiveDraft: (() => void) | null = null;
 
   return {
     isStarting: () => starting,
-    begin(run, onResult, onStartError) {
+    begin(run, { observe, onResult, onStartError }) {
+      releaseActiveDraft?.();
       endActiveSpan?.();
       starting = true;
       const ownLease = (openingLease = {});
@@ -51,6 +54,14 @@ export function createRunOpeningController({
       setAbortController(ctrl);
       const span = startRunSpan({ "flame.session_id": sessionId });
       let failure: unknown;
+      let accepted = false;
+      let draftReleased = false;
+      const releaseDraft = () => {
+        if (accepted || draftReleased) return;
+        draftReleased = true;
+        onStartError?.();
+      };
+      releaseActiveDraft = releaseDraft;
       let spanEnded = false;
       const finishSpan = () => {
         if (spanEnded) return;
@@ -67,15 +78,18 @@ export function createRunOpeningController({
       }
       void opening
         .then(
-          async (stream) => {
+          async (opening) => {
             if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) {
-              void disposeAsyncIterable(stream.events);
+              if (opening.observation.type === "stream") {
+                void disposeAsyncIterable(opening.observation.events);
+              }
               return;
             }
             try {
-              onResult?.(stream.result);
-              span.setAttribute("flame.run_id", stream.result.runId);
-              await pump(stream, ctrl.signal);
+              accepted = true;
+              onResult?.(opening.result, opening.observation);
+              span.setAttribute("flame.run_id", opening.result.runId);
+              await observe(opening, ctrl.signal);
             } catch (err) {
               if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
               failure = err;
@@ -84,7 +98,7 @@ export function createRunOpeningController({
           },
           (err: unknown) => {
             if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
-            if (onStartError?.() === true) return;
+            releaseDraft();
             failure = err;
             console.error("[agent] run failed to start:", sessionId, err);
             const problem = agentProblemFromRpcFailure(err);
@@ -92,11 +106,14 @@ export function createRunOpeningController({
           },
         )
         .finally(() => {
+          if (releaseActiveDraft === releaseDraft) releaseActiveDraft = null;
           if (ownLease === openingLease) starting = false;
           finishSpan();
         });
     },
     retire() {
+      releaseActiveDraft?.();
+      releaseActiveDraft = null;
       openingLease = {};
       starting = false;
       abortCurrent();

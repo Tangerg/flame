@@ -1,19 +1,25 @@
 import { createRpcClient } from "./client";
 import { createMethods, type Methods, type MethodsOptions } from "./methods";
 import type { Transport } from "./transport";
+import { createMutationJournal } from "./mutationJournal";
 
 export interface FlameClient extends Methods {
   close(): Promise<void>;
 }
 
 export function createFlameClient(transport: Transport, opts?: MethodsOptions): FlameClient {
+  const mutationJournal =
+    opts?.mutationJournal ??
+    createMutationJournal({
+      scope: () => opts?.capabilities?.()?.limits.idempotency,
+    });
   const rpc = createRpcClient(transport, { requestMeta: opts?.requestMeta });
   let closePromise: Promise<void> | undefined;
   const close = (): Promise<void> => {
     closePromise ??= (async () => {
       let journalFailure: unknown;
       try {
-        opts?.mutationJournal?.dispose();
+        mutationJournal.dispose();
       } catch (error) {
         journalFailure = error;
       }
@@ -34,5 +40,5 @@ export function createFlameClient(transport: Transport, opts?: MethodsOptions): 
     })();
     return closePromise;
   };
-  return Object.assign(createMethods(rpc, opts), { close });
+  return Object.assign(createMethods(rpc, { ...opts, mutationJournal }), { close });
 }

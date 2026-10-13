@@ -320,29 +320,41 @@ function wireOperationsIn(initializer) {
   const found = new Set();
   const scannedInitializers = new Set();
 
+  const scanImplementation = (node) => {
+    if (!ts.isIdentifier(node)) return;
+    let symbol = checker.getSymbolAtLocation(node);
+    if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    for (const declaration of declarationsOf(symbol)) {
+      if (declaration.getSourceFile() !== methodsSource) continue;
+      const implementation = ts.isVariableDeclaration(declaration)
+        ? declaration.initializer
+        : ts.isFunctionDeclaration(declaration)
+          ? declaration.body
+          : undefined;
+      if (!implementation || scannedInitializers.has(declaration)) continue;
+      scannedInitializers.add(declaration);
+      scan(implementation);
+    }
+  };
+
   const scan = (node) => {
+    if (ts.isFunctionDeclaration(node)) return;
+    if (
+      (ts.isVariableDeclaration(node) || ts.isPropertyAssignment(node)) &&
+      node.initializer &&
+      (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+    )
+      return;
     if (ts.isCallExpression(node) && node.arguments.length > 0) {
       const operation = constantString(node.arguments[0]);
       if (operation && operations.has(operation)) found.add(operation);
     }
+    if (ts.isCallExpression(node)) scanImplementation(node.expression);
     node.forEachChild(scan);
   };
 
-  const scanInitializer = (node) => {
-    if (ts.isIdentifier(node)) {
-      let symbol = checker.getSymbolAtLocation(node);
-      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-      for (const declaration of declarationsOf(symbol)) {
-        if (!ts.isVariableDeclaration(declaration) || !declaration.initializer) continue;
-        if (scannedInitializers.has(declaration)) continue;
-        scannedInitializers.add(declaration);
-        scan(declaration.initializer);
-      }
-    }
-    scan(node);
-  };
-
-  scanInitializer(initializer);
+  scanImplementation(initializer);
+  scan(initializer);
   return found;
 }
 

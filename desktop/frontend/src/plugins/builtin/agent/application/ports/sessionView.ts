@@ -38,7 +38,7 @@ export type ResumeRunAction = (
   runId: string,
   responses: InterruptResumeInput[],
   onSettled?: () => void,
-  onStartError?: () => boolean | void,
+  onStartError?: () => void,
 ) => boolean;
 
 export interface AgentSessionViewEntry {

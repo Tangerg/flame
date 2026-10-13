@@ -466,6 +466,7 @@ export const zh: Record<string, string> = {
   "agent.steer.applied": "已进入模型上下文",
   "agent.steer.notApplied": "本次运行已结束，有已接收的指令未进入模型上下文。",
   "agent.inputNotApplied": "尚未应用",
+  "agent.acceptedRunRetired": "已受理的运行材料已不可用。",
   "agent.synchronizationIncomplete": "运行同步未完成。请重新打开会话以重试。",
   "runtime.connection.reconnecting": "Runtime 连接已断开，正在重新连接…",
   "runtime.connection.unavailable": "Runtime 暂时不可用，Flame 会继续尝试连接。",

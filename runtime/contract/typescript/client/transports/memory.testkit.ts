@@ -1,6 +1,7 @@
 import type { MemoryTransport } from "./memory";
 import type { TransportRequest } from "../transport";
 import type { Interrupt, RunMetrics, RunRef, StreamEvent } from "@flame/runtime-contract/wire";
+import type { RunOpeningResult } from "../methods";
 import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { RUN_EVENT_METHOD } from "../stream";
 import { JSONRPC_VERSION, type RpcId, type RpcMessage } from "../types";
@@ -83,4 +84,32 @@ export function injectRunFinished(
   finish: SegmentFinish = {},
 ): void {
   injectRunEvent(t, runId, segmentId, eventId, finishedSegment(runId, finish), requestRpcId);
+}
+
+export function openingEvents<R>(
+  opening: RunOpeningResult<R>,
+): AsyncIterable<import("@flame/runtime-contract/wire").RunEvent> {
+  if (opening.observation.type !== "stream") throw new Error("expected an opening stream");
+  return opening.observation.events;
+}
+
+export async function respondNotRecorded(
+  t: MemoryTransport,
+  operation: "start" | "resume",
+): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const request = t
+      .outbox()
+      .find(
+        (message) =>
+          message.method === "runs.getAcceptance" &&
+          (message.params as { operation?: string }).operation === operation,
+      );
+    if (request) {
+      respondSuccess(t, request.id, { type: "notRecorded" });
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error("timeout waiting for run acceptance lookup");
 }

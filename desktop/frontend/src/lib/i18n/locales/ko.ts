@@ -339,6 +339,7 @@ export const ko: Record<string, string> = {
   "agent.steer.applied": "모델 컨텍스트에 반영됨",
   "agent.steer.notApplied": "접수된 지시가 모델 컨텍스트에 반영되기 전에 실행이 종료되었습니다.",
   "agent.inputNotApplied": "아직 적용되지 않음",
+  "agent.acceptedRunRetired": "접수된 실행 데이터를 더 이상 사용할 수 없습니다.",
   "agent.synchronizationIncomplete":
     "실행 동기화가 완료되지 않았습니다. 세션을 다시 열어 재시도하세요.",
   "runtime.connection.reconnecting": "Runtime 연결이 끊겼습니다. 다시 연결하는 중…",

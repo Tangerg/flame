@@ -492,6 +492,7 @@ export const en: Record<string, string> = {
   "agent.steer.applied": "Entered model context",
   "agent.steer.notApplied": "The run ended before an accepted instruction entered model context.",
   "agent.inputNotApplied": "Not yet applied",
+  "agent.acceptedRunRetired": "The accepted run is no longer available.",
   "agent.synchronizationIncomplete":
     "Run synchronization is incomplete. Reopen the session to retry.",
   "runtime.connection.reconnecting": "Runtime connection was lost. Reconnecting…",

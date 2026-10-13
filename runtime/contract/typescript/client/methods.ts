@@ -22,7 +22,7 @@ import type {
   SetApprovalRuleRequest,
 } from "../wire.generated";
 import type { RpcCallOptions, RpcClient } from "./client";
-import type { MutationPromise } from "./mutation";
+import { MutationLookupError, type MutationPromise } from "./mutation";
 import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
 import type { RunId, SegmentId, SessionId } from "./ids";
 import type {
@@ -79,6 +79,8 @@ import type {
   RunEvent,
   ReadFileRequest,
   RunRef,
+  RunAcceptance,
+  GetRunAcceptanceRequest,
   RunScheduleNowResponse,
   Schedule,
   CreateScheduleRequest,
@@ -117,12 +119,22 @@ import type {
 import { streamRunEvents, streamRuntimeEvents } from "./stream";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
+import { MutationJournalScopeUnavailableError, createMutationJournal } from "./mutationJournal";
+import { RpcProtocolError } from "./errors";
 
 export type { MethodsOptions } from "./wireCallPath";
 
 export interface StreamingResult<R, E> {
   result: R;
   events: AsyncIterable<E>;
+}
+
+export interface RunOpeningResult<R> {
+  result: R;
+  observation:
+    | { type: "stream"; events: AsyncIterable<RunEvent> }
+    | { type: "snapshot"; sessionId: string }
+    | { type: "retired"; sessionId: string };
 }
 
 async function callOrDispose<R>(
@@ -217,11 +229,15 @@ export interface Methods {
     start: (
       params: StartRunRequest,
       signal?: AbortSignal,
-    ) => MutationPromise<StreamingResult<StartRunResponse, RunEvent>>;
+    ) => MutationPromise<RunOpeningResult<StartRunResponse>>;
     resume: (
       params: ResumeRunRequest,
       signal?: AbortSignal,
-    ) => MutationPromise<StreamingResult<ResumeRunResponse, RunEvent>>;
+    ) => MutationPromise<RunOpeningResult<ResumeRunResponse>>;
+    getAcceptance: (
+      params: GetRunAcceptanceRequest,
+      signal?: AbortSignal,
+    ) => Promise<RunAcceptance>;
     subscribe: (
       params: SubscribeRunRequest,
       signal?: AbortSignal,
@@ -431,7 +447,15 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     replayLimits: options.capabilities?.()?.limits.runReplay,
   });
 
-  const { call, perform, openMutation } = createWireCallPath(client, options);
+  const mutationJournal =
+    options.mutationJournal ??
+    createMutationJournal({
+      scope: () => options.capabilities?.()?.limits.idempotency,
+    });
+  const { call, perform, openMutation } = createWireCallPath(client, {
+    ...options,
+    mutationJournal,
+  });
 
   const attachRunStream = async <R extends { segmentId: string }>(
     signal: AbortSignal | undefined,
@@ -444,6 +468,69 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     stream.bind(result.segmentId);
     return { result, events: stream.events };
   };
+
+  function openRun(
+    method: "runs.start",
+    params: StartRunRequest,
+    signal?: AbortSignal,
+  ): MutationPromise<RunOpeningResult<StartRunResponse>>;
+  function openRun(
+    method: "runs.resume",
+    params: ResumeRunRequest,
+    signal?: AbortSignal,
+  ): MutationPromise<RunOpeningResult<ResumeRunResponse>>;
+  function openRun(
+    method: "runs.start" | "runs.resume",
+    params: StartRunRequest | ResumeRunRequest,
+    signal?: AbortSignal,
+  ): MutationPromise<RunOpeningResult<ResumeRunResponse>> {
+    return openMutation(
+      method,
+      params,
+      async (idempotencyKey, attempt, preparedParams) => {
+        const namespace = attempt.lookupNamespace();
+        if (!namespace)
+          throw new MutationJournalScopeUnavailableError(
+            "run opening requires the Runtime store identity",
+          );
+        const acceptance = await perform(
+          "runs.getAcceptance",
+          {
+            namespace,
+            key: idempotencyKey,
+            operation: method === "runs.start" ? "start" : "resume",
+          },
+          { signal: attempt.signal },
+        ).catch((cause: unknown) => {
+          throw new MutationLookupError(cause);
+        });
+        if (acceptance.type !== "notRecorded") {
+          if (method === "runs.start" && !acceptance.userItemId) {
+            throw new RpcProtocolError("runs.getAcceptance result", [
+              { path: "$.userItemId", detail: "accepted start omitted its opening user Item" },
+            ]);
+          }
+          return {
+            result: {
+              runId: acceptance.runId,
+              segmentId: acceptance.segmentId,
+              ...(acceptance.userItemId ? { userItemId: acceptance.userItemId } : {}),
+            },
+            observation: {
+              type: acceptance.type === "retired" ? "retired" : "snapshot",
+              sessionId: acceptance.sessionId,
+            },
+          };
+        }
+        const idempotencyNamespace = attempt.authorizeDispatch();
+        const opened = await attachRunStream(attempt.signal, (options) =>
+          perform(method, preparedParams, { ...options, idempotencyKey, idempotencyNamespace }),
+        );
+        return { result: opened.result, observation: { type: "stream", events: opened.events } };
+      },
+      signal,
+    );
+  }
 
   const openWorkspace = async (
     ref?: WorkspaceRef,
@@ -489,34 +576,9 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       list: (query, signal) => call("modelInvocations.list", query, { signal }),
     },
     runs: {
-      start: (params, signal) =>
-        openMutation(
-          "runs.start",
-          params,
-          (idempotencyKey, attempt, preparedParams) =>
-            attachRunStream(attempt.signal, (options) =>
-              perform("runs.start", preparedParams, {
-                ...options,
-                idempotencyKey,
-                idempotencyNamespace: attempt.idempotencyNamespace,
-              }),
-            ),
-          signal,
-        ),
-      resume: (params, signal) =>
-        openMutation(
-          "runs.resume",
-          params,
-          (idempotencyKey, attempt, preparedParams) =>
-            attachRunStream(attempt.signal, (options) =>
-              perform("runs.resume", preparedParams, {
-                ...options,
-                idempotencyKey,
-                idempotencyNamespace: attempt.idempotencyNamespace,
-              }),
-            ),
-          signal,
-        ),
+      getAcceptance: (params, signal) => call("runs.getAcceptance", params, { signal }),
+      start: (params, signal) => openRun("runs.start", params, signal),
+      resume: (params, signal) => openRun("runs.resume", params, signal),
       subscribe: (params, signal, options) =>
         attachRunStream(signal, (callOptions) =>
           call("runs.subscribe", params, { ...callOptions, lastEventId: options?.lastEventId }),

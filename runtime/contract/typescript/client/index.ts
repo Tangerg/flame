@@ -8,6 +8,7 @@ export {
 export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
 export type { ItemId, RunId, SegmentId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
+export { MutationLookupError } from "./mutation";
 export { createMutationJournal } from "./mutationJournal";
 export {
   createMutationSettler,
@@ -15,7 +16,7 @@ export {
   MutationSettlementClosedError,
 } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
-export type { Methods, StreamingResult } from "./methods";
+export type { Methods, StreamingResult, RunOpeningResult } from "./methods";
 export { createFlameClient } from "./sdk";
 export type { FlameClient } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
@@ -41,6 +42,8 @@ export type {
   ToolAttempt,
   ToolAttemptState,
   RunRef,
+  RunAcceptance,
+  GetRunAcceptanceRequest,
   RunOutcome,
   RunProgress,
   RunMetrics,

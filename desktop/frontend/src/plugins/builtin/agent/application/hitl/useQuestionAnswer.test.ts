@@ -96,7 +96,7 @@ describe("useQuestionAnswer", () => {
     act(() => result.current.submit([["x"]]));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(onStarted).toHaveBeenCalledTimes(1);
-    expect(result.current.pending).toBe(true);
+    expect(result.current.pending).toBe(false);
     act(() => result.current.submit([["again"]]));
     expect(onStarted).toHaveBeenCalledTimes(1);
 

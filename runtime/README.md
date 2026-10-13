@@ -1338,6 +1338,19 @@ Updating or manually firing a missing schedule returns `schedule_not_found`, wit
 
 A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: success proves a canceled Run; a natural completion that wins the race returns `run_finished`. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
 
+The TypeScript SDK's Start and Resume now return `RunOpeningResult`: the original
+acknowledgement is `result`, and `observation` is a closed `stream`, `snapshot`,
+or `retired` resource outcome. Consumers must migrate from the former mandatory
+`events` field and supply negotiated idempotency capabilities or a mutation
+journal. `createFlameClient` provides an in-memory journal when no durable storage
+is supplied; Desktop supplies its persistent journal. Every attempt first reads
+`runs.getAcceptance` using the original namespace, key and operation. A known
+receipt settles the command without another mutation; failed lookup retains the
+original identity, and `notRecorded` only permits dispatch while the original
+replay admission still holds. Receipt reads remain possible after expiry or
+store replacement. Neither reopening nor cold retry renews that age. Persisted
+journal encoding and Runtime protocol version are unchanged.
+
 Disabling or deleting a schedule stops future occurrence claims. An already claimed occurrence retains its accepted input and may still start after that change; its Run must be canceled separately when required. Editing a schedule does not rewrite an occurrence already claimed from an earlier revision.
 
 Calendar cron expressions use UTC unless they declare `CRON_TZ`. Creation,

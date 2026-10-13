@@ -59,7 +59,8 @@ export interface DurableMutationJournal {
     preferredKey: string | undefined,
     claimed: (idempotencyKey: string) => boolean,
   ): DurableMutationIdentity | undefined;
-  authorize(identity: DurableMutationIdentity): string;
+  authorizeDispatch(identity: DurableMutationIdentity): string;
+  lookupNamespace(identity: DurableMutationIdentity): string;
   retain(identity: DurableMutationIdentity): void;
   settle(identity: DurableMutationIdentity): void;
 }
@@ -245,6 +246,16 @@ export function openDurableMutationJournal(
   const removeEntry = (entry: JournalEntry) =>
     removeValue(options.storage, entryKey(entry.idempotencyKey));
 
+  const readReservedEntry = (identity: DurableMutationIdentity): JournalEntry | undefined => {
+    const persisted = readEntry(identity.entry.idempotencyKey);
+    if (persisted && !sameEntry(persisted, identity.entry)) {
+      throw new MutationJournalOwnershipError(
+        "Runtime mutation identity no longer names the reserved command",
+      );
+    }
+    return persisted;
+  };
+
   const currentScope = () => {
     const scope = options.scope();
     if (!validScope(scope)) {
@@ -296,15 +307,13 @@ export function openDurableMutationJournal(
   return {
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();
-      if (!validScope(scope)) return undefined;
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
       }
       // These records are unresolved evidence, not a cache of completed receipts.
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
-      const matches = (entry: JournalEntry) =>
-        entry.namespace === scope.namespace && matchesCommand(entry, method, params);
+      const matches = (entry: JournalEntry) => matchesCommand(entry, method, params);
       const preferred =
         preferredKey === undefined
           ? undefined
@@ -324,48 +333,32 @@ export function openDurableMutationJournal(
         .filter((candidate) => matches(candidate) && !claimed(candidate.idempotencyKey))
         .toSorted((left, right) => left.createdAt - right.createdAt)[0];
       if (!entry) {
+        if (!validScope(scope)) return undefined;
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }
         entry = createEntry(method, params, scope, preferredKey ?? crypto.randomUUID());
       }
       const identity = { entry };
-      validateIdentity(identity, scope);
       return identity;
     },
-    authorize(identity) {
+    authorizeDispatch(identity) {
       const scope = currentScope();
       validateIdentity(identity, scope);
-      const persisted = readEntry(identity.entry.idempotencyKey);
-      if (persisted && !sameEntry(persisted, identity.entry)) {
-        throw new MutationJournalOwnershipError(
-          "Runtime mutation identity no longer names the reserved command",
-        );
-      }
+      readReservedEntry(identity);
+      return identity.entry.namespace;
+    },
+    lookupNamespace(identity) {
+      readReservedEntry(identity);
       return identity.entry.namespace;
     },
     retain(identity) {
-      const scope = currentScope();
-      validateIdentity(identity, scope);
-      const persisted = readEntry(identity.entry.idempotencyKey);
-      if (persisted) {
-        if (!sameEntry(persisted, identity.entry)) {
-          throw new MutationJournalOwnershipError(
-            "Runtime mutation identity no longer names the reserved command",
-          );
-        }
-        return;
-      }
+      if (readReservedEntry(identity)) return;
       persistEntry(identity.entry);
     },
     settle(identity) {
-      const persisted = readEntry(identity.entry.idempotencyKey);
+      const persisted = readReservedEntry(identity);
       if (!persisted) return;
-      if (!sameEntry(persisted, identity.entry)) {
-        throw new MutationJournalOwnershipError(
-          "Runtime mutation identity no longer names the reserved command",
-        );
-      }
       removeEntry(persisted);
     },
   };

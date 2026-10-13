@@ -349,6 +349,7 @@ export const de: Record<string, string> = {
   "agent.steer.notApplied":
     "Der Lauf endete, bevor eine angenommene Anweisung in den Modellkontext aufgenommen wurde.",
   "agent.inputNotApplied": "Noch nicht angewendet",
+  "agent.acceptedRunRetired": "Die Daten des angenommenen Laufs sind nicht mehr verfügbar.",
   "agent.synchronizationIncomplete":
     "Die Synchronisierung ist unvollständig. Öffnen Sie die Sitzung erneut.",
   "runtime.connection.reconnecting":

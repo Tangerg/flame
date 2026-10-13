@@ -3,10 +3,9 @@ import type {
   ContentBlock,
   InterruptResponse,
   ItemId,
-  RunEvent,
   RunId,
   SegmentId,
-  StreamingResult,
+  RunOpeningResult,
 } from "@flame/runtime-contract/client";
 
 export type NotificationLevel = "info" | "warn" | "error";
@@ -44,9 +43,7 @@ export interface AgentDriver {
     input: ContentBlock[],
     options: AgentRunStartOptions,
     signal?: AbortSignal,
-  ) => Promise<
-    StreamingResult<{ runId: RunId; segmentId: SegmentId; userItemId: ItemId }, RunEvent>
-  >;
+  ) => Promise<RunOpeningResult<{ runId: RunId; segmentId: SegmentId; userItemId: ItemId }>>;
   resume: (
     runId: RunId,
     options: {
@@ -54,9 +51,7 @@ export interface AgentDriver {
       input?: ContentBlock[];
     },
     signal?: AbortSignal,
-  ) => Promise<
-    StreamingResult<{ runId: RunId; segmentId: SegmentId; userItemId?: ItemId }, RunEvent>
-  >;
+  ) => Promise<RunOpeningResult<{ runId: RunId; segmentId: SegmentId; userItemId?: ItemId }>>;
 }
 
 export interface AgentSourceSpec {
