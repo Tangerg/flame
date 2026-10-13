@@ -89,3 +89,23 @@ func TestPendingMemoryUpdateKeepsOriginalPatchAndOmission(t *testing.T) {
 		t.Fatal("checking a pending update changed original bytes")
 	}
 }
+
+func TestPendingMemoryAdditionKeepsOriginalTargetAndContent(t *testing.T) {
+	original := memory.AddV1Input{Scope: "project", CWD: "/original", Content: "original addition"}
+	request, err := boundMemoryRequest(memory.AddV1Method, original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := retainedMemoryAddition(request, original); err != nil {
+		t.Fatal(err)
+	}
+	for _, changed := range []memory.AddV1Input{
+		{Scope: "user", Content: original.Content},
+		{Scope: original.Scope, CWD: "/replacement", Content: original.Content},
+		{Scope: original.Scope, CWD: original.CWD, Content: "new content"},
+	} {
+		if err := retainedMemoryAddition(request, changed); err == nil {
+			t.Fatal("uncertain addition adopted another target or content")
+		}
+	}
+}

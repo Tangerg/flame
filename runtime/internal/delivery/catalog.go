@@ -36,7 +36,6 @@ func buildContract() *Registry {
 	registerModels(registry)
 	registerTools(registry)
 	registerUsage(registry)
-	registerAgentMemory(registry)
 	registerFeedback(registry)
 	return registry
 }

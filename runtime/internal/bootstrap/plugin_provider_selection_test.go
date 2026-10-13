@@ -50,8 +50,8 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: value.ID, Contribution: "memory-provider"}, key)
 	}
 	choose(first, "choose-first")
-	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "original owner's fact"}
-	if result := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryAdd, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}); result.Failure == nil {
+	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "original owner's fact"})
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}); result.Failure == nil {
 		t.Fatal("lost response became confirmed")
 	}
 	if _, err := os.Stat(evidence); err != nil {
@@ -62,12 +62,12 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	r = reopenCommandRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	r.must(delivery.AgentMemoryAdd, request, "uncertain")
+	r.must(delivery.PluginsCall, request, "uncertain")
 	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
 	}
-	r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "selected owner's fact"}, "new-command")
+	r.must(delivery.PluginsCall, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "selected owner's fact"}), "new-command")
 	r = reopenCommandRuntime(t, r, &cfg)
 	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	page = readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})

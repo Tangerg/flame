@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { validateWire, type WireTypeName } from "@flame/runtime-contract/validate";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -14,10 +13,6 @@ import { rejected } from "@/test/rejected";
 const MEMORY_ID = "mem_0123456789abcdef0123456789abcdef";
 
 let uninstall: (() => void) | undefined;
-
-function expectSendable(shape: WireTypeName, call: ReturnType<typeof vi.fn>): void {
-  expect(validateWire(shape, call.mock.calls[0]?.[0])).toEqual([]);
-}
 
 afterEach(() => {
   uninstall?.();
@@ -74,8 +69,6 @@ describe("runtimeAgentMemoryGateway", () => {
     });
     await expect(setAgentMemoryPinned(MEMORY_ID, true)).resolves.toBeUndefined();
     expect(update).toHaveBeenCalledWith({ ID: MEMORY_ID, Pinned: true });
-
-    expectSendable("AgentMemoryAddRequest", add);
   });
 
   it("retires in-flight and queued commands before a successor gateway is installed", async () => {
@@ -150,21 +143,22 @@ function memoryEntry(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntr
 
 function memoryClient(
   update: (input: unknown) => unknown,
-  add?: ReturnType<typeof vi.fn>,
+  add?: (input: unknown) => unknown,
 ): FlameClient {
   return {
-    agentMemory: { add },
     plugins: {
       command: async (
         _intent: string,
-        input: { input: unknown },
+        input: { input: unknown; method: string },
         _prepare: unknown,
         decode: (output: unknown) => unknown,
       ) => {
-        const item = (await update(input.input)) as ReturnType<typeof memoryItem> & {
+        const item = (await (input.method === "flame.memory/add.v1"
+          ? add!(input.input)
+          : update(input.input))) as ReturnType<typeof memoryItem> & {
           sessionId?: string;
         };
-        return decode({
+        const row = {
           ID: item.id,
           Scope: item.scope,
           Content: item.content,
@@ -178,7 +172,8 @@ function memoryClient(
           Project: "",
           EmbeddingSpace: "",
           Embedding: [],
-        });
+        };
+        return decode(input.method === "flame.memory/add.v1" ? { Changed: true, Item: row } : row);
       },
     },
   } as unknown as FlameClient;

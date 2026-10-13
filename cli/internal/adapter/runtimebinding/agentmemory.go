@@ -16,10 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type agentMemoryBinding interface {
-	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
-}
-
 type AgentMemory struct{ runtime *Connection }
 
 func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
@@ -150,22 +146,33 @@ func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPlugi
 	return a.runtime.CallPlugin(ctx, request, commandID)
 }
 
-func (a *AgentMemory) Add(ctx context.Context, target conversation.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
-	r := a.runtime
-	validated, err := a.resolveTarget(ctx, target)
+func (a *AgentMemory) PrepareAdd(ctx context.Context, request memory.AddV1Input) (protocol.CallPluginRequest, error) {
+	if _, err := conversation.NewMemoryTarget(protocol.AgentMemoryScope(request.Scope), request.CWD); err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	input, err := jsoninput.Encode(request)
 	if err != nil {
-		return protocol.AgentMemoryItem{}, err
+		return protocol.CallPluginRequest{}, err
 	}
-	options := r.commandOptions()
-	request := protocol.AgentMemoryAddRequest{Scope: validated.Scope, Content: content}
-	if validated.Scope == protocol.AgentMemoryScopeProject {
-		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
+	return a.prepareCommand(ctx, memory.AddV1Method, input)
+}
+
+func (a *AgentMemory) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddV1Output, error) {
+	if reply == nil {
+		return memory.AddV1Output{}, runtimeContractViolation("add agent memory returned nil")
 	}
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.AgentMemoryItem{}, err
+	var output memory.AddV1Output
+	if err := json.Unmarshal(reply.Output, &output, json.RejectUnknownMembers(true)); err != nil {
+		return memory.AddV1Output{}, runtimeContractViolation("add agent memory output: %v", err)
 	}
-	result, err := r.agentMemory.AddAgentMemory(ctx, request, options)
-	return agentMemoryResult("add agent memory", "", validated.Scope, result, err)
+	item := memoryProjection(output.Item)
+	if err := protocol.ValidateWireTree(item); err != nil {
+		return memory.AddV1Output{}, runtimeContractViolation("add agent memory projection: %v", err)
+	}
+	if _, err := agentMemoryResult("add agent memory", "", "", &item, nil); err != nil {
+		return memory.AddV1Output{}, err
+	}
+	return output, nil
 }
 
 func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.MemoryTarget) (conversation.MemoryTarget, error) {

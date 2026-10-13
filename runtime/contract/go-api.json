@@ -77,10 +77,6 @@
           "kind": "struct",
           "methods": [
             {
-              "name": "AddAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
-            },
-            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
             },
@@ -670,10 +666,6 @@
           "name": "Runtime",
           "kind": "struct",
           "methods": [
-            {
-              "name": "AddAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
-            },
             {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
@@ -2669,11 +2661,6 @@
           "value": "\"md\""
         },
         {
-          "name": "FeatureAgentMemory",
-          "type": "untyped string",
-          "value": "\"agentMemory\""
-        },
-        {
           "name": "FeatureCheckpoints",
           "type": "untyped string",
           "value": "\"checkpoints\""
@@ -3526,7 +3513,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.15\""
+          "value": "\"2026-10-14.16\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4364,33 +4351,6 @@
           "name": "AgentDocScope",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "AgentMemoryAddRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Scope",
-              "type": "AgentMemoryScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            },
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"content\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
         },
         {
           "name": "AgentMemoryItem",

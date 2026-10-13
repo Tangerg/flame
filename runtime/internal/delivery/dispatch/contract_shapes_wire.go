@@ -852,20 +852,6 @@ func registerObjectConstraints(s *Shapes) {
 		Rules:  runtimeItemRules,
 	})
 
-	for _, target := range []reflect.Type{
-		typeOf[protocol.AgentMemoryAddRequest](),
-	} {
-		s.constraint(ObjectConstraintSpec{
-			GoType: target,
-			Rules: []ConditionalRule{{
-				When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.AgentMemoryScopeProject)}},
-				Required: []string{"workspace"},
-			}, {
-				When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.AgentMemoryScopeUser)}},
-				Forbidden: []string{"workspace"},
-			}},
-		})
-	}
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.AgentMemoryItem](),
 		Rules: []ConditionalRule{{

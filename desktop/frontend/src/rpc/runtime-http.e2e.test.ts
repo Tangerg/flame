@@ -1,5 +1,6 @@
 import { OperationFailure } from "@flame/runtime-contract/client";
 import {
+  addInstalledMemory,
   deleteInstalledMemory,
   readInstalledMemory,
   reviewInstalledMemory,
@@ -1161,12 +1162,14 @@ for await (const line of lines) {
     const component = installation.selected.components[0]!;
     const resourceRequest = { ...release, componentId: component.id, path: component.entry };
     const workspace = { path: root };
-    let created: Awaited<ReturnType<typeof client.agentMemory.add>> | undefined;
+    let created: Awaited<ReturnType<typeof addInstalledMemory>> | undefined;
     try {
       expect(installation.selected.diagnostics).toEqual([]);
-      created = await client
-        .workspace(workspace)
-        .agentMemory.add("Memory page canonical ownership fixture");
+      created = await addInstalledMemory(client, {
+        scope: "project",
+        cwd: workspace.path,
+        content: "Memory page canonical ownership fixture",
+      });
       const query = { scope: "project" as const, workspace, limit: 1 };
       expect(
         (
@@ -2113,10 +2116,10 @@ for await (const line of lines) {
     let memoryId: string | undefined;
 
     try {
-      const added = await callAfterCommitLoss("agentMemory.add", (faultClient) =>
-        faultClient.agentMemory.add({
+      const added = await callAfterCommitLoss("plugins.call", (faultClient) =>
+        addInstalledMemory(faultClient, {
           scope: "project",
-          workspace: { path: workspaceRoot },
+          cwd: workspaceRoot,
           content: "agent-memory replay cutpoint",
         }),
       );
@@ -4104,7 +4107,11 @@ for await (const line of lines) {
       streamController.signal,
     );
     const runtimeEvents = subscription.events[Symbol.asyncIterator]();
-    const project = await workspace.agentMemory.add("project memory marker");
+    const project = await addInstalledMemory(client, {
+      scope: "project",
+      cwd: workspaceRoot,
+      content: "project memory marker",
+    });
     await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
       type: "agentMemory.changed",
     });
@@ -4115,7 +4122,11 @@ for await (const line of lines) {
       status: "active",
       pinned: false,
     });
-    const duplicate = await workspace.agentMemory.add("project memory marker");
+    const duplicate = await addInstalledMemory(client, {
+      scope: "project",
+      cwd: workspaceRoot,
+      content: "project memory marker",
+    });
     expect(duplicate.id).toBe(project.id);
 
     const orderingMarker = await client.sessions.create({
@@ -4128,7 +4139,7 @@ for await (const line of lines) {
       value: { type: "sessions.changed", sessionIds: expect.arrayContaining([orderingMarker.id]) },
     });
 
-    const user = await client.agentMemory.add({
+    const user = await addInstalledMemory(client, {
       scope: "user",
       content: "user memory marker",
     });

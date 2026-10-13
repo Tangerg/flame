@@ -100,11 +100,10 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 	t.Parallel()
 
 	features := map[string]protocol.FeatureCapability{
-		protocol.FeatureGoals:       {},
-		protocol.FeatureSkills:      {},
-		protocol.FeatureMCP:         {},
-		protocol.FeaturePlugins:     {},
-		protocol.FeatureAgentMemory: {},
+		protocol.FeatureGoals:   {},
+		protocol.FeatureSkills:  {},
+		protocol.FeatureMCP:     {},
+		protocol.FeaturePlugins: {},
 	}
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
@@ -115,18 +114,26 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		schedules:      newScheduleServiceStub(),
 		agentMemory:    newAgentMemoryServiceStub(),
 	}
-	checks := map[string]func(*app) extensions.CommandAvailability{
-		protocol.FeatureGoals:       availableWithGoals,
-		protocol.FeatureSkills:      availableWithSkills,
-		protocol.FeatureMCP:         availableWithMCP,
-		protocol.FeaturePlugins:     availableWithSchedules,
-		protocol.FeatureAgentMemory: availableWithAgentMemory,
+	checks := []struct {
+		feature string
+		check   func(*app) extensions.CommandAvailability
+	}{
+		{protocol.FeatureGoals, availableWithGoals},
+		{protocol.FeatureSkills, availableWithSkills},
+		{protocol.FeatureMCP, availableWithMCP},
+		{protocol.FeaturePlugins, availableWithSchedules},
+		{protocol.FeaturePlugins, availableWithAgentMemory},
 	}
-	for feature, check := range checks {
+	for _, entry := range checks {
+		feature, check := entry.feature, entry.check
+		capability := features[feature]
+		capability.Enabled = false
+		features[feature] = capability
+		profile = terminalProfileWithFeatures(t, features)
 		if availability := check(application); availability.Enabled() || !strings.Contains(availability.Reason(), "was not negotiated") {
 			t.Errorf("disabled %s availability = %+v", feature, availability)
 		}
-		capability := features[feature]
+		capability = features[feature]
 		capability.Enabled = true
 		features[feature] = capability
 		profile = terminalProfileWithFeatures(t, features)

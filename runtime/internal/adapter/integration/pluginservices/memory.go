@@ -65,14 +65,6 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
 
-func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content string) (memory.Item, error) {
-	value, err := invokeCommand[rpc.AddInput, rpc.AddResult](ctx, m.commands, m.contracts.Capability, rpc.Add, rpc.AddInput{Scope: scope, CWD: cwd, Content: content}, func(value rpc.AddResult) error { _, err := memory.RestoreItem(value.Item); return err })
-	if err != nil {
-		return memory.Item{}, rpc.DecodeError(err)
-	}
-	item, err := memory.RestoreItem(value.value.Item)
-	return item, err
-}
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
 	ctx = operation.Start(ctx, capability.Automatic, "memory.context", uuid.NewString())
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)

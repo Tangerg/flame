@@ -87,6 +87,17 @@ func (a *app) AddAgentMemory(argument string) error {
 	if a.agentMemory == nil {
 		return errors.New("this runtime composition has no agent memory service")
 	}
+	if a.workbench != nil {
+		if pending, found := a.workbench.PendingInstalledCommand(memoryAdditionIntent); found {
+			var input memory.AddV1Input
+			if err := json.Unmarshal(pending.Request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+				return fmt.Errorf("pending agent memory addition input is invalid: %w", err)
+			}
+			a.message("reconciling original " + input.Scope + " memory addition")
+			return a.addAgentMemory(nil, input, nil)
+		}
+	}
+
 	target, err := parseAgentMemoryTarget(argument, a.session.current.Workspace.Path)
 	if err != nil {
 		return err
@@ -100,7 +111,7 @@ func (a *app) AddAgentMemory(argument string) error {
 			if content == "" {
 				return errors.New("memory content is empty")
 			}
-			return a.addAgentMemory(target, content, complete)
+			return a.addAgentMemory(&target, memory.AddV1Input{Scope: string(target.Scope), CWD: target.Workspace, Content: content}, complete)
 		},
 	})
 	return nil
@@ -354,16 +365,37 @@ func parseAgentMemoryReference(argument string) (protocol.AgentMemoryScope, stri
 	return scope, identity, nil
 }
 
-func (a *app) addAgentMemory(target conversation.MemoryTarget, content string, complete func(error) bool) error {
+func (a *app) addAgentMemory(target *conversation.MemoryTarget, request memory.AddV1Input, complete func(error) bool) error {
 	presentation := a.session.context
 	a.status.note("adding agent memory")
-	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (protocol.AgentMemoryItem, error) {
-			return a.agentMemory.Add(ctx, target, content)
+	if !a.runApplicationOperation(agentMemoryOperation, false,
+		func(ctx context.Context) (memory.AddV1Output, error) {
+			if a.workbench != nil {
+				if pending, found := a.workbench.PendingInstalledCommand(memoryAdditionIntent); found {
+					if err := retainedMemoryAddition(pending.Request, request); err != nil {
+						return memory.AddV1Output{}, err
+					}
+				}
+			}
+			return installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryAdditionIntent, a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.agentMemory.PrepareAdd(ctx, request)
+			}, func(reply *protocol.CallPluginResponse) (memory.AddV1Output, error) {
+				output, err := a.agentMemory.DecodeAdd(reply)
+				if err == nil && output.Item.Scope != request.Scope {
+					return memory.AddV1Output{}, errors.New("memory addition acknowledgement changed target scope")
+				}
+				return output, err
+			})
 		},
-		func(item protocol.AgentMemoryItem, err error) {
+		func(result memory.AddV1Output, err error) {
 			if err != nil {
-				a.message("add agent memory failed: " + err.Error())
+				message := "add agent memory failed: " + err.Error()
+				if a.workbench != nil {
+					if _, pending := a.workbench.PendingInstalledCommand(memoryAdditionIntent); pending {
+						message += " · retry /memory-add to reconcile the original command"
+					}
+				}
+				a.message(message)
 				if complete != nil {
 					complete(err)
 				}
@@ -373,9 +405,13 @@ func (a *app) addAgentMemory(target conversation.MemoryTarget, content string, c
 			if complete != nil {
 				closed = complete(nil)
 			}
-			a.message("agent memory added · " + item.ID)
-			if closed && a.session.context.current(presentation) {
-				a.showAgentMemory(target)
+			outcome := "added"
+			if !result.Changed {
+				outcome = "already present"
+			}
+			a.message("agent memory " + outcome + " · " + result.Item.ID)
+			if closed && target != nil && a.session.context.current(presentation) {
+				a.showAgentMemory(*target)
 			}
 		},
 	) {
@@ -528,3 +564,16 @@ func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
 func memoryDeletionIntent(id string) string { return "memory-delete:" + id }
 func memoryReviewIntent(id string) string   { return "memory-review:" + id }
 func memoryUpdateIntent(id string) string   { return "memory-update:" + id }
+
+const memoryAdditionIntent = "memory-add"
+
+func retainedMemoryAddition(request protocol.CallPluginRequest, desired memory.AddV1Input) error {
+	var original memory.AddV1Input
+	if err := json.Unmarshal(request.Input, &original, json.RejectUnknownMembers(true)); err != nil {
+		return fmt.Errorf("pending agent memory addition input is invalid: %w", err)
+	}
+	if original != desired {
+		return errors.New("agent memory addition remains unconfirmed; retry /memory-add to reconcile the original target and content")
+	}
+	return nil
+}

@@ -112,7 +112,24 @@ patch before current target/catalog reads and rejects a changed editor resubmiss
 The generated publisher snapshot is decoded/validated before intent retirement.
 Workspace acknowledgement rereads the current cache owner rather than projecting
 an original provider's item into every current row with the same ID. The remaining
-Core add entrance, wider consumer migration and final acceptance remain open.
+Core add entrance is retired by the following cutover; wider consumer migration
+and final acceptance remain open.
+
+Core 2026-10-14.16 removes the last Memory business facade, AddAgentMemory/
+agentMemory.add, its request/constraints, delivery handler, selected-role forwarding
+and Memory-specific Core feature. Every actual CLI/workspace Memory read and human
+mutation uses the publisher's public installed capability. New additions capture
+scope/path/content once; the private backend alone resolves project roots, owns
+deduplication and reports Changed. Pending authoring resumes its original route,
+input and command before current workspace/provider reads. Changed input and
+invalid acknowledgement, including a different scope, cannot retire uncertainty.
+Workspace projections reread their current owner after acknowledgement.
+
+Rebuild Core/Go/TS clients together; retired requests receive no alias or conversion.
+Backend wire remains 2026-10-14.2 and private business/storage formats are unchanged.
+Core Memory read models, limits and topics still have real consumers and require
+their own ownership migration. Native restart/withdrawal/response-loss acceptance,
+wider consumers and final full/vet/race verification remain open.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a

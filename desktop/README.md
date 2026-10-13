@@ -319,6 +319,12 @@ refusal. Update now also uses the generated public operation. Content, pin and u
 share one item intent with frozen patch omission/value semantics; changed uncertain
 input is refused before provider preparation. A validated acknowledgement precedes
 retirement, and the cache rereads its current owner instead of copying a potentially
-different provider's item into it. Core update/DTO are removed. Add and final
-process/lifecycle acceptance remain under migration;
-no UI/E2E tests run here.
+different provider's item into it. Core update/DTO are removed. Add also uses the
+generated public operation and one authoring intent. Project additions require the
+caller's captured workspace; retries do not resolve the current default workspace.
+The existing journal restores the original route before provider selection and
+refuses changed scope/path/content. The backend owns root resolution and deduplication;
+validated Changed and item scope precede settlement, and the cache rereads its owner.
+Core add/DTO and the Memory-specific Core feature are removed without an alias.
+Remaining read-model/limit/topic migration and final process/lifecycle acceptance
+are open; no UI/E2E tests run here.

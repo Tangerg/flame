@@ -62,3 +62,30 @@ func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[p
 	}
 	return protocol.NewPageWithCursor(rows, page.NextCursor)
 }
+
+func memoryAddRequest(r *poMCPRuntime, input memoryrpc.AddInput) protocol.CallPluginRequest {
+	r.t.Helper()
+	request, err := memoryQuery(r, memoryrpc.ListInput{})
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	encoded, err := json.Marshal(input)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	request.Method, request.Input = memoryrpc.Add, encoded
+	return request
+}
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *protocol.AgentMemoryItem {
+	r.t.Helper()
+	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
+	if reply.Failure != nil {
+		r.t.Fatal(reply.Failure)
+	}
+	var result memoryrpc.AddResult
+	if err := json.Unmarshal(reply.Output, &result); err != nil {
+		r.t.Fatal(err)
+	}
+	row := result.Item
+	return &protocol.AgentMemoryItem{ID: row.ID.String(), Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+}

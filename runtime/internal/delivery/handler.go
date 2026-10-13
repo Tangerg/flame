@@ -40,10 +40,6 @@ type HandlerConfig struct {
 	// Goals exposes the autonomous Goal use cases.
 	Goals goalUseCases
 
-	// AgentMemory is the HITL review use-case surface over the agent's
-	// self-maintained memory (agentMemory.*).
-	AgentMemory agentMemoryUseCases
-
 	WorkspaceFiles         workspaceFileUseCases
 	WorkspaceVCS           workspaceVCSUseCases
 	WorkspaceDiscovery     workspaceDiscoveryUseCases
@@ -78,8 +74,7 @@ type Handler struct {
 	feedback          feedbackUseCases
 	trajectoryExports trajectoryExportUseCases
 
-	goals       goalUseCases
-	agentMemory agentMemoryUseCases
+	goals goalUseCases
 
 	workspaceFiles         workspaceFileUseCases
 	workspaceVCS           workspaceVCSUseCases
@@ -151,7 +146,6 @@ func (c HandlerConfig) validate() error {
 		{name: "Usage", value: c.Usage},
 		{name: "Feedback", value: c.Feedback},
 		{name: "TrajectoryExports", value: c.TrajectoryExports},
-		{name: "AgentMemory", value: c.AgentMemory},
 		{name: "Goals", value: c.Goals},
 		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
@@ -236,7 +230,6 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		workspaceHub:             newWorkspaceHub(),
 		resources:                newResourceLeases(),
 		goals:                    cfg.Goals,
-		agentMemory:              cfg.AgentMemory,
 		workspaceFiles:           cfg.WorkspaceFiles,
 		workspaceVCS:             cfg.WorkspaceVCS,
 		workspaceDiscovery:       cfg.WorkspaceDiscovery,
@@ -348,12 +341,11 @@ func capabilitiesFor(
 			protocol.FeatureRelocate:    true,
 			// An isolated Session jails its shells; without a backend for that
 			// jail the policy cannot be honored, so the surface is not offered.
-			protocol.FeatureIsolation:   features.isolation,
-			protocol.FeaturePlan:        true,
-			protocol.FeatureCompaction:  true,
-			protocol.FeatureGoals:       true,
-			protocol.FeatureAgentMemory: true,
-			protocol.FeatureSubagents:   true,
+			protocol.FeatureIsolation:  features.isolation,
+			protocol.FeaturePlan:       true,
+			protocol.FeatureCompaction: true,
+			protocol.FeatureGoals:      true,
+			protocol.FeatureSubagents:  true,
 		}),
 	}
 }

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.15` · 96 methods
+Protocol `2026-10-14.16` · 95 methods
 
 ## Methods
 
@@ -105,7 +105,6 @@ Protocol `2026-10-14.15` · 96 methods
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
 | `usage.summary` | query | unary | none | none | none | — | — | — |
-| `agentMemory.add` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `feedback.create` | command | unary | replayResponse | none | none | — | — | — |
 
 ## HTTP endpoints
@@ -1066,8 +1065,6 @@ TypeScript validator from this single registry projection.
 | `AgentMemoryItem` | `sessionId` | `maxLength(256)` |
 | `AgentMemoryItem` | `content` | `pattern("\\S")` |
 | `AgentMemoryItem` | `content` | `maxLength(4096)` |
-| `AgentMemoryAddRequest` | `content` | `pattern("\\S")` |
-| `AgentMemoryAddRequest` | `content` | `maxLength(4096)` |
 | `Goal` | `sessionId` | `nonEmpty` |
 | `Goal` | `sessionId` | `identity` |
 | `Goal` | `sessionId` | `maxLength(256)` |
@@ -1237,7 +1234,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `goals.get` | always | `goals` |
 | `goals.stop` | always | `goals` |
 | `goals.resume` | always | `goals` |
-| `agentMemory.add` | always | `agentMemory` |
 
 ## System invariants
 

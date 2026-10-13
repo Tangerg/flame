@@ -43,10 +43,3 @@ const (
 	AgentMemoryStatusActive  AgentMemoryStatus = "active"
 	AgentMemoryStatusPending AgentMemoryStatus = "pending"
 )
-
-// AgentMemoryAddRequest — agentMemory.add body.
-type AgentMemoryAddRequest struct {
-	Scope     AgentMemoryScope `json:"scope"`
-	Workspace *WorkspaceRef    `json:"workspace,omitzero"`
-	Content   string           `json:"content"`
-}

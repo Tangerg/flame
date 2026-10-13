@@ -127,7 +127,8 @@ type AgentMemory interface {
 	DecodeUpdate(string, *protocol.CallPluginResponse) (protocol.AgentMemoryItem, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
-	Add(context.Context, conversation.MemoryTarget, string) (protocol.AgentMemoryItem, error)
+	PrepareAdd(context.Context, memory.AddV1Input) (protocol.CallPluginRequest, error)
+	DecodeAdd(*protocol.CallPluginResponse) (memory.AddV1Output, error)
 }
 
 type DiagnosticTools interface {

@@ -17,7 +17,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	source := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	item := r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeProject, Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Content: "original fact"}, "add-memory").(*protocol.AgentMemoryItem)
+	item := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath, Content: "original fact"}), "add-memory")
 	content := "user correction"
 	pinned := true
 	request, err := memoryQuery(r, memoryrpc.ListInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath})
@@ -45,7 +45,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	if len(page.Data) != 1 || page.Data[0] != expected {
 		t.Fatalf("restart lost user correction=%+v", page.Data)
 	}
-	replay := r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeProject, Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Content: "original fact"}, "add-memory").(*protocol.AgentMemoryItem)
+	replay := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath, Content: "original fact"}), "add-memory")
 	if replay.ID != item.ID {
 		t.Fatalf("command replay created another memory=%+v", replay)
 	}

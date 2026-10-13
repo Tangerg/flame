@@ -97,7 +97,6 @@ type runtimeBinding interface {
 	skillBinding
 	mcpBinding
 	pluginBinding
-	agentMemoryBinding
 	diagnosticToolBinding
 	authoringContextBinding
 	hookBinding
@@ -124,7 +123,6 @@ type Connection struct {
 	skills           skillBinding
 	plugins          pluginBinding
 	mcp              mcpBinding
-	agentMemory      agentMemoryBinding
 	diagnosticTools  diagnosticToolBinding
 	authoringContext authoringContextBinding
 	hooks            hookBinding
@@ -183,7 +181,6 @@ func openConnection(ctx context.Context, cfg Config, endpoint string) (*Connecti
 		skills:           binding,
 		plugins:          binding,
 		mcp:              binding,
-		agentMemory:      binding,
 		diagnosticTools:  binding,
 		authoringContext: binding,
 		hooks:            binding,

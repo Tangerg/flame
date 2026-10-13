@@ -83,7 +83,7 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 	if profile.Supports(protocol.FeatureSessionExport) {
 		cfg.Transfers = connection
 	}
-	if profile.Supports(protocol.FeatureAgentMemory) {
+	if profile.Supports(protocol.FeaturePlugins) {
 		cfg.AgentMemory = connection.AgentMemory()
 	}
 	return terminal.Run(ctx, cfg)

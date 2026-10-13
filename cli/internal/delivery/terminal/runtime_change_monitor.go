@@ -119,7 +119,7 @@ func (a *app) observedRuntimeResources() runtimeResourceObservation {
 		hooks:       a.hooks != nil,
 		models:      true,
 		approvals:   true,
-		agentMemory: a.agentMemory != nil && a.runtimeSupports(protocol.FeatureAgentMemory),
+		agentMemory: a.agentMemory != nil && a.runtimeSupports(protocol.FeaturePlugins),
 	}
 }
 

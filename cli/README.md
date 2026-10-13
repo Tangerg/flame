@@ -284,6 +284,15 @@ They share one item intent and retain the original nullable patch before I/O.
 An edited retry cannot confirm a different draft; /memory-edit first resumes the
 original pending patch without current workspace/catalog reads. Public snapshot
 decoding precedes intent retirement. Core UpdateAgentMemory/agentMemory.update and
-its request are removed. Add remains under migration; its Core API serves real
-consumers. Uncertain requests from retired Core contracts are not translated into
-fresh public commands.
+its request are removed. Add now uses the generated public operation and one
+authoring intent. The workbench retains the original scope, captured workspace,
+content, binding and command identity. /memory-add reconciles that intent before
+reading the current workspace or opening another editor. Changed content or target
+cannot replace an uncertain addition. The backend alone resolves the captured path
+to its private project root and reports whether it changed the business state.
+Snapshot validation, including original scope, precedes retirement. Core
+AddAgentMemory/agentMemory.add, its DTO and the Memory-specific Core feature are
+removed. Clients negotiate plugins and resolve the concrete published capability.
+Uncertain requests from retired Core contracts are not translated into fresh
+public commands. Remaining read-model/limit/topic migration and final acceptance
+are still open.

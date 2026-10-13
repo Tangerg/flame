@@ -1,6 +1,6 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient, repairCachedProjection } from "@/lib/queryClient";
+import { repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type {
@@ -53,7 +53,6 @@ class AgentMemoryMutationGeneration {
   add(input: AgentMemoryAddInput): Promise<AgentMemoryEntry> {
     return this.#run(tupleKey("add", input.scope, input.cwd ?? "", input.content), {
       execute: () => this.#gateway.add(input),
-      commit: (saved) => commitAddedAgentMemory(input, saved),
     });
   }
 
@@ -133,11 +132,4 @@ const agentMemoryMutationPublication = createPublicationSlot<AgentMemoryMutation
 
 export function agentMemoryQuery(scope: AgentMemoryQuery["scope"], cwd?: string): AgentMemoryQuery {
   return scope === "user" ? { scope } : { scope, cwd };
-}
-
-function commitAddedAgentMemory(input: AgentMemoryAddInput, saved: AgentMemoryEntry): void {
-  const query = agentMemoryQuery(input.scope, input.cwd);
-  queryClient.setQueryData<AgentMemoryEntry[]>([WORKSPACE_AGENT_MEMORY_KEY, query], (current) =>
-    current ? [saved, ...current] : current,
-  );
 }

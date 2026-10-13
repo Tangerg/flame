@@ -19,7 +19,6 @@ export type WireTypeName =
   | "ActiveRunRef"
   | "AgentDoc"
   | "AgentDocScope"
-  | "AgentMemoryAddRequest"
   | "AgentMemoryItem"
   | "AgentMemoryOrigin"
   | "AgentMemoryScope"
@@ -396,27 +395,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     scope: ref(() => CHECKS.AgentDocScope),
   }, ["path", "scope"]),
   AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
-  AgentMemoryAddRequest: allOf([
-    object({
-      content: allOf([text(), maxLength(4096), pattern("\\S")]),
-      scope: ref(() => CHECKS.AgentMemoryScope),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-    }, ["content", "scope"]),
-    ifThen(
-      fields({
-        scope: literal("project"),
-      }, ["scope"]),
-      fields({}, ["workspace"]),
-    ),
-    ifThen(
-      fields({
-        scope: literal("user"),
-      }, ["scope"]),
-      fields({
-        workspace: absent(),
-      }, []),
-    ),
-  ]),
   AgentMemoryItem: allOf([
     object({
       content: allOf([text(), maxLength(4096), pattern("\\S")]),
@@ -4404,7 +4382,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "tools.invoke": ref(() => CHECKS.InvokeToolRequest),
   "usage.session": ref(() => CHECKS.SessionUsageRequest),
   "usage.summary": ref(() => CHECKS.UsageSummaryRequest),
-  "agentMemory.add": ref(() => CHECKS.AgentMemoryAddRequest),
   "feedback.create": ref(() => CHECKS.FeedbackRequest),
 };
 
@@ -4510,7 +4487,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "tools.invoke": anything(),
   "usage.session": ref(() => CHECKS.SessionUsage),
   "usage.summary": ref(() => CHECKS.UsageSummary),
-  "agentMemory.add": ref(() => CHECKS.AgentMemoryItem),
   "feedback.create": object({}, []),
 };
 

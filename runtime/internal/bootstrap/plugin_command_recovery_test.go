@@ -20,9 +20,9 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "must not be silently resubmitted"}
+	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "must not be silently resubmitted"})
 	invoke := func() *delivery.Failure {
-		return r.endpoint.Invoke(t.Context(), delivery.AgentMemoryAdd, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}).Failure
+		return r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}).Failure
 	}
 	if failure := invoke(); failure == nil {
 		t.Fatal("lost request appeared successful")
@@ -85,15 +85,15 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: id}, Name: "memory"}
 	}
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "original provider's fact"}
-	r.must(delivery.AgentMemoryAdd, request, "original-command")
+	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "original provider's fact"})
+	r.must(delivery.PluginsCall, request, "original-command")
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: first.ID}, "uninstall-observed")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "replacement-install").(*protocol.PluginInstallation)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "replacement-enable")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: second.ID, Contribution: "memory-provider"}, "replacement-provider")
 	r = reopenCommandRuntime(t, r, &cfg)
 	r.poMCPTools(server(second.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	replay := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryAdd, request, delivery.Options{IdempotencyKey: "original-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	replay := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "original-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if replay.Failure == nil || !errors.Is(replay.Failure, protocol.ErrInternalError) {
 		t.Fatalf("old identity adopted replacement provider: %v", replay.Failure)
 	}
@@ -101,7 +101,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	if len(page.Data) != 0 {
 		t.Fatalf("old command mutated replacement owner: %+v", page.Data)
 	}
-	created := r.must(delivery.AgentMemoryAdd, request, "new-command").(*protocol.AgentMemoryItem)
+	created := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "original provider's fact"}), "new-command")
 	page = readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 1 || page.Data[0] != *created {
 		t.Fatalf("new command did not use replacement owner: %+v", page.Data)

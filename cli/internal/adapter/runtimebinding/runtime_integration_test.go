@@ -317,7 +317,16 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	added, err := agentMemory.Add(t.Context(), userTarget, "integration preference")
+	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV1Input{Scope: string(userTarget.Scope), Content: "integration preference"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	addedReply, err := agentMemory.CallPlugin(t.Context(), addition, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	addedResult, err := agentMemory.DecodeAdd(addedReply)
+	added := memoryProjection(addedResult.Item)
 	if err != nil {
 		t.Fatalf("Add agent memory: %v", err)
 	}

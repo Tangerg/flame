@@ -315,18 +315,6 @@ func TestPlanUsesAnOptionalCommittedStateInsteadOfRevisionZero(t *testing.T) {
 	assertConstraintField(t, updatedWithoutState.ValidateWire(), "StreamEvent", "plan.state")
 }
 
-func TestAgentMemoryTargetIsUnambiguous(t *testing.T) {
-	t.Parallel()
-
-	workspace := &WorkspaceRef{Path: "/repo"}
-	assertConstraintField(
-		t,
-		(AgentMemoryAddRequest{Scope: AgentMemoryScopeUser, Workspace: workspace, Content: "fact"}).ValidateWire(),
-		"AgentMemoryAddRequest",
-		"workspace",
-	)
-}
-
 func TestRollbackFileRestorationRequiresRunBoundary(t *testing.T) {
 	t.Parallel()
 
@@ -417,27 +405,8 @@ func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 	t.Parallel()
 
 	content := strings.Repeat("界", agentmemory.MaxContentCharacters)
-	if err := (AgentMemoryAddRequest{
-		Scope: AgentMemoryScopeUser, Content: content,
-	}).ValidateWire(); err != nil {
-		t.Fatalf("ValidateWire rejected the memory content boundary: %v", err)
-	}
 
 	content += "界"
-	assertConstraintField(
-		t,
-		(AgentMemoryAddRequest{Scope: AgentMemoryScopeUser, Content: content}).ValidateWire(),
-		"AgentMemoryAddRequest",
-		"content",
-	)
-	for _, blank := range []string{"", " \n\t"} {
-		assertConstraintField(
-			t,
-			(AgentMemoryAddRequest{Scope: AgentMemoryScopeUser, Content: blank}).ValidateWire(),
-			"AgentMemoryAddRequest",
-			"content",
-		)
-	}
 	assertConstraintField(
 		t,
 		(AgentMemoryItem{

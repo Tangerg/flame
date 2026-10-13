@@ -259,7 +259,7 @@ func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
 		profile.Supports(protocol.FeatureGoals) {
 		t.Fatalf("profile features = %+v", profile.Discovery().Capabilities.Features)
 	}
-	if profile.Supports(protocol.FeatureAgentMemory) {
+	if profile.Supports(protocol.FeaturePlugins) {
 		t.Fatal("fixture advertises the context features this case must not")
 	}
 

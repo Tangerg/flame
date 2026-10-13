@@ -92,8 +92,6 @@ import type {
   ManagedSkill,
   SkillProposal,
   SkillProposalRef,
-  AgentMemoryItem,
-  AgentMemoryScope,
   Goal,
   StartGoalRequest,
   StartRunRequest,
@@ -178,14 +176,7 @@ interface WorkspaceMethods {
     approveProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
   };
-  agentMemory: {
-    add: (content: string) => MutationPromise<AgentMemoryItem>;
-  };
 }
-
-type AgentMemoryTarget =
-  | { scope: Extract<AgentMemoryScope, "user"> }
-  | { scope: Extract<AgentMemoryScope, "project">; workspace: WorkspaceRef };
 
 export interface Methods {
   runtime: {
@@ -365,9 +356,6 @@ export interface Methods {
     session: (sessionId: SessionId, signal?: AbortSignal) => Promise<SessionUsage>;
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
-  agentMemory: {
-    add: (params: AgentMemoryTarget & { content: string }) => MutationPromise<AgentMemoryItem>;
-  };
   goals: {
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Goal | null>;
     start: (
@@ -418,9 +406,6 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
       listProposals: (signal) => call("skills.proposals.list", { workspace }, { signal }),
       approveProposal: (ref) => call("skills.proposals.approve", { ...ref, workspace }),
       rejectProposal: (ref) => call("skills.proposals.reject", { ...ref, workspace }),
-    },
-    agentMemory: {
-      add: (content) => call("agentMemory.add", { scope: "project", workspace, content }),
     },
   };
 }
@@ -672,9 +657,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     usage: {
       session: (sessionId, signal) => call("usage.session", { sessionId }, { signal }),
       summary: (params, signal) => call("usage.summary", params ?? {}, { signal }),
-    },
-    agentMemory: {
-      add: (params) => call("agentMemory.add", params),
     },
     goals: {
       get: (sessionId, signal) => call("goals.get", { sessionId }, { signal }),

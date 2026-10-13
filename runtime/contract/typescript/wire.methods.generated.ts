@@ -7,8 +7,6 @@
 // fact in this file is read from the Contract Registry.
 
 import type {
-  AgentMemoryAddRequest,
-  AgentMemoryItem,
   ApprovalModeResult,
   CallPluginRequest,
   CallPluginResponse,
@@ -153,7 +151,6 @@ const FEATURES = [
   "compaction",
   "plan",
   "goals",
-  "agentMemory",
   "skills",
   "mcp",
   "plugins",
@@ -266,7 +263,6 @@ const METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "agentMemory.add",
   "feedback.create",
 ] as const;
 
@@ -372,7 +368,6 @@ const VALUE_METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "agentMemory.add",
 ] as const;
 
 type WireValueMethodName = (typeof VALUE_METHOD_NAMES)[number];
@@ -1056,13 +1051,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "agentMemory.add": {
-    operation: "command",
-    response: "unary",
-    idempotency: "ownerResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "feedback.create": {
     operation: "command",
     response: "unary",
@@ -1289,9 +1277,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "goals.resume": [
     { requires: ["goals"] },
   ],
-  "agentMemory.add": [
-    { requires: ["agentMemory"] },
-  ],
 };
 
 /** The frames each method carries. */
@@ -1390,7 +1375,6 @@ export interface WireShapes {
   "tools.invoke": { params: InvokeToolRequest; result: unknown };
   "usage.session": { params: SessionUsageRequest; result: SessionUsage };
   "usage.summary": { params: UsageSummaryRequest; result: UsageSummary };
-  "agentMemory.add": { params: AgentMemoryAddRequest; result: AgentMemoryItem };
   "feedback.create": { params: FeedbackRequest };
 }
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"iter"
 	"path/filepath"
 	"strings"
@@ -58,7 +60,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	item := r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeProject, Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Content: fact}, "prepare-fact").(*protocol.AgentMemoryItem)
+	item := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath, Content: fact}), "prepare-fact")
 	if item.Status != protocol.AgentMemoryStatusActive {
 		t.Fatal("human-created fact was not active")
 	}

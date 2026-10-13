@@ -2,6 +2,7 @@ import type { AgentMemoryGateway } from "../application/ports/agentMemoryGateway
 import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/client";
 import type { AgentMemoryEntry } from "../application/workspaceQueries";
 import {
+  addInstalledMemory,
   deleteInstalledMemory,
   reviewInstalledMemory,
   updateInstalledMemory,
@@ -37,13 +38,7 @@ function runtimeAgentMemoryGateway(client: FlameClient): AgentMemoryGateway {
       await deleteInstalledMemory(client, id);
     },
     async add(input) {
-      if (input.scope === "user") {
-        return agentMemoryEntry(
-          await client.agentMemory.add({ scope: "user", content: input.content }),
-        );
-      }
-      const workspace = await client.workspaces.open(input.cwd ? { path: input.cwd } : undefined);
-      return agentMemoryEntry(await workspace.agentMemory.add(input.content));
+      return agentMemoryEntry(await addInstalledMemory(client, input));
     },
   };
 }

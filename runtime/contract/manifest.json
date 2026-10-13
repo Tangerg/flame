@@ -1,12 +1,11 @@
 {
-  "protocolVersion": "2026-10-14.15",
+  "protocolVersion": "2026-10-14.16",
   "features": [
     "reasoning",
     "multimodal",
     "compaction",
     "plan",
     "goals",
-    "agentMemory",
     "skills",
     "mcp",
     "plugins",
@@ -1332,21 +1331,6 @@
       "pagination": "none"
     },
     {
-      "name": "agentMemory.add",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "agentMemory"
-      ]
-    },
-    {
       "name": "feedback.create",
       "kind": "unary",
       "operation": "command",
@@ -1439,7 +1423,6 @@
         "code": -32006,
         "recoveryAction": "promptUser",
         "methods": [
-          "agentMemory.add",
           "goals.clear",
           "goals.get",
           "goals.resume",
@@ -1732,7 +1715,6 @@
         "code": -32045,
         "recoveryAction": "promptUser",
         "methods": [
-          "agentMemory.add",
           "plugins.call",
           "plugins.configure",
           "plugins.install",
@@ -2605,16 +2587,6 @@
         {
           "requires": [
             "goals"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "agentMemory.add",
-      "rules": [
-        {
-          "requires": [
-            "agentMemory"
           ]
         }
       ]
@@ -5626,35 +5598,6 @@
           ],
           "required": [
             "text"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "AgentMemoryAddRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "project"
-            }
-          ],
-          "required": [
-            "workspace"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "user"
-            }
-          ],
-          "forbidden": [
-            "workspace"
           ]
         }
       ]
@@ -9191,19 +9134,6 @@
           "field": "sessionId",
           "constraint": "maxLength(256)"
         },
-        {
-          "field": "content",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "content",
-          "constraint": "maxLength(4096)"
-        }
-      ]
-    },
-    {
-      "type": "AgentMemoryAddRequest",
-      "rules": [
         {
           "field": "content",
           "constraint": "pattern(\"\\\\S\")"

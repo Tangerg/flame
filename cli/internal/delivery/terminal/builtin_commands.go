@@ -214,7 +214,7 @@ func availableWithAgentMemory(a *app) extensions.CommandAvailability {
 	if a.agentMemory == nil {
 		return extensions.CommandUnavailable("this runtime composition has no agent memory service")
 	}
-	return availableWithRuntimeFeature(a, protocol.FeatureAgentMemory)
+	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
 }
 
 func availableWithDiagnosticTools(a *app) extensions.CommandAvailability {

@@ -163,6 +163,14 @@ func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycon
 	return protocol.AgentMemoryItem{}, errors.New("not found")
 }
 
+func (*agentMemoryServiceStub) PrepareAdd(_ context.Context, input memorycontract.AddV1Input) (protocol.CallPluginRequest, error) {
+	return boundMemoryRequest(memorycontract.AddV1Method, input)
+}
+func (*agentMemoryServiceStub) DecodeAdd(reply *protocol.CallPluginResponse) (memorycontract.AddV1Output, error) {
+	var result memorycontract.AddV1Output
+	err := json.Unmarshal(reply.Output, &result)
+	return result, err
+}
 func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycontract.UpdateV1Input) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.UpdateV1Method, input)
 }
@@ -192,8 +200,25 @@ func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, e
 }
 
 func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
-	if (request.Method != memorycontract.DeleteV1Method && request.Method != memorycontract.ReviewV1Method && request.Method != memorycontract.UpdateV1Method) || commandID == "" {
+	if (request.Method != memorycontract.DeleteV1Method && request.Method != memorycontract.ReviewV1Method && request.Method != memorycontract.UpdateV1Method && request.Method != memorycontract.AddV1Method) || commandID == "" {
 		return nil, errors.New("invalid memory command")
+	}
+	if request.Method == memorycontract.AddV1Method {
+		var input memorycontract.AddV1Input
+		if err := json.Unmarshal(request.Input, &input); err != nil {
+			return nil, err
+		}
+		target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScope(input.Scope), input.CWD)
+		if err != nil {
+			return nil, err
+		}
+		saved, err := a.addItem(context.Background(), target, input.Content)
+		if err != nil {
+			return nil, err
+		}
+		output := memorycontract.AddV1Output{Item: memorycontract.UpdateV1Output{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
+		encoded, err := jsoninput.Encode(output)
+		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
 	}
 	if request.Method == memorycontract.UpdateV1Method {
 		var input memorycontract.UpdateV1Input
@@ -242,7 +267,7 @@ func (a *agentMemoryServiceStub) delete(id string) error {
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Add(_ context.Context, target conversation.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
+func (a *agentMemoryServiceStub) addItem(_ context.Context, target conversation.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
 	if err := target.Validate(); err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}

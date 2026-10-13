@@ -167,35 +167,71 @@ export function updateInstalledMemory(
     { contract: CAPABILITY_JSON, method: "flame.memory/update.v1", input: patch },
     () => selectMemoryBinding(client, signal),
     (output) => {
-      const row = output as MethodOutputs["flame.memory/update.v1"];
-      if (
-        !row ||
-        row.ID !== patch.ID ||
-        typeof row.Content !== "string" ||
-        !row.Content.trim() ||
-        typeof row.Pinned !== "boolean" ||
-        typeof row.SessionID !== "string" ||
-        typeof row.Day !== "string" ||
-        !["project", "user"].includes(row.Scope) ||
-        !["active", "pending"].includes(row.Status) ||
-        !["auto", "user"].includes(row.Origin) ||
-        !Number.isFinite(Date.parse(row.CreatedAt)) ||
-        !Number.isFinite(Date.parse(row.UpdatedAt)) ||
-        Date.parse(row.UpdatedAt) < Date.parse(row.CreatedAt)
-      )
-        throw new Error("memory update acknowledgement is invalid");
-      return {
-        id: row.ID,
-        scope: row.Scope as "project" | "user",
-        content: row.Content,
-        origin: row.Origin as "auto" | "user",
-        status: row.Status as "active" | "pending",
-        pinned: row.Pinned,
-        sessionId: row.SessionID,
-        day: row.Day,
-        createdAt: row.CreatedAt,
-        updatedAt: row.UpdatedAt,
-      };
+      const item = decodeMemoryItem(output);
+      if (item.id !== patch.ID)
+        throw new Error("memory update acknowledgement changed item identity");
+      return item;
+    },
+    signal,
+  );
+}
+
+function decodeMemoryItem(output: unknown): AgentMemoryItem {
+  const row = output as MethodOutputs["flame.memory/update.v1"];
+  if (
+    !row ||
+    !row.ID ||
+    typeof row.Content !== "string" ||
+    !row.Content.trim() ||
+    typeof row.Pinned !== "boolean" ||
+    typeof row.SessionID !== "string" ||
+    typeof row.Day !== "string" ||
+    !["project", "user"].includes(row.Scope) ||
+    !["active", "pending"].includes(row.Status) ||
+    !["auto", "user"].includes(row.Origin) ||
+    !Number.isFinite(Date.parse(row.CreatedAt)) ||
+    !Number.isFinite(Date.parse(row.UpdatedAt)) ||
+    Date.parse(row.UpdatedAt) < Date.parse(row.CreatedAt)
+  )
+    throw new Error("memory item acknowledgement is invalid");
+  return {
+    id: row.ID,
+    scope: row.Scope as "project" | "user",
+    content: row.Content,
+    origin: row.Origin as "auto" | "user",
+    status: row.Status as "active" | "pending",
+    pinned: row.Pinned,
+    sessionId: row.SessionID,
+    day: row.Day,
+    createdAt: row.CreatedAt,
+    updatedAt: row.UpdatedAt,
+  };
+}
+
+export function addInstalledMemory(
+  client: FlameClient,
+  input: { scope: "project" | "user"; cwd?: string; content: string },
+  signal?: AbortSignal,
+): Promise<AgentMemoryItem> {
+  if (input.scope === "project" && !input.cwd)
+    return Promise.reject(new Error("project memory addition requires a captured workspace"));
+  const request: MethodInputs["flame.memory/add.v1"] = {
+    CWD: input.scope === "project" ? input.cwd! : "",
+    Content: input.content,
+    Scope: input.scope,
+  };
+  return client.plugins.command(
+    "memory-add",
+    { contract: CAPABILITY_JSON, method: "flame.memory/add.v1", input: request },
+    () => selectMemoryBinding(client, signal),
+    (output) => {
+      const result = output as MethodOutputs["flame.memory/add.v1"];
+      if (!result || typeof result.Changed !== "boolean")
+        throw new Error("memory addition acknowledgement is invalid");
+      const item = decodeMemoryItem(result.Item);
+      if (item.scope !== request.Scope)
+        throw new Error("memory addition acknowledgement changed target scope");
+      return item;
     },
     signal,
   );

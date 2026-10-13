@@ -162,8 +162,8 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 		},
 		{
 			name:       "oversized backend command key",
-			method:     AgentMemoryAdd,
-			parameters: protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "fact"},
+			method:     SessionsFork,
+			parameters: protocol.ForkSessionRequest{SessionID: "ses_current"},
 			options:    Options{IdempotencyKey: strings.Repeat("x", 256)},
 			detail:     "must not exceed 255 bytes",
 		},

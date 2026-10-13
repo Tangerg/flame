@@ -554,16 +554,6 @@ func (u UsageSummaryRequest) ValidateWire() error {
 	)
 }
 
-func (a AgentMemoryAddRequest) ValidateWire() error {
-	return collectWireViolations("AgentMemoryAddRequest",
-		requiredTextPattern("content", a.Content, "\\S"),
-		maxLength("content", a.Content, 4096),
-		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
-		requiredWhen(wireFieldEquals(a, "scope", "project"), "workspace", a),
-		forbiddenWhen(wireFieldEquals(a, "scope", "user"), "workspace", a),
-	)
-}
-
 func (f FeedbackRequest) ValidateWire() error {
 	return collectWireViolations("FeedbackRequest",
 		identity("sessionId", f.SessionID),

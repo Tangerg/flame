@@ -19,7 +19,6 @@ const (
 	FeatureCompaction    = "compaction"
 	FeaturePlan          = "plan"
 	FeatureGoals         = "goals"
-	FeatureAgentMemory   = "agentMemory"
 	FeatureSkills        = "skills"
 	FeatureMCP           = "mcp"
 	FeaturePlugins       = "plugins"
@@ -68,7 +67,6 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureCompaction},
 	{Key: FeaturePlan},
 	{Key: FeatureGoals},
-	{Key: FeatureAgentMemory},
 	{Key: FeatureSkills},
 	{Key: FeatureMCP},
 	{Key: FeaturePlugins},
