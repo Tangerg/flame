@@ -51,6 +51,7 @@ Read-only design inputs:
 
 ## Completed
 
+- Corrected the actual Memory callback's external-effect semantics: model completion is a command, each independent invocation carries its own identity, and the Memory-owned budget records admitted identities before provider I/O. Identical redelivery never makes another provider request, including after a lost observation; changed input returns the existing typed command conflict. This is call-lifetime fencing, not a durable provider receipt or completion of canonical model execution.
 - Stage 3b replaces per-grant Memory HTTP listeners with one public SDK callback transport used by actual Memory search and maintenance. The generic MCP connection owner admits/revokes callback generations without Memory model imports. Memory owns its two-call budget and model/scope DTOs in its RPC adapter. Old Models, private HTTP codec and BindModels entry are deleted.
 - Callback operations reuse immutable Go-owned Method contracts, raw structural admission and the same value/refusal envelope. Captured owner context remains authoritative; network input cannot replace target/origin/parent values. Unknown failures retain uncertainty and no retry is introduced.
 - Withdrawal retains releasing calls until their handlers settle, cancels every sibling before joining and interrupts incomplete authorized request bodies. Released/foreign references are explicitly stale. A real SDK-only executable proves MCP → host callback → nested same-backend MCP without a Desktop relay.
@@ -117,7 +118,7 @@ Read-only design inputs:
 
 ## In progress
 
-- Previous goal turn classification: no implementation progress; it verified read-only input preservation in response to the user. This turn resumed concrete implementation and completed the unary callback transport slice.
+- Previous goal turn classification: progress in the Memory external-effect owner and regression tests; the intervening user clarification verified read-only input preservation. The specific Runtime, CLI and bootstrap verification sessions are now terminal and passed.
 - Stage 3b does not close the complete callback requirement. The installed declaration/activation rendezvous, public Runtime Delivery catalog linkage, cross-plugin dependency binding and streaming/remote next remain required; no narrower completion criterion is adopted.
 
 - Provider composition now advances independently of enablement. Existing business role candidacy still comes from Services and uses its server name as the contribution key. Replacing that declaration/identity with consumer-owned exact point contracts, real contribution IDs and scoped/frozen composition remains required; the new store must not be mistaken for completion of the entire generic point substrate.
@@ -131,8 +132,8 @@ Read-only design inputs:
 
 ## Next
 
-1. Implement installed unary operations and original receipt recovery through one public Go/Protocol/CLI entrance. Include consumer-owned declarations, explicit provider selection, exact contract/contribution/target/origin/parent binding and one admitted raw fingerprint; migrate actual Memory/Schedules routing and remove ServiceOwner/ServiceKind and special client registration with their consumers. Reviews' typed receipt prerequisite is verified. Full apiVersion:1/closed-view deletion must accompany real component-consumer migration, not a legacy value hidden inside the new declaration. Re-read proposal sections 6-12 and 17-18 plus the review's remaining API-freeze gaps before the next slice.
-2. Bind the verified unary callback transport to declared installed dependencies and the canonical Runtime Delivery catalog, then prove cross-plugin calls and cancelable streaming decoration without a graphical relay.
+1. Implement canonical Runtime RPC callbacks with the actual Schedules Run submission consumer. Reuse the existing HTTP RPC/SSE handler, dispatch router, Delivery endpoint and typed Runtime Client. Extend the one runs.start opening owner to accept a captured new Session/Run atomically, then move Schedules dispatch into its backend and delete the host's direct StartAutomation path. Preserve the original captured command identity, read runs.getAcceptance before reconciliation, and leave pending work unconfirmed when evidence is unavailable. Client observation closure must not cancel an accepted Run. Do not substitute sessions.create plus runs.start, a Schedules-specific public alias, or a unary wrapper around the stream.
+2. Implement installed operations and original receipt recovery through one public Go/Protocol/CLI entrance, including consumer-owned declarations, exact contribution/contract/target/origin/parent binding and declared dependencies. Migrate Memory/Schedules routing and remove ServiceOwner/ServiceKind with their consumers. Full apiVersion:1/closed-view deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
 3. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 4. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
 5. Complete requirement-level audit and final clean delivery.
@@ -141,6 +142,7 @@ Read-only design inputs:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Fence each Memory model command before provider I/O, retaining its admitted input for the callback lifetime | Model requests create external effects; lost observation cannot authorize resending the original identity | Declaring completion a query, consuming budget without identity, or automatic resend |
 | 2026-10-13 | Use one lazily opened Runtime-owned loopback endpoint for unary callbacks, with one activation credential and immutable call-scoped method bindings | Proposal 10.1 explicitly selects two physical transport directions; stdio is not an arbitrary reverse RPC channel and per-invocation listeners are unnecessary | Smuggling reverse calls into stdio, a listener per invocation, browser relays or a second business store |
 | 2026-10-13 | Keep releasing callbacks in the lifecycle owner until joined; cancel all siblings before joining any sibling and close incomplete body reads on cancellation | Early removal loses pending work; sequential cancellation can deadlock reentrant calls and request parsing can otherwise delay retirement | Deleting the call before settlement, cancel-and-join one sibling at a time, or relying on the remote writer to finish |
 | 2026-10-13 | Keep Memory budget/model/scope contracts with Memory while sharing typed callback transport publicly | The generic endpoint must not impose Memory’s two-call policy or know Memory business operations | Moving Memory policy into the public SDK or retaining the private richer HTTP path |
@@ -222,6 +224,12 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Memory model-identity correction verification:
+
+- Passed: complete Runtime and CLI go test ./..., go vet ./... and go build ./...; Memory RPC/transport/maintenance full -race suites; real bootstrap maintenance committed-response-loss and provider-selection -race regressions. New identity tests cover observed/lost provider results, same-input redelivery, changed-input conflict and the existing two-call budget.
+- Passed: gofmt and git diff --check; incoming git merge main is already up to date at 61645c2561b174042aa157aef21cc00cfba67a86. No public SDK API/catalog changed, so generation and the independent SDK archive are not repeated for this private-owner correction.
+- Not run: frontend UI/E2E/screenshot tests, explicitly excluded. No temporary resources or original design-input changes were introduced.
 
 Stage 3b verification:
 

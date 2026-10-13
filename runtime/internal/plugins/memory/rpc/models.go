@@ -6,9 +6,12 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/google/uuid"
 )
 
 const maximumModelInput = 512 * 1024
@@ -37,7 +40,7 @@ func (c Completion) Complete(ctx context.Context, prompt Prompt) (string, error)
 
 func modelMethod() (*pluginsdk.Method[Prompt, string], error) {
 	return pluginsdk.NewMethod[Prompt, string](pluginsdk.MethodConfig{
-		Name: "flame.memory/model.v1", Kind: pluginsdk.Query, Target: "call",
+		Name: "flame.memory/model.v1", Kind: pluginsdk.Mutation, Target: "call",
 		Description: "Use the model capability captured by this Memory invocation.",
 	})
 }
@@ -53,8 +56,8 @@ func GrantModels(ctx context.Context, callbacks *pluginsdk.Callbacks, session *s
 		return pluginsdk.CallbackRef{}, nil, err
 	}
 	var mu sync.Mutex
-	remaining := 2
-	callback, err := pluginsdk.NewCallback(method, nil, func(ctx context.Context, command pluginsdk.Command[Prompt]) (string, error) {
+	invocations := make(map[string]jsoninput.Input)
+	callback, err := pluginsdk.NewCallback(method, Classify, func(ctx context.Context, command pluginsdk.Command[Prompt]) (string, error) {
 		prompt := command.Input
 		limit := maximumModelInput
 		if prompt.Operation == "memory.embed" {
@@ -63,12 +66,25 @@ func GrantModels(ctx context.Context, callbacks *pluginsdk.Callbacks, session *s
 		if prompt.MaxInputBytes <= 0 || prompt.MaxInputBytes > limit || prompt.MaxOutputTokens <= 0 || prompt.MaxOutputTokens > 2048 || len(prompt.SystemPrompt)+len(prompt.UserPrompt) > prompt.MaxInputBytes {
 			return "", errors.New("memory: model envelope refused")
 		}
+		input, err := command.RequestInput()
+		if err != nil {
+			return "", err
+		}
 		mu.Lock()
-		if remaining == 0 {
+		if original, found := invocations[command.ID]; found {
+			mu.Unlock()
+			if original != input {
+				return "", idempotency.ErrKeyConflict
+			}
+			return "", errors.New("memory: original model invocation cannot be redelivered")
+		}
+		if len(invocations) == 2 {
 			mu.Unlock()
 			return "", errors.New("memory: model budget exhausted")
 		}
-		remaining--
+		// A provider has no owner receipt to reconcile. Admission therefore
+		// fences this identity before I/O, even if its response is lost later.
+		invocations[command.ID] = input
 		mu.Unlock()
 		switch prompt.Operation {
 		case "memory.extract", "memory.curate":
@@ -113,7 +129,7 @@ func (r RemoteModels) Complete(ctx context.Context, prompt Prompt) (string, erro
 	if err != nil {
 		return "", err
 	}
-	return pluginsdk.CallHost(ctx, r.Grant, method, "", prompt)
+	return pluginsdk.CallHost(ctx, r.Grant, method, uuid.NewString(), prompt)
 }
 func (r RemoteModels) ID() string { return r.Space }
 func (r RemoteModels) Embed(ctx context.Context, texts []string) ([][]float32, error) {

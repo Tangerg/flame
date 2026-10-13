@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -66,6 +67,67 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 	}
 	if calls.Load() != 2 {
 		t.Fatalf("calls=%d", calls.Load())
+	}
+}
+
+func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
+	for _, lost := range []bool{false, true} {
+		t.Run(fmt.Sprint("response lost ", lost), func(t *testing.T) {
+			callbacks := pluginsdk.NewCallbacks()
+			t.Cleanup(func() {
+				if err := callbacks.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			session := new(sdk.ClientSession)
+			callbacks.AdmitSession(session)
+			var calls atomic.Int32
+			grant, release, err := GrantModels(t.Context(), callbacks, session, func(context.Context, Prompt) (string, error) {
+				calls.Add(1)
+				if lost {
+					return "", errors.New("provider observation was lost")
+				}
+				return "original value", nil
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer release()
+			method, err := modelMethod()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if method.Descriptor().Kind != pluginsdk.Mutation {
+				t.Fatal("external model call was declared as a query")
+			}
+			value, err := pluginsdk.CallHost(t.Context(), grant, method, "first", testPrompt())
+			if !lost && (err != nil || value != "original value") {
+				t.Fatalf("original value=%q error=%v", value, err)
+			}
+			if lost && err == nil {
+				t.Fatal("lost provider result became known")
+			}
+			if _, err := pluginsdk.CallHost(t.Context(), grant, method, "first", testPrompt()); err == nil {
+				t.Fatal("original external call was redelivered")
+			}
+			changed := testPrompt()
+			changed.UserPrompt = "changed input"
+			_, err = pluginsdk.CallHost(t.Context(), grant, method, "first", changed)
+			failure, known := errors.AsType[*pluginsdk.Failure](err)
+			if !known || failure.Code != "command_conflict" {
+				t.Fatalf("changed original input did not conflict: %v", err)
+			}
+			if calls.Load() != 1 {
+				t.Fatalf("original identity caused %d provider calls", calls.Load())
+			}
+			_, _ = pluginsdk.CallHost(t.Context(), grant, method, "second", testPrompt())
+			if calls.Load() != 2 {
+				t.Fatalf("independent call did not consume the remaining budget: %d", calls.Load())
+			}
+			if _, err := pluginsdk.CallHost(t.Context(), grant, method, "third", testPrompt()); err == nil || calls.Load() != 2 {
+				t.Fatalf("budget exceeded: calls=%d error=%v", calls.Load(), err)
+			}
+		})
 	}
 }
 func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
