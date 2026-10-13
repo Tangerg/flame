@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
@@ -23,21 +25,8 @@ func (a *app) restorePendingRuns() {
 	if len(pending) == 0 {
 		return
 	}
-	if pending[0].State != workbench.PendingRunQueued {
-		if _, err := pending[0].ReplayCommand(); err != nil {
-			a.fail(fmt.Errorf("recover pending run input: %w", err))
-			return
-		}
-	}
-	if pending[0].State == workbench.PendingRunDispatching &&
-		!a.replayPolicy.Replayable(pending[0].Replay) {
-		a.fail(errors.New("recover pending run: replay guarantee expired or belongs to another runtime"))
-		return
-	}
-	if pending[0].State == workbench.PendingRunCanceling &&
-		(!a.replayPolicy.Replayable(pending[0].Replay) ||
-			!a.replayPolicy.Replayable(pending[0].CancelReplay)) {
-		a.fail(errors.New("recover pending run cancellation: replay guarantee expired or belongs to another runtime"))
+	if pending[0].State != workbench.PendingRunQueued && !a.replayPolicy.SameStore(pending[0].Replay) {
+		a.fail(errors.New("recover pending run: command belongs to another runtime"))
 		return
 	}
 	if err := a.restorePendingQueue(); err != nil {
@@ -66,36 +55,13 @@ func (a *app) restorePendingResume() {
 	if !ok {
 		return
 	}
-	if _, err := pending.ReplayCommand(); err != nil {
-		a.fail(fmt.Errorf("recover interrupt input: %w", err))
-		return
-	}
 	if !a.replayPolicy.SameStore(pending.Replay) {
 		a.fail(errors.New("recover interrupt decisions: command belongs to another runtime"))
 		return
 	}
 	if err := a.execution.conversation.ValidateInterruptReview(pending.Command.RunID, pending.Interrupts); err != nil {
-		// The authoritative snapshot has advanced beyond this decision. Its exact
-		// runtime outcome is therefore already visible and the local outbox can be
-		// retired without replaying an obsolete command.
-		if err := a.workbench.AcknowledgePendingResume(a.session.current.ID, pending.Command.CommandID); err != nil {
-			a.fail(fmt.Errorf("retire settled interrupt decisions: %w", err))
-		}
+		a.reconcilePendingResume(pending)
 		return
-	}
-	if !a.replayPolicy.Replayable(pending.Replay) {
-		replayGuard, err := a.replayPolicy.NewGuard()
-		if err != nil {
-			a.fail(fmt.Errorf("recover interrupt decisions: replace expired command: %w", err))
-			return
-		}
-		requeued, err := a.workbench.RequeuePendingResume(a.session.current.ID, pending.Command.CommandID, replayGuard)
-		if err != nil {
-			a.fail(fmt.Errorf("recover interrupt decisions: replace expired command: %w", err))
-			return
-		}
-		pending = requeued
-		a.status.note("interrupt delivery expired · retrying safely")
 	}
 	review, err := restoreInterruptReview(pending.Interrupts, pending.Command.Answers)
 	if err != nil {
@@ -104,7 +70,34 @@ func (a *app) restorePendingResume() {
 	}
 	a.dismissInterruptProjection()
 	a.dialogs.interruptReview = review
-	a.deliverInterruptResume(review, pending.Command.Clone(), pending.Replay)
+	a.deliverInterruptResume(review, pending.Command.Clone())
+}
+
+func (a *app) reconcilePendingResume(pending workbench.PendingResume) {
+	command := pending.Command
+	dispatcher := a.loop.Dispatcher()
+	a.operations.GoSession(resumeRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
+		_, err := mutation.ConfirmAdmitted(ctx, runtimeRecoveryBackoff, nil, func(ctx context.Context) (conversation.SegmentStream, error) {
+			return runworkflow.OpenPendingResume(ctx, a.runtime, pending, a.replayPolicy)
+		})
+		if context.Cause(ctx) != nil {
+			return
+		}
+		_ = post(ctx, dispatcher, func() {
+			if !a.operations.Current(lease) || !a.operations.Release(lease) {
+				return
+			}
+			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); err == nil || retired {
+				a.settleAcknowledgedResume(command.CommandID)
+				return
+			}
+			_, accepted := conversation.AcceptedMutationReceipt(err)
+			if !accepted && !mutation.OutcomeUnknown(err) {
+				err = errors.Join(err, a.workbench.RejectPendingResume(a.session.current.ID, command.CommandID))
+			}
+			a.message("reconcile earlier interrupt delivery: " + err.Error())
+		})
+	})
 }
 
 func sameInterrupts(left, right []conversation.Interrupt) bool {
@@ -149,11 +142,10 @@ func (a *app) replayPendingRun(pending workbench.PendingRun) {
 
 func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 	command := pending.Command
-	activeRunID := a.execution.conversation.RunID()
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, command, pending.Replay, a.replayPolicy, runtimeRecoveryBackoff,
+			ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return
@@ -163,12 +155,10 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 				!a.operations.Release(lease) {
 				return
 			}
-			observed, accepted := observedSegmentStream(opened, err)
+			_, accepted := observedSegmentStream(opened, err)
 			switch {
-			case accepted && observed.RunID == activeRunID:
-				err = a.retireQueuedCommand(command.SessionID, command.CommandID)
 			case accepted:
-				err = fmt.Errorf("pending command %s opened run %s while session projects %s", command.CommandID, observed.RunID, activeRunID)
+				err = a.retireQueuedCommand(command.SessionID, command.CommandID)
 			case errors.Is(err, conversation.ErrSessionHasActiveRun):
 				err = a.queue.RequeueDispatch(command.SessionID, command.CommandID)
 				if err == nil {
@@ -178,7 +168,7 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 				err = fmt.Errorf("reconcile pending run: %w", err)
 			}
 			if err != nil {
-				a.fail(err)
+				a.message(err.Error())
 			}
 		})
 	})

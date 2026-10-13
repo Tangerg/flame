@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -81,6 +82,7 @@ func (r *Runtime) StartRun(ctx context.Context, in prompt.StartRun) (conversatio
 		return conversation.SegmentStream{}, err
 	}
 	stream := r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault)
+	r.recordOpeningLocked(in.CommandID, protocol.RunCommandStart, stream, run.sessionID)
 	r.mu.Unlock()
 
 	go r.play(run, run.script.Prelude, run.script.interrupts())
@@ -114,6 +116,9 @@ func (r *Runtime) ResumeRun(ctx context.Context, in conversation.ResumeRun) (con
 
 	r.mu.Lock()
 	stream, err := r.activateResumeLocked(ctx, in.Message, prepared)
+	if err == nil {
+		r.recordOpeningLocked(in.CommandID, protocol.RunCommandResume, stream, prepared.run.sessionID)
+	}
 	r.mu.Unlock()
 	if err != nil {
 		return conversation.SegmentStream{}, err
@@ -121,6 +126,44 @@ func (r *Runtime) ResumeRun(ctx context.Context, in conversation.ResumeRun) (con
 
 	go r.play(prepared.run, steps, false)
 	return stream, nil
+}
+
+func (r *Runtime) recordOpeningLocked(key replay.CommandID, operation protocol.RunCommandOperation, stream conversation.SegmentStream, sessionID string) {
+	r.openings[string(operation)+":"+string(key)] = protocol.RunAcceptance{
+		Type: protocol.RunAcceptanceAccepted, RunID: stream.RunID, SegmentID: stream.SegmentID,
+		SessionID: sessionID, UserItemID: stream.UserItemID,
+	}
+}
+
+func (r *Runtime) GetRunAcceptance(ctx context.Context, query protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error) {
+	if err := context.Cause(ctx); err != nil {
+		return protocol.RunAcceptance{}, err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	receipt, ok := r.openings[string(query.Operation)+":"+query.Key]
+	if !ok {
+		return protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}, nil
+	}
+	run := r.runs[receipt.RunID]
+	if run == nil {
+		receipt.Type = protocol.RunAcceptanceRetired
+		return receipt, nil
+	}
+	material := protocol.RunRef{RunSummary: protocol.RunSummary{
+		ID: run.id, SessionID: run.sessionID, Status: run.status, Provider: run.provider, Model: run.model,
+		ReasoningEffort: run.reasoningEffort, SpawnedByItemID: run.lineage.SpawnedByBlockID(),
+		ParentRunID: run.lineage.ParentRunID(), RootRunID: run.lineage.RootRunID(),
+	}}
+	if run.status == protocol.RunStatusRunning {
+		material.ActiveSegmentID = run.active
+	}
+	if run.status == protocol.RunStatusFinished {
+		outcome := run.outcome.Clone()
+		material.Outcome = &protocol.RunOutcome{Type: outcome.Status, Detail: outcome.Detail, Error: outcome.Problem}
+	}
+	receipt.Run = &material
+	return receipt, nil
 }
 
 type resumePreparation struct {

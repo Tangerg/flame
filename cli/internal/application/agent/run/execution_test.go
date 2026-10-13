@@ -256,29 +256,6 @@ func testRunStart(sessionID, text string) prompt.StartRun {
 	}
 }
 
-func TestOpenRunChecksReplayAdmissionBeforeEveryAttempt(t *testing.T) {
-	base := runtimefixture.New()
-	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
-	admissions := 0
-	_, err := openRun(t.Context(), runtime, prompt.StartRun{
-		CommandID: "cli_dddddddddddddddddddddddddddddddd", SessionID: "ses_demo_1",
-		Message: prompt.Message{Text: "admit every attempt"}, Options: prompt.RunOptions{},
-	}, func() error {
-		admissions++
-		if admissions > 1 {
-			return mutation.ErrReplayGuaranteeUnavailable
-		}
-		return nil
-	})
-	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
-		t.Fatalf("open run error = %v", err)
-	}
-	starts, _ := runtime.attempts()
-	if admissions != 2 || len(starts) != 1 {
-		t.Fatalf("open run admissions=%d attempts=%d", admissions, len(starts))
-	}
-}
-
 func TestExecuteDrivesApprovalAcrossSegments(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Instant = true
@@ -319,10 +296,10 @@ func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	starts, resumes := runtime.attempts()
-	if len(starts) != 2 || starts[0].CommandID == "" || starts[0].CommandID != starts[1].CommandID {
+	if len(starts) != 1 || starts[0].CommandID == "" {
 		t.Fatalf("start confirmation attempts = %+v", starts)
 	}
-	if len(resumes) != 2 || resumes[0].CommandID == "" || resumes[0].CommandID != resumes[1].CommandID {
+	if len(resumes) != 1 || resumes[0].CommandID == "" {
 		t.Fatalf("resume confirmation attempts = %+v", resumes)
 	}
 }

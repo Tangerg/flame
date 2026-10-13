@@ -13,11 +13,26 @@ import (
 )
 
 type runBinding interface {
+	GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest, flameruntime.CallOptions) (*protocol.RunAcceptance, error)
 	StartRun(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	ResumeRun(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	SubscribeRun(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	SteerRun(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error)
 	CancelRun(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
+}
+
+func (r *Connection) GetRunAcceptance(ctx context.Context, query protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error) {
+	result, err := r.runs.GetRunAcceptance(ctx, query, r.callOptions())
+	if err != nil {
+		return protocol.RunAcceptance{}, classifyError(err)
+	}
+	if result == nil {
+		return protocol.RunAcceptance{}, runtimeContractViolation("run acceptance returned nil")
+	}
+	if result.Run != nil && (result.Run.ID != result.RunID || result.Run.SessionID != result.SessionID) {
+		return protocol.RunAcceptance{}, runtimeContractViolation("run acceptance material does not match the original opening")
+	}
+	return *result, nil
 }
 
 func (r *Connection) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {

@@ -18,11 +18,40 @@ import (
 )
 
 type runBindingStub struct {
-	start     func(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	resume    func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	subscribe func(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	cancel    func(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
-	steer     func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error)
+	acceptance func(context.Context, protocol.GetRunAcceptanceRequest, flameruntime.CallOptions) (*protocol.RunAcceptance, error)
+	start      func(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	resume     func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	subscribe  func(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	cancel     func(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
+	steer      func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error)
+}
+
+func (r runBindingStub) GetRunAcceptance(ctx context.Context, query protocol.GetRunAcceptanceRequest, options flameruntime.CallOptions) (*protocol.RunAcceptance, error) {
+	return r.acceptance(ctx, query, options)
+}
+
+func TestAcceptanceLookupUsesOriginalIdentityAndQueryMetadata(t *testing.T) {
+	query := protocol.GetRunAcceptanceRequest{Namespace: compatibleReplayNamespace, Key: "cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Operation: protocol.RunCommandResume}
+	want := protocol.RunAcceptance{Type: protocol.RunAcceptanceRetired, RunID: "run_original", SegmentID: "seg_original", SessionID: "ses_original"}
+	meta := protocol.RequestMeta{ClientInfo: &protocol.ClientInfo{Name: "acceptance-query"}}
+	connection := &Connection{meta: meta, runs: runBindingStub{acceptance: func(_ context.Context, got protocol.GetRunAcceptanceRequest, options flameruntime.CallOptions) (*protocol.RunAcceptance, error) {
+		if got != query || options.RequestMeta.ClientInfo != meta.ClientInfo {
+			t.Fatalf("acceptance query identity/meta = %+v, %+v", got, options)
+		}
+		return &want, nil
+	}}}
+	got, err := connection.GetRunAcceptance(t.Context(), query)
+	if err != nil || got != want {
+		t.Fatalf("acceptance projection = %+v, %v", got, err)
+	}
+}
+
+func TestAcceptanceLookupRejectsMismatchedMaterial(t *testing.T) {
+	connection := &Connection{runs: runBindingStub{acceptance: func(context.Context, protocol.GetRunAcceptanceRequest, flameruntime.CallOptions) (*protocol.RunAcceptance, error) {
+		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceAccepted, RunID: "run_original", SessionID: "ses_original", SegmentID: "seg_original", Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_other", SessionID: "ses_original"}}}, nil
+	}}}
+	_, err := connection.GetRunAcceptance(t.Context(), protocol.GetRunAcceptanceRequest{})
+	requireRuntimeContractViolation(t, err)
 }
 
 func (r runBindingStub) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {

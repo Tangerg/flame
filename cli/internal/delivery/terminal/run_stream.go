@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
@@ -100,16 +101,17 @@ func (a *app) startRun(commandID replay.CommandID, message prompt.Message, optio
 }
 
 func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.PreparedInput, status string) bool {
-	replayGuard, ready := a.prepareRunStart(&input, prepared)
-	if !ready {
+	if !a.prepareRunStart(&input, prepared) {
+		return false
+	}
+	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+	if !ok {
+		a.fail(errors.New("dispatching run disappeared from the durable outbox"))
 		return false
 	}
 	a.presentRunStart(status)
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		if err := mutation.ReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
-			return conversation.SegmentStream{}, err
-		}
-		opened, err := a.runtime.StartRun(ctx, input)
+		opened, err := runworkflow.OpenPendingStart(ctx, a.runtime, pending, a.replayPolicy)
 		if err != nil {
 			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				return conversation.SegmentStream{}, err
@@ -127,11 +129,14 @@ func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.Prepar
 			return followOpenedStream
 		},
 		rejected: func(err error) error {
+			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+				return errors.Join(err, a.retireQueuedCommand(input.SessionID, input.CommandID))
+			}
 			if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				if identityErr := runtimeprotocol.ValidateRunID(receipt.RunID); identityErr != nil {
 					return errors.Join(err, identityErr, a.requeueDefinitivelyRefusedStart(input, err))
 				}
-				a.execution.openingRunID = receipt.RunID
+				a.execution.opening = &openingReceipt{RunID: receipt.RunID, CommandID: input.CommandID}
 				a.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: receipt.RunID, Reason: "runtime returned an invalid start receipt",
 				})
@@ -142,28 +147,24 @@ func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.Prepar
 	return true
 }
 
-func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.PreparedInput) (replay.Guard, bool) {
+func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.PreparedInput) bool {
 	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("run is absent from the durable outbox"))
-		return replay.Guard{}, false
+		return false
 	}
-	if pending.State != workbench.PendingRunQueued {
-		command, err := pending.ReplayCommand()
-		if err != nil {
-			a.fail(fmt.Errorf("recover pending run input: %w", err))
-			return replay.Guard{}, false
-		}
-		*input = command
-	}
+	*input = pending.Command.Clone()
 	if err := a.execution.conversation.Starting(); err != nil {
 		a.fail(err)
-		return replay.Guard{}, false
+		return false
+	}
+	if pending.State != workbench.PendingRunQueued {
+		return true
 	}
 	replayGuard, err := a.replayPolicy.NewGuard()
 	if err != nil {
 		a.fail(errors.Join(err, a.execution.conversation.StopStarting()))
-		return replay.Guard{}, false
+		return false
 	}
 	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
 		rollbackErr := a.execution.conversation.StopStarting()
@@ -171,15 +172,15 @@ func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.Prepar
 		if rollbackErr != nil {
 			a.fail(errors.Join(err, rollbackErr))
 		}
-		return replay.Guard{}, false
+		return false
 	}
 	pending, ok = pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("dispatching run disappeared from the durable outbox"))
-		return replay.Guard{}, false
+		return false
 	}
 	*input = pending.Command.Clone()
-	return pending.Replay, true
+	return true
 }
 
 func (a *app) presentRunStart(status string) {
@@ -194,12 +195,13 @@ func (a *app) presentRunStart(status string) {
 }
 
 func (a *app) acceptStartedRun(input prompt.StartRun, opened conversation.SegmentStream) {
-	a.execution.openingRunID = opened.RunID
+	a.execution.opening = &openingReceipt{RunID: opened.RunID, CommandID: input.CommandID}
 	pending := a.workbench.PendingRuns(input.SessionID)
 	if len(pending) == 0 || pending[0].Command.CommandID != input.CommandID {
 		return
 	}
 	if pending[0].State != workbench.PendingRunCanceling {
+		a.settleQueuedDispatch(input.CommandID)
 		return
 	}
 	a.status.active("canceling")
@@ -284,13 +286,15 @@ func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 	case conversation.SegmentStarted:
 		if event.Run.Lineage.IsRoot() {
 			a.observeCurrentRunStatus()
-			if settled := a.settleQueuedDispatch(); settled {
-				a.execution.openingRunID = ""
-				a.status.active("working")
-			} else if a.queuedDispatchCanceling() {
+			if a.execution.opening != nil && a.execution.opening.RunID == event.Run.ID && !a.operations.Active(pendingRunSettlementOperation) {
+				a.execution.opening = nil
+			}
+			if a.queuedDispatchCanceling() {
 				a.status.active("canceling")
-			} else {
+			} else if a.operations.Active(pendingRunSettlementOperation) {
 				a.status.note("working · retrying local settlement")
+			} else {
+				a.status.active("working")
 			}
 			a.execution.clock.start(event.Run.Usage.Duration, time.Now())
 		}
@@ -356,15 +360,17 @@ func (a *app) finishFollowing() {
 	}
 	a.settleCurrentRunStatus()
 	a.prompt.SetBusy(false)
-	settled := a.settleQueuedDispatch()
-	if settled {
-		a.execution.openingRunID = ""
+	_, dispatching := a.queue.Dispatching(a.session.current.ID)
+	if !dispatching {
+		a.execution.opening = nil
 	} else if a.queuedDispatchCanceling() || a.execution.pendingCancel != nil {
 		a.status.note("canceling")
-	} else {
+	} else if a.operations.Active(pendingRunSettlementOperation) {
 		a.status.note("run complete · retrying local settlement")
+	} else {
+		a.status.note("pending prompt outcome unknown")
 	}
-	if settled && a.drainQueue() {
+	if !dispatching && a.drainQueue() {
 		return
 	}
 	a.refreshSteerPresentation()
@@ -393,7 +399,7 @@ func (a *app) fail(err error) {
 	a.execution.following = false
 	a.dismissInterruptProjection()
 	if a.execution.conversation.Phase() == conversation.Running &&
-		a.execution.conversation.RunID() == "" && a.execution.openingRunID == "" {
+		a.execution.conversation.RunID() == "" && a.execution.opening == nil {
 		err = errors.Join(err, a.execution.conversation.StopStarting())
 	}
 	a.transcript.rejectLivePresentation()

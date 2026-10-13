@@ -318,7 +318,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 
 		"CancelRun":        command("runs", "run cleanup, TUI stop, and runs cancel"),
 		"GetRun":           command("runs", "runs show"),
-		"GetRunAcceptance": {Area: "durable Run admission", Mode: externalReconciliation, Entry: "public read-only reconciliation for external callers; CLI preserves opening command identity and does not expose a receipt lookup command"},
+		"GetRunAcceptance": flow("runs", "Start and Resume uncertainty reconciliation by original command identity"),
 		"ListRuns":         command("runs", "runs ls and completion; cold material projection comes from sessions.snapshot"),
 		"ResumeRun":        flow("runs", "HITL continuation"),
 		"StartRun":         flow("runs", "interactive and one-shot execution"),

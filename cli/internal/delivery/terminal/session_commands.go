@@ -554,7 +554,7 @@ func (s sessionInstallation) apply(a *app) {
 	previousTranscript := a.transcript
 	a.setActiveSession(s.snapshot.Session)
 	a.queue.ReleaseDispatch(previousSessionID)
-	a.execution.openingRunID = ""
+	a.execution.opening = nil
 	a.execution.conversation = s.projection.conversation
 	a.execution.projectionFailed = false
 	a.attachments = s.attachments

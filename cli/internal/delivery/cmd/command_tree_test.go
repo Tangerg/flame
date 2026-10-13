@@ -340,7 +340,7 @@ func (a *ambiguousControls) calls() (int, int) {
 	return a.starts, a.resumes
 }
 
-func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
+func TestRunQueriesAmbiguousControlAcceptanceWithoutRedelivery(t *testing.T) {
 	t.Run("start", func(t *testing.T) {
 		runtime := &ambiguousControls{Runtime: instantRuntime(), loseStart: true}
 		profile := commandRuntimeProfile(t)
@@ -349,8 +349,8 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 			t.Fatalf("run error = %v", err)
 		}
 		starts, resumes := runtime.calls()
-		if starts != 2 || resumes != 1 {
-			t.Fatalf("control calls = start %d, resume %d; want 2, 1", starts, resumes)
+		if starts != 1 || resumes != 1 {
+			t.Fatalf("control calls = start %d, resume %d; want 1, 1", starts, resumes)
 		}
 	})
 
@@ -362,8 +362,8 @@ func TestRunRetriesAmbiguousControlOperationsByStableIdentity(t *testing.T) {
 			t.Fatalf("run error = %v", err)
 		}
 		starts, resumes := runtime.calls()
-		if starts != 1 || resumes != 2 {
-			t.Fatalf("control calls = start %d, resume %d; want 1, 2", starts, resumes)
+		if starts != 1 || resumes != 1 {
+			t.Fatalf("control calls = start %d, resume %d; want 1, 1", starts, resumes)
 		}
 	})
 }

@@ -1453,55 +1453,6 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	}
 }
 
-func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testing.T) {
-	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	approval := conversation.Approval{
-		RunID: "run_1", ItemID: "item_1", Title: "Run checks",
-		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
-	}
-	pending := PendingResume{
-		Command: conversation.ResumeRun{
-			CommandID: "cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd", RunID: approval.RunID,
-			Answers: []conversation.InterruptAnswer{{
-				ItemID: approval.ItemID,
-				Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
-			}},
-		},
-		Interrupts: []conversation.Interrupt{approval},
-		Replay:     protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
-	}
-	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
-		t.Fatal(stagePendingResumeErr)
-	}
-	replayGuard := protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour))
-	requeued, err := store.RequeuePendingResume("ses_1", pending.Command.CommandID, replayGuard)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if requeued.Command.CommandID == pending.Command.CommandID || requeued.Replay != replayGuard ||
-		len(requeued.Command.Answers) != 1 || !conversation.InterruptsEqual(requeued.Interrupts, pending.Interrupts) {
-		t.Fatalf("requeued resume = %+v", requeued)
-	}
-	reopened, err := OpenDirectory(directory, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	durable, found := reopened.PendingResume("ses_1")
-	if !found || !pendingResumeEqual(durable, requeued) {
-		t.Fatalf("durable replacement = %+v, found %t", durable, found)
-	}
-	if _, err := reopened.RequeuePendingResume("ses_1", pending.Command.CommandID, replayGuard); err == nil {
-		t.Fatal("stale resume identity replaced the durable command")
-	}
-	if after, _ := reopened.PendingResume("ses_1"); !pendingResumeEqual(after, durable) {
-		t.Fatalf("stale replacement mutated resume: %+v", after)
-	}
-}
-
 func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {

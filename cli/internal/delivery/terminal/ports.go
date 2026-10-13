@@ -24,6 +24,7 @@ type Runtime interface {
 	RollbackSession(context.Context, conversation.RollbackSession) (conversation.RollbackResult, error)
 	DeleteSession(context.Context, conversation.DeleteSession) error
 	GetRun(context.Context, string) (conversation.Run, error)
+	GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error)
 	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
 	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)

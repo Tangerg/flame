@@ -371,7 +371,7 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 	stop()
 }
 
-func TestStartHandshakeRetriesTheSameMutationIdentity(t *testing.T) {
+func TestStartHandshakeQueriesAcceptanceWithoutRedelivery(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = stableCompletedScript
 	runtime := &replayingStartRuntime{Runtime: base}
@@ -383,14 +383,8 @@ func TestStartHandshakeRetriesTheSameMutationIdentity(t *testing.T) {
 	host.Shows(t, "complete")
 
 	attempts := runtime.startAttempts()
-	if len(attempts) != 2 {
-		t.Fatalf("start attempts = %d, want 2", len(attempts))
-	}
-	if attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID {
-		t.Fatalf("start command identities = %q, %q", attempts[0].CommandID, attempts[1].CommandID)
-	}
-	if !attempts[0].Message.Equal(attempts[1].Message) {
-		t.Fatalf("start retry changed message: %+v, %+v", attempts[0].Message, attempts[1].Message)
+	if len(attempts) != 1 || attempts[0].CommandID == "" {
+		t.Fatalf("accepted start was redelivered: %+v", attempts)
 	}
 	stop()
 }
@@ -408,7 +402,7 @@ func TestStartHandshakeTreatsDeadlineAsAnUnknownAcknowledgement(t *testing.T) {
 	host.Hides(t, "1 queued")
 
 	attempts := runtime.startAttempts()
-	if len(attempts) != 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID {
+	if len(attempts) != 1 || attempts[0].CommandID == "" {
 		t.Fatalf("deadline recovery attempts = %+v", attempts)
 	}
 	stop()
@@ -679,7 +673,7 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 	host.Shows(t, "already accepted")
 	host.Shows(t, "reconnected")
 	attempts := runtime.attempts()
-	if len(attempts) != 2 || attempts[0].CommandID != attempts[1].CommandID {
+	if len(attempts) != 1 {
 		t.Fatalf("launch reconciliation attempts = %+v", attempts)
 	}
 	reopened, err := openTestWorkbench(stateDirectory)
@@ -957,8 +951,8 @@ func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
 		Message: prompt.Message{Text: "do not replay outside the owning store"}, Options: prompt.RunOptions{},
 	}
 	_, err = openStartRunWithBackoff(
-		t.Context(), runtime, command,
-		protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
+		t.Context(), runtime, workbench.PendingRun{Command: command,
+			Replay: protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour))},
 		policy, runtimeRecoveryBackoff,
 	)
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
@@ -994,7 +988,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 					t.Fatal(err)
 				}
 			},
-			want: "recover pending run: replay guarantee expired or belongs to another runtime",
+			want: "recover pending run: command belongs to another runtime",
 		},
 		{
 			name: "interrupt resume",
