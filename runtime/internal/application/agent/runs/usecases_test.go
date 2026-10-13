@@ -46,25 +46,6 @@ type fakeRunSessions struct {
 	operations    *[]string
 }
 
-// claimedResumeSessions models the durable visibility change made by
-// ClaimResume: once the row is resuming, the ordinary open-interrupt recovery
-// path cannot read it back.
-type claimedResumeSessions struct {
-	*fakeRunSessions
-	claimed bool
-}
-
-func (c *claimedResumeSessions) ApplyRunLost(
-	ctx context.Context,
-	sessionID, runID string,
-	finishedAt time.Time,
-) error {
-	if c.claimed {
-		return errors.New("open interrupt not found after resume claim")
-	}
-	return c.fakeRunSessions.ApplyRunLost(ctx, sessionID, runID, finishedAt)
-}
-
 type completeTestSessionPorts interface {
 	SessionReader
 	SessionCreator
