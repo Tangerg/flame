@@ -137,10 +137,6 @@
               "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CommandOptions) error"
             },
             {
-              "name": "DeleteSchedule",
-              "signature": "func(ctx context.Context, request protocol.DeleteScheduleRequest, options CommandOptions) error"
-            },
-            {
               "name": "DeleteSession",
               "signature": "func(ctx context.Context, request protocol.DeleteSessionRequest, options CommandOptions) error"
             },
@@ -761,10 +757,6 @@
             {
               "name": "DeleteMCPServer",
               "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CommandOptions) error"
-            },
-            {
-              "name": "DeleteSchedule",
-              "signature": "func(ctx context.Context, request protocol.DeleteScheduleRequest, options CommandOptions) error"
             },
             {
               "name": "DeleteSession",
@@ -3605,7 +3597,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.7\""
+          "value": "\"2026-10-14.8\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -5547,23 +5539,6 @@
               "name": "Title",
               "type": "string",
               "tag": "json:\"title,omitempty\""
-            }
-          ]
-        },
-        {
-          "name": "DeleteScheduleRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
             }
           ]
         },

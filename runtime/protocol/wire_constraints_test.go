@@ -1995,7 +1995,6 @@ func TestOperationalResourceIdentitiesAreExactAndBounded(t *testing.T) {
 		{name: "segment padding", shape: "SubscribeRunRequest", field: "segmentId", value: SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1 "}},
 		{name: "session oversized", shape: "GetSessionRequest", field: "sessionId", value: GetSessionRequest{SessionID: strings.Repeat("界", MaximumResourceIdentityCharacters+1)}},
 		{name: "run oversized", shape: "GetRunRequest", field: "runId", value: GetRunRequest{RunID: strings.Repeat("r", MaximumResourceIdentityCharacters+1)}},
-		{name: "schedule prefix", shape: "DeleteScheduleRequest", field: "id", value: DeleteScheduleRequest{ID: "other_1"}},
 		{name: "schedule whitespace", shape: "RunScheduleNowRequest", field: "id", value: RunScheduleNowRequest{ID: "sch_bad id"}},
 		{name: "schedule oversized", shape: "UpdateScheduleRequest", field: "id", value: UpdateScheduleRequest{ID: IDPrefixSchedule + strings.Repeat("x", MaximumResourceIdentityCharacters), ExpectedRevision: 1}},
 		{name: "schedule event prefix", shape: "RuntimeEvent", field: "scheduleIds[0]", value: RuntimeEvent{Type: RuntimeSchedulesChanged, Sequence: 1, ScheduleIDs: []string{"other_1"}}},

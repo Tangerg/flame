@@ -148,11 +148,6 @@ func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedu
 	saved, err := schedule.Restore(value.value)
 	return saved, err
 }
-func (s *Schedules) Delete(ctx context.Context, id string) error {
-	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, s.commands, s.contracts.Capability, rpc.Delete, rpc.ItemInput{ID: id}, nil)
-	return rpc.DecodeError(err)
-}
-
 func (s *Schedules) RunNow(ctx context.Context, id string) (app.RunReference, error) {
 	reply, err := invokeResolvedCommand[rpc.ItemInput, app.RunReference](ctx, s.commands, rpc.RunNow, rpc.ItemInput{ID: id}, func(value app.RunReference) error {
 		return errors.Join(resourceid.ValidateSession(value.SessionID), resourceid.ValidateRun(value.RunID))

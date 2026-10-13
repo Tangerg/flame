@@ -138,6 +138,7 @@ type Store struct {
 	pendingRollbacks  map[string]PendingSessionRollback
 	pendingSteers     map[string]PendingSteer
 	sessionDeletions  map[string]PendingSessionDeletion
+	installedCommands map[string]PendingInstalledCommand
 	draftTransfer     *DraftTransfer
 	writeBarrier      error
 	closed            bool
@@ -193,6 +194,7 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 		pendingRollbacks:  make(map[string]PendingSessionRollback),
 		pendingSteers:     make(map[string]PendingSteer),
 		sessionDeletions:  make(map[string]PendingSessionDeletion),
+		installedCommands: make(map[string]PendingInstalledCommand),
 	}
 	if store.now == nil {
 		store.now = time.Now

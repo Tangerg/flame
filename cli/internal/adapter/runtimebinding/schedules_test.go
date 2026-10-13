@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"testing"
@@ -54,8 +55,19 @@ func (s *scheduleBindingStub) ListPlugins(_ context.Context, options flameruntim
 }
 func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	s.assertMeta(options.RequestMeta)
-	if request.InstallationID != scheduleInstallation || request.Target.Reference != scheduleInstallation || request.Target.Scope != "installation" || request.Method != schedulesListV1Method || request.Contract != schedulesCapabilityJSON || options.IdempotencyKey != "" {
+	if request.InstallationID != scheduleInstallation || request.Target.Reference != scheduleInstallation || request.Target.Scope != "installation" || request.Contract != schedulesCapabilityJSON {
 		s.t.Fatalf("unbound schedule query: %+v", request)
+	}
+	if request.Method == schedulesDeleteV1Method {
+		var input SchedulesDeleteV1Input
+		if err := json.Unmarshal(request.Input, &input); err != nil {
+			s.t.Fatal(err)
+		}
+		s.assertCommand("delete:"+input.ID, flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	}
+	if request.Method != schedulesListV1Method || options.IdempotencyKey != "" {
+		s.t.Fatal("invalid schedule query")
 	}
 	s.queries = append(s.queries, request)
 	var input SchedulesListV1Input
@@ -166,11 +178,6 @@ func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol
 	return &updated, nil
 }
 
-func (s *scheduleBindingStub) DeleteSchedule(_ context.Context, request protocol.DeleteScheduleRequest, options flameruntime.CommandOptions) error {
-	s.assertCommand("delete:"+request.ID, options)
-	return nil
-}
-
 func (s *scheduleBindingStub) RunScheduleNow(_ context.Context, request protocol.RunScheduleNowRequest, options flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error) {
 	s.assertCommand("run:"+request.ID, options)
 	return &protocol.RunScheduleNowResponse{SessionID: "ses_headless", RunID: "run_headless"}, nil
@@ -242,8 +249,12 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	if stub.updated.ExpectedRevision != created.Revision || stub.updated.Title == nil || *stub.updated.Title != title {
 		t.Fatalf("update request = %+v", stub.updated)
 	}
-	if deleteErr := runtime.Delete(t.Context(), created.ID); deleteErr != nil {
-		t.Fatal(deleteErr)
+	deletion, err := runtime.PrepareDelete(t.Context(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); err != nil {
+		t.Fatal(err)
 	}
 	handle, err := runtime.RunNow(t.Context(), "sch_1")
 	if err != nil || handle.SessionID != "ses_headless" || handle.RunID != "run_headless" {

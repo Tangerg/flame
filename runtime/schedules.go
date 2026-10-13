@@ -17,11 +17,6 @@ func (r *binding) UpdateSchedule(ctx context.Context, request protocol.UpdateSch
 	return r.invoke[protocol.UpdateScheduleRequest, *protocol.Schedule](ctx, delivery.SchedulesUpdate, request, commandOptions(options))
 }
 
-// DeleteSchedule deletes a schedule.
-func (r *binding) DeleteSchedule(ctx context.Context, request protocol.DeleteScheduleRequest, options CommandOptions) error {
-	return r.invokeAck(ctx, delivery.SchedulesDelete, request, commandOptions(options))
-}
-
 // RunScheduleNow fires a schedule without advancing its cron cursor.
 func (r *binding) RunScheduleNow(ctx context.Context, request protocol.RunScheduleNowRequest, options CommandOptions) (*protocol.RunScheduleNowResponse, error) {
 	return r.invoke[protocol.RunScheduleNowRequest, *protocol.RunScheduleNowResponse](ctx, delivery.SchedulesRunNow, request, commandOptions(options))

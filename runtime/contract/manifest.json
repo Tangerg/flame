@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.7",
+  "protocolVersion": "2026-10-14.8",
   "features": [
     "reasoning",
     "multimodal",
@@ -1171,21 +1171,6 @@
       ]
     },
     {
-      "name": "schedules.delete",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "schedules"
-      ]
-    },
-    {
       "name": "schedules.runNow",
       "kind": "unary",
       "operation": "command",
@@ -1615,7 +1600,6 @@
           "runs.subscribe",
           "runtime.subscribe",
           "schedules.create",
-          "schedules.delete",
           "schedules.runNow",
           "schedules.update",
           "sessions.export",
@@ -1887,7 +1871,6 @@
           "plugins.stage",
           "plugins.uninstall",
           "schedules.create",
-          "schedules.delete",
           "schedules.runNow",
           "schedules.update"
         ]
@@ -2717,16 +2700,6 @@
     },
     {
       "method": "schedules.update",
-      "rules": [
-        {
-          "requires": [
-            "schedules"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "schedules.delete",
       "rules": [
         {
           "requires": [
@@ -9810,27 +9783,6 @@
         {
           "field": "reasoningEffort",
           "constraint": "maxLength(32)"
-        }
-      ]
-    },
-    {
-      "type": "DeleteScheduleRequest",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "identity"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "id",
-          "constraint": "prefix(\"sch_\")"
         }
       ]
     },

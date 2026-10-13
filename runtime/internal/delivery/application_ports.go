@@ -121,7 +121,6 @@ type feedbackUseCases interface {
 type scheduleManagementUseCases interface {
 	RunNow(ctx context.Context, id string) (schedules.RunReference, error)
 	Create(ctx context.Context, draft schedule.Draft) (schedule.Schedule, error)
-	Delete(ctx context.Context, id string) error
 	Update(ctx context.Context, cmd schedules.UpdateCommand) (schedule.Schedule, error)
 }
 

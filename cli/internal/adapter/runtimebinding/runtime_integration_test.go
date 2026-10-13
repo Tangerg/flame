@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
@@ -23,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -839,7 +839,11 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 		listed[0].Cron != "0 15 * * 1-5" || listed[0].Workspace == nil || listed[0].Workspace.Path != workspace {
 		t.Fatalf("Schedules after request reuse = (%+v, %v)", listed, err)
 	}
-	if err := runtime.Delete(t.Context(), created.ID); err != nil {
+	deletion, err := runtime.PrepareDelete(t.Context(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); err != nil {
 		t.Fatalf("Delete schedule: %v", err)
 	}
 }

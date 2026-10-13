@@ -9,7 +9,6 @@ import (
 const (
 	SchedulesCreate Name = "schedules.create"
 	SchedulesUpdate Name = "schedules.update"
-	SchedulesDelete Name = "schedules.delete"
 	SchedulesRunNow Name = "schedules.runNow"
 )
 
@@ -31,14 +30,6 @@ func registerSchedules(registry *Registry) {
 		UpdateSchedule(context.Context, protocol.UpdateScheduleRequest) (*protocol.Schedule, error)
 	}, ctx context.Context, request protocol.UpdateScheduleRequest) (*protocol.Schedule, error) {
 		return service.UpdateSchedule(ctx, request)
-	})
-
-	registry.commandAck(MethodMeta{Idempotency: IdempotencyOwnerResponse,
-		Name: SchedulesDelete, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureSchedules),
-	}, func(service interface {
-		DeleteSchedule(context.Context, protocol.DeleteScheduleRequest) error
-	}, ctx context.Context, request protocol.DeleteScheduleRequest) error {
-		return service.DeleteSchedule(ctx, request)
 	})
 
 	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,

@@ -26,7 +26,6 @@ const (
 type scheduleBinding interface {
 	CreateSchedule(context.Context, protocol.CreateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
 	UpdateSchedule(context.Context, protocol.UpdateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
-	DeleteSchedule(context.Context, protocol.DeleteScheduleRequest, flameruntime.CommandOptions) error
 	RunScheduleNow(context.Context, protocol.RunScheduleNowRequest, flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error)
 }
 
@@ -122,13 +121,28 @@ func (r *Connection) Update(ctx context.Context, request protocol.UpdateSchedule
 	return scheduleResult("update schedule", request.ID, updated, err)
 }
 
-func (r *Connection) Delete(ctx context.Context, id string) error {
-	request := protocol.DeleteScheduleRequest{ID: strings.TrimSpace(id)}
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return fmt.Errorf("delete schedule: %w", err)
+func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
+	bound, err := r.selectedSchedules(ctx)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
 	}
-	options := r.commandOptions()
-	return classifyError(r.schedules.DeleteSchedule(ctx, request, options))
+	input, err := jsoninput.Encode(SchedulesDeleteV1Input{ID: strings.TrimSpace(id)})
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	contract, err := capability.Parse([]byte(bound.Contract))
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	method, found := contract.Method(schedulesDeleteV1Method)
+	if !found {
+		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
+	}
+	if err := method.ValidateInput(input); err != nil {
+		return protocol.CallPluginRequest{}, fmt.Errorf("delete schedule: %w", err)
+	}
+	bound.Method, bound.Input = schedulesDeleteV1Method, input.JSON()
+	return bound, nil
 }
 
 func (r *Connection) RunNow(ctx context.Context, id string) (protocol.RunScheduleNowResponse, error) {

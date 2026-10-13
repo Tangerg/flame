@@ -62,6 +62,9 @@ func (s *Store) loadState() error {
 	if err := s.loadSessionDeletions(); err != nil {
 		return err
 	}
+	if err := s.loadInstalledCommands(); err != nil {
+		return err
+	}
 	if err := s.loadSessionStates(); err != nil {
 		return fmt.Errorf("load session authoring state: %w", err)
 	}

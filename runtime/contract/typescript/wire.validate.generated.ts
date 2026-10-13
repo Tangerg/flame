@@ -66,7 +66,6 @@ export type WireTypeName =
   | "CreateMCPAuthorizationAttemptRequest"
   | "CreateScheduleRequest"
   | "CreateSessionRequest"
-  | "DeleteScheduleRequest"
   | "DeleteSessionRequest"
   | "Descriptor"
   | "Diff"
@@ -1042,9 +1041,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
-  DeleteScheduleRequest: object({
-    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
-  }, ["id"]),
   DeleteSessionRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -4544,7 +4540,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "approval.forgetRule": ref(() => CHECKS.ForgetApprovalRuleRequest),
   "schedules.create": ref(() => CHECKS.CreateScheduleRequest),
   "schedules.update": ref(() => CHECKS.UpdateScheduleRequest),
-  "schedules.delete": ref(() => CHECKS.DeleteScheduleRequest),
   "schedules.runNow": ref(() => CHECKS.RunScheduleNowRequest),
   "goals.start": ref(() => CHECKS.StartGoalRequest),
   "goals.update": ref(() => CHECKS.UpdateGoalRequest),
@@ -4658,7 +4653,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "approval.forgetRule": object({}, []),
   "schedules.create": ref(() => CHECKS.Schedule),
   "schedules.update": ref(() => CHECKS.Schedule),
-  "schedules.delete": object({}, []),
   "schedules.runNow": ref(() => CHECKS.RunScheduleNowResponse),
   "goals.start": ref(() => CHECKS.Goal),
   "goals.update": ref(() => CHECKS.Goal),

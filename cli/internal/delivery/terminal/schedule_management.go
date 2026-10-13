@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/installedcommand"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -110,6 +111,16 @@ func (a *app) SetScheduleEnabled(identity string, enabled bool) error {
 }
 
 func (a *app) PrepareDeleteSchedule(identity string) error {
+	if a.schedules == nil {
+		return errors.New("this runtime composition has no schedule service")
+	}
+	identity = strings.TrimSpace(identity)
+	if a.workbench != nil {
+		if _, pending := a.workbench.PendingInstalledCommand(scheduleDeletionIntent(identity)); pending {
+			a.deleteSchedule(identity)
+			return nil
+		}
+	}
 	return a.loadSchedule(identity, "loading schedule to delete", func(scheduled protocol.Schedule) {
 		title := scheduled.Title
 		if title == "" {
@@ -239,10 +250,20 @@ func (a *app) deleteSchedule(id string) {
 	presentation := a.session.context
 	a.status.note("deleting schedule " + id)
 	started := a.runApplicationOperation(scheduleOperation, false,
-		func(ctx context.Context) (string, error) { return id, a.schedules.Delete(ctx, id) },
+		func(ctx context.Context) (string, error) {
+			return id, installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.schedules.PrepareDelete(ctx, id)
+			})
+		},
 		func(deleted string, err error) {
 			if err != nil {
-				a.message("delete schedule failed: " + err.Error())
+				message := "delete schedule failed: " + err.Error()
+				if a.workbench != nil {
+					if _, pending := a.workbench.PendingInstalledCommand(scheduleDeletionIntent(id)); pending {
+						message += " · retry /schedule-delete " + id + " to reconcile the original command"
+					}
+				}
+				a.message(message)
 				return
 			}
 			a.reportScheduleMutation("schedule deleted · "+deleted, presentation)
@@ -252,6 +273,8 @@ func (a *app) deleteSchedule(id string) {
 		a.message("another schedule operation is running")
 	}
 }
+
+func scheduleDeletionIntent(id string) string { return "schedule-delete:" + id }
 
 func (a *app) reportScheduleMutation(message string, presentation *sessionContextLease) {
 	a.message(message)

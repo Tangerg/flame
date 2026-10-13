@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.7` · 104 methods
+Protocol `2026-10-14.8` · 103 methods
 
 ## Methods
 
@@ -89,7 +89,6 @@ Protocol `2026-10-14.7` · 104 methods
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
 | `schedules.create` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `workspace_unavailable`, `capability_not_negotiated` |
 | `schedules.update` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
-| `schedules.delete` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `capability_not_negotiated` |
 | `schedules.runNow` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `schedule_not_found`, `prompt_source_too_large`, `capability_not_negotiated` |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
@@ -1118,10 +1117,6 @@ TypeScript validator from this single registry projection.
 | `UpdateScheduleRequest` | `model` | `maxLength(256)` |
 | `UpdateScheduleRequest` | `reasoningEffort` | `identity` |
 | `UpdateScheduleRequest` | `reasoningEffort` | `maxLength(32)` |
-| `DeleteScheduleRequest` | `id` | `nonEmpty` |
-| `DeleteScheduleRequest` | `id` | `identity` |
-| `DeleteScheduleRequest` | `id` | `maxLength(256)` |
-| `DeleteScheduleRequest` | `id` | `prefix("sch_")` |
 | `RunScheduleNowRequest` | `id` | `nonEmpty` |
 | `RunScheduleNowRequest` | `id` | `identity` |
 | `RunScheduleNowRequest` | `id` | `maxLength(256)` |
@@ -1297,7 +1292,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.uninstall` | always | `plugins` |
 | `schedules.create` | always | `schedules` |
 | `schedules.update` | always | `schedules` |
-| `schedules.delete` | always | `schedules` |
 | `schedules.runNow` | always | `schedules` |
 | `goals.start` | always | `goals` |
 | `goals.update` | always | `goals` |

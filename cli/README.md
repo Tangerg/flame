@@ -237,5 +237,13 @@ required callable contract once, then page through `plugins.call`. The CLI's Go
 request/output projection is generated from the same publisher contracts as TS;
 no private backend package is imported. Selection changes cannot mix providers
 inside one traversal. Cursor/request/row bounds and duplicate ID rejection remain.
-Schedule mutation entrances are still being migrated with original command recovery;
-the retired `schedules.list` Core operation has no alias or fallback reader.
+Schedule deletion uses the same public installed operation. Before dispatch, the
+CLI workbench persists the original installation, release, contribution, contract,
+target, input bytes and command ID. After a lost acknowledgement or restart,
+`/schedule-delete <original-full-id>` resumes that request without reading the
+current provider. Startup reports unresolved intents. An unavailable original
+owner, expired replay guarantee or changed Runtime store leaves the intent
+unconfirmed; it cannot submit the deletion to another installation. Only an owner
+acknowledgement or business refusal retires it. This record contains no business
+result. Create, update and run-now entrances remain under migration.
+The retired `schedules.list` and `schedules.delete` Core operations have no aliases.

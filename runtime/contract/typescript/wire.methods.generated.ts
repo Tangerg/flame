@@ -22,7 +22,6 @@ import type {
   CreateMCPAuthorizationAttemptRequest,
   CreateScheduleRequest,
   CreateSessionRequest,
-  DeleteScheduleRequest,
   DeleteSessionRequest,
   Diff,
   DiscoverResponse,
@@ -262,7 +261,6 @@ const METHOD_NAMES = [
   "approval.forgetRule",
   "schedules.create",
   "schedules.update",
-  "schedules.delete",
   "schedules.runNow",
   "goals.start",
   "goals.update",
@@ -969,13 +967,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "schedules.delete": {
-    operation: "command",
-    response: "unary",
-    idempotency: "ownerResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "schedules.runNow": {
     operation: "command",
     response: "unary",
@@ -1358,9 +1349,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "schedules.update": [
     { requires: ["schedules"] },
   ],
-  "schedules.delete": [
-    { requires: ["schedules"] },
-  ],
   "schedules.runNow": [
     { requires: ["schedules"] },
   ],
@@ -1479,7 +1467,6 @@ export interface WireShapes {
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
   "schedules.create": { params: CreateScheduleRequest; result: Schedule };
   "schedules.update": { params: UpdateScheduleRequest; result: Schedule };
-  "schedules.delete": { params: DeleteScheduleRequest };
   "schedules.runNow": { params: RunScheduleNowRequest; result: RunScheduleNowResponse };
   "goals.start": { params: StartGoalRequest; result: Goal };
   "goals.update": { params: UpdateGoalRequest; result: Goal };

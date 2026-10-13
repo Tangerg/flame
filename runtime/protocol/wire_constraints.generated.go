@@ -497,15 +497,6 @@ func (u UpdateScheduleRequest) ValidateWire() error {
 	)
 }
 
-func (d DeleteScheduleRequest) ValidateWire() error {
-	return collectWireViolations("DeleteScheduleRequest",
-		requiredText("id", d.ID),
-		identity("id", d.ID),
-		maxLength("id", d.ID, 256),
-		requiredTextPrefix("id", d.ID, "sch_"),
-	)
-}
-
 func (r RunScheduleNowRequest) ValidateWire() error {
 	return collectWireViolations("RunScheduleNowRequest",
 		requiredText("id", r.ID),

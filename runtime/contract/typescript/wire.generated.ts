@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.7";
+export const PROTOCOL_VERSION = "2026-10-14.8";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -466,10 +466,6 @@ export interface CreateScheduleRequest {
 export interface CreateSessionRequest {
   title?: string;
   workspace?: WorkspaceRef;
-}
-
-export interface DeleteScheduleRequest {
-  id: string;
 }
 
 export interface DeleteSessionRequest {

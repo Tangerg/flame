@@ -394,7 +394,6 @@ export interface Methods {
   schedules: {
     create: (params: CreateScheduleRequest) => MutationPromise<Schedule>;
     update: (params: UpdateScheduleRequest) => MutationPromise<Schedule>;
-    delete: (id: string) => MutationPromise<void>;
     runNow: (id: string) => MutationPromise<RunScheduleNowResponse>;
   };
 }
@@ -705,7 +704,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     schedules: {
       create: (params) => call("schedules.create", params),
       update: (params) => call("schedules.update", params),
-      delete: (id) => call("schedules.delete", { id }),
       runNow: (id) => call("schedules.runNow", { id }),
     },
   };

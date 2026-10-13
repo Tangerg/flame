@@ -65,12 +65,6 @@ type UpdateScheduleRequest struct {
 	Enabled          *bool                 `json:"enabled,omitzero"`
 }
 
-// DeleteScheduleRequest — schedules.delete body. Deletion stops future claims;
-// it does not revoke an already claimed occurrence or cancel its Run.
-type DeleteScheduleRequest struct {
-	ID string `json:"id"`
-}
-
 // RunScheduleNowRequest — schedules.runNow body.
 type RunScheduleNowRequest struct {
 	ID string `json:"id"`

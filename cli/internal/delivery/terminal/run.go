@@ -126,6 +126,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				rollbackNotice,
 				active.refusedSteersNotice(prepared.recoveryIssues.steers.Refused),
 				unloadedPluginsNotice(results, discovered.Issues),
+				pendingInstalledCommandsNotice(prepared.workbench),
 			)
 			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
 			return headless.NewRoot(active)
@@ -156,6 +157,18 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 		return terminalUnavailableError{cause: err}
 	}
 	return err
+}
+
+func pendingInstalledCommandsNotice(store *workbench.Store) string {
+	commands := store.PendingInstalledCommands()
+	if len(commands) == 0 {
+		return ""
+	}
+	intents := make([]string, 0, len(commands))
+	for _, command := range commands {
+		intents = append(intents, command.Intent)
+	}
+	return "unconfirmed plugin commands · " + strings.Join(intents, ", ")
 }
 
 type localTerminalHost struct{ *term.Terminal }

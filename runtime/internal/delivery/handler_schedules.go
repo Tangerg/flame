@@ -63,11 +63,6 @@ func (s *Handler) UpdateSchedule(ctx context.Context, in protocol.UpdateSchedule
 	return &wire, nil
 }
 
-// DeleteSchedule removes a schedule (schedules.delete). Idempotent.
-func (s *Handler) DeleteSchedule(ctx context.Context, in protocol.DeleteScheduleRequest) error {
-	return mapScheduleErr(s.schedules.Delete(ctx, in.ID), in.ID)
-}
-
 // RunScheduleNow fires a schedule immediately (schedules.runNow) — a manual
 // extra run that records the firing without shifting the schedule's next due
 // time.

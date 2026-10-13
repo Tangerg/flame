@@ -2,7 +2,10 @@ package terminal
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/runtime/capability"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -116,7 +119,29 @@ func (s *scheduleServiceStub) Update(_ context.Context, request protocol.UpdateS
 	return protocol.Schedule{}, errors.New("schedule not found")
 }
 
-func (s *scheduleServiceStub) Delete(_ context.Context, id string) error {
+func (s *scheduleServiceStub) PrepareDelete(_ context.Context, id string) (protocol.CallPluginRequest, error) {
+	contract, err := capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)})
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	input, err := json.Marshal(struct {
+		ID string `json:"id"`
+	}{id})
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: input}, err
+}
+func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ replay.CommandID) (*protocol.CallPluginResponse, error) {
+	var input struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(request.Input, &input); err != nil {
+		return nil, err
+	}
+	if err := s.delete(input.ID); err != nil {
+		return nil, err
+	}
+	return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+}
+func (s *scheduleServiceStub) delete(id string) error {
 	s.deleted <- id
 	s.mu.Lock()
 	defer s.mu.Unlock()
