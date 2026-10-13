@@ -144,6 +144,7 @@ export function bindOperations<
     const descriptor = required.methods.find((value) => value.name === method);
     if (
       !descriptor ||
+      descriptor.stream !== undefined ||
       descriptor.kind !== kind ||
       descriptor.target !== captured.scope
     ) {

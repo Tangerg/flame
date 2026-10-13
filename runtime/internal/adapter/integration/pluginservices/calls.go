@@ -41,6 +41,9 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 	if !found {
 		return nil, plugin.ErrInvalid
 	}
+	if len(method.Descriptor().Stream) != 0 {
+		return nil, errors.Join(plugin.ErrInvalid, errors.New("plugin: installed streaming delivery is not available"))
+	}
 	if err := request.Target.Validate(); err != nil {
 		return nil, errors.Join(plugin.ErrInvalid, err)
 	}

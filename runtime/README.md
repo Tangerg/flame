@@ -181,6 +181,23 @@ canonical model execution migration; production Interaction/auxiliary/Memory pat
 installed streaming decorators/remote next and durable inner evidence are still open.
 No model execution Core method or streaming support is inferred from this unary API.
 
+Core 2026-10-14.20 projects optional stream schema on public method descriptors.
+The Go plugin SDK implements captured callback streaming on the existing endpoint,
+with lazy production, immutable request evidence, synchronous transport backpressure,
+cancel/retire joining, independently validated chunks and a final outcome distinct
+from them. Scope owns model delta aggregation; completed inner evidence survives
+outer failure, while missing terminal transport evidence remains unconfirmed.
+Feature generation includes chunk schemas/Go/TS types in the same method identity.
+
+The public subprocess probe consumes a frozen remaining Scope chain without a Desktop
+relay. This is real callback streaming, not full installed decorator acceptance.
+Installed host-to-backend stream delivery, frozen contribution/dependency retention,
+durable inner observation, production model consumers and TS author parity remain
+open. Unary installed calls explicitly refuse streaming before storing a route.
+Backend remains 2026-10-14.2; no private storage or receipt format changes. Rebuild
+current Core/Go/TS consumers together; no new method or descriptor promises streaming
+through a transport that has not implemented it.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

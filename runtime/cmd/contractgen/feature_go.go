@@ -61,6 +61,10 @@ func buildFeatureGo(artifacts featureArtifacts, output featureGoOutput) ([]byte,
 			source := strings.TrimPrefix(value.path, "schema.json"+refPrefix)
 			fmt.Fprintf(&body, "type %s%s%s = %s\n", output.Prefix, name, value.suffix, emitter.names[source])
 		}
+		if method.Stream != "" {
+			source := strings.TrimPrefix(method.Stream, "schema.json"+refPrefix)
+			fmt.Fprintf(&body, "type %s%sChunk = %s\n", output.Prefix, name, emitter.names[source])
+		}
 		body.WriteString("\n")
 	}
 	var result strings.Builder

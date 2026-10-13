@@ -91,23 +91,27 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 		}
 		command.Input = *command.Input.Clone()
 		response, err := call(ctx, command)
-		if response != nil {
-			if validationErr := response.Validate(); validationErr != nil {
-				return ModelResult{}, errors.Join(err, validationErr)
-			}
-		} else if err == nil {
-			return ModelResult{}, errors.New("plugin: model returned no response")
-		}
-		result := ModelResult{Response: response.Clone()}
-		if err != nil {
-			code := ModelFailed
-			if errors.Is(err, context.Canceled) {
-				code = ModelCanceled
-			} else if errors.Is(err, context.DeadlineExceeded) {
-				code = ModelDeadlineExceeded
-			}
-			result.Failure = &ModelFailure{Code: code, Message: err.Error()}
-		}
-		return result, nil
+		return modelResult(response, err)
 	})
+}
+
+func modelResult(response *chat.Response, err error) (ModelResult, error) {
+	if response != nil {
+		if validationErr := response.Validate(); validationErr != nil {
+			return ModelResult{}, errors.Join(err, validationErr)
+		}
+	} else if err == nil {
+		return ModelResult{}, errors.New("plugin: model returned no response")
+	}
+	result := ModelResult{Response: response.Clone()}
+	if err != nil {
+		code := ModelFailed
+		if errors.Is(err, context.Canceled) {
+			code = ModelCanceled
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			code = ModelDeadlineExceeded
+		}
+		result.Failure = &ModelFailure{Code: code, Message: err.Error()}
+	}
+	return result, nil
 }

@@ -17,6 +17,35 @@ import (
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
+func TestStreamingFeatureProjectsChunkAndFinalContracts(t *testing.T) {
+	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "model.stream", Kind: capability.Mutation, Target: "call", Description: "Stream a model call."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := capability.New(capability.Config{Reference: "model", Scope: "call", Composition: capability.Selection}, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(contract.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts, err := buildFeature(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts.methods[0].Stream == "" || !strings.Contains(artifacts.typescript, "export interface MethodChunks") || !strings.Contains(artifacts.typescript, "streaming: true") {
+		t.Fatal("stream declaration lost chunk contract")
+	}
+	generated, err := buildFeatureGo(artifacts, featureGoOutput{Package: "model"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(generated), "StreamChunk") {
+		t.Fatalf("Go stream chunk projection missing: %s", generated)
+	}
+}
+
 func TestFeatureCapabilityJSONPreservesIntegerSchemaLexemes(t *testing.T) {
 	method, err := pluginsdk.NewMethod[struct{}, uint64](pluginsdk.MethodConfig{Name: "acme/count", Kind: capability.Query, Target: "installation", Description: "Read the original count."})
 	if err != nil {

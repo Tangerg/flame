@@ -280,6 +280,39 @@ the existing callback endpoint, without a Desktop relay. This proves the unary
 contract and callback path, not installation-wide model composition or streaming.
 Memory's narrower completion/embedding grant and production Interaction/auxiliary
 entrypoints remain actual consumers awaiting migration through the complete model
-execution/streaming owner. Stream aggregation, remote next, frozen decorator order,
-backpressure/cancellation and durable inner evidence remain explicit work. No unary
+execution/streaming owner. Production stream composition, installed remote next,
+frozen contribution order and durable inner evidence remain explicit work. No unary
 descriptor advertises streaming before that path exists.
+
+## Captured streams
+
+NewStreamingMethod describes one input, a stream chunk schema and a distinct final
+output schema. Stream schema is part of immutable method identity; feature generation
+projects MethodChunks/Go chunk types and documents the final result. NewStreamingCallback
+and StreamHost use the same authenticated callback endpoint, raw input admission,
+captured context and cancellation owner as unary calls. SSE framing uses the existing
+released SSE reader/writer; there is no new endpoint, event queue or JSON parser.
+
+StreamModel and NewModelStreamCallback carry Scope response deltas and ModelResult.
+Provider work starts only on iteration, and request evidence is frozen before it.
+Scope ResponseAccumulator owns the aggregate. A final result is published only after
+the source ends; an error after a tentative result cannot become success. Stopping
+iteration cancels transport and joins through the existing callback lifetime. Writes
+are synchronous with production, so a failed/stalled transport stops advancing the
+source rather than accumulating an unbounded event queue. No reconnection or provider
+retry occurs after partial output; missing/truncated terminal evidence remains unknown.
+
+Callback MaxResponseBytes bounds every frame and final result. The model aggregate
+also uses it as a conservative cumulative encoded-delta byte budget, including
+metadata, before admitting deltas into Scope's accumulator. This budget can be stricter
+than the final serialized response; it is explicit buffering policy, not an arbitrary
+chunk-count limit. Completed inner response/usage survives a subsequent outer failure.
+Partially admitted chunks remain observable even when no complete response exists.
+
+An external executable consumes a callback capturing a frozen remaining Scope
+stream chain and verifies its order, transformed input and single provider invocation.
+This proves the model callback stream and remaining-chain substrate; actual installed
+decorator selection/retention, host-to-backend streaming, TS author parity and
+Interaction/auxiliary/Memory production migration remain open. Ordinary unary binding
+and installed unary admission refuse stream methods before delivery/route persistence.
+Only the actual streaming callback APIs advertise stream support.

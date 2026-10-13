@@ -58,42 +58,11 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) str
 
 func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
 	return boundMethod{contract: m.contract, invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
-		encoded, err := json.Marshal(struct {
-			sdk.ParamsBase
-			Input     jsontext.Value `json:"input"`
-			CommandID string         `json:"commandId,omitzero"`
-		}{wire.ParamsBase, wire.Input, wire.CommandID})
+		ctx, command, err := admitCommand[P](ctx, m.contract, wire)
 		if err != nil {
 			return nil, err
 		}
-		var params Params[P]
-		if err := json.Unmarshal(encoded, &params, json.RejectUnknownMembers(true)); err != nil {
-			return nil, err
-		}
-		if params.inputJSON.Validate() != nil {
-			return nil, errors.New("plugin: method input is required")
-		}
-		if m.contract.Kind() == capability.Query && params.CommandID != "" {
-			return nil, errors.New("plugin: query must not carry a command identity")
-		}
-		if m.contract.Kind() == capability.Mutation {
-			if err := validateCommandID(params.CommandID); err != nil {
-				return nil, err
-			}
-		}
-		if err := m.contract.ValidateInput(params.inputJSON); err != nil {
-			return nil, fmt.Errorf("plugin: %s input: %w", m.Name(), err)
-		}
-		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
-		ctx, err = bindInvocationMetadata(ctx, params.Meta, m.contract)
-		if err != nil {
-			return nil, err
-		}
-		ctx, err = bindCallbackMetadata(ctx, params.Meta)
-		if err != nil {
-			return nil, err
-		}
-		value, operationErr := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input, inputJSON: params.inputJSON})
+		value, operationErr := handler(ctx, session, command)
 		if operationErr == nil {
 			encoded, err := json.Marshal(value)
 			if err != nil {
@@ -221,4 +190,43 @@ func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id string, input P)
 		return zero, false, err
 	}
 	return result, true, nil
+}
+
+func admitCommand[P any](ctx context.Context, contract *capability.Method, wire *invokeParams) (context.Context, Command[P], error) {
+	encoded, err := json.Marshal(struct {
+		sdk.ParamsBase
+		Input     jsontext.Value `json:"input"`
+		CommandID string         `json:"commandId,omitzero"`
+	}{wire.ParamsBase, wire.Input, wire.CommandID})
+	if err != nil {
+		return ctx, Command[P]{}, err
+	}
+	var params Params[P]
+	if err := json.Unmarshal(encoded, &params, json.RejectUnknownMembers(true)); err != nil {
+		return ctx, Command[P]{}, err
+	}
+	if params.inputJSON.Validate() != nil {
+		return ctx, Command[P]{}, errors.New("plugin: method input is required")
+	}
+	if contract.Kind() == capability.Query && params.CommandID != "" {
+		return ctx, Command[P]{}, errors.New("plugin: query must not carry a command identity")
+	}
+	if contract.Kind() == capability.Mutation {
+		if err := validateCommandID(params.CommandID); err != nil {
+			return ctx, Command[P]{}, err
+		}
+	}
+	if err := contract.ValidateInput(params.inputJSON); err != nil {
+		return ctx, Command[P]{}, fmt.Errorf("plugin: %s input: %w", contract.Name(), err)
+	}
+	ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
+	ctx, err = bindInvocationMetadata(ctx, params.Meta, contract)
+	if err != nil {
+		return ctx, Command[P]{}, err
+	}
+	ctx, err = bindCallbackMetadata(ctx, params.Meta)
+	if err != nil {
+		return ctx, Command[P]{}, err
+	}
+	return ctx, Command[P]{ID: params.CommandID, Input: params.Input, inputJSON: params.inputJSON}, nil
 }

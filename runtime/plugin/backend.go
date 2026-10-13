@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"io"
+	"iter"
 	"slices"
 	"strings"
 	"sync"
@@ -71,6 +72,7 @@ type Description struct {
 type boundMethod struct {
 	contract *capability.Method
 	invoke   func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[jsontext.Value], error)
+	stream   func(context.Context, *invokeParams) (iter.Seq2[streamValue, error], error)
 }
 
 // Backend owns declaration/code binding and publication. Setup is explicit;

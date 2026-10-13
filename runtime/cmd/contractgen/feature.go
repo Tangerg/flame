@@ -23,6 +23,7 @@ type featureMethod struct {
 	Description string                `json:"description"`
 	Input       string                `json:"input"`
 	Output      string                `json:"output"`
+	Stream      string                `json:"stream,omitempty"`
 }
 
 type featureArtifacts struct {
@@ -102,6 +103,9 @@ func runFeature(source, dir, tsDir string, goOutputs ...featureGoOutput) error {
 	reference.WriteString("# Feature operations\n\nGenerated from the feature's Go-owned method contracts.\n\n| Method | Kind | Target | Description |\n| --- | --- | --- | --- |\n")
 	for _, method := range artifacts.methods {
 		description := strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(method.Description)
+		if method.Stream != "" {
+			description += " Stream chunks: " + method.Stream + "; final result: " + method.Output + "."
+		}
 		fmt.Fprintf(&reference, "| `%s` | %s | %s | %s |\n", method.Name, method.Kind, method.Target, description)
 	}
 	descriptor := artifacts.capability.Descriptor()
@@ -178,6 +182,12 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 		}
 		root := featureTypeName(descriptor.Name)
 		method := featureMethod{Name: descriptor.Name, Kind: descriptor.Kind, Target: descriptor.Target, Description: descriptor.Description, Input: "schema.json" + refPrefix + root + "Input", Output: "schema.json" + refPrefix + root + "Output"}
+		if len(descriptor.Stream) != 0 {
+			method.Stream = "schema.json" + refPrefix + root + "Chunk"
+			if err := addFeatureSchema(&artifacts, root+"Chunk", descriptor.Stream); err != nil {
+				return featureArtifacts{}, err
+			}
+		}
 		for _, frame := range []struct {
 			name string
 			raw  jsontext.Value
@@ -212,9 +222,22 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 		emitter.line("  %s: %s;", strconv.Quote(method.Name), strings.TrimPrefix(method.Output, "schema.json"+refPrefix))
 	}
 	emitter.line("}")
+	if slices.ContainsFunc(artifacts.methods, func(method featureMethod) bool { return method.Stream != "" }) {
+		emitter.line("export interface MethodChunks {")
+		for _, method := range artifacts.methods {
+			if method.Stream != "" {
+				emitter.line("  %s: %s;", strconv.Quote(method.Name), strings.TrimPrefix(method.Stream, "schema.json"+refPrefix))
+			}
+		}
+		emitter.line("}")
+	}
 	emitter.line("export const METHODS = {")
 	for _, method := range artifacts.methods {
-		emitter.line("  %s: { kind: %s, target: %s },", strconv.Quote(method.Name), strconv.Quote(string(method.Kind)), strconv.Quote(method.Target))
+		stream := ""
+		if method.Stream != "" {
+			stream = ", streaming: true"
+		}
+		emitter.line("  %s: { kind: %s, target: %s%s },", strconv.Quote(method.Name), strconv.Quote(string(method.Kind)), strconv.Quote(method.Target), stream)
 	}
 	emitter.line("} as const;")
 	emitter.line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", strconv.Quote(descriptor.Protocol), strconv.Quote(descriptor.Reference), strconv.Quote(string(descriptor.Composition)), strconv.Quote(descriptor.Scope), strconv.Quote(contract.Identity().Digest()))

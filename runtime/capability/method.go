@@ -32,11 +32,13 @@ type MethodDescriptor struct {
 	Description string         `json:"description"`
 	Input       jsontext.Value `json:"input"`
 	Output      jsontext.Value `json:"output"`
+	Stream      jsontext.Value `json:"stream,omitzero"`
 }
 
 func (d MethodDescriptor) Clone() MethodDescriptor {
 	d.Input = append(jsontext.Value(nil), d.Input...)
 	d.Output = append(jsontext.Value(nil), d.Output...)
+	d.Stream = append(jsontext.Value(nil), d.Stream...)
 	return d
 }
 
@@ -45,6 +47,7 @@ type Method struct {
 	identity   jsoninput.Input
 	input      jsonschema.Schema
 	output     jsonschema.Schema
+	stream     jsonschema.Schema
 }
 
 func validToken(value string) bool {
@@ -70,6 +73,13 @@ func AdmitMethod(descriptor MethodDescriptor) (*Method, error) {
 	if err != nil {
 		return nil, fmt.Errorf("capability: %s output contract: %w", descriptor.Name, err)
 	}
+	var stream jsonschema.Schema
+	if len(descriptor.Stream) != 0 {
+		stream, err = jsonschema.Parse(descriptor.Stream)
+		if err != nil {
+			return nil, fmt.Errorf("capability: %s stream contract: %w", descriptor.Name, err)
+		}
+	}
 	// Presentation prose does not change callable identity. Exact schemas do.
 	identity := descriptor.Clone()
 	identity.Description = ""
@@ -77,7 +87,7 @@ func AdmitMethod(descriptor MethodDescriptor) (*Method, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Method{descriptor: descriptor, identity: canonical, input: input, output: output}, nil
+	return &Method{descriptor: descriptor, identity: canonical, input: input, output: output, stream: stream}, nil
 }
 
 func (m *Method) Name() string                 { return m.descriptor.Name }
@@ -94,4 +104,11 @@ func (m *Method) ValidateInput(input jsoninput.Input) error {
 
 func (m *Method) ValidateOutput(output jsontext.Value) error {
 	return m.output.Validate(output)
+}
+
+func (m *Method) ValidateChunk(chunk jsontext.Value) error {
+	if len(m.descriptor.Stream) == 0 {
+		return errors.New("capability: method does not support streaming")
+	}
+	return m.stream.Validate(chunk)
 }

@@ -106,6 +106,9 @@ func (b *Binding) Invoke(ctx context.Context, id string, input jsoninput.Input) 
 
 // InvokeWithMetadata keeps ephemeral call collaborators outside admitted input.
 func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsoninput.Input, metadata sdk.ParamsBase) (jsoninput.Input, error) {
+	if b != nil && len(b.method.Descriptor().Stream) != 0 {
+		return jsoninput.Input{}, errors.New("plugin: streaming method requires streaming delivery")
+	}
 	result, err := b.invoke(ctx, id, input, metadata)
 	if err != nil {
 		return jsoninput.Input{}, err

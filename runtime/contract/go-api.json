@@ -1282,6 +1282,10 @@
               "signature": "func() string"
             },
             {
+              "name": "ValidateChunk",
+              "signature": "func(chunk jsontext.Value) error"
+            },
+            {
               "name": "ValidateInput",
               "signature": "func(input jsoninput.Input) error"
             },
@@ -1324,6 +1328,11 @@
               "name": "Output",
               "type": "jsontext.Value",
               "tag": "json:\"output\""
+            },
+            {
+              "name": "Stream",
+              "type": "jsontext.Value",
+              "tag": "json:\"stream,omitzero\""
             }
           ],
           "methods": [
@@ -1522,6 +1531,7 @@
         "github.com/Tangerg/scope/core/tool",
         "github.com/invopop/jsonschema",
         "io",
+        "iter",
         "net/http"
       ],
       "constants": [
@@ -1559,6 +1569,10 @@
       "variables": [
         {
           "name": "ErrStaleCall",
+          "type": "error"
+        },
+        {
+          "name": "ErrStreamUnconfirmed",
           "type": "error"
         }
       ],
@@ -1612,6 +1626,10 @@
           "signature": "func() (*Method[chat.Request, ModelResult], error)"
         },
         {
+          "name": "ModelStreamMethod",
+          "signature": "func() (*StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error)"
+        },
+        {
           "name": "NewBackend",
           "signature": "func(server *mcp.Server) (*Backend, error)"
         },
@@ -1638,6 +1656,18 @@
         {
           "name": "NewModelCallback",
           "signature": "func(call func(context.Context, Command[chat.Request]) (*chat.Response, error)) (Callback, error)"
+        },
+        {
+          "name": "NewModelStreamCallback",
+          "signature": "func(stream func(context.Context, Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (Callback, error)"
+        },
+        {
+          "name": "NewStreamingCallback",
+          "signature": "func[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, Command[P]) iter.Seq2[StreamValue[C, R], error]) (Callback, error)"
+        },
+        {
+          "name": "NewStreamingMethod",
+          "signature": "func[P, C, R any](config MethodConfig) (*StreamingMethod[P, C, R], error)"
         },
         {
           "name": "ReadReceipt",
@@ -1678,6 +1708,14 @@
         {
           "name": "SetUp",
           "signature": "func(ctx context.Context, session *mcp.ClientSession, contributions []SetupContribution, metadata mcp.ParamsBase) error"
+        },
+        {
+          "name": "StreamHost",
+          "signature": "func[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id string, input P) iter.Seq2[StreamValue[C, R], error]"
+        },
+        {
+          "name": "StreamModel",
+          "signature": "func(ctx context.Context, ref CallbackRef, id string, request *chat.Request) iter.Seq2[StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
           "name": "ToolCommandID",
@@ -2247,6 +2285,30 @@
               "name": "Bindings",
               "type": "[]SetupBinding",
               "tag": "json:\"bindings\""
+            }
+          ]
+        },
+        {
+          "name": "StreamValue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Chunk",
+              "type": "*C"
+            },
+            {
+              "name": "Result",
+              "type": "*R"
+            }
+          ]
+        },
+        {
+          "name": "StreamingMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() capability.MethodDescriptor"
             }
           ]
         }
@@ -3564,7 +3626,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.19\""
+          "value": "\"2026-10-14.20\""
         },
         {
           "name": "ProviderAPIKeyOptional",

@@ -99,3 +99,10 @@ Components must use this host module rather than bundling another RPC error clas
 class identity is part of the Runtime client's typed failure contract. Business
 operation refusals use the shared Runtime client's OperationFailure and code/message,
 which the SDK exports as the same class.
+
+
+Generated streaming methods publish a distinct chunk schema and final result.
+The component bindOperations entrance remains unary and refuses stream metadata
+before constructing delivery. Streaming model callbacks use the public Go SDK's
+existing authenticated lifetime; installed/TS streaming delivery remains open.
+A descriptor alone cannot turn a unary command into a stream or an unknown journal entry.

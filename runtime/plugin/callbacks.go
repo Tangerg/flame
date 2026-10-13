@@ -175,7 +175,7 @@ func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits
 	methods := make(map[string]boundMethod, len(callbacks))
 	for _, callback := range callbacks {
 		method := callback.method
-		if method.contract == nil || method.invoke == nil || methods[method.contract.Name()].invoke != nil {
+		if method.contract == nil || method.invoke == nil && method.stream == nil || methods[method.contract.Name()].contract != nil {
 			return CallbackRef{}, nil, errors.New("plugin: callback operations must be valid and unique")
 		}
 		methods[method.contract.Name()] = method
@@ -475,6 +475,14 @@ func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]bo
 	}
 	if r.Context().Err() != nil {
 		http.Error(w, "callback call is no longer active", http.StatusGone)
+		return
+	}
+	if method.stream != nil {
+		if r.Header.Get("Accept") != "text/event-stream" {
+			http.Error(w, "callback requires streaming consumption", http.StatusNotAcceptable)
+			return
+		}
+		serveCallbackStream(w, r, method, &wire, limits)
 		return
 	}
 	result, err := method.invoke(r.Context(), nil, &wire)

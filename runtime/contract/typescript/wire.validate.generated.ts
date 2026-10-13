@@ -2086,6 +2086,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     kind: text(),
     name: text(),
     output: anything(),
+    stream: anything(),
     target: text(),
   }, ["description", "input", "kind", "name", "output", "target"]),
   Modality: enumOf(["text", "image", "audio", "video", "pdf"]),
