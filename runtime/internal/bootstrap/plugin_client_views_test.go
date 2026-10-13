@@ -12,7 +12,7 @@ import (
 )
 
 func TestClientPresentationPackagesAdmitComponentsWithoutBackend(t *testing.T) {
-	for _, name := range []string{"diagnostics", "icon-gallery"} {
+	for _, name := range []string{"diagnostics", "icon-gallery", "skills"} {
 		t.Run(name, func(t *testing.T) {
 			r := poMCPOpen(t, poMCPConfig(t))
 			source := filepath.Join(firstPartyPackages, name)

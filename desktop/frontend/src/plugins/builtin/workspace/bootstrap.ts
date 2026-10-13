@@ -5,7 +5,6 @@ import { registerWorkspaceDataProviders } from "./adapters/runtimeDataProviders"
 import { definePlugin } from "@/plugins/sdk";
 import { installConversationArchiveGateway } from "./adapters/runtimeConversationArchiveGateway";
 import { installAgentMemoryGateway } from "./adapters/runtimeAgentMemoryGateway";
-import { installSkillCurationGateway } from "./adapters/runtimeSkillCurationGateway";
 import { installWorkspaceErrorClassifier } from "./adapters/runtimeWorkspaceErrorClassifier";
 import { installWorkspaceNavigationPort } from "./adapters/navigationStatePort";
 import {
@@ -35,8 +34,6 @@ export function createWorkspaceBootstrapPlugin(
       registerWorkspaceDataProviders(ctx, runtimeClient);
       const agentMemory = installAgentMemoryGateway(runtimeClient);
       ctx.cleanup(() => agentMemory.dispose());
-      const skillCuration = installSkillCurationGateway(runtimeClient);
-      ctx.cleanup(() => skillCuration.dispose());
       const conversationArchive = installConversationArchiveGateway(runtimeClient);
       ctx.cleanup(() => conversationArchive.dispose());
       ctx.cleanup(installLocalWorkspaceActions(host, canAccessLocalWorkspace));
@@ -50,7 +47,6 @@ export function createWorkspaceBootstrapPlugin(
         },
         mutationLifecycle: {
           replaceRuntimeGeneration() {
-            skillCuration.replaceRuntimeGeneration();
             agentMemory.replaceRuntimeGeneration();
             conversationArchive.replaceRuntimeGeneration();
           },

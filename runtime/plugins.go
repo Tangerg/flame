@@ -73,19 +73,3 @@ func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRe
 func (r *binding) ReadPluginSchedules(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error) {
 	return r.invoke[protocol.ReadPluginSchedulesRequest, *protocol.Page[protocol.Schedule]](ctx, delivery.PluginsReadSchedules, request, callOptions(options))
 }
-
-func (r *binding) ReadPluginSkills(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.SkillDiscovery, error) {
-	return r.invoke[protocol.ReadPluginSkillsRequest, *protocol.SkillDiscovery](ctx, delivery.PluginsReadSkills, request, callOptions(options))
-}
-
-func (r *binding) ReadPluginSkill(ctx context.Context, request protocol.ReadPluginSkillRequest, options CallOptions) (*protocol.SkillDetail, error) {
-	return r.invoke[protocol.ReadPluginSkillRequest, *protocol.SkillDetail](ctx, delivery.PluginsReadSkill, request, callOptions(options))
-}
-
-func (r *binding) ReadPluginSkillLibrary(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
-	return r.invoke[protocol.ReadPluginViewRequest, *protocol.Page[protocol.ManagedSkill]](ctx, delivery.PluginsReadSkillLibrary, request, callOptions(options))
-}
-
-func (r *binding) ReadPluginSkillProposals(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
-	return r.invoke[protocol.ReadPluginSkillsRequest, *protocol.Page[protocol.SkillProposal]](ctx, delivery.PluginsReadSkillProposals, request, callOptions(options))
-}

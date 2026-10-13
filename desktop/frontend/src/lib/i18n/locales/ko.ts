@@ -484,16 +484,6 @@ export const ko: Record<string, string> = {
   "toolAction.copyCommand": "명령 복사",
   "approval.fallbackText": "이 작업을 승인하시겠습니까?",
 
-  "skills.inspect": "스킬 읽기",
-  "skills.noProject": "스킬과 제안을 확인할 프로젝트를 선택하세요.",
-  "skillLibrary.select": "개인 스킬 선택",
-  "skillProposals.select": "제안 선택",
-  "skills.title": "스킬",
-  "skills.tab.available": "사용 가능",
-  "skills.tab.review": "검토",
-  "skills.tab.library": "개인",
-  "skills.disabled.title": "스킬이 꺼져 있음",
-
   "shortcuts.sub":
     "내장 및 사용자 플러그인이 등록한 모든 키 바인딩. 앱 내 어디서든 조합 키를 눌러 실행할 수 있습니다. 바인딩 충돌은 항상 마지막 등록으로 해결됩니다.",
   "shortcuts.filter": "동작 또는 조합 키로 필터…",
@@ -708,20 +698,6 @@ export const ko: Record<string, string> = {
   "workspace.view.title.file": "파일",
   "settings.theme.system": "시스템",
   "runError.action.retryIn": "{{seconds}}초 후 재시도",
-  "skillLibrary.section.active": "활성",
-  "skillLibrary.section.archived": "보관됨",
-  "skillLibrary.archiveEffect":
-    "보관은 이후 스킬 확인에 적용되며 대화에 이미 포함된 지침은 제거하지 않습니다.",
-  "skillLibrary.archive": "보관",
-  "skillLibrary.restore": "복원",
-  "skillLibrary.error": "스킬을 업데이트할 수 없습니다.",
-  "skillProposals.approve": "승인",
-  "skillProposals.reject": "거부",
-  "skillProposals.scope.project": "프로젝트",
-  "skillProposals.scope.user": "개인",
-  "skillProposals.conflict":
-    "이 제안은 검토 당시 상태로 적용할 수 없습니다. 현재 제안을 다시 검토한 후 결정하세요.",
-  "skillProposals.error": "제안을 처리할 수 없습니다.",
   "schedules.select": "일정 선택",
   "schedules.template": "템플릿 사용",
   "schedules.enable": "활성화",

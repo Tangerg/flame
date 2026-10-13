@@ -3,12 +3,6 @@ import { DiagnosticsReport } from "../../../plugins/diagnostics/src/component";
 import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import { DiffReport } from "../../../plugins/diff/src/component";
 import type { Diff } from "@flame/runtime-contract/wire";
-import skillsHTML from "../../../plugins/skills/views/skills.html?raw";
-import { SkillsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SkillsPackageView";
-import type {
-  SkillViewTarget,
-  SkillViewSnapshot,
-} from "@/plugins/builtin/settings/plugins-pane/application/pluginView";
 import { UsageReport } from "../../../plugins/usage/src/component";
 import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
 import scheduleDeclaration from "../../../plugins/schedules/io.github.tangerg.flame/declaration.json";
@@ -39,14 +33,8 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_MANAGED_SKILLS_KEY,
-  WORKSPACE_SKILLS_KEY,
-  WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
   type AgentMemoryEntry,
-  type ManagedSkill,
-  type SkillProposal,
-  type WorkspaceSkillDiscovery,
   type WorkspaceFileChange,
   type WorkspaceFileContent,
   type WorkspaceFileEntry,
@@ -330,60 +318,6 @@ const visualMemory: AgentMemoryEntry[] = [
   },
 ];
 
-const VISUAL_SKILLS: WorkspaceSkillDiscovery = {
-  skills: [
-    {
-      name: "review-diff",
-      description: "Read a change the way a reviewer does, worst risk first.",
-      scope: "project",
-    },
-    {
-      name: "write-commit-message",
-      description: "State why the change exists, not what the diff already says.",
-      scope: "user",
-    },
-  ],
-  diagnostics: [],
-};
-
-const VISUAL_MANAGED_SKILLS: ManagedSkill[] = [
-  {
-    name: "review-diff",
-    description: "Read a change the way a reviewer does, worst risk first.",
-    lifecycle: "active",
-  },
-  {
-    name: "summarise-standup",
-    description: "Superseded by the run digest.",
-    lifecycle: "archived",
-  },
-];
-
-const VISUAL_SKILL_PROPOSALS: SkillProposal[] = [
-  {
-    workspace: "/Users/visual/scope",
-    name: "review-diff",
-    revision: "rev_02",
-    scope: "project",
-    description: "Read a change the way a reviewer does, worst risk first.",
-    instructions: "Start from the riskiest hunk. Name the invariant it could break.",
-    origin: "requested",
-    revises: true,
-    sourceSession: VISUAL_SESSION_ID,
-  },
-  {
-    workspace: "/Users/visual/scope",
-    name: "trace-flaky-test",
-    revision: "rev_01",
-    scope: "user",
-    description: "Find the shared state behind a test that passes alone.",
-    instructions: "Run it in isolation, then with its file, then with its package.",
-    origin: "mined",
-    revises: false,
-    sourceSession: VISUAL_SESSION_ID,
-  },
-];
-
 function workspaceDataPlugin(
   state: VisualWorkspaceState,
   review: Diff,
@@ -442,53 +376,6 @@ function workspaceDataPlugin(
                     focusPath: review.files?.[0]?.path,
                   },
                 }),
-      });
-      const skillLifetime = ctx.lifetime("visual-skills");
-      const skillReads = (target: SkillViewTarget) => {
-        const read = async (): Promise<SkillViewSnapshot> => {
-          switch (target.type) {
-            case "available":
-              return { type: target.type, data: VISUAL_SKILLS };
-            case "library":
-              return { type: target.type, data: { data: VISUAL_MANAGED_SKILLS } };
-            case "review":
-              return { type: target.type, data: { data: VISUAL_SKILL_PROPOSALS } };
-            case "detail": {
-              const skill = VISUAL_SKILLS.skills.find((item) => item.name === target.name);
-              if (!skill) throw new Error("visual Skill is unavailable");
-              return {
-                type: target.type,
-                data: {
-                  ...skill,
-                  path: "/runtime/project/skills/" + skill.name + "/SKILL.md",
-                  revision: "a".repeat(64),
-                  instructions:
-                    VISUAL_SKILL_PROPOSALS.find((item) => item.name === skill.name)?.instructions ??
-                    "Describe why the change exists.",
-                },
-              };
-            }
-          }
-        };
-        return {
-          binding: { installationId: "fixture", digest: "release", viewId: "view" },
-          resource: async () => skillsHTML,
-          initial: async () => await read(),
-          read,
-        };
-      };
-      skillLifetime.contribute(WORKSPACE_VIEW, {
-        id: "package:visual:skills",
-        title: "Skills",
-        icon: "library",
-        dock: "workspace",
-        component: () =>
-          createElement(SkillsPackageView, {
-            reads: skillReads,
-            title: "Skills",
-            lifetime: skillLifetime,
-            carrier: createBrowserHost().pluginCarrier,
-          }),
       });
       const usageLifetime = ctx.lifetime("visual-usage");
       usageLifetime.contribute(WORKSPACE_VIEW, {
@@ -579,19 +466,6 @@ function workspaceDataPlugin(
         },
       });
       ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_SKILLS_KEY,
-        fetcher: async (): Promise<WorkspaceSkillDiscovery> => VISUAL_SKILLS,
-      });
-      ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_MANAGED_SKILLS_KEY,
-        fetcher: async (): Promise<ManagedSkill[]> => VISUAL_MANAGED_SKILLS,
-      });
-      ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_SKILL_PROPOSALS_KEY,
-        fetcher: async (): Promise<SkillProposal[]> => VISUAL_SKILL_PROPOSALS,
-      });
-
-      ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_AGENT_MEMORY_KEY,
         fetcher: async (): Promise<AgentMemoryEntry[]> => visualMemory,
       });
@@ -678,7 +552,6 @@ const VISUAL_USAGE: UsageSummary = {
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "subagents",
   "package:visual:diagnostics",
-  "package:visual:skills",
   "package:visual:memory",
   "package:visual:schedules",
   "package:visual:usage",

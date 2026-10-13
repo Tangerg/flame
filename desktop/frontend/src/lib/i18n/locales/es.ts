@@ -508,16 +508,6 @@ export const es: Record<string, string> = {
   "toolAction.copyCommand": "Copiar comando",
   "approval.fallbackText": "¿Aprobar esta acción?",
 
-  "skills.inspect": "Leer habilidad",
-  "skills.noProject": "Selecciona un proyecto para consultar habilidades y propuestas.",
-  "skillLibrary.select": "Seleccionar habilidad personal",
-  "skillProposals.select": "Seleccionar propuesta",
-  "skills.title": "Habilidades",
-  "skills.tab.available": "Disponibles",
-  "skills.tab.review": "Revisar",
-  "skills.tab.library": "Personal",
-  "skills.disabled.title": "Habilidades desactivadas",
-
   "shortcuts.sub":
     "Cada combinación de teclas registrada por los plugins integrados y de usuario. Pulsa una combinación en cualquier parte de la app para activarla; los conflictos se resuelven siempre a favor del último registro.",
   "shortcuts.filter": "Filtrar por acción o combinación…",
@@ -744,20 +734,6 @@ export const es: Record<string, string> = {
   "workspace.view.title.file": "Archivos",
   "settings.theme.system": "Sistema",
   "runError.action.retryIn": "Reintentar en {{seconds}} s",
-  "skillLibrary.section.active": "Activas",
-  "skillLibrary.section.archived": "Archivadas",
-  "skillLibrary.archiveEffect":
-    "Archivar afecta a la resolución futura de habilidades; las instrucciones ya presentes en una conversación permanecen.",
-  "skillLibrary.archive": "Archivar",
-  "skillLibrary.restore": "Restaurar",
-  "skillLibrary.error": "No se pudo actualizar la habilidad.",
-  "skillProposals.approve": "Aprobar",
-  "skillProposals.reject": "Rechazar",
-  "skillProposals.scope.project": "Proyecto",
-  "skillProposals.scope.user": "Personal",
-  "skillProposals.conflict":
-    "Esta propuesta ya no puede aplicarse tal como se revisó. Revisa la propuesta actual antes de decidir de nuevo.",
-  "skillProposals.error": "No se pudo actuar sobre la propuesta.",
   "schedules.select": "Seleccionar una programación",
   "schedules.template": "Usar una plantilla",
   "schedules.enable": "Activar",

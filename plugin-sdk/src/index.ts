@@ -20,6 +20,7 @@ export type {
   LogRow,
 } from "./telemetry";
 export { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
+export { isErrorType } from "@flame/runtime-contract/client/errors";
 
 export interface WorkspaceContext {
   readonly ref: Readonly<WorkspaceRef>;

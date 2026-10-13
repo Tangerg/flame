@@ -17,10 +17,7 @@ export type WorkspaceInvalidationTarget =
   | "sessionUsage"
   | "sessions"
   | "utilityRole"
-  | "embeddingRole"
-  | "skills"
-  | "managedSkills"
-  | "skillProposals";
+  | "embeddingRole";
 
 type WorkspaceEventType =
   | "files.changed"
@@ -69,7 +66,6 @@ const FILE_TARGETS = new Set<WorkspaceInvalidationTarget>([
   "fileList",
   "fileRead",
   "hooks",
-  "skills",
 ]);
 
 export function workspaceQueryAffected(
@@ -82,7 +78,6 @@ export function workspaceQueryAffected(
   // Resync's watch IDs narrow only files.changed. Authored resources can be
   // global, including a user Skill used in several workspaces.
   if (event.type === "resync") {
-    if (target === "skills" && event.topics?.includes("skills.changed")) return true;
     if (target === "hooks" && event.topics?.includes("hooks.changed")) return true;
   }
   const roots = affectedWorkspaces(event);
@@ -143,11 +138,11 @@ function atOrBelow(path: string, parent: string): boolean {
 export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalidationTarget[] {
   switch (ev.type) {
     case "files.changed":
-      return ["filesChanged", "fileList", "fileRead", "hooks", "skills"];
+      return ["filesChanged", "fileList", "fileRead", "hooks"];
     case "skills.changed":
-      return ["skills", "managedSkills", "skillProposals"];
+      return [];
     case "plugins.changed":
-      return ["skills", "mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
+      return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
     case "mcp.changed":
       return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
     case "schedules.changed":

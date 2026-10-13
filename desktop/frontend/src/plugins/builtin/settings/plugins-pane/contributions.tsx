@@ -21,7 +21,6 @@ import {
   type FileSnapshot,
 } from "./adapters/rendererReads";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
-import { SkillsPackageView } from "./ui/SkillsPackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -35,7 +34,7 @@ import {
   PROVIDERS_KEY,
   usePackageRealization,
 } from "./application/packages";
-import { createScheduleViewReads, createSkillViewReads } from "./adapters/pluginViewReads";
+import { createScheduleViewReads } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
 
@@ -197,25 +196,6 @@ function createPackageReconciler(
         };
         const title = `${release.name} · ${view.title}`;
         switch (view.type) {
-          case "skills": {
-            const reads = (target: Parameters<typeof createSkillViewReads>[2]) =>
-              createSkillViewReads(client.plugins, binding, target);
-            lifetime.contribute(WORKSPACE_VIEW, {
-              id: `package:${installation.id}:${view.id}`,
-              title,
-              icon: "library",
-              dock: "workspace",
-              component: () => (
-                <SkillsPackageView
-                  reads={reads}
-                  title={title}
-                  lifetime={lifetime}
-                  carrier={carrier}
-                />
-              ),
-            });
-            break;
-          }
           case "schedules": {
             const reads = () => createScheduleViewReads(client.plugins, binding);
             lifetime.contribute(WORKSPACE_VIEW, {

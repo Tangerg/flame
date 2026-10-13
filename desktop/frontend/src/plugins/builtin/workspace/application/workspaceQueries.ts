@@ -3,10 +3,6 @@ import type {
   AgentMemoryScope,
   AgentMemoryStatus,
   FileEntryType,
-  SkillLifecycle,
-  SkillProposalOrigin,
-  SkillProposalScope,
-  SkillScope,
 } from "@flame/runtime-contract/wire";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 
@@ -24,40 +20,6 @@ export interface WorkspaceFileChange {
   added?: number;
   removed?: number;
   binary?: boolean;
-}
-
-export interface WorkspaceSkill {
-  name: string;
-  description: string;
-  scope: SkillScope;
-  installation?: { installationId: string; digest: string };
-}
-
-export interface WorkspaceSkillDiscovery {
-  skills: WorkspaceSkill[];
-  diagnostics: { name: string; detail: string }[];
-}
-
-export interface WorkspaceCatalogQuery {
-  cwd?: string;
-}
-
-export interface ManagedSkill {
-  name: string;
-  description: string;
-  lifecycle: SkillLifecycle;
-}
-
-export interface SkillProposal {
-  workspace: string;
-  name: string;
-  revision: string;
-  scope: SkillProposalScope;
-  description: string;
-  instructions: string;
-  origin: SkillProposalOrigin;
-  revises: boolean;
-  sourceSession?: string;
 }
 
 export interface AgentMemoryQuery {
@@ -111,9 +73,6 @@ export interface WorkspaceFileContent {
 
 export const WORKSPACE_PROJECTS_KEY = "projects";
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
-export const WORKSPACE_SKILLS_KEY = "skills";
-export const WORKSPACE_MANAGED_SKILLS_KEY = "managed-skills";
-export const WORKSPACE_SKILL_PROPOSALS_KEY = "skill-proposals";
 export const WORKSPACE_AGENT_MEMORY_KEY = "agent-memory";
 export const WORKSPACE_LIST_FILES_KEY = "list-files";
 export const WORKSPACE_READ_FILE_KEY = "read-file";
@@ -124,15 +83,6 @@ export const useWorkspaceFileChanges = createParameterizedDataQuery<
   WorkspaceFileChangesQuery,
   WorkspaceFileChange[]
 >(WORKSPACE_FILES_CHANGED_KEY);
-export const useWorkspaceSkills = createParameterizedDataQuery<
-  WorkspaceCatalogQuery,
-  WorkspaceSkillDiscovery
->(WORKSPACE_SKILLS_KEY);
-export const useManagedSkills = createDataQuery<ManagedSkill[]>(WORKSPACE_MANAGED_SKILLS_KEY);
-export const useSkillProposals = createParameterizedDataQuery<
-  WorkspaceCatalogQuery,
-  SkillProposal[]
->(WORKSPACE_SKILL_PROPOSALS_KEY);
 export const useAgentMemory = createParameterizedDataQuery<AgentMemoryQuery, AgentMemoryEntry[]>(
   WORKSPACE_AGENT_MEMORY_KEY,
 );

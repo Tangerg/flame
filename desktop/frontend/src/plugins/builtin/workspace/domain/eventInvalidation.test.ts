@@ -8,13 +8,8 @@ describe("workspaceInvalidations", () => {
       "fileList",
       "fileRead",
       "hooks",
-      "skills",
     ]);
-    expect(workspaceInvalidations({ type: "skills.changed", sequence: 2 })).toEqual([
-      "skills",
-      "managedSkills",
-      "skillProposals",
-    ]);
+    expect(workspaceInvalidations({ type: "skills.changed", sequence: 2 })).toEqual([]);
     expect(workspaceInvalidations({ type: "mcp.changed", sequence: 3 })).toEqual([
       "mcpServers",
       "mcpTools",
@@ -45,14 +40,7 @@ describe("workspaceInvalidations", () => {
         sequence: 11,
         topics: ["files.changed", "goals.changed", "files.changed"],
       }),
-    ).toEqual([
-      "filesChanged",
-      "fileList",
-      "fileRead",
-      "hooks",
-      "skills",
-      "agentSessionProjection",
-    ]);
+    ).toEqual(["filesChanged", "fileList", "fileRead", "hooks", "agentSessionProjection"]);
     expect(workspaceInvalidations({ type: "resync", sequence: 12 })).toEqual(["all"]);
   });
 

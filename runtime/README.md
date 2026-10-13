@@ -368,29 +368,30 @@ exist. Generic loading does not interpret the key. Disablement/uninstall withdra
 presentation/resources while canonical workspace files, Git and Tool evidence remain
 with their original owners. There is no HTML guest or feature-specific read wrapper.
 
-## Protocol 2026-10-10.6
+## Protocol 2026-10-13.15
 
-The optional [Skills package](../plugins/skills/plugin.json) replaces the compiled Desktop
-Skill catalogs, document inspection and proposal presentation. A `skills` view admits
-`plugins.readSkills`, `plugins.readSkill`, `plugins.readSkillLibrary` and
-`plugins.readSkillProposals`. These require plugin and Skill capabilities and return
-the existing discovery, selected document, managed library and proposal queries unchanged.
-They retain each query's bounds, provenance and failure categories; there is no plugin
-Skill store or independent visibility transition.
+The optional [Skills component](../plugins/skills/plugin.json) directly consumes
+canonical discovery, document, managed-library and proposal operations through the
+public SDK. Captured workspace references and proposal revisions remain with their
+existing owners. Personal library inspection works without a workspace. Archive and
+restore affect only user-managed Skills; installation-provided enablement belongs
+to package configuration. Confirmed commands reread the owner, and uncertain replies
+retain their original mutation key and retry closure before further commands.
 
-The trusted Host captures the workspace, catalog section and document name. Each page
-receives one tagged canonical result and may request refresh only. Changing a captured
-target retires its page authority. The user library does not depend on a project selection.
-Archive and restore target only user-managed Skills; installation-provided Skill enablement
-remains installation configuration. Proposal approval and rejection use trusted forms
-that capture the reviewed instructions and revision. A concurrently replaced proposal
-fails its existing revision check and requires a new review.
+The component observes existing skills/plugins/file notices through the public
+Runtime subscription, captures its workspace watch and cancels/joins both notices
+and reads on retirement. Read failure retains the accepted same-target snapshot.
+Switching catalog or document cancels the old read and clears its presentation.
+Proposal confirmation displays its captured instructions and revision; concurrent
+replacement remains an explicit revision conflict.
 
-Rebuild Runtime and clients together and install/enable the current Skills package to expose its page.
-The compiled Skills view and its document cache have been removed without fallback.
-Removing the package withdraws presentation and controls while preserving managed Skills,
-pending proposals, published documents, discovery and mining. No persisted-data migration
-is required. The existing v2 handshake, enforcing carriers and byte limits remain in force.
+The Skills HTML/view kind, dedicated plugins.readSkills/readSkill/readSkillLibrary/
+readSkillProposals operations, private Desktop controls/curation generation and
+unused catalog query projections are removed. Rebuild Runtime/CLI/TS/SDK/Host and
+installed artifacts together. Disablement/uninstall withdraws component resources;
+managed Skills, proposals, published documents, discovery and mining remain with
+Runtime. Backend .4 and persisted Skill formats are unchanged. Final installed and
+cross-generation recovery execution remains queued.
 
 Native acceptance also repairs recalled-memory composition: recall annotates the opening
 User message after its authored parts, and the existing opening write-set persists that

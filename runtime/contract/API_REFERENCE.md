@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-13.14` · 112 methods
+Protocol `2026-10-13.15` · 108 methods
 
 ## Methods
 
@@ -73,10 +73,6 @@ Protocol `2026-10-13.14` · 112 methods
 | `plugins.listProviders` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.selectProvider` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readRenderer` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
-| `plugins.readSkills` | query | unary | none | none | none | `skills.discovered.list` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `workspace_unavailable`, `capability_not_negotiated` |
-| `plugins.readSkill` | query | unary | none | none | none | `skills.discovered.get` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `workspace_unavailable`, `skill_not_found`, `skill_unavailable`, `capability_not_negotiated` |
-| `plugins.readSkillLibrary` | query | unary | none | none | none | `skills.library.list` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
-| `plugins.readSkillProposals` | query | unary | none | none | none | `skills.proposals.list` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `workspace_unavailable`, `capability_not_negotiated` |
 | `plugins.readSchedules` | query | unary | none | none | cursor | `schedules.list` | `plugins`, `schedules` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.renameSession` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `session_not_found`, `revision_conflict`, `session_busy`, `capability_not_negotiated` |
 | `plugins.readView` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -1313,10 +1309,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.listProviders` | always | `plugins` |
 | `plugins.selectProvider` | always | `plugins` |
 | `plugins.readRenderer` | always | `plugins` |
-| `plugins.readSkills` | always | `plugins`, `skills` |
-| `plugins.readSkill` | always | `plugins`, `skills` |
-| `plugins.readSkillLibrary` | always | `plugins`, `skills` |
-| `plugins.readSkillProposals` | always | `plugins`, `skills` |
 | `plugins.readSchedules` | always | `plugins`, `schedules` |
 | `plugins.renameSession` | always | `plugins` |
 | `plugins.readView` | always | `plugins` |

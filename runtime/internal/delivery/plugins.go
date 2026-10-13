@@ -24,10 +24,6 @@ const (
 	PluginsReadView            Name = "plugins.readView"
 	PluginsReadRenderer        Name = "plugins.readRenderer"
 	PluginsReadSchedules       Name = "plugins.readSchedules"
-	PluginsReadSkills          Name = "plugins.readSkills"
-	PluginsReadSkill           Name = "plugins.readSkill"
-	PluginsReadSkillLibrary    Name = "plugins.readSkillLibrary"
-	PluginsReadSkillProposals  Name = "plugins.readSkillProposals"
 	PluginsRenameSession       Name = "plugins.renameSession"
 )
 
@@ -83,26 +79,6 @@ func registerPlugins(r *Registry) {
 		ReadPluginRenderer(context.Context, protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error)
 	}, ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {
 		return s.ReadPluginRenderer(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadSkills, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error()), Materializes: []Name{SkillsDiscoveredList}}, func(s interface {
-		ReadPluginSkills(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error)
-	}, ctx context.Context, in protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error) {
-		return s.ReadPluginSkills(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadSkill, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrSkillNotFound.Error(), protocol.ErrSkillUnavailable.Error()), Materializes: []Name{SkillsDiscoveredGet}}, func(s interface {
-		ReadPluginSkill(context.Context, protocol.ReadPluginSkillRequest) (*protocol.SkillDetail, error)
-	}, ctx context.Context, in protocol.ReadPluginSkillRequest) (*protocol.SkillDetail, error) {
-		return s.ReadPluginSkill(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadSkillLibrary, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: pluginErrors(), Materializes: []Name{SkillsLibraryList}}, func(s interface {
-		ReadPluginSkillLibrary(context.Context, protocol.ReadPluginViewRequest) (*protocol.Page[protocol.ManagedSkill], error)
-	}, ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.Page[protocol.ManagedSkill], error) {
-		return s.ReadPluginSkillLibrary(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadSkillProposals, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error()), Materializes: []Name{SkillsProposalsList}}, func(s interface {
-		ReadPluginSkillProposals(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.Page[protocol.SkillProposal], error)
-	}, ctx context.Context, in protocol.ReadPluginSkillsRequest) (*protocol.Page[protocol.SkillProposal], error) {
-		return s.ReadPluginSkillProposals(ctx, in)
 	})
 	r.query(MethodMeta{Name: PluginsReadSchedules, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSchedules), Errors: pluginErrors(), Materializes: []Name{SchedulesList}}, func(s interface {
 		ReadPluginSchedules(context.Context, protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error)

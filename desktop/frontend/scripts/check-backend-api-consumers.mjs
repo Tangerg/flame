@@ -20,6 +20,7 @@ const EVENT_ADAPTER_PATH = resolve(
 const TOOL_RESULT_PATH = resolve(ROOT, "src/plugins/sdk/toolResult.ts");
 const RPC_ERRORS_PATH = resolve(ROOT, "src/lib/rpcErrors.ts");
 const TSCONFIG_PATH = resolve(ROOT, "tsconfig.json");
+const COMPONENTS_TSCONFIG_PATH = resolve(ROOT, "../../plugins/tsconfig.json");
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
 const operations = new Set(manifest.methods.map((method) => method.name));
@@ -81,11 +82,15 @@ function closeCompiler() {
   compiler.close();
 }
 process.once("exit", closeCompiler);
-const snapshot = compiler.updateSnapshot({ openProjects: [TSCONFIG_PATH] });
+// Installed ESM has no static Desktop import. Its owning production project
+// still supplies typed product callsites through the same public client.
+const snapshot = compiler.updateSnapshot({
+  openProjects: [TSCONFIG_PATH, COMPONENTS_TSCONFIG_PATH],
+});
 const project = snapshot.getProject(TSCONFIG_PATH);
 if (!project) fail([`TypeScript did not load ${relative(ROOT, TSCONFIG_PATH)}`]);
 const program = project.program;
-const checker = project.checker;
+let checker = project.checker;
 const methodsSource = program.getSourceFile(METHODS_PATH);
 if (!methodsSource) fail([`TypeScript did not load ${relative(ROOT, METHODS_PATH)}`]);
 const sidecarSource = program.getSourceFile(SIDECAR_PATH);
@@ -103,49 +108,57 @@ const sidecarConsumerCalls = new Map();
 const httpConsumerCalls = new Map();
 const discardedResults = [];
 let mappedErrorTypeCount = 0;
-for (const fileName of program.getSourceFileNames()) {
-  const source = program.getSourceFile(fileName);
-  if (!source) continue;
-  const sourcePath = resolve(source.fileName);
-  if (!isProductSource(sourcePath)) continue;
-  visit(source, (node) => {
-    if (ts.isCallExpression(node)) {
-      for (const endpoint of consumedHTTPEndpoints(node)) {
+const componentsProject = snapshot.getProject(COMPONENTS_TSCONFIG_PATH);
+if (!componentsProject) fail(["TypeScript did not load the installed components project"]);
+const scannedSources = new Set();
+for (const consumerProject of [project, componentsProject]) {
+  checker = consumerProject.checker;
+  for (const fileName of consumerProject.program.getSourceFileNames()) {
+    const source = consumerProject.program.getSourceFile(fileName);
+    if (!source) continue;
+    const sourcePath = resolve(source.fileName);
+    if (!isProductSource(sourcePath) || scannedSources.has(sourcePath)) continue;
+    scannedSources.add(sourcePath);
+    visit(source, (node) => {
+      if (ts.isCallExpression(node)) {
+        for (const endpoint of consumedHTTPEndpoints(node)) {
+          const position = source.getLineAndCharacterOfPosition(node.getStart(source));
+          const locations = httpConsumerCalls.get(endpoint) ?? new Set();
+          locations.add(`${relative(ROOT, sourcePath)}:${position.line + 1}`);
+          httpConsumerCalls.set(endpoint, locations);
+        }
+      }
+      if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return;
+      let symbol = checker.getSymbolAtLocation(node.expression.name);
+      if (!symbol) return;
+      if (symbol.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+      for (const declaration of declarationsOf(symbol)) {
+        const declarationPath = resolve(declaration.getSourceFile().fileName);
+        let wrapper;
+        let target;
+        if (declarationPath === METHODS_PATH) {
+          wrapper = wrapperPath(declaration, METHODS_PATH);
+          target = consumerCalls;
+        } else if (declarationPath === SIDECAR_PATH) {
+          wrapper = wrapperPath(declaration, SIDECAR_PATH);
+          target = sidecarConsumerCalls;
+        } else {
+          continue;
+        }
+        if (!wrapper || !target) continue;
         const position = source.getLineAndCharacterOfPosition(node.getStart(source));
-        const locations = httpConsumerCalls.get(endpoint) ?? new Set();
-        locations.add(`${relative(ROOT, sourcePath)}:${position.line + 1}`);
-        httpConsumerCalls.set(endpoint, locations);
+        const location = `${relative(ROOT, sourcePath)}:${position.line + 1}`;
+        const locations = target.get(wrapper) ?? new Set();
+        locations.add(location);
+        target.set(wrapper, locations);
+        if (discardsNonVoidResult(node)) {
+          discardedResults.push(`${wrapper} returns a value that is discarded at ${location}`);
+        }
       }
-    }
-    if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return;
-    let symbol = checker.getSymbolAtLocation(node.expression.name);
-    if (!symbol) return;
-    if (symbol.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-    for (const declaration of declarationsOf(symbol)) {
-      const declarationPath = resolve(declaration.getSourceFile().fileName);
-      let wrapper;
-      let target;
-      if (declarationPath === METHODS_PATH) {
-        wrapper = wrapperPath(declaration, METHODS_PATH);
-        target = consumerCalls;
-      } else if (declarationPath === SIDECAR_PATH) {
-        wrapper = wrapperPath(declaration, SIDECAR_PATH);
-        target = sidecarConsumerCalls;
-      } else {
-        continue;
-      }
-      if (!wrapper || !target) continue;
-      const position = source.getLineAndCharacterOfPosition(node.getStart(source));
-      const location = `${relative(ROOT, sourcePath)}:${position.line + 1}`;
-      const locations = target.get(wrapper) ?? new Set();
-      locations.add(location);
-      target.set(wrapper, locations);
-      if (discardsNonVoidResult(node)) {
-        discardedResults.push(`${wrapper} returns a value that is discarded at ${location}`);
-      }
-    }
-  });
+    });
+  }
 }
+checker = project.checker;
 
 const errors = [];
 errors.push(...discardedResults);

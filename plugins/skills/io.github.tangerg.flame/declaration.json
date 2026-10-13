@@ -1,13 +1,14 @@
 {
   "protocol": "io.github.tangerg.flame/backend/2026-10-13.4",
-  "contributes": {
-    "views": [
-      {
-        "id": "skills",
-        "title": "Skills",
-        "type": "skills",
-        "entry": "views/skills.html"
-      }
-    ]
-  }
+  "components": [
+    {
+      "id": "skills",
+      "title": "Skills",
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Skills",
+      "material": "skills"
+    }
+  ]
 }

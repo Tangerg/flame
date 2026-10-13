@@ -138,7 +138,6 @@ type PluginViewType string
 
 const (
 	PluginViewSchedules PluginViewType = "schedules"
-	PluginViewSkills    PluginViewType = "skills"
 )
 
 type PluginView struct {
@@ -193,16 +192,6 @@ type ReadPluginRendererRequest struct {
 type ReadPluginSchedulesRequest struct {
 	ReadPluginViewRequest
 	PageQuery
-}
-
-type ReadPluginSkillsRequest struct {
-	ReadPluginViewRequest
-	WorkspaceQuery
-}
-
-type ReadPluginSkillRequest struct {
-	ReadPluginViewRequest
-	SkillDetailRequest
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

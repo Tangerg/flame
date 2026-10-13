@@ -14,8 +14,8 @@ it("resource ownership settles when the RPC client closes after acknowledgement"
     digest: "a".repeat(64),
     componentId: "board",
   });
-  const observed = expect(resource.closed).rejects.toThrow("connection lost");
+  const observed = resource.closed;
   connection.abort(new Error("connection lost"));
-  await observed;
+  await expect(observed).rejects.toThrow("connection lost");
   await expect(resource.close()).rejects.toThrow("connection lost");
 });

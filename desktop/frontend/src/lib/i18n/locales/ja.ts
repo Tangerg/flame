@@ -487,16 +487,6 @@ export const ja: Record<string, string> = {
   "toolAction.copyCommand": "コマンドをコピー",
   "approval.fallbackText": "この操作を承認しますか？",
 
-  "skills.inspect": "スキルを読む",
-  "skills.noProject": "スキルと提案を確認するプロジェクトを選択してください。",
-  "skillLibrary.select": "個人スキルを選択",
-  "skillProposals.select": "提案を選択",
-  "skills.title": "スキル",
-  "skills.tab.available": "利用可能",
-  "skills.tab.review": "レビュー",
-  "skills.tab.library": "個人用",
-  "skills.disabled.title": "スキルはオフです",
-
   "shortcuts.sub":
     "組み込みおよびユーザープラグインによって登録されたすべてのキーバインド。アプリ内のどこでもコンボを押して発動できます。バインドの競合は常に最後の登録に解決されます。",
   "shortcuts.filter": "アクションまたはコンボで絞り込み…",
@@ -713,20 +703,6 @@ export const ja: Record<string, string> = {
   "workspace.view.title.file": "ファイル",
   "settings.theme.system": "システム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
-  "skillLibrary.section.active": "有効",
-  "skillLibrary.section.archived": "アーカイブ済み",
-  "skillLibrary.archiveEffect":
-    "アーカイブは以降のスキル解決に適用され、会話に含まれる指示は削除されません。",
-  "skillLibrary.archive": "アーカイブ",
-  "skillLibrary.restore": "復元",
-  "skillLibrary.error": "スキルを更新できませんでした。",
-  "skillProposals.approve": "承認",
-  "skillProposals.reject": "却下",
-  "skillProposals.scope.project": "プロジェクト",
-  "skillProposals.scope.user": "個人",
-  "skillProposals.conflict":
-    "この提案は確認時の状態では適用できません。最新の提案を再度確認してから判断してください。",
-  "skillProposals.error": "提案を処理できませんでした。",
   "schedules.select": "スケジュールを選択",
   "schedules.template": "テンプレートを使用",
   "schedules.enable": "有効化",

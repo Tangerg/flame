@@ -11,12 +11,12 @@ it("provider selection preserves inspected identity and the original command aft
   };
   const original = structuredClone(selection);
   const attempts: { params: unknown; key: string | undefined }[] = [];
+  const providerReads: { params: unknown; key: string | undefined }[] = [];
   let lost = true;
   const methods = createMethods({
     call: async (method: string, params: unknown, options?: RpcCallOptions) => {
       if (method === "plugins.listProviders") {
-        expect(params).toEqual({});
-        expect(options?.idempotencyKey).toBeUndefined();
+        providerReads.push({ params: structuredClone(params), key: options?.idempotencyKey });
         return { data: [original] };
       }
       expect(method).toBe("plugins.selectProvider");
@@ -26,6 +26,7 @@ it("provider selection preserves inspected identity and the original command aft
     },
   } as unknown as RpcClient);
   await expect(methods.plugins.listProviders()).resolves.toEqual({ data: [original] });
+  expect(providerReads).toEqual([{ params: {}, key: undefined }]);
   const command = methods.plugins.selectProvider(selection);
   selection.contribution = "replacement";
   selection.role = "schedules";

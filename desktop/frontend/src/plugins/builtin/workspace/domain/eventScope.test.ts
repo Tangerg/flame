@@ -79,24 +79,4 @@ describe("workspace query invalidation scope", () => {
       workspaceQueryAffected("fileRead", { cwd: "/first" }, { ...resync, watchIds: undefined }),
     ).toBe(true);
   });
-
-  it("keeps user Skill invalidations global in direct and coalesced events", () => {
-    expect(
-      workspaceQueryAffected("skills", { cwd: "/second" }, { type: "skills.changed", sequence: 1 }),
-    ).toBe(true);
-    expect(
-      workspaceQueryAffected(
-        "skills",
-        { cwd: "/second" },
-        {
-          type: "resync",
-          sequence: 1,
-          topics: ["files.changed", "skills.changed"],
-          watchIds: ["first"],
-          watchScopes: scopes,
-        },
-      ),
-    ).toBe(true);
-    expect(workspaceQueryAffected("managedSkills", undefined, event)).toBe(true);
-  });
 });

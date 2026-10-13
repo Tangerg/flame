@@ -25,10 +25,7 @@ import {
   WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
-  WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_SKILLS_KEY,
-  WORKSPACE_SKILL_PROPOSALS_KEY,
 } from "@/plugins/builtin/workspace/public/queries";
 import {
   workspaceInvalidations,
@@ -58,9 +55,6 @@ const QUERY_KEYS: Record<
   sessionUsage: AGENT_SESSION_USAGE_KEY,
   utilityRole: UTILITY_ROLE_KEY,
   embeddingRole: EMBEDDING_ROLE_KEY,
-  skills: WORKSPACE_SKILLS_KEY,
-  managedSkills: WORKSPACE_MANAGED_SKILLS_KEY,
-  skillProposals: WORKSPACE_SKILL_PROPOSALS_KEY,
 };
 
 function invalidateWorkspaceTargets(

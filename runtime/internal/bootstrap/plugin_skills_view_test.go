@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.T) {
+func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.T) {
 	cfg := poMCPConfig(t)
 	active := filepath.Join(cfg.SkillsUserDir, "verify", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(active), 0700); err != nil {
@@ -37,37 +38,29 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 		t.Fatal(err)
 	}
 	installed := poMCPActivate(r, source)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewSkills {
-		t.Fatalf("skills admission: %+v", installed.Selected)
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || len(installed.Selected.Views) != 0 || installed.Selected.Components[0].Scope != "client" {
+		t.Fatalf("skills component admission: %+v", installed.Selected)
 	}
-	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "skills"}
+	component := installed.Selected.Components[0]
+	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
 	query := protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}
-	read := protocol.ReadPluginSkillsRequest{ReadPluginViewRequest: view, WorkspaceQuery: query}
-	detail := protocol.ReadPluginSkillRequest{ReadPluginViewRequest: view, SkillDetailRequest: protocol.SkillDetailRequest{Workspace: query.Workspace, Name: "verify"}}
-	checks := []struct {
-		plugin, canonical delivery.Name
-		scoped, original  any
-	}{
-		{delivery.PluginsReadSkills, delivery.SkillsDiscoveredList, read, query},
-		{delivery.PluginsReadSkill, delivery.SkillsDiscoveredGet, detail, detail.SkillDetailRequest},
-		{delivery.PluginsReadSkillLibrary, delivery.SkillsLibraryList, view, struct{}{}},
-		{delivery.PluginsReadSkillProposals, delivery.SkillsProposalsList, read, query},
-	}
-	compare := func() {
+	detail := protocol.SkillDetailRequest{Workspace: query.Workspace, Name: "verify"}
+	inspect := func() {
 		t.Helper()
-		for _, check := range checks {
-			if got, want := r.must(check.plugin, check.scoped, ""), r.must(check.canonical, check.original, ""); !reflect.DeepEqual(got, want) {
-				t.Fatalf("%s differs from its canonical query: %+v / %+v", check.plugin, got, want)
-			}
-		}
+		r.must(delivery.SkillsDiscoveredList, query, "")
+		r.must(delivery.SkillsDiscoveredGet, detail, "")
+		r.must(delivery.SkillsLibraryList, struct{}{}, "")
+		r.must(delivery.SkillsProposalsList, query, "")
 	}
-	compare()
-	authored, err := os.ReadFile(filepath.Join(source, "views", "skills.html"))
+	inspect()
+	authored, err := os.ReadFile(filepath.Join(source, component.Entry))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource); got.HTML != string(authored) {
-		t.Fatal("skills resource differs from admitted bytes")
+	projected := r.must(delivery.PluginsReadResource, resource, "").(*protocol.PluginResource)
+	body, err := base64.StdEncoding.DecodeString(projected.Body)
+	if err != nil || string(body) != string(authored) {
+		t.Fatalf("skills component bytes: %v", err)
 	}
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}
 	refuse := func(method delivery.Name, input any, want error) {
@@ -78,38 +71,37 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 	}
 	missing := detail
 	missing.Name = "absent"
-	refuse(delivery.PluginsReadSkill, missing, protocol.ErrSkillNotFound)
-	memorySource := filepath.Join(firstPartyPackages, "memory")
-	memory := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: memorySource}, "install-memory").(*protocol.PluginInstallation)
-	memoryView := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: memory.ID, Digest: memory.Selected.Digest}, ViewID: "memory"}
-	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: memory.ID, Enabled: true}, "enable-memory")
-	wrong := read
-	wrong.ReadPluginViewRequest = memoryView
-	refuse(delivery.PluginsReadSkills, wrong, protocol.ErrPluginNotFound)
+	refuse(delivery.SkillsDiscoveredGet, missing, protocol.ErrSkillNotFound)
 	r.must(delivery.SkillsLibraryArchive, protocol.SkillNameRequest{Name: "verify"}, "archive")
-	refuse(delivery.PluginsReadSkill, detail, protocol.ErrSkillNotFound)
-	if got, want := r.must(delivery.PluginsReadSkillLibrary, view, ""), r.must(delivery.SkillsLibraryList, struct{}{}, ""); !reflect.DeepEqual(got, want) {
-		t.Fatal("archived library differs from canonical query")
+	refuse(delivery.SkillsDiscoveredGet, detail, protocol.ErrSkillNotFound)
+	archived := r.must(delivery.SkillsLibraryList, struct{}{}, "").(*protocol.Page[protocol.ManagedSkill])
+	foundArchived := false
+	for _, item := range archived.Data {
+		if item.Name == "verify" && item.Lifecycle == "archived" {
+			foundArchived = true
+		}
 	}
+	if !foundArchived {
+		t.Fatal("canonical library did not retain the archived Skill")
+	}
+
 	r.must(delivery.SkillsLibraryRestore, protocol.SkillNameRequest{Name: "verify"}, "restore")
 	proposal.Instructions = "Read the revised invariants before publication."
 	current, _, err := library.SubmitProposal(t.Context(), proposal)
 	if err != nil {
 		t.Fatal(err)
 	}
-	compare()
+	inspect()
 	stale := protocol.SkillProposalRef{Workspace: query.Workspace, Scope: protocol.SkillProposalScopeUser, Name: ref.Name, Revision: ref.Revision}
 	refuse(delivery.SkillsProposalsApprove, stale, protocol.ErrRevisionConflict)
 	stale.Revision = current.Revision
 	r.must(delivery.SkillsProposalsApprove, stale, "approve-current")
-	compare()
+	inspect()
 	r.close()
 	r = poMCPOpen(t, cfg)
-	compare()
+	inspect()
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-	for _, check := range checks {
-		refuse(check.plugin, check.scoped, protocol.ErrPluginDisabled)
-	}
+	refuse(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)
 	before := r.must(delivery.SkillsLibraryList, struct{}{}, "")
 	proposal.Name = "pending"
 	if _, _, err := library.SubmitProposal(t.Context(), proposal); err != nil {
@@ -123,7 +115,6 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 	if proposals := r.must(delivery.SkillsProposalsList, query, ""); !reflect.DeepEqual(proposals, pending) {
 		t.Fatal("uninstall changed the pending proposal")
 	}
-	for _, check := range checks {
-		refuse(check.plugin, check.scoped, protocol.ErrPluginNotFound)
-	}
+	refuse(delivery.PluginsReadResource, resource, protocol.ErrPluginNotFound)
+
 }

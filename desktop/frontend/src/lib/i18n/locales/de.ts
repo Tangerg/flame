@@ -501,16 +501,6 @@ export const de: Record<string, string> = {
   "toolAction.copyCommand": "Befehl kopieren",
   "approval.fallbackText": "Diese Aktion genehmigen?",
 
-  "skills.inspect": "Skill lesen",
-  "skills.noProject": "Wähle ein Projekt, um Skills und Vorschläge anzusehen.",
-  "skillLibrary.select": "Persönlichen Skill auswählen",
-  "skillProposals.select": "Vorschlag auswählen",
-  "skills.title": "Skills",
-  "skills.tab.available": "Verfügbar",
-  "skills.tab.review": "Prüfen",
-  "skills.tab.library": "Persönlich",
-  "skills.disabled.title": "Skills sind deaktiviert",
-
   "shortcuts.sub":
     "Jede von integrierten und Benutzer-Plugins registrierte Tastenkombination. Drücke eine Kombination irgendwo in der App, um sie auszulösen; Bindungskonflikte werden immer zugunsten der letzten Registrierung gelöst.",
   "shortcuts.filter": "Nach Aktion oder Kombi filtern…",
@@ -734,20 +724,6 @@ export const de: Record<string, string> = {
   "workspace.view.title.file": "Dateien",
   "settings.theme.system": "System",
   "runError.action.retryIn": "Erneut versuchen in {{seconds}} s",
-  "skillLibrary.section.active": "Aktiv",
-  "skillLibrary.section.archived": "Archiviert",
-  "skillLibrary.archiveEffect":
-    "Archivieren betrifft die künftige Skill-Auflösung; vorhandene Anweisungen im Gespräch bleiben erhalten.",
-  "skillLibrary.archive": "Archivieren",
-  "skillLibrary.restore": "Wiederherstellen",
-  "skillLibrary.error": "Skill konnte nicht aktualisiert werden.",
-  "skillProposals.approve": "Übernehmen",
-  "skillProposals.reject": "Ablehnen",
-  "skillProposals.scope.project": "Projekt",
-  "skillProposals.scope.user": "Persönlich",
-  "skillProposals.conflict":
-    "Dieser Vorschlag kann nicht mehr wie geprüft angewendet werden. Bitte den aktuellen Vorschlag erneut prüfen.",
-  "skillProposals.error": "Vorschlag konnte nicht bearbeitet werden.",
   "schedules.select": "Zeitplan auswählen",
   "schedules.template": "Vorlage verwenden",
   "schedules.enable": "Aktivieren",

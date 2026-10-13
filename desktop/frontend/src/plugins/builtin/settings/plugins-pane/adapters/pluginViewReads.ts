@@ -1,10 +1,6 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { Page, Schedule, ReadPluginViewRequest } from "@flame/runtime-contract/wire";
-import type {
-  PluginViewReads,
-  SkillViewTarget,
-  SkillViewSnapshot,
-} from "../application/pluginView";
+import type { PluginViewReads } from "../application/pluginView";
 
 export function createScheduleViewReads(
   plugins: Pick<FlameClient["plugins"], "readView" | "readSchedules">,
@@ -14,48 +10,6 @@ export function createScheduleViewReads(
   return createViewReads(plugins, view, (cursor, signal) =>
     plugins.readSchedules({ ...view, cursor }, signal),
   );
-}
-
-export function createSkillViewReads(
-  plugins: Pick<
-    FlameClient["plugins"],
-    "readView" | "readSkills" | "readSkill" | "readSkillLibrary" | "readSkillProposals"
-  >,
-  binding: Readonly<ReadPluginViewRequest>,
-  target: Readonly<SkillViewTarget>,
-): PluginViewReads<SkillViewSnapshot> {
-  const view = Object.freeze({ ...binding });
-  const captured =
-    target.type === "library" ? { ...target } : { ...target, workspace: { ...target.workspace } };
-  return createViewReads(plugins, view, async (cursor, signal): Promise<SkillViewSnapshot> => {
-    if (cursor !== undefined)
-      throw new Error("Skill catalogs and documents have no cursor continuation");
-    switch (captured.type) {
-      case "available":
-        return {
-          type: captured.type,
-          data: await plugins.readSkills({ ...view, workspace: captured.workspace }, signal),
-        };
-      case "detail":
-        return {
-          type: captured.type,
-          data: await plugins.readSkill(
-            { ...view, workspace: captured.workspace, name: captured.name },
-            signal,
-          ),
-        };
-      case "library":
-        return { type: captured.type, data: await plugins.readSkillLibrary(view, signal) };
-      case "review":
-        return {
-          type: captured.type,
-          data: await plugins.readSkillProposals(
-            { ...view, workspace: captured.workspace },
-            signal,
-          ),
-        };
-    }
-  });
 }
 
 function createViewReads<T>(

@@ -64,3 +64,8 @@ The Reviews workspace declaration and actual ESM loader are implemented. Shared
 renderer/provider execution proof, remaining placements and complete browser/Wails
 lifecycle acceptance remain open. No UI/E2E execution
 is part of this development slice.
+
+Core Runtime failures are classified with the shared SDK's `isErrorType` export.
+Components must use this host module rather than bundling another RPC error class;
+class identity is part of the Runtime client's typed failure contract. Business
+operation refusals continue to use the SDK's OperationFailure and code/message.

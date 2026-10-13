@@ -238,10 +238,7 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 		}
 		query.Cursor = page.NextCursor
 	}
-	wrong := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSkills, protocol.ReadPluginSkillsRequest{ReadPluginViewRequest: view, Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-	if !errors.Is(wrong.Failure, protocol.ErrPluginNotFound) {
-		t.Fatalf("schedule page admitted Skills: %v", wrong.Failure)
-	}
+
 	r.close()
 	r = poMCPOpen(t, cfg)
 	restarted := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])

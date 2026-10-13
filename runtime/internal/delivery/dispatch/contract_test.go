@@ -66,44 +66,6 @@ func (c *capabilityRuntime) UsageSummary(context.Context, protocol.UsageSummaryR
 	return &protocol.UsageSummary{}, nil
 }
 
-func (c *capabilityRuntime) ReadPluginSkills(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error) {
-	return &protocol.SkillDiscovery{Skills: []protocol.Skill{}, Diagnostics: []protocol.SkillDiagnostic{}}, nil
-}
-func (c *capabilityRuntime) ReadPluginSkill(context.Context, protocol.ReadPluginSkillRequest) (*protocol.SkillDetail, error) {
-	return &protocol.SkillDetail{Skill: protocol.Skill{Name: "verify", Scope: protocol.SkillScopeUser}, Path: "/runtime/verify/SKILL.md", Revision: strings.Repeat("1", 64), Instructions: "Verify"}, nil
-}
-func (c *capabilityRuntime) ReadPluginSkillLibrary(context.Context, protocol.ReadPluginViewRequest) (*protocol.Page[protocol.ManagedSkill], error) {
-	return protocol.NewPage([]protocol.ManagedSkill{}), nil
-}
-func (c *capabilityRuntime) ReadPluginSkillProposals(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.Page[protocol.SkillProposal], error) {
-	return protocol.NewPage([]protocol.SkillProposal{}), nil
-}
-
-func TestSkillPageReadsRequirePluginAndSkillCapabilities(t *testing.T) {
-	const binding = `"installationId":"00000000-0000-4000-8000-000000000001","digest":"1111111111111111111111111111111111111111111111111111111111111111","viewId":"skills"`
-	for _, entry := range []struct{ method, extra string }{
-		{"plugins.readSkills", `,"workspace":{"path":"/runtime"}`},
-		{"plugins.readSkill", `,"workspace":{"path":"/runtime"},"name":"verify"`},
-		{"plugins.readSkillLibrary", ""},
-		{"plugins.readSkillProposals", `,"workspace":{"path":"/runtime"}`},
-	} {
-		for _, enabled := range []map[string]bool{
-			{protocol.FeaturePlugins: false, protocol.FeatureSkills: true},
-			{protocol.FeaturePlugins: true, protocol.FeatureSkills: false},
-			{protocol.FeaturePlugins: true, protocol.FeatureSkills: true},
-		} {
-			response := call(t, enabled, entry.method, "{"+binding+entry.extra+"}")
-			if enabled[protocol.FeaturePlugins] && enabled[protocol.FeatureSkills] {
-				if response.Error != nil {
-					t.Fatalf("%s: %+v", entry.method, response.Error)
-				}
-			} else if got := problemType(t, response); got != "capability_not_negotiated" {
-				t.Fatalf("%s without capability: %s", entry.method, got)
-			}
-		}
-	}
-}
-
 func TestUsageSummaryIsIndependentOfPluginPresentation(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		response := call(t, map[string]bool{protocol.FeaturePlugins: enabled}, "usage.summary", `{"sinceDays":7}`)
@@ -312,6 +274,38 @@ func TestCanonicalDiffRequiresGitAndRetiresPluginWrapper(t *testing.T) {
 		}
 		if got := problemType(t, call(t, features, "plugins.readDiff", `{}`)); got != "method_not_found" {
 			t.Fatalf("retired diff entrance: %s", got)
+		}
+	}
+}
+
+func (c *capabilityRuntime) ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery) (*protocol.SkillDiscovery, error) {
+	return &protocol.SkillDiscovery{Skills: []protocol.Skill{}, Diagnostics: []protocol.SkillDiagnostic{}}, nil
+}
+func (c *capabilityRuntime) GetDiscoveredSkill(context.Context, protocol.SkillDetailRequest) (*protocol.SkillDetail, error) {
+	return &protocol.SkillDetail{Skill: protocol.Skill{Name: "verify", Scope: protocol.SkillScopeUser}, Path: "/runtime/verify/SKILL.md", Revision: strings.Repeat("1", 64), Instructions: "Verify"}, nil
+}
+func (c *capabilityRuntime) ListManagedSkills(context.Context) (*protocol.Page[protocol.ManagedSkill], error) {
+	return protocol.NewPage([]protocol.ManagedSkill{}), nil
+}
+func (c *capabilityRuntime) ListSkillProposals(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error) {
+	return protocol.NewPage([]protocol.SkillProposal{}), nil
+}
+func TestCanonicalSkillReadsAreIndependentOfPluginPresentation(t *testing.T) {
+	for _, entry := range []struct{ method, params, retired string }{
+		{"skills.discovered.list", `{"workspace":{"path":"/runtime"}}`, "plugins.readSkills"},
+		{"skills.discovered.get", `{"workspace":{"path":"/runtime"},"name":"verify"}`, "plugins.readSkill"},
+		{"skills.library.list", `{}`, "plugins.readSkillLibrary"},
+		{"skills.proposals.list", `{"workspace":{"path":"/runtime"}}`, "plugins.readSkillProposals"},
+	} {
+		response := call(t, map[string]bool{protocol.FeatureSkills: true, protocol.FeaturePlugins: false}, entry.method, entry.params)
+		if response.Error != nil {
+			t.Fatalf("canonical Skill read depends on presentation: %v", response.Error)
+		}
+		if got := problemType(t, call(t, map[string]bool{protocol.FeatureSkills: false}, entry.method, entry.params)); got != "capability_not_negotiated" {
+			t.Fatalf("Skill capability gate: %s", got)
+		}
+		if got := problemType(t, call(t, map[string]bool{protocol.FeatureSkills: true}, entry.retired, `{}`)); got != "method_not_found" {
+			t.Fatalf("retired Skill wrapper: %s", got)
 		}
 	}
 }

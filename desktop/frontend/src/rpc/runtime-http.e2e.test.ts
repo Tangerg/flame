@@ -1229,11 +1229,7 @@ for await (const line of lines) {
           "utf8",
         ),
       );
-      await expect(
-        client.plugins.readSkills({ ...view, workspace: { path: root } }),
-      ).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
-      );
+
       await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
       await expect(client.plugins.readSchedules(view)).rejects.toMatchObject({ code: -32042 });
       await expect(client.schedules.list()).rejects.toSatisfy(

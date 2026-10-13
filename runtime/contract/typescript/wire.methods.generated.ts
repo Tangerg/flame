@@ -110,8 +110,6 @@ import type {
   ReadPluginRendererRequest,
   ReadPluginResourceRequest,
   ReadPluginSchedulesRequest,
-  ReadPluginSkillRequest,
-  ReadPluginSkillsRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
   ResolvePluginPointRequest,
@@ -254,10 +252,6 @@ const METHOD_NAMES = [
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
-  "plugins.readSkills",
-  "plugins.readSkill",
-  "plugins.readSkillLibrary",
-  "plugins.readSkillProposals",
   "plugins.readSchedules",
   "plugins.renameSession",
   "plugins.readView",
@@ -382,10 +376,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
-  "plugins.readSkills",
-  "plugins.readSkill",
-  "plugins.readSkillLibrary",
-  "plugins.readSkillProposals",
   "plugins.readSchedules",
   "plugins.renameSession",
   "plugins.readView",
@@ -876,34 +866,6 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "plugins.readRenderer": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.readSkills": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.readSkill": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.readSkillLibrary": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.readSkillProposals": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1412,18 +1374,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.readRenderer": [
     { requires: ["plugins"] },
   ],
-  "plugins.readSkills": [
-    { requires: ["plugins", "skills"] },
-  ],
-  "plugins.readSkill": [
-    { requires: ["plugins", "skills"] },
-  ],
-  "plugins.readSkillLibrary": [
-    { requires: ["plugins", "skills"] },
-  ],
-  "plugins.readSkillProposals": [
-    { requires: ["plugins", "skills"] },
-  ],
   "plugins.readSchedules": [
     { requires: ["plugins", "schedules"] },
   ],
@@ -1568,10 +1518,6 @@ export interface WireShapes {
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
   "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };
-  "plugins.readSkills": { params: ReadPluginSkillsRequest; result: SkillDiscovery };
-  "plugins.readSkill": { params: ReadPluginSkillRequest; result: SkillDetail };
-  "plugins.readSkillLibrary": { params: ReadPluginViewRequest; result: PageOfManagedSkill };
-  "plugins.readSkillProposals": { params: ReadPluginSkillsRequest; result: PageOfSkillProposal };
   "plugins.readSchedules": { params: ReadPluginSchedulesRequest; result: PageOfSchedule };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };

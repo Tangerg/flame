@@ -45,7 +45,7 @@ describe("workspace Runtime data providers", () => {
     try {
       await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx, () => client));
 
-      for (const key of ["skills", "skill-proposals", "agent-memory", "list-files", "read-file"]) {
+      for (const key of ["agent-memory", "list-files", "read-file"]) {
         const fetcher = lookupDataProvider(key);
         expect(fetcher).toBeDefined();
         await expect(fetcher!()).rejects.toThrow(`Data provider "${key}" requires parameters`);
@@ -53,64 +53,6 @@ describe("workspace Runtime data providers", () => {
     } finally {
       await client.close();
     }
-  });
-
-  it("workspace catalogs bind the selected project and retain proposal decision scope", async () => {
-    const { value: skills, requests: skillRequests } = await runProvider<{
-      skills: Array<{ name: string; scope: string }>;
-      diagnostics: [];
-    }>(
-      "skills",
-      [
-        [
-          "skills.discovered.list",
-          { skills: [{ name: "verify", scope: "project" }], diagnostics: [] },
-        ],
-      ],
-      {
-        cwd: "/work/alpha",
-      },
-    );
-    expect(skillRequests[0]?.params).toEqual({ workspace: { path: "/work/alpha" } });
-    expect(skills).toEqual({
-      skills: [{ name: "verify", description: "", scope: "project" }],
-      diagnostics: [],
-    });
-
-    const { value: proposals, requests: proposalRequests } = await runProvider<
-      Array<{ workspace: string; name: string }>
-    >(
-      "skill-proposals",
-      [
-        [
-          "skills.proposals.list",
-          {
-            data: [
-              {
-                name: "verify",
-                revision: "a12dd3a7fd3203a452eb34d91a9be20569d5e337a3384347068895c07f3e0c5a",
-                scope: "project",
-                description: "Verify changes",
-                instructions: "Run the checks.",
-                origin: "requested",
-              },
-            ],
-          },
-        ],
-      ],
-      { cwd: "/work/beta" },
-    );
-    expect(proposalRequests[0]?.params).toEqual({ workspace: { path: "/work/beta" } });
-    expect(proposals[0]).toEqual({
-      workspace: "/work/beta",
-      name: "verify",
-      revision: "a12dd3a7fd3203a452eb34d91a9be20569d5e337a3384347068895c07f3e0c5a",
-      scope: "project",
-      description: "Verify changes",
-      instructions: "Run the checks.",
-      origin: "requested",
-      revises: false,
-    });
   });
 
   it("projects: maps WorkspaceSummary identity into workspace rows", async () => {

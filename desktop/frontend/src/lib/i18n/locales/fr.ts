@@ -510,16 +510,6 @@ export const fr: Record<string, string> = {
   "toolAction.copyCommand": "Copier la commande",
   "approval.fallbackText": "Approuver cette action ?",
 
-  "skills.inspect": "Lire une compétence",
-  "skills.noProject": "Choisissez un projet pour consulter les compétences et les propositions.",
-  "skillLibrary.select": "Choisir une compétence personnelle",
-  "skillProposals.select": "Choisir une proposition",
-  "skills.title": "Compétences",
-  "skills.tab.available": "Disponibles",
-  "skills.tab.review": "À valider",
-  "skills.tab.library": "Personnel",
-  "skills.disabled.title": "Compétences désactivées",
-
   "shortcuts.sub":
     "Chaque raccourci enregistré par les plugins intégrés et utilisateur. Appuyez sur une combinaison n'importe où dans l'application pour l'activer ; les conflits de liaison sont toujours résolus en faveur du dernier enregistrement.",
   "shortcuts.filter": "Filtrer par action ou combinaison…",
@@ -748,20 +738,6 @@ export const fr: Record<string, string> = {
   "workspace.view.title.file": "Fichiers",
   "settings.theme.system": "Système",
   "runError.action.retryIn": "Réessayer dans {{seconds}} s",
-  "skillLibrary.section.active": "Actives",
-  "skillLibrary.section.archived": "Archivées",
-  "skillLibrary.archiveEffect":
-    "L’archivage affecte les résolutions futures ; les instructions déjà présentes dans une conversation restent.",
-  "skillLibrary.archive": "Archiver",
-  "skillLibrary.restore": "Restaurer",
-  "skillLibrary.error": "Impossible de mettre à jour la compétence.",
-  "skillProposals.approve": "Approuver",
-  "skillProposals.reject": "Rejeter",
-  "skillProposals.scope.project": "Projet",
-  "skillProposals.scope.user": "Personnel",
-  "skillProposals.conflict":
-    "Cette proposition ne peut plus être appliquée telle que relue. Relisez la proposition actuelle avant de décider.",
-  "skillProposals.error": "Impossible de traiter la proposition.",
   "schedules.select": "Choisir une planification",
   "schedules.template": "Utiliser un modèle",
   "schedules.enable": "Activer",

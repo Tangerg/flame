@@ -16,8 +16,6 @@ import type {
   ReadPluginViewRequest,
   ReadPluginRendererRequest,
   ReadPluginSchedulesRequest,
-  ReadPluginSkillsRequest,
-  ReadPluginSkillRequest,
   RenamePluginSessionRequest,
   InstallPluginRequest,
   StagePluginRequest,
@@ -349,16 +347,6 @@ export interface Methods {
       params: ReadPluginRendererRequest,
       signal?: AbortSignal,
     ) => Promise<PluginViewResource>;
-    readSkills: (params: ReadPluginSkillsRequest, signal?: AbortSignal) => Promise<SkillDiscovery>;
-    readSkill: (params: ReadPluginSkillRequest, signal?: AbortSignal) => Promise<SkillDetail>;
-    readSkillLibrary: (
-      params: ReadPluginViewRequest,
-      signal?: AbortSignal,
-    ) => Promise<Page<ManagedSkill>>;
-    readSkillProposals: (
-      params: ReadPluginSkillsRequest,
-      signal?: AbortSignal,
-    ) => Promise<Page<SkillProposal>>;
     readSchedules: (
       params: ReadPluginSchedulesRequest,
       signal?: AbortSignal,
@@ -680,11 +668,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),
       readRenderer: (params, signal) => call("plugins.readRenderer", params, { signal }),
-      readSkills: (params, signal) => call("plugins.readSkills", params, { signal }),
-      readSkill: (params, signal) => call("plugins.readSkill", params, { signal }),
-      readSkillLibrary: (params, signal) => call("plugins.readSkillLibrary", params, { signal }),
-      readSkillProposals: (params, signal) =>
-        call("plugins.readSkillProposals", params, { signal }),
       readSchedules: (params, signal) => call("plugins.readSchedules", params, { signal }),
       list: (signal) => call("plugins.list", {}, { signal }),
       install: (params) => call("plugins.install", params),

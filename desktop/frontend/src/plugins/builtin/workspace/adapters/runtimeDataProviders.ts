@@ -5,15 +5,11 @@ import type {
   WorkspaceFileChange as RpcFileChange,
   WorkspaceSummary as RpcWorkspaceSummary,
 } from "@flame/runtime-contract/client";
-import { emptyListIfUngated } from "@/lib/rpcErrors";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { agentMemoryEntry } from "./runtimeAgentMemoryGateway";
 import {
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_SKILLS_KEY,
-  WORKSPACE_MANAGED_SKILLS_KEY,
-  WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
@@ -21,7 +17,6 @@ import {
   type WorkspaceListFilesQuery,
   type WorkspaceReadFileQuery,
   type AgentMemoryQuery,
-  type WorkspaceCatalogQuery,
   type WorkspaceFileChange as WorkspaceFileChangeSummary,
   type WorkspaceProjectSummary,
 } from "../application/workspaceQueries";
@@ -54,54 +49,6 @@ export function registerWorkspaceDataProviders(
         signal,
       );
       return (await pageData(resources.changes.list(signal))).map(toWorkspaceFileChangeSummary);
-    },
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: WORKSPACE_SKILLS_KEY,
-    fetcher: async (params, signal) => {
-      const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_SKILLS_KEY, params);
-      const resources = await workspace(query.cwd, signal);
-      const catalog = await resources.skills.listDiscovered(signal);
-      return {
-        skills: catalog.skills.map((s) => ({
-          name: s.name,
-          description: s.description ?? "",
-          scope: s.scope,
-          installation: s.installation,
-        })),
-        diagnostics: catalog.diagnostics,
-      };
-    },
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: WORKSPACE_MANAGED_SKILLS_KEY,
-    fetcher: async (_params, signal) =>
-      (await pageData(runtimeClient().skills.listLibrary(signal)).catch(emptyListIfUngated)).map(
-        (s) => ({
-          name: s.name,
-          description: s.description ?? "",
-          lifecycle: s.lifecycle,
-        }),
-      ),
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: WORKSPACE_SKILL_PROPOSALS_KEY,
-    fetcher: async (params, signal) => {
-      const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_SKILL_PROPOSALS_KEY, params);
-      const resources = await workspace(query.cwd, signal);
-      return (await pageData(resources.skills.listProposals(signal)).catch(emptyListIfUngated)).map(
-        (p) => ({
-          workspace: resources.ref.path,
-          name: p.name,
-          revision: p.revision,
-          scope: p.scope,
-          description: p.description,
-          instructions: p.instructions,
-          origin: p.origin,
-          revises: p.revises === true,
-          ...(p.sourceSession ? { sourceSession: p.sourceSession } : {}),
-        }),
-      );
     },
   });
   ctx.contribute(DATA_PROVIDER, {
