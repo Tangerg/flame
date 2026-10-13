@@ -2,51 +2,63 @@
 
 ## Current stage
 
-Stage 4l (89634015) migrates actual CLI Schedule deletion to the public installed
-operation and deletes the Core schedules.delete entrance, Go method, handler,
-selected-role forwarder, port, request type, generated contracts and TS client
-method together. Core is 2026-10-14.8; the backend protocol, Schedule business
-transition, private receipt and storage remain unchanged. Remaining create/update/
-run-now Core entrances are current consumers awaiting migration, not aliases.
+Stage 4m (5223d13f) migrates actual CLI Schedule manual execution to the public
+installed operation. It captures the publisher's generated Item input and full
+installation/release/contribution/contract/target binding, persists original intent
+before I/O and resumes that request before any current provider discovery. The
+terminal reports pending intent and /schedule-run <original-full-id> reconciles
+it. A settled command permits a later new execution with a new identity.
 
-The CLI workbench owns a new pending installed-command intent record. Before I/O,
-it retains the original installation, release digest, contribution, complete
-contract, method, target, exact input bytes, command ID and Runtime replay guard.
-It contains no business result. The workflow reads pending intent before current
-provider discovery and uses the existing mutation confirmation/admission policy.
-Unavailable original owners, transport loss, changed Runtime stores and expired
-replay promises retain the intent and unknown outcome. Only owner acknowledgement
-or definite business refusal retires it. Failed durable staging cannot dispatch;
-failed retirement keeps the same identity for receipt reconciliation.
+The shared installed-command workflow now returns a decoded owner acknowledgement.
+Decoding precedes intent retirement. A missing, malformed or unrecognized reply
+retains the original command and unknown outcome; a decoder's Refusal-shaped error
+cannot become evidence that the business owner refused. Only a refusal witnessed
+at the owner call or a successfully decoded acknowledgement retires intent. Results
+are returned to the caller, never persisted in a competing outcome store. The CLI
+projects the generated publisher output into a Session/Run reference and validates
+both through existing public opaque-ID rules, without inventing prefix constraints.
 
-A lost-response/reopen regression caught JSON indentation changing captured input
-bytes. The local wire projection now encodes input bytes as binary, so persistence
-formatting cannot alter them. Request copies isolate callers from the durable
-intent. Startup reports pending intents; /schedule-delete <original-full-id>
-resumes an unresolved deletion without listing or selecting another provider.
-No new host outcome store, compatibility reader or second business transition exists.
+Delete Core schedules.runNow, RunScheduleNow Go/TS methods, request/response types,
+handler/port/selected-role forwarder and its special callback opening. The generic
+installed call supplies Runtime callbacks; backend capture/private receipt and Core
+Run acceptance remain with their existing owners. Remove the retired delivery fake
+and exclusive prompt-error case. Core is 2026-10-14.9; backend protocol and business/
+storage formats remain unchanged. Create/update Core entrances remain actual consumers
+awaiting migration. No alias, compatibility translation or second Run opening exists.
 
-Production Runtime/CLI/Reviews builds, Desktop types/Vite and source/layer checks
-pass. Original request/restart/store-fence/unavailable-owner/persistence/refusal
-checks pass (0.651s); actual CLI adapter operation/pagination checks pass (7.398s).
-Terminal test sources compile into a removed temporary binary. No frontend UI/E2E/
-screenshot tests were added or run; one retired Core-delete-dependent HTTP case
-was removed. The source gate is 98/98 (87 graphical, four Go headless, six
-materialized, one HTTP), three sidecars and 15 topics. Initial stale generated
-receiver/CLI test-call compilation failures and the input-byte regression are fixed;
-no active failure remains in executed checks.
+Existing native response-loss/restart/disablement/missing-receipt sources now capture
+one public installed request and reuse it for original receipt recovery. The live
+fixture uses the same public entrance and is compiled only. Generic shared-client
+mutation/reload/hot-swap/store/persistence cases now use canonical sessions.fork;
+all 59 selected pure transport/journal checks pass. No frontend UI/E2E/screenshot
+checks were added or run, and no frontend test source changed in this slice.
 
-Main 993eb865 remains integrated; merge is already up to date. Original proposal,
-review and draft hashes remain unchanged. Owned Desktop dist and temporary binaries
-are removed. Native Runtime restart/disablement/uninstall acceptance and full/vet/
-race remain final-phase obligations. Next migrate actual Schedule create/update/
-run-now and Memory facades with original command recovery, then complete Tool and
-cross-plugin consumers, scoped dependencies, canonical model streaming decorators,
-cross-generation recovery, independent author parity and every P01-P48/final check.
+Production Runtime/CLI/Reviews builds, Desktop/shared types, Vite, source/layer gates
+pass. Installed-command decoder/intent/owner-refusal checks pass (0.652s), actual CLI
+operation/reference checks pass (6.003s), delivery failures pass (0.870s). Bootstrap,
+delivery, Runtime and terminal test sources compile into removed temporary binaries.
+Initial test-source type/pointer/casing errors are fixed. An invalid new test assumed
+opaque IDs required prefixes; the existing public validator disproves that assumption,
+and the test now checks actual forbidden whitespace. No active executed failure remains.
+
+Source gate is 97/97 (87 graphical, three Go headless, six materialized, one HTTP),
+three sidecars and 15 topics. Main 993eb865 remains integrated; merge is up to date.
+Original proposal/review/draft hashes remain unchanged. Owned dist/temp outputs are
+removed. Full/vet/race/native process and credentialed live execution remain final-phase
+obligations. Next migrate actual Schedule create/update and Memory facades, then finish
+Tool/cross-plugin consumers, scoped dependencies, canonical model streaming decorators,
+cross-generation recovery, independent author parity and all P01-P48/final acceptance.
 The full goal remains active.
 
 ## Completed
 
+- Stage 4m (5223d13f): actual CLI manual execution uses the public installed method,
+  generated input/output, original durable intent and accepted Core reference.
+- Stage 4m: decoded acknowledgement precedes retirement; decoder failures retain
+  original intent even when shaped like a business refusal. No result store added.
+- Stage 4m: delete Core run-now Go/TS/protocol/handler/port/selected-role callback
+  path and obsolete fixtures; preserve backend/Core ownership. Generated Core .9,
+  consumers and docs updated; focused checks pass, final native execution open.
 - Stage 4l (89634015): CLI Schedule deletion calls the original public installed
   operation; durable pending intent precedes dispatch and survives client reopen.
 - Stage 4l: original provider/release/contract/target/input/key recovery, replay
@@ -354,6 +366,10 @@ The full goal remains active.
 
 ## In progress
 
+- CLI Schedule deletion and manual execution now share original intent recovery.
+  Create/update and Memory entrances remain under migration; final native acceptance
+  must exercise the migrated public requests across actual Runtime process loss,
+  disablement/replacement/uninstall and missing original receipts.
 - CLI Schedule deletion now retains client intent and reconciles its original
   installed command. Remaining Schedule and Memory mutations need the same actual
   consumer migration. Final process acceptance must combine client/Runtime restart,
@@ -382,6 +398,9 @@ The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Decode the owner acknowledgement before retiring client intent | A response that cannot establish the required accepted reference must not lose its original recovery identity | Retiring first, storing an independent success result or generating a replacement command after decode failure |
+| 2026-10-14 | Business refusal evidence is witnessed at the owner call, not inferred from a decoder error type | Consumer projection can fail with the same error class without proving that an accepted mutation was refused | Letting a consumer codec originate the business outcome or treating malformed output as definitive rejection |
+| 2026-10-14 | Manual execution uses the generic installed callback opening and removes its Core facade | Backend capture/reconciliation and Runtime acceptance already own the transitions; the selected-role wrapper adds another entrance | Keeping schedules.runNow, another callback route, a new Run acceptance store or replay through current selection |
 | 2026-10-14 | CLI pending installed commands belong to the existing workbench and retain only original intent | Client restart must not rediscover a provider or allocate a new command after acknowledgement loss; business receipts remain with their owner | A second outcome ledger, fresh command IDs, selected-role replay, automatic outcome inference or a compatibility facade |
 | 2026-10-14 | Persist accepted input bytes as binary in the local intent projection | JSON formatting changes raw JSON byte layout; original request evidence must survive durable encoding exactly | Reconstructing input from current feature data, comparing only current business state or retaining two writable inputs |
 | 2026-10-14 | Unavailable owners and replay-store/deadline fences retain unresolved intent | Admission failure does not prove that an earlier dispatch was refused or failed | Clearing unknown intent, silent success, retrying a replacement installation or inventing a new success record |
@@ -517,7 +536,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
-| No-Run unresolved human command pins original binding and recovery evidence | Stage 4l actual CLI deletion persists original installed request before I/O and resumes it after client reopen; input-byte/store-fence/owner-unavailable/refusal/persistence checks pass. Existing Runtime original routing evidence retained; final native restart/replacement acceptance and remaining entrances open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
+| No-Run unresolved human command pins original binding and recovery evidence | Stage 4l/4m actual CLI deletion/manual execution persist original request before I/O; input-byte/store/owner/persistence and decode-before-retirement checks pass. Consumer decoding cannot originate a business refusal. Existing Runtime original routing evidence retained; final native restart/replacement acceptance and remaining entrances open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
 | One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Built-in manager provider/dependency/point inspection and localized optional-module recovery implemented; final lifecycle acceptance open | PackageManager.tsx; ProviderSelections.tsx; ContributionRequirements.tsx; PointInspection.tsx; InstalledComponent.tsx; CLI |
@@ -545,6 +564,36 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4m CLI installed manual execution and Core run-now deletion
+
+- Passed: shared installed-command owner/intent checks (0.652s), including decoder
+  failure with a Refusal-shaped error retaining the original command, followed by
+  the same-identity successfully decoded owner acknowledgement and retirement.
+- Passed: actual CLI operation/pagination plus complete accepted-reference checks
+  (6.003s). Output comes from the unchanged publisher contract, including its exact
+  SessionID/RunID spelling; missing IDs, forbidden whitespace, unknown fields and
+  absent acknowledgements cannot become accepted references.
+- Passed: delivery missing-resource and prompt-budget owner checks (0.870s).
+- Passed: shared-client pure methods/journal checks, 59 tests in two files (801ms).
+  Existing generic unary recovery cases now use canonical Session fork instead of
+  the deleted Schedule facade. Shared and Desktop TypeScript compilation pass.
+- Passed: Runtime/CLI/Reviews production Go builds, Desktop Vite, API coverage 97/97,
+  layer closure, owned-source gofmt and git diff --check. Bootstrap/delivery/Runtime/
+  terminal test sources compile only; temporary binaries/directories are removed.
+- Fixed: broad JSON fixture enums did not satisfy a newly typed mock promise;
+  transport mocks now retain their imported raw sample type. Live helper pointer
+  signatures and publisher-case output fixtures are corrected. A prefix-only ID
+  assertion was a test error under the documented opaque-ID contract and is replaced
+  with a real invalid value; no production rule or valid assertion is weakened.
+- Passed: original proposal/review/draft hashes unchanged, main merge up to date,
+  product committed and owned dist/temp outputs removed.
+- Not run: frontend UI/E2E/screenshot checks (explicit exclusion; no such source was
+  added or edited). Full/vet/race/native process and credentialed live probes remain
+  the final concentrated phase. Compilation does not establish native recovery.
+- Breaking: Core .9 removes RunScheduleNow/schedules.runNow and their transport DTOs;
+  external consumers must use the installed operation. Backend protocol/storage and
+  accepted Run/private receipt owners are unchanged; no compatibility alias exists.
 
 ### Stage 4l CLI installed Schedule deletion and durable original intent
 
@@ -1414,6 +1463,9 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Stage 4m migrates the actual manual entrance and preserves original request/typed
+  acknowledgement ordering. The native public-call response-loss/restart/disablement
+  matrix is compiled but remains unexecuted until final consolidated acceptance.
 - Stage 4l proves CLI intent persistence/reopen and public adapter dispatch, not the
   complete native client-plus-Runtime response-loss/restart/replacement matrix.
   Remaining Schedule create/update/run-now and Memory facades are still real work.
@@ -1464,6 +1516,10 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Core .9 removes a public Schedule manual-execution method and both DTOs. All
+  in-repository callers and generated projections migrate; external consumers
+  need the published installed operation. Remaining Core create/update methods
+  are actual work, and no removed-method request is translated through an alias.
 - Stage 4l removes a public Go/Protocol/TS Schedule deletion entrance. In-repository
   callers and generated contracts are migrated; external consumers cannot be
   enumerated from this checkout and must adopt the documented public installed call.
