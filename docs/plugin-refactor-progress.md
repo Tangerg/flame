@@ -2,43 +2,51 @@
 
 ## Current stage
 
-Stage 3q committed in af081e07 implements consumer-owned point values and a real deterministic Reviews
-analyzer consumer/producer. The pure public point contract owns value schema,
-applicability over a frozen target/context, optional absence, canonical collection
-keys and explicit selection/decoration/presentation order. Namespace-local point
-contracts and values are admitted without activating code. One Core query serves
-Go, Protocol, CLI and TypeScript; the typed helper checks the consumer schema.
+Stage 3r committed in fd9b754b implements the public TypeScript component authoring boundary and the
+ordinary Reviews Board. The SDK captures an installed binding, consumer contract,
+concrete target and input before dispatch; queries and typed commands share the
+existing public operation entrance. Mapped command replies preserve the original
+mutation key/retry closure and shared Runtime uncertainty classifier. Reviews
+reads current owner data, submits inspected revision/status, rereads after a known
+outcome, displays conflicts/unknown acknowledgement, preserves prior reads on
+refresh failure and invokes the installed analyzer query. It owns no review store.
 
-Reviews declares an optional analyzer collection and named callable dependency,
-reads its own current snapshot, invokes same-release installed analyzer bindings
-through the ordinary public callback and installed operation, then admits findings
-against that snapshot's review ID/revision. The separate analyzer package has no
-private data or Runtime internal import. It returns deterministic findings and
-cannot change Reviews' records. A checklist-only policy example was replaced
-before committing; it did not satisfy the requested executable analyzer seam.
+The existing Rolldown toolchain produces a 9,893-byte prebuilt ESM component with
+React/JSX/SDK/UI imports externalized. Private dependencies and relative assets
+use the ordinary bundle format. Public SDK and Board type checks, shared UI/icons
+builds, Core/feature generation, production Runtime/CLI/Reviews builds and six
+owning Go test binaries compile. The source is not yet registered/reachable in the
+shipping workbench. Shared module mapping, exact-release asset loading, public
+placement, generation retirement, full lifetime joining, durable UI recovery on
+reload, browser/Wails integration and legacy carrier deletion remain open.
 
-Production Runtime/CLI/Reviews builds, Core/Reviews generation, shared TS types,
-changed formatting and seven affected test binaries pass. Necessary focused
-point/application checks previously passed (0.793s/0.810s); package local contract
-admission, exact analyzer routing/evidence admission and the deterministic producer
-now pass (0.929s/0.970s/1.798s). Complete installed process/callback/lifetime proof,
-full tests/vet/races and remaining platform acceptance are deferred. This does not
-close full point lifecycle, durable scoped composition, required decorator members,
-components, canonical models, streaming or complete Reviews graphical acceptance.
+Actual authoring exposed a cross-language contract bug: JavaScript numbers round
+Go Schema integer bounds and alter exact capability identity. `plugins.call`
+now transports the complete canonical contract as an immutable JSON string.
+Go binding, CLI, shared TS request policy and SDK migrate together without an
+object-reader fallback. Existing feature generation emits `CAPABILITY_JSON` from
+the pure owner's identity bytes, preserving number lexemes. Core advances to
+2026-10-13.6; backend callable protocol remains 2026-10-13.4. Full Schema identity
+remains admitted by the same pure Go capability owner before execution.
 
-The full proposal/review goal remains active, approximately 30% overall. Stage 3p
-and its main integration remain committed in f82cad37/ec674681. Main 7957a603 is synchronized in 765ccacd. Resume command
-receipts/current material, plugin actor isolation and original Schedules request
-verification coexist. Core projections were regenerated at 2026-10-13.5; backend
-callable identity remains 2026-10-13.4. Merged production builds, shared TS types
-and six affected test binaries compile. A necessary focused acceptance query
-check passes in 1.354s; full execution remains deferred.
+Previous Stage 3q is committed in af081e07; main 7957a603 is synchronized in
+765ccacd. Main has no later incoming commit at this checkpoint. Full proposal/
+review scope remains active, approximately 30% overall. The compiled Board does
+not prove installed shared-renderer/component acceptance or close the full UI gate.
 
 Verification policy: development first. Compile complete slices and run only a
-necessary focused check resolving a concrete uncertainty. Concentrate full/race/
-cross-module verification at the final stage. No frontend UI/E2E/screenshot tests.
+necessary focused check resolving a concrete uncertainty. Full/race/cross-module
+execution is concentrated at the final stage. No frontend UI/E2E/screenshot tests.
 
 ## Completed
+
+- Stage 3r (fd9b754b): public `plugin-sdk`, typed bound query/command authoring, same-key retry
+  projection, ordinary Reviews Board and prebuilt ESM artifact. Compilation/build
+  evidence only; actual component loading remains open.
+- Stage 3r: canonical raw contract JSON transport replaces the public call's object
+  field. Go/CLI/TS consumers and current generators are migrated; large integer
+  schema lexemes remain exact. Necessary generator/Delivery focused checks pass.
+
 
 - Stage 3q (af081e07): pure point admission/composition, immutable installed value resolution,
   public Go/Protocol/CLI/TS query and typed consumer helper; current production and
@@ -197,15 +205,24 @@ cross-module verification at the final stage. No frontend UI/E2E/screenshot test
 
 ## Next
 
-1. Complete remaining point lifecycle/scoped composition, named dependency status/retention and actual Tool/automatic/cross-plugin consumer migration over the implemented setup/frozen session bindings. Reuse the existing original command route and execution dependency owner. Unary target/caller context and Schedules durable trigger restoration are implemented; their final execution acceptance remains queued. The apiVersion:1 parser is deleted; remaining closed-view/carrier deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
-2. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
-3. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
-4. Complete requirement-level audit and final clean delivery.
+1. Establish exact-release module/resource loading and shared host module mapping,
+   bind Reviews Board through public placement and existing Dougong ownership,
+   then replace the existing closed HTML view/carrier paths with their real owners.
+   Prove the actual common React/provider instances; a compiled artifact is not proof.
+2. Complete remaining point lifecycle/scoped composition, named dependency status/
+   retention and actual Tool/automatic/cross-plugin consumer migration. Preserve
+   original command/receipt/Run acceptance and execution dependency ownership.
+3. Complete canonical model execution and installed remote streaming decorators,
+   explicit frozen order, cancellation/backpressure and inner evidence preservation.
+4. Migrate Memory, Schedules and remaining components/owners; prove independent
+   author parity and complete the requirement-level final verification/deletion audit.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Transport canonical callable contract JSON as a string; emit its identity bytes from the existing generator | JavaScript object serialization rounds integer Schema limits and breaks exact identity. Metadata interpretation may parse a projection, but the dispatched contract retains its original bytes | Relaxed capability identity, unsafe integer rewriting, object/string compatibility readers, another schema compiler or a hand-authored TS descriptor |
+| 2026-10-13 | Publish a narrow explicit component context and use existing Rolldown ESM with host React/DOM/JSX/SDK/UI externals | Reviews Board is the demonstrated author; current HTML carrier cannot supply ordinary shared Hooks or command interaction | Runtime TSX evaluation, global service lookup, copied private aliases/state, another bundler or claiming module unload from component disposal |
 | 2026-10-13 | Integrate main Resume acceptance and advance Core to .5 while keeping backend .4; original-start verification uses the same capability-aware fingerprint and plugin-scoped key | Main changes the shared command acceptance projection without replacing plugin caller authority or Schedules original captured dispatch; generated clients must agree with the merged current shape | Restoring retired automation owners, dropping actor isolation/captured request checks, hand-merging generated schemas, or dual protocol readers |
 | 2026-10-13 | Separate pure consumer-owned point values from callable capability contracts; reuse the existing JSONSchema compiler and public operation route | Values can name implementation or presentation data; the consumer owns their schema, applicability and composition while callable contracts own method admission | String-only point lookup, substrate Reviews enums, a new IDL/compiler, checklist data presented as an executable analyzer, or a second composition/receipt store |
 | 2026-10-13 | Keep named resolved collaborators immutable in the existing session owner and use them for SDK setup and nested authority | A running entry must not change provider when mutable selection changes; setup resources and canonical callback references share its owned retirement | Re-resolving a role on every nested call, a second activation/installation ledger, SDK ambient service lookup or converting business receipt identity |
@@ -293,11 +310,11 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Open | public SDK and installed component loader |
+| Public React/TS components and shared module instances | SDK/ordinary Reviews Board/ESM author build implemented and compiled; installed resource/module mapping, actual shared-instance proof and carrier replacement remain open | plugin-sdk; examples/plugins/reviews/client/board.tsx; public installed component loader |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
-| One executable contract generation source | Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; installed contribution/component binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
+| One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; installed contribution/component binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Public backend evidence retained; installed Go/Protocol/CLI/TS refusal and unknown-ack projections implemented/compiled; final execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
 | Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method/capability/export contract verified; strict local declaration and real feature export binding implemented; named dependency resolution/public projection and fresh cross-plugin declaration checks now compile; managed launch/export publication gates now compile; provider waiting and setup/frozen bindings now implemented with SDK lifecycle execution; complete integrated activation, observed status/retention and all-consumer acceptance open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
@@ -324,6 +341,15 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3r development and canonical contract checks
+
+- Passed: Core/Memory/Schedules/Reviews generation, production Runtime/CLI/Reviews build, shared Runtime TS typecheck, public SDK/Reviews Board typecheck and ordinary ESM build. Icons then UI built from their existing scripts; no rendering occurred. Component artifact is 9,893 bytes with shared imports retained.
+- Passed necessary focused execution: canonical feature JSON preserves the uint64 bound and public endpoint query/command policy (0.646s/1.628s). After deriving directly from canonical identity bytes, the changed generator assertion also passes (0.889s).
+- Passed compilation only: Runtime root/Delivery/contractgen, CLI delivery/Runtime adapter and Reviews backend test binaries. TemporaryDirectory removes every binary. Full/race/vet and installed UI/module/shared-instance tests remain deferred.
+- Fixed preparation/compile failures: UI build initially lacked the required Icons artifact; after the documented Icons-first build, UI succeeds. Raw-contract change exposed old CLI adapter and shared TS request-policy object access, both migrated at their actual consumers. No assertion or check was disabled.
+- Public author dependencies use existing ignored managed-worktree copies/links. No shared checkout, credential, external publication, private business data, new bundler or frontend UI/E2E/screenshot execution.
+
 
 ### Stage 3q development and focused contract evidence
 
@@ -592,6 +618,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3r: retain formal SDK/Board/generated ESM source and needed ignored dependency artifacts. Temporary compile outputs are removed; all owned generation/build/typecheck/focused/compile/commit handles are terminal. Product is committed in fd9b754b; main merge reports already up to date at 7957a603. Original proposal/review/v0.2 hashes remain unchanged. No browser/native/test fixture process, external state change or user-data mutation was introduced. Preserve the active worktree and progress symlink.
+
 - Stage 3q: product committed in af081e07, incoming main 7957a603 synchronized in 765ccacd. All owned generation/build/typecheck/focused/compile/commit handles are terminal; TemporaryDirectory removes compile outputs. Empty directories from the replaced uncommitted checklist-only example are removed. No native distribution, UI test, external action, credential, shared configuration or user-data mutation was introduced. Preserve the active managed checkout and canonical progress symlink. Original input SHA-256 values match the read-only baseline.
 
 - Stage 3m: product committed in beb2f5bc and main synchronized at 78f9f08b. Every owned compile/build/generation/typecheck/commit handle is terminal; temporary test binaries were removed. No native distribution, test process, external action, credential use, shared config change or user-data mutation was introduced. Preserve the active checkout, concurrent shared work and canonical progress symlink.
@@ -663,6 +691,9 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3r changes the Core call contract field to canonical JSON string and advances Core to .6. Rebuild generated Go/Protocol/CLI/TS consumers and use generated CAPABILITY_JSON; no object reader remains. Backend protocol and private business storage are unchanged. Public component SDK/Board are authoring code and a built artifact; module import mapping, graphical admission/placement, exact-release assets, retirement and full lifecycle proof remain required before claiming component delivery. Independent published dependencies remain open.
+
 
 - Stage 3q adds point output arrays and the public point resolution API; regenerate and rebuild consumers. Reviews' capability changes to include analyzer execution and its optional setup dependency. Rebuild both example packages together. Integrated Core protocol is .5 and backend callable protocol remains .4; rebuild generated clients. This point slice introduces no storage format or retained data changes. Complete installed lifecycle and external published module validation remain open.
 
