@@ -2,57 +2,65 @@
 
 ## Current stage
 
-Stage 4o (5d928073) migrates the final CLI Schedule update/edit/enablement entrance
-to the installed public method. Prepared input retains the inspected revision,
-original installation/release/contribution/contract, nullable patch members and
-exact bytes. Empty CWD resets the workspace; omission preserves it. Pending edit
-and enablement intent is reconciled before another catalog/revision read. The
-existing installed-command workflow retains its original identity and only retires
-it after decoded owner acknowledgement or witnessed owner refusal. A reply for a
-different Schedule cannot acknowledge the captured edit.
+Stage 4p (fcfbfa37) migrates actual CLI and workspace-client Memory catalog reads
+to the public installed operation. The CLI consumes generated publisher Go
+input/output in cli/internal/domain/memory; the graphical context reader consumes
+the existing published TS contract. Both capture the selected installation,
+release, contribution, full required contract and target once across all pages.
+Selection changes cannot splice another provider into continuation. Bounds cover
+page width, request count, target materialization, empty continuation, repeated
+cursor/ID and scope. Errors retain failure rather than returning partial results.
 
-Every CLI Schedule read/mutation now consumes generated publisher inputs/outputs.
-Remove the former Core Schedule read projection and separate Enabled state; views
-use the publisher's CWD/model selection/value timestamps and derive scheduling
-status from NextRunAt. The complete uint64 revision remains intact, including
-values beyond the retired Core exact-JSON bound. This is a Go consumer guarantee;
-portable wide-number behavior across other clients still needs final contract audit.
+The existing exact-published-contract selection policy is shared by the two actual
+CLI consumers, Memory and Schedules. It parses the advertised protocol unchanged
+and refuses mismatches before dispatch. Workspace resolution precedes initial
+capture. The workspace reader negotiates plugins and exposes its real public
+capability without private-context imports. Runtime verifies the full descriptor
+and live export for each query. Target-specific domain, ledger/watermark, curation,
+maintenance/model and receipt ownership remain unchanged.
 
-Delete UpdateSchedule/schedules.update, Schedule/UpdateScheduleRequest/workspace
-enum, Go/TS binding, handler/port/selected-role forwarder, Core feature gate and
-schedule_not_found translation/code/copy/schema/examples. CLI composition and
-command/change observation negotiate the generic plugins entrance. Backend
-business invariants, private receipts, notification and Core Run ownership remain.
-The retained Schedules adapter only owns real model Tool source/receipt evidence;
-its unused command dependency is removed. Existing Schedule event vocabulary is
-retained pending the full notification/platform audit, not claimed as complete.
-Core is 2026-10-14.11; backend protocol and private storage are unchanged.
+Delete ListAgentMemory/agentMemory.list, list request DTO, Core Go/TS method,
+workspace list wrapper, delivery/list port, selected-role forwarder and generated
+artifacts in the same change. Remaining Core Memory mutations are real consumers
+awaiting migration. Their current read model is a projection of publisher rows;
+no retired wire reader, new result store, compatibility alias or second fact
+transition is introduced. Core is 2026-10-14.12; backend protocol/business storage
+and callable Memory contract are unchanged. New Go generation shares that exact
+publisher source; canonical publication comparison passes.
 
-Native fixtures now use publisher snapshots directly and invoke public update with
-one captured request. Exclusive Core-facade cases are removed; unrelated Session/
-Plan/model/workspace contracts remain. A shared test helper formerly located in
-the retired Schedule file moves to existing common fixtures. Terminal fixtures
-migrate and compile only. No frontend UI/E2E/screenshot checks are added or run;
-one obsolete frontend wire assertion and one shared-client facade case are removed.
+Existing native provider selection, withdrawal, command recovery and restart
+sources now query through captured public operations. Existing E2E source call
+expressions migrate to the actual product reader; obsolete Core-only target
+assertions disappear while other workspace/lifecycle assertions remain. No new
+frontend UI/E2E/screenshot cases are written and none run. Shared pure transport
+contract cases retain unrelated workspace lifetime assertions and pass (42 tests).
 
-Production Runtime/CLI/Reviews builds, Desktop/shared types/Vite, layer/source and
-locale checks pass. CLI Schedule checks pass (7.430s), original revision/patch/wide
-output check passes (6.696s), remaining Core revision/model contracts pass (0.613s),
-workspace/problem translation checks pass (0.851s). Bootstrap, delivery, protocol,
-Runtime and terminal test sources compile into removed temporary outputs. Initial
-retired-symbol, fixture and stale-copy failures are fixed; no active executed
-failure remains. Source gate is 95/95 (87 graphical, one Go headless, six materialized,
-one HTTP), three sidecars and 15 topics; 982 locale keys across eight languages.
+Production Runtime/CLI/Reviews builds, Desktop/shared types/Vite and source/layer
+checks pass. CLI Memory plus shared Schedule read/binding regressions pass (7.436s),
+including provider swap between pages, mismatched published protocol, malformed
+rows, duplicate/continuation/partial-failure refusal. Shared-client methods pass
+(458ms). Bootstrap/delivery/protocol/terminal sources compile into removed temporary
+outputs. Initial stale import/DTO assertions and one private-context import failure
+are corrected; no active executed failure remains. Source gate is 94/94 (86
+graphical, one Go headless, six materialized, one HTTP), three sidecars and 15 topics.
 
 Main 993eb865 remains integrated; merge is up to date. Original proposal/review/draft
-hashes remain unchanged. Owned dist/temp outputs are removed. Full/vet/race/native
-process and credentialed live execution remain final-phase work. Next migrate
-Memory Core consumers/facades, then complete Tool/cross-plugin consumers, scoped
-dependencies, canonical model streaming decorators, cross-generation recovery,
-independent author parity and all P01-P48/final acceptance. The full goal remains active.
+hashes remain unchanged. Owned dist and temporary outputs are removed. Full/vet/race,
+native process and credentialed live execution remain final-phase work. Next migrate
+actual Memory mutations/remaining Core facades with original intent recovery, then
+finish Tool/cross-plugin consumers, scoped dependencies, canonical model streaming,
+cross-generation recovery, independent author parity and all P01-P48/final acceptance.
+The full goal remains active.
 
 ## Completed
 
+- Stage 4p (fcfbfa37): actual CLI/workspace public Memory reads with one captured
+  provider/contract across pages, bounds/refusals and generated publisher projections.
+- Stage 4p: shared CLI exact-contract/protocol admission for real Memory/Schedules
+  consumers; no reconstructed metadata or selected-provider refresh during paging.
+- Stage 4p: remove Core Memory list/DTO/Go/TS/workspace wrapper/port/forwarder and
+  generated artifacts; migrate existing process/contract/graphical source consumers.
+  Necessary focused checks pass; final native execution and mutation cutover open.
 - Stage 4o (5d928073): public CLI update/edit/enablement with original captured
   revision/patch/binding and pending-intent recovery before new catalog reads.
 - Stage 4o: direct generated publisher snapshots; no Core read DTO/Enabled copy;
@@ -381,6 +389,10 @@ independent author parity and all P01-P48/final acceptance. The full goal remain
 
 ## In progress
 
+- Actual Memory reads are public installed operations in CLI and the workspace
+  client. Four Core mutations and their CLI/workspace consumers still need original
+  pending-intent recovery and simultaneous facade/type/feature deletion. Native
+  process selection/withdrawal/restart execution remains for final acceptance.
 - Schedule Core business facade migration is complete for actual CLI reads and
   all mutations. Final native response-loss/restart/withdrawal/retirement execution
   and the wider notification/cross-language number/author parity audits remain open.
@@ -419,6 +431,9 @@ independent author parity and all P01-P48/final acceptance. The full goal remain
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Memory pages retain one concrete public binding across continuation in every actual client | Paging belongs to that business owner; replacing selection between pages can mix facts from different stores | Retaining agentMemory.list, refreshing selected role per page, partial results on failure or selecting another enabled candidate |
+| 2026-10-14 | Share exact published-contract selection after the second real CLI consumer appears | Memory and Schedules require the same protocol/contract/release refusal policy | Duplicated role arbitration, forcing advertised metadata into the current protocol or private backend imports |
+| 2026-10-14 | Workspace Memory reads expose a real public context capability over the published TS contract | Existing consumers must survive Core list deletion without reaching into private context adapters | A Core query alias, a copied schema/DTO, private-context imports or deleting unrelated workspace lifecycle coverage |
 | 2026-10-14 | Every Schedule entrance uses its public installed owner, with original revision and nullable patch captured once | Final Core update retained a competing entrance and enabled refresh to replace a submitted edit basis | Keeping schedules.update/DTO/feature gate, reading a new revision on retry or merging current draft values into pending input |
 | 2026-10-14 | Consume the publisher snapshot directly instead of maintaining a Core Schedule read projection | The publisher already owns fields/revision/timestamps; NextRunAt owns enabled status, and a Core numeric envelope must not narrow it | Duplicate Enabled state, a replacement handwritten facade DTO or silently narrowing uint64 revisions |
 | 2026-10-14 | CLI capability negotiation uses plugins and resolves the concrete Schedule contract | A plugin-owned business feature does not need a second Core feature/method namespace | Schedule-specific capability preference, unavailable-port fallback or selecting another provider for an unresolved edit |
@@ -591,6 +606,31 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4p public Memory catalog read cutover
+
+- Passed: CLI Memory and shared Schedule read/binding checks (7.436s), including
+  original provider across pages, incompatible advertised protocol before dispatch,
+  complete traversal, duplicates, invalid projections and no partial failure result.
+- Passed: existing shared-client pure methods contract checks, 42 tests (458ms);
+  unrelated immutable workspace/lifetime checks retain their original guarantees.
+- Passed: Runtime/CLI/Reviews production Go builds, Desktop/shared types/Vite,
+  source API coverage 94/94, layer closure, owned-source gofmt and diff checks.
+- Passed: Bootstrap/delivery/protocol/terminal test-source compilation. Temporary
+  output directories and owned Desktop dist are removed; process tests do not run.
+- Fixed: unused imports, a retained target DTO/reference and an accidentally migrated
+  mutation fixture field; graph checker rejected an E2E source import of a private
+  adapter, so the actual reader now lives in its context public capability surface.
+  All relevant failing checks are rerun successfully; no active failure remains.
+- Passed: Memory publication canonical comparison unchanged; generated Go has no
+  private backend import. Original proposal/review/draft hashes unchanged; main merge
+  already up to date, product committed and owned outputs cleaned.
+- Not run: frontend UI/E2E/screenshot checks (explicit exclusion). Existing retired
+  call expressions are migrated without new cases; they are only typechecked.
+  Full/vet/race/native process and credentialed live execution remain final phase.
+- Breaking: Core .12 removes ListAgentMemory/agentMemory.list/list DTO and workspace
+  list wrapper. External consumers must use the installed publisher query. Remaining
+  mutation facades are real work; backend contract/private storage are unchanged.
 
 ### Stage 4o final Schedule Core facade removal
 
@@ -1541,6 +1581,9 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Stage 4p proves actual public read compilation, CLI contracts and binding refusal,
+  not the complete native selection/withdrawal/restart matrix or rendered context
+  behavior. Memory mutation/notification/independent-author platform work remains.
 - All CLI Schedule Core entrances are now migrated. Native public-call process
   loss/replacement/disablement/uninstall execution, generic notification ownership,
   portable wide-number consumer behavior and independent author packaging remain
@@ -1601,6 +1644,10 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Core .12 removes a public Memory list API/request and workspace convenience read.
+  In-repository callers migrate; external consumers cannot be enumerated here and
+  need the installed contract. CLI/workspace materialization remains bounded by
+  current target scale; future larger contracts must revisit consumer capacity.
 - Core .11 removes the final Schedule method plus all public Schedule transport
   types, capability and Core error translation. All in-repository consumers migrate;
   external consumers must adopt publisher contracts/refusals. Existing pending
