@@ -128,8 +128,8 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
-		if _, found, err := sqlite.NewInterruptStore(writer).ClaimResume(ctx, root.ID()); err != nil || !found {
-			return fmt.Errorf("claim interrupt: found=%t: %w", found, err)
+		if _, found, err := sqlite.NewInterruptStore(writer).Consume(ctx, root.ID()); err != nil || !found {
+			return fmt.Errorf("consume interrupt: found=%t: %w", found, err)
 		}
 		return sqlite.NewTranscriptStore(writer).ReplaceItem(ctx, change)
 	})

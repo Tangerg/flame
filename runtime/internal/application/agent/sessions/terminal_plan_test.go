@@ -38,9 +38,6 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTerminalPlan: %v", err)
 	}
-	if plan.ConsumesClaimedResume() {
-		t.Fatal("ordinary terminal plan consumes a claimed Resume")
-	}
 
 	runs[0] = run.Replacement{}
 	items[0] = transcript.Item{}
@@ -64,32 +61,3 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	}
 }
 
-func TestClaimedResumeTerminalPlanRequiresLostRun(t *testing.T) {
-	createdAt := time.Date(2026, 9, 5, 2, 3, 4, 0, time.UTC)
-	finishedAt := createdAt.Add(time.Minute)
-	parked := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_1", SessionID: "ses_1", State: run.Waiting, CreatedAt: createdAt,
-	})
-	canceled, err := parked.CancelWaiting("stopped", finishedAt, run.MessageMarkAt(0))
-	if err != nil {
-		t.Fatalf("cancel waiting Run: %v", err)
-	}
-	if _, err := NewClaimedResumeTerminalPlan(
-		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(canceled))}, nil, nil, "member_1",
-	); err == nil {
-		t.Fatal("claimed Resume terminal plan accepted a canceled Run")
-	}
-	lost, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
-	if err != nil {
-		t.Fatalf("recover lost Run: %v", err)
-	}
-	plan, err := NewClaimedResumeTerminalPlan(
-		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(lost))}, nil, nil, "member_1",
-	)
-	if err != nil {
-		t.Fatalf("NewClaimedResumeTerminalPlan: %v", err)
-	}
-	if !plan.ConsumesClaimedResume() {
-		t.Fatal("claimed Resume terminal plan lost its consumption mode")
-	}
-}
