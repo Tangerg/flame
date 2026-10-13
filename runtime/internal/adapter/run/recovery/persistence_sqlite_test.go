@@ -33,7 +33,7 @@ func newTestRecovery(
 
 func (alwaysResumable) CanResumeWaitingExecution(
 	context.Context,
-	runs.WaitingContinuation,
+	runs.ExecutionContinuation,
 ) (runs.WaitingResumption, error) {
 	return runs.ResumableWaiting(), nil
 }
@@ -160,11 +160,11 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 }
 
-type waitingExecutionResumabilityFunc func(context.Context, runs.WaitingContinuation) (bool, error)
+type waitingExecutionResumabilityFunc func(context.Context, runs.ExecutionContinuation) (bool, error)
 
 func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 	ctx context.Context,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 ) (runs.WaitingResumption, error) {
 	resumable, err := w(ctx, continuation)
 	if err != nil || resumable {

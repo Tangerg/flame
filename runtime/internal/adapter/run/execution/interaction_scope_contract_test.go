@@ -114,6 +114,7 @@ func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible, _, _, err := wrapInteractionTools(
+		t.Context(),
 		manifest, nil,
 		InteractionExecutorConfig{ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}},
 		toolResultOffloadPolicy{}, runs.RootExecutionStart{},

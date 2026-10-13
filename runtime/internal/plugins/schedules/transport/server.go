@@ -42,6 +42,22 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		return err
 	}
 	return errors.Join(
+		managedmcp.RegisterServer(server, rpc.OriginalCreateResult, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.OriginalCreateInput) (rpc.OriginalCreateOutput, error) {
+			draft, err := tools.CreateDraft(input.Arguments)
+			if err != nil {
+				return rpc.OriginalCreateOutput{}, err
+			}
+			value, found, err := managedmcp.ReadCommand[schedule.Draft, schedule.Snapshot](ctx, db, rpc.Create, "tool:"+input.CallID, draft)
+			if err != nil || !found {
+				return rpc.OriginalCreateOutput{}, err
+			}
+			created, err := schedule.Restore(value)
+			if err != nil {
+				return rpc.OriginalCreateOutput{}, err
+			}
+			output, err := tools.CreateOutput(created)
+			return rpc.OriginalCreateOutput{Output: &output}, err
+		}),
 		managedmcp.RegisterServer(server, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {

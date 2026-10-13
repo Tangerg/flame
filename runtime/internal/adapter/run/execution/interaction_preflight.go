@@ -15,7 +15,7 @@ import (
 
 // PrepareContinuation reads the acknowledged paused head. It does not assemble
 // resources, claim a local boundary, acquire a writer, or deliver a Signal.
-func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuation runs.WaitingContinuation, answers []runs.InterruptAnswer, candidates []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
+func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuation runs.ExecutionContinuation, answers []runs.InterruptAnswer, candidates []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	if err := validateAcceptedPausedTree(checkpoint.handoff, tree, retired); err != nil {
 		return nil, err
 	}
-	members := make(map[agent.ProcessID]runs.WaitingMember)
+	members := make(map[agent.ProcessID]runs.ExecutionMember)
 	for _, member := range continuation.Members {
 		id, _ := agent.ParseProcessID(member.MemberID)
 		members[id] = member
@@ -118,12 +118,12 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	return requests, nil
 }
 
-func continuationRetiredProcesses(cut interactionHandoff, head agent.TreeSnapshot, members []runs.WaitingMember) (map[agent.ProcessID]bool, error) {
+func continuationRetiredProcesses(cut interactionHandoff, head agent.TreeSnapshot, members []runs.ExecutionMember) (map[agent.ProcessID]bool, error) {
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
 	for _, snapshot := range head.ProcessSnapshots() {
 		snapshots[snapshot.Relation().ProcessID()] = snapshot
 	}
-	survivors := make(map[agent.ProcessID]runs.WaitingMember)
+	survivors := make(map[agent.ProcessID]runs.ExecutionMember)
 	for _, member := range members {
 		id, err := agent.ParseProcessID(member.MemberID)
 		if err != nil {

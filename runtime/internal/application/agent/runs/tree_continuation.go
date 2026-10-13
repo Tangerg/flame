@@ -17,10 +17,11 @@ import (
 // tree whose final interrupt was canceled still has enough continuation state
 // to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
-	rootRunID     string
-	interrupts    []transcript.Interrupt
-	approvalCalls map[string]string
-	continuations []Continuation
+	recoveredTools []RecoveredTool
+	rootRunID      string
+	interrupts     []transcript.Interrupt
+	approvalCalls  map[string]string
+	continuations  []Continuation
 	// runs are the parked Runs the continuations hand off, by ID. A resumed
 	// route reads its admission, accounting and creation from them; the
 	// continuation carries none of those facts.

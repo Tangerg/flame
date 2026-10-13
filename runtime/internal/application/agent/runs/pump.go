@@ -206,6 +206,11 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 	if err != nil {
 		return err
 	}
+	if prepared, ok := fact.(ToolCallPrepared); ok {
+		if err := prepared.Context.ValidateOwnership(s.routes.root.member.MemberID, s.spec.SessionID); err != nil {
+			return err
+		}
+	}
 	if route.member.MemberID != "" {
 		if err := s.owner.bindExecutorMember(route.runID, route.member.MemberID); err != nil {
 			return err

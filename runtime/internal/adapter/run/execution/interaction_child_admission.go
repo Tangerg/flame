@@ -71,7 +71,7 @@ func (i *interactionSession) admitProcess(
 		return fmt.Errorf("execution: commit Delegate call start: %w", err)
 	}
 	if err := i.rememberToolMetadata(toolResultMetadata{
-		MemberID: parent.MemberID, Start: managed.toolStart(), Arguments: managed.arguments.Canonical(),
+		MemberID: parent.MemberID, Start: managed.toolStart(),
 	}); err != nil {
 		return err
 	}

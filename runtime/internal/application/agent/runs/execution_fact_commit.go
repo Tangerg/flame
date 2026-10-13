@@ -96,6 +96,9 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		return value, true
 	case ToolCallStarted:
 		return value, true
+	case ToolCallPrepared:
+		value.Context = value.Context.Clone()
+		return value, true
 	case ExecutionTreeSettled:
 		for _, event := range value.Facts {
 			switch event.Payload.(type) {

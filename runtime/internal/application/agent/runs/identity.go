@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"strings"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -52,6 +53,26 @@ func (i *segmentItemIdentities) Next() (string, error) {
 	}
 	i.sequence++
 	return itemIDPrefix + i.segmentDigest + segmentItemSeparator + strconv.FormatUint(i.sequence, 10), nil
+}
+
+// The committed Items are the allocation ledger for an existing Segment.
+// Restore observes that ledger; only Next may issue another identity.
+func (i *segmentItemIdentities) Restore(ids []string) error {
+	prefix := itemIDPrefix + i.segmentDigest + segmentItemSeparator
+	var highest uint64
+	for _, id := range ids {
+		ordinal, owned := strings.CutPrefix(id, prefix)
+		if !owned || ordinal == userMessageItemDiscriminator {
+			continue
+		}
+		sequence, err := strconv.ParseUint(ordinal, 10, 64)
+		if err != nil || sequence == 0 || strconv.FormatUint(sequence, 10) != ordinal {
+			return errors.New("runs: invalid committed Segment Item identity")
+		}
+		highest = max(highest, sequence)
+	}
+	i.sequence = highest
+	return nil
 }
 
 func userMessageItemID(segmentID string) string {

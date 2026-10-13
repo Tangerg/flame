@@ -18,7 +18,7 @@ import (
 func TestContinuationPreflightDoesNotAssembleOrAcquireAWriter(t *testing.T) {
 	workspace := t.TempDir()
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
-	waiting := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_preflight", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+	waiting := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_preflight", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +98,7 @@ func TestContinuationPreflightUsesProductRetirementBeforeScopeDrain(t *testing.T
 	}
 	// The accepted product cut has retired the child while Scope still holds its
 	// paused wait. Those facts need not transition in the same transaction.
-	waiting.Members = slices.DeleteFunc(waiting.Members, func(member runs.WaitingMember) bool { return member.RunID != waiting.RootRunID })
+	waiting.Members = slices.DeleteFunc(waiting.Members, func(member runs.ExecutionMember) bool { return member.RunID != waiting.RootRunID })
 	waiting.Members[0].DrainedTools = nil
 	if _, err := fixture.executor.PrepareContinuation(t.Context(), waiting, nil, nil); err != nil {
 		t.Fatalf("retired product member was required to finish Scope first: %v", err)

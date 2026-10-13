@@ -22,12 +22,10 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 	if len(id) == 0 || len(id) > 256 {
 		return zero, errors.New("managed plugin: bounded command identity is required")
 	}
-	encoded, err := json.Marshal(input, json.Deterministic(true))
+	digest, err := commandInputDigest(input)
 	if err != nil {
 		return zero, err
 	}
-	sum := sha256.Sum256(encoded)
-	digest := hex.EncodeToString(sum[:])
 	var value R
 	err = sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
 		var savedMethod, savedDigest, reply string
@@ -56,6 +54,43 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 		return zero, err
 	}
 	return value, nil
+}
+
+// ReadCommand cannot originate a transition. Absence is an inconclusive
+// observation of the original command, never permission to dispatch it again.
+func ReadCommand[P, R any](ctx context.Context, db *sql.DB, method, id string, input P) (R, bool, error) {
+	var value R
+	if len(id) == 0 || len(id) > 256 {
+		return value, false, errors.New("managed plugin: bounded command identity is required")
+	}
+	digest, err := commandInputDigest(input)
+	if err != nil {
+		return value, false, err
+	}
+	var savedMethod, savedDigest, reply string
+	err = sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,input_digest,result FROM commands WHERE id=?`, id).Scan(&savedMethod, &savedDigest, &reply)
+	if errors.Is(err, sql.ErrNoRows) {
+		return value, false, nil
+	}
+	if err != nil {
+		return value, false, err
+	}
+	if savedMethod != method || savedDigest != digest {
+		return value, false, idempotency.ErrKeyConflict
+	}
+	if err := json.Unmarshal([]byte(reply), &value, json.RejectUnknownMembers(true)); err != nil {
+		return value, false, err
+	}
+	return value, true, nil
+}
+
+func commandInputDigest[P any](input P) (string, error) {
+	encoded, err := json.Marshal(input, json.Deterministic(true))
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(encoded)
+	return hex.EncodeToString(sum[:]), nil
 }
 func RegisterCommand[P, R any](server *sdk.Server, db *sql.DB, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
 	return sdk.AddReceivingCustomMethod(server, name, func(ctx context.Context, session *sdk.ServerSession, params *Params[P]) (*Result[R], error) {

@@ -15,7 +15,7 @@ import (
 // distinguish failure modes for an operator and can carry payload details.
 func unresumable(
 	ctx context.Context,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 	loss runs.Loss,
 	reason string,
 	cause error,
@@ -39,7 +39,7 @@ func unresumable(
 // checkpoint already holds its installation dependencies.
 func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 ) (resumption runs.WaitingResumption, err error) {
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {

@@ -248,6 +248,14 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 		if err := e.applyCommit(ctx, commit); err != nil {
 			return err
 		}
+		if commit.ExecutionContext != nil {
+			if err := commit.ExecutionContext.ValidateOwnership(commit.ExecutionContext.RootMemberID, commit.SessionID); err != nil {
+				return err
+			}
+			if err := e.executorCheckpoints.SaveCheckpoint(ctx, *commit.ExecutionContext); err != nil {
+				return err
+			}
+		}
 		if commit.ObsoleteCheckpointRootID == "" {
 			return nil
 		}

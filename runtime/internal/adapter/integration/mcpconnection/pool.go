@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -138,6 +140,17 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 		return nil, mcp.ErrUnavailable
 	}
 	return p.inner.ServiceSession(ctx, descriptor)
+}
+
+func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority fingerprint.Digest) (*sdk.ClientSession, error) {
+	descriptor, found, err := p.registry.Dispatchable(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !found || !descriptor.Enabled || descriptor.AuthorityFingerprint() != authority {
+		return nil, mcp.ErrUnavailable
+	}
+	return p.inner.AwaitServiceSession(ctx, descriptor)
 }
 
 type MemoryContext func(context.Context, mcp.Executable) (context.Context, func(), error)

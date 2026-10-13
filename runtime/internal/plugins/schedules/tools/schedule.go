@@ -2,12 +2,14 @@ package tools
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
@@ -123,22 +125,48 @@ func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs)
 }
 
 func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleArgs) (scheduleResponse, error) {
+	draft, err := in.draft()
+	if err != nil {
+		return scheduleResponse{}, toolfailure.Definite(err)
+	}
+	created, err := s.coordinator.Create(ctx, draft)
+	if err != nil {
+		return scheduleResponse{}, settleScheduleCommand(fmt.Errorf("create_schedule: %w", err))
+	}
+	return scheduleResponse{Schedule: viewSchedule(created)}, nil
+}
+
+func (in createScheduleArgs) draft() (scheduledomain.Draft, error) {
 	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
-		return scheduleResponse{}, toolfailure.Definite(fmt.Errorf("create_schedule: %w", err))
+		return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w", err)
 	}
-	created, err := s.coordinator.Create(ctx, scheduledomain.Draft{
+	return scheduledomain.Draft{
 		Title:          in.Title,
 		Instructions:   in.Instructions,
 		CWD:            in.WorkspacePath,
 		ModelSelection: selection,
 		Cron:           in.Cron,
 		Enabled:        true,
-	})
-	if err != nil {
-		return scheduleResponse{}, settleScheduleCommand(fmt.Errorf("create_schedule: %w", err))
+	}, nil
+}
+
+// CreateDraft and CreateOutput share the normal Tool's input and output codecs
+// with its read-only receipt projection. Recovery never calls the Tool.
+func CreateDraft(arguments string) (scheduledomain.Draft, error) {
+	var input createScheduleArgs
+	if err := json.Unmarshal([]byte(arguments), &input, json.RejectUnknownMembers(true)); err != nil {
+		return scheduledomain.Draft{}, err
 	}
-	return scheduleResponse{Schedule: viewSchedule(created)}, nil
+	return input.draft()
+}
+
+func CreateOutput(created scheduledomain.Schedule) (chat.ToolOutput, error) {
+	encoded, err := json.Marshal(scheduleResponse{Schedule: viewSchedule(created)})
+	if err != nil {
+		return chat.ToolOutput{}, err
+	}
+	return chat.NewJSONToolOutput(encoded)
 }
 
 func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleArgs) (scheduleDeleteResponse, error) {

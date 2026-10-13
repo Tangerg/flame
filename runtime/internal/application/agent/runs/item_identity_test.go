@@ -56,3 +56,22 @@ func TestReducerPropagatesItemIdentityExhaustion(t *testing.T) {
 		t.Fatalf("reducer error = %v, want Item identity exhaustion", err)
 	}
 }
+
+func TestSegmentItemIdentitiesRestoreCommittedAllocations(t *testing.T) {
+	original := newSegmentItemIdentities("seg_original")
+	first, _ := original.Next()
+	second, _ := original.Next()
+	third, _ := original.Next()
+	foreign := newSegmentItemIdentities("seg_foreign")
+	other, _ := foreign.Next()
+	restored := newSegmentItemIdentities("seg_original")
+	if err := restored.Restore([]string{second, other, first, userMessageItemID("seg_original")}); err != nil {
+		t.Fatal(err)
+	}
+	if next, err := restored.Next(); err != nil || next != third {
+		t.Fatalf("restored next=%q,%v, original=%q", next, err, third)
+	}
+	if err := restored.Restore([]string{strings.TrimSuffix(first, "1") + "01"}); err == nil {
+		t.Fatal("noncanonical allocation was accepted")
+	}
+}

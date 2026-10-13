@@ -213,6 +213,7 @@ func (o *observedInteractionModel) begin(
 	}
 	callID = callIdentity.String()
 	member := o.session.executorMember(invocation.Relation())
+	o.session.retireCreatePrefix(member.MemberID)
 	if err := o.session.commitAppliedInputs(
 		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),
 	); err != nil {

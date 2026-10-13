@@ -9,7 +9,7 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 )
 
-func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
+func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, continuation runs.ExecutionContinuation) (runs.ExecutorRef, error) {
 	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err

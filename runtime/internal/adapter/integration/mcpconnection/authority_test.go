@@ -17,12 +17,47 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type scheduleSourceRegistry struct{ *mutableSourceRegistry }
+
+func TestBoundServiceSessionCannotBorrowChangedOrWithdrawnAuthority(t *testing.T) {
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "original-owner"}, nil)
+	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
+	defer transport.Close()
+	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	registry := &mutableSourceRegistry{server: server.Clone()}
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, scheduleSourceRegistry{registry}, nil, nil, func(invalidation.Notice) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Shutdown(context.WithoutCancel(t.Context()))
+	original, err := pool.BoundServiceSession(t.Context(), server.ID(), server.AuthorityFingerprint())
+	if err != nil || original == nil {
+		t.Fatalf("original session: %v", err)
+	}
+	for _, change := range []struct {
+		name  string
+		apply func(*mcpserver.Server)
+	}{
+		{"disabled", func(s *mcpserver.Server) { s.Enabled = false }},
+		{"other endpoint", func(s *mcpserver.Server) { s.URL += "/replacement" }},
+		{"other installation", func(s *mcpserver.Server) { s.Source = testInstallationSource(t) }},
+	} {
+		t.Run(change.name, func(t *testing.T) {
+			current := server.Clone()
+			change.apply(&current)
+			registry.set(current)
+			if session, err := pool.BoundServiceSession(t.Context(), server.ID(), server.AuthorityFingerprint()); session != nil || !errors.Is(err, mcp.ErrUnavailable) {
+				t.Fatalf("replacement answered as original authority: %v", err)
+			}
+		})
+	}
+}
 
 func (scheduleSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
 	return plugin.SchedulesService, true, nil

@@ -24,12 +24,13 @@ import (
 )
 
 type interactionSession struct {
-	executionTrees runs.ExecutionTreeStore
-	ref            runs.ExecutorRef
-	scope          runs.ExecutionScope
-	deployment     agent.Deployment
-	input          agent.Payload
-	engine         *agent.Engine
+	executionTrees  runs.ExecutionTreeStore
+	scheduleResults OriginalScheduleResults
+	ref             runs.ExecutorRef
+	scope           runs.ExecutionScope
+	deployment      agent.Deployment
+	input           agent.Payload
+	engine          *agent.Engine
 
 	lifetime            interactionLifetime
 	state               interactionState
@@ -56,6 +57,7 @@ type interactionSession struct {
 // and Delegate topology. Accounting and Segment timing have independent
 // invariants and do not belong under this lock.
 type interactionState struct {
+	restoreTree                agent.TreeSnapshot
 	toolMetadata               map[string]toolResultMetadata
 	mu                         sync.Mutex
 	pendingSteers              map[agent.SignalID]pendingInteractionSteer
@@ -106,6 +108,7 @@ type interactionBoundary uint8
 
 const (
 	interactionBoundaryInactive interactionBoundary = iota
+	interactionBoundaryRecovery
 	interactionBoundaryWaiting
 	interactionBoundaryAcceptedPaused
 	interactionBoundarySubtreePreparing
@@ -125,9 +128,10 @@ func newInteractionSession(
 	telemetry *otelagent.Observer,
 ) *interactionSession {
 	return &interactionSession{
-		telemetry:      telemetry,
-		executionTrees: config.ExecutionTrees,
-		ref:            ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
+		telemetry:       telemetry,
+		executionTrees:  config.ExecutionTrees,
+		scheduleResults: config.OriginalScheduleResults,
+		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
 			pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
@@ -574,8 +578,50 @@ func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 
 func (i *interactionSession) reportUnknownEffects() bool {
 	ctx := i.lifetime.reconciling
+	if ctx.Err() != nil {
+		return true
+	}
 	ids, err := i.unknownEffectIDs(ctx)
 	if err != nil || len(ids) == 0 {
+		return false
+	}
+	i.state.mu.Lock()
+	if i.state.unknownReported {
+		i.state.mu.Unlock()
+		return true
+	}
+	var gate chan struct{}
+	if i.state.dispatchReady == nil {
+		gate = make(chan struct{})
+		i.state.dispatchReady = gate
+	}
+	i.state.mu.Unlock()
+	defer func() {
+		if gate != nil {
+			i.state.mu.Lock()
+			if i.state.dispatchReady == gate {
+				close(gate)
+				i.state.dispatchReady = nil
+			}
+			i.state.mu.Unlock()
+		}
+	}()
+	if _, err := i.investigateScheduleCreates(ctx); err != nil {
+		if ctx.Err() != nil || releasedDuringProjection(err) {
+			return true
+		}
+		i.publishProjectionFailure(err)
+		return true
+	}
+	ids, err = i.unknownEffectIDs(ctx)
+	if err != nil {
+		if ctx.Err() != nil || releasedDuringProjection(err) {
+			return true
+		}
+		i.publishProjectionFailure(err)
+		return true
+	}
+	if len(ids) == 0 {
 		return false
 	}
 	i.state.mu.Lock()

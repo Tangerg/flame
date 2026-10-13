@@ -262,7 +262,7 @@ func (inertRunControl) RequestRootCancellation(context.Context, runs.ExecutorRef
 
 func (inertRunControl) RestoreWaitingExecution(
 	context.Context,
-	runs.WaitingContinuation,
+	runs.ExecutionContinuation,
 ) (runs.ExecutorRef, error) {
 	return runs.ExecutorRef{}, errors.New("test runtime: waiting restoration is unavailable")
 }
@@ -550,14 +550,14 @@ func (executionStub) StageRoot(_ context.Context, req runs.RootExecutionStart) (
 	return runs.ExecutorRef{SessionID: req.SessionID, ExecutorID: "exec_test"}, nil
 }
 func (executionStub) BeginRoot(context.Context, runs.ExecutorRef) error { return nil }
-func (executionStub) StageAcceptedContinuation(_ context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
+func (executionStub) StageAcceptedContinuation(_ context.Context, continuation runs.ExecutionContinuation) (runs.ExecutorRef, error) {
 	return runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
 
 func (executionStub) BeginContinuation(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, *runs.CommittedUserInput) error {
 	return nil
 }
-func (executionStub) PrepareContinuation(context.Context, runs.WaitingContinuation, []runs.InterruptAnswer, []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
+func (executionStub) PrepareContinuation(context.Context, runs.ExecutionContinuation, []runs.InterruptAnswer, []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
 	return nil, nil
 }
 func (executionStub) Release(context.Context, runs.ExecutorRef) error { return nil }
@@ -597,7 +597,7 @@ func (s stubRuntime) Observe(ctx context.Context, ref runs.ExecutorRef) (iter.Se
 	return s.executionController().Observe(ctx, ref)
 }
 
-func (s stubRuntime) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
+func (s stubRuntime) StageAcceptedContinuation(ctx context.Context, continuation runs.ExecutionContinuation) (runs.ExecutorRef, error) {
 	return s.executionController().StageAcceptedContinuation(ctx, continuation)
 }
 
@@ -612,7 +612,7 @@ func (s stubRuntime) BeginContinuation(
 
 func (s stubRuntime) PrepareContinuation(
 	ctx context.Context,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 	answers []runs.InterruptAnswer,
 	candidates []runs.RememberedRuleCandidate,
 ) ([]approval.RememberRequest, error) {

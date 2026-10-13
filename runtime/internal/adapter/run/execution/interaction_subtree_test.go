@@ -145,15 +145,15 @@ func memberIDForRun(t *testing.T, pending runs.Pending, runID string) string {
 	return ""
 }
 
-func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace string) runs.WaitingContinuation {
+func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace string) runs.ExecutionContinuation {
 	pending := barrier.Pending()
 	parked := make(map[string]run.Run, len(pending.Continuations))
 	for _, commit := range barrier.Runs() {
 		parked[commit.RunID] = *commit.Run
 	}
-	members := make([]runs.WaitingMember, 0, len(pending.Continuations))
+	members := make([]runs.ExecutionMember, 0, len(pending.Continuations))
 	for _, member := range pending.Continuations {
-		members = append(members, runs.WaitingMember{
+		members = append(members, runs.ExecutionMember{
 			RunID: member.RunID, MemberID: member.MemberID,
 			ParentRunID:     parked[member.RunID].Lineage().ParentRunID,
 			SpawnedByItemID: parked[member.RunID].Lineage().SpawnedByItemID,
@@ -161,7 +161,7 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace strin
 			DrainedTools: slices.Clone(member.DrainedTools),
 		})
 	}
-	return runs.WaitingContinuation{
+	return runs.ExecutionContinuation{
 		SessionID: parked[pending.RootRunID].SessionID(), ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members,
 		Checkpoint: barrier.Checkpoint(), Capabilities: parked[pending.RootRunID].Capabilities(),

@@ -30,9 +30,9 @@ type ExecutionScope struct {
 	GoalIncarnationID string
 }
 
-// ExecutorCheckpoint is one root-owned durable continuation aggregate. Payload
-// contains the complete executor tree and is opaque outside its executor
-// implementation; the host owns only the aggregate identity and the metadata
+// ExecutorCheckpoint is one root-owned durable execution context. Payload is
+// opaque outside its executor implementation; the acknowledged execution tree
+// has its own head and is never copied here. The host owns the identity and metadata
 // no other owner records. Model selection, capabilities, and goal incarnation
 // belong to the root Run, and workspace and isolation to the Session; restore
 // reads them from those owners. Installations is the executor's canonical

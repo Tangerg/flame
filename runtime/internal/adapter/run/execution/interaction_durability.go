@@ -80,6 +80,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	fact := runs.ExecutionTreeSettled{Update: update, Children: children}
 	i.state.mu.Lock()
 	hasChildren := len(i.state.delegateChildren) > 0
+	contextAdvances := i.scheduleResults != nil && i.state.deployments.hasScheduleCreates() && i.state.boundary != interactionBoundaryAcceptedPaused
 	i.state.mu.Unlock()
 	if hasChildren {
 		i.childProjection.lock()
@@ -88,6 +89,13 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	var terminalChildren []*managedDelegateCall
 	var retired []runtimeidentity.EffectID
 	if i.state.observerAttached() {
+		if contextAdvances {
+			checkpoint, err := i.executorCheckpoint(tree)
+			if err != nil {
+				return err
+			}
+			fact.Context = &checkpoint
+		}
 		facts, children, err := i.childTerminalFacts(tree)
 		if err != nil {
 			return err
@@ -161,7 +169,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		}
 		return rank(a.Payload) - rank(b.Payload)
 	})
-	if len(fact.Facts) == 0 && len(fact.Children) == 0 {
+	if len(fact.Facts) == 0 && len(fact.Children) == 0 && fact.Context == nil {
 		err = i.executionTrees.SaveExecutionTree(ctx, update)
 		if err != nil {
 			readCtx, stop := i.lifetime.treeCommitContext(ctx)

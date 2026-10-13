@@ -20,14 +20,14 @@ A Goal outcome report requires the immutable Goal incarnation that admitted its 
 
 ## Dependency direction
 
-| Ring | Responsibility |
-| --- | --- |
-| Domain | Aggregates, values, invariants, legal transitions, and pure policy |
-| Application | Use-case ordering, transactions, workflow lifetime, and consumer-owned ports |
-| Adapter | Translation to Scope, providers, MCP, persistence, and other external systems |
-| Infra | Filesystem, SQLite, Git, process, LSP, telemetry, and other technical mechanisms |
-| Delivery | Binding-neutral endpoint, dispatch, HTTP/SSE transport, and protocol projection |
-| Bootstrap | Concrete construction, ownership transfer, startup, recovery, and shutdown |
+| Ring        | Responsibility                                                                   |
+| ----------- | -------------------------------------------------------------------------------- |
+| Domain      | Aggregates, values, invariants, legal transitions, and pure policy               |
+| Application | Use-case ordering, transactions, workflow lifetime, and consumer-owned ports     |
+| Adapter     | Translation to Scope, providers, MCP, persistence, and other external systems    |
+| Infra       | Filesystem, SQLite, Git, process, LSP, telemetry, and other technical mechanisms |
+| Delivery    | Binding-neutral endpoint, dispatch, HTTP/SSE transport, and protocol projection  |
+| Bootstrap   | Concrete construction, ownership transfer, startup, recovery, and shutdown       |
 
 Domain does not depend on Application or outer rings. Application depends on Domain and declares narrow interfaces for effects it consumes. Adapters and Infra satisfy those interfaces. Delivery invokes Application through one endpoint. Bootstrap is the only concrete composition root.
 
@@ -40,15 +40,15 @@ shape where a context has several peers. A namespace adds no facade or service
 locator. Cohesive workflows keep responsibility-named files together; an operation
 name alone does not justify a package.
 
-| Owner | Package | Boundary |
-| --- | --- | --- |
-| Product execution | `application/agent/runs` | Admission, publication ordering, and durable Run transitions |
-| Scope execution translation | `adapter/run/execution` | Deployment, tree observation, checkpoints, and execution resource lifetime |
-| Human-input translation | `adapter/run/input` | Strict prompt, resolution, and continuation codecs against Scope's input contract |
-| Model integration | `adapter/integration/model` | Provider selection translation, capabilities, pricing, and auxiliary calls |
-| Lifecycle Hooks | `application/integration/hooks` | Catalog inspection, project trust changes, and event decisions |
-| Feedback | `domain/feedback`, `application/agent/feedback` | Independent quality observations and their durable append use case |
-| Workspace observations | `application/workspace`, `adapter/workspace` | Resolved workspace scope and translation of filesystem and Git observations |
+| Owner                       | Package                                         | Boundary                                                                          |
+| --------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| Product execution           | `application/agent/runs`                        | Admission, publication ordering, and durable Run transitions                      |
+| Scope execution translation | `adapter/run/execution`                         | Deployment, tree observation, checkpoints, and execution resource lifetime        |
+| Human-input translation     | `adapter/run/input`                             | Strict prompt, resolution, and continuation codecs against Scope's input contract |
+| Model integration           | `adapter/integration/model`                     | Provider selection translation, capabilities, pricing, and auxiliary calls        |
+| Lifecycle Hooks             | `application/integration/hooks`                 | Catalog inspection, project trust changes, and event decisions                    |
+| Feedback                    | `domain/feedback`, `application/agent/feedback` | Independent quality observations and their durable append use case                |
+| Workspace observations      | `application/workspace`, `adapter/workspace`    | Resolved workspace scope and translation of filesystem and Git observations       |
 
 Hook management consumes its own `Roots`, `Inspector`, and `TrustStore` ports.
 Bootstrap supplies the existing workspace scope as the root resolver, so Hooks
@@ -221,7 +221,7 @@ Direct diagnostic calls enter Scope's frozen input contract before Runtime norma
 
 Result publication callbacks first ask the Segment owner for a durable receipt, ordered with commits on its event stream. The receipt binds the Scope Effect and digest to the Session, Run, and active Segment. Only an unpublished batch needs pending product metadata and reducer mutation. Direct Tool completion uses these same committed results without synthesizing an assistant answer.
 
-Unknown external effects fail closed. Runtime stops live unresolved execution through Scope, then projects the immutable outcomes; it does not independently terminalize every Run as Lost. A canceled or timed-out Run can retain unresolved effects. Ordinary Tool processes contribute their evidence to the calling Run, while Delegates own theirs. Process and Effect identities, original termination cause, and bounded diagnostics commit atomically with the terminal Run and appear in both cold reads and terminal events. Already published Tool results retain their durable Items; unstarted effects are not reported as unknown. Scope's typed settled-results view preserves known results from interrupted rounds. The execution-tree head, incarnation-local sequence, commit identity ledger, and newly settled product facts commit in one transaction before Scope receives acknowledgement. Checkpoint identities bind writer and sequence; Effect boundary identities remain unique across writer activation. Reconciliation requires the exact current commit, not merely repeated snapshot content. Runtime failures remain distinct from logical process termination; Runtime drains external work before projecting retained uncertainty.
+Unknown external effects fail closed. The selected first-party `create_schedule` class first investigates its exact backend command receipt through a read-only RPC. The backend owns the historical create result, Scope owns explicit Effect resolution, and the original Run pump owns canonical Item publication. Absence, conflict, malformed results, and unavailable evidence cannot authorize a new mutation or a definite failure settlement. Runtime stops remaining unresolved execution through Scope, then projects the immutable outcomes; it does not independently terminalize every Run as Lost. A canceled or timed-out Run can retain unresolved effects. Ordinary Tool processes contribute their evidence to the calling Run, while Delegates own theirs. Process and Effect identities, original termination cause, and bounded diagnostics commit atomically with the terminal Run and appear in both cold reads and terminal events. Already published Tool results retain their durable Items; unstarted effects are not reported as unknown. Scope's typed settled-results view preserves known results from interrupted rounds. The execution-tree head, incarnation-local sequence, commit identity ledger, and newly settled product facts commit in one transaction before Scope receives acknowledgement. Checkpoint identities bind writer and sequence; Effect boundary identities remain unique across writer activation. Reconciliation requires the exact current commit, not merely repeated snapshot content. Runtime failures remain distinct from logical process termination; Runtime drains external work before projecting retained uncertainty.
 
 Root Await establishes the root outcome; Join establishes local subtree drainage. Reconciliation stays available during Join, followed by a final postorder sweep before Engine closure. Terminal projection waits for a durable receipt, including when background scanning is stopped. A held root outcome survives missing-child cleanup. Consumer rejection of a model stream does not request cancellation; the Dispatcher supplies the actual error and unresolved evidence.
 
@@ -235,7 +235,9 @@ SQLite stores current Application and Domain state, not live framework objects, 
 
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
-Runtime decodes its checkpoint envelope with the standard strict JSON decoder, rejecting duplicate and unknown members, including field-name aliases. Scope alone decodes and validates the enclosed execution tree.
+Runtime decodes its execution-context envelope with the standard strict JSON decoder, rejecting duplicate and unknown members, including field-name aliases. Active and waiting cuts use one payload for frozen bindings, instructions, model options, accounting, calibration, input associations, and result presentation metadata. Scope alone decodes and validates its separate acknowledged execution-tree head; that tree is never copied into the context payload.
+
+The cold `create_schedule` class admits a single product root and its ordinary Tool processes under the original Session lease. The Run owner reinstalls the original Segment and reducer before writer activation or result publication. Effective Tool arguments and exact release/source attribution commit before external I/O. Subsequent tree cuts, context, and known product results share an atomic write. Restored reducers observe the original Segment's committed Item identities and operational Tool start times before continuing. They do not emit another opening, Tool attempt, or allocation for those facts. Existing terminal decisions, incompatible builds and bindings, and unsupported active execution remain outside this class.
 
 Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.
 

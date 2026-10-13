@@ -287,6 +287,7 @@ func buildExecutionComposition(
 	interactionConfig := executionadapter.InteractionExecutorConfig{
 		Lifetime:                lifetime.context,
 		ExecutionTrees:          cfg.Stores.ExecutorCheckpoints,
+		OriginalScheduleResults: toolRuntime.schedules,
 		InstallationCheckpoints: cfg.Stores.ExecutorCheckpoints,
 		BuildID:                 cfg.BuildID,
 		ChatResolver:            cfg.ChatResolver,

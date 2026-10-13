@@ -151,6 +151,43 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	return checkpoint, nil
 }
 
+func (e *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, sessionID string) (ExecutorCheckpointRecord, bool, error) {
+	if err := validateSessionResource("load execution context", sessionID); err != nil {
+		return ExecutorCheckpointRecord{}, false, err
+	}
+	var checkpoint ExecutorCheckpointRecord
+	found := false
+	err := RunInTx(ctx, e.db, func(ctx context.Context) error {
+		rows, err := Connection(ctx, e.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id=? LIMIT 2`, sessionID)
+		if err != nil {
+			return err
+		}
+		var roots []string
+		for rows.Next() {
+			var root string
+			if err := rows.Scan(&root); err != nil {
+				_ = rows.Close()
+				return err
+			}
+			roots = append(roots, root)
+		}
+		err = errors.Join(rows.Err(), rows.Close())
+		if err != nil {
+			return err
+		}
+		if len(roots) == 0 {
+			return nil
+		}
+		if len(roots) != 1 {
+			return fmt.Errorf("%w: Session has multiple execution contexts", ErrInvalidExecutorCheckpointRecord)
+		}
+		checkpoint, err = e.loadCheckpoint(ctx, roots[0])
+		found = err == nil
+		return err
+	})
+	return checkpoint, found, err
+}
+
 // The payload and its body references must be read from the same snapshot.
 func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
 	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {

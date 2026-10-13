@@ -11,16 +11,67 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
+	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type Schedules struct {
 	installations plugins.Store
 	pool          *mcpconnection.Pool
 	publish       invalidation.Publish
+}
+
+func (s *Schedules) OwnsCreateSource(ctx context.Context, ref tool.Ref, release fingerprint.Digest) (bool, error) {
+	server, remote, mcp := ref.MCP()
+	if !mcp || remote.String() != "create_schedule" {
+		return false, nil
+	}
+	binding, found, err := plugins.ServiceOwner(ctx, s.installations, plugin.SchedulesService)
+	return found && binding.ServerID == server && binding.Digest == release, err
+}
+
+func (s *Schedules) OriginalCreateResult(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest, callID, arguments string) (*chat.ToolOutput, error) {
+	session, err := s.originalCreateSession(ctx, ref, release, authority)
+	if err != nil {
+		return nil, err
+	}
+	result, err := managedmcp.Call[rpc.OriginalCreateInput, rpc.OriginalCreateOutput](ctx, session, rpc.OriginalCreateResult, rpc.OriginalCreateInput{CallID: callID, Arguments: arguments})
+	if err != nil {
+		return nil, rpc.DecodeError(err)
+	}
+	if result.Output != nil {
+		if err := result.Output.Validate(); err != nil {
+			return nil, err
+		}
+	}
+	return result.Output, nil
+}
+
+func (s *Schedules) AwaitOriginalCreateSource(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) error {
+	_, err := s.originalCreateSession(ctx, ref, release, authority)
+	return err
+}
+
+func (s *Schedules) originalCreateSession(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) (*sdk.ClientSession, error) {
+	owned, err := s.OwnsCreateSource(ctx, ref, release)
+	if err != nil {
+		return nil, err
+	}
+	if !owned {
+		return nil, plugin.ErrUnavailable
+	}
+	server, _, _ := ref.MCP()
+	session, err := s.pool.BoundServiceSession(ctx, server, authority)
+	if err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 func NewSchedules(store plugins.Store, pool *mcpconnection.Pool, publish invalidation.Publish) (*Schedules, error) {

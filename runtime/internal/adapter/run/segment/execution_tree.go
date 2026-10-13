@@ -13,6 +13,11 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 	if err := update.Validate(); err != nil {
 		return err
 	}
+	if tree.Context != nil {
+		if err := tree.Context.ValidateOwnership(update.Head.RootID, update.Head.SessionID); err != nil {
+			return err
+		}
+	}
 	for _, started := range tree.StartedChildren {
 		if started.Reservation().SessionID != update.Head.SessionID {
 			return errors.New("segment: foreign child Run publication")
@@ -43,6 +48,11 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 		defer func() { applyErr = err }()
 		if err := e.executionTrees.SaveExecutionTree(ctx, update); err != nil {
 			return err
+		}
+		if tree.Context != nil {
+			if err := e.executorCheckpoints.SaveCheckpoint(ctx, *tree.Context); err != nil {
+				return err
+			}
 		}
 		for _, started := range tree.StartedChildren {
 			if err := e.applyStartedChildRun(ctx, started); err != nil {

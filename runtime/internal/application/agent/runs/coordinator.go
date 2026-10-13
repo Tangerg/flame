@@ -441,7 +441,7 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	if !s.spec.DetachActivation {
 		<-s.treeOwner.activation.done
 	}
-	if s.spec.AcceptedContinuation != nil {
+	if s.spec.restoresSegments() {
 		subscription.Cancel()
 		return nil, nil
 	}
@@ -520,7 +520,7 @@ type routeOpening struct {
 }
 
 func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, routes *executorRoutes) ([]routeOpening, error) {
-	if spec.AcceptedContinuation != nil {
+	if spec.restoresSegments() {
 		// Acceptance already committed these exact Segments and Items. Revival
 		// installs their process-local owners without replaying an opening write.
 		return nil, nil

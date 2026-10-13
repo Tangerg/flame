@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -20,17 +21,28 @@ import (
 // The checkpoint retains this data when a completed sibling waits for another
 // sibling's input; no completed Tool is rerun to reconstruct its presentation.
 type toolResultMetadata struct {
-	MemberID     string               `json:"member_id"`
-	Start        runs.ToolCallStarted `json:"start"`
-	Arguments    string               `json:"arguments"`
-	Result       *tool.Result         `json:"result,omitzero"`
-	Offload      *toolresult.Ref      `json:"offload,omitzero"`
-	OutputText   string               `json:"output_text,omitempty"`
-	MutatedPaths []string             `json:"mutated_paths,omitempty"`
-	Failure      *tool.Failure        `json:"failure,omitzero"`
+	Create       *scheduleCreateEvidence `json:"create,omitzero"`
+	MemberID     string                  `json:"member_id"`
+	Start        runs.ToolCallStarted    `json:"start"`
+	Result       *tool.Result            `json:"result,omitzero"`
+	Offload      *toolresult.Ref         `json:"offload,omitzero"`
+	OutputText   string                  `json:"output_text,omitempty"`
+	MutatedPaths []string                `json:"mutated_paths,omitempty"`
+	Failure      *tool.Failure           `json:"failure,omitzero"`
+}
+
+type scheduleCreateEvidence struct {
+	ProcessID string             `json:"process_id"`
+	EffectID  string             `json:"effect_id"`
+	Tool      tool.Ref           `json:"tool"`
+	Release   fingerprint.Digest `json:"release"`
+	Authority fingerprint.Digest `json:"authority"`
 }
 
 func (t toolResultMetadata) clone() toolResultMetadata {
+	if t.Create != nil {
+		t.Create = new(*t.Create)
+	}
 	t.MutatedPaths = slices.Clone(t.MutatedPaths)
 	if t.Result != nil {
 		t.Result = new(*t.Result)
@@ -45,6 +57,25 @@ func (t toolResultMetadata) clone() toolResultMetadata {
 }
 
 func (t toolResultMetadata) validate() error {
+	if t.Create != nil {
+		if _, err := agent.ParseProcessID(t.Create.ProcessID); err != nil {
+			return err
+		}
+		if _, err := agent.ParseEffectID(t.Create.EffectID); err != nil {
+			return err
+		}
+		server, remote, found := t.Create.Tool.MCP()
+		_, installed := server.Origin().Installation()
+		if !found || !installed || remote.String() != "create_schedule" || t.Create.Tool.ModelName() != t.Start.ToolName {
+			return errors.New("execution: invalid schedule create evidence")
+		}
+		if err := t.Create.Release.Validate(); err != nil {
+			return err
+		}
+		if err := t.Create.Authority.Validate(); err != nil {
+			return err
+		}
+	}
 	processID, err := agent.ParseProcessID(t.MemberID)
 	if err != nil || t.Start.ModelCallSequence == 0 || t.Start.SourceCallID == "" || t.Start.ToolName == "" {
 		return errors.New("execution: invalid Tool metadata attribution")
@@ -53,7 +84,7 @@ func (t toolResultMetadata) validate() error {
 	if err != nil || identity.String() != t.Start.CallID {
 		return errors.New("execution: Tool metadata logical identity changed")
 	}
-	if _, err := tool.ParseArguments(t.Arguments); err != nil {
+	if _, err := tool.ParseArguments(t.Start.Arguments); err != nil {
 		return err
 	}
 	if t.Offload != nil {
@@ -82,8 +113,11 @@ func (i *interactionSession) rememberToolMetadata(metadata toolResultMetadata) e
 	if i.state.toolMetadata == nil {
 		i.state.toolMetadata = make(map[string]toolResultMetadata)
 	}
-	if _, duplicate := i.state.toolMetadata[metadata.Start.CallID]; duplicate {
-		return errors.New("execution: pending call metadata already exists")
+	if previous, duplicate := i.state.toolMetadata[metadata.Start.CallID]; duplicate {
+		if previous.Create == nil || previous.Result != nil || previous.Failure != nil || previous.Offload != nil || previous.Start != metadata.Start {
+			return errors.New("execution: pending call metadata already exists")
+		}
+		metadata.Create = new(*previous.Create)
 	}
 	i.state.toolMetadata[metadata.Start.CallID] = metadata.clone()
 	return nil
@@ -113,7 +147,7 @@ func (i *interactionSession) toolResultProjection(relation agent.ProcessRelation
 			return runs.ExecutorEvent{}, errors.New("execution: result metadata belongs to another member")
 		}
 		start = metadata.Start
-		end.Arguments, end.Result, end.Offload = metadata.Arguments, metadata.Result, metadata.Offload
+		end.Arguments, end.Result, end.Offload = metadata.Start.Arguments, metadata.Result, metadata.Offload
 		end.OutputText, end.MutatedPaths, end.Failure = metadata.OutputText, metadata.MutatedPaths, metadata.Failure
 	} else if entry.Disposition != interaction.ResultRejected {
 		return runs.ExecutorEvent{}, fmt.Errorf("execution: known Tool result %q lost its product metadata", entry.Call.ID)
@@ -140,7 +174,9 @@ func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeide
 	i.state.mu.Lock()
 	var delegates []*managedDelegateCall
 	for _, identity := range identities {
-		delete(i.state.toolMetadata, identity.String())
+		if i.state.toolMetadata[identity.String()].Create == nil {
+			delete(i.state.toolMetadata, identity.String())
+		}
 		for _, managed := range i.state.delegateCalls {
 			if managed.callID == identity {
 				delegates = append(delegates, managed)
@@ -153,6 +189,18 @@ func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeide
 		managed.mu.Lock()
 		managed.parentToolFinished = true
 		managed.mu.Unlock()
+	}
+}
+
+// The next model dispatch closes this member's investigated Tool prefix.
+// Historical create metadata cannot turn a later model crash into that class.
+func (i *interactionSession) retireCreatePrefix(memberID string) {
+	i.state.mu.Lock()
+	defer i.state.mu.Unlock()
+	for id, metadata := range i.state.toolMetadata {
+		if metadata.MemberID == memberID && metadata.Create != nil {
+			delete(i.state.toolMetadata, id)
+		}
 	}
 }
 

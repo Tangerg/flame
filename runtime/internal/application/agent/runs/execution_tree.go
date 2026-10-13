@@ -53,6 +53,7 @@ type ExecutionTreeStore interface {
 // ExecutionTreeSettled commits the recovery head and its newly known product
 // facts together. A receipt authorizes Scope to advance; a projection event does not.
 type ExecutionTreeSettled struct {
+	Context *ExecutorCheckpoint
 	executionFactBase
 	Update   ExecutionTreeUpdate
 	Children []ChildRunPublication
@@ -66,6 +67,7 @@ type ChildRunPublication struct {
 
 // Child admission and the executor cut that proves it must share one transaction.
 type ExecutionTreeCommit struct {
+	Context         *ExecutorCheckpoint
 	Update          ExecutionTreeUpdate
 	StartedChildren []StartedChildRun
 	AbortedChildren []ChildRunStartReservation
@@ -73,6 +75,9 @@ type ExecutionTreeCommit struct {
 }
 
 func (e ExecutionTreeSettled) clone() ExecutionTreeSettled {
+	if e.Context != nil {
+		e.Context = new(e.Context.Clone())
+	}
 	e.Update.Head.Payload = slices.Clone(e.Update.Head.Payload)
 	e.Children = slices.Clone(e.Children)
 	e.Facts = slices.Clone(e.Facts)

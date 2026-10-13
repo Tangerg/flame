@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
@@ -32,6 +33,7 @@ type reductionBatch struct {
 // factReduction is the complete in-memory consequence of one executor fact
 // before Run events are projected into their durable publication shape.
 type factReduction struct {
+	executionContext     *ExecutorCheckpoint
 	resultPublication    *ResultPublication
 	toolResults          []corechat.ToolResult
 	events               []ProjectionEvent
@@ -90,6 +92,12 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 		commit := r.ensureLastEventCommit(&batch)
 		commit.ResultPublication = new(*reduced.resultPublication)
 		commit.ToolResults = cloneToolResults(reduced.toolResults)
+	}
+	if reduced.executionContext != nil {
+		if len(batch.events) == 0 || batch.parkCommit != nil {
+			return reductionBatch{}, errors.New("runs: execution context has no ordinary publication")
+		}
+		r.ensureLastEventCommit(&batch).ExecutionContext = new(reduced.executionContext.Clone())
 	}
 	return batch, nil
 }

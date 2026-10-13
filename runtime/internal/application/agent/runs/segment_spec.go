@@ -77,6 +77,14 @@ type segmentSpec struct {
 	CommitOpening func(context.Context, OpeningCommit) error
 }
 
+func (s segmentSpec) restoresSegments() bool {
+	if s.Continuation == nil {
+		return false
+	}
+	root, found := s.Continuation.run(s.RunID)
+	return found && root.State() == run.Running
+}
+
 func (s segmentSpec) executorRef() ExecutorRef {
 	return ExecutorRef{SessionID: s.SessionID, ExecutorID: s.ExecutorID}
 }

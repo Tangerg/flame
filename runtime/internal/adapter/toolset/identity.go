@@ -67,10 +67,10 @@ func (t identifiedTool) SourceFingerprint() fingerprint.Digest { return t.finger
 
 type realizedSource interface{ SourceConfig() mcp.ServerConfig }
 
-// releaseDependency reports the installation release an executable realizes.
+// InstallationDependency reports the installation release an executable realizes.
 // The release comes from the executable's own connection configuration, never
 // from the installation's current selection, which may already have moved on.
-func releaseDependency(executable toolcontract.Tool) (plugin.Dependency, bool, error) {
+func InstallationDependency(executable toolcontract.Tool) (plugin.Dependency, bool, error) {
 	ref, err := Identify(executable)
 	if err != nil {
 		return plugin.Dependency{}, false, err

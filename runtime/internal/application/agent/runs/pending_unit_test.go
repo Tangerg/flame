@@ -258,8 +258,8 @@ func TestPendingEqualUsesLogicalDurableValue(t *testing.T) {
 	}
 }
 
-func TestWaitingMemberRequiresExactModelSelection(t *testing.T) {
-	member := WaitingMember{RunID: "run_1", MemberID: "member_1"}
+func TestExecutionMemberRequiresExactModelSelection(t *testing.T) {
+	member := ExecutionMember{RunID: "run_1", MemberID: "member_1"}
 	if err := member.Validate(); err == nil || !strings.Contains(err.Error(), "model selection is required") {
 		t.Fatalf("Validate without waiting member model selection error = %v", err)
 	}

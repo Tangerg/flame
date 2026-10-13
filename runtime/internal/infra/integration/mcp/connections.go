@@ -190,3 +190,26 @@ func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Serv
 	}
 	return configured.session, nil
 }
+
+// A required recovery source may join its admitted connection attempt. It
+// cannot initiate another attempt or borrow a replacement configuration.
+func (c *Connections) AwaitServiceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
+	c.mu.Lock()
+	configured := c.find(current.ID())
+	var attempt *Attempt
+	if configured != nil {
+		attempt = configured.attempt
+	}
+	c.mu.Unlock()
+	if attempt != nil {
+		select {
+		case <-attempt.done:
+			if attempt.err != nil {
+				return nil, attempt.err
+			}
+		case <-ctx.Done():
+			return nil, context.Cause(ctx)
+		}
+	}
+	return c.ServiceSession(ctx, current)
+}

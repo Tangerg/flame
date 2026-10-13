@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
-func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.WaitingContinuation, checkpoint interactionCheckpointState, accepted bool) error {
+func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
 
 	// A retained Unknown settlement is a restorable fact to the Engine; refusing
 	// to resume on top of one is this Runtime's policy, so it stays here.
@@ -34,7 +34,7 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 		}
 		return err
 	}
-	members, err := i.restoredWaitingMembers(continuation, snapshots, checkpoint.tree.RootID())
+	members, err := i.restoredExecutionMembers(continuation, snapshots, checkpoint.tree.RootID())
 	if err != nil {
 		return fmt.Errorf("%w: waiting members: %w", runs.ErrExecutorStateLost, err)
 	}
@@ -53,7 +53,7 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 
 func (i *interactionSession) initializeRestoredContinuation(
 	root *agent.Process,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 	checkpoint interactionCheckpointState,
 	boundary interactionBoundary,
 ) error {
@@ -72,7 +72,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 		!isInteractionWaitingBoundary(rootSnapshot.Status()) {
 		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
 	}
-	members, err := i.restoredWaitingMembers(continuation, snapshots, root.Relation().ProcessID())
+	members, err := i.restoredExecutionMembers(continuation, snapshots, root.Relation().ProcessID())
 	if err != nil {
 		return err
 	}
@@ -103,18 +103,18 @@ func (i *interactionSession) initializeRestoredContinuation(
 	return nil
 }
 
-func (i *interactionSession) restoredWaitingMembers(
-	continuation runs.WaitingContinuation,
+func (i *interactionSession) restoredExecutionMembers(
+	continuation runs.ExecutionContinuation,
 	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
 	rootID agent.ProcessID,
-) (map[agent.ProcessID]runs.WaitingMember, error) {
+) (map[agent.ProcessID]runs.ExecutionMember, error) {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	if deployments == nil {
 		return nil, errors.New("execution: Interaction deployments are unavailable")
 	}
-	members := make(map[agent.ProcessID]runs.WaitingMember, len(continuation.Members))
+	members := make(map[agent.ProcessID]runs.ExecutionMember, len(continuation.Members))
 	runByProcess := make(map[agent.ProcessID]string, len(continuation.Members))
 	for _, member := range continuation.Members {
 		processID, err := agent.ParseProcessID(member.MemberID)
@@ -159,7 +159,7 @@ func (i *interactionSession) restoredWaitingMembers(
 
 func (i *interactionSession) restoreDelegateCalls(
 	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
-	members map[agent.ProcessID]runs.WaitingMember,
+	members map[agent.ProcessID]runs.ExecutionMember,
 ) (map[delegateCallIdentity]*managedDelegateCall, map[agent.ProcessID]*managedDelegateCall, error) {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
@@ -205,7 +205,7 @@ func (i *interactionSession) restoreDelegateCalls(
 func restoreManagedDelegateCall(
 	deployments *interactionDeploymentSet,
 	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
-	members map[agent.ProcessID]runs.WaitingMember,
+	members map[agent.ProcessID]runs.ExecutionMember,
 	parentID agent.ProcessID,
 	parentSnapshot agent.ProcessSnapshot,
 	child interaction.ActiveDelegateChild,
@@ -284,7 +284,7 @@ func restoreManagedDelegateCall(
 // per-model call counts the Run does not record.
 func restoreInteractionAccounting(
 	checkpoint interactionCheckpointState,
-	members map[agent.ProcessID]runs.WaitingMember,
+	members map[agent.ProcessID]runs.ExecutionMember,
 ) (map[agent.ProcessID]map[string]accounting.ModelUsage, error) {
 	usageByProcess := make(map[agent.ProcessID]map[string]accounting.ModelUsage, len(members))
 	for processID, member := range members {
