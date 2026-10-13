@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -16,12 +17,17 @@ type sessionState struct {
 	draftTransition *sessionDraftTransition
 }
 
-// executionState owns the one live root execution observed by the terminal.
-// Durable Run facts remain owned by Runtime; these fields only track the local
-// stream, cancellation, and elapsed-time presentation lifecycle.
+type openingReceipt struct {
+	RunID     string
+	CommandID replay.CommandID
+}
+
+// executionState owns the local observation lifetime. Opening retains the
+// acknowledged command association until projection or local settlement takes
+// over; Runtime owns the product lifecycle facts.
 type executionState struct {
 	conversation     *conversation.Conversation
-	openingRunID     string
+	opening          *openingReceipt
 	pendingCancel    *pendingCancellation
 	following        bool
 	projectionFailed bool

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
@@ -811,7 +812,7 @@ func TestMockConversationStreamsApprovalAndCompletes(t *testing.T) {
 	stop()
 }
 
-func TestApprovalResumeRetriesTheSameMutationIdentity(t *testing.T) {
+func TestApprovalResumeQueriesAcceptanceWithoutRedelivery(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &replayingResumeRuntime{Runtime: base}
@@ -824,7 +825,7 @@ func TestApprovalResumeRetriesTheSameMutationIdentity(t *testing.T) {
 	host.Shows(t, "complete")
 
 	attempts := runtime.resumeAttempts()
-	if len(attempts) != 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID {
+	if len(attempts) != 1 || attempts[0].CommandID == "" {
 		t.Fatalf("resume attempts = %+v", attempts)
 	}
 	stop()
@@ -844,7 +845,7 @@ func TestApprovalResumeTreatsCancellationAsAnUnknownAcknowledgement(t *testing.T
 	host.Hides(t, "Tool approval")
 
 	attempts := runtime.resumeAttempts()
-	if len(attempts) != 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID {
+	if len(attempts) != 1 || attempts[0].CommandID == "" {
 		t.Fatalf("canceled acknowledgement attempts = %+v", attempts)
 	}
 	stop()
@@ -948,7 +949,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	second, stopSecond := runUIWithReplayState(t, recovery, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	second.Shows(t, "complete")
 	attempts := recovery.resumeAttempts()
-	if len(attempts) != 2 || attempts[0].CommandID != pending.CommandID || attempts[1].CommandID != pending.CommandID {
+	if len(attempts) != 1 || attempts[0].CommandID != pending.CommandID {
 		t.Fatalf("recovered resume attempts = %+v, want command %s", attempts, pending.CommandID)
 	}
 	reopened, err = openTestWorkbench(stateDirectory)
@@ -1268,11 +1269,11 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 	}
 	host.Shows(t, "complete")
 	attempts := runtime.resumeAttempts()
-	if len(attempts) < 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID ||
-		attempts[1].CommandID != command.CommandID {
+	if len(attempts) != 1 || attempts[0].CommandID == "" ||
+		attempts[0].CommandID != command.CommandID {
 		t.Fatalf("resume attempts after restart = %+v", attempts)
 	}
-	for index, attempt := range attempts[:2] {
+	for index, attempt := range attempts {
 		if len(attempt.Answers) != 2 {
 			t.Fatalf("resume attempt %d answers = %+v", index+1, attempt.Answers)
 		}
@@ -1310,85 +1311,100 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 	stop()
 }
 
-func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
-	base := runtimefixture.New()
-	base.Instant = true
-	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{
-			Interrupts: []conversation.Interrupt{conversation.Approval{
-				ItemID: "approval", Title: "Already accepted",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
-			}},
-			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{
-					Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
-				}}}
-			},
-		}
+func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
+	for _, proof := range []bool{true, false} {
+		t.Run(fmt.Sprintf("original receipt %t", proof), func(t *testing.T) {
+			base := runtimefixture.New()
+			base.Instant = true
+			base.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{
+					Interrupts: []conversation.Interrupt{conversation.Approval{
+						ItemID: "approval", Title: "Already accepted",
+						Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+					}},
+					Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
+						return []runtimefixture.Step{{Finish: &runtimefixture.Finish{
+							Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
+						}}}
+					},
+				}
+			}
+			opened, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "settle before restart"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, streamErr := range opened.Events {
+				if streamErr != nil {
+					t.Fatal(streamErr)
+				}
+			}
+			waiting, err := base.GetSession(t.Context(), "ses_demo_1")
+			if err != nil || len(waiting.Interrupts) != 1 {
+				t.Fatalf("waiting session = %+v, %v", waiting, err)
+			}
+			command := conversation.ResumeRun{
+				CommandID: "cli_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", RunID: opened.RunID,
+				Answers: []conversation.InterruptAnswer{{
+					ItemID: conversation.InterruptItemID(waiting.Interrupts[0]),
+					Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
+				}},
+			}
+			submitted := command.Clone()
+			if !proof {
+				submitted.CommandID = mutation.NewCommandID()
+			}
+			continued, err := base.ResumeRun(t.Context(), submitted)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, streamErr := range continued.Events {
+				if streamErr != nil {
+					t.Fatal(streamErr)
+				}
+			}
+			stateDirectory := t.TempDir()
+			store, err := openTestWorkbench(stateDirectory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
+			if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
+				Command: command, Interrupts: waiting.Interrupts,
+				Replay: protectedCommandReplayGuard(
+					t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
+				),
+			}, nil); stagePendingResumeErr != nil {
+				t.Fatal(stagePendingResumeErr)
+			}
+			runtime := &replayingResumeRuntime{Runtime: base}
+			host, stop := runUIFromConfig(t, Config{
+				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
+				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+			})
+			if proof {
+				host.Shows(t, "complete")
+			} else {
+				host.Shows(t, "mutation replay guarantee is unavailable")
+			}
+			if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
+				t.Fatalf("authoritatively settled resume was replayed: %+v", attempts)
+			}
+			reopened, err := openTestWorkbench(stateDirectory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			durable, found := reopened.PendingResume("ses_demo_1")
+			if proof && found {
+				t.Fatalf("settled resume remains durable: %+v", durable)
+			}
+			if !proof && (!found || !durable.Command.Equal(command)) {
+				t.Fatalf("another command's completed snapshot settled this resume: %+v, found %t", durable, found)
+			}
+			stop()
+		})
 	}
-	opened, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "settle before restart"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, streamErr := range opened.Events {
-		if streamErr != nil {
-			t.Fatal(streamErr)
-		}
-	}
-	waiting, err := base.GetSession(t.Context(), "ses_demo_1")
-	if err != nil || len(waiting.Interrupts) != 1 {
-		t.Fatalf("waiting session = %+v, %v", waiting, err)
-	}
-	command := conversation.ResumeRun{
-		CommandID: "cli_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", RunID: opened.RunID,
-		Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InterruptItemID(waiting.Interrupts[0]),
-			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
-		}},
-	}
-	continued, err := base.ResumeRun(t.Context(), command)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, streamErr := range continued.Events {
-		if streamErr != nil {
-			t.Fatal(streamErr)
-		}
-	}
-	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
-		Command: command, Interrupts: waiting.Interrupts,
-		Replay: protectedCommandReplayGuard(
-			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
-		),
-	}, nil); stagePendingResumeErr != nil {
-		t.Fatal(stagePendingResumeErr)
-	}
-	runtime := &replayingResumeRuntime{Runtime: base}
-	host, stop := runUIFromConfig(t, Config{
-		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
-	})
-	host.Shows(t, "complete")
-	if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
-		t.Fatalf("authoritatively settled resume was replayed: %+v", attempts)
-	}
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if durable, found := reopened.PendingResume("ses_demo_1"); found {
-		t.Fatalf("settled resume remains durable: %+v", durable)
-	}
-	stop()
 }
-
-func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
+func TestLaunchPreservesAnExpiredResumeWithoutAcceptanceProof(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
@@ -1443,23 +1459,21 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
-	host.Shows(t, "complete")
-	attempts := runtime.resumeAttempts()
-	if len(attempts) != 2 || attempts[0].CommandID == oldCommand.CommandID ||
-		attempts[0].CommandID != attempts[1].CommandID || !attempts[0].Equal(attempts[1]) {
-		t.Fatalf("reidentified resume attempts = %+v", attempts)
+	host.Shows(t, "mutation replay guarantee is unavailable")
+	if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
+		t.Fatalf("expired resume was redelivered: %+v", attempts)
 	}
 	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if durable, found := reopened.PendingResume("ses_demo_1"); found {
-		t.Fatalf("reidentified resume remains durable: %+v", durable)
+	if durable, found := reopened.PendingResume("ses_demo_1"); !found || !durable.Command.Equal(oldCommand) {
+		t.Fatalf("unknown resume lost its original command: %+v, found %t", durable, found)
 	}
 	stop()
 }
 
-func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testing.T) {
+func TestActiveResumePreservesUncertaintyWhenReplayExpires(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
@@ -1488,23 +1502,17 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	host.Press(input.Enter)
 	host.Shows(t, "Tool approval")
 	host.Press(input.Enter)
-	host.Shows(t, "complete")
+	host.Shows(t, "mutation replay guarantee is unavailable")
 	attempts := runtime.resumeAttempts()
-	valid := len(attempts) >= 2 && attempts[0].CommandID != attempts[1].CommandID
-	for index := 1; valid && index < len(attempts); index++ {
-		candidate := attempts[index].Clone()
-		candidate.CommandID = attempts[0].CommandID
-		valid = attempts[index].CommandID == attempts[1].CommandID && attempts[0].Equal(candidate)
-	}
-	if !valid {
-		t.Fatalf("expired resume attempts = %+v", attempts)
+	if len(attempts) != 1 {
+		t.Fatalf("expired resume was redelivered: %+v", attempts)
 	}
 	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if durable, found := reopened.PendingResume("ses_demo_1"); found {
-		t.Fatalf("reconciled resume remains durable: %+v", durable)
+	if durable, found := reopened.PendingResume("ses_demo_1"); !found || !durable.Command.Equal(attempts[0]) {
+		t.Fatalf("unknown resume lost its original command: %+v, found %t", durable, found)
 	}
 	stop()
 }
@@ -1617,7 +1625,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	host.Shows(t, "complete")
 
 	attempts := runtime.resumeAttempts()
-	if len(attempts) < 2 || attempts[0].CommandID != command.CommandID || attempts[1].CommandID != command.CommandID {
+	if len(attempts) != 1 || attempts[0].CommandID != command.CommandID {
 		t.Fatalf("destination resume attempts = %+v", attempts)
 	}
 	reopened, err := openTestWorkbench(stateDirectory)
@@ -2151,8 +2159,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 		cancellations[0].Reason != "canceled while start delivery was unconfirmed" {
 		t.Fatalf("terminal-close invalid receipt cleanup = starts %+v, cancellations %+v", starts, cancellations)
 	}
-	if attempts := gate.startInputs(); len(attempts) != 2 || attempts[0].CommandID != started.CommandID ||
-		attempts[1].CommandID != started.CommandID {
+	if attempts := gate.startInputs(); len(attempts) != 1 || attempts[0].CommandID != started.CommandID {
 		t.Fatalf("terminal-close start recovery identities = %+v", attempts)
 	}
 	snapshot, err := base.GetSession(t.Context(), started.SessionID)

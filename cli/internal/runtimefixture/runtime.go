@@ -50,6 +50,7 @@ type Runtime struct {
 	fault        int
 	identities   mockIdentitySequence
 	now          func() time.Time
+	openings     map[string]protocol.RunAcceptance
 }
 
 type sessionState struct {
@@ -108,6 +109,7 @@ func New() *Runtime {
 		runs:         make(map[string]*runState),
 		approvalMode: protocol.ApprovalModeBalanced,
 		now:          time.Now,
+		openings:     make(map[string]protocol.RunAcceptance),
 	}
 	for _, session := range demoSessions() {
 		runtime.sessions[session.ID] = &sessionState{meta: session}

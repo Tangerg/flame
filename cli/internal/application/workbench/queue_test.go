@@ -92,7 +92,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 	if len(pending) != 3 || pending[0].Command.CommandID != first.CommandID || pending[0].State != PendingRunDispatching || pending[1].Command.CommandID != last.CommandID {
 		t.Fatalf("priority edit crossed the opening boundary: %+v", pending)
 	}
-	if _, retired, err := prompts.SettleDispatch("session"); err != nil || !retired {
+	if _, retired, err := prompts.SettleDispatch("session", first.CommandID); err != nil || !retired {
 		t.Fatalf("settlement = %t, %v", retired, err)
 	}
 	if next, ok := prompts.BeginDispatch("session"); !ok || next.CommandID != last.CommandID {
@@ -107,7 +107,7 @@ func TestQueueSettlementRetainsReservationUntilBothDurableWritesSucceed(t *testi
 		t.Fatal(err)
 	}
 	writes.fail = store.sessionStateName("session")
-	if _, retired, err := prompts.SettleDispatch("session"); err == nil || retired {
+	if _, retired, err := prompts.SettleDispatch("session", first.CommandID); err == nil || retired {
 		t.Fatalf("failed outbox retirement settled FIFO: %t, %v", retired, err)
 	}
 	if len(store.History()) != 1 {
@@ -120,11 +120,39 @@ func TestQueueSettlementRetainsReservationUntilBothDurableWritesSucceed(t *testi
 		t.Fatal("failed settlement lost the opening reservation")
 	}
 	writes.fail = ""
-	if _, retired, err := prompts.SettleDispatch("session"); err != nil || !retired {
+	if _, retired, err := prompts.SettleDispatch("session", first.CommandID); err != nil || !retired {
 		t.Fatalf("retry settlement = %t, %v", retired, err)
 	}
 	if len(store.History()) != 1 || len(store.PendingRuns("session")) != 2 {
 		t.Fatal("settlement retry duplicated history or lost a successor")
+	}
+}
+
+func TestQueueSettlementNamesTheAcknowledgedCommandAcrossSuccessors(t *testing.T) {
+	prompts, store, _, _ := queueWithStorage(t)
+	first, _ := prompts.BeginDispatch("session")
+	if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+		t.Fatal(err)
+	}
+	second := prompts.Snapshot("session").Entries[1]
+	if _, retired, err := prompts.SettleDispatch("session", second.CommandID); err == nil || retired {
+		t.Fatalf("another receipt settled the dispatch reservation: retired=%t err=%v", retired, err)
+	}
+	if pending := store.PendingRuns("session"); len(pending) != 3 || pending[0].Command.CommandID != first.CommandID || len(store.History()) != 0 {
+		t.Fatalf("mismatched receipt changed durable authoring: %+v", pending)
+	}
+	if _, retired, err := prompts.SettleDispatch("session", first.CommandID); err != nil || !retired {
+		t.Fatalf("original receipt settlement: retired=%t err=%v", retired, err)
+	}
+	successor, ok := prompts.BeginDispatch("session")
+	if !ok || successor.CommandID != second.CommandID {
+		t.Fatalf("successor reservation = %+v, %t", successor, ok)
+	}
+	if _, retired, err := prompts.SettleDispatch("session", first.CommandID); err != nil || retired {
+		t.Fatalf("late original receipt changed its successor: retired=%t err=%v", retired, err)
+	}
+	if reserved, ok := prompts.Dispatching("session"); !ok || reserved.CommandID != second.CommandID || len(store.History()) != 1 {
+		t.Fatalf("late settlement lost successor ownership: %+v, %t", reserved, ok)
 	}
 }
 
@@ -208,7 +236,7 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 				t.Fatalf("restored reservation = %+v, %t", reserved, found)
 			}
 			if state == PendingRunCanceling {
-				if _, _, err := recovered.SettleDispatch("session"); !errors.Is(err, ErrDispatchCanceling) {
+				if _, _, err := recovered.SettleDispatch("session", first.CommandID); !errors.Is(err, ErrDispatchCanceling) {
 					t.Fatalf("cancellation was settled as an ordinary acknowledgement: %v", err)
 				}
 			}

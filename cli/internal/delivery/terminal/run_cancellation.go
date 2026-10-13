@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -108,7 +107,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, pending.Command, pending.Replay, a.replayPolicy, runtimeRecoveryBackoff,
+			ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return
@@ -116,6 +115,12 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 		_ = post(ctx, dispatcher, func() {
 			if !a.operations.Current(lease) || a.closed || a.session.current.ID != pending.Command.SessionID ||
 				!a.operations.Release(lease) {
+				return
+			}
+			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+				if err := a.retireCanceledStart(pending); err != nil {
+					a.fail(err)
+				}
 				return
 			}
 			observed, accepted := observedSegmentStream(opened, err)
@@ -152,16 +157,15 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 
 func openStartRunWithBackoff(
 	ctx context.Context,
-	runtime runworkflow.Lifecycle,
-	command prompt.StartRun,
-	replayGuard replay.Guard,
+	runtime runworkflow.OpeningSource,
+	pending workbench.PendingRun,
 	replayPolicy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (conversation.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(
-		ctx, backoff, mutation.ReplayAdmission(replayPolicy, replayGuard),
+		ctx, backoff, nil,
 		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return runtime.StartRun(ctx, command)
+			return runworkflow.OpenPendingStart(ctx, runtime, pending, replayPolicy)
 		},
 	)
 }
@@ -190,8 +194,8 @@ func (a *app) activeCancellation() (conversation.CancelRun, bool) {
 	if runID := a.execution.conversation.RunID(); runID != "" && a.execution.conversation.Busy() {
 		return conversation.CancelRun{RunID: runID, Reason: "terminal closed"}, true
 	}
-	if a.execution.openingRunID != "" && a.execution.conversation.Busy() {
-		return conversation.CancelRun{RunID: a.execution.openingRunID, Reason: "terminal closed"}, true
+	if a.execution.opening != nil && a.execution.conversation.Busy() {
+		return conversation.CancelRun{RunID: a.execution.opening.RunID, Reason: "terminal closed"}, true
 	}
 	return conversation.CancelRun{}, false
 }
@@ -316,7 +320,7 @@ func (a *app) handleRuntimeCancellation(
 	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == pending.request.CommandID {
 		a.execution.pendingCancel = nil
 	}
-	a.execution.openingRunID = ""
+	a.execution.opening = nil
 	a.dropStream()
 	if pending.policy == recoverProjectionFailure {
 		a.prompt.SetBusy(false)
@@ -339,14 +343,10 @@ func (a *app) handleRuntimeCancellation(
 }
 
 func (a *app) openingCommandForRun(runID string) replay.CommandID {
-	if runID == "" || runID != a.execution.openingRunID {
+	if a.execution.opening == nil || runID != a.execution.opening.RunID {
 		return ""
 	}
-	entry, ok := a.queue.Dispatching(a.session.current.ID)
-	if !ok {
-		return ""
-	}
-	return entry.CommandID
+	return a.execution.opening.CommandID
 }
 
 func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID replay.CommandID) error {
@@ -400,8 +400,11 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	opened, err := openStartRunWithBackoff(
-		ctx, a.runtime, pending.Command, pending.Replay, a.replayPolicy, runtimeRecoveryBackoff,
+		ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
 	)
+	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+		return a.retireCanceledStart(pending)
+	}
 	opened, accepted := observedSegmentStream(opened, err)
 	if !accepted {
 		if !mutation.OutcomeUnknown(err) {

@@ -120,15 +120,15 @@ func (a *app) drainQueue() bool {
 		return false
 	}
 	if _, dispatching := a.queue.Dispatching(a.session.current.ID); dispatching {
-		if a.runAdmissionBlocked() || a.execution.openingRunID == "" ||
+		if a.runAdmissionBlocked() || a.execution.opening == nil ||
 			a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) {
 			return false
 		}
-		if err := a.attemptQueuedDispatchSettlement(); err != nil {
-			a.reportQueuedDispatchSettlementFailure(err)
+		if err := a.attemptQueuedDispatchSettlement(a.execution.opening.CommandID); err != nil {
+			a.reportQueuedDispatchSettlementFailure(a.execution.opening.CommandID, err)
 			return false
 		}
-		a.execution.openingRunID = ""
+		a.execution.opening = nil
 	}
 	if a.runAdmissionBlocked() ||
 		a.operations.Active(sessionChangeOperation) || a.operations.Active(pendingRunRecoveryOperation) {
@@ -147,8 +147,8 @@ func (a *app) drainQueue() bool {
 	return true
 }
 
-func (a *app) attemptQueuedDispatchSettlement() error {
-	entry, retired, err := a.queue.SettleDispatch(a.session.current.ID)
+func (a *app) attemptQueuedDispatchSettlement(commandID replay.CommandID) error {
+	entry, retired, err := a.queue.SettleDispatch(a.session.current.ID, commandID)
 	if err != nil {
 		return err
 	}
@@ -174,12 +174,12 @@ func (a *app) presentQueuedRetirement(entry queue.Entry, retired bool) {
 	a.syncQueue()
 }
 
-func (a *app) settleQueuedDispatch() bool {
+func (a *app) settleQueuedDispatch(commandID replay.CommandID) bool {
 	if a.operations.Active(pendingRunSettlementOperation) {
 		return false
 	}
-	if err := a.attemptQueuedDispatchSettlement(); err != nil {
-		a.reportQueuedDispatchSettlementFailure(err)
+	if err := a.attemptQueuedDispatchSettlement(commandID); err != nil {
+		a.reportQueuedDispatchSettlementFailure(commandID, err)
 		return false
 	}
 	return true
@@ -189,21 +189,21 @@ func (a *app) queuedDispatchCanceling() bool {
 	return a.queue.DispatchCanceling(a.session.current.ID)
 }
 
-func (a *app) reportQueuedDispatchSettlementFailure(err error) {
+func (a *app) reportQueuedDispatchSettlementFailure(commandID replay.CommandID, err error) {
 	if errors.Is(err, workbench.ErrDispatchCanceling) {
 		return
 	}
 	a.reportWorkbenchIssue(workbenchRunOutbox, err)
 	a.message("could not settle acknowledged run start: " + err.Error())
-	a.retryQueuedDispatchSettlement()
+	a.retryQueuedDispatchSettlement(commandID)
 }
 
-func (a *app) retryQueuedDispatchSettlement() {
-	runID := a.execution.openingRunID
+func (a *app) retryQueuedDispatchSettlement(commandID replay.CommandID) {
+	receipt := a.execution.opening
 	a.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
-		a.attemptQueuedDispatchSettlement,
-		func() { a.finishQueuedSettlementRecovery(runID) },
+		func() error { return a.attemptQueuedDispatchSettlement(commandID) },
+		func() { a.finishQueuedSettlementRecovery(receipt) },
 	)
 }
 
@@ -214,7 +214,7 @@ func (a *app) retryCanceledRuntimeOwnership(runID string, commandID replay.Comma
 	a.retryAuthoringSettlement(
 		ownershipSettlementOperation,
 		func() error { return a.retireCanceledRuntimeOwnership(runID, commandID) },
-		func() { a.finishCanceledRuntimeOwnershipRecovery(runID) },
+		func() { a.finishCanceledRuntimeOwnershipRecovery(runID, commandID) },
 	)
 }
 
@@ -252,9 +252,9 @@ func (a *app) retryAuthoringSettlement(slot operationSlot, settle func() error, 
 	})
 }
 
-func (a *app) finishQueuedSettlementRecovery(runID string) {
-	if a.execution.openingRunID == runID {
-		a.execution.openingRunID = ""
+func (a *app) finishQueuedSettlementRecovery(receipt *openingReceipt) {
+	if a.execution.opening == receipt {
+		a.execution.opening = nil
 	}
 	a.finishAuthoringSettlementRecovery()
 }
@@ -262,9 +262,9 @@ func (a *app) finishQueuedSettlementRecovery(runID string) {
 // A canceled ownership retry may outlive the queue drain that starts the next
 // run. It must only clear the opening identity it originally owned; otherwise
 // a late local disk recovery could detach the successor's lifecycle.
-func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string) {
-	if a.execution.openingRunID == runID {
-		a.execution.openingRunID = ""
+func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string, commandID replay.CommandID) {
+	if a.execution.opening != nil && a.execution.opening.RunID == runID && a.execution.opening.CommandID == commandID {
+		a.execution.opening = nil
 	}
 	a.reportWorkbenchIssue(workbenchCancellationOwnership, nil)
 	a.finishAuthoringSettlementRecovery()

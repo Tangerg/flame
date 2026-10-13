@@ -39,6 +39,7 @@ type Runtime interface {
 	ForkSession(context.Context, conversation.ForkSession) (conversation.Session, error)
 	DeleteSession(context.Context, conversation.DeleteSession) error
 	GetRun(context.Context, string) (conversation.Run, error)
+	GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error)
 	ListRuns(context.Context, conversation.RunQuery) (conversation.RunPage, error)
 	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
 	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)

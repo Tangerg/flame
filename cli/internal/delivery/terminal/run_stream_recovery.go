@@ -166,6 +166,14 @@ func (s *streamFollower) runStream(current conversation.SegmentStream) {
 		if err != nil || !snapshot.active {
 			return
 		}
+		if runworkflow.RecoveryRequired(streamErr) {
+			rebound, ok := s.reconnect(current.RunID, current.SegmentID, streamErr)
+			if !ok {
+				return
+			}
+			current = rebound
+			continue
+		}
 		s.checkpoint = snapshot.checkpoint
 		if snapshot.phase != conversation.Running {
 			s.finish()
@@ -255,6 +263,25 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 
 func (s *streamFollower) reconnect(runID, segmentID string, cause error) (conversation.SegmentStream, bool) {
 	for {
+		if runworkflow.RecoveryRequired(cause) {
+			recovery := s.recover(runID, cause)
+			switch recovery.disposition {
+			case recoveryAttached:
+				return recovery.stream, true
+			case recoveryStopped:
+				return conversation.SegmentStream{}, false
+			default:
+				if runworkflow.RecoveryRequired(recovery.cause) {
+					s.failures++
+					if !s.postRetryStatus(false) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
+						return conversation.SegmentStream{}, false
+					}
+				} else if !s.waitBeforeRetry(recovery.cause) {
+					return conversation.SegmentStream{}, false
+				}
+				continue
+			}
+		}
 		if !s.waitBeforeRetry(cause) {
 			return conversation.SegmentStream{}, false
 		}
@@ -264,19 +291,7 @@ func (s *streamFollower) reconnect(runID, segmentID string, cause error) (conver
 		if err == nil {
 			return s.acceptRebound(runID, segmentID, rebound)
 		}
-		if !runworkflow.RecoveryRequired(err) {
-			cause = err
-			continue
-		}
-		recovery := s.recover(runID, cause)
-		switch recovery.disposition {
-		case recoveryRetry:
-			cause = recovery.cause
-		case recoveryAttached:
-			return recovery.stream, true
-		default:
-			return conversation.SegmentStream{}, false
-		}
+		cause = err
 	}
 }
 

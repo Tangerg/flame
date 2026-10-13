@@ -163,17 +163,17 @@ func (q *Queue) DispatchCanceling(sessionID string) bool {
 	return found && pending.State == PendingRunCanceling
 }
 
-func (q *Queue) SettleDispatch(sessionID string) (queue.Entry, bool, error) {
+// A later FIFO head cannot inherit an earlier command's acknowledgement.
+func (q *Queue) SettleDispatch(sessionID string, commandID replay.CommandID) (queue.Entry, bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	entry, ok := q.fifo.Dispatching(sessionID)
-	if !ok {
-		return queue.Entry{}, false, nil
+	if ok && entry.CommandID == commandID {
+		if pending, found := q.pendingRun(sessionID, commandID); found && pending.State == PendingRunCanceling {
+			return queue.Entry{}, false, ErrDispatchCanceling
+		}
 	}
-	if pending, found := q.pendingRun(sessionID, entry.CommandID); found && pending.State == PendingRunCanceling {
-		return queue.Entry{}, false, ErrDispatchCanceling
-	}
-	return q.retire(sessionID, entry.CommandID)
+	return q.retire(sessionID, commandID)
 }
 
 // Retire closes the exact accepted, recovered or canceled opening. History and
@@ -188,11 +188,11 @@ func (q *Queue) Retire(sessionID string, commandID replay.CommandID) (queue.Entr
 func (q *Queue) retire(sessionID string, commandID replay.CommandID) (queue.Entry, bool, error) {
 	entry, dispatching := q.fifo.Dispatching(sessionID)
 	_, pending := q.pendingRun(sessionID, commandID)
+	present := slices.ContainsFunc(q.fifo.Snapshot(sessionID).Entries, func(entry queue.Entry) bool { return entry.CommandID == commandID })
+	if !present && !pending {
+		return queue.Entry{}, false, nil
+	}
 	if !dispatching {
-		present := slices.ContainsFunc(q.fifo.Snapshot(sessionID).Entries, func(entry queue.Entry) bool { return entry.CommandID == commandID })
-		if !present && !pending {
-			return queue.Entry{}, false, nil
-		}
 		return queue.Entry{}, false, errors.New("dispatching prompt command ownership was released before settlement")
 	}
 	if entry.CommandID != commandID {

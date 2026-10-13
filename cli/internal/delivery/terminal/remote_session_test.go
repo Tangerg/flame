@@ -220,27 +220,37 @@ func TestSharedTerminalExitLeavesNewAndAttachedRunsAlive(t *testing.T) {
 
 type heldStartReceiptsRuntime struct {
 	*idempotentStartRuntime
-	hold      int32
-	calls     atomic.Int32
+	holdQuery bool
+	heldQuery atomic.Bool
 	forwarded chan prompt.StartRun
+	queried   chan protocol.GetRunAcceptanceRequest
 }
 
 func (r *heldStartReceiptsRuntime) StartRun(ctx context.Context, command prompt.StartRun) (conversation.SegmentStream, error) {
-	opened, err := r.idempotentStartRuntime.StartRun(ctx, command)
-	if err != nil || r.calls.Add(1) > r.hold {
-		return opened, err
+	_, err := r.idempotentStartRuntime.StartRun(ctx, command)
+	if err != nil {
+		return conversation.SegmentStream{}, err
 	}
 	r.forwarded <- command.Clone()
 	<-ctx.Done()
 	return conversation.SegmentStream{}, context.Cause(ctx)
 }
 
+func (r *heldStartReceiptsRuntime) GetRunAcceptance(ctx context.Context, query protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error) {
+	receipt, err := r.Runtime.GetRunAcceptance(ctx, query)
+	if err == nil && receipt.Type == protocol.RunAcceptanceAccepted && r.holdQuery && !r.heldQuery.Swap(true) {
+		r.queried <- query
+		<-ctx.Done()
+		return protocol.RunAcceptance{}, context.Cause(ctx)
+	}
+	return receipt, err
+}
+
 func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t *testing.T) {
 	for _, cancelBeforeExit := range []bool{false, true} {
 		name := "detach unknown start"
-		hold := int32(1)
 		if cancelBeforeExit {
-			name, hold = "finish explicit cancellation", 2
+			name = "finish explicit cancellation"
 		}
 		t.Run(name, func(t *testing.T) {
 			base := newSharedTerminalRuntime()
@@ -251,7 +261,8 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 			t.Cleanup(func() { cancelFixtureSession(t, base, created.ID) })
 			backend := &heldStartReceiptsRuntime{
 				idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
-				hold:                   hold, forwarded: make(chan prompt.StartRun, 2),
+				holdQuery:              cancelBeforeExit, forwarded: make(chan prompt.StartRun, 1),
+				queried: make(chan protocol.GetRunAcceptanceRequest, 1),
 			}
 			local, state := t.TempDir(), t.TempDir()
 			if err := os.WriteFile(filepath.Join(local, "context.txt"), []byte("local input"), 0o600); err != nil {
@@ -274,7 +285,10 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 			}
 			if cancelBeforeExit {
 				host.Press(input.Esc)
-				awaitValue(t, backend.forwarded, "explicit cancellation reconciliation")
+				query := awaitValue(t, backend.queried, "explicit cancellation reconciliation")
+				if query.Key != string(original.CommandID) || query.Operation != protocol.RunCommandStart {
+					t.Fatalf("cancellation lookup lost original identity: %+v", query)
+				}
 			}
 			stop()
 			store, err := openTestWorkbench(state)
@@ -294,7 +308,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 				}
 			}
 			if cancelBeforeExit {
-				if len(attempts) != 3 || len(pending) != 0 || len(snapshot.Runs) != 1 ||
+				if len(attempts) != 1 || len(pending) != 0 || len(snapshot.Runs) != 1 ||
 					snapshot.Runs[0].Outcome.Status != protocol.OutcomeCanceled {
 					t.Fatalf("explicit cancellation was not settled: attempts %d, pending %+v, runs %+v", len(attempts), pending, snapshot.Runs)
 				}

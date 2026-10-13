@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
@@ -358,7 +359,7 @@ func (a *app) resumeInterrupts() {
 			return
 		}
 	}
-	a.deliverInterruptResume(review, command, replayGuard)
+	a.deliverInterruptResume(review, command)
 }
 
 // reopenCompletedInterruptReview restores the UI owner of a completed HITL
@@ -387,15 +388,16 @@ func (a *app) reopenCompletedInterruptReview(review *interruptReview) error {
 func (a *app) deliverInterruptResume(
 	review *interruptReview,
 	command conversation.ResumeRun,
-	replayGuard replay.Guard,
 ) {
+	pending, ok := a.workbench.PendingResume(a.session.current.ID)
+	if !ok || pending.Command.CommandID != command.CommandID {
+		a.fail(errors.New("submitted resume is absent from the durable outbox"))
+		return
+	}
 	a.status.active("resuming")
 	a.syncAnimation()
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		if err := mutation.ReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
-			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
-		}
-		stream, err := a.runtime.ResumeRun(ctx, command)
+		stream, err := runworkflow.OpenPendingResume(ctx, a.runtime, pending, a.replayPolicy)
 		if err != nil {
 			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				return conversation.SegmentStream{}, err
@@ -408,12 +410,21 @@ func (a *app) deliverInterruptResume(
 		return stream, nil
 	}, streamOpeningObserver{
 		persistent: true,
-		accepted: func(conversation.SegmentStream) streamOpeningDisposition {
+		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
 			a.dialogs.interruptReview = nil
 			a.settleAcknowledgedResume(command.CommandID)
+			if a.execution.conversation.RunID() != opened.RunID {
+				a.followRecoveredSession()
+				return rejectOpenedStream
+			}
 			return followOpenedStream
 		},
 		rejected: func(failure error) error {
+			if _, retired := errors.AsType[*conversation.RetiredOpeningError](failure); retired {
+				a.dialogs.interruptReview = nil
+				a.settleAcknowledgedResume(command.CommandID)
+				return failure
+			}
 			if _, accepted := conversation.AcceptedMutationReceipt(failure); accepted {
 				a.dialogs.interruptReview = nil
 				a.cancelRuntimePreservingFailure(conversation.CancelRun{
@@ -451,10 +462,6 @@ func (a *app) retireAcknowledgedResume(commandID replay.CommandID) error {
 
 func (a *app) restoreRejectedInterruptReview(review *interruptReview, command conversation.ResumeRun, failure error) error {
 	callFailure, refused := errors.AsType[*resumeRunCallError](failure)
-	if refused && a.workbench != nil && errors.Is(callFailure.err, mutation.ErrReplayGuaranteeUnavailable) {
-		a.reconcileExpiredResume(command)
-		return nil
-	}
 	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.dialogs.interruptReview != review ||
 		a.execution.conversation.Phase() != conversation.Waiting || a.execution.conversation.RunID() != command.RunID {
 		return failure
@@ -476,37 +483,6 @@ func (a *app) restoreRejectedInterruptReview(review *interruptReview, command co
 		return errors.Join(failure, err)
 	}
 	return nil
-}
-
-func (a *app) reconcileExpiredResume(command conversation.ResumeRun) {
-	a.execution.following = false
-	a.status.note("resume replay expired · checking runtime state")
-	a.syncAnimation()
-	sessionID := a.session.current.ID
-	started := a.runSessionSettlement(resumeRecoveryOperation, false,
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			return a.readInvalidatedSession(ctx, sessionID)
-		},
-		func(snapshot conversation.SessionSnapshot, err error) {
-			if err != nil {
-				a.message("could not reconcile expired interrupt delivery: " + err.Error())
-				a.status.note("resume outcome unknown · decisions preserved")
-				return
-			}
-			pending, ok := a.workbench.PendingResume(sessionID)
-			if !ok || pending.Command.CommandID != command.CommandID {
-				return
-			}
-			if err := a.installSnapshot(snapshot); err != nil {
-				a.fail(fmt.Errorf("reconcile expired interrupt delivery: %w", err))
-				return
-			}
-			a.restorePendingResume()
-		},
-	)
-	if !started {
-		a.status.note("resume outcome unknown · decisions preserved")
-	}
 }
 
 func (a *app) abortInterrupts(reason string) {

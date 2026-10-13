@@ -24,10 +24,22 @@ func (a *AcceptedMutationError) Error() string { return a.cause.Error() }
 
 func (a *AcceptedMutationError) Unwrap() error { return a.cause }
 
-// AcceptedMutationReceipt extracts the partial receipt of a mutation known to
-// have reached the runtime. False means the error came from the call itself and
-// retains the ordinary uncertain/refused delivery semantics.
+// RetiredOpeningError confirms historical acceptance without granting access
+// to any material that now reuses the original Run identity.
+type RetiredOpeningError struct{ receipt SegmentStream }
+
+func NewRetiredOpeningError(receipt SegmentStream) error {
+	return &RetiredOpeningError{receipt: receipt}
+}
+
+func (r *RetiredOpeningError) Error() string { return "accepted run material has been retired" }
+
+// AcceptedMutationReceipt extracts proof of acceptance, including a historical
+// opening whose original material has been retired.
 func AcceptedMutationReceipt(err error) (SegmentStream, bool) {
+	if retired, ok := errors.AsType[*RetiredOpeningError](err); ok {
+		return retired.receipt, true
+	}
 	accepted, ok := errors.AsType[*AcceptedMutationError](err)
 	if !ok {
 		return SegmentStream{}, false

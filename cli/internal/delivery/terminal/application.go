@@ -358,11 +358,11 @@ func (a *app) Close(ctx context.Context) error {
 		return a.closeErr
 	}
 	var closeErr error
-	if !a.execution.blocksAdmission() && a.execution.openingRunID != "" {
-		if err := a.attemptQueuedDispatchSettlement(); err != nil {
+	if !a.execution.blocksAdmission() && a.execution.opening != nil {
+		if err := a.attemptQueuedDispatchSettlement(a.execution.opening.CommandID); err != nil {
 			closeErr = errors.Join(closeErr, fmt.Errorf("settle acknowledged run start: %w", err))
 		} else {
-			a.execution.openingRunID = ""
+			a.execution.opening = nil
 		}
 	}
 	a.closed = true

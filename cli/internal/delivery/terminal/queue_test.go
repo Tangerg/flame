@@ -93,8 +93,8 @@ type gatedRecoveryStartRuntime struct {
 	release   chan struct{}
 }
 
-func (g *gatedRecoveryStartRuntime) StartRun(ctx context.Context, request prompt.StartRun) (conversation.SegmentStream, error) {
-	if request.CommandID == g.commandID {
+func (g *gatedRecoveryStartRuntime) GetRunAcceptance(ctx context.Context, request protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error) {
+	if request.Key == string(g.commandID) {
 		select {
 		case g.started <- struct{}{}:
 		default:
@@ -102,10 +102,10 @@ func (g *gatedRecoveryStartRuntime) StartRun(ctx context.Context, request prompt
 		select {
 		case <-g.release:
 		case <-ctx.Done():
-			return conversation.SegmentStream{}, context.Cause(ctx)
+			return protocol.RunAcceptance{}, context.Cause(ctx)
 		}
 	}
-	return g.Runtime.StartRun(ctx, request)
+	return g.Runtime.GetRunAcceptance(ctx, request)
 }
 
 func (b *blockingFirstStartRuntime) StartRun(ctx context.Context, request prompt.StartRun) (conversation.SegmentStream, error) {

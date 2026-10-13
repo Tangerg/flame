@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
@@ -77,57 +76,13 @@ func (s *Store) RejectPendingResume(sessionID string, commandID replay.CommandID
 	return s.retirePendingResume(sessionID, commandID)
 }
 
-// RequeuePendingResume atomically gives a decision a fresh runtime identity
-// after the owning store's authoritative waiting projection proves the old
-// command did not commit before its replay guarantee expired.
-// claimPendingResumeLocked returns the resume a settlement names. Requeueing and
-// retiring ask the same claim, so they cannot disagree about which outstanding
-// command they are finishing.
+// claimPendingResumeLocked fences settlement to the original command identity.
 func (s *Store) claimPendingResumeLocked(sessionID string, commandID replay.CommandID) (PendingResume, error) {
 	pending, exists := s.pendingResumes[sessionID]
 	if !exists || pending.Command.CommandID != commandID {
 		return PendingResume{}, errors.New("pending resume command identity changed")
 	}
 	return pending, nil
-}
-
-func (s *Store) RequeuePendingResume(
-	sessionID string,
-	commandID replay.CommandID,
-	replayGuard replay.Guard,
-) (PendingResume, error) {
-	if err := commandID.Validate(); err != nil {
-		return PendingResume{}, err
-	}
-	if err := replayGuard.Validate(); err != nil {
-		return PendingResume{}, err
-	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
-		return PendingResume{}, err
-	}
-	replacement := mutation.NewCommandID()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	pending, err := s.claimPendingResumeLocked(sessionID, commandID)
-	if err != nil {
-		return PendingResume{}, err
-	}
-	if _, err := pending.ReplayCommand(); err != nil {
-		return PendingResume{}, err
-	}
-	pending = clonePendingResume(pending)
-	pending.Command.CommandID = replacement
-	pending.Replay = replayGuard
-	if err := pending.validate(); err != nil {
-		return PendingResume{}, err
-	}
-	if err := s.saveSessionStateWithResume(
-		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], &pending,
-	); err != nil {
-		return PendingResume{}, err
-	}
-	s.pendingResumes[sessionID] = pending
-	return clonePendingResume(pending), nil
 }
 
 func (s *Store) retirePendingResume(sessionID string, commandID replay.CommandID) error {

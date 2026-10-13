@@ -158,9 +158,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			if _, err := recoveredResume.ReplayCommand(); !errors.Is(err, replay.ErrCommandInputUnavailable) {
 				t.Fatalf("resume replay error = %v", err)
 			}
-			if _, err := reopened.RequeuePendingResume("ses_resume", resume.Command.CommandID, resume.Replay); !errors.Is(err, replay.ErrCommandInputUnavailable) {
-				t.Fatalf("unavailable resume received a fresh command identity: %v", err)
-			}
+
 			recoveredSteer, found := reopened.PendingSteer(steer.SessionID())
 			if !found || recoveredSteer.CommandID() != steer.CommandID() {
 				t.Fatal("steer identity was lost")

@@ -27,9 +27,8 @@ type SessionReader interface {
 }
 
 type Lifecycle interface {
+	OpeningSource
 	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
-	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
-	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
 	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
@@ -49,9 +48,9 @@ type Invocation struct {
 	ReplayPolicy mutation.ReplayPolicy
 }
 
-// Execute drives one stable Run across as many Segments as its interrupts
-// require. Ambiguous mutation acknowledgements reuse the same command identity
-// only while the runtime's advertised replay retention still owns it.
+// Execute drives one stable Run across its interrupt boundaries. Acceptance
+// lookups retain the original identity; only command redelivery is bounded by
+// the Runtime's advertised replay retention.
 func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if invocation.Runtime == nil {
 		return errors.New("one-shot run requires a runtime")
@@ -81,8 +80,13 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if err != nil {
 		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
 	}
-	opened, err := openRun(observationCtx, invocation.Runtime, invocation.Start,
-		mutation.ReplayAdmission(invocation.ReplayPolicy, startReplay))
+	opened, err := mutation.ConfirmAdmitted(observationCtx, mutation.AcknowledgementBackoff(), nil,
+		func(ctx context.Context) (conversation.SegmentStream, error) {
+			return OpenStart(ctx, invocation.Runtime, invocation.Start, startReplay, invocation.ReplayPolicy)
+		})
+	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+		return err
+	}
 	if err != nil {
 		if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
@@ -109,18 +113,6 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	}
 
 	return drive(observationCtx, invocation, opened)
-}
-
-func openRun(
-	ctx context.Context,
-	runtime Runtime,
-	command prompt.StartRun,
-	admit mutation.Admission,
-) (conversation.SegmentStream, error) {
-	return mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), admit,
-		func(ctx context.Context) (conversation.SegmentStream, error) { return runtime.StartRun(ctx, command) },
-	)
 }
 
 type cancellationWatcher struct {
@@ -243,9 +235,9 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
 	}
 	continued, err := mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(e.invocation.ReplayPolicy, replayGuard),
+		ctx, mutation.AcknowledgementBackoff(), nil,
 		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return e.invocation.Runtime.ResumeRun(ctx, command)
+			return OpenResume(ctx, e.invocation.Runtime, command, replayGuard, e.invocation.ReplayPolicy)
 		},
 	)
 	if err != nil {
@@ -261,6 +253,30 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 
 func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, error) {
 	for {
+		if RecoveryRequired(cause) {
+			recovered, err := RecoverSegment(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
+			if err == nil {
+				return e.installRecovery(ctx, recovered)
+			}
+			e.failures++
+			if RecoveryRequired(err) {
+				if err := mutation.AcknowledgementBackoff().Wait(ctx, e.failures); err != nil {
+					return false, err
+				}
+			} else {
+				delay, shouldRetry, policyErr := retry.ReconnectDelay(e.failures, err)
+				if policyErr != nil {
+					return false, policyErr
+				}
+				if !shouldRetry {
+					return false, err
+				}
+				if err := retry.Wait(ctx, delay); err != nil {
+					return false, err
+				}
+			}
+			continue
+		}
 		e.failures++
 		delay, shouldRetry, policyErr := retry.ReconnectDelay(e.failures, cause)
 		if policyErr != nil {
@@ -282,18 +298,7 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, err
 			e.current = rebound
 			return true, nil
 		}
-		if !RecoveryRequired(err) {
-			cause = err
-			continue
-		}
-		recovered, recoveryErr := RecoverSegment(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
-		if recoveryErr != nil {
-			if !RecoveryRequired(recoveryErr) {
-				cause = recoveryErr
-			}
-			continue
-		}
-		return e.installRecovery(ctx, recovered)
+		cause = err
 	}
 }
 
