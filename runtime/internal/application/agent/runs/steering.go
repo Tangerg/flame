@@ -16,6 +16,17 @@ import (
 // points each guessing from the live registry.
 func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, error) {
 	cmd = cmd.clone()
+	live, _, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
+	if err != nil {
+		return "", err
+	}
+	// A resumed Run is durably Running once its acceptance opening commits, before
+	// its executor activates. Wait on that Segment's activation gate so a steer into
+	// the window is not misread as a finished Run, then re-resolve the exact Segment
+	// and owner: activation may have terminalized the Run or replaced its Segment.
+	if err := live.owner.awaitActivation(ctx); err != nil {
+		return "", err
+	}
 	live, durable, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
 	if err != nil {
 		return "", err

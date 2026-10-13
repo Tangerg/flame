@@ -194,6 +194,82 @@ func TestRunTreeOwnerCancelClassifiesActivationFailureAsFinished(t *testing.T) {
 	}
 }
 
+func TestRunTreeOwnerAwaitActivationWaitsForInFlightActivation(t *testing.T) {
+	treeOwner := testRunTreeOwner(t, nil)
+	activationStarted := make(chan struct{})
+	releaseActivation := make(chan struct{})
+	activationDone := make(chan error, 1)
+	go func() {
+		_, err := treeOwner.beginExecution(t.Context(), func(context.Context) error {
+			close(activationStarted)
+			<-releaseActivation
+			return nil
+		})
+		activationDone <- err
+	}()
+	<-activationStarted
+
+	awaited := make(chan error, 1)
+	go func() { awaited <- treeOwner.awaitActivation(t.Context()) }()
+	select {
+	case <-awaited:
+		t.Fatal("steer activation wait crossed an in-flight segment activation")
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	close(releaseActivation)
+	if err := <-activationDone; err != nil {
+		t.Fatalf("activate segment: %v", err)
+	}
+	if err := <-awaited; err != nil {
+		t.Fatalf("await activation after it resolved: %v", err)
+	}
+}
+
+func TestRunTreeOwnerAwaitActivationClassifiesFailureAsFinished(t *testing.T) {
+	treeOwner := testRunTreeOwner(t, nil)
+	if _, err := treeOwner.beginExecution(t.Context(), func(context.Context) error {
+		return errors.New("activation failed")
+	}); err == nil {
+		t.Fatal("segment activation unexpectedly succeeded")
+	}
+	if err := treeOwner.awaitActivation(t.Context()); !errors.Is(err, ErrRunFinished) {
+		t.Fatalf("await after activation failure = %v, want ErrRunFinished", err)
+	}
+}
+
+func TestRunTreeOwnerAwaitActivationCancellationLeavesActivationRunning(t *testing.T) {
+	treeOwner := testRunTreeOwner(t, nil)
+	activationStarted := make(chan struct{})
+	releaseActivation := make(chan struct{})
+	activationDone := make(chan error, 1)
+	go func() {
+		_, err := treeOwner.beginExecution(t.Context(), func(context.Context) error {
+			close(activationStarted)
+			<-releaseActivation
+			return nil
+		})
+		activationDone <- err
+	}()
+	<-activationStarted
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := treeOwner.awaitActivation(ctx); err == nil || errors.Is(err, ErrRunFinished) {
+		t.Fatalf("canceled steer wait = %v, want the request's own cancellation", err)
+	}
+	// The abandoned wait must not have resolved the Run's activation.
+	select {
+	case err := <-activationDone:
+		t.Fatalf("canceled steer wait ended the Run activation: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(releaseActivation)
+	if err := <-activationDone; err != nil {
+		t.Fatalf("activation after abandoned steer wait: %v", err)
+	}
+}
+
 func TestRunTreeOwnerRetainsCommittedInterruptOutcomeAfterCommitReturns(t *testing.T) {
 	treeOwner := testRunTreeOwner(t, nil)
 	committed, err := treeOwner.commitInterrupt(t.Context(), func(context.Context) error {
