@@ -23,7 +23,6 @@ type parkedRunTerminalization struct {
 	detail               string
 	pending              runs.Pending
 	snapshot             Snapshot
-	resumeClaimed        bool
 	conversationMessages []corechat.Message
 }
 
@@ -70,11 +69,7 @@ func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
 			p.rootRunID,
 		)
 	}
-	constructor := NewTerminalPlan
-	if p.resumeClaimed {
-		constructor = NewClaimedResumeTerminalPlan
-	}
-	plan, err := constructor(terminalRuns, items, conversationMessages, root.MemberID)
+	plan, err := NewTerminalPlan(terminalRuns, items, conversationMessages, root.MemberID)
 	if err != nil {
 		return TerminalPlan{}, rundomain.Run{}, err
 	}

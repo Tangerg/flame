@@ -20,10 +20,10 @@ import (
 func TestServiceRememberDecide(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
-	if err := svc.Remember(ctx, approval.RememberRequest{
-		Scope: approval.ScopeSession, SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("npm run build"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-	}); err != nil {
-		t.Fatalf("remember: %v", err)
+	if err := svc.SetRule(ctx, approvals.RuleChange{
+		Scope: approval.ScopeSession, SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("npm run build"), Decision: approval.Allow,
+	}, ""); err != nil {
+		t.Fatalf("set rule: %v", err)
 	}
 
 	if d, ok, err := svc.Decide(ctx, approval.Query{SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: "npm run build", SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell"))}); err != nil || !ok || d != approval.Allow {
@@ -43,10 +43,10 @@ func TestServiceRememberDecide(t *testing.T) {
 func TestServiceScopeVisibilityAndForget(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
-	if err := svc.Remember(ctx, approval.RememberRequest{
-		Scope: approval.ScopeProject, ProjectDir: "/proj/a", Tool: testsupport.BuiltInTool(t, "edit"), Subject: approval.InvocationSubject("x"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "edit")),
-	}); err != nil {
-		t.Fatalf("remember: %v", err)
+	if err := svc.SetRule(ctx, approvals.RuleChange{
+		Scope: approval.ScopeProject, Tool: testsupport.BuiltInTool(t, "edit"), Subject: approval.InvocationSubject("x"), Decision: approval.Allow,
+	}, "/proj/a"); err != nil {
+		t.Fatalf("set rule: %v", err)
 	}
 
 	q := approval.Query{SessionID: "s1", ProjectDir: "/proj/a", Tool: testsupport.BuiltInTool(t, "edit"), Subject: "x", SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "edit"))}
@@ -88,10 +88,10 @@ func TestServiceScopeVisibilityAndForget(t *testing.T) {
 func TestRememberRejectsUnkeyable(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
-	err := svc.Remember(ctx, approval.RememberRequest{
-		Scope: approval.ScopeProject, ProjectDir: "", Tool: testsupport.BuiltInTool(t, "shell"),
-		Subject: approval.InvocationSubject("go test"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-	})
+	err := svc.SetRule(ctx, approvals.RuleChange{
+		Scope: approval.ScopeProject, Tool: testsupport.BuiltInTool(t, "shell"),
+		Subject: approval.InvocationSubject("go test"), Decision: approval.Allow,
+	}, "")
 	if !errors.Is(err, approval.ErrInvalidRule) {
 		t.Fatalf("unkeyable rule error = %v, want ErrInvalidRule", err)
 	}

@@ -17,12 +17,12 @@ import (
 )
 
 // InteractionApprovalPolicy is the exact product policy view required at the
-// Interaction Tool boundary.
+// Interaction Tool boundary. Remembering a decision is not here: a standing rule
+// is derived and persisted by the acceptance owner, in the transaction that
+// accepts the answer, never by a Tool replay.
 type InteractionApprovalPolicy interface {
 	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
 	Decide(ctx context.Context, query approval.Query) (approval.Decision, bool, error)
-	// ErrSourceAuthorityChanged declines persistence without changing the one-shot answer.
-	Remember(ctx context.Context, request approval.RememberRequest) error
 }
 
 // ToolAuthorizer evaluates Runtime approval policy independently of Agent Framework.
@@ -120,22 +120,6 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		arguments, err = tool.ParseArguments(resolution.Arguments)
 		if err != nil {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: parse approved Tool arguments: %w", err)
-		}
-	}
-	if prompt.Rememberable && resolution.RememberScope != "" {
-		subject, err := t.subjects.ApprovalSubject(request.Tool, arguments)
-		if err != nil {
-			return ToolAuthorizationDecision{}, fmt.Errorf("execution: derive remembered Tool approval subject: %w", err)
-		}
-		if err := t.policy.Remember(ctx, approval.RememberRequest{
-			Scope:      resolution.RememberScope,
-			SessionID:  request.SessionID,
-			ProjectDir: request.WorkspaceCWD,
-			Tool:       request.Tool, SourceFingerprint: request.SourceFingerprint,
-			Subject:  approval.InvocationSubject(subject),
-			Decision: approval.DecisionOf(resolution.Approved),
-		}); err != nil && !errors.Is(err, approval.ErrSourceAuthorityChanged) {
-			return ToolAuthorizationDecision{}, fmt.Errorf("execution: remember Tool approval: %w", err)
 		}
 	}
 	if !resolution.Approved {

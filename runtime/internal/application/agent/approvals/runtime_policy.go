@@ -160,19 +160,26 @@ func (r *RuntimePolicy) Decide(ctx context.Context, q approval.Query) (approval.
 	return d, ok, nil
 }
 
-func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberRequest) error {
+// PrepareRule validates one remembered-rule request against the current source
+// authority and derives its durable rule without persisting it. The acceptance
+// transaction that accepts the answer persists the returned rule atomically with
+// the answer, consumed open set, and Segment opening; a changed source authority
+// rejects the whole acceptance through ErrSourceAuthorityChanged rather than
+// silently downgrading remember to a one-shot answer. Invalidations are published
+// by the acceptance owner only after that transaction commits.
+func (r *RuntimePolicy) PrepareRule(ctx context.Context, req approval.RememberRequest) (approval.Rule, error) {
 	rule, err := req.Rule()
 	if err != nil {
-		return err
+		return approval.Rule{}, err
 	}
 	current, found, err := r.authorities.Fingerprint(ctx, req.Tool)
 	if err != nil {
-		return err
+		return approval.Rule{}, err
 	}
 	if !found || current != req.SourceFingerprint {
-		return approval.ErrSourceAuthorityChanged
+		return approval.Rule{}, approval.ErrSourceAuthorityChanged
 	}
-	return r.put(ctx, rule)
+	return rule, nil
 }
 
 func (r *RuntimePolicy) put(ctx context.Context, rule approval.Rule) error {

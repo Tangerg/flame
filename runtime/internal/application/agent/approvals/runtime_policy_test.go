@@ -241,9 +241,9 @@ func TestCommittedApprovalMutationsPublishInvalidations(t *testing.T) {
 	if err := policy.SetDefaultMode(t.Context(), approval.ModeBalanced); err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.Remember(t.Context(), approval.RememberRequest{
-		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-	}); err != nil {
+	if err := policy.SetRule(t.Context(), RuleChange{
+		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow,
+	}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := policy.Forget(t.Context(), "rule_1"); err != nil {
@@ -271,10 +271,10 @@ func TestFailedApprovalMutationDoesNotPublishInvalidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.Remember(t.Context(), approval.RememberRequest{
-		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-	}); !errors.Is(err, wantErr) {
-		t.Fatalf("Remember error = %v, want %v", err, wantErr)
+	if err := policy.SetRule(t.Context(), RuleChange{
+		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow,
+	}, ""); !errors.Is(err, wantErr) {
+		t.Fatalf("SetRule error = %v, want %v", err, wantErr)
 	}
 	if err := policy.Forget(t.Context(), "rule_1"); !errors.Is(err, wantErr) {
 		t.Fatalf("Forget error = %v, want %v", err, wantErr)

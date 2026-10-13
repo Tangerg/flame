@@ -310,8 +310,8 @@ func currentSchema() []string {
 		// interrupt set; interrupt_bindings maps each item to the private executor
 		// boundary it answers; continuations carries every waiting Run's
 		// application/executor hand-off. All three are closed JSON values. Answer
-		// claim changes the row to resuming; the next barrier replaces it and a
-		// terminal/recovery write-set deletes it.
+		// acceptance consumes (deletes) the row in the same transaction that opens
+		// the continuation; the next barrier inserts a fresh row.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS interrupts (
 			root_run_id        TEXT    PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 			executor_id        TEXT    NOT NULL,
@@ -325,15 +325,28 @@ func currentSchema() []string {
 			interrupt_bindings TEXT   NOT NULL,
 			created_at         INTEGER NOT NULL,
 			state              TEXT    NOT NULL DEFAULT '%[1]s',
-			CHECK (state IN ('%[1]s', '%[2]s'))
+			CHECK (state IN ('%[1]s'))
 		)`,
 			interruptStateOpen.databaseValue(),
-			interruptStateResuming.databaseValue(),
 		),
 		`CREATE INDEX IF NOT EXISTS idx_interrupts_state
 			ON interrupts(state, created_at, root_run_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_interrupts_root_member
 			ON interrupts(root_member_id)`,
+		// accepted_continuations is the Run-owned binding of an accepted but
+		// not-yet-delivered continuation. The acceptance transaction writes it from
+		// the exact open interrupt set it consumed; delivery completion or a
+		// successful boot revival deletes it. It stores the hand-off routing — the
+		// answer resolutions stay owned by the transcript Items and are read back by
+		// item id — so a surviving row at boot proves exactly one accepted-paused
+		// tree to revive from its latest head. It is deleted with its root Run.
+		`CREATE TABLE IF NOT EXISTS accepted_continuations (
+			root_run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
+			session_id  TEXT NOT NULL,
+			interrupt   TEXT NOT NULL,
+			segments    TEXT NOT NULL,
+			input_item_id TEXT NOT NULL
+		)`,
 		// pending_workspace_mutations is the recoverable operation log for file
 		// rollbacks. Git reset is non-atomic across paths; files+history also
 		// spans Git and SQLite. The intent is logged before the tree is touched and

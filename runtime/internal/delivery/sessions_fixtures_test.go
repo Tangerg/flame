@@ -22,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -105,7 +106,7 @@ type testRuntime interface {
 	runs.RootExecutionStarter
 	runs.ExecutionObserver
 	runs.ExecutionReleaser
-	runs.WaitingExecutionContinuer
+	runs.ExecutionContinuer
 	runs.RunningExecutionSteerer
 	runs.RunningSubtreeCanceler
 	runs.WaitingSubtreeCancellationPreparer
@@ -174,7 +175,7 @@ type executionRuntime interface {
 	runs.RootExecutionStarter
 	runs.ExecutionObserver
 	runs.ExecutionReleaser
-	runs.WaitingExecutionContinuer
+	runs.ExecutionContinuer
 	runs.RunningExecutionSteerer
 	runs.RunningSubtreeCanceler
 	runs.WaitingSubtreeCancellationPreparer
@@ -381,6 +382,8 @@ func newTestHandler(rt testRuntime) *Handler {
 		WorkingContexts:                    passthroughRunWorkingContext{},
 		Models:                             passthroughRunWorkingContext{},
 		Continuation:                       rt,
+		ApprovalRules:                      inertDeliveryApprovalRules{},
+		AcceptedContinuations:              inertDeliveryAcceptedContinuations{},
 		WaitingRestorer:                    inertRunControl{},
 		Steering:                           rt,
 		RunningSubtreeCanceler:             rt,
@@ -390,7 +393,6 @@ func newTestHandler(rt testRuntime) *Handler {
 			Openings:                    projectionWriter,
 			ChildStarts:                 projectionWriter,
 			Checkpoints:                 projectionWriter,
-			ResumeClaims:                projectionWriter,
 			Events:                      projectionWriter,
 			Barriers:                    projectionWriter,
 			WaitingSubtreeCancellations: projectionWriter,
@@ -548,12 +550,19 @@ func (executionStub) StageRoot(_ context.Context, req runs.RootExecutionStart) (
 	return runs.ExecutorRef{SessionID: req.SessionID, ExecutorID: "exec_test"}, nil
 }
 func (executionStub) BeginRoot(context.Context, runs.ExecutorRef) error { return nil }
+func (s executionStub) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation, _ []runs.InterruptAnswer) (runs.ExecutorRef, error) {
+	return s.StageContinuation(ctx, continuation)
+}
+
 func (executionStub) StageContinuation(_ context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
 	return runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
 
 func (executionStub) BeginContinuation(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, *runs.CommittedUserInput) error {
 	return nil
+}
+func (executionStub) DeriveRememberedRules(context.Context, runs.ExecutorRef, []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
+	return nil, nil
 }
 func (executionStub) Release(context.Context, runs.ExecutorRef) error { return nil }
 func (executionStub) CancelRunningSubtree(context.Context, runs.ExecutorRef, string, string) error {
@@ -592,6 +601,10 @@ func (s stubRuntime) Observe(ctx context.Context, ref runs.ExecutorRef) (iter.Se
 	return s.executionController().Observe(ctx, ref)
 }
 
+func (s stubRuntime) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation, answers []runs.InterruptAnswer) (runs.ExecutorRef, error) {
+	return s.executionController().StageAcceptedContinuation(ctx, continuation, answers)
+}
+
 func (s stubRuntime) StageContinuation(ctx context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
 	return s.executionController().StageContinuation(ctx, continuation)
 }
@@ -603,6 +616,14 @@ func (s stubRuntime) BeginContinuation(
 	input *runs.CommittedUserInput,
 ) error {
 	return s.executionController().BeginContinuation(ctx, ref, answers, input)
+}
+
+func (s stubRuntime) DeriveRememberedRules(
+	ctx context.Context,
+	ref runs.ExecutorRef,
+	candidates []runs.RememberedRuleCandidate,
+) ([]approval.RememberRequest, error) {
+	return s.executionController().DeriveRememberedRules(ctx, ref, candidates)
 }
 
 func (s stubRuntime) ValidateRootStart(req runs.RootExecutionStart) error {
@@ -1087,10 +1108,6 @@ func (inertRuntimeStores) GetInterrupt(context.Context, string) (runs.Pending, b
 	return runs.Pending{}, false, nil
 }
 
-func (inertRuntimeStores) ClaimResume(context.Context, string) (runs.Pending, bool, error) {
-	return runs.Pending{}, false, nil
-}
-func (inertRuntimeStores) RequireResumeClaim(context.Context, string) error  { return nil }
 func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error { return nil }
 func (inertRuntimeStores) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
@@ -1264,13 +1281,6 @@ func nonNilRunsegmentInterrupts(store *persistence.InterruptStore, fallback iner
 	return store
 }
 
-func nonNilRunsegmentResumeClaims(store *persistence.InterruptStore, fallback inertRuntimeStores) segment.ResumeClaimStore {
-	if store == nil {
-		return fallback
-	}
-	return store
-}
-
 func nonNilRunsegmentSessions(store *sqlite.SessionStore, fallback inertRuntimeStores) segment.SessionStore {
 	if store == nil {
 		return fallback
@@ -1304,24 +1314,25 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 	stores := inertRuntimeStores{}
 	state := s.runStore()
 	cfg := segment.Config{
-		Interrupts:          nonNilRunsegmentInterrupts(s.interrupts, stores),
-		ResumeClaims:        nonNilRunsegmentResumeClaims(s.interrupts, stores),
-		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
-		Transcript:          nonNilRunsegmentTranscript(s.hist, stores),
-		ItemReplacer:        nonNilRunsegmentItems(s.hist, stores),
-		ModelInvocations:    stores,
-		ToolInvocations:     stores,
-		Conversation:        stubMessageCounter{rt: s},
-		State:               state,
-		RunProgress:         runProgressFor(state),
-		ExecutorCheckpoints: stores,
-		ExecutionTrees:      stores,
-		ChildRunStarts:      stores,
-		ActorAuthority:      inertSegmentActor{},
-		CommandAcceptances:  inertSegmentCommandAcceptances{},
-		GoalRuns:            inertSegmentGoalRuns{},
-		ToolResults:         inertSegmentToolResults{},
-		Tx:                  s.RunInTx,
+		Interrupts:            nonNilRunsegmentInterrupts(s.interrupts, stores),
+		Sessions:              nonNilRunsegmentSessions(s.sess, stores),
+		Transcript:            nonNilRunsegmentTranscript(s.hist, stores),
+		ItemReplacer:          nonNilRunsegmentItems(s.hist, stores),
+		ModelInvocations:      stores,
+		ToolInvocations:       stores,
+		Conversation:          stubMessageCounter{rt: s},
+		State:                 state,
+		RunProgress:           runProgressFor(state),
+		ExecutorCheckpoints:   stores,
+		ExecutionTrees:        stores,
+		ChildRunStarts:        stores,
+		ActorAuthority:        inertSegmentActor{},
+		CommandAcceptances:    inertSegmentCommandAcceptances{},
+		GoalRuns:              inertSegmentGoalRuns{},
+		ToolResults:           inertSegmentToolResults{},
+		Tx:                    s.RunInTx,
+		RememberedRules:       inertSegmentRememberedRules{},
+		AcceptedContinuations: inertDeliveryAcceptedContinuations{},
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults
@@ -1530,6 +1541,31 @@ func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return n
 type inertSegmentToolResults struct{}
 
 func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type inertSegmentRememberedRules struct{}
+
+func (inertSegmentRememberedRules) Put(context.Context, approval.Rule) error { return nil }
+
+// inertDeliveryAcceptedContinuations satisfies both the segment writer and the
+// coordinator retirer for a delivery lifecycle test that never crashes.
+type inertDeliveryAcceptedContinuations struct{}
+
+func (inertDeliveryAcceptedContinuations) Put(context.Context, runs.AcceptedContinuation) error {
+	return nil
+}
+func (inertDeliveryAcceptedContinuations) List(context.Context) ([]runs.AcceptedContinuation, error) {
+	return nil, nil
+}
+
+func (inertDeliveryAcceptedContinuations) Delete(context.Context, string) error { return nil }
+
+// inertDeliveryApprovalRules derives a rule without a source-authority check so a
+// delivery lifecycle test exercises acceptance without a live approval policy.
+type inertDeliveryApprovalRules struct{}
+
+func (inertDeliveryApprovalRules) PrepareRule(_ context.Context, request approval.RememberRequest) (approval.Rule, error) {
+	return request.Rule()
+}
 
 type emptyModelInvocations struct{}
 

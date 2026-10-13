@@ -19,6 +19,7 @@ type OpeningCommit struct {
 	commitID           runtimeidentity.CommitID
 	admit              *run.Draft
 	resume             *run.TreeResumeDraft
+	resumeAcceptance   *ResumeAcceptance
 	initialSession     *session.Session
 	sessionReplacement *session.Replacement
 	actor              *operation.Actor
@@ -80,6 +81,22 @@ func NewResumeOpeningCommit(
 	return opening, nil
 }
 
+// WithResumeAcceptance binds the answer write-set a continuation opening accepts
+// in the same transaction: the consumed open interrupt set and its settled Item
+// replacements commit with the resumed tree. It returns a new validated value and
+// never mutates the receiver.
+func (o OpeningCommit) WithResumeAcceptance(acceptance ResumeAcceptance) (OpeningCommit, error) {
+	if o.resume == nil {
+		return OpeningCommit{}, errors.New("runs: resume acceptance requires a tree continuation")
+	}
+	next := o
+	next.resumeAcceptance = &acceptance
+	if err := next.Validate(); err != nil {
+		return OpeningCommit{}, err
+	}
+	return next, nil
+}
+
 func cloneOpeningAdmission(admit run.Draft) run.Draft {
 	admit.Capabilities = admit.Capabilities.Clone()
 	return admit
@@ -115,6 +132,9 @@ func (o OpeningCommit) Validate() error {
 		if o.initialSession != nil || o.sessionReplacement != nil || o.actor != nil {
 			return errors.New("runs: resumed opening carries fresh-run facts")
 		}
+		if err := o.validateResumeAcceptance(); err != nil {
+			return err
+		}
 	}
 	return o.validateEvents()
 }
@@ -127,6 +147,9 @@ func (o OpeningCommit) validateAdmission() error {
 	}
 	if err := o.admit.Validate(); err != nil {
 		return fmt.Errorf("runs: opening admission: %w", err)
+	}
+	if o.resumeAcceptance != nil {
+		return errors.New("runs: fresh admission carries a resume acceptance")
 	}
 	if o.admit.Lineage().IsChild() &&
 		(o.initialSession != nil || o.sessionReplacement != nil || o.actor != nil ||
@@ -159,6 +182,30 @@ func (o OpeningCommit) validateAdmission() error {
 			o.commandAcceptance.SegmentID != o.admit.SegmentID {
 			return errors.New("runs: opening command acceptance differs from admitted Run")
 		}
+	}
+	return nil
+}
+
+// validateResumeAcceptance proves the answer write-set names the exact tree this
+// continuation resumes. A continuation command's acceptance binding is a separate
+// concern; this build does not record one yet.
+func (o OpeningCommit) validateResumeAcceptance() error {
+	if o.commandAcceptance != nil {
+		return errors.New("runs: resumed opening cannot bind a command acceptance")
+	}
+	if o.resumeAcceptance == nil {
+		return nil
+	}
+	if err := o.resumeAcceptance.Validate(); err != nil {
+		return fmt.Errorf("runs: opening resume acceptance: %w", err)
+	}
+	if len(o.resume.Runs) == 0 {
+		return errors.New("runs: resumed opening has no Runs")
+	}
+	root := o.resume.Runs[len(o.resume.Runs)-1].State()
+	if o.resumeAcceptance.SessionID() != o.resume.SessionID() ||
+		o.resumeAcceptance.Pending().RootRunID != root.ID() {
+		return errors.New("runs: opening resume acceptance differs from the resumed tree")
 	}
 	return nil
 }
@@ -246,6 +293,15 @@ func (o OpeningCommit) Resume() (run.TreeResumeDraft, bool) {
 		return run.TreeResumeDraft{}, false
 	}
 	return cloneOpeningResume(*o.resume), true
+}
+
+// ResumeAcceptance returns the answer write-set committed with a continuation
+// opening, when one was supplied.
+func (o OpeningCommit) ResumeAcceptance() (ResumeAcceptance, bool) {
+	if o.resumeAcceptance == nil {
+		return ResumeAcceptance{}, false
+	}
+	return *o.resumeAcceptance, true
 }
 
 // InitialSession returns the new Session inserted with a root admission.

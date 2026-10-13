@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
 // BeginContinuation converts every validated application answer into an
@@ -38,7 +39,7 @@ func (i *InteractionExecutor) BeginContinuation(
 	if err != nil {
 		return fmt.Errorf("execution: inspect paused Interaction members: %w", err)
 	}
-	prepared, err := session.prepareContinuationAnswers(answers)
+	prepared, err := session.prepareContinuationAnswers(ctx, answers)
 	if err != nil {
 		return err
 	}
@@ -49,24 +50,33 @@ func (i *InteractionExecutor) BeginContinuation(
 	// The previous Agent Process lifetime includes the human wait. Reset the
 	// Segment clock before any answer can make that Process runnable.
 	session.segmentClock.start()
-	session.continuationAccepted()
+	// Deliver every answer while all recipients stay paused, then resume only the
+	// surviving members, and release dispatch last. No recipient can execute an
+	// answered Tool before the whole set is admitted, so a partial delivery never
+	// runs work ahead of the remaining answers.
 	if err := session.deliverContinuationAnswers(ctx, prepared, committedInput); err != nil {
+		return err
+	}
+	if err := session.proveContinuationDelivery(ctx, prepared); err != nil {
 		return err
 	}
 	if err := session.resumePausedProcesses(ctx, paused); err != nil {
 		return err
 	}
+	session.continuationAccepted()
 	return nil
 }
 
 type preparedInteractionAnswer struct {
-	process *agent.Process
-	signal  agent.SignalRequest
+	process  *agent.Process
+	signal   agent.SignalRequest
+	admitted bool
 }
 
-// prepareContinuationAnswers matches answers to the staged pending inputs
-// entirely in memory, so it takes no context to abandon.
+// prepareContinuationAnswers reconciles the immutable accepted targets against
+// the latest acknowledged waits and receipts without advancing execution.
 func (i *interactionSession) prepareContinuationAnswers(
+	ctx context.Context,
 	answers []runs.InterruptAnswer,
 ) ([]preparedInteractionAnswer, error) {
 	i.state.mu.Lock()
@@ -74,11 +84,21 @@ func (i *interactionSession) prepareContinuationAnswers(
 	i.state.mu.Unlock()
 	checkpointState, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
-		return nil, fmt.Errorf("execution: decode staged Interaction checkpoint: %w", err)
+		return nil, fmt.Errorf("%w: decode staged Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
-	interruptions, err := i.pendingInterruptions(checkpointState.tree)
+	head, err := i.committedTree(ctx, checkpointState.handoff.rootID)
 	if err != nil {
 		return nil, err
+	}
+	retired := i.acceptedRetiredProcesses(checkpointState.handoff, head)
+	if err := validateAcceptedPausedTree(checkpointState.handoff, head, retired); err != nil {
+		return nil, err
+	}
+	targets := make(map[agent.WaitID]interactionInputTarget)
+	for wait, target := range checkpointState.handoff.inputs {
+		if !retired[target.processID] {
+			targets[wait] = target
+		}
 	}
 	orderedAnswers := slices.Clone(answers)
 	slices.SortFunc(orderedAnswers, func(left, right runs.InterruptAnswer) int {
@@ -87,35 +107,52 @@ func (i *interactionSession) prepareContinuationAnswers(
 		}
 		return strings.Compare(left.RequestID, right.RequestID)
 	})
-	if len(orderedAnswers) != len(interruptions) {
-		return nil, fmt.Errorf(
-			"execution: %d Interaction answers do not match %d pending inputs",
-			len(orderedAnswers), len(interruptions),
-		)
+	if len(orderedAnswers) != len(targets) {
+		return nil, fmt.Errorf("%w: %d Interaction answers do not match %d accepted targets", runs.ErrExecutorStateLost, len(orderedAnswers), len(targets))
 	}
-	stagedInputs, err := i.stagedPendingInputs()
+	currentInputs, err := interaction.PendingToolInputs(head)
 	if err != nil {
 		return nil, err
 	}
-	prepared := make([]preparedInteractionAnswer, 0, len(orderedAnswers))
-	for index, answer := range orderedAnswers {
-		expected := interruptions[index]
-		if answer.MemberID != expected.MemberID || answer.RequestID != expected.RequestID {
-			return nil, errors.New("execution: interrupt answer set differs from the staged Interaction inputs")
+	currentByWait := make(map[agent.WaitID]interaction.PendingToolInput)
+	for _, pending := range currentInputs {
+		if retired[pending.ProcessID()] {
+			continue
 		}
+		target, found := targets[pending.WaitID()]
+		if !found || target.processID != pending.ProcessID() {
+			return nil, fmt.Errorf("%w: current input differs from its accepted target", runs.ErrExecutorStateLost)
+		}
+		currentByWait[pending.WaitID()] = pending
+	}
+	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
+	for _, snapshot := range head.ProcessSnapshots() {
+		snapshots[snapshot.Relation().ProcessID()] = snapshot
+	}
+	prepared := make([]preparedInteractionAnswer, 0, len(orderedAnswers))
+	seenWaits := make(map[agent.WaitID]bool, len(orderedAnswers))
+	for _, answer := range orderedAnswers {
 		waitID, err := agent.ParseWaitID(answer.RequestID)
 		if err != nil {
-			return nil, fmt.Errorf("execution: parse answered Interaction input: %w", err)
+			return nil, fmt.Errorf("%w: parse answered Interaction input: %w", runs.ErrExecutorStateLost, err)
 		}
+		if seenWaits[waitID] {
+			return nil, fmt.Errorf("%w: answer set repeats a wait", runs.ErrExecutorStateLost)
+		}
+		seenWaits[waitID] = true
 		// The answer addresses a wait, not a member. The Tool child holding that
 		// wait is the staged cut's own fact, so the member never has to name it.
-		pending, found := stagedInputs[waitID]
-		if !found {
-			return nil, errors.New("execution: interrupt answer does not address the active Interaction input")
+		pending, found := targets[waitID]
+		if !found || pending.memberID.String() != answer.MemberID {
+			return nil, fmt.Errorf("%w: interrupt answer does not address the accepted Interaction input", runs.ErrExecutorStateLost)
 		}
-		process, found := i.engine.Process(pending.ProcessID())
+		parent, child := snapshots[pending.processID].Relation().ParentID()
+		if !child || parent != pending.memberID {
+			return nil, fmt.Errorf("%w: accepted input recipient changed its member", runs.ErrExecutorStateLost)
+		}
+		process, found := i.engine.Process(pending.processID)
 		if !found {
-			return nil, errors.New("execution: answered Interaction input is unavailable")
+			return nil, fmt.Errorf("%w: answered Interaction input is unavailable", runs.ErrExecutorStateLost)
 		}
 		response, err := runinput.EncodeResolution(answer.Resolution)
 		if err != nil {
@@ -125,11 +162,25 @@ func (i *interactionSession) prepareContinuationAnswers(
 		if err != nil {
 			return nil, err
 		}
-		signal, err := pending.ResponseSignal(signalID, response)
+		signal, err := interaction.NewToolInputResponseSignal(signalID, waitID, response)
 		if err != nil {
 			return nil, fmt.Errorf("execution: construct Interaction answer Signal: %w", err)
 		}
-		prepared = append(prepared, preparedInteractionAnswer{process: process, signal: signal})
+		admitted, err := exactAnswerReceipt(snapshots[pending.processID], signal)
+		if err != nil {
+			return nil, err
+		}
+		if !admitted {
+			current, found := currentByWait[waitID]
+			if !found || current.ProcessID() != pending.processID {
+				return nil, fmt.Errorf("%w: accepted answer has neither an exact receipt nor its wait", runs.ErrExecutorStateLost)
+			}
+			signal, err = current.ResponseSignal(signalID, response)
+			if err != nil {
+				return nil, err
+			}
+		}
+		prepared = append(prepared, preparedInteractionAnswer{process: process, signal: signal, admitted: admitted})
 	}
 	return prepared, nil
 }
@@ -164,6 +215,9 @@ func (i *interactionSession) deliverContinuationAnswers(
 		}()
 	}
 	for _, answer := range answers {
+		if answer.admitted {
+			continue
+		}
 		// Scope admits an exact duplicate answer idempotently: false with a nil error
 		// means this Signal's immutable content was already accepted, which a
 		// partial-delivery restart reconciles as success rather than failing. A
@@ -173,6 +227,57 @@ func (i *interactionSession) deliverContinuationAnswers(
 		}
 	}
 	inputRetained = input != nil
+	return nil
+}
+
+func exactAnswerReceipt(snapshot agent.ProcessSnapshot, signal agent.SignalRequest) (bool, error) {
+	for _, receipt := range snapshot.SignalReceipts() {
+		if receipt.ID() != signal.ID() {
+			continue
+		}
+		if !receipt.Matches(signal) {
+			return false, fmt.Errorf("%w: accepted answer Signal identity conflicts with its receipt", runs.ErrExecutorStateLost)
+		}
+		if receipt.Consumed() {
+			return false, fmt.Errorf("%w: accepted answer was consumed", runs.ErrExecutorStateLost)
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answers []preparedInteractionAnswer) error {
+	root := i.state.processHandle()
+	if root == nil {
+		return runs.ErrExecutorNotLive
+	}
+	head, err := i.committedTree(ctx, root.Relation().ProcessID())
+	if err != nil {
+		return err
+	}
+	i.state.mu.Lock()
+	checkpoint := i.state.waitingCheckpoint.Clone()
+	i.state.mu.Unlock()
+	state, err := decodeExecutorCheckpoint(checkpoint)
+	if err != nil {
+		return err
+	}
+	if err := validateAcceptedPausedTree(state.handoff, head, i.acceptedRetiredProcesses(state.handoff, head)); err != nil {
+		return err
+	}
+	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
+	for _, snapshot := range head.ProcessSnapshots() {
+		snapshots[snapshot.Relation().ProcessID()] = snapshot
+	}
+	for _, answer := range answers {
+		matched, err := exactAnswerReceipt(snapshots[answer.process.Relation().ProcessID()], answer.signal)
+		if err != nil {
+			return err
+		}
+		if !matched {
+			return errors.New("execution: accepted answer has no acknowledged receipt")
+		}
+	}
 	return nil
 }
 

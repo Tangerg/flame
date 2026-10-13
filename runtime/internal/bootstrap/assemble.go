@@ -179,7 +179,6 @@ func buildAssemblyCore(
 	lifetime.runEffectTasks = runEffectTasks
 	runSegmentConfig := segment.Config{
 		Interrupts:          cfg.Stores.Interrupts,
-		ResumeClaims:        cfg.Stores.Interrupts,
 		Sessions:            cfg.Stores.Sessions,
 		Transcript:          cfg.Stores.Transcript,
 		ItemReplacer:        cfg.Stores.Transcript,
@@ -200,6 +199,8 @@ func buildAssemblyCore(
 	}
 	runSegmentConfig.GoalRuns = goalRuns
 	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
+	runSegmentConfig.RememberedRules = cfg.Stores.ApprovalRules
+	runSegmentConfig.AcceptedContinuations = cfg.Stores.AcceptedContinuations
 	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
@@ -225,6 +226,8 @@ func buildAssemblyCore(
 		Conversation:                       execution.conversation.messages,
 		Models:                             modelcatalog.Selections{},
 		Continuation:                       execution.executor,
+		ApprovalRules:                      policy.approvals,
+		AcceptedContinuations:              cfg.Stores.AcceptedContinuations,
 		WaitingRestorer:                    execution.executor,
 		Steering:                           execution.executor,
 		RunningSubtreeCanceler:             execution.executor,
@@ -241,7 +244,6 @@ func buildAssemblyCore(
 			Openings:                    runSegmentEffects,
 			ChildStarts:                 runSegmentEffects,
 			Checkpoints:                 runSegmentEffects,
-			ResumeClaims:                runSegmentEffects,
 			Events:                      runSegmentEffects,
 			Barriers:                    runSegmentEffects,
 			WaitingSubtreeCancellations: runSegmentEffects,
@@ -428,6 +430,9 @@ func buildAssemblyCore(
 	}
 	if err := pluginCoordinator.Reclaim(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: %w", err)
+	}
+	if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: revive accepted continuations: %w", err)
 	}
 	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)

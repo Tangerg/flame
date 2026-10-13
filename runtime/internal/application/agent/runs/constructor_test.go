@@ -77,6 +77,12 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Continuation == nil {
 		deps.Continuation = control
 	}
+	if deps.ApprovalRules == nil {
+		deps.ApprovalRules = stubApprovalRulePreparer{}
+	}
+	if deps.AcceptedContinuations == nil {
+		deps.AcceptedContinuations = stubAcceptedContinuationStore{}
+	}
 	if deps.WaitingRestorer == nil {
 		deps.WaitingRestorer = control
 	}
@@ -109,9 +115,6 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	}
 	if deps.Projection.ChildStarts == nil {
 		deps.Projection.ChildStarts = effects
-	}
-	if deps.Projection.ResumeClaims == nil {
-		deps.Projection.ResumeClaims = effects
 	}
 	if deps.Projection.Events == nil {
 		deps.Projection.Events = effects

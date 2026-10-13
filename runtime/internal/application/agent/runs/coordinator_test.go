@@ -527,25 +527,9 @@ func (f *fakeEffects) AbortChildRunStart(
 	return nil
 }
 
-func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (ExecutorCheckpoint, error) {
-	if err := claim.Validate(); err != nil {
-		return ExecutorCheckpoint{}, err
-	}
-	checkpoint := testExecutorCheckpoint()
-	pending := claim.Pending()
-	root, _ := pending.RootContinuation()
-	checkpoint.RootMemberID = root.MemberID
-	checkpoint.SessionID = fixtureSessionID
-	if f.mutateClaim != nil {
-		f.mutateClaim(&checkpoint)
-	}
-	return checkpoint, nil
-}
-
 type completeTestProjectionPorts interface {
 	OpeningCommitter
 	ChildRunStartCommitter
-	ResumeClaimCommitter
 	EventCommitter
 	TreeBarrierCommitter
 	WaitingCheckpointReader
@@ -558,7 +542,6 @@ func testProjectionPorts(ports completeTestProjectionPorts) ProjectionPorts {
 	return ProjectionPorts{
 		Openings:                    ports,
 		ChildStarts:                 ports,
-		ResumeClaims:                ports,
 		Events:                      ports,
 		Barriers:                    ports,
 		Checkpoints:                 ports,

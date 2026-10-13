@@ -3,12 +3,13 @@ package runs
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // runCleanupTimeout bounds request-detached Run teardown, so a stuck store or
@@ -108,6 +109,30 @@ func (r *runTreeOwner) beginExecution(
 	close(r.activation.done)
 	r.mu.Unlock()
 	return false, err
+}
+
+// awaitActivation blocks until this Segment's detached executor activation
+// resolves, then reports a failed activation as a finished Run. A Run becomes
+// durably Running when its acceptance opening commits, before BeginExecution
+// crosses the executor boundary; a consumer that must reach the live executor
+// (steer) waits here so the activation window is not misread as a finished Run.
+// Context cancellation ends only the waiting request, never the Run.
+func (r *runTreeOwner) awaitActivation(ctx context.Context) error {
+	r.mu.Lock()
+	done := r.activation.done
+	r.mu.Unlock()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+	r.mu.Lock()
+	activationErr := r.activation.err
+	r.mu.Unlock()
+	if activationErr != nil {
+		return fmt.Errorf("%w: segment activation failed: %v", ErrRunFinished, activationErr)
+	}
+	return nil
 }
 
 func (r *runTreeOwner) rejectActivation(cause error) error {

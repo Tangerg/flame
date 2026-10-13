@@ -128,8 +128,15 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
-		if _, found, err := sqlite.NewInterruptStore(writer).ClaimResume(ctx, root.ID()); err != nil || !found {
-			return fmt.Errorf("claim interrupt: found=%t: %w", found, err)
+		if _, found, err := sqlite.NewInterruptStore(writer).Consume(ctx, root.ID()); err != nil || !found {
+			return fmt.Errorf("consume interrupt: found=%t: %w", found, err)
+		}
+		// Acceptance consumes the open set and resumes the Run in one transaction,
+		// so the Run never rests waiting without its Pending.
+		if err := runStore.Resume(ctx, testsupport.MustRunReplacement(root, func(waiting run.Run) (run.Run, error) {
+			return waiting.Resume("seg_snapshot_resumed", created.Add(2*time.Second))
+		})); err != nil {
+			return err
 		}
 		return sqlite.NewTranscriptStore(writer).ReplaceItem(ctx, change)
 	})

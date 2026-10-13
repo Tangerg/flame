@@ -2,8 +2,11 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -59,7 +62,10 @@ func (i *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pendin
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err
 	}
-	pending := pendingValue(record)
+	pending, err := pendingValue(record)
+	if err != nil {
+		return runs.Pending{}, false, err
+	}
 	if err := pending.Validate(); err != nil {
 		return runs.Pending{}, false, err
 	}
@@ -71,44 +77,31 @@ func (i *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pe
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err
 	}
-	pending := pendingValue(record)
+	pending, err := pendingValue(record)
+	if err != nil {
+		return runs.Pending{}, false, err
+	}
 	if err := pending.Validate(); err != nil {
 		return runs.Pending{}, false, err
 	}
 	return pending, true, nil
-}
-
-func (i *InterruptStore) ClaimResume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
-	record, found, err := i.storage.ClaimResume(ctx, rootRunID)
-	if err != nil || !found {
-		return runs.Pending{}, found, err
-	}
-	pending := pendingValue(record)
-	if err := pending.Validate(); err != nil {
-		return runs.Pending{}, false, err
-	}
-	return pending, true, nil
-}
-
-func (i *InterruptStore) RequireResumeClaim(ctx context.Context, rootRunID string) error {
-	return i.storage.RequireResumeClaim(ctx, rootRunID)
 }
 
 func (i *InterruptStore) Delete(ctx context.Context, rootRunID string) error {
 	return i.storage.Delete(ctx, rootRunID)
 }
 
-func (i *InterruptStore) DeleteResumeClaim(ctx context.Context, rootRunID, rootMemberID string) error {
-	return i.storage.DeleteResumeClaim(ctx, rootRunID, rootMemberID)
-}
-
 func pendingValues(records []sqlite.InterruptRecord) ([]runs.Pending, error) {
 	values := make([]runs.Pending, len(records))
 	for index, record := range records {
-		values[index] = pendingValue(record)
-		if err := values[index].Validate(); err != nil {
+		value, err := pendingValue(record)
+		if err != nil {
 			return nil, err
 		}
+		if err := value.Validate(); err != nil {
+			return nil, err
+		}
+		values[index] = value
 	}
 	return values, nil
 }
@@ -128,10 +121,12 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 	bindings := make([]sqlite.InterruptBindingRecord, len(pending.Bindings))
 	for index, binding := range pending.Bindings {
 		bindings[index] = sqlite.InterruptBindingRecord{
-			InterruptItemID: binding.InterruptItemID,
-			MemberID:        binding.MemberID,
-			RequestID:       binding.RequestID,
-			ToolCallID:      binding.ToolCallID,
+			InterruptItemID:   binding.InterruptItemID,
+			MemberID:          binding.MemberID,
+			RequestID:         binding.RequestID,
+			ToolCallID:        binding.ToolCallID,
+			ToolRef:           binding.ToolRef.String(),
+			SourceFingerprint: binding.SourceFingerprint.String(),
 		}
 	}
 	interrupts := make([]sqlite.OpenInterruptRecord, len(pending.Interrupts))
@@ -151,7 +146,7 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 	}
 }
 
-func pendingValue(record sqlite.InterruptRecord) runs.Pending {
+func pendingValue(record sqlite.InterruptRecord) (runs.Pending, error) {
 	continuations := make([]runs.Continuation, len(record.Continuations))
 	for index, continuation := range record.Continuations {
 		var drained []runs.DrainedTool
@@ -168,12 +163,27 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 	}
 	bindings := make([]runs.InterruptBinding, len(record.Bindings))
 	for index, binding := range record.Bindings {
-		bindings[index] = runs.InterruptBinding{
+		value := runs.InterruptBinding{
 			InterruptItemID: binding.InterruptItemID,
 			MemberID:        binding.MemberID,
 			RequestID:       binding.RequestID,
 			ToolCallID:      binding.ToolCallID,
 		}
+		if binding.ToolRef != "" {
+			ref, err := tool.ParseRef(binding.ToolRef)
+			if err != nil {
+				return runs.Pending{}, fmt.Errorf("persistence: decode interrupt binding tool ref: %w", err)
+			}
+			value.ToolRef = ref
+		}
+		if binding.SourceFingerprint != "" {
+			digest, err := fingerprint.ParseDigest(binding.SourceFingerprint)
+			if err != nil {
+				return runs.Pending{}, fmt.Errorf("persistence: decode interrupt binding source fingerprint: %w", err)
+			}
+			value.SourceFingerprint = digest
+		}
+		bindings[index] = value
 	}
 	interrupts := make([]runs.OpenInterrupt, len(record.Interrupts))
 	for index, open := range record.Interrupts {
@@ -189,5 +199,5 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 		Interrupts: interrupts, Bindings: bindings,
 		Continuations: continuations,
 		CreatedAt:     record.CreatedAt,
-	}
+	}, nil
 }

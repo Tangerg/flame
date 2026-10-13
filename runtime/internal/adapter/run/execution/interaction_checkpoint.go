@@ -2,7 +2,6 @@ package execution
 
 import (
 	"encoding/base64"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -31,7 +30,7 @@ type interactionCheckpointPayloadWire struct {
 	MCPReferences       *[]string                           `json:"mcp_references"`
 	Options             corechat.Options                    `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
-	Tree                jsontext.Value                      `json:"tree"`
+	Handoff             *interactionHandoffWire             `json:"handoff"`
 	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
 	Contexts            []interactionModelContextWire       `json:"contexts,omitempty"`
@@ -79,6 +78,7 @@ type interactionCheckpointState struct {
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
+	handoff             interactionHandoff
 	callsByProcess      map[agent.ProcessID]map[string]int
 	contextByProcess    map[agent.ProcessID]ModelContextTokenCalibration
 	instructions        []corechat.Message
@@ -141,9 +141,13 @@ func encodeInteractionCheckpointPayload(
 	wire := interactionCheckpointPayloadWire{
 		MCPReferences: new(mcpReferences),
 		ToolMetadata:  toolMetadata, Options: options.Clone(),
-		Tree:         tree.JSON(),
 		Instructions: cloneChatMessages(instructions),
 	}
+	handoff, err := encodeInteractionHandoff(tree)
+	if err != nil {
+		return nil, err
+	}
+	wire.Handoff = handoff
 	if _, err := interactionInstructionContext(wire.Instructions); err != nil {
 		return nil, err
 	}
@@ -164,7 +168,6 @@ func encodeInteractionCheckpointPayload(
 	slices.SortFunc(wire.Members, func(left, right interactionMemberCallsWire) int {
 		return strings.Compare(left.MemberID, right.MemberID)
 	})
-	var err error
 	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess, accounted)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction model contexts: %w", err)
@@ -361,9 +364,9 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err := wire.Options.Validate(); err != nil {
 		return interactionCheckpointState{}, err
 	}
-	tree, processes, err := decodeInteractionCheckpointTree(wire.Tree)
+	handoff, processes, err := decodeInteractionHandoff(wire.Handoff)
 	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint tree: %w", err)
+		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint handoff: %w", err)
 	}
 	instructions, err := decodeInteractionCheckpointInstructions(wire.Instructions)
 	if err != nil {
@@ -382,7 +385,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint pending steers: %w", err)
 	}
 	pendingContinuation, err := decodeInteractionPendingContinuation(
-		wire.PendingContinuation, tree.RootID(),
+		wire.PendingContinuation, handoff.rootID,
 	)
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint pending continuation: %w", err)
@@ -393,7 +396,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	}
 	return interactionCheckpointState{
 		mcpSources: sources,
-		tree:       tree, callsByProcess: callsByProcess,
+		handoff:    handoff, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil
@@ -405,20 +408,6 @@ func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPaylo
 		return interactionCheckpointPayloadWire{}, fmt.Errorf("execution: decode Interaction checkpoint: %w", err)
 	}
 	return wire, nil
-}
-
-func decodeInteractionCheckpointTree(
-	wire jsontext.Value,
-) (agent.TreeSnapshot, map[agent.ProcessID]struct{}, error) {
-	tree, err := agent.ParseTreeSnapshot(wire)
-	if err != nil {
-		return agent.TreeSnapshot{}, nil, err
-	}
-	processes := make(map[agent.ProcessID]struct{}, len(tree.ProcessSnapshots()))
-	for _, snapshot := range tree.ProcessSnapshots() {
-		processes[snapshot.Relation().ProcessID()] = struct{}{}
-	}
-	return tree, processes, nil
 }
 
 func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]corechat.Message, error) {

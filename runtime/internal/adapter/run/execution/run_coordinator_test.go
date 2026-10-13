@@ -9,8 +9,25 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
+
+// inertApprovalRulePreparer derives a rule without a source-authority check so an
+// execution coordinator test exercises acceptance without a live approval policy.
+type inertApprovalRulePreparer struct{}
+
+func (inertApprovalRulePreparer) PrepareRule(_ context.Context, request approval.RememberRequest) (approval.Rule, error) {
+	return request.Rule()
+}
+
+type inertAcceptedContinuationStore struct{}
+
+func (inertAcceptedContinuationStore) List(context.Context) ([]runs.AcceptedContinuation, error) {
+	return nil, nil
+}
+
+func (inertAcceptedContinuationStore) Delete(context.Context, string) error { return nil }
 
 type passthroughRunWorkingContext struct{}
 
@@ -30,6 +47,12 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	t.Helper()
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}
+	}
+	if deps.ApprovalRules == nil {
+		deps.ApprovalRules = inertApprovalRulePreparer{}
+	}
+	if deps.AcceptedContinuations == nil {
+		deps.AcceptedContinuations = inertAcceptedContinuationStore{}
 	}
 	starter := any(deps.RootStarts)
 	fillRunDependency(t, &deps.RootCancellation, starter, "root cancellation requester")
@@ -51,13 +74,6 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	fillRunDependency(t, &deps.Session.Terminations, sessions, "run termination committer")
 	projection := any(deps.Projection.Openings)
 	fillRunDependency(t, &deps.Projection.ChildStarts, projection, "child run start committer")
-	if deps.Projection.ResumeClaims == nil {
-		if value, ok := projection.(runs.ResumeClaimCommitter); ok {
-			deps.Projection.ResumeClaims = value
-		} else {
-			deps.Projection.ResumeClaims = inertRunProjection{}
-		}
-	}
 	fillRunDependency(t, &deps.Projection.Events, projection, "event committer")
 	fillRunDependency(t, &deps.Projection.Barriers, projection, "tree barrier committer")
 	fillRunDependency(t, &deps.Projection.Checkpoints, projection, "waiting checkpoint reader")
@@ -84,10 +100,6 @@ func testDefaultSelection() modelref.Selection {
 }
 
 type inertRunProjection struct{}
-
-func (inertRunProjection) ClaimResume(context.Context, runs.ResumeClaimCommit) (runs.ExecutorCheckpoint, error) {
-	return runs.ExecutorCheckpoint{}, errors.New("inert Run projection")
-}
 
 func (inertRunProjection) CommitWaitingSubtreeCancellation(
 	context.Context,

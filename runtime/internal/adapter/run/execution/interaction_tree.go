@@ -59,10 +59,12 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 }
 
 // captureHumanInputBarrier first proves that the tree contains an externally
-// addressable input wait, then pauses other Running branches at their next safe
-// boundary. A parent waiting only on children is not itself a product barrier;
-// pausing its still-opening child before this proof would capture a half-step
-// with no durable Interrupt to resume.
+// addressable input wait, then pauses every surviving nonterminal member at its
+// next safe boundary — running branches, external input waiters, and parents
+// waiting on children alike — so no answer recipient can advance while the
+// complete answer set is delivered. Proving the wait first avoids capturing a
+// half-step with no durable Interrupt to resume; retired child subtrees are
+// excluded because the continuation never resumes them.
 func (i *interactionSession) captureHumanInputBarrier(
 	ctx context.Context,
 ) (agent.TreeSnapshot, []runs.MemberInterruption, bool, error) {
@@ -100,28 +102,36 @@ func (i *interactionSession) captureHumanInputBarrier(
 		if len(interruptions) == 0 {
 			return agent.TreeSnapshot{}, nil, false, nil
 		}
-		var paused bool
+		parents := capturedParents(tree)
+		var unsettled bool
 		for _, snapshot := range tree.ProcessSnapshots() {
-			if snapshot.Status() != agent.StatusRunning {
+			status := snapshot.Status()
+			processID := snapshot.Relation().ProcessID()
+			if status.Terminal() || i.retiredSubtreeMember(processID, parents) {
 				continue
 			}
-			paused = true
-			if _, requested := requestedPauses[snapshot.Relation().ProcessID()]; requested {
+			if status == agent.StatusPaused {
 				continue
 			}
-			process, found := i.engine.Process(snapshot.Relation().ProcessID())
+			// A surviving nonterminal member the continuation will release is not yet
+			// at the barrier. Pause acknowledges intent before its committed snapshot
+			// advances, so the cut is safe only once a later capture observes every
+			// intended member Paused.
+			unsettled = true
+			if _, requested := requestedPauses[processID]; requested {
+				continue
+			}
+			process, found := i.engine.Process(processID)
 			if !found {
 				return agent.TreeSnapshot{}, nil, false, nil
 			}
-			// Pause acknowledges intent before its committed snapshot advances.
-			// Retain that receipt until this capture observes the settled cut.
 			if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
 				!errors.Is(err, agent.ErrProcessFinished) {
-				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", snapshot.Relation().ProcessID(), err)
+				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", processID, err)
 			}
-			requestedPauses[snapshot.Relation().ProcessID()] = struct{}{}
+			requestedPauses[processID] = struct{}{}
 		}
-		if paused {
+		if unsettled {
 			select {
 			case <-i.lifetime.stateWake:
 			case <-ticker.C:
@@ -238,9 +248,8 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 	return ids, nil
 }
 
-// stagedTree returns the frozen cut this Interaction published its waiting
-// boundary from. Answers and paused members are both read from it rather than
-// from a fresh capture, so they describe the same moment the Interrupts did.
+// stagedTree reads the latest acknowledged head bound to the retained context.
+// Signal admission may advance this head while every member stays paused.
 func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	i.state.mu.Lock()
 	checkpoint := i.state.waitingCheckpoint.Clone()
@@ -249,7 +258,7 @@ func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	if err != nil {
 		return agent.TreeSnapshot{}, err
 	}
-	return state.tree, nil
+	return i.committedTree(i.lifetime.execution, state.handoff.rootID)
 }
 
 // stagedPendingInputs indexes the Tool waits of the staged cut by their WaitID.
@@ -282,27 +291,40 @@ func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
 		if snapshot.Status() != agent.StatusPaused {
 			continue
 		}
+		processID := snapshot.Relation().ProcessID()
 		// A committed subtree cancellation can still be draining in this cut.
 		// Its product owner has retired the member and never resumes its descendants.
-		retired := false
-		for id := snapshot.Relation().ProcessID(); id.Valid(); id = parents[id] {
-			i.state.mu.Lock()
-			managed := i.state.delegateChildren[id]
-			i.state.mu.Unlock()
-			if managed != nil {
-				managed.mu.Lock()
-				retired = managed.segmentProjected
-				managed.mu.Unlock()
-				if retired {
-					break
-				}
-			}
+		if i.retiredSubtreeMember(processID, parents) {
+			continue
 		}
-		if !retired {
-			paused = append(paused, snapshot.Relation().ProcessID())
-		}
+		paused = append(paused, processID)
 	}
 	return paused, nil
+}
+
+// retiredSubtreeMember reports whether processID or one of its captured ancestors
+// is a managed Delegate child whose product terminal was already projected. The
+// continuation never resumes such a draining-cancellation subtree, so the human-
+// input barrier does not pause it and release does not revive it.
+func (i *interactionSession) retiredSubtreeMember(
+	processID agent.ProcessID,
+	parents map[agent.ProcessID]agent.ProcessID,
+) bool {
+	for id := processID; id.Valid(); id = parents[id] {
+		i.state.mu.Lock()
+		managed := i.state.delegateChildren[id]
+		i.state.mu.Unlock()
+		if managed == nil {
+			continue
+		}
+		managed.mu.Lock()
+		projected := managed.segmentProjected
+		managed.mu.Unlock()
+		if projected {
+			return true
+		}
+	}
+	return false
 }
 
 func (i *interactionSession) resumePausedProcesses(

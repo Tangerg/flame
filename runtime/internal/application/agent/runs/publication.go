@@ -465,8 +465,10 @@ func (t treePublisher) reduceInterruptedRoute(
 			MemberID:        interruption.MemberID,
 			RequestID:       interruption.RequestID,
 		}
-		if interruption.Interrupt.Approval != nil {
-			bindings[index].ToolCallID = interruption.Interrupt.Approval.CallID
+		if approval := interruption.Interrupt.Approval; approval != nil {
+			bindings[index].ToolCallID = approval.CallID
+			bindings[index].ToolRef = approval.Tool
+			bindings[index].SourceFingerprint = approval.SourceFingerprint
 		}
 	}
 	continuation := Continuation{

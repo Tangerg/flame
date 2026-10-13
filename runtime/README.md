@@ -1013,6 +1013,10 @@ ownership and before starting each phase, releases acquired ownership on every
 exit, and retains a failed phase's cause alongside concurrent cancellation.
 Cancellation stops unstarted phases; an already completed recovery retains its
 committed result.
+Before abandoned Running Runs are classified, startup acquires the ordinary
+Run admission for each accepted Resume handoff and attempts its bounded revival.
+An inconclusive storage or dependency failure stops startup with the binding
+retained; an incompatible head follows the existing Run-lost policy.
 File advisory leases consume their opened descriptor. Acquisition failure or
 contention closes it immediately; an acquired lease owns both unlock and close,
 retains their combined diagnostic, and never retries a retired descriptor.
@@ -1596,6 +1600,23 @@ cancellation, and other unexpected probe errors propagate to recovery instead of
 being persisted as irreversible state loss. Malformed or incompatible checkpoints
 and missing execution trees still explicitly report that they cannot be resumed.
 
+An accepted Resume can survive a crash while its recipients are still at the
+original paused handoff. The acceptance transaction retains the exact Run and
+Segment references, answer targets, and optional additional-input Item reference.
+Items own the accepted resolutions and input content. The retained execution
+context carries frozen instructions/options, accounting, calibration, metadata,
+pending input associations, and immutable Scope progress anchors; it contains no
+second recoverable tree. Restoration reads only the latest execution-tree head.
+
+Recovery requires the original member set and Step/Effect progress, paused
+recipients, and unconsumed exact answer receipts. It delivers only missing
+answers under their original Signal identities, proves the complete receipt set,
+then releases execution through the existing Run owner. A current head that has
+advanced into execution remains subject to active-Run loss policy. Terminal Runs
+are never revived. The binding survives local Resume intent until the next
+committed waiting or terminal boundary retires it atomically. New waiting context
+and accepted-continuation storage require a fresh pre-release data directory.
+
 ## Scope provider transport
 
 Runtime consumes the released Scope modules pinned in `go.mod`. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
@@ -1707,9 +1728,11 @@ edited command or path cannot grant permission to the original command or path.
 The frozen Scope input contract validates approved arguments before a rule is
 saved; invalid edits produce a failed Tool result without saving a grant. Denials
 remain bound to the original invocation. Standing rules never replay argument edits.
-If the source changes while approval is pending, the explicit one-shot answer still
-applies to that frozen invocation, but no rule is saved for the obsolete source.
-Other persistence failures remain errors.
+If the source changes while approval is pending, requesting a remembered rule
+rejects the complete Resume. A one-shot choice requires an explicit command.
+The standing rule commits with the accepted answers and Segment opening; revival
+does not recreate a rule that the user later changed or forgot. Other persistence
+failures remain errors.
 
 This contract intentionally breaks the former approval schema and protocol.
 Use a fresh Runtime data directory when upgrading from an approval schema

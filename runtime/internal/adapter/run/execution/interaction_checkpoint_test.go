@@ -142,13 +142,13 @@ func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
 	}{
 		{
 			name:    "root",
-			payload: `{"tree":{},"tree":{}}`,
-			pointer: "/tree",
+			payload: `{"handoff":{},"handoff":{}}`,
+			pointer: "/handoff",
 		},
 		{
-			name:    "nested tree",
-			payload: `{"tree":{"state":"first","state":"second"}}`,
-			pointer: "/tree/state",
+			name:    "nested handoff",
+			payload: `{"handoff":{"root_id":"first","root_id":"second"}}`,
+			pointer: "/handoff/root_id",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -311,9 +311,9 @@ func TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce(t *testing.T) {
 		})
 	}
 
-	_, err := decodeInteractionCheckpointPayload([]byte(`{"mcp_references":[],"tree":{}}`))
+	_, err := decodeInteractionCheckpointPayload([]byte(`{"mcp_references":[],"handoff":{}}`))
 	if err == nil {
-		t.Fatal("empty checkpoint tree decoded")
+		t.Fatal("empty checkpoint handoff decoded")
 	}
 	if count := strings.Count(err.Error(), "execution: Interaction checkpoint"); count != 1 {
 		t.Fatalf("payload error names its section %d times: %v", count, err)

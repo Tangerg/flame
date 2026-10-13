@@ -102,19 +102,6 @@ func bootstrapTerminalPlan(
 	return terminal
 }
 
-func bootstrapClaimedResumeTerminalPlan(
-	t *testing.T,
-	runs []run.Replacement,
-	checkpointRootID string,
-) sessions.TerminalPlan {
-	t.Helper()
-	terminal, err := sessions.NewClaimedResumeTerminalPlan(runs, nil, nil, checkpointRootID)
-	if err != nil {
-		t.Fatalf("prepare claimed Resume terminal plan: %v", err)
-	}
-	return terminal
-}
-
 // bootstrapCheckpoint deliberately treats the executor payload as opaque. These
 // Bootstrap fixtures verify Application write-sets, not Agent Framework wire;
 // only adapter/run/execution may construct or interpret a tree snapshot.
@@ -426,53 +413,6 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	}
 	if err != nil || len(storedRuns) != 2 || !failed || failure.Kind != run.FailureLost {
 		t.Fatalf("terminal runs = %+v (err %v), want run_lost", storedRuns, err)
-	}
-}
-
-func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
-	ss, runs, ints := newWriteSetFixture(t)
-	ctx := t.Context()
-	memberID := parkSessionARootRun(t, ss.sessions, runs, ints, ss.checkpoints)
-	pending, found, err := ints.Get(ctx, "run_1")
-	if err != nil || !found {
-		t.Fatalf("read open interrupt: found=%t err=%v", found, err)
-	}
-	if _, claimResumeFound, claimResumeErr := ints.ClaimResume(
-		ctx,
-		pending.RootRunID,
-	); claimResumeErr != nil || !claimResumeFound {
-		t.Fatalf("ClaimResume: found=%t err=%v", claimResumeFound, claimResumeErr)
-	}
-	if _, open, getErr := ints.Get(ctx, pending.RootRunID); getErr != nil || open {
-		t.Fatalf("open interrupt after claim = open:%t err:%v", open, getErr)
-	}
-
-	parked, found, err := runs.Run(ctx, pending.RootRunID)
-	if err != nil || !found {
-		t.Fatalf("read parked Run: found=%t err=%v", found, err)
-	}
-	finishedAt := parkCreatedAt.Add(time.Minute)
-	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
-	if err != nil {
-		t.Fatalf("recover parked Run: %v", err)
-	}
-	terminalPlan := bootstrapClaimedResumeTerminalPlan(
-		t,
-		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))},
-		memberID,
-	)
-	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
-		t.Fatalf("ApplyTerminal claimed Resume: %v", applyTerminalErr)
-	}
-	if requireResumeClaimErr := ints.RequireResumeClaim(ctx, pending.RootRunID); requireResumeClaimErr == nil {
-		t.Fatal("claimed Resume interrupt survived terminal write-set")
-	}
-	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runsapp.ErrExecutorCheckpointNotFound) {
-		t.Fatalf("executor checkpoint after claimed RunLost = %v, want not found", loadCheckpointErr)
-	}
-	stored, found, err := runs.Run(ctx, pending.RootRunID)
-	if err != nil || !found || stored.State() != run.Failed {
-		t.Fatalf("claimed Resume Run after terminal write-set = found:%t value:%+v err:%v", found, stored, err)
 	}
 }
 

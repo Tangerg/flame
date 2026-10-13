@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -187,6 +188,8 @@ type fakeExecutionPorts struct {
 	prepareWaiting    func(WaitingSubtreeCancellationRequest) (PreparedWaitingSubtreeCancellation, error)
 	restoreWaiting    []WaitingContinuation
 	restoreErr        error
+	ruleCandidates    []RememberedRuleCandidate
+	deriveRulesErr    error
 }
 
 type blockingOpeningEffects struct {
@@ -255,6 +258,54 @@ func (f *fakeExecutionPorts) StageContinuation(_ context.Context, continuation W
 		return f.rehydrated, nil
 	}
 	return ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
+}
+
+func (f *fakeExecutionPorts) StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation, _ []InterruptAnswer) (ExecutorRef, error) {
+	return f.StageContinuation(ctx, continuation)
+}
+
+func (f *fakeExecutionPorts) DeriveRememberedRules(
+	_ context.Context,
+	_ ExecutorRef,
+	candidates []RememberedRuleCandidate,
+) ([]approval.RememberRequest, error) {
+	f.ruleCandidates = candidates
+	if f.deriveRulesErr != nil {
+		return nil, f.deriveRulesErr
+	}
+	requests := make([]approval.RememberRequest, 0, len(candidates))
+	for _, candidate := range candidates {
+		request := candidate.Request
+		request.Subject = approval.InvocationSubject(candidate.EffectiveArguments.Canonical())
+		requests = append(requests, request)
+	}
+	return requests, nil
+}
+
+// stubApprovalRulePreparer derives each rule without a source-authority check, so
+// an answer-set test exercises the acceptance path without a live policy.
+type stubApprovalRulePreparer struct{ err error }
+
+func (s stubApprovalRulePreparer) PrepareRule(_ context.Context, request approval.RememberRequest) (approval.Rule, error) {
+	if s.err != nil {
+		return approval.Rule{}, s.err
+	}
+	return request.Rule()
+}
+
+// stubAcceptedContinuationStore records retired bindings so a completion test can
+// assert the acceptance window closed.
+type stubAcceptedContinuationStore struct{ retired *[]string }
+
+func (s stubAcceptedContinuationStore) List(context.Context) ([]AcceptedContinuation, error) {
+	return nil, nil
+}
+
+func (s stubAcceptedContinuationStore) Delete(_ context.Context, rootRunID string) error {
+	if s.retired != nil {
+		*s.retired = append(*s.retired, rootRunID)
+	}
+	return nil
 }
 
 func (f *fakeExecutionPorts) RestoreWaitingExecution(
@@ -1367,7 +1418,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	}
 }
 
-func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
+func TestResumeReportsLostExecutorStateAndKeepsRunRecoverable(t *testing.T) {
 	var operations []string
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
@@ -1391,14 +1442,16 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
-	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, ErrExecutorStateLost) {
-		t.Fatalf("Resume error = %v, want Run not found wrapping executor state lost", err)
+	if !errors.Is(err, ErrExecutorStateLost) {
+		t.Fatalf("Resume error = %v, want executor state lost", err)
 	}
-	if sessions.lostRunID != "run_1" || sessions.lostAt.IsZero() {
-		t.Fatalf("lost recovery = %q/%v, want run_1 and terminal time", sessions.lostRunID, sessions.lostAt)
+	// Staging fails before the acceptance transaction, so nothing is accepted: the
+	// Run is not marked lost and its open hand-off survives for another attempt.
+	if sessions.lostRunID != "" || len(operations) != 0 {
+		t.Fatalf("staging failure marked the Run lost: %q ops=%v", sessions.lostRunID, operations)
 	}
-	if len(operations) != 1 || operations[0] != "durable.lost" {
-		t.Fatalf("operations = %v, want one durable lost commit", operations)
+	if _, open := sessions.pending["run_1"]; !open {
+		t.Fatal("staging failure consumed the open hand-off")
 	}
 	if control.continuation.Workspace != "/work" {
 		t.Fatalf("continuation workspace = %q, want /work", control.continuation.Workspace)
@@ -1406,17 +1459,9 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 	if hasActiveSession(c, "ses_1") {
 		t.Fatal("failed resume leaked its run admission")
 	}
-
-	_, err = c.Resume(t.Context(), ResumeCommand{RunID: "run_1"})
-	if !errors.Is(err, ErrInterruptNotOpen) {
-		t.Fatalf("second Resume error = %v, want ErrInterruptNotOpen", err)
-	}
-	if len(operations) != 1 {
-		t.Fatalf("second Resume repeated recovery: %v", operations)
-	}
 }
 
-func TestResumeOpeningFailureMarksClaimedRunLostBeforeReleasingTree(t *testing.T) {
+func TestResumeOpeningFailureReleasesTreeAndKeepsRunRecoverable(t *testing.T) {
 	var operations []string
 	openingErr := errors.New("opening commit failed")
 	sessions := &fakeRunSessions{
@@ -1446,216 +1491,23 @@ func TestResumeOpeningFailureMarksClaimedRunLostBeforeReleasingTree(t *testing.T
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
-	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, openingErr) {
-		t.Fatalf("Resume error = %v, want Run not found wrapping opening failure", err)
+	// The acceptance opening did not commit, so nothing is accepted: the staged
+	// executor is released, the Run is not marked lost, and its open hand-off
+	// survives for another attempt.
+	if !errors.Is(err, openingErr) {
+		t.Fatalf("Resume error = %v, want opening failure", err)
 	}
 	if control.resumed {
 		t.Fatal("failed opening submitted the semantic answer")
 	}
-	if sessions.lostRunID != "run_1" || len(control.released) != 1 {
-		t.Fatalf("lost Run/released tree = %q/%+v, want run_1 and one release", sessions.lostRunID, control.released)
+	if sessions.lostRunID != "" || len(control.released) != 1 {
+		t.Fatalf("lost Run/released tree = %q/%+v, want no lost Run and one release", sessions.lostRunID, control.released)
 	}
-	if !slices.Equal(operations, []string{"durable.lost", "executor.release"}) {
-		t.Fatalf("cleanup operations = %v, want durable.lost then executor.release", operations)
+	if !slices.Equal(operations, []string{"executor.release"}) {
+		t.Fatalf("cleanup operations = %v, want only the executor release", operations)
 	}
-}
-
-func TestResumeOpeningFailureCompensatesTheResumingClaimBeforeReleasingTree(t *testing.T) {
-	var operations []string
-	openingErr := errors.New("opening commit failed")
-	sessions := &claimedResumeSessions{fakeRunSessions: &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
-		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC())},
-		operations: &operations,
-	}}
-	control := &fakeExecutionPorts{
-		prepared:   ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
-		operations: &operations,
-	}
-	coordinator := newUseCaseCoordinator(
-		&fakeExecutor{},
-		control,
-		sessions.fakeRunSessions,
-		&fakeEffects{
-			openingErr: openingErr,
-			mutateClaim: func(*ExecutorCheckpoint) {
-				sessions.claimed = true
-			},
-		},
-	)
-	coordinator.terminations = sessions
-
-	_, err := coordinator.Resume(t.Context(), ResumeCommand{
-		RunID: "run_1",
-		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Approval},
-		},
-		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: interrupt.Approval,
-			Approval: &ApprovalResponse{Approved: true},
-		}},
-	})
-	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, openingErr) {
-		t.Fatalf("Resume error = %v, want Run not found wrapping opening failure", err)
-	}
-	if sessions.lostRunID != "run_1" || len(control.released) != 1 {
-		t.Fatalf(
-			"claimed RunLost/released tree = %q/%+v, want run_1 and one release",
-			sessions.lostRunID,
-			control.released,
-		)
-	}
-	if !slices.Equal(operations, []string{"durable.lost", "executor.release"}) {
-		t.Fatalf("cleanup operations = %v, want durable.lost then executor.release", operations)
-	}
-}
-
-func TestResumeRejectsAForeignClaimedCheckpointBeforeStagingAndMarksRunLost(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		mutate func(*ExecutorCheckpoint)
-	}{
-		{
-			name: "root member",
-			mutate: func(checkpoint *ExecutorCheckpoint) {
-				checkpoint.RootMemberID = "member_foreign"
-			},
-		},
-		{
-			name: "Session",
-			mutate: func(checkpoint *ExecutorCheckpoint) {
-				checkpoint.SessionID = "ses_foreign"
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			var operations []string
-			sessions := &fakeRunSessions{
-				sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
-				pending: map[string]Pending{
-					"run_1": testApprovalPending("member_1", time.Now().UTC())},
-				operations: &operations,
-			}
-			control := &fakeExecutionPorts{
-				prepared: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
-			}
-			coordinator := newUseCaseCoordinator(
-				&fakeExecutor{},
-				control,
-				sessions,
-				&fakeEffects{mutateClaim: test.mutate},
-			)
-
-			_, err := coordinator.Resume(t.Context(), ResumeCommand{
-				RunID: "run_1",
-				CallerCapabilities: run.Capabilities{
-					InterruptKinds: []interrupt.Kind{interrupt.Approval},
-				},
-				Responses: []ResumeResponse{{
-					ItemID: "item_1", Kind: interrupt.Approval,
-					Approval: &ApprovalResponse{Approved: true},
-				}},
-			})
-			if !errors.Is(err, ErrRunNotFound) {
-				t.Fatalf("Resume error = %v, want Run not found", err)
-			}
-			if control.continuation.ExecutorID != "" || control.resumed || len(control.released) != 0 {
-				t.Fatalf("claim drift reached executor: %+v", control)
-			}
-			if sessions.lostRunID != "run_1" || !slices.Equal(operations, []string{"durable.lost"}) {
-				t.Fatalf("lost recovery = %q operations=%v", sessions.lostRunID, operations)
-			}
-		})
-	}
-}
-
-func TestResumeOpeningFailureKeepsTreeWhenRunLostCommitFails(t *testing.T) {
-	var operations []string
-	openingErr := errors.New("opening commit failed")
-	lostErr := errors.New("RunLost commit failed")
-	sessions := &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
-		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC())},
-		lostErr:    lostErr,
-		operations: &operations,
-	}
-	control := &fakeExecutionPorts{
-		prepared:   ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
-		operations: &operations,
-	}
-	coordinator := newUseCaseCoordinator(
-		&fakeExecutor{},
-		control,
-		sessions,
-		&fakeEffects{openingErr: openingErr},
-	)
-
-	_, err := coordinator.Resume(t.Context(), ResumeCommand{
-		RunID: "run_1",
-		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Approval},
-		},
-		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: interrupt.Approval,
-			Approval: &ApprovalResponse{Approved: true},
-		}},
-	})
-	if !errors.Is(err, openingErr) || !errors.Is(err, lostErr) {
-		t.Fatalf("Resume error = %v, want opening and RunLost failures", err)
-	}
-	if len(control.released) != 0 {
-		t.Fatalf("released tree = %+v before durable RunLost", control.released)
-	}
-	if !slices.Equal(operations, []string{"durable.lost"}) {
-		t.Fatalf("cleanup operations = %v, want only failed durable attempt", operations)
-	}
-	if _, found := sessions.pending["run_1"]; !found {
-		t.Fatal("failed RunLost commit removed the durable interrupt")
-	}
-}
-
-func TestResumeOpeningFailureReportsReleaseAfterDurableRunLost(t *testing.T) {
-	var operations []string
-	openingErr := errors.New("opening commit failed")
-	releaseErr := errors.New("tree release failed")
-	sessions := &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
-		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC())},
-		operations: &operations,
-	}
-	control := &fakeExecutionPorts{
-		prepared:   ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
-		operations: &operations,
-		releaseErr: releaseErr,
-	}
-	coordinator := newUseCaseCoordinator(
-		&fakeExecutor{},
-		control,
-		sessions,
-		&fakeEffects{openingErr: openingErr},
-	)
-
-	_, err := coordinator.Resume(t.Context(), ResumeCommand{
-		RunID: "run_1",
-		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Approval},
-		},
-		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: interrupt.Approval,
-			Approval: &ApprovalResponse{Approved: true},
-		}},
-	})
-	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, openingErr) || !errors.Is(err, releaseErr) {
-		t.Fatalf("Resume error = %v, want lost opening plus release failure", err)
-	}
-	if sessions.lostRunID != "run_1" || len(control.released) != 1 {
-		t.Fatalf("lost Run/release attempts = %q/%+v, want run_1 and one attempt", sessions.lostRunID, control.released)
-	}
-	if !slices.Equal(operations, []string{"durable.lost", "executor.release"}) {
-		t.Fatalf("cleanup operations = %v, want durable.lost then executor.release", operations)
+	if _, open := sessions.pending["run_1"]; !open {
+		t.Fatal("failed opening consumed the open hand-off")
 	}
 }
 
@@ -1795,14 +1647,16 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
-	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, ErrExecutorStateLost) {
-		t.Fatalf("Resume error = %v, want Run not found wrapping executor state lost", err)
+	if !errors.Is(err, ErrExecutorStateLost) {
+		t.Fatalf("Resume error = %v, want executor state lost", err)
 	}
 	if !control.continuation.Isolated {
 		t.Fatalf("continuation %+v does not carry the Session's isolation", control.continuation)
 	}
-	if sessions.lostRunID != "run_1" || len(operations) != 1 || operations[0] != "durable.lost" {
-		t.Fatalf("lost recovery = %q ops=%v, want run_1 marked lost", sessions.lostRunID, operations)
+	// Staging refuses the unrestorable isolated tree before the acceptance
+	// transaction, so nothing is accepted and the Run is not marked lost.
+	if sessions.lostRunID != "" || len(operations) != 0 {
+		t.Fatalf("refused isolated resume marked the Run lost: %q ops=%v", sessions.lostRunID, operations)
 	}
 	if hasActiveSession(c, "ses_1") {
 		t.Fatal("failed isolated resume leaked its run admission")

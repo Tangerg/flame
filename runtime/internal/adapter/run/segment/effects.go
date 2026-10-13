@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -52,20 +53,12 @@ type GoalRunRecorder interface {
 }
 
 // InterruptStore is the run-segment lifecycle view of the interrupt registry.
-// It opens a new quiescent barrier and removes any prior answer claim when the
-// owning root terminalizes. Resume claiming remains a narrower, separate port.
+// It opens a new quiescent barrier and consumes the open hand-off when a
+// continuation accepts its answers or the owning root terminalizes.
 type InterruptStore interface {
 	Open(ctx context.Context, p runs.Pending) error
 	Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
 	Delete(ctx context.Context, rootRunID string) error
-}
-
-// ResumeClaimStore atomically changes one open hand-off into a durable,
-// nonrecoverable answer claim. It is separate from ordinary barrier mutation so
-// callers that never resume a Run do not acquire that lifecycle capability.
-type ResumeClaimStore interface {
-	ClaimResume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
-	RequireResumeClaim(ctx context.Context, rootRunID string) error
 }
 
 // TranscriptStore is the run-segment append side of durable transcript
@@ -76,6 +69,23 @@ type TranscriptStore interface {
 
 type ItemReplacer interface {
 	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
+}
+
+// RememberedRuleStore persists a standing approval rule inside the acceptance
+// transaction. The rule was already derived and validated against its frozen
+// source authority by the acceptance owner; this store only writes it so it lands
+// atomically with the answer, consumed open set, and Segment opening.
+type RememberedRuleStore interface {
+	Put(ctx context.Context, rule approval.Rule) error
+}
+
+// AcceptedContinuationStore writes the Run-owned recovery binding of an accepted
+// continuation inside the acceptance transaction, so a crash before delivery
+// completes leaves exactly one durable accepted-paused tree to revive. It carries
+// only routing; the answer resolutions stay owned by the settled Items.
+type AcceptedContinuationStore interface {
+	Put(ctx context.Context, accepted runs.AcceptedContinuation) error
+	Delete(ctx context.Context, rootRunID string) error
 }
 
 type ToolResultStore interface {
@@ -213,53 +223,54 @@ type ConversationStore interface {
 
 // Config bundles the Effects dependencies.
 type Config struct {
-	ExecutionTrees      runs.ExecutionTreeStore
-	Interrupts          InterruptStore
-	ResumeClaims        ResumeClaimStore
-	Sessions            SessionStore
-	ActorAuthority      ActorAuthority
-	CommandAcceptances  CommandAcceptanceStore
-	GoalRuns            GoalRunRecorder
-	Transcript          TranscriptStore
-	ItemReplacer        ItemReplacer
-	ToolResults         ToolResultStore
-	ModelInvocations    ModelInvocationJournal
-	ToolInvocations     ToolInvocationJournal
-	Conversation        ConversationStore
-	State               RunStore
-	RunProgress         RunProgressWriter
-	ExecutorCheckpoints ExecutorCheckpointStore
-	ChildRunStarts      ChildRunStartReservationStore
-	Tx                  Transactor
+	ExecutionTrees        runs.ExecutionTreeStore
+	Interrupts            InterruptStore
+	Sessions              SessionStore
+	ActorAuthority        ActorAuthority
+	CommandAcceptances    CommandAcceptanceStore
+	GoalRuns              GoalRunRecorder
+	Transcript            TranscriptStore
+	ItemReplacer          ItemReplacer
+	ToolResults           ToolResultStore
+	ModelInvocations      ModelInvocationJournal
+	ToolInvocations       ToolInvocationJournal
+	Conversation          ConversationStore
+	State                 RunStore
+	RunProgress           RunProgressWriter
+	ExecutorCheckpoints   ExecutorCheckpointStore
+	ChildRunStarts        ChildRunStartReservationStore
+	Tx                    Transactor
+	RememberedRules       RememberedRuleStore
+	AcceptedContinuations AcceptedContinuationStore
 }
 
 // Effects coordinates run-segment side effects. It is stateless beyond its
 // dependencies and safe to share.
 type Effects struct {
-	executionTrees      runs.ExecutionTreeStore
-	interrupts          InterruptStore
-	resumeClaims        ResumeClaimStore
-	sessions            SessionStore
-	actorAuthority      ActorAuthority
-	commandAcceptances  CommandAcceptanceStore
-	goalRuns            GoalRunRecorder
-	transcript          TranscriptStore
-	itemReplacer        ItemReplacer
-	toolResults         ToolResultStore
-	modelInvocations    ModelInvocationJournal
-	toolInvocations     ToolInvocationJournal
-	conversation        ConversationStore
-	runState            RunStore
-	runProgress         RunProgressWriter
-	executorCheckpoints ExecutorCheckpointStore
-	childRunStarts      ChildRunStartReservationStore
-	tx                  Transactor
+	executionTrees        runs.ExecutionTreeStore
+	interrupts            InterruptStore
+	sessions              SessionStore
+	actorAuthority        ActorAuthority
+	commandAcceptances    CommandAcceptanceStore
+	goalRuns              GoalRunRecorder
+	transcript            TranscriptStore
+	itemReplacer          ItemReplacer
+	toolResults           ToolResultStore
+	modelInvocations      ModelInvocationJournal
+	toolInvocations       ToolInvocationJournal
+	conversation          ConversationStore
+	runState              RunStore
+	runProgress           RunProgressWriter
+	executorCheckpoints   ExecutorCheckpointStore
+	childRunStarts        ChildRunStartReservationStore
+	tx                    Transactor
+	rememberedRules       RememberedRuleStore
+	acceptedContinuations AcceptedContinuationStore
 }
 
 var (
 	_ runs.OpeningCommitter                    = (*Effects)(nil)
 	_ runs.ChildRunStartCommitter              = (*Effects)(nil)
-	_ runs.ResumeClaimCommitter                = (*Effects)(nil)
 	_ runs.EventCommitter                      = (*Effects)(nil)
 	_ runs.TreeBarrierCommitter                = (*Effects)(nil)
 	_ runs.WaitingCheckpointReader             = (*Effects)(nil)
@@ -277,10 +288,11 @@ func New(cfg Config) (*Effects, error) {
 		value any
 	}{
 		{"interrupt store", cfg.Interrupts},
-		{"resume claim store", cfg.ResumeClaims},
 		{"session store", cfg.Sessions},
 		{"transcript store", cfg.Transcript},
 		{"item replacer", cfg.ItemReplacer},
+		{"remembered rule store", cfg.RememberedRules},
+		{"accepted continuation store", cfg.AcceptedContinuations},
 		{"model invocation journal", cfg.ModelInvocations},
 		{"tool invocation journal", cfg.ToolInvocations},
 		{"conversation store", cfg.Conversation},
@@ -301,24 +313,25 @@ func New(cfg Config) (*Effects, error) {
 		}
 	}
 	return &Effects{
-		interrupts:          cfg.Interrupts,
-		resumeClaims:        cfg.ResumeClaims,
-		sessions:            cfg.Sessions,
-		actorAuthority:      cfg.ActorAuthority,
-		commandAcceptances:  cfg.CommandAcceptances,
-		goalRuns:            cfg.GoalRuns,
-		transcript:          cfg.Transcript,
-		itemReplacer:        cfg.ItemReplacer,
-		toolResults:         cfg.ToolResults,
-		modelInvocations:    cfg.ModelInvocations,
-		toolInvocations:     cfg.ToolInvocations,
-		conversation:        cfg.Conversation,
-		runState:            cfg.State,
-		runProgress:         cfg.RunProgress,
-		executorCheckpoints: cfg.ExecutorCheckpoints,
-		executionTrees:      cfg.ExecutionTrees,
-		childRunStarts:      cfg.ChildRunStarts,
-		tx:                  cfg.Tx,
+		interrupts:            cfg.Interrupts,
+		sessions:              cfg.Sessions,
+		actorAuthority:        cfg.ActorAuthority,
+		commandAcceptances:    cfg.CommandAcceptances,
+		goalRuns:              cfg.GoalRuns,
+		transcript:            cfg.Transcript,
+		itemReplacer:          cfg.ItemReplacer,
+		toolResults:           cfg.ToolResults,
+		modelInvocations:      cfg.ModelInvocations,
+		toolInvocations:       cfg.ToolInvocations,
+		conversation:          cfg.Conversation,
+		runState:              cfg.State,
+		runProgress:           cfg.RunProgress,
+		executorCheckpoints:   cfg.ExecutorCheckpoints,
+		executionTrees:        cfg.ExecutionTrees,
+		childRunStarts:        cfg.ChildRunStarts,
+		tx:                    cfg.Tx,
+		rememberedRules:       cfg.RememberedRules,
+		acceptedContinuations: cfg.AcceptedContinuations,
 	}, nil
 }
 

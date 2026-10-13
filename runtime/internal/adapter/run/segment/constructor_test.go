@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/core/chat"
@@ -80,16 +81,14 @@ func mustNewEffects(cfg Config) *Effects {
 	if dependency.Missing(cfg.ToolResults) {
 		cfg.ToolResults = inertToolResults{}
 	}
-	interrupts := &fakeInterrupts{}
-	if dependency.Missing(cfg.Interrupts) {
-		cfg.Interrupts = interrupts
+	if dependency.Missing(cfg.RememberedRules) {
+		cfg.RememberedRules = inertRememberedRules{}
 	}
-	if dependency.Missing(cfg.ResumeClaims) {
-		if claims, ok := cfg.Interrupts.(ResumeClaimStore); ok {
-			cfg.ResumeClaims = claims
-		} else {
-			cfg.ResumeClaims = interrupts
-		}
+	if dependency.Missing(cfg.AcceptedContinuations) {
+		cfg.AcceptedContinuations = inertAcceptedContinuations{}
+	}
+	if dependency.Missing(cfg.Interrupts) {
+		cfg.Interrupts = &fakeInterrupts{}
 	}
 	if dependency.Missing(cfg.Sessions) {
 		cfg.Sessions = &fakeSession{}
@@ -207,6 +206,15 @@ func (inertGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
 type inertToolResults struct{}
 
 func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type inertRememberedRules struct{}
+
+func (inertRememberedRules) Put(context.Context, approval.Rule) error { return nil }
+
+type inertAcceptedContinuations struct{}
+
+func (inertAcceptedContinuations) Put(context.Context, runs.AcceptedContinuation) error { return nil }
+func (inertAcceptedContinuations) Delete(context.Context, string) error                 { return nil }
 
 type unusedExecutionTrees struct{}
 

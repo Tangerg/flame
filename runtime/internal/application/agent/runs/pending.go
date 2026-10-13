@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 )
@@ -55,6 +56,12 @@ type InterruptBinding struct {
 	// the resumed ToolCall identity. Questions leave it empty because their
 	// underlying tool is already carried as a drained Tool.
 	ToolCallID string
+	// ToolRef and SourceFingerprint freeze the exact Tool authority an approval
+	// boundary was gated against, so a continuation can derive and strictly admit
+	// a remembered rule without inferring authority from a display name. Both are
+	// empty for a Question boundary.
+	ToolRef           tool.Ref
+	SourceFingerprint fingerprint.Digest
 }
 
 type memberRequestIdentity struct {

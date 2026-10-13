@@ -128,8 +128,8 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	check(server.AuthorityFingerprint(), false, true)
 	check(original, false, true)
-	if err := policy.Remember(t.Context(), approval.RememberRequest{Subject: approval.Subject{Type: approval.SubjectAll}, Tool: ref, SourceFingerprint: original, Scope: approval.ScopeGlobal, Decision: approval.Allow}); !errors.Is(err, approval.ErrSourceAuthorityChanged) {
-		t.Fatalf("obsolete connection remember error = %v", err)
+	if _, err := policy.PrepareRule(t.Context(), approval.RememberRequest{Subject: approval.Subject{Type: approval.SubjectAll}, Tool: ref, SourceFingerprint: original, Scope: approval.ScopeGlobal, Decision: approval.Allow}); !errors.Is(err, approval.ErrSourceAuthorityChanged) {
+		t.Fatalf("obsolete connection prepare error = %v", err)
 	}
 	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
 		t.Fatal(err)

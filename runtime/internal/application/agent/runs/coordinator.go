@@ -39,7 +39,9 @@ type Coordinator struct {
 	conversation                       ConversationReader
 	workingContexts                    WorkingContextComposer
 	models                             ModelAdmitter
-	continuation                       WaitingExecutionContinuer
+	continuation                       ExecutionContinuer
+	approvalRules                      ApprovalRulePreparer
+	acceptedContinuations              AcceptedContinuationStore
 	waitingRestorer                    WaitingExecutionRestorer
 	steering                           RunningExecutionSteerer
 	runningSubtreeCanceler             RunningSubtreeCanceler
@@ -50,7 +52,6 @@ type Coordinator struct {
 	interrupts                         PendingInterruptReader
 	terminations                       TerminationCommitter
 	childStarts                        ChildRunStartCommitter
-	resumeClaims                       ResumeClaimCommitter
 	checkpoints                        WaitingCheckpointReader
 	waitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
 	isolation                          IsolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
@@ -96,7 +97,9 @@ type Dependencies struct {
 	Conversation                       ConversationReader
 	WorkingContexts                    WorkingContextComposer
 	Models                             ModelAdmitter
-	Continuation                       WaitingExecutionContinuer
+	Continuation                       ExecutionContinuer
+	ApprovalRules                      ApprovalRulePreparer
+	AcceptedContinuations              AcceptedContinuationStore
 	WaitingRestorer                    WaitingExecutionRestorer
 	Steering                           RunningExecutionSteerer
 	RunningSubtreeCanceler             RunningSubtreeCanceler
@@ -142,6 +145,8 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"working context composer", deps.WorkingContexts},
 		{"model admitter", deps.Models},
 		{"waiting execution continuer", deps.Continuation},
+		{"approval rule preparer", deps.ApprovalRules},
+		{"accepted continuation store", deps.AcceptedContinuations},
 		{"waiting execution restorer", deps.WaitingRestorer},
 		{"running execution steerer", deps.Steering},
 		{"running subtree canceler", deps.RunningSubtreeCanceler},
@@ -153,7 +158,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"run termination committer", deps.Session.Terminations},
 		{"opening committer", deps.Projection.Openings},
 		{"child run start committer", deps.Projection.ChildStarts},
-		{"resume claim committer", deps.Projection.ResumeClaims},
 		{"event committer", deps.Projection.Events},
 		{"tree barrier committer", deps.Projection.Barriers},
 		{"waiting checkpoint reader", deps.Projection.Checkpoints},
@@ -183,6 +187,8 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		workingContexts:                    deps.WorkingContexts,
 		models:                             deps.Models,
 		continuation:                       deps.Continuation,
+		approvalRules:                      deps.ApprovalRules,
+		acceptedContinuations:              deps.AcceptedContinuations,
 		waitingRestorer:                    deps.WaitingRestorer,
 		steering:                           deps.Steering,
 		runningSubtreeCanceler:             deps.RunningSubtreeCanceler,
@@ -193,7 +199,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		interrupts:                         deps.Session.Interrupts,
 		terminations:                       deps.Session.Terminations,
 		childStarts:                        deps.Projection.ChildStarts,
-		resumeClaims:                       deps.Projection.ResumeClaims,
 		checkpoints:                        deps.Projection.Checkpoints,
 		waitingSubtreeCancellations:        deps.Projection.WaitingSubtreeCancellations,
 		runs:                               deps.Runs,
@@ -420,6 +425,10 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	if !s.spec.DetachActivation {
 		<-s.treeOwner.activation.done
 	}
+	if s.spec.AcceptedContinuation != nil {
+		subscription.Cancel()
+		return nil, nil
+	}
 	return openingStream(requestContext, subscription), nil
 }
 
@@ -480,6 +489,11 @@ type routeOpening struct {
 }
 
 func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, routes *executorRoutes) ([]routeOpening, error) {
+	if spec.AcceptedContinuation != nil {
+		// Acceptance already committed these exact Segments and Items. Revival
+		// installs their process-local owners without replaying an opening write.
+		return nil, nil
+	}
 	ordered, err := routes.unfinishedInPostorder()
 	if err != nil {
 		return nil, fmt.Errorf("runs: order opening tree: %w", err)
@@ -539,6 +553,12 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	}
 	if err != nil {
 		return nil, err
+	}
+	if spec.ResumeAcceptance != nil {
+		opening, err = opening.WithResumeAcceptance(*spec.ResumeAcceptance)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if spec.CommandAcceptance != nil {
 		admission, ok := opening.Admission()

@@ -161,57 +161,6 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 	}
 }
 
-func TestInterruptStoreDeleteResumeClaimMatchesOnlyTheOwnedResumingRow(t *testing.T) {
-	store := newInterruptStore(t)
-	ctx := t.Context()
-	pending := runs.Pending{
-		RootRunID: "run_claimed", ExecutorID: "turn_1",
-		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(),
-			RunID: "run_claimed", Kind: interrupt.Question,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
-		}}),
-		Bindings: []runs.InterruptBinding{{
-			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
-		}},
-		Continuations: []runs.Continuation{{
-			RunID: "run_claimed", MemberID: "member_root",
-		}},
-		CreatedAt: time.Unix(3, 0).UTC()}
-	if err := store.Open(ctx, pending); err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := store.DeleteResumeClaim(ctx, pending.RootRunID, "member_root"); err == nil {
-		t.Fatal("DeleteResumeClaim deleted an ordinary open barrier")
-	}
-	if _, found, err := store.Get(ctx, pending.RootRunID); err != nil || !found {
-		t.Fatalf("open barrier after rejected claim deletion = found:%t err:%v", found, err)
-	}
-
-	claimed, found, err := store.ClaimResume(
-		ctx,
-		pending.RootRunID,
-	)
-	if err != nil || !found || claimed.RootRunID != pending.RootRunID {
-		t.Fatalf("ClaimResume = found:%t claimed:%+v err:%v", found, claimed, err)
-	}
-	if _, open, err := store.Get(ctx, pending.RootRunID); err != nil || open {
-		t.Fatalf("ordinary Get after claim = open:%t err:%v", open, err)
-	}
-	if err := store.DeleteResumeClaim(ctx, pending.RootRunID, "member_other"); err == nil {
-		t.Fatal("DeleteResumeClaim accepted a foreign root member")
-	}
-	if err := store.RequireResumeClaim(ctx, pending.RootRunID); err != nil {
-		t.Fatalf("owned claim after rejected deletion: %v", err)
-	}
-	if err := store.DeleteResumeClaim(ctx, pending.RootRunID, "member_root"); err != nil {
-		t.Fatalf("DeleteResumeClaim: %v", err)
-	}
-	if err := store.RequireResumeClaim(ctx, pending.RootRunID); err == nil {
-		t.Fatal("Resume claim survived its owned deletion")
-	}
-}
-
 func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing.T) {
 	store := newInterruptStore(t)
 	createdAt := time.Unix(10, 0).UTC()

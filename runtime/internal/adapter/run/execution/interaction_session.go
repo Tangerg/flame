@@ -108,6 +108,7 @@ const (
 	interactionBoundaryInactive interactionBoundary = iota
 	interactionBoundaryWaiting
 	interactionBoundaryContinuationStaged
+	interactionBoundaryAcceptedPaused
 	interactionBoundarySubtreePreparing
 	interactionBoundarySubtreePrepared
 	interactionBoundarySubtreeApplying
@@ -165,7 +166,7 @@ func (i *interactionState) attachObserver() bool {
 	if i.observerWasAttached || i.phase == interactionFinished {
 		return false
 	}
-	if i.phase == interactionBegun && i.boundary != interactionBoundaryContinuationStaged &&
+	if i.phase == interactionBegun && i.boundary != interactionBoundaryContinuationStaged && i.boundary != interactionBoundaryAcceptedPaused &&
 		i.boundary != interactionBoundarySubtreePrepared {
 		return false
 	}
@@ -541,7 +542,7 @@ func (i *interactionSession) beginContinuation() error {
 	if i.state.phase == interactionFinished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if i.state.boundary != interactionBoundaryContinuationStaged || !i.state.observerWasAttached {
+	if (i.state.boundary != interactionBoundaryContinuationStaged && i.state.boundary != interactionBoundaryAcceptedPaused) || !i.state.observerWasAttached {
 		return errors.New("execution: Interaction continuation was not staged and observed")
 	}
 	return nil
