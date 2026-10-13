@@ -2,48 +2,48 @@
 
 ## Current stage
 
-Stage 3w, committed in 2b692d52, adds actual built-in package provider management and dependency inspection.
-Shared TS methods now expose the existing listProviders/selectProvider query/command
-catalog bindings; no Core/backend protocol or storage change. Runtime remains the
-selection owner. The manager reads recorded role choices, derives visible candidates
-from admitted metadata, shows missing/disabled/unavailable selections and submits an
-explicit role/installation/contribution choice. It does not select from enablement
-or choose a first candidate. Unknown confirmation retains the original command and
-retry identity while new selection submission stays blocked.
+Stage 3x, committed in fd1a9161, completes the management point inspector and
+HTTP resource query consumption projection. Core protocol advances to
+2026-10-13.11; backend callable protocol stays 2026-10-13.4.
 
-The requirements inspector captures installation/digest/contribution and reads the
-public current binding query. Required/optional declarations remain visible on
-failure, and empty optional bindings are explicit. Its results are labeled as the
-last inspected snapshot, distinct from the immutable set held by existing execution.
-The original built-in manager remains available if an optional component fails.
+Point declarations, contribution projections and ResolvePluginPoint requests carry
+the admitted canonical JSON string. Runtime parses it through the existing point
+owner. The public Go helper, generated Go/Schema/TS bindings and actual manager
+consumer are migrated together; the former object-shaped request is refused.
+Metadata parsing is for display only, and dispatch retains original schema bytes.
 
-Provider reads use the existing DataQuery projection and plugin notice invalidation.
-New management I/O and existing package/component calls share one contribution join
-mechanism; observer cancellation follows the current operations generation. Original
-promises and mutation handles are retained. Module failure/loading/workspace recovery
-copy is localized across all eight catalogs, and superseded Usage/Diff carrier copy
-is removed. Existing GUI fixtures add the required empty provider read projection;
-no new UI tests or UI execution.
+The built-in manager reads point values for an explicitly reviewed target,
+attributes and order without activating code. It shows optionality and composition,
+labels accepted results with their captured input, keeps the last accepted snapshot
+on read failure, and cancels/joins reads under their current operations generation.
+There is no automatic candidate selection or persisted composition in this inspector.
 
-Shared TS/Desktop types, changed lint, eight-locale check and production Vite build
-pass. One non-UI shared-client provider contract passes (0.379s): list is a query,
-selection captures its reviewed input and lost acknowledgement retries the original
-command key/input despite caller mutation. Full API-consumer check now fails only
-readResource and resolvePoint; requirements/list/selection have actual consumers.
-Full/vet/race/backend lifecycle execution remains final-phase work. Source/build
-checks do not prove graphical execution or cross-reload recovery.
+The existing HTTP endpoint catalog advertises the Core query each resource route
+projects. The generator publishes that relation to manifest/TS/reference. The source
+consumer gate follows a generated route to an actual module import or global fetch;
+unused metadata and unrelated lookalike identifiers receive no credit. No operation
+exemption or dummy RPC call was introduced. The integrated gate now passes 109/109
+Desktop fact families, including actual point and resource consumers.
 
-Main b5160b5f is integrated. Discovery keeps the branch's existing actual capacity
-bound and close/cancellation error preservation; Skills regression uses the built
-Memory package and does not restore removed Usage/approval APIs. Integrated production
-Runtime/CLI/Reviews build and Bootstrap/Runs/segment test source compilation pass.
-Owned dist and temporary compile outputs are removed; all handles are terminal.
-User proposal/review/draft hashes remain unchanged. Full
-proposal/review/P01-P48 scope remains active, including point inspection/HTTP query
-projection, remaining carrier migration, observed dependency retention, canonical
-models/stream decorators and final requirement-level verification.
+Production Go builds, shared/Desktop TypeScript checks, changed lint, 1054-key/eight-
+locale validation and Vite build pass. Necessary focused backend, raw-string client
+and source-consumer checks pass. Full/vet/race/installed lifecycle verification is
+still queued for the final phase; graphical/UI/E2E checks remain excluded. Static
+consumer coverage is not complete platform acceptance.
+
+Local main b5160b5f is already integrated; this round's merge reports up to date.
+Owned frontend output and contract-test cache are removed. Original input hashes
+remain unchanged. Full proposal/review/P01-P48 scope stays active: remaining carriers,
+scoped dependency lifetime/retention, canonical model decorators/streaming, author
+parity and final requirement-level acceptance remain required.
 
 ## Completed
+
+- Stage 3x (fd1a9161): canonical raw point contracts through projections, public
+  Go/Protocol/CLI/TS query and actual built-in manager inspection; exact large numeric
+  schema identity survives projection and request serialization. Old object shape removed.
+- Stage 3x: actual HTTP resource-to-query projection derived from the route catalog,
+  generated metadata and source-consumer evidence; Desktop API gate passes 109/109.
 
 - Stage 3w (2b692d52): existing public provider APIs gain shared TS bindings and real built-in
   manager controls; declared dependencies have actual public binding inspection.
@@ -250,20 +250,19 @@ models/stream decorators and final requirement-level verification.
 
 ## Next
 
-1. Complete actual point inspection and HTTP resource-to-query consumption projection.
-   Point contract transport must retain canonical JSON just as callable contracts do;
-   object serialization cannot preserve large numeric schema lexemes across TS.
-2. Continue real page/renderer migration and delete closed carrier paths. Keep capture,
+1. Continue real page/renderer migration and delete closed carrier paths. Keep capture,
    ordinary shared modules and supported resource ownership with their current owners.
-3. Complete scoped point lifecycle, observed dependency status/retention, and actual
+2. Complete scoped point lifecycle, observed dependency status/retention, and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
-4. Complete canonical model execution/remote streaming decorators, frozen order,
+3. Complete canonical model execution/remote streaming decorators, frozen order,
    cancellation/backpressure/inner evidence, independent author parity and final audit.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Transport admitted point contracts as canonical JSON strings and parse metadata only for display | The same JavaScript numeric rounding risk as callable contracts would change exact schema identity; the Runtime point owner remains authoritative | Object/string compatibility readers, re-encoding parsed schemas, relaxed identity or another schema compiler |
+| 2026-10-13 | Derive HTTP query projection from the owning endpoint catalog and credit only consumed generated resource URLs | Native module imports invoke the existing leased Core resource query; an RPC-only callsite checker cannot see that real consumer | Dummy readResource calls, hand-written query exemptions, unused metadata credit or a second resource route |
 | 2026-10-13 | Keep provider choices in Runtime and project them through the existing built-in manager/DataQuery owner | Enablement and availability cannot silently select a role. Real human recovery needs visible recorded choices and explicit candidate submission | Local authoritative selection state, first-candidate defaults, inferred enablement selection or placeholder API calls |
 | 2026-10-13 | Share the existing contribution join mechanism across components and management I/O; preserve original promises | New inspected reads and uncertain settings commands need the same cancellation/join owner and intact mutation identity | A second lifetime root, wrapper promises losing retry/key fields, unjoined fire-and-forget work or automatic replacement commands |
 | 2026-10-13 | Host projects immutable workspace/focus context; Diff owns its local comparison mode and calls canonical workspace operations | Current workspace/focus already have owners, and only the replaced Diff carrier consumed the Host baseline preference. Ordinary authors need data and explicit public operations, not private stores | A second workspace selector, copied mutable Host stores, keeping the baseline owner/read wrapper, private author imports or opaque generic service lookup |
@@ -363,14 +362,14 @@ Status is open until code and appropriate verification prove the requirement.
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Reviews, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
-| Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
+| Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
 | One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; installed contribution/component binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Public backend evidence retained; installed Go/Protocol/CLI/TS refusal and unknown-ack projections implemented/compiled; final execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
-| Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
+| Recovery entrance independent of failed optional UI | Built-in manager provider/dependency/point inspection and localized optional-module recovery implemented; final lifecycle acceptance open | PackageManager.tsx; ProviderSelections.tsx; ContributionRequirements.tsx; PointInspection.tsx; InstalledComponent.tsx; CLI |
 | Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method/capability/export contract verified; strict local declaration and real feature export binding implemented; named dependency resolution/public projection and fresh cross-plugin declaration checks now compile; managed launch/export publication gates now compile; provider waiting and setup/frozen bindings now implemented with SDK lifecycle execution; complete integrated activation, observed status/retention and all-consumer acceptance open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
-| Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; generic provider selection open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
+| Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; public provider selection and actual manager implemented; final integrated acceptance open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
 | Reject old host encodings without data mutation | Installation/command-route host shapes, digest-only/private bare-result and Reviews former DTO format refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; managedmcp/receipts_test.go; Reviews schema_test.go; runtime/README.md |
 | Preserve Memory ledger, watermark, curation and receipts | Existing private maintenance admission/publication/receipt and failure boundaries verified; public capability migration open | managedmcp/prepared.go; memory/transport/maintenance.go; prepared_test.go; memory transport tests; bootstrap/plugin_memory_maintenance_receipt_test.go |
 | One Schedules wake/dispatch lifetime and retained Run acceptance | One minute wake owner and backend-owned captured dispatch/retired Core acceptance verified; generic public background role remains open | pluginservices/dispatcher.go; schedules/host.go; schedules/transport/dispatch.go; bootstrap/schedules_callback_loss_test.go; managed_services_test.go |
@@ -393,6 +392,28 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3x development and point/resource contracts
+
+- Passed: production Runtime/CLI/Reviews Go build; shared Runtime TS/Desktop typecheck;
+  changed oxlint; locale gate (1054 keys, complete across eight catalogs); production Vite.
+- Passed: focused Go point projection/query large-integer identity and former-object
+  refusal (2.159s), HTTP endpoint/query catalog (0.742s), five-endpoint generator manifest
+  including its exact resource projection (1.326s). These are focused checks, not full suites.
+- Passed: non-UI shared-client raw point request serialization (1.81s total process);
+  two HTTP source-consumer regressions (1.092s) reject unused metadata, forged identifiers
+  and command projections while crediting an actual imported generated resource URL.
+- Passed: integrated API consumer gate, 109/109 Desktop fact families (100 directly
+  consumed, eight materialized, one consumed HTTP projection); three sidecars, 15 event
+  types and four typed Tool-result shapes. This proves source coverage only.
+- Resolved: locale scanner misread an inline JSX metadata expression; move the preview
+  expression into its existing component local variable. No assertion or locale gate weakened.
+- Passed: generated owning contracts, gofmt, diff whitespace review and active commit hooks.
+- Not run: full/vet/race/cross-module lifecycle suites (concentrated final phase), UI,
+  E2E/browser/native/screenshot checks (explicitly excluded). Complete installed point
+  activation/order/retention and graphical execution are not claimed.
+- Product fd1a9161; local main b5160b5f already integrated. Original proposal/review/draft
+  SHA-256 values match the read-only baseline. No original design input was edited.
 
 ### Stage 3w development and provider client contracts
 
@@ -774,6 +795,12 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3x: product fd1a9161 committed; local main already integrated. All owned
+  generation/build/typecheck/focused/commit handles are terminal. Remove owned frontend
+  dist and contract Vitest cache; temporary source probes clean their own directories.
+  No runtime/native/UI test process or external state change was introduced. Retain the
+  active managed checkout, formal regression source and required development dependencies.
+
 - Stage 3w: retain formal manager/shared-client/IO/localization sources and necessary
   dependencies. Product 2b692d52 is committed and main b5160b5f integrated. Owned
   dist, temporary compile outputs and source/client test handles are terminal/removed.
@@ -856,11 +883,10 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Main 9ef433b0 adds actual Desktop Start/Resume receipt reconciliation and the source
-  checker recognizes its GetRunAcceptance consumer. Current static gate still requires
-  real HTTP-resource query projection and graphical point/requirements/provider
-  consumers. See Stage 3v verification for the exact five failures; do not invent
-  calls or hand-written operation exemptions to satisfy it.
+- Stage 3x closes the previously missing source consumers: point/requirements/provider
+  manager operations and the actual HTTP resource query projection. The 109/109 static
+  gate passes. Full installed semantics, lifecycle and final source must still be
+  verified; source coverage does not discharge the remaining P01-P48 obligations.
 
 
 - Execute real installed Stage 3p dependency waiting/setup/callback lifetime integration on the final source. Generic Tool call preparation, complete observed dependency states and execution-owned durable retention are still implementation requirements; setup callback references must not substitute for an invoked Tool's original calling context.
@@ -887,6 +913,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3x advances Core to .11 and changes point contract projection/request fields
+  from objects to canonical JSON strings. Rebuild Go/CLI/TS clients together and retain
+  the raw contract at dispatch; no old reader remains. Backend .4/business storage stay
+  unchanged. The manager inspection is a read snapshot, not a persisted composition
+  or activation. Final lifecycle acceptance remains queued.
 
 - Stage 3w adds shared client methods over existing Core .10/backend .4 and changes
   graphical provider/read surfaces only. Rebuild the graphical client. Provider choice
