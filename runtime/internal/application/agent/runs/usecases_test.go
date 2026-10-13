@@ -289,6 +289,17 @@ func (s stubApprovalRulePreparer) PrepareRule(_ context.Context, request approva
 	return request.Rule()
 }
 
+// stubAcceptedContinuationRetirer records retired bindings so a completion test can
+// assert the acceptance window closed.
+type stubAcceptedContinuationRetirer struct{ retired *[]string }
+
+func (s stubAcceptedContinuationRetirer) Delete(_ context.Context, rootRunID string) error {
+	if s.retired != nil {
+		*s.retired = append(*s.retired, rootRunID)
+	}
+	return nil
+}
+
 func (f *fakeExecutionPorts) RestoreWaitingExecution(
 	_ context.Context,
 	continuation WaitingContinuation,

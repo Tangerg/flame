@@ -80,6 +80,9 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.ApprovalRules == nil {
 		deps.ApprovalRules = stubApprovalRulePreparer{}
 	}
+	if deps.AcceptedContinuations == nil {
+		deps.AcceptedContinuations = stubAcceptedContinuationRetirer{}
+	}
 	if deps.WaitingRestorer == nil {
 		deps.WaitingRestorer = control
 	}

@@ -144,6 +144,14 @@ type ApprovalRulePreparer interface {
 	PrepareRule(ctx context.Context, request approval.RememberRequest) (approval.Rule, error)
 }
 
+// AcceptedContinuationRetirer deletes the Run-owned recovery binding of an
+// accepted continuation once its delivery completes, so a durable row survives
+// only while a crash would still leave an accepted-paused tree to revive. Boot
+// revival reads the survivors through its own lister.
+type AcceptedContinuationRetirer interface {
+	Delete(ctx context.Context, rootRunID string) error
+}
+
 // WaitingExecutionRestorer reconstructs one exact committed waiting tree
 // without claiming or advancing it. It is used after the previous live owner is
 // known obsolete; the supplied Application value and opaque checkpoint are the

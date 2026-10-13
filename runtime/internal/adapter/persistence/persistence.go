@@ -32,33 +32,34 @@ type Bundle struct {
 	IdempotencyNamespace runtimeidentity.IdempotencyNamespace
 	Transactor           func(context.Context, func(context.Context) error) error
 
-	Sessions            *sqlitestore.SessionStore
-	Runs                *sqlitestore.RunStore
-	AutomationStarts    *AutomationStartStore
-	CommandAcceptances  *CommandAcceptanceStore
-	WorkspaceMutations  *WorkspaceMutationStore
-	ExecutorCheckpoints *ExecutorCheckpointStore
-	Interrupts          *InterruptStore
-	Transcript          *sqlitestore.TranscriptStore
-	Feedback            *sqlitestore.FeedbackStore
-	Providers           *sqlitestore.ProviderStore
-	MCPServers          *sqlitestore.MCPServerStore
-	Installations       *sqlitestore.InstallationStore
-	PluginReleases      *sqlitestore.ReleaseStore
-	ChatHistory         *sqlitestore.MessageStore
-	Trajectory          *TrajectoryReader
-	ModelInvocations    *sqlitestore.ModelInvocationStore
-	ToolInvocations     *sqlitestore.ToolInvocationStore
-	ChildRunStarts      *sqlitestore.ChildRunStartReservationStore
-	Plan                *sqlitestore.PlanStore
-	ApprovalModes       *sqlitestore.ModeStore
-	Goals               *sqlitestore.GoalStore
-	ApprovalRules       *sqlitestore.ApprovalRuleStore
-	UtilityRole         *sqlitestore.UtilityRoleStore
-	Trust               *sqlitestore.TrustStore
-	EmbeddingRole       *sqlitestore.EmbeddingRoleStore
-	ToolResults         *sqlitestore.ToolResultStore
-	Idempotency         *sqlitestore.IdempotencyStore
+	Sessions              *sqlitestore.SessionStore
+	Runs                  *sqlitestore.RunStore
+	AutomationStarts      *AutomationStartStore
+	CommandAcceptances    *CommandAcceptanceStore
+	WorkspaceMutations    *WorkspaceMutationStore
+	ExecutorCheckpoints   *ExecutorCheckpointStore
+	Interrupts            *InterruptStore
+	Transcript            *sqlitestore.TranscriptStore
+	Feedback              *sqlitestore.FeedbackStore
+	Providers             *sqlitestore.ProviderStore
+	MCPServers            *sqlitestore.MCPServerStore
+	Installations         *sqlitestore.InstallationStore
+	PluginReleases        *sqlitestore.ReleaseStore
+	ChatHistory           *sqlitestore.MessageStore
+	Trajectory            *TrajectoryReader
+	ModelInvocations      *sqlitestore.ModelInvocationStore
+	ToolInvocations       *sqlitestore.ToolInvocationStore
+	ChildRunStarts        *sqlitestore.ChildRunStartReservationStore
+	Plan                  *sqlitestore.PlanStore
+	ApprovalModes         *sqlitestore.ModeStore
+	Goals                 *sqlitestore.GoalStore
+	ApprovalRules         *sqlitestore.ApprovalRuleStore
+	AcceptedContinuations *AcceptedContinuationStore
+	UtilityRole           *sqlitestore.UtilityRoleStore
+	Trust                 *sqlitestore.TrustStore
+	EmbeddingRole         *sqlitestore.EmbeddingRoleStore
+	ToolResults           *sqlitestore.ToolResultStore
+	Idempotency           *sqlitestore.IdempotencyStore
 }
 
 // Config is the process-owned filesystem snapshot persistence consumes. It has
@@ -175,33 +176,34 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Transactor: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlitestore.RunInTx(ctx, db, fn)
 		},
-		Sessions:            sqlitestore.NewSessionStore(db),
-		Runs:                sqlitestore.NewRunStore(db),
-		AutomationStarts:    NewAutomationStartStore(db),
-		CommandAcceptances:  NewCommandAcceptanceStore(db),
-		WorkspaceMutations:  NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
-		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),
-		Interrupts:          NewInterruptStore(sqlitestore.NewInterruptStore(db)),
-		Transcript:          sqlitestore.NewTranscriptStore(db),
-		Feedback:            sqlitestore.NewFeedbackStore(db),
-		Providers:           sqlitestore.NewProviderStore(db),
-		MCPServers:          sqlitestore.NewMCPServerStore(db),
-		Installations:       sqlitestore.NewInstallationStore(db),
-		PluginReleases:      sqlitestore.NewReleaseStore(db),
-		ChatHistory:         sqlitestore.NewMessageStore(db),
-		Trajectory:          &TrajectoryReader{store: sqlitestore.NewTrajectoryStore(db)},
-		ModelInvocations:    sqlitestore.NewModelInvocationStore(db),
-		ToolInvocations:     sqlitestore.NewToolInvocationStore(db),
-		ChildRunStarts:      sqlitestore.NewChildRunStartReservationStore(db),
-		Plan:                sqlitestore.NewPlanStore(db),
-		ApprovalModes:       sqlitestore.NewModeStore(db),
-		Goals:               sqlitestore.NewGoalStore(db),
-		ApprovalRules:       sqlitestore.NewApprovalRuleStore(db),
-		UtilityRole:         sqlitestore.NewUtilityRoleStore(db),
-		Trust:               sqlitestore.NewTrustStore(db),
-		EmbeddingRole:       sqlitestore.NewEmbeddingRoleStore(db),
-		ToolResults:         sqlitestore.NewToolResultStore(db),
-		Idempotency:         sqlitestore.NewIdempotencyStore(db),
+		Sessions:              sqlitestore.NewSessionStore(db),
+		Runs:                  sqlitestore.NewRunStore(db),
+		AutomationStarts:      NewAutomationStartStore(db),
+		CommandAcceptances:    NewCommandAcceptanceStore(db),
+		WorkspaceMutations:    NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
+		ExecutorCheckpoints:   NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),
+		Interrupts:            NewInterruptStore(sqlitestore.NewInterruptStore(db)),
+		Transcript:            sqlitestore.NewTranscriptStore(db),
+		Feedback:              sqlitestore.NewFeedbackStore(db),
+		Providers:             sqlitestore.NewProviderStore(db),
+		MCPServers:            sqlitestore.NewMCPServerStore(db),
+		Installations:         sqlitestore.NewInstallationStore(db),
+		PluginReleases:        sqlitestore.NewReleaseStore(db),
+		ChatHistory:           sqlitestore.NewMessageStore(db),
+		Trajectory:            &TrajectoryReader{store: sqlitestore.NewTrajectoryStore(db)},
+		ModelInvocations:      sqlitestore.NewModelInvocationStore(db),
+		ToolInvocations:       sqlitestore.NewToolInvocationStore(db),
+		ChildRunStarts:        sqlitestore.NewChildRunStartReservationStore(db),
+		Plan:                  sqlitestore.NewPlanStore(db),
+		ApprovalModes:         sqlitestore.NewModeStore(db),
+		Goals:                 sqlitestore.NewGoalStore(db),
+		ApprovalRules:         sqlitestore.NewApprovalRuleStore(db),
+		AcceptedContinuations: NewAcceptedContinuationStore(sqlitestore.NewAcceptedContinuationStore(db)),
+		UtilityRole:           sqlitestore.NewUtilityRoleStore(db),
+		Trust:                 sqlitestore.NewTrustStore(db),
+		EmbeddingRole:         sqlitestore.NewEmbeddingRoleStore(db),
+		ToolResults:           sqlitestore.NewToolResultStore(db),
+		Idempotency:           sqlitestore.NewIdempotencyStore(db),
 	}, nil
 }
 

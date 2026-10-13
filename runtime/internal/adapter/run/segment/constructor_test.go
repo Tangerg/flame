@@ -86,6 +86,9 @@ func mustNewEffects(cfg Config) *Effects {
 	if dependency.Missing(cfg.RememberedRules) {
 		cfg.RememberedRules = inertRememberedRules{}
 	}
+	if dependency.Missing(cfg.AcceptedContinuations) {
+		cfg.AcceptedContinuations = inertAcceptedContinuations{}
+	}
 	if dependency.Missing(cfg.Interrupts) {
 		cfg.Interrupts = &fakeInterrupts{}
 	}
@@ -213,6 +216,10 @@ func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error {
 type inertRememberedRules struct{}
 
 func (inertRememberedRules) Put(context.Context, approval.Rule) error { return nil }
+
+type inertAcceptedContinuations struct{}
+
+func (inertAcceptedContinuations) Put(context.Context, runs.AcceptedContinuation) error { return nil }
 
 type unusedExecutionTrees struct{}
 

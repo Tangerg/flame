@@ -580,6 +580,17 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 			return fmt.Errorf("segment: persist remembered approval rule %q: %w", rule.ID, err)
 		}
 	}
+	// The accepted continuation binding commits with the answers it routes, so a
+	// crash before delivery completes leaves exactly one durable accepted-paused
+	// tree for boot revival. It is deleted when delivery completes or revival
+	// succeeds.
+	accepted, err := runs.NewAcceptedContinuation(acceptance.SessionID(), consumed)
+	if err != nil {
+		return fmt.Errorf("segment: derive accepted continuation: %w", err)
+	}
+	if err := e.acceptedContinuations.Put(ctx, accepted); err != nil {
+		return fmt.Errorf("segment: persist accepted continuation %q: %w", accepted.RootRunID(), err)
+	}
 	return nil
 }
 

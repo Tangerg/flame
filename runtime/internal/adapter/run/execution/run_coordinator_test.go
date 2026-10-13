@@ -21,6 +21,10 @@ func (inertApprovalRulePreparer) PrepareRule(_ context.Context, request approval
 	return request.Rule()
 }
 
+type inertAcceptedContinuationRetirer struct{}
+
+func (inertAcceptedContinuationRetirer) Delete(context.Context, string) error { return nil }
+
 type passthroughRunWorkingContext struct{}
 
 func (passthroughRunWorkingContext) ComposeWorkingContext(
@@ -45,6 +49,9 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	}
 	if deps.ApprovalRules == nil {
 		deps.ApprovalRules = inertApprovalRulePreparer{}
+	}
+	if deps.AcceptedContinuations == nil {
+		deps.AcceptedContinuations = inertAcceptedContinuationRetirer{}
 	}
 	starter := any(deps.RootStarts)
 	fillRunDependency(t, &deps.RootCancellation, starter, "root cancellation requester")

@@ -82,6 +82,14 @@ type RememberedRuleStore interface {
 	Put(ctx context.Context, rule approval.Rule) error
 }
 
+// AcceptedContinuationStore writes the Run-owned recovery binding of an accepted
+// continuation inside the acceptance transaction, so a crash before delivery
+// completes leaves exactly one durable accepted-paused tree to revive. It carries
+// only routing; the answer resolutions stay owned by the settled Items.
+type AcceptedContinuationStore interface {
+	Put(ctx context.Context, accepted runs.AcceptedContinuation) error
+}
+
 type ToolResultStore interface {
 	Discard(ctx context.Context, sessionID string, ref toolresult.Ref) error
 }
@@ -217,49 +225,51 @@ type ConversationStore interface {
 
 // Config bundles the Effects dependencies.
 type Config struct {
-	ExecutionTrees      runs.ExecutionTreeStore
-	Interrupts          InterruptStore
-	Sessions            SessionStore
-	AutomationAuthority AutomationAuthority
-	AutomationStarts    AutomationStartStore
-	CommandAcceptances  CommandAcceptanceStore
-	GoalRuns            GoalRunRecorder
-	Transcript          TranscriptStore
-	ItemReplacer        ItemReplacer
-	RememberedRules     RememberedRuleStore
-	ToolResults         ToolResultStore
-	ModelInvocations    ModelInvocationJournal
-	ToolInvocations     ToolInvocationJournal
-	Conversation        ConversationStore
-	State               RunStore
-	RunProgress         RunProgressWriter
-	ExecutorCheckpoints ExecutorCheckpointStore
-	ChildRunStarts      ChildRunStartReservationStore
-	Tx                  Transactor
+	ExecutionTrees        runs.ExecutionTreeStore
+	Interrupts            InterruptStore
+	Sessions              SessionStore
+	AutomationAuthority   AutomationAuthority
+	AutomationStarts      AutomationStartStore
+	CommandAcceptances    CommandAcceptanceStore
+	GoalRuns              GoalRunRecorder
+	Transcript            TranscriptStore
+	ItemReplacer          ItemReplacer
+	RememberedRules       RememberedRuleStore
+	AcceptedContinuations AcceptedContinuationStore
+	ToolResults           ToolResultStore
+	ModelInvocations      ModelInvocationJournal
+	ToolInvocations       ToolInvocationJournal
+	Conversation          ConversationStore
+	State                 RunStore
+	RunProgress           RunProgressWriter
+	ExecutorCheckpoints   ExecutorCheckpointStore
+	ChildRunStarts        ChildRunStartReservationStore
+	Tx                    Transactor
 }
 
 // Effects coordinates run-segment side effects. It is stateless beyond its
 // dependencies and safe to share.
 type Effects struct {
-	executionTrees      runs.ExecutionTreeStore
-	interrupts          InterruptStore
-	sessions            SessionStore
-	automationAuthority AutomationAuthority
-	automationStarts    AutomationStartStore
-	commandAcceptances  CommandAcceptanceStore
-	goalRuns            GoalRunRecorder
-	transcript          TranscriptStore
-	itemReplacer        ItemReplacer
-	rememberedRules     RememberedRuleStore
-	toolResults         ToolResultStore
-	modelInvocations    ModelInvocationJournal
-	toolInvocations     ToolInvocationJournal
-	conversation        ConversationStore
-	runState            RunStore
-	runProgress         RunProgressWriter
-	executorCheckpoints ExecutorCheckpointStore
-	childRunStarts      ChildRunStartReservationStore
-	tx                  Transactor
+	executionTrees        runs.ExecutionTreeStore
+	interrupts            InterruptStore
+	sessions              SessionStore
+	automationAuthority   AutomationAuthority
+	automationStarts      AutomationStartStore
+	commandAcceptances    CommandAcceptanceStore
+	goalRuns              GoalRunRecorder
+	transcript            TranscriptStore
+	itemReplacer          ItemReplacer
+	rememberedRules       RememberedRuleStore
+	acceptedContinuations AcceptedContinuationStore
+	toolResults           ToolResultStore
+	modelInvocations      ModelInvocationJournal
+	toolInvocations       ToolInvocationJournal
+	conversation          ConversationStore
+	runState              RunStore
+	runProgress           RunProgressWriter
+	executorCheckpoints   ExecutorCheckpointStore
+	childRunStarts        ChildRunStartReservationStore
+	tx                    Transactor
 }
 
 var (
@@ -286,6 +296,7 @@ func New(cfg Config) (*Effects, error) {
 		{"transcript store", cfg.Transcript},
 		{"item replacer", cfg.ItemReplacer},
 		{"remembered rule store", cfg.RememberedRules},
+		{"accepted continuation store", cfg.AcceptedContinuations},
 		{"model invocation journal", cfg.ModelInvocations},
 		{"tool invocation journal", cfg.ToolInvocations},
 		{"conversation store", cfg.Conversation},
@@ -307,25 +318,26 @@ func New(cfg Config) (*Effects, error) {
 		}
 	}
 	return &Effects{
-		interrupts:          cfg.Interrupts,
-		sessions:            cfg.Sessions,
-		automationAuthority: cfg.AutomationAuthority,
-		automationStarts:    cfg.AutomationStarts,
-		commandAcceptances:  cfg.CommandAcceptances,
-		goalRuns:            cfg.GoalRuns,
-		transcript:          cfg.Transcript,
-		itemReplacer:        cfg.ItemReplacer,
-		rememberedRules:     cfg.RememberedRules,
-		toolResults:         cfg.ToolResults,
-		modelInvocations:    cfg.ModelInvocations,
-		toolInvocations:     cfg.ToolInvocations,
-		conversation:        cfg.Conversation,
-		runState:            cfg.State,
-		runProgress:         cfg.RunProgress,
-		executorCheckpoints: cfg.ExecutorCheckpoints,
-		executionTrees:      cfg.ExecutionTrees,
-		childRunStarts:      cfg.ChildRunStarts,
-		tx:                  cfg.Tx,
+		interrupts:            cfg.Interrupts,
+		sessions:              cfg.Sessions,
+		automationAuthority:   cfg.AutomationAuthority,
+		automationStarts:      cfg.AutomationStarts,
+		commandAcceptances:    cfg.CommandAcceptances,
+		goalRuns:              cfg.GoalRuns,
+		transcript:            cfg.Transcript,
+		itemReplacer:          cfg.ItemReplacer,
+		rememberedRules:       cfg.RememberedRules,
+		acceptedContinuations: cfg.AcceptedContinuations,
+		toolResults:           cfg.ToolResults,
+		modelInvocations:      cfg.ModelInvocations,
+		toolInvocations:       cfg.ToolInvocations,
+		conversation:          cfg.Conversation,
+		runState:              cfg.State,
+		runProgress:           cfg.RunProgress,
+		executorCheckpoints:   cfg.ExecutorCheckpoints,
+		executionTrees:        cfg.ExecutionTrees,
+		childRunStarts:        cfg.ChildRunStarts,
+		tx:                    cfg.Tx,
 	}, nil
 }
 

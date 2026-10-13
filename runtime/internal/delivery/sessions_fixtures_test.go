@@ -383,6 +383,7 @@ func newTestHandler(rt testRuntime) *Handler {
 		Models:                             passthroughRunWorkingContext{},
 		Continuation:                       rt,
 		ApprovalRules:                      inertDeliveryApprovalRules{},
+		AcceptedContinuations:              inertDeliveryAcceptedContinuations{},
 		WaitingRestorer:                    inertRunControl{},
 		Steering:                           rt,
 		RunningSubtreeCanceler:             rt,
@@ -1318,11 +1319,12 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		ExecutionTrees:      stores,
 		ChildRunStarts:      stores,
 		AutomationStarts:    inertSegmentAutomation{}, AutomationAuthority: inertSegmentAutomation{},
-		CommandAcceptances: inertSegmentCommandAcceptances{},
-		GoalRuns:           inertSegmentGoalRuns{},
-		ToolResults:        inertSegmentToolResults{},
-		RememberedRules:    inertSegmentRememberedRules{},
-		Tx:                 s.RunInTx,
+		CommandAcceptances:    inertSegmentCommandAcceptances{},
+		GoalRuns:              inertSegmentGoalRuns{},
+		ToolResults:           inertSegmentToolResults{},
+		RememberedRules:       inertSegmentRememberedRules{},
+		AcceptedContinuations: inertDeliveryAcceptedContinuations{},
+		Tx:                    s.RunInTx,
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults
@@ -1536,6 +1538,15 @@ func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) 
 type inertSegmentRememberedRules struct{}
 
 func (inertSegmentRememberedRules) Put(context.Context, approval.Rule) error { return nil }
+
+// inertDeliveryAcceptedContinuations satisfies both the segment writer and the
+// coordinator retirer for a delivery lifecycle test that never crashes.
+type inertDeliveryAcceptedContinuations struct{}
+
+func (inertDeliveryAcceptedContinuations) Put(context.Context, runs.AcceptedContinuation) error {
+	return nil
+}
+func (inertDeliveryAcceptedContinuations) Delete(context.Context, string) error { return nil }
 
 // inertDeliveryApprovalRules derives a rule without a source-authority check so a
 // delivery lifecycle test exercises acceptance without a live approval policy.

@@ -42,6 +42,7 @@ type Coordinator struct {
 	models                             ModelAdmitter
 	continuation                       WaitingExecutionContinuer
 	approvalRules                      ApprovalRulePreparer
+	acceptedContinuations              AcceptedContinuationRetirer
 	waitingRestorer                    WaitingExecutionRestorer
 	steering                           RunningExecutionSteerer
 	runningSubtreeCanceler             RunningSubtreeCanceler
@@ -100,6 +101,7 @@ type Dependencies struct {
 	Models                             ModelAdmitter
 	Continuation                       WaitingExecutionContinuer
 	ApprovalRules                      ApprovalRulePreparer
+	AcceptedContinuations              AcceptedContinuationRetirer
 	WaitingRestorer                    WaitingExecutionRestorer
 	Steering                           RunningExecutionSteerer
 	RunningSubtreeCanceler             RunningSubtreeCanceler
@@ -147,6 +149,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"model admitter", deps.Models},
 		{"waiting execution continuer", deps.Continuation},
 		{"approval rule preparer", deps.ApprovalRules},
+		{"accepted continuation store", deps.AcceptedContinuations},
 		{"waiting execution restorer", deps.WaitingRestorer},
 		{"running execution steerer", deps.Steering},
 		{"running subtree canceler", deps.RunningSubtreeCanceler},
@@ -189,6 +192,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		models:                             deps.Models,
 		continuation:                       deps.Continuation,
 		approvalRules:                      deps.ApprovalRules,
+		acceptedContinuations:              deps.AcceptedContinuations,
 		waitingRestorer:                    deps.WaitingRestorer,
 		steering:                           deps.Steering,
 		runningSubtreeCanceler:             deps.RunningSubtreeCanceler,
