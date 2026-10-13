@@ -64,7 +64,7 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 	if result.Failure != nil {
 		return nil, &pluginsdk.Failure{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
-	contract, err := capability.FromDescriptor(request.Contract)
+	contract, err := capability.Parse([]byte(request.Contract))
 	if err != nil {
 		return nil, err
 	}

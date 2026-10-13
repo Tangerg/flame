@@ -896,7 +896,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["body", "createdAt", "id", "itemId"]),
   CallPluginRequest: allOf([
     object({
-      contract: ref(() => CHECKS.Descriptor),
+      contract: text(),
       contribution: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
       digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),
       input: anything(),

@@ -10,13 +10,13 @@ import (
 // CallPluginRequest binds an installed contribution to the consumer's complete
 // required contract. The implementation determines operation semantics.
 type CallPluginRequest struct {
-	InstallationID string                `json:"installationId"`
-	Digest         string                `json:"digest"`
-	Contribution   string                `json:"contribution"`
-	Contract       capability.Descriptor `json:"contract"`
-	Method         string                `json:"method"`
-	Input          jsontext.Value        `json:"input"`
-	Target         capability.Target     `json:"target"`
+	InstallationID string            `json:"installationId"`
+	Digest         string            `json:"digest"`
+	Contribution   string            `json:"contribution"`
+	Contract       string            `json:"contract"`
+	Method         string            `json:"method"`
+	Input          jsontext.Value    `json:"input"`
+	Target         capability.Target `json:"target"`
 }
 
 type CallPluginResponse struct {

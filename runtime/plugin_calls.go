@@ -75,7 +75,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options PluginCa
 	if err := m.method.ValidateInput(inputJSON); err != nil {
 		return zero, err
 	}
-	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: m.binding.Contract.Descriptor(), Method: m.method.Name(), Input: inputJSON.JSON(), Target: m.binding.Target}, options)
+	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: inputJSON.JSON(), Target: m.binding.Target}, options)
 	if err != nil {
 		return zero, err
 	}

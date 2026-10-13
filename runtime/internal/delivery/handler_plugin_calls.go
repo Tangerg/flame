@@ -84,7 +84,7 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 }
 
 func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
-	contract, err := capability.FromDescriptor(in.Contract)
+	contract, err := capability.Parse([]byte(in.Contract))
 	if err != nil {
 		return "", InvalidParameters(err)
 	}
@@ -110,7 +110,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 	if err != nil {
 		return "", nil, InvalidParameters(err)
 	}
-	contract, err := capability.FromDescriptor(in.Contract)
+	contract, err := capability.Parse([]byte(in.Contract))
 	if err != nil {
 		return "", nil, InvalidParameters(err)
 	}

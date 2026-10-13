@@ -3674,7 +3674,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.5\""
+          "value": "\"2026-10-13.6\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -5269,7 +5269,7 @@
             },
             {
               "name": "Contract",
-              "type": "capability.Descriptor",
+              "type": "string",
               "tag": "json:\"contract\""
             },
             {

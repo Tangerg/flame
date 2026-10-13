@@ -38,7 +38,7 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: contract.Descriptor(), Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: []byte(`{"revision":2}`)}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: []byte(`{"revision":2}`)}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
 	ctx := operation.Adopt(t.Context(), "parent-tool", capability.Model, "run_owner")
@@ -54,9 +54,13 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 	if len(target.ids) != 2 || target.ids[0] == "" || target.ids[0] != target.ids[1] {
 		t.Fatalf("owner invocation identities = %v", target.ids)
 	}
-	query := request.Contract
+	query := contract.Descriptor()
 	query.Methods[0].Kind = capability.Query
-	request.Contract = query
+	queryContract, err := capability.FromDescriptor(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Contract = string(queryContract.Identity().JSON())
 	if result := endpoint.Invoke(t.Context(), PluginsCall, request, Options{IdempotencyKey: "query"}); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
 		t.Fatalf("query identity was admitted: %+v", result)
 	}

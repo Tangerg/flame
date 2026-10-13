@@ -156,7 +156,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
 			return fmt.Errorf("plugin request: %w", err)
 		}
-		contract, err := capability.FromDescriptor(request.Contract)
+		contract, err := capability.Parse([]byte(request.Contract))
 		if err != nil {
 			return err
 		}

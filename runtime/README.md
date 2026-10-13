@@ -86,7 +86,14 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.5
+## Protocol 2026-10-13.6
+
+`plugins.call.contract` is the owner's complete canonical JSON string. Client
+serialization must preserve it as a string; parsing a schema into JavaScript
+numbers can round large integer limits and change its exact identity. Go typed
+bindings and generated feature `CAPABILITY_JSON` supply that original contract.
+Runtime parses and admits it through the same pure capability owner. The former
+object request shape is removed; clients and backend packages must be rebuilt.
 
 Plugin release projections include required `points` and `pointValues` arrays,
 and `plugins.resolvePoint` resolves the admitted consumer-owned value contract.

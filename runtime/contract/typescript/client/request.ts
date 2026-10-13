@@ -5,7 +5,7 @@ import {
   type WireParams,
 } from "@flame/runtime-contract/methods";
 import { validateMethodParams, validateWire } from "@flame/runtime-contract/validate";
-import type { RequestMeta } from "@flame/runtime-contract/wire";
+import type { Descriptor, RequestMeta } from "@flame/runtime-contract/wire";
 import { RpcProtocolError } from "./errors";
 
 export function checkRequest<M extends WireMethodName>(
@@ -31,7 +31,12 @@ export function requestRequiresIdempotency<M extends WireMethodName>(
     return wireMethodRequiresIdempotency(method);
   }
   const request = checkRequest("plugins.call", params);
-  const members = request.contract.methods.filter((member) => member.name === request.method);
+  const contract: unknown = JSON.parse(request.contract);
+  const violations = validateWire("Descriptor", contract);
+  if (violations.length) throw new RpcProtocolError("plugin contract", violations);
+  const members = (contract as Descriptor).methods.filter(
+    (member) => member.name === request.method,
+  );
   if (members.length !== 1 || !["query", "command"].includes(members[0]!.kind)) {
     throw new TypeError("Plugin call requires one admitted query or command method");
   }

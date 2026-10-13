@@ -173,6 +173,7 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 	}
 	emitter.line("} as const;")
 	emitter.line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", strconv.Quote(descriptor.Protocol), strconv.Quote(descriptor.Reference), strconv.Quote(string(descriptor.Composition)), strconv.Quote(descriptor.Scope), strconv.Quote(contract.Identity().Digest()))
+	emitter.line("export const CAPABILITY_JSON = %s;", strconv.Quote(string(contract.Identity().JSON())))
 	artifacts.typescript = emitter.out.String()
 	return artifacts, nil
 }

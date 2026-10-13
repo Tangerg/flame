@@ -181,3 +181,27 @@ the test needs no provider credentials or external service.
 This package's MCP tools execute through Session-owned Runs and the existing
 approval path. It has no review board, trusted tool-call form, or HTML bridge to
 backend operations. Diagnostic `tools.invoke` is not a plugin action entrance.
+
+## Ordinary component source
+
+`client/board.tsx` exports the ordinary React `Board` component through the public
+`@flame/plugin-sdk` context. It reads the owner, submits the inspected revision,
+shows explicit conflict/refusal, preserves the original mutation identity for
+reconciliation, and invokes the installed analyzer query. Refresh failures retain
+previously read reviews; an uncertain command disables fresh changes.
+
+The owning generator now publishes the complete `CAPABILITY_JSON` string beside
+its typed method maps. Send that string unchanged. Converting schema integers to
+JavaScript numbers can change their exact contract identity.
+
+From `examples/plugins/reviews/client`, install the declared public dependencies,
+then use `npm run typecheck` and `npm run build`. The shared public SDK build emits
+`package/io.github.tangerg.flame/components/component.js` with React, JSX runtime,
+SDK and UI imports externalized for the host's actual shared module instances.
+The same prebuilt ESM format is used for development and release builds.
+
+This checked authoring artifact is not yet declared or reachable in the shipping
+workbench. Exact-release resource loading, shared module mapping, component
+placement and generation retirement, durable UI reconciliation after reload,
+browser/Wails integration and replacement of the existing HTML carrier remain
+required. No graphical rendering or lifecycle acceptance is claimed here.

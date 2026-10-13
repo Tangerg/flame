@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -12,6 +13,41 @@ import (
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
+
+func TestFeatureCapabilityJSONPreservesIntegerSchemaLexemes(t *testing.T) {
+	method, err := pluginsdk.NewMethod[struct{}, uint64](pluginsdk.MethodConfig{Name: "acme/count", Kind: capability.Query, Target: "installation", Description: "Read the original count."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := featureDescriptor(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts, err := buildFeature(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := "export const CAPABILITY_JSON = "
+	_, encoded, found := strings.Cut(artifacts.typescript, prefix)
+	if !found {
+		t.Fatal("canonical capability source omitted")
+	}
+	encoded, _, _ = strings.Cut(encoded, ";\n")
+	original, err := strconv.Unquote(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(original, "18446744073709551615") {
+		t.Fatal("uint64 schema bound lost its exact lexeme")
+	}
+	if original != string(artifacts.capability.Identity().JSON()) {
+		t.Fatal("generated capability differs from its canonical owner encoding")
+	}
+	contract, err := capability.Parse([]byte(original))
+	if err != nil || contract.Identity() != artifacts.capability.Identity() {
+		t.Fatalf("generated capability source changed identity: %v", err)
+	}
+}
 
 type featureStatus string
 
