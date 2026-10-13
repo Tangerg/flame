@@ -738,7 +738,6 @@ export const zhTW: Record<string, string> = {
   "rpcError.mcp_server_not_found": "該伺服器已不在設定中。",
   "rpcError.mcp_server_already_exists": "同名伺服器已設定。",
   "rpcError.mcp_server_disabled": "該伺服器已關閉——請先啟用。",
-  "rpcError.schedule_not_found": "該排程已不存在。",
   "rpcError.path_outside_root": "該路徑在工作階段的工作目錄之外。",
   "rpcError.unsupported_mime": "這裡不支援該檔案類型。",
   "rpcError.interrupt_not_open": "該請求已不再等待回覆。",

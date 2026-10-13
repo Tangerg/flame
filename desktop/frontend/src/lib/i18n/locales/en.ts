@@ -789,7 +789,6 @@ export const en: Record<string, string> = {
   "rpcError.mcp_server_not_found": "That server is no longer configured.",
   "rpcError.mcp_server_already_exists": "A server with that name is already configured.",
   "rpcError.mcp_server_disabled": "That server is turned off — enable it first.",
-  "rpcError.schedule_not_found": "That schedule no longer exists.",
   "rpcError.path_outside_root": "That path is outside the session's working directory.",
   "rpcError.unsupported_mime": "That file type isn't supported here.",
   "rpcError.interrupt_not_open": "That request is no longer waiting for an answer.",

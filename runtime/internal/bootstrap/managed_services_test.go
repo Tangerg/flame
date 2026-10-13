@@ -472,7 +472,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: server}, "reconnect")
 	r.poMCPTools(&server, ready)
 	title, instructions := "edited title", "edited instructions"
-	r.must(delivery.SchedulesUpdate, protocol.UpdateScheduleRequest{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}, "edit-after-capture")
+	r.must(delivery.PluginsCall, scheduleUpdateRequest(r, schedulerpc.UpdateInput{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}), "edit-after-capture")
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.poMCPTools(&server, ready)

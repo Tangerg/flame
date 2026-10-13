@@ -735,7 +735,6 @@ export const zh: Record<string, string> = {
   "rpcError.mcp_server_not_found": "该服务器已不在配置中。",
   "rpcError.mcp_server_already_exists": "同名服务器已配置。",
   "rpcError.mcp_server_disabled": "该服务器已关闭——请先启用。",
-  "rpcError.schedule_not_found": "该计划任务已不存在。",
   "rpcError.path_outside_root": "该路径在会话工作目录之外。",
   "rpcError.unsupported_mime": "这里不支持该文件类型。",
   "rpcError.interrupt_not_open": "该请求已不再等待回答。",

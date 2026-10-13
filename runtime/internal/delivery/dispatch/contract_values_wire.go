@@ -53,7 +53,6 @@ func registerValueConstraints(s *Shapes) {
 	registerToolValues(s)
 	registerAuthoringContextValues(s)
 	registerAgentMemoryValues(s)
-	registerScheduleValues(s)
 	registerGoalValues(s)
 	registerRuntimeValues(s)
 }
@@ -124,19 +123,6 @@ func runEventIdentity(field string) []FieldConstraint {
 	}
 }
 
-func requiredScheduleIdentity(field string) []FieldConstraint {
-	return append([]FieldConstraint{{Field: field, Kind: ConstraintNonEmpty}}, scheduleIdentity(field)...)
-}
-
-func scheduleIdentity(field string) []FieldConstraint {
-	return append(boundedIdentity(field, protocol.MaximumResourceIdentityCharacters), FieldConstraint{
-		Field: field, Kind: ConstraintPrefix, Value: protocol.IDPrefixSchedule,
-	})
-}
-
-// modelSelectionIdentities constrains the three fields every shape carrying a
-// model selection spells the same way. The wire names are the selection's, not
-// each shape's, so they are written once here.
 func modelSelectionIdentities() []FieldConstraint {
 	constraints := boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)
 	constraints = append(constraints, boundedIdentity("model", protocol.MaximumModelIdentityCharacters)...)
@@ -841,30 +827,6 @@ func registerAgentMemoryValues(s *Shapes) {
 			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},
 			{Field: "content", Kind: ConstraintMaxLength, Limit: agentmemory.MaxContentCharacters},
 		},
-	})
-}
-
-func registerScheduleValues(s *Shapes) {
-	const nonBlankInstructions = `\S`
-	scheduleConstraints := append(requiredScheduleIdentity("id"), exactPositiveInteger("revision")...)
-	scheduleConstraints = append(scheduleConstraints,
-		FieldConstraint{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
-		FieldConstraint{Field: "cron", Kind: ConstraintNonEmpty},
-	)
-	scheduleConstraints = append(scheduleConstraints,
-		modelSelectionIdentities()...)
-	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.Schedule](),
-		Constraints: scheduleConstraints,
-	})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.UpdateScheduleRequest](),
-		Constraints: append(append(requiredScheduleIdentity("id"), []FieldConstraint{
-			{Field: "expectedRevision", Kind: ConstraintPositive},
-			{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
-			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
-			{Field: "cron", Kind: ConstraintNonEmpty},
-		}...), modelSelectionIdentities()...),
 	})
 }
 

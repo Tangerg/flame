@@ -779,7 +779,6 @@ export const ja: Record<string, string> = {
   "rpcError.mcp_server_not_found": "そのサーバーは設定にありません。",
   "rpcError.mcp_server_already_exists": "同じ名前のサーバーが既に設定されています。",
   "rpcError.mcp_server_disabled": "そのサーバーは無効です。先に有効にしてください。",
-  "rpcError.schedule_not_found": "そのスケジュールはもうありません。",
   "rpcError.path_outside_root": "そのパスはセッションの作業ディレクトリの外です。",
   "rpcError.unsupported_mime": "ここではこのファイル形式に対応していません。",
   "rpcError.interrupt_not_open": "その要求はもう回答を待っていません。",

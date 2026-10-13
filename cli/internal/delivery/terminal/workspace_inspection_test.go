@@ -585,11 +585,11 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	t.Parallel()
 
 	features := map[string]protocol.FeatureCapability{
-		protocol.FeaturePlan:      {},
-		protocol.FeatureGoals:     {},
-		protocol.FeatureSkills:    {},
-		protocol.FeatureMCP:       {},
-		protocol.FeatureSchedules: {},
+		protocol.FeaturePlan:    {},
+		protocol.FeatureGoals:   {},
+		protocol.FeatureSkills:  {},
+		protocol.FeatureMCP:     {},
+		protocol.FeaturePlugins: {},
 	}
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{

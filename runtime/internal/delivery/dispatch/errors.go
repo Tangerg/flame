@@ -32,7 +32,6 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrMCPOwnedByInstallation.Error(), codeMCPOwnedByInstallation},
 	{protocol.ErrMCPServerNotFound.Error(), codeMCPServerNotFound},
 	{protocol.ErrSkillNotFound.Error(), codeSkillNotFound},
-	{protocol.ErrScheduleNotFound.Error(), codeScheduleNotFound},
 	{protocol.ErrSkillUnavailable.Error(), codeSkillUnavailable},
 	{protocol.ErrMCPServerAlreadyExists.Error(), codeMCPServerExists},
 	{protocol.ErrMCPServerDisabled.Error(), codeMCPServerDisabled},

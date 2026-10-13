@@ -458,7 +458,6 @@ func buildAssemblyCore(
 				Hooks:                  workspaceServices.hooks,
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
-				Schedules:              execution.tools.schedules,
 				Goals:                  goalDriver,
 				AgentMemory:            execution.tools.memory,
 				GitAvailable:           git.Available(),

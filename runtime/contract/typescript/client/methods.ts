@@ -82,8 +82,6 @@ import type {
   RunRef,
   RunAcceptance,
   GetRunAcceptanceRequest,
-  Schedule,
-  UpdateScheduleRequest,
   Plan,
   Session,
   SessionArtifact,
@@ -389,9 +387,7 @@ export interface Methods {
     setRule: (params: SetApprovalRuleRequest) => MutationPromise<void>;
     forgetRule: (id: string) => MutationPromise<void>;
   };
-  schedules: {
-    update: (params: UpdateScheduleRequest) => MutationPromise<Schedule>;
-  };
+
 }
 
 function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
@@ -697,8 +693,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       setRule: (params) => call("approval.setRule", params),
       forgetRule: (id) => call("approval.forgetRule", { id }),
     },
-    schedules: {
-      update: (params) => call("schedules.update", params),
-    },
+
   };
 }

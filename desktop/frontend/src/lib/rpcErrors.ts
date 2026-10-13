@@ -34,7 +34,6 @@ export const MAPPED_TYPES: readonly string[] = [
   "mcp_server_not_found",
   "mcp_server_already_exists",
   "mcp_server_disabled",
-  "schedule_not_found",
   "path_outside_root",
   "unsupported_mime",
   "interrupt_not_open",

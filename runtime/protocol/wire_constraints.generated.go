@@ -457,29 +457,6 @@ func (f ForgetApprovalRuleRequest) ValidateWire() error {
 	)
 }
 
-func (u UpdateScheduleRequest) ValidateWire() error {
-	return collectWireViolations("UpdateScheduleRequest",
-		requiredText("id", u.ID),
-		identity("id", u.ID),
-		maxLength("id", u.ID, 256),
-		requiredTextPrefix("id", u.ID, "sch_"),
-		positiveNumber("expectedRevision", u.ExpectedRevision),
-		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
-		optionalTextPointerPattern("instructions", u.Instructions, "\\S"),
-		optionalText("cron", u.Cron),
-		optionalIdentity("provider", u.Provider),
-		optionalMaxLength("provider", u.Provider, 64),
-		optionalIdentity("model", u.Model),
-		optionalMaxLength("model", u.Model, 256),
-		optionalIdentity("reasoningEffort", u.ReasoningEffort),
-		optionalMaxLength("reasoningEffort", u.ReasoningEffort, 32),
-		closedEnum("workspaceMode", string(u.WorkspaceMode), []string{"default"}, true),
-		requiredWhen(wireFieldPresent(u, "provider"), "model", u),
-		requiredWhen(wireFieldPresent(u, "model"), "provider", u),
-		forbiddenWhen(wireFieldEquals(u, "workspaceMode", "default"), "workspace", u),
-	)
-}
-
 func (s StartGoalRequest) ValidateWire() error {
 	return collectWireViolations("StartGoalRequest",
 		requiredText("sessionId", s.SessionID),
@@ -639,7 +616,7 @@ func (p ProblemData) ValidateWire() error {
 		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
 		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
 		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "schedule_not_found", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "errors", p),
@@ -809,10 +786,6 @@ func (p ProblemData) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "errors", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "schedule_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "schedule_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "schedule_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "schedule_not_found"), "activeRun", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "errors", p),
@@ -2010,30 +1983,6 @@ func (f FileDiff) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(f, "status", "untracked"), "previousPath", f),
 		forbiddenWhen(wireFieldPresent(f, "binary"), "added", f),
 		forbiddenWhen(wireFieldPresent(f, "binary"), "removed", f),
-	)
-}
-
-func (s Schedule) ValidateWire() error {
-	return collectWireViolations("Schedule",
-		requiredText("id", s.ID),
-		identity("id", s.ID),
-		maxLength("id", s.ID, 256),
-		requiredTextPrefix("id", s.ID, "sch_"),
-		positiveNumber("revision", s.Revision),
-		maximumNumber("revision", s.Revision, 9007199254740991),
-		requiredTextPattern("instructions", s.Instructions, "\\S"),
-		requiredText("cron", s.Cron),
-		identity("provider", s.Provider),
-		maxLength("provider", s.Provider, 64),
-		identity("model", s.Model),
-		maxLength("model", s.Model, 256),
-		identity("reasoningEffort", s.ReasoningEffort),
-		maxLength("reasoningEffort", s.ReasoningEffort, 32),
-		requiredWhen(true, "createdAt", s),
-		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
-		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
-		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
-		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "model", s),
 	)
 }
 

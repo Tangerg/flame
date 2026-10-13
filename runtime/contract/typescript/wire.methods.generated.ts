@@ -115,7 +115,6 @@ import type {
   RunRef,
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
-  Schedule,
   SelectPluginProviderRequest,
   Session,
   SessionSnapshot,
@@ -143,7 +142,6 @@ import type {
   UpdateGoalRequest,
   UpdateMCPServerRequest,
   UpdateProviderRequest,
-  UpdateScheduleRequest,
   UpdateSessionRequest,
   UsageSummary,
   UsageSummaryRequest,
@@ -164,7 +162,6 @@ const FEATURES = [
   "skills",
   "mcp",
   "plugins",
-  "schedules",
   "git",
   "checkpoints",
   "fileWatch",
@@ -256,7 +253,6 @@ const METHOD_NAMES = [
   "approval.setMode",
   "approval.listRules",
   "approval.forgetRule",
-  "schedules.update",
   "goals.start",
   "goals.update",
   "goals.clear",
@@ -368,7 +364,6 @@ const VALUE_METHOD_NAMES = [
   "approval.getMode",
   "approval.setMode",
   "approval.listRules",
-  "schedules.update",
   "goals.start",
   "goals.update",
   "goals.get",
@@ -946,13 +941,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "schedules.update": {
-    operation: "command",
-    response: "unary",
-    idempotency: "ownerResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "goals.start": {
     operation: "command",
     response: "unary",
@@ -1322,9 +1310,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.uninstall": [
     { requires: ["plugins"] },
   ],
-  "schedules.update": [
-    { requires: ["schedules"] },
-  ],
   "goals.start": [
     { requires: ["goals"] },
   ],
@@ -1438,7 +1423,6 @@ export interface WireShapes {
   "approval.setMode": { params: SetApprovalModeRequest; result: ApprovalModeResult };
   "approval.listRules": { params: ListApprovalRulesRequest; result: ListApprovalRulesResult };
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
-  "schedules.update": { params: UpdateScheduleRequest; result: Schedule };
   "goals.start": { params: StartGoalRequest; result: Goal };
   "goals.update": { params: UpdateGoalRequest; result: Goal };
   "goals.clear": { params: GoalRequest };

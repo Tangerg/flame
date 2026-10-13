@@ -237,11 +237,11 @@ required callable contract once, then page through `plugins.call`. The CLI's Go
 request/output projection is generated from the same publisher contracts as TS;
 no private backend package is imported. Selection changes cannot mix providers
 inside one traversal. Cursor/request/row bounds and duplicate ID rejection remain.
-Schedule creation, deletion and manual execution use public installed operations.
+Every Schedule read and mutation uses public installed operations.
 Before dispatch, the CLI workbench persists the original installation, release,
 contribution, contract, target, input bytes and command ID. After a lost
 acknowledgement or restart, `/schedule-create`, `/schedule-delete <original-full-id>`
-or `/schedule-run <original-full-id>` reconciles that request before current
+`/schedule-edit <original-full-id>` or `/schedule-run <original-full-id>` reconciles that request before current
 provider discovery. An unresolved creation reuses the original draft instead of
 opening a fresh form. Startup reports pending intents. An unavailable original
 owner, expired replay guarantee or changed Runtime store leaves intent unconfirmed;
@@ -253,6 +253,9 @@ Forms and the binding adapter use the same generated publisher Go projection in
 is needed. Workspace resolution precedes initial capture and is never repeated for
 pending intent. The publisher still owns schedule validation, creation and receipt.
 Manual execution returns the existing Core Session/Run reference; a settled command
-permits a later new intent. The update entrance remains under migration. Retired
-`schedules.list`, `schedules.create`, `schedules.delete` and `schedules.runNow`
-Core operations have no aliases.
+permits a later new intent. Editing and enablement retain the originally inspected
+revision and patch; workspace reset is an explicit empty CWD, while omission keeps
+the binding. Pending edits are reconciled before reading another revision. Readers
+use the generated publisher snapshot directly, without a Core Schedule projection
+or extra Enabled state. No Schedule Core API, DTO or feature flag remains; the
+client negotiates the generic plugins entrance and resolves the selected contract.

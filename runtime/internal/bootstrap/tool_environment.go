@@ -100,7 +100,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
-	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool, commandCalls)
+	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool)
 	if err != nil {
 		return environment, err
 	}

@@ -804,7 +804,6 @@ export const de: Record<string, string> = {
   "rpcError.mcp_server_not_found": "Dieser Server ist nicht mehr konfiguriert.",
   "rpcError.mcp_server_already_exists": "Ein Server mit diesem Namen ist bereits konfiguriert.",
   "rpcError.mcp_server_disabled": "Dieser Server ist deaktiviert — aktiviere ihn zuerst.",
-  "rpcError.schedule_not_found": "Diesen Zeitplan gibt es nicht mehr.",
   "rpcError.path_outside_root":
     "Dieser Pfad liegt außerhalb des Arbeitsverzeichnisses der Session.",
   "rpcError.unsupported_mime": "Dieser Dateityp wird hier nicht unterstützt.",

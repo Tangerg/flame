@@ -15,7 +15,7 @@ func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testi
 	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{
 		protocol.FeatureMCP:       {Enabled: true},
 		protocol.FeatureSubagents: {Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true},
-		protocol.FeatureSchedules: {},
+		protocol.FeatureGoals:     {},
 	}
 	for _, enabled := range []bool{false, true} {
 		client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
@@ -25,7 +25,7 @@ func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testi
 		if !reflect.DeepEqual(profile.Discovery(), *discovery) || !reflect.DeepEqual(profile.ClientCapabilities(), client) {
 			t.Fatal("profile changed discovery or client capability values")
 		}
-		if !profile.Supports(protocol.FeatureMCP) || profile.Supports(protocol.FeatureSchedules) ||
+		if !profile.Supports(protocol.FeatureMCP) || profile.Supports(protocol.FeatureGoals) ||
 			profile.Supports(protocol.FeatureSubagents) != enabled || !profile.SupportsRuntimeTopic(protocol.TopicFilesChanged) {
 			t.Fatal("profile did not preserve the protocol capability agreement")
 		}

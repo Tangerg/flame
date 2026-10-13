@@ -765,7 +765,6 @@ export const ko: Record<string, string> = {
   "rpcError.mcp_server_not_found": "해당 서버가 설정에 없습니다.",
   "rpcError.mcp_server_already_exists": "같은 이름의 서버가 이미 설정되어 있습니다.",
   "rpcError.mcp_server_disabled": "해당 서버가 꺼져 있습니다. 먼저 켜세요.",
-  "rpcError.schedule_not_found": "해당 일정이 더 이상 없습니다.",
   "rpcError.path_outside_root": "해당 경로는 세션 작업 디렉터리 밖입니다.",
   "rpcError.unsupported_mime": "여기서는 지원하지 않는 파일 형식입니다.",
   "rpcError.interrupt_not_open": "해당 요청은 더 이상 답변을 기다리지 않습니다.",

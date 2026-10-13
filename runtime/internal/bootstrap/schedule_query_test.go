@@ -37,7 +37,7 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 	return protocol.CallPluginRequest{}
 }
 
-func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
+func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[scheduledomain.Snapshot] {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, scheduleQuery(r, query), "").(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
@@ -47,7 +47,7 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 	if err := json.Unmarshal(reply.Output, &page); err != nil {
 		r.t.Fatal(err)
 	}
-	values := make([]protocol.Schedule, 0, len(page.Rows))
+	values := make([]scheduledomain.Snapshot, 0, len(page.Rows))
 	for _, row := range page.Rows {
 		out := projectScheduleSnapshot(r, row)
 		values = append(values, out)
@@ -89,7 +89,7 @@ func scheduleCreateRequest(r *poMCPRuntime, draft scheduledomain.Draft) protocol
 	request.Method, request.Input = schedulerpc.Create, input
 	return request
 }
-func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *protocol.Schedule {
+func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *scheduledomain.Snapshot {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
@@ -102,21 +102,20 @@ func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key
 	row := projectScheduleSnapshot(r, snapshot)
 	return &row
 }
-func projectScheduleSnapshot(r *poMCPRuntime, snapshot scheduledomain.Snapshot) protocol.Schedule {
+func projectScheduleSnapshot(r *poMCPRuntime, snapshot scheduledomain.Snapshot) scheduledomain.Snapshot {
 	r.t.Helper()
-	value, err := scheduledomain.Restore(snapshot)
+	if _, err := scheduledomain.Restore(snapshot); err != nil {
+		r.t.Fatal(err)
+	}
+	return snapshot
+}
+func scheduleUpdateRequest(r *poMCPRuntime, input schedulerpc.UpdateInput) protocol.CallPluginRequest {
+	r.t.Helper()
+	request := scheduleQuery(r, protocol.PageQuery{})
+	encoded, err := json.Marshal(input)
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	row := protocol.Schedule{ID: value.ID(), Title: value.Title(), Instructions: value.Instructions(), Cron: value.Cron(), Enabled: value.Enabled(), CreatedAt: value.CreatedAt(), Revision: value.Revision(), Provider: value.ModelSelection().Provider(), Model: value.ModelSelection().Model(), ReasoningEffort: value.ModelSelection().ReasoningEffort()}
-	if value.CWD() != "" {
-		row.Workspace = &protocol.WorkspaceRef{Path: value.CWD()}
-	}
-	if !value.NextRunAt().IsZero() {
-		row.NextRunAt = new(value.NextRunAt())
-	}
-	if !value.LastRunAt().IsZero() {
-		row.LastRunAt = new(value.LastRunAt())
-	}
-	return row
+	request.Method, request.Input = schedulerpc.Update, encoded
+	return request
 }

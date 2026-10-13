@@ -69,7 +69,6 @@ export type {
   ProblemData,
   Provider,
   ProviderConfigChange,
-  Schedule,
   AgentMemoryItem,
   ApprovalRule,
   ToolRef,

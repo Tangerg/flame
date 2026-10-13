@@ -809,7 +809,6 @@ export const es: Record<string, string> = {
   "rpcError.mcp_server_not_found": "Ese servidor ya no está configurado.",
   "rpcError.mcp_server_already_exists": "Ya hay un servidor configurado con ese nombre.",
   "rpcError.mcp_server_disabled": "Ese servidor está apagado — actívalo primero.",
-  "rpcError.schedule_not_found": "Esa programación ya no existe.",
   "rpcError.path_outside_root": "Esa ruta está fuera del directorio de trabajo de la sesión.",
   "rpcError.unsupported_mime": "Ese tipo de archivo no se admite aquí.",
   "rpcError.interrupt_not_open": "Esa solicitud ya no espera respuesta.",

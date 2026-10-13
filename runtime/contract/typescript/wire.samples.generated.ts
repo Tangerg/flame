@@ -79,7 +79,6 @@ export const WIRE_SAMPLES: readonly WireSample[] = [
   { file: "usageSummary.json", shape: "UsageSummary" },
   { file: "method.discover.resp.json", shape: "DiscoverResponse" },
   { file: "request.meta.json", shape: "RequestMeta" },
-  { file: "schedule.json", shape: "Schedule" },
   { file: "skill.json", shape: "Skill" },
   { file: "managedSkill.json", shape: "ManagedSkill" },
   { file: "skillProposal.json", shape: "SkillProposal" },

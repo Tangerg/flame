@@ -253,11 +253,10 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
 	runtime := &Connection{profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 		protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true},
-		protocol.FeatureSchedules: {Enabled: true}, protocol.FeatureSessionExport: {Enabled: true},
 	})}
 	profile := runtime.Profile()
 	if !profile.Supports(protocol.FeatureSkills) || !profile.Supports(protocol.FeatureMCP) ||
-		!profile.Supports(protocol.FeatureSchedules) || profile.Supports(protocol.FeatureGoals) {
+		profile.Supports(protocol.FeatureGoals) {
 		t.Fatalf("profile features = %+v", profile.Discovery().Capabilities.Features)
 	}
 	if profile.Supports(protocol.FeatureAgentMemory) {

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.10";
+export const PROTOCOL_VERSION = "2026-10-14.11";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -122,7 +122,6 @@ export const PROBLEM_CODES = {
   "run_not_found": -32003,
   "run_not_root": -32022,
   "run_waiting": -32024,
-  "schedule_not_found": -32036,
   "session_busy": -32018,
   "session_has_active_run": -32023,
   "session_not_found": -32002,
@@ -174,7 +173,6 @@ export const PROBLEM_RECOVERY = {
   "run_not_found": "refetch",
   "run_not_root": "refetch",
   "run_waiting": "coldRecover",
-  "schedule_not_found": "refetch",
   "session_busy": "refetch",
   "session_has_active_run": "promptUser",
   "session_not_found": "refetch",
@@ -1448,7 +1446,6 @@ export type ProblemData =
   | { type: "run_not_found"; detail?: string; docUrl?: string }
   | { type: "run_not_root"; detail?: string; docUrl?: string }
   | { type: "run_waiting"; detail?: string; docUrl?: string }
-  | { type: "schedule_not_found"; detail?: string; docUrl?: string }
   | { type: "session_busy"; detail?: string; docUrl?: string }
   | { type: "session_has_active_run"; activeRun: ActiveRunRef; detail?: string; docUrl?: string }
   | { type: "session_not_found"; detail?: string; docUrl?: string }
@@ -1746,24 +1743,6 @@ export interface RuntimeSubscribeResponse {
 export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
-
-export interface Schedule {
-  createdAt: string;
-  cron: string;
-  enabled: boolean;
-  id: string;
-  instructions: string;
-  lastRunAt?: string;
-  model?: string;
-  nextRunAt?: string;
-  provider?: string;
-  reasoningEffort?: string;
-  revision: number;
-  title: string;
-  workspace?: WorkspaceRef;
-}
-
-export type ScheduleWorkspaceMode = "default";
 
 export interface SearchHit {
   lineNumber?: number;
@@ -2109,20 +2088,6 @@ export interface UpdateProviderRequest {
   provider: string;
 }
 
-export interface UpdateScheduleRequest {
-  cron?: string;
-  enabled?: boolean;
-  expectedRevision: number;
-  id: string;
-  instructions?: string;
-  model?: string;
-  provider?: string;
-  reasoningEffort?: string;
-  title?: string;
-  workspace?: WorkspaceRef;
-  workspaceMode?: ScheduleWorkspaceMode;
-}
-
 export interface UpdateSessionRequest {
   expectedRevision: number;
   favorite?: boolean;
@@ -2302,7 +2267,6 @@ export const WIRE_ENUMS = {
   RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
-  ScheduleWorkspaceMode: ["default"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],

@@ -1595,3 +1595,5 @@ func (noDeliveryCommandAcceptances) Lookup(context.Context, string) (runs.Comman
 func (inertRuntimeStores) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {
 	return false, nil
 }
+
+func valuePtr[T any](value T) *T { return &value }

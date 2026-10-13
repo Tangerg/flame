@@ -23,8 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	schedules "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
-	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
 // Every interface below is defined by Delivery — the consuming side. They keep
@@ -114,12 +112,6 @@ type usageUseCases interface {
 
 type feedbackUseCases interface {
 	Record(ctx context.Context, command feedback.Command) error
-}
-
-// scheduleManagementUseCases borrows mutation inputs for each synchronous call.
-// Returned Schedules own their admitted values.
-type scheduleManagementUseCases interface {
-	Update(ctx context.Context, cmd schedules.UpdateCommand) (schedule.Schedule, error)
 }
 
 type workspaceFileUseCases interface {

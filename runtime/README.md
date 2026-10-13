@@ -61,15 +61,16 @@ business input and backends receive it as invocation metadata. Declared
 cross-plugin dependencies, durable trigger-origin propagation and streaming
 decoration remain under development.
 
-Schedules reads, creation, deletion and manual execution use the installed
+All Schedule reads and mutations use the installed
 contribution's published operations. The former `ListSchedules`, `CreateSchedule`,
-`DeleteSchedule`, `RunScheduleNow` Go methods and their Protocol entrances are
+`UpdateSchedule`, `DeleteSchedule`, `RunScheduleNow` Go methods and their Protocol entrances are
 removed. Backend business transitions and private receipts retain their owners.
 The CLI persists original intent before dispatch and keeps its installation,
 release and inputs across selection changes, acknowledgement loss and restart.
 The generic installed call supplies Runtime callbacks; the backend owns manual
-capture/reconciliation and Runtime owns the accepted Run. The update Core facade
-remains under migration. External consumers of removed methods must use
+capture/reconciliation and Runtime owns the accepted Run. Core Schedule DTOs,
+error translations and the schedules feature gate are removed. Clients consume
+the publisher contract through plugins.call. External consumers must use
 `CallPlugin`; no compatibility alias or old-method request translation exists.
 
 The operation catalog owns result nullability for execution, durable replay and
@@ -1635,7 +1636,7 @@ Protocol `2026-09-22` replaces the empty steer acknowledgement. Upgrade Runtime,
 
 ## Command completion and configuration boundaries
 
-Updating or manually firing a missing schedule returns `schedule_not_found`, with `refetch` recovery, consistent with other missing resources. Deleting an absent schedule remains successful and does not publish a change. Invalid schedule parameters remain `invalid_params`; stale edits remain `revision_conflict`. Schedule create/update and hook trust changes declare `workspace_unavailable` when their selected directory cannot be resolved.
+Installed Schedule operations return the business owner's refusal through plugins.call; the former Core schedule_not_found/revision/workspace translations no longer exist. The publisher owns missing-item, stale-revision and workspace rules and atomically commits private receipts. Hook trust changes continue to declare workspace_unavailable when their directory cannot be resolved.
 
 A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: success proves a canceled Run; a natural completion that wins the race returns `run_finished`. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
 

@@ -31,7 +31,6 @@ func buildContract() *Registry {
 	registerPlugins(registry)
 	registerHooks(registry)
 	registerApproval(registry)
-	registerSchedules(registry)
 	registerGoals(registry)
 	registerProviders(registry)
 	registerModels(registry)

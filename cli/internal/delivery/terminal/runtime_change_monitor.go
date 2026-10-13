@@ -115,7 +115,7 @@ func (a *app) observedRuntimeResources() runtimeResourceObservation {
 		goals:       a.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
 		skills:      a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
 		mcp:         a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
-		schedules:   a.schedules != nil && a.runtimeSupports(protocol.FeatureSchedules),
+		schedules:   a.schedules != nil && a.runtimeSupports(protocol.FeaturePlugins),
 		hooks:       a.hooks != nil,
 		models:      true,
 		approvals:   true,

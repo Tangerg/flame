@@ -9,7 +9,6 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -22,7 +21,6 @@ func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {
 		{"workspace", wireWorkspaceError(workspaceapp.ErrCWDUnavailable), protocol.ErrWorkspaceUnavailable, workspaceapp.ErrCWDUnavailable},
 		{"tool input", wireWorkspaceError(tool.ErrInvalidArguments), protocol.ErrInvalidParams, tool.ErrInvalidArguments},
 		{"mcp", wireMCPError(mcpapp.ErrUnknownServer), protocol.ErrMCPServerNotFound, mcpapp.ErrUnknownServer},
-		{"schedule revision", mapScheduleErr(schedule.ErrRevisionConflict, "sch_1"), protocol.ErrRevisionConflict, schedule.ErrRevisionConflict},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			failure := ProjectError(tc.err)

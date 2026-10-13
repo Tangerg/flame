@@ -32,11 +32,11 @@ type scheduleFormDraft struct {
 	enabled      bool
 }
 
-func newScheduleFormDraft(mode scheduleFormMode, scheduled protocol.Schedule, defaultWorkspace string) scheduleFormDraft {
+func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.CreateV1Output, defaultWorkspace string) scheduleFormDraft {
 	if mode == scheduleFormUpdate {
 		return scheduleFormDraft{
-			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduleWorkspacePath(scheduled),
-			provider: scheduled.Provider, model: scheduled.Model, cron: scheduled.Cron, enabled: scheduled.Enabled,
+			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduled.CWD,
+			provider: scheduled.ModelSelection["provider"], model: scheduled.ModelSelection["model"], cron: scheduled.Cron, enabled: !scheduled.NextRunAt.IsZero(),
 		}
 	}
 	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, enabled: true}
@@ -53,62 +53,52 @@ func (s scheduleFormDraft) candidate() (schedule.CreateV1Input, error) {
 	return request, nil
 }
 
-func (s scheduleFormDraft) patch(original protocol.Schedule) (protocol.UpdateScheduleRequest, bool, error) {
-	request := protocol.UpdateScheduleRequest{ID: original.ID, ExpectedRevision: original.Revision}
+func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.UpdateV1Input, bool, error) {
+	request := schedule.UpdateV1Input{ID: original.ID, ExpectedRevision: original.Revision}
 	title := strings.TrimSpace(s.title)
 	if title != original.Title {
 		request.Title = &title
 	}
 	instructions := strings.TrimSpace(s.instructions)
 	if instructions != original.Instructions {
+		if instructions == "" {
+			return schedule.UpdateV1Input{}, false, errors.New("instructions are required")
+		}
 		request.Instructions = &instructions
 	}
 	workspace := strings.TrimSpace(s.workspace)
-	if workspace != scheduleWorkspacePath(original) {
-		if workspace == "" {
-			request.WorkspaceMode = protocol.ScheduleWorkspaceDefault
-		} else {
-			request.Workspace = &protocol.WorkspaceRef{Path: workspace}
-		}
+	if workspace != original.CWD {
+		request.CWD = &workspace
 	}
 	provider, model := s.provider, s.model
-	if provider != original.Provider || model != original.Model {
+	if provider != original.ModelSelection["provider"] || model != original.ModelSelection["model"] {
 		if err := validateScheduleModelPair(provider, model); err != nil {
-			return protocol.UpdateScheduleRequest{}, false, err
+			return schedule.UpdateV1Input{}, false, err
 		}
-		request.Provider, request.Model = &provider, &model
+		request.ModelSelection.Provider, request.ModelSelection.Model = &provider, &model
 	}
 	cron := strings.TrimSpace(s.cron)
 	if cron != original.Cron {
+		if cron == "" {
+			return schedule.UpdateV1Input{}, false, errors.New("cron is required")
+		}
 		request.Cron = &cron
 	}
 	enabled := s.enabled
-	if enabled != original.Enabled {
+	if enabled != !original.NextRunAt.IsZero() {
 		request.Enabled = &enabled
 	}
 	if !scheduleRequestHasChanges(request) {
 		return request, false, nil
 	}
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.UpdateScheduleRequest{}, false, err
-	}
 	return request, true, nil
 }
 
-func scheduleWorkspacePath(scheduled protocol.Schedule) string {
-	if scheduled.Workspace == nil {
-		return ""
-	}
-	return scheduled.Workspace.Path
+func scheduleRequestHasChanges(request schedule.UpdateV1Input) bool {
+	return request.Title != nil || request.Instructions != nil || request.CWD != nil || request.ModelSelection.Provider != nil || request.ModelSelection.Model != nil || request.ModelSelection.ReasoningEffort != nil || request.Cron != nil || request.Enabled != nil
 }
 
-func scheduleRequestHasChanges(request protocol.UpdateScheduleRequest) bool {
-	return request.Title != nil || request.Instructions != nil || request.Workspace != nil ||
-		request.WorkspaceMode != "" || request.Provider != nil || request.Model != nil ||
-		request.ReasoningEffort != nil || request.Cron != nil || request.Enabled != nil
-}
-
-func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedule) {
+func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.CreateV1Output) {
 	if a.dialogs.scheduleDialog != nil {
 		a.dialogs.scheduleDialog.Controller().Dismiss()
 		a.dialogs.scheduleDialog = nil

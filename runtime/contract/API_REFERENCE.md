@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.10` · 101 methods
+Protocol `2026-10-14.11` · 100 methods
 
 ## Methods
 
@@ -87,7 +87,6 @@ Protocol `2026-10-14.10` · 101 methods
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
-| `schedules.update` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
@@ -203,7 +202,6 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `run_not_found` | — | `detail`, `docUrl` |
 | `run_not_root` | — | `detail`, `docUrl` |
 | `run_waiting` | — | `detail`, `docUrl` |
-| `schedule_not_found` | — | `detail`, `docUrl` |
 | `session_busy` | — | `detail`, `docUrl` |
 | `session_has_active_run` | `activeRun` | `detail`, `docUrl` |
 | `session_not_found` | — | `detail`, `docUrl` |
@@ -1079,34 +1077,6 @@ TypeScript validator from this single registry projection.
 | `AgentMemoryUpdateRequest` | `content` | `maxLength(4096)` |
 | `AgentMemoryAddRequest` | `content` | `pattern("\\S")` |
 | `AgentMemoryAddRequest` | `content` | `maxLength(4096)` |
-| `Schedule` | `id` | `nonEmpty` |
-| `Schedule` | `id` | `identity` |
-| `Schedule` | `id` | `maxLength(256)` |
-| `Schedule` | `id` | `prefix("sch_")` |
-| `Schedule` | `revision` | `positive` |
-| `Schedule` | `revision` | `maximum(9007199254740991)` |
-| `Schedule` | `instructions` | `pattern("\\S")` |
-| `Schedule` | `cron` | `nonEmpty` |
-| `Schedule` | `provider` | `identity` |
-| `Schedule` | `provider` | `maxLength(64)` |
-| `Schedule` | `model` | `identity` |
-| `Schedule` | `model` | `maxLength(256)` |
-| `Schedule` | `reasoningEffort` | `identity` |
-| `Schedule` | `reasoningEffort` | `maxLength(32)` |
-| `UpdateScheduleRequest` | `id` | `nonEmpty` |
-| `UpdateScheduleRequest` | `id` | `identity` |
-| `UpdateScheduleRequest` | `id` | `maxLength(256)` |
-| `UpdateScheduleRequest` | `id` | `prefix("sch_")` |
-| `UpdateScheduleRequest` | `expectedRevision` | `positive` |
-| `UpdateScheduleRequest` | `expectedRevision` | `maximum(9007199254740991)` |
-| `UpdateScheduleRequest` | `instructions` | `pattern("\\S")` |
-| `UpdateScheduleRequest` | `cron` | `nonEmpty` |
-| `UpdateScheduleRequest` | `provider` | `identity` |
-| `UpdateScheduleRequest` | `provider` | `maxLength(64)` |
-| `UpdateScheduleRequest` | `model` | `identity` |
-| `UpdateScheduleRequest` | `model` | `maxLength(256)` |
-| `UpdateScheduleRequest` | `reasoningEffort` | `identity` |
-| `UpdateScheduleRequest` | `reasoningEffort` | `maxLength(32)` |
 | `Goal` | `sessionId` | `nonEmpty` |
 | `Goal` | `sessionId` | `identity` |
 | `Goal` | `sessionId` | `maxLength(256)` |
@@ -1270,7 +1240,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.configure` | always | `plugins` |
 | `plugins.setEnablement` | always | `plugins` |
 | `plugins.uninstall` | always | `plugins` |
-| `schedules.update` | always | `schedules` |
 | `goals.start` | always | `goals` |
 | `goals.update` | always | `goals` |
 | `goals.clear` | always | `goals` |

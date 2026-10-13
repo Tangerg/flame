@@ -36,7 +36,6 @@ var problemSpecs = mustProblemSpecs([]problemSpec{
 	declaredProblem(protocol.ErrMCPOwnedByInstallation, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrMCPServerNotFound, protocol.RecoveryRefetch),
 	declaredProblem(protocol.ErrSkillNotFound, protocol.RecoveryRefetch),
-	declaredProblem(protocol.ErrScheduleNotFound, protocol.RecoveryRefetch),
 	declaredProblem(protocol.ErrSkillUnavailable, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrMCPServerAlreadyExists, protocol.RecoveryRefetch),
 	declaredProblem(protocol.ErrMCPServerDisabled, protocol.RecoveryRefetch),

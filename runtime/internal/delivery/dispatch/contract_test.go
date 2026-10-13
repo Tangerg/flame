@@ -64,7 +64,7 @@ func (c *capabilityRuntime) UsageSummary(context.Context, protocol.UsageSummaryR
 
 func TestRetiredBusinessViewMethodsAreUnknown(t *testing.T) {
 	for _, method := range []string{"plugins.readView", "plugins.readSchedules"} {
-		response := call(t, map[string]bool{protocol.FeaturePlugins: true, protocol.FeatureSchedules: true}, method, `{}`)
+		response := call(t, map[string]bool{protocol.FeaturePlugins: true}, method, `{}`)
 		failure, ok := response.Error.(*transport.Error)
 		if !ok || failure.Code != -32601 {
 			t.Fatalf("retired %s remains callable: %+v", method, response)

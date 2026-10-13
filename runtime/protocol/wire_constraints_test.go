@@ -686,79 +686,6 @@ func TestMCPSecretMapChangesRejectEmptyReplacement(t *testing.T) {
 	}
 }
 
-func TestUpdateScheduleWorkspaceModesAreUnambiguous(t *testing.T) {
-	t.Parallel()
-
-	valid := []UpdateScheduleRequest{
-		{ID: "sch_1", ExpectedRevision: 1},
-		{ID: "sch_1", ExpectedRevision: 1, Workspace: &WorkspaceRef{Path: "/workspace"}},
-		{ID: "sch_1", ExpectedRevision: 1, WorkspaceMode: ScheduleWorkspaceDefault},
-	}
-	for _, request := range valid {
-		if err := ValidateWireTree(request); err != nil {
-			t.Errorf("ValidateWireTree rejected legal schedule workspace patch %+v: %v", request, err)
-		}
-	}
-
-	assertConstraintField(t, ValidateWireTree(UpdateScheduleRequest{
-		ID:               "sch_1",
-		ExpectedRevision: 1,
-		Workspace:        &WorkspaceRef{Path: "/workspace"},
-		WorkspaceMode:    ScheduleWorkspaceDefault,
-	}), "UpdateScheduleRequest", "workspace")
-	assertConstraintField(t, (UpdateScheduleRequest{
-		ID:               "sch_1",
-		ExpectedRevision: 1,
-		WorkspaceMode:    "unknown",
-	}).ValidateWire(), "UpdateScheduleRequest", "workspaceMode")
-}
-
-func TestScheduleInstructionsMustContainNonWhitespace(t *testing.T) {
-	t.Parallel()
-
-	blank := " \n\t"
-	assertConstraintField(t, ValidateWireTree(UpdateScheduleRequest{
-		ID:               "sch_1",
-		ExpectedRevision: 1,
-		Instructions:     &blank,
-	}), "UpdateScheduleRequest", "instructions")
-	assertConstraintField(t, ValidateWireTree(Schedule{
-		ID:           "sch_1",
-		Instructions: blank,
-		Cron:         "@daily",
-		CreatedAt:    time.Unix(1, 0).UTC(),
-		Revision:     1,
-	}), "Schedule", "instructions")
-}
-
-func TestScheduleRequiresCron(t *testing.T) {
-	t.Parallel()
-
-	valid := Schedule{
-		ID: "sch_1", Instructions: "run",
-		Cron: "@daily", CreatedAt: time.Unix(1, 0).UTC(), Revision: 1,
-	}
-	if err := valid.ValidateWire(); err != nil {
-		t.Fatalf("valid Schedule: %v", err)
-	}
-	valid.Cron = ""
-	assertConstraintField(t, valid.ValidateWire(), "Schedule", "cron")
-}
-
-func TestScheduleRequiresCreationTime(t *testing.T) {
-	t.Parallel()
-
-	schedule := Schedule{
-		ID: "sch_1", Instructions: "run", Cron: "@daily",
-		CreatedAt: time.Unix(1, 0).UTC(), Revision: 1,
-	}
-	if err := schedule.ValidateWire(); err != nil {
-		t.Fatalf("valid Schedule: %v", err)
-	}
-	schedule.CreatedAt = time.Time{}
-	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "createdAt")
-}
-
 func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 	t.Parallel()
 	valid := ApprovalRule{Subject: ApprovalSubject{Type: ApprovalSubjectAll},
@@ -1594,16 +1521,6 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "provider")
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "model")
 
-	schedule := Schedule{ID: "sch_1", Instructions: "run", Cron: "@daily", Revision: 1, Provider: "provider"}
-	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "model")
-	schedule.Provider, schedule.Model = "", "model"
-	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "provider")
-	schedule.Model, schedule.ReasoningEffort = "", "high"
-	scheduleSelectionErr := schedule.ValidateWire()
-	assertConstraintField(t, scheduleSelectionErr, "Schedule", "provider")
-	assertConstraintField(t, scheduleSelectionErr, "Schedule", "model")
-	scheduleUpdate := UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Provider: &provider}
-	assertConstraintField(t, scheduleUpdate.ValidateWire(), "UpdateScheduleRequest", "model")
 }
 
 func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
@@ -1898,13 +1815,6 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		"UpdateSessionRequest": UpdateSessionRequest{
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger,
 		},
-		"Schedule": Schedule{
-			ID: "sch_1", Instructions: "run", Cron: "@daily",
-			CreatedAt: time.Unix(1, 0).UTC(), Revision: MaximumExactJSONInteger,
-		},
-		"UpdateScheduleRequest": UpdateScheduleRequest{
-			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger,
-		},
 		"PlanState": PlanState{Revision: MaximumExactJSONInteger, UpdatedAt: time.Unix(1, 0).UTC()},
 	} {
 		if err := value.ValidateWire(); err != nil {
@@ -1923,13 +1833,6 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		}},
 		{name: "UpdateSessionRequest", field: "expectedRevision", value: UpdateSessionRequest{
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger + 1,
-		}},
-		{name: "Schedule", field: "revision", value: Schedule{
-			ID: "sch_1", Instructions: "run", Cron: "@daily",
-			CreatedAt: time.Unix(1, 0).UTC(), Revision: MaximumExactJSONInteger + 1,
-		}},
-		{name: "UpdateScheduleRequest", field: "expectedRevision", value: UpdateScheduleRequest{
-			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger + 1,
 		}},
 		{name: "PlanState", field: "revision", value: PlanState{Revision: MaximumExactJSONInteger + 1}},
 	} {
@@ -1988,7 +1891,6 @@ func TestOperationalResourceIdentitiesAreExactAndBounded(t *testing.T) {
 		{name: "segment padding", shape: "SubscribeRunRequest", field: "segmentId", value: SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1 "}},
 		{name: "session oversized", shape: "GetSessionRequest", field: "sessionId", value: GetSessionRequest{SessionID: strings.Repeat("界", MaximumResourceIdentityCharacters+1)}},
 		{name: "run oversized", shape: "GetRunRequest", field: "runId", value: GetRunRequest{RunID: strings.Repeat("r", MaximumResourceIdentityCharacters+1)}},
-		{name: "schedule oversized", shape: "UpdateScheduleRequest", field: "id", value: UpdateScheduleRequest{ID: IDPrefixSchedule + strings.Repeat("x", MaximumResourceIdentityCharacters), ExpectedRevision: 1}},
 		{name: "schedule event prefix", shape: "RuntimeEvent", field: "scheduleIds[0]", value: RuntimeEvent{Type: RuntimeSchedulesChanged, Sequence: 1, ScheduleIDs: []string{"other_1"}}},
 	}
 	for _, test := range tests {

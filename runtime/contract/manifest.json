@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.10",
+  "protocolVersion": "2026-10-14.11",
   "features": [
     "reasoning",
     "multimodal",
@@ -10,7 +10,6 @@
     "skills",
     "mcp",
     "plugins",
-    "schedules",
     "git",
     "checkpoints",
     "fileWatch",
@@ -1137,24 +1136,6 @@
       "pagination": "none"
     },
     {
-      "name": "schedules.update",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "schedule_not_found",
-        "revision_conflict",
-        "workspace_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "schedules"
-      ]
-    },
-    {
       "name": "goals.start",
       "kind": "unary",
       "operation": "command",
@@ -1566,7 +1547,6 @@
           "runs.start",
           "runs.subscribe",
           "runtime.subscribe",
-          "schedules.update",
           "sessions.export",
           "sessions.exportTrajectory",
           "sessions.import",
@@ -1834,8 +1814,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
-          "plugins.uninstall",
-          "schedules.update"
+          "plugins.uninstall"
         ]
       },
       {
@@ -1876,7 +1855,6 @@
         "code": -32019,
         "recoveryAction": "refetch",
         "methods": [
-          "schedules.update",
           "sessions.update",
           "skills.proposals.approve",
           "skills.proposals.reject"
@@ -1925,14 +1903,6 @@
         "methods": [
           "runs.steer",
           "runs.subscribe"
-        ]
-      },
-      {
-        "type": "schedule_not_found",
-        "code": -32036,
-        "recoveryAction": "refetch",
-        "methods": [
-          "schedules.update"
         ]
       },
       {
@@ -2034,7 +2004,6 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
-          "schedules.update",
           "sessions.create",
           "sessions.update",
           "skills.discovered.get",
@@ -2649,16 +2618,6 @@
       ]
     },
     {
-      "method": "schedules.update",
-      "rules": [
-        {
-          "requires": [
-            "schedules"
-          ]
-        }
-      ]
-    },
-    {
       "method": "goals.start",
       "rules": [
         {
@@ -3204,13 +3163,6 @@
         },
         {
           "tag": "run_waiting",
-          "optional": [
-            "detail",
-            "docUrl"
-          ]
-        },
-        {
-          "tag": "schedule_not_found",
           "optional": [
             "detail",
             "docUrl"
@@ -5400,50 +5352,6 @@
       ]
     },
     {
-      "type": "Schedule",
-      "rules": [
-        {
-          "required": [
-            "createdAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "provider",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "model"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "model",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "reasoningEffort",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider",
-            "model"
-          ]
-        }
-      ]
-    },
-    {
       "type": "UpdateSessionRequest",
       "rules": [
         {
@@ -5635,45 +5543,6 @@
           ],
           "forbidden": [
             "detail"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "UpdateScheduleRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "provider",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "model"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "model",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "workspaceMode",
-              "operator": "equals",
-              "value": "default"
-            }
-          ],
-          "forbidden": [
-            "workspace"
           ]
         }
       ]
@@ -9529,128 +9398,6 @@
       ]
     },
     {
-      "type": "Schedule",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "identity"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "id",
-          "constraint": "prefix(\"sch_\")"
-        },
-        {
-          "field": "revision",
-          "constraint": "positive"
-        },
-        {
-          "field": "revision",
-          "constraint": "maximum(9007199254740991)"
-        },
-        {
-          "field": "instructions",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "cron",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "provider",
-          "constraint": "identity"
-        },
-        {
-          "field": "provider",
-          "constraint": "maxLength(64)"
-        },
-        {
-          "field": "model",
-          "constraint": "identity"
-        },
-        {
-          "field": "model",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "reasoningEffort",
-          "constraint": "identity"
-        },
-        {
-          "field": "reasoningEffort",
-          "constraint": "maxLength(32)"
-        }
-      ]
-    },
-    {
-      "type": "UpdateScheduleRequest",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "identity"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "id",
-          "constraint": "prefix(\"sch_\")"
-        },
-        {
-          "field": "expectedRevision",
-          "constraint": "positive"
-        },
-        {
-          "field": "expectedRevision",
-          "constraint": "maximum(9007199254740991)"
-        },
-        {
-          "field": "instructions",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "cron",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "provider",
-          "constraint": "identity"
-        },
-        {
-          "field": "provider",
-          "constraint": "maxLength(64)"
-        },
-        {
-          "field": "model",
-          "constraint": "identity"
-        },
-        {
-          "field": "model",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "reasoningEffort",
-          "constraint": "identity"
-        },
-        {
-          "field": "reasoningEffort",
-          "constraint": "maxLength(32)"
-        }
-      ]
-    },
-    {
       "type": "Goal",
       "rules": [
         {
@@ -10527,10 +10274,6 @@
     {
       "file": "request.meta.json",
       "shape": "RequestMeta"
-    },
-    {
-      "file": "schedule.json",
-      "shape": "Schedule"
     },
     {
       "file": "skill.json",

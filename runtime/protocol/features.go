@@ -23,7 +23,6 @@ const (
 	FeatureSkills        = "skills"
 	FeatureMCP           = "mcp"
 	FeaturePlugins       = "plugins"
-	FeatureSchedules     = "schedules"
 	FeatureGit           = "git"
 	FeatureCheckpoints   = "checkpoints"
 	FeatureFileWatch     = "fileWatch"
@@ -73,7 +72,6 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureSkills},
 	{Key: FeatureMCP},
 	{Key: FeaturePlugins},
-	{Key: FeatureSchedules},
 	{Key: FeatureGit},
 	{Key: FeatureCheckpoints},
 	{Key: FeatureFileWatch},

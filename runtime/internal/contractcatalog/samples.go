@@ -128,7 +128,6 @@ func Samples() []Sample {
 		// Discovery, request metadata, and configuration surfaces.
 		{"method.discover.resp.json", reflect.TypeFor[protocol.DiscoverResponse]()},
 		{"request.meta.json", reflect.TypeFor[protocol.RequestMeta]()},
-		{"schedule.json", reflect.TypeFor[protocol.Schedule]()},
 		{"skill.json", reflect.TypeFor[protocol.Skill]()},
 		{"managedSkill.json", reflect.TypeFor[protocol.ManagedSkill]()},
 		{"skillProposal.json", reflect.TypeFor[protocol.SkillProposal]()},

@@ -477,10 +477,6 @@
               "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options CommandOptions) (*protocol.Provider, error)"
             },
             {
-              "name": "UpdateSchedule",
-              "signature": "func(ctx context.Context, request protocol.UpdateScheduleRequest, options CommandOptions) (*protocol.Schedule, error)"
-            },
-            {
               "name": "UpdateSession",
               "signature": "func(ctx context.Context, request protocol.UpdateSessionRequest, options CommandOptions) (*protocol.Session, error)"
             }
@@ -1089,10 +1085,6 @@
             {
               "name": "UpdateProvider",
               "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options CommandOptions) (*protocol.Provider, error)"
-            },
-            {
-              "name": "UpdateSchedule",
-              "signature": "func(ctx context.Context, request protocol.UpdateScheduleRequest, options CommandOptions) (*protocol.Schedule, error)"
             },
             {
               "name": "UpdateSession",
@@ -2789,11 +2781,6 @@
           "value": "\"relocate\""
         },
         {
-          "name": "FeatureSchedules",
-          "type": "untyped string",
-          "value": "\"schedules\""
-        },
-        {
           "name": "FeatureSessionExport",
           "type": "untyped string",
           "value": "\"sessionExport\""
@@ -3581,7 +3568,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.10\""
+          "value": "\"2026-10-14.11\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -3872,11 +3859,6 @@
           "name": "SafetyClassWrite",
           "type": "SafetyClass",
           "value": "\"write\""
-        },
-        {
-          "name": "ScheduleWorkspaceDefault",
-          "type": "ScheduleWorkspaceMode",
-          "value": "\"default\""
         },
         {
           "name": "SessionArtifactVersion",
@@ -4262,10 +4244,6 @@
         },
         {
           "name": "ErrRunWaiting",
-          "type": "error"
-        },
-        {
-          "name": "ErrScheduleNotFound",
           "type": "error"
         },
         {
@@ -10473,88 +10451,6 @@
           "underlying": "string"
         },
         {
-          "name": "Schedule",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Title",
-              "type": "string",
-              "tag": "json:\"title\""
-            },
-            {
-              "name": "Instructions",
-              "type": "string",
-              "tag": "json:\"instructions\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            },
-            {
-              "name": "Provider",
-              "type": "string",
-              "tag": "json:\"provider,omitempty\""
-            },
-            {
-              "name": "Model",
-              "type": "string",
-              "tag": "json:\"model,omitempty\""
-            },
-            {
-              "name": "ReasoningEffort",
-              "type": "string",
-              "tag": "json:\"reasoningEffort,omitempty\""
-            },
-            {
-              "name": "Cron",
-              "type": "string",
-              "tag": "json:\"cron\""
-            },
-            {
-              "name": "Enabled",
-              "type": "bool",
-              "tag": "json:\"enabled\""
-            },
-            {
-              "name": "LastRunAt",
-              "type": "*time.Time",
-              "tag": "json:\"lastRunAt,omitzero\""
-            },
-            {
-              "name": "NextRunAt",
-              "type": "*time.Time",
-              "tag": "json:\"nextRunAt,omitzero\""
-            },
-            {
-              "name": "CreatedAt",
-              "type": "time.Time",
-              "tag": "json:\"createdAt,omitzero\""
-            },
-            {
-              "name": "Revision",
-              "type": "uint64",
-              "tag": "json:\"revision\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ScheduleWorkspaceMode",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
           "name": "SelectPluginProviderRequest",
           "kind": "struct",
           "fields": [
@@ -11972,73 +11868,6 @@
               "name": "APIKey",
               "type": "*ProviderConfigChange",
               "tag": "json:\"apiKey,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "UpdateScheduleRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"expectedRevision\""
-            },
-            {
-              "name": "Title",
-              "type": "*string",
-              "tag": "json:\"title,omitzero\""
-            },
-            {
-              "name": "Instructions",
-              "type": "*string",
-              "tag": "json:\"instructions,omitzero\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            },
-            {
-              "name": "WorkspaceMode",
-              "type": "ScheduleWorkspaceMode",
-              "tag": "json:\"workspaceMode,omitempty\""
-            },
-            {
-              "name": "Provider",
-              "type": "*string",
-              "tag": "json:\"provider,omitzero\""
-            },
-            {
-              "name": "Model",
-              "type": "*string",
-              "tag": "json:\"model,omitzero\""
-            },
-            {
-              "name": "ReasoningEffort",
-              "type": "*string",
-              "tag": "json:\"reasoningEffort,omitzero\""
-            },
-            {
-              "name": "Cron",
-              "type": "*string",
-              "tag": "json:\"cron,omitzero\""
-            },
-            {
-              "name": "Enabled",
-              "type": "*bool",
-              "tag": "json:\"enabled,omitzero\""
             }
           ],
           "methods": [

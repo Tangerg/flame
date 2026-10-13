@@ -710,7 +710,6 @@ func registerObjectConstraints(s *Shapes) {
 	for _, target := range []reflect.Type{
 		typeOf[protocol.StartRunRequest](),
 		typeOf[protocol.StartGoalRequest](),
-		typeOf[protocol.Schedule](),
 	} {
 		rules := modelSelectionRules
 		if target == typeOf[protocol.StartRunRequest]() {
@@ -718,9 +717,6 @@ func registerObjectConstraints(s *Shapes) {
 				{RequiredAny: []string{"sessionId", "newSession"}},
 				{When: []delivery.FieldCondition{{Field: "newSession", Operator: delivery.OperatorPresent}}, Forbidden: []string{"sessionId"}},
 			}, rules)
-		}
-		if target == typeOf[protocol.Schedule]() {
-			rules = slices.Concat([]ConditionalRule{{Required: []string{"createdAt"}}}, rules)
 		}
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
@@ -792,20 +788,6 @@ func registerObjectConstraints(s *Shapes) {
 		})
 	}
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.GoalReason](), Rules: goalReasonRules})
-
-	s.constraint(ObjectConstraintSpec{
-		GoType: typeOf[protocol.UpdateScheduleRequest](),
-		Rules: []ConditionalRule{{
-			When:     []delivery.FieldCondition{{Field: "provider", Operator: delivery.OperatorPresent}},
-			Required: []string{"model"},
-		}, {
-			When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
-			Required: []string{"provider"},
-		}, {
-			When:      []delivery.FieldCondition{{Field: "workspaceMode", Operator: delivery.OperatorEquals, Value: string(protocol.ScheduleWorkspaceDefault)}},
-			Forbidden: []string{"workspace"},
-		}},
-	})
 
 	terminalToolRules := []ConditionalRule{{
 		When: []delivery.FieldCondition{

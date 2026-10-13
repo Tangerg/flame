@@ -390,15 +390,7 @@ describe("the generated wire checks", () => {
       path: "UpdateSessionRequest.expectedRevision",
       detail: `expected at most ${MAXIMUM_EXACT_JSON_INTEGER}`,
     });
-    expect(
-      validateWire("UpdateScheduleRequest", {
-        id: "sch_01",
-        expectedRevision: MAXIMUM_EXACT_JSON_INTEGER + 1,
-      }),
-    ).toContainEqual({
-      path: "UpdateScheduleRequest.expectedRevision",
-      detail: `expected at most ${MAXIMUM_EXACT_JSON_INTEGER}`,
-    });
+
     expect(
       validateMethodResult("sessions.list", {
         data: [{ ...session, revision: MAXIMUM_EXACT_JSON_INTEGER + 1 }],

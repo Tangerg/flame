@@ -6,6 +6,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	"maps"
 	"testing"
 	"time"
 
@@ -25,10 +26,10 @@ type scheduleBindingStub struct {
 	actions          []string
 	keys             map[string]struct{}
 	created          schedule.CreateV1Input
-	updated          protocol.UpdateScheduleRequest
-	createResult     *protocol.Schedule
-	updateResult     *protocol.Schedule
-	list             func(protocol.PageQuery) *protocol.Page[protocol.Schedule]
+	updated          schedule.UpdateV1Input
+	createResult     *schedule.CreateV1Output
+	updateResult     *schedule.CreateV1Output
+	list             func(protocol.PageQuery) *protocol.Page[schedule.CreateV1Output]
 }
 
 const scheduleInstallation = "12345678-1234-1234-1234-123456789abc"
@@ -67,15 +68,41 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		s.assertCommand("create", flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		s.created = input
 		row := wireSchedule(s.now, "sch_created")
-		row.Title, row.Instructions, row.Cron = input.Title, input.Instructions, input.Cron
-		row.Provider, row.Model, row.ReasoningEffort = input.ModelSelection["provider"], input.ModelSelection["model"], input.ModelSelection["reasoningEffort"]
-		if input.CWD != "" {
-			row.Workspace = &protocol.WorkspaceRef{Path: input.CWD}
-		}
+		row.Title, row.Instructions, row.Cron, row.CWD, row.ModelSelection = input.Title, input.Instructions, input.Cron, input.CWD, input.ModelSelection
 		if s.createResult != nil {
 			row = cloneSchedule(*s.createResult)
 		}
-		output, err := jsoninput.Encode(schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, CWD: input.CWD, ModelSelection: input.ModelSelection, CreatedAt: row.CreatedAt, NextRunAt: *row.NextRunAt, Revision: row.Revision})
+		output, err := jsoninput.Encode(row)
+		if err != nil {
+			s.t.Fatal(err)
+		}
+		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
+	}
+	if request.Method == schedule.UpdateV1Method {
+		var input schedule.UpdateV1Input
+		if err := json.Unmarshal(request.Input, &input); err != nil {
+			s.t.Fatal(err)
+		}
+		s.assertCommand("update", flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		s.updated = input
+		row := wireSchedule(s.now, input.ID)
+		row.Revision = input.ExpectedRevision + 1
+		if input.Title != nil {
+			row.Title = *input.Title
+		}
+		if input.Instructions != nil {
+			row.Instructions = *input.Instructions
+		}
+		if input.CWD != nil {
+			row.CWD = *input.CWD
+		}
+		if input.Enabled != nil && !*input.Enabled {
+			row.NextRunAt = time.Time{}
+		}
+		if s.updateResult != nil {
+			row = cloneSchedule(*s.updateResult)
+		}
+		output, err := jsoninput.Encode(row)
 		if err != nil {
 			s.t.Fatal(err)
 		}
@@ -113,34 +140,22 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		s.t.Fatalf("schedule page limit: %v", input.Limit)
 	}
 	query := protocol.PageQuery{Cursor: input.Cursor, Limit: new(int(*input.Limit))}
-	var page *protocol.Page[protocol.Schedule]
+	var page *protocol.Page[schedule.CreateV1Output]
 	if s.list != nil {
 		page = s.list(query)
 	} else {
 		first := wireSchedule(s.now.Add(time.Minute), "sch_2")
 		if query.Cursor == "" {
-			page = protocol.NewPageWithCursor([]protocol.Schedule{first}, "next")
+			page = protocol.NewPageWithCursor([]schedule.CreateV1Output{first}, "next")
 		} else {
-			page = protocol.NewPage([]protocol.Schedule{wireSchedule(s.now, "sch_1")})
+			page = protocol.NewPage([]schedule.CreateV1Output{wireSchedule(s.now, "sch_1")})
 		}
 	}
 	if page == nil {
 		return nil, nil
 	}
 	value := schedule.ListV1Output{NextCursor: page.NextCursor}
-	for _, row := range page.Data {
-		snapshot := schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, CreatedAt: row.CreatedAt, Revision: row.Revision, ModelSelection: map[string]string{"provider": row.Provider, "model": row.Model, "reasoningEffort": row.ReasoningEffort}}
-		if row.Workspace != nil {
-			snapshot.CWD = row.Workspace.Path
-		}
-		if row.NextRunAt != nil {
-			snapshot.NextRunAt = *row.NextRunAt
-		}
-		if row.LastRunAt != nil {
-			snapshot.LastRunAt = *row.LastRunAt
-		}
-		value.Rows = append(value.Rows, snapshot)
-	}
+	value.Rows = page.Data
 	if value.Rows == nil {
 		value.Rows = make([]schedule.CreateV1Output, 0)
 	}
@@ -149,53 +164,6 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		s.t.Fatal(err)
 	}
 	return &protocol.CallPluginResponse{Output: encoded.JSON()}, nil
-}
-
-func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol.UpdateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
-	s.assertCommand("update", options)
-	s.updated = request
-	s.updated.Title = clonePointer(request.Title)
-	s.updated.Instructions = clonePointer(request.Instructions)
-	s.updated.Workspace = cloneWorkspaceRef(request.Workspace)
-	s.updated.Provider = clonePointer(request.Provider)
-	s.updated.Model = clonePointer(request.Model)
-	s.updated.ReasoningEffort = clonePointer(request.ReasoningEffort)
-	s.updated.Cron = clonePointer(request.Cron)
-	s.updated.Enabled = clonePointer(request.Enabled)
-	if s.updateResult != nil {
-		result := cloneSchedule(*s.updateResult)
-		return &result, nil
-	}
-	updated := wireSchedule(s.now, request.ID)
-	updated.Revision = request.ExpectedRevision + 1
-	if request.Title != nil {
-		updated.Title = *request.Title
-	}
-	if request.Instructions != nil {
-		updated.Instructions = *request.Instructions
-	}
-	if request.Workspace != nil {
-		updated.Workspace = cloneWorkspaceRef(request.Workspace)
-	} else if request.WorkspaceMode == protocol.ScheduleWorkspaceDefault {
-		updated.Workspace = nil
-	}
-	if request.Provider != nil {
-		updated.Provider = *request.Provider
-		updated.Model = *request.Model
-	}
-	if request.ReasoningEffort != nil {
-		updated.ReasoningEffort = *request.ReasoningEffort
-	}
-	if request.Cron != nil {
-		updated.Cron = *request.Cron
-	}
-	if request.Enabled != nil {
-		updated.Enabled = *request.Enabled
-		if !updated.Enabled {
-			updated.NextRunAt = nil
-		}
-	}
-	return &updated, nil
 }
 
 func (s *scheduleBindingStub) assertMeta(meta protocol.RequestMeta) {
@@ -218,20 +186,15 @@ func (s *scheduleBindingStub) assertCommand(action string, options flameruntime.
 	s.actions = append(s.actions, action)
 }
 
-func wireSchedule(now time.Time, id string) protocol.Schedule {
-	next := now.Add(time.Hour)
-	return protocol.Schedule{
-		ID: id, Title: "Review", Instructions: "review the repository", Cron: "0 * * * *",
-		Enabled: true, NextRunAt: &next, CreatedAt: now, Revision: 1,
-	}
+func wireSchedule(now time.Time, id string) schedule.CreateV1Output {
+	return schedule.CreateV1Output{ID: id, Title: "Review", Instructions: "review the repository", Cron: "0 * * * *", NextRunAt: now.Add(time.Hour), CreatedAt: now, Revision: 1, ModelSelection: map[string]string{}}
 }
 
 func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
 	stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{})}
 	runtime := &Connection{
-		schedules: stub,
-		plugins:   stub,
+		plugins: stub,
 		workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 			Ref:          protocol.WorkspaceRef{Path: "/workspace"},
 			ProjectRoot:  "/workspace",
@@ -264,7 +227,15 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 		t.Fatalf("create request = %+v", stub.created)
 	}
 	title := "Updated"
-	updated, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{ID: created.ID, ExpectedRevision: created.Revision, Title: &title})
+	updateRequest, err := runtime.PrepareUpdate(t.Context(), schedule.UpdateV1Input{ID: created.ID, ExpectedRevision: created.Revision, Title: &title})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateReply, err := runtime.CallPlugin(t.Context(), updateRequest, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := runtime.DecodeUpdate(created.ID, updateReply)
 	if err != nil || updated.Title != title || updated.Revision != created.Revision+1 {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
@@ -302,74 +273,47 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 }
 
 func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
-	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
-	stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{})}
-	runtime := &Connection{
-		schedules: stub,
-		plugins:   stub,
-		workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-			Ref:          protocol.WorkspaceRef{Path: "/workspace"},
-			ProjectRoot:  "/workspace",
-			Availability: protocol.WorkspaceAvailable,
-		}},
-		meta: requestMeta("test"),
-	}
-
-	request := protocol.UpdateScheduleRequest{
-		ID: "sch_1", ExpectedRevision: 1, Workspace: &protocol.WorkspaceRef{Path: "/workspace/alias"},
-	}
-	_, err := runtime.Update(t.Context(), request)
+	stub := &scheduleBindingStub{t: t}
+	r := &Connection{plugins: stub, meta: requestMeta("test")}
+	empty := ""
+	request, err := r.PrepareUpdate(t.Context(), schedule.UpdateV1Input{ID: "sch_original", ExpectedRevision: 7, CWD: &empty})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if request.Workspace.Path != "/workspace/alias" {
-		t.Fatalf("workspace resolution mutated the caller's request to %q", request.Workspace.Path)
-	}
-	if stub.updated.Workspace == nil || stub.updated.Workspace.Path != "/workspace" || stub.updated.WorkspaceMode != "" {
-		t.Fatalf("bound workspace request = %+v", stub.updated)
-	}
-
-	_, err = runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
-		ID: "sch_1", ExpectedRevision: 2, WorkspaceMode: protocol.ScheduleWorkspaceDefault,
-	})
-	if err != nil {
+	var captured schedule.UpdateV1Input
+	if err := json.Unmarshal(request.Input, &captured); err != nil {
 		t.Fatal(err)
 	}
-	if stub.updated.Workspace != nil || stub.updated.WorkspaceMode != protocol.ScheduleWorkspaceDefault {
-		t.Fatalf("default workspace request = %+v", stub.updated)
+	if captured.CWD == nil || *captured.CWD != "" || captured.ExpectedRevision != 7 {
+		t.Fatalf("workspace reset/revision changed: %+v", captured)
 	}
 }
 
 func TestScheduleAdapterRejectsAMutationForAnotherSchedule(t *testing.T) {
-	t.Parallel()
-	value := wireSchedule(time.Unix(1, 0), "sch_other")
-	_, err := scheduleResult("update schedule", "sch_expected", &value, nil)
-	requireRuntimeContractViolation(t, err)
-}
-
-func cloneSchedule(value protocol.Schedule) protocol.Schedule {
-	value.Workspace = cloneWorkspaceRef(value.Workspace)
-	value.LastRunAt = clonePointer(value.LastRunAt)
-	value.NextRunAt = clonePointer(value.NextRunAt)
-	return value
-}
-
-func cloneWorkspaceRef(value *protocol.WorkspaceRef) *protocol.WorkspaceRef {
-	if value == nil {
-		return nil
+	r := &Connection{}
+	output, err := jsoninput.Encode(wireSchedule(time.Now(), "sch_other"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	return &protocol.WorkspaceRef{Path: value.Path}
+	if _, err := r.DecodeUpdate("sch_original", &protocol.CallPluginResponse{Output: output.JSON()}); err == nil {
+		t.Fatal("another Schedule acknowledged the original mutation")
+	}
+}
+
+func cloneSchedule(value schedule.CreateV1Output) schedule.CreateV1Output {
+	value.ModelSelection = maps.Clone(value.ModelSelection)
+	return value
 }
 
 func TestScheduleReadKeepsOriginalProviderAcrossPages(t *testing.T) {
 	now := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
 	stub := &scheduleBindingStub{t: t, now: now, keys: map[string]struct{}{}}
-	stub.list = func(query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
+	stub.list = func(query protocol.PageQuery) *protocol.Page[schedule.CreateV1Output] {
 		if query.Cursor == "" {
 			stub.provider = "other"
-			return protocol.NewPageWithCursor([]protocol.Schedule{wireSchedule(now, "sch_1")}, "next")
+			return protocol.NewPageWithCursor([]schedule.CreateV1Output{wireSchedule(now, "sch_1")}, "next")
 		}
-		return protocol.NewPage([]protocol.Schedule{wireSchedule(now, "sch_2")})
+		return protocol.NewPage([]schedule.CreateV1Output{wireSchedule(now, "sch_2")})
 	}
 	caller := &Connection{plugins: stub, meta: requestMeta("test")}
 	rows, err := caller.Schedules(t.Context())
@@ -385,11 +329,11 @@ func TestScheduleReadKeepsOriginalProviderAcrossPages(t *testing.T) {
 
 func TestScheduleReadRejectsDuplicateRowsAcrossPublicPages(t *testing.T) {
 	stub := &scheduleBindingStub{t: t, now: time.Now(), keys: map[string]struct{}{}}
-	stub.list = func(query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
+	stub.list = func(query protocol.PageQuery) *protocol.Page[schedule.CreateV1Output] {
 		if query.Cursor == "" {
-			return protocol.NewPageWithCursor([]protocol.Schedule{wireSchedule(stub.now, "sch_1")}, "next")
+			return protocol.NewPageWithCursor([]schedule.CreateV1Output{wireSchedule(stub.now, "sch_1")}, "next")
 		}
-		return protocol.NewPage([]protocol.Schedule{wireSchedule(stub.now, "sch_1")})
+		return protocol.NewPage([]schedule.CreateV1Output{wireSchedule(stub.now, "sch_1")})
 	}
 	caller := &Connection{plugins: stub, meta: requestMeta("test")}
 	_, err := caller.Schedules(t.Context())
@@ -445,5 +389,37 @@ func TestScheduleCreateCapturesPublishedInputWithoutBorrowingCallerState(t *test
 	}
 	if captured.Title != "original" || captured.CWD != "/resolved" || captured.ModelSelection["model"] != "original" || !captured.Enabled || request.InstallationID != scheduleInstallation || request.Method != schedule.CreateV1Method || request.Contract != schedule.CapabilityJSON {
 		t.Fatalf("creation changed its captured intent or owner: %+v, %+v", captured, request)
+	}
+}
+
+func TestScheduleUpdateKeepsOriginalRevisionAndPatchAfterCallerReuse(t *testing.T) {
+	stub := &scheduleBindingStub{t: t}
+	r := &Connection{plugins: stub, meta: requestMeta("test")}
+	title, model, cwd, enabled := "original", "original-model", "", false
+	input := schedule.UpdateV1Input{ID: "sch_original", ExpectedRevision: ^uint64(0) - 1, Title: &title, CWD: &cwd, Enabled: &enabled}
+	input.ModelSelection.Model = &model
+	request, err := r.PrepareUpdate(t.Context(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	title, model, cwd, enabled = "replacement", "replacement-model", "/replacement", true
+	input.ExpectedRevision = 1
+	stub.provider = "replacement-installation"
+	var captured schedule.UpdateV1Input
+	if err := json.Unmarshal(request.Input, &captured); err != nil {
+		t.Fatal(err)
+	}
+	if captured.ExpectedRevision != ^uint64(0)-1 || captured.Title == nil || *captured.Title != "original" || captured.CWD == nil || *captured.CWD != "" || captured.Enabled == nil || *captured.Enabled || captured.ModelSelection.Model == nil || *captured.ModelSelection.Model != "original-model" || request.InstallationID != scheduleInstallation {
+		t.Fatalf("update changed its original owner, revision or patch: %+v", captured)
+	}
+	row := wireSchedule(time.Now(), "sch_original")
+	row.Revision = ^uint64(0)
+	output, err := jsoninput.Encode(row)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := r.DecodeUpdate("sch_original", &protocol.CallPluginResponse{Output: output.JSON()})
+	if err != nil || result.Revision != row.Revision {
+		t.Fatalf("publisher revision was narrowed by a retired Core projection: %+v, %v", result, err)
 	}
 }

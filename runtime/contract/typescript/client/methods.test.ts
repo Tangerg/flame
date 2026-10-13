@@ -291,28 +291,6 @@ describe("methods factory", () => {
     await client.close();
   });
 
-  it("forwards the complete generated schedule update contract", async () => {
-    const call = vi.fn().mockResolvedValue({ id: "sch_1", revision: 3 });
-    const methods = createMethods({ call } as unknown as RpcClient);
-
-    await methods.schedules.update({
-      id: "sch_1",
-      expectedRevision: 2,
-      title: "Use the Runtime default",
-      workspaceMode: "default",
-    });
-
-    expect(call).toHaveBeenCalledWith(
-      "schedules.update",
-      {
-        id: "sch_1",
-        expectedRevision: 2,
-        title: "Use the Runtime default",
-        workspaceMode: "default",
-      },
-      expect.objectContaining({ idempotencyKey: expect.any(String) }),
-    );
-  });
 
   it("binds an immutable workspace identity into every nested resource call", async () => {
     const call = vi.fn().mockResolvedValue({ data: [] });

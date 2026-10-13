@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
-	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/tools"
@@ -24,7 +23,6 @@ type Schedules struct {
 	contracts     rpc.Contracts
 	installations plugins.Store
 	pool          *mcpconnection.Pool
-	commands      *CommandCalls
 }
 
 func (s *Schedules) OwnsCreateSource(ctx context.Context, ref tool.Ref, release fingerprint.Digest) (bool, error) {
@@ -117,25 +115,13 @@ func (s *Schedules) originalCreateBinding(ctx context.Context, ref tool.Ref, rel
 	return pluginsdk.NewCapabilityBinding(session, source.Export, s.contracts.Capability)
 }
 
-func NewSchedules(store plugins.Store, pool *mcpconnection.Pool, commands *CommandCalls) (*Schedules, error) {
+func NewSchedules(store plugins.Store, pool *mcpconnection.Pool) (*Schedules, error) {
 	if dependency.Missing(store) || pool == nil {
 		return nil, errors.New("schedules: installation store and connections are required")
-	}
-	if commands == nil {
-		return nil, errors.New("schedules: command routing is required")
 	}
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return nil, err
 	}
-	return &Schedules{contracts: contracts, installations: store, pool: pool, commands: commands}, nil
-}
-
-func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedule.Schedule, error) {
-	value, err := invokeCommand[rpc.UpdateInput, schedule.Snapshot](ctx, s.commands, s.contracts.Capability, rpc.Update, rpc.UpdateInput{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Title: input.Patch.Title, Instructions: input.Patch.Instructions, CWD: input.Patch.CWD, Cron: input.Patch.Cron, Enabled: input.Patch.Enabled, ModelSelection: rpc.EncodeModelPatch(input.Patch.ModelSelection)}, func(value schedule.Snapshot) error { _, err := schedule.Restore(value); return err })
-	if err != nil {
-		return schedule.Schedule{}, rpc.DecodeError(err)
-	}
-	saved, err := schedule.Restore(value.value)
-	return saved, err
+	return &Schedules{contracts: contracts, installations: store, pool: pool}, nil
 }

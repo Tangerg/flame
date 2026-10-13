@@ -77,7 +77,7 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 	if profile.Supports(protocol.FeatureMCP) {
 		cfg.MCP = connection
 	}
-	if profile.Supports(protocol.FeatureSchedules) {
+	if profile.Supports(protocol.FeaturePlugins) {
 		cfg.Schedules = connection
 	}
 	if profile.Supports(protocol.FeatureSessionExport) {

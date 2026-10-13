@@ -103,7 +103,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		protocol.FeatureGoals:       {},
 		protocol.FeatureSkills:      {},
 		protocol.FeatureMCP:         {},
-		protocol.FeatureSchedules:   {},
+		protocol.FeaturePlugins:     {},
 		protocol.FeatureAgentMemory: {},
 	}
 	profile := terminalProfileWithFeatures(t, features)
@@ -119,7 +119,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		protocol.FeatureGoals:       availableWithGoals,
 		protocol.FeatureSkills:      availableWithSkills,
 		protocol.FeatureMCP:         availableWithMCP,
-		protocol.FeatureSchedules:   availableWithSchedules,
+		protocol.FeaturePlugins:     availableWithSchedules,
 		protocol.FeatureAgentMemory: availableWithAgentMemory,
 	}
 	for feature, check := range checks {

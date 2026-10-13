@@ -318,8 +318,6 @@ export type WireTypeName =
   | "RuntimeSubscribeResponse"
   | "RuntimeTopic"
   | "SafetyClass"
-  | "Schedule"
-  | "ScheduleWorkspaceMode"
   | "SearchHit"
   | "SearchResult"
   | "SelectPluginProviderRequest"
@@ -377,7 +375,6 @@ export type WireTypeName =
   | "UpdateGoalRequest"
   | "UpdateMCPServerRequest"
   | "UpdateProviderRequest"
-  | "UpdateScheduleRequest"
   | "UpdateSessionRequest"
   | "Usage"
   | "UsageBucket"
@@ -3002,13 +2999,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
-        type: literal("schedule_not_found"),
-      }, ["type"]),
-      fields({
-        activeRun: absent(),
-        errors: absent(),
-        requiredCapabilities: absent(),
-        retryAfterSeconds: absent(),
         type: literal("session_busy"),
       }, ["type"]),
       fields({
@@ -3711,36 +3701,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeSubscribeResponse: object({}, []),
   RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
-  Schedule: allOf([
-    object({
-      createdAt: text(),
-      cron: allOf([text(), minLength(1)]),
-      enabled: flag(),
-      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
-      instructions: allOf([text(), pattern("\\S")]),
-      lastRunAt: text(),
-      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      nextRunAt: text(),
-      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      revision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
-      title: text(),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-    }, ["createdAt", "cron", "enabled", "id", "instructions", "revision", "title"]),
-    ifThen(
-      fields({}, ["provider"]),
-      fields({}, ["model"]),
-    ),
-    ifThen(
-      fields({}, ["model"]),
-      fields({}, ["provider"]),
-    ),
-    ifThen(
-      fields({}, ["reasoningEffort"]),
-      fields({}, ["model", "provider"]),
-    ),
-  ]),
-  ScheduleWorkspaceMode: enumOf(["default"]),
   SearchHit: object({
     lineNumber: integer(),
     path: text(),
@@ -4253,37 +4213,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     baseUrl: ref(() => CHECKS.ProviderConfigChange),
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["provider"]),
-  UpdateScheduleRequest: allOf([
-    object({
-      cron: allOf([text(), minLength(1)]),
-      enabled: flag(),
-      expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
-      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
-      instructions: allOf([text(), pattern("\\S")]),
-      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      title: text(),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-      workspaceMode: ref(() => CHECKS.ScheduleWorkspaceMode),
-    }, ["expectedRevision", "id"]),
-    ifThen(
-      fields({}, ["provider"]),
-      fields({}, ["model"]),
-    ),
-    ifThen(
-      fields({}, ["model"]),
-      fields({}, ["provider"]),
-    ),
-    ifThen(
-      fields({
-        workspaceMode: literal("default"),
-      }, ["workspaceMode"]),
-      fields({
-        workspace: absent(),
-      }, []),
-    ),
-  ]),
   UpdateSessionRequest: allOf([
     object({
       expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
@@ -4505,7 +4434,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "approval.setMode": ref(() => CHECKS.SetApprovalModeRequest),
   "approval.listRules": ref(() => CHECKS.ListApprovalRulesRequest),
   "approval.forgetRule": ref(() => CHECKS.ForgetApprovalRuleRequest),
-  "schedules.update": ref(() => CHECKS.UpdateScheduleRequest),
   "goals.start": ref(() => CHECKS.StartGoalRequest),
   "goals.update": ref(() => CHECKS.UpdateGoalRequest),
   "goals.clear": ref(() => CHECKS.GoalRequest),
@@ -4616,7 +4544,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "approval.setMode": ref(() => CHECKS.ApprovalModeResult),
   "approval.listRules": ref(() => CHECKS.ListApprovalRulesResult),
   "approval.forgetRule": object({}, []),
-  "schedules.update": ref(() => CHECKS.Schedule),
   "goals.start": ref(() => CHECKS.Goal),
   "goals.update": ref(() => CHECKS.Goal),
   "goals.clear": object({}, []),

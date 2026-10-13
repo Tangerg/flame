@@ -35,7 +35,6 @@ type HandlerConfig struct {
 	// IdempotencyLimits is the replay window enforced for command retries.
 	IdempotencyLimits protocol.IdempotencyLimits
 
-	Schedules     scheduleManagementUseCases
 	Invalidations func(func(invalidation.Notice))
 
 	// Goals exposes the autonomous Goal use cases.
@@ -78,7 +77,6 @@ type Handler struct {
 	usage             usageUseCases
 	feedback          feedbackUseCases
 	trajectoryExports trajectoryExportUseCases
-	schedules         scheduleManagementUseCases
 
 	goals       goalUseCases
 	agentMemory agentMemoryUseCases
@@ -153,7 +151,6 @@ func (c HandlerConfig) validate() error {
 		{name: "Usage", value: c.Usage},
 		{name: "Feedback", value: c.Feedback},
 		{name: "TrajectoryExports", value: c.TrajectoryExports},
-		{name: "Schedules", value: c.Schedules},
 		{name: "AgentMemory", value: c.AgentMemory},
 		{name: "Goals", value: c.Goals},
 		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
@@ -238,7 +235,6 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		serverInfo:               cfg.ServerInfo,
 		workspaceHub:             newWorkspaceHub(),
 		resources:                newResourceLeases(),
-		schedules:                cfg.Schedules,
 		goals:                    cfg.Goals,
 		agentMemory:              cfg.AgentMemory,
 		workspaceFiles:           cfg.WorkspaceFiles,
@@ -357,7 +353,6 @@ func capabilitiesFor(
 			protocol.FeatureCompaction:  true,
 			protocol.FeatureGoals:       true,
 			protocol.FeatureAgentMemory: true,
-			protocol.FeatureSchedules:   true,
 			protocol.FeatureSubagents:   true,
 		}),
 	}

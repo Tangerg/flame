@@ -207,7 +207,7 @@ func availableWithSchedules(a *app) extensions.CommandAvailability {
 	if a.schedules == nil {
 		return extensions.CommandUnavailable("this runtime composition has no schedule service")
 	}
-	return availableWithRuntimeFeature(a, protocol.FeatureSchedules)
+	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
 }
 
 func availableWithAgentMemory(a *app) extensions.CommandAvailability {
