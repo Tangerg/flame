@@ -158,8 +158,8 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
 	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "@hourly", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
-	request := protocol.RunScheduleNowRequest{ID: saved.ID}
-	accepted := r.must(delivery.SchedulesRunNow, request, "manual").(*protocol.RunScheduleNowResponse)
+	request := scheduleRunRequest(r, saved.ID)
+	accepted := readScheduleRun(r, request, "manual")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
 	deadline := time.Now().Add(5 * time.Second)
 	for {
@@ -174,14 +174,14 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-schedules")
 	r.poMCPTools(server, ready)
-	replay := r.must(delivery.SchedulesRunNow, request, "manual").(*protocol.RunScheduleNowResponse)
+	replay := readScheduleRun(r, request, "manual")
 	if *replay != *accepted {
 		t.Fatal("manual replay opened another Run")
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.poMCPTools(server, ready)
-	replay = r.must(delivery.SchedulesRunNow, request, "manual").(*protocol.RunScheduleNowResponse)
+	replay = readScheduleRun(r, request, "manual")
 	if *replay != *accepted {
 		t.Fatal("restart reopened an accepted Run")
 	}
@@ -383,8 +383,8 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
 	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
-	request := protocol.RunScheduleNowRequest{ID: saved.ID}
-	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	request := scheduleRunRequest(r, saved.ID)
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {
 		t.Fatal("withheld manual result appeared successful")
 	}
@@ -403,7 +403,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	if captured.Response.Result.Value == nil {
 		t.Fatal("manual acceptance did not commit before response loss")
 	}
-	accepted := protocol.RunScheduleNowResponse{SessionID: captured.Response.Result.Value.SessionID, RunID: captured.Response.Result.Value.RunID}
+	accepted := scheduleapp.RunReference{SessionID: captured.Response.Result.Value.SessionID, RunID: captured.Response.Result.Value.RunID}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	deadline := time.Now().Add(lifecycleWaitBudget(t))
 	for {
@@ -424,7 +424,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	for range 2 {
-		replay := r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
+		replay := readScheduleRun(r, request, "lost-manual")
 		if *replay != accepted {
 			t.Fatalf("manual replay changed acceptance: %+v", replay)
 		}
@@ -448,8 +448,8 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(&server, ready)
 	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
-	request := protocol.RunScheduleNowRequest{ID: saved.ID}
-	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	request := scheduleRunRequest(r, saved.ID)
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {
 		t.Fatal("withheld manual reply appeared successful")
 	}
@@ -508,7 +508,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	if !capturedInput {
 		t.Fatal("startup opening omitted captured instructions")
 	}
-	replay := r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
+	replay := readScheduleRun(r, request, "lost-manual")
 	if replay.RunID != pending.RunID || replay.SessionID != pending.SessionID {
 		t.Fatalf("startup recovery repeated admission: %+v", replay)
 	}
@@ -527,14 +527,14 @@ func TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun(t *tes
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
 	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured", Instructions: "inspect", Cron: "0 0 1 1 *"}, "create").(*protocol.Schedule)
-	request := protocol.RunScheduleNowRequest{ID: saved.ID}
+	request := scheduleRunRequest(r, saved.ID)
 	options := delivery.Options{IdempotencyKey: "missing-receipt", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}
-	if outcome := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, options); outcome.Failure == nil {
+	if outcome := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); outcome.Failure == nil {
 		t.Fatal("withheld manual request appeared successful")
 	}
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: *server}, "reconnect")
 	r.poMCPTools(server, ready)
-	if outcome := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, options); !errors.Is(outcome.Failure, plugin.ErrCommandUnconfirmed) {
+	if outcome := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); !errors.Is(outcome.Failure, plugin.ErrCommandUnconfirmed) {
 		t.Fatalf("missing receipt became permission to dispatch: %v", outcome.Failure)
 	}
 	sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])

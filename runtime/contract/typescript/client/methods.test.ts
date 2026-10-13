@@ -583,17 +583,17 @@ describe("methods factory", () => {
     const call = vi
       .fn()
       .mockRejectedValueOnce(new RpcTransportError("connection reset"))
-      .mockResolvedValueOnce({ sessionId: "ses_1", runId: "run_1" })
-      .mockResolvedValueOnce({ sessionId: "ses_2", runId: "run_2" });
+      .mockResolvedValueOnce({ ...session, id: "ses_fork_1" })
+      .mockResolvedValueOnce({ ...session, id: "ses_fork_2" });
     const client = { call } as unknown as RpcClient;
     const methods = createMethods(client);
 
-    const attempt = methods.schedules.runNow("sch_1");
+    const attempt = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await expect(attempt).resolves.toMatchObject({
-      runId: "run_1",
+      id: "ses_fork_1",
     });
-    await expect(methods.schedules.runNow("sch_1")).resolves.toMatchObject({
-      runId: "run_2",
+    await expect(methods.sessions.fork({ sessionId: asSessionId("ses_1") })).resolves.toMatchObject({
+      id: "ses_fork_2",
     });
 
     const keys = call.mock.calls.map((args) => args[2]?.idempotencyKey as string);
@@ -627,12 +627,12 @@ describe("methods factory", () => {
         namespace = "idp_runtime_store_b";
         throw new RpcTransportError("old Runtime response lost");
       })
-      .mockResolvedValue({ sessionId: "ses_2", runId: "run_2" });
+      .mockResolvedValue({ ...session, id: "ses_fork_2" });
     const methods = createMethods({ call } as unknown as RpcClient, {
       mutationJournal: persistentJournal,
     });
 
-    const retired = methods.schedules.runNow("sch_1");
+    const retired = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await expect(retired).rejects.toBeInstanceOf(MutationJournalOwnershipError);
     expect(call).toHaveBeenCalledOnce();
     expect(call.mock.calls[0]?.[2]?.idempotencyNamespace).toBe("idp_runtime_store_a");
@@ -640,7 +640,7 @@ describe("methods factory", () => {
     await expect(retired.retry()).rejects.toBeInstanceOf(MutationJournalOwnershipError);
     expect(call).toHaveBeenCalledOnce();
 
-    const replacement = methods.schedules.runNow("sch_1");
+    const replacement = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     expect(replacement.idempotencyKey).toBe(retired.idempotencyKey);
     await expect(replacement).rejects.toBeInstanceOf(MutationJournalOwnershipError);
     expect(call).toHaveBeenCalledOnce();
@@ -672,12 +672,12 @@ describe("methods factory", () => {
         scopeAvailable = false;
         throw new RpcTransportError("Runtime discovery withdrawn");
       })
-      .mockResolvedValue({ sessionId: "ses_1", runId: "run_1" });
+      .mockResolvedValue({ ...session, id: "ses_fork_1" });
     const methods = createMethods({ call } as unknown as RpcClient, {
       mutationJournal: persistentJournal,
     });
 
-    const pending = methods.schedules.runNow("sch_1");
+    const pending = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await expect(pending).rejects.toBeInstanceOf(MutationJournalScopeUnavailableError);
     expect(call).toHaveBeenCalledOnce();
     const originalKey = pending.idempotencyKey;
@@ -689,7 +689,7 @@ describe("methods factory", () => {
 
     scopeAvailable = true;
     const replay = pending.retry();
-    await expect(replay).resolves.toMatchObject({ runId: "run_1" });
+    await expect(replay).resolves.toMatchObject({ id: "ses_fork_1" });
     expect(call).toHaveBeenCalledTimes(2);
     expect(call.mock.calls[1]?.[2]?.idempotencyKey).toBe(originalKey);
     expect(call.mock.calls[1]?.[2]?.idempotencyNamespace).toBe("idp_runtime_store");
@@ -713,10 +713,10 @@ describe("methods factory", () => {
       namespace: "idp_runtime_store",
       retentionSeconds: 86_400,
     });
-    let settleFirst!: (value: { sessionId: string; runId: string }) => void;
+    let settleFirst!: (value: typeof session) => void;
     const firstCall = vi.fn(
       (_method: string, _params: unknown, _options?: RpcCallOptions) =>
-        new Promise<{ sessionId: string; runId: string }>((resolve) => {
+        new Promise<typeof session>((resolve) => {
           settleFirst = resolve;
         }),
     );
@@ -725,7 +725,7 @@ describe("methods factory", () => {
       mutationJournal: firstJournal,
     });
 
-    const first = firstMethods.schedules.runNow("sch_1");
+    const first = firstMethods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await vi.waitFor(() => expect(firstCall).toHaveBeenCalledOnce());
     const firstRequest = firstCall.mock.calls[0];
     expect(firstRequest).toBeDefined();
@@ -734,8 +734,8 @@ describe("methods factory", () => {
 
     const replayCall = vi.fn(
       async (_method: string, _params: unknown, _options?: RpcCallOptions) => ({
-        sessionId: "ses_1",
-        runId: "run_1",
+        ...session,
+        id: "ses_fork_1",
       }),
     );
     firstJournal.dispose();
@@ -743,13 +743,13 @@ describe("methods factory", () => {
     const restartedMethods = createMethods({ call: replayCall } as unknown as RpcClient, {
       mutationJournal: restartedJournal,
     });
-    await expect(restartedMethods.schedules.runNow("sch_1")).resolves.toMatchObject({
-      runId: "run_1",
+    await expect(restartedMethods.sessions.fork({ sessionId: asSessionId("ses_1") })).resolves.toMatchObject({
+      id: "ses_fork_1",
     });
 
     expect(replayCall.mock.calls[0]?.[2]?.idempotencyKey).toBe(firstKey);
-    settleFirst({ sessionId: "ses_1", runId: "run_1" });
-    await expect(first).resolves.toMatchObject({ runId: "run_1" });
+    settleFirst({ ...session, id: "ses_fork_1" });
+    await expect(first).resolves.toMatchObject({ id: "ses_fork_1" });
     firstJournal.dispose();
     restartedJournal.dispose();
   });
@@ -769,10 +769,10 @@ describe("methods factory", () => {
       namespace: "idp_runtime_store",
       retentionSeconds: 86_400,
     });
-    let settleRetired!: (value: { sessionId: string; runId: string }) => void;
+    let settleRetired!: (value: typeof session) => void;
     const retiredCall = vi.fn(
       (_method: string, _params: unknown, _options?: RpcCallOptions) =>
-        new Promise<{ sessionId: string; runId: string }>((resolve) => {
+        new Promise<typeof session>((resolve) => {
           settleRetired = resolve;
         }),
     );
@@ -780,13 +780,13 @@ describe("methods factory", () => {
     const retiredMethods = createMethods({ call: retiredCall } as unknown as RpcClient, {
       mutationJournal: retiredJournal,
     });
-    const retired = retiredMethods.schedules.runNow("sch_1");
+    const retired = retiredMethods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await vi.waitFor(() => expect(retiredCall).toHaveBeenCalledOnce());
 
-    let settleReplacement!: (value: { sessionId: string; runId: string }) => void;
+    let settleReplacement!: (value: typeof session) => void;
     const replacementCall = vi.fn(
       (_method: string, _params: unknown, _options?: RpcCallOptions) =>
-        new Promise<{ sessionId: string; runId: string }>((resolve) => {
+        new Promise<typeof session>((resolve) => {
           settleReplacement = resolve;
         }),
     );
@@ -795,18 +795,18 @@ describe("methods factory", () => {
     const replacementMethods = createMethods({ call: replacementCall } as unknown as RpcClient, {
       mutationJournal: replacementJournal,
     });
-    const replay = replacementMethods.schedules.runNow("sch_1");
+    const replay = replacementMethods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await vi.waitFor(() => expect(replacementCall).toHaveBeenCalledOnce());
 
     const retiredKey = retiredCall.mock.calls[0]?.[2]?.idempotencyKey;
     expect(replacementCall.mock.calls[0]?.[2]?.idempotencyKey).toBe(retiredKey);
-    settleRetired({ sessionId: "ses_1", runId: "run_1" });
-    await expect(retired).resolves.toMatchObject({ runId: "run_1" });
+    settleRetired({ ...session, id: "ses_fork_1" });
+    await expect(retired).resolves.toMatchObject({ id: "ses_fork_1" });
     expect([...values.keys()].some((key) => key.startsWith("entry:"))).toBe(false);
     retiredJournal.dispose();
 
-    settleReplacement({ sessionId: "ses_1", runId: "run_1" });
-    await expect(replay).resolves.toMatchObject({ runId: "run_1" });
+    settleReplacement({ ...session, id: "ses_fork_1" });
+    await expect(replay).resolves.toMatchObject({ id: "ses_fork_1" });
     expect([...values.keys()].some((key) => key.startsWith("entry:"))).toBe(false);
     replacementJournal.dispose();
   });
@@ -830,19 +830,19 @@ describe("methods factory", () => {
         retentionSeconds: 86_400,
       }),
     });
-    const call = vi.fn().mockResolvedValue({ sessionId: "ses_1", runId: "run_1" });
+    const call = vi.fn().mockResolvedValue({ ...session, id: "ses_fork_1" });
     const methods = createMethods({ call } as unknown as RpcClient, {
       mutationJournal: persistentJournal,
     });
 
-    const failed = methods.schedules.runNow("sch_1");
+    const failed = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await expect(failed).rejects.toThrow("not persisted");
     expect(call).not.toHaveBeenCalled();
 
     failWrites = false;
     const recovered = failed.retry();
     expect(recovered.idempotencyKey).toBe(failed.idempotencyKey);
-    await expect(recovered).resolves.toMatchObject({ runId: "run_1" });
+    await expect(recovered).resolves.toMatchObject({ id: "ses_fork_1" });
     expect(call).toHaveBeenCalledOnce();
     persistentJournal.dispose();
   });
@@ -909,12 +909,12 @@ describe("methods factory", () => {
   it("gives concurrent mutations with identical params distinct invocation keys", async () => {
     const call = vi
       .fn()
-      .mockResolvedValueOnce({ sessionId: "ses_1", runId: "run_1" })
-      .mockResolvedValueOnce({ sessionId: "ses_2", runId: "run_2" });
+      .mockResolvedValueOnce({ ...session, id: "ses_fork_1" })
+      .mockResolvedValueOnce({ ...session, id: "ses_fork_2" });
     const methods = createMethods({ call } as unknown as RpcClient);
 
-    const first = methods.schedules.runNow("sch_1");
-    const second = methods.schedules.runNow("sch_1");
+    const first = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
+    const second = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await Promise.all([first, second]);
 
     expect(first.idempotencyKey).toBeTruthy();

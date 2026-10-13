@@ -385,10 +385,6 @@
               "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error)"
             },
             {
-              "name": "RunScheduleNow",
-              "signature": "func(ctx context.Context, request protocol.RunScheduleNowRequest, options CommandOptions) (*protocol.RunScheduleNowResponse, error)"
-            },
-            {
               "name": "SearchWorkspaceFiles",
               "signature": "func(ctx context.Context, request protocol.GrepRequest, options CallOptions) (*protocol.GrepResult, error)"
             },
@@ -1005,10 +1001,6 @@
             {
               "name": "RollbackSession",
               "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error)"
-            },
-            {
-              "name": "RunScheduleNow",
-              "signature": "func(ctx context.Context, request protocol.RunScheduleNowRequest, options CommandOptions) (*protocol.RunScheduleNowResponse, error)"
             },
             {
               "name": "SearchWorkspaceFiles",
@@ -3597,7 +3589,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.8\""
+          "value": "\"2026-10-14.9\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -10264,45 +10256,6 @@
           "name": "RunReplayScope",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "RunScheduleNowRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "RunScheduleNowResponse",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"sessionId\""
-            },
-            {
-              "name": "RunID",
-              "type": "string",
-              "tag": "json:\"runId\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
         },
         {
           "name": "RunSessionOpening",

@@ -67,7 +67,7 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	if err != nil {
 		t.Fatalf("construct Schedule coordinator: %v", err)
 	}
-	s.schedules = testScheduleCommands{Coordinator: coordinator, unexpectedScheduleFiring: unexpectedScheduleFiring{test: t, store: reg}}
+	s.schedules = coordinator
 	return s
 }
 
@@ -107,7 +107,6 @@ func TestMissingScheduleIsAResourceFailure(t *testing.T) {
 		params any
 	}{
 		{SchedulesUpdate, protocol.UpdateScheduleRequest{ID: "sch_missing", ExpectedRevision: 1}},
-		{SchedulesRunNow, protocol.RunScheduleNowRequest{ID: "sch_missing"}},
 	} {
 		t.Run(string(tc.method), func(t *testing.T) {
 			result := endpoint.Invoke(t.Context(), tc.method, tc.params, Options{})
@@ -266,22 +265,4 @@ func mustServerSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Sched
 		t.Fatalf("restore schedule: %v", err)
 	}
 	return scheduled
-}
-
-type testScheduleCommands struct {
-	*schedules.Coordinator
-	unexpectedScheduleFiring
-}
-
-type unexpectedScheduleFiring struct {
-	test  testing.TB
-	store *fakeScheduleRegistry
-}
-
-func (s unexpectedScheduleFiring) RunNow(ctx context.Context, id string) (schedules.RunReference, error) {
-	if _, err := s.store.Get(ctx, id); err != nil {
-		return schedules.RunReference{}, err
-	}
-	s.test.Error("unexpected schedule Run dispatch")
-	return schedules.RunReference{}, errors.New("unexpected schedule dispatch")
 }

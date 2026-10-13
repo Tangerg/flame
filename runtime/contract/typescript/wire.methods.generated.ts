@@ -114,8 +114,6 @@ import type {
   RollbackSessionResponse,
   RunAcceptance,
   RunRef,
-  RunScheduleNowRequest,
-  RunScheduleNowResponse,
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
   Schedule,
@@ -261,7 +259,6 @@ const METHOD_NAMES = [
   "approval.forgetRule",
   "schedules.create",
   "schedules.update",
-  "schedules.runNow",
   "goals.start",
   "goals.update",
   "goals.clear",
@@ -375,7 +372,6 @@ const VALUE_METHOD_NAMES = [
   "approval.listRules",
   "schedules.create",
   "schedules.update",
-  "schedules.runNow",
   "goals.start",
   "goals.update",
   "goals.get",
@@ -967,13 +963,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "schedules.runNow": {
-    operation: "command",
-    response: "unary",
-    idempotency: "ownerResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "goals.start": {
     operation: "command",
     response: "unary",
@@ -1349,9 +1338,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "schedules.update": [
     { requires: ["schedules"] },
   ],
-  "schedules.runNow": [
-    { requires: ["schedules"] },
-  ],
   "goals.start": [
     { requires: ["goals"] },
   ],
@@ -1467,7 +1453,6 @@ export interface WireShapes {
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
   "schedules.create": { params: CreateScheduleRequest; result: Schedule };
   "schedules.update": { params: UpdateScheduleRequest; result: Schedule };
-  "schedules.runNow": { params: RunScheduleNowRequest; result: RunScheduleNowResponse };
   "goals.start": { params: StartGoalRequest; result: Goal };
   "goals.update": { params: UpdateGoalRequest; result: Goal };
   "goals.clear": { params: GoalRequest };

@@ -4,6 +4,7 @@ import (
 	json "encoding/json/v2"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -65,4 +66,28 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 		values = append(values, out)
 	}
 	return protocol.NewPageWithCursor(values, page.NextCursor)
+}
+
+func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
+	r.t.Helper()
+	request := scheduleQuery(r, protocol.PageQuery{})
+	input, err := json.Marshal(schedulerpc.ItemInput{ID: id})
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	request.Method, request.Input = schedulerpc.RunNow, input
+	return request
+}
+
+func readScheduleRun(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *scheduleapp.RunReference {
+	r.t.Helper()
+	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
+	if reply.Failure != nil {
+		r.t.Fatal(reply.Failure)
+	}
+	var value scheduleapp.RunReference
+	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+		r.t.Fatal(err)
+	}
+	return &value
 }

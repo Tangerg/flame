@@ -118,11 +118,11 @@ describe("mutation journal", () => {
   it("uses process-local claims to separate concurrent identical commands", async () => {
     const storage = new MemoryStorage();
     const current = journal(storage);
-    const first = current.reserve("schedules.runNow", {
-      scheduleId: "schedule_1",
+    const first = current.reserve("sessions.fork", {
+      sessionId: "ses_1",
     })!;
-    const second = current.reserve("schedules.runNow", {
-      scheduleId: "schedule_1",
+    const second = current.reserve("sessions.fork", {
+      sessionId: "ses_1",
     })!;
 
     expect(second.idempotencyKey).not.toBe(first.idempotencyKey);

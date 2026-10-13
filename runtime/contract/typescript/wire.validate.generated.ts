@@ -305,8 +305,6 @@ export type WireTypeName =
   | "RunRef"
   | "RunReplayLimits"
   | "RunReplayScope"
-  | "RunScheduleNowRequest"
-  | "RunScheduleNowResponse"
   | "RunSessionOpening"
   | "RunStatus"
   | "RunSummary"
@@ -3445,13 +3443,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     scope: ref(() => CHECKS.RunReplayScope),
   }, ["maxBytes", "maxEvents", "scope"]),
   RunReplayScope: enumOf(["runtimeInstanceRootSegment"]),
-  RunScheduleNowRequest: object({
-    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
-  }, ["id"]),
-  RunScheduleNowResponse: object({
-    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["runId", "sessionId"]),
   RunSessionOpening: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -4540,7 +4531,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "approval.forgetRule": ref(() => CHECKS.ForgetApprovalRuleRequest),
   "schedules.create": ref(() => CHECKS.CreateScheduleRequest),
   "schedules.update": ref(() => CHECKS.UpdateScheduleRequest),
-  "schedules.runNow": ref(() => CHECKS.RunScheduleNowRequest),
   "goals.start": ref(() => CHECKS.StartGoalRequest),
   "goals.update": ref(() => CHECKS.UpdateGoalRequest),
   "goals.clear": ref(() => CHECKS.GoalRequest),
@@ -4653,7 +4643,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "approval.forgetRule": object({}, []),
   "schedules.create": ref(() => CHECKS.Schedule),
   "schedules.update": ref(() => CHECKS.Schedule),
-  "schedules.runNow": ref(() => CHECKS.RunScheduleNowResponse),
   "goals.start": ref(() => CHECKS.Goal),
   "goals.update": ref(() => CHECKS.Goal),
   "goals.clear": object({}, []),

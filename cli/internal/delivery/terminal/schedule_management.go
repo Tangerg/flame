@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/installedcommand"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -133,25 +134,49 @@ func (a *app) PrepareDeleteSchedule(identity string) error {
 }
 
 func (a *app) RunScheduleNow(identity string) error {
-	return a.loadSchedule(identity, "loading schedule to run", func(scheduled protocol.Schedule) {
-		a.status.note("running schedule " + scheduled.ID)
-		started := a.runApplicationOperation(scheduleOperation, false,
-			func(ctx context.Context) (protocol.RunScheduleNowResponse, error) {
-				return a.schedules.RunNow(ctx, scheduled.ID)
-			},
-			func(handle protocol.RunScheduleNowResponse, err error) {
-				if err != nil {
-					a.message("run schedule now failed: " + err.Error())
-					return
-				}
-				a.message("schedule started · session " + handle.SessionID + " · run " + handle.RunID)
-			},
-		)
-		if !started {
-			a.message("another schedule operation is running")
+	if a.schedules == nil {
+		return errors.New("this runtime composition has no schedule service")
+	}
+	identity = strings.TrimSpace(identity)
+	if a.workbench != nil {
+		if _, pending := a.workbench.PendingInstalledCommand(scheduleRunIntent(identity)); pending {
+			a.runSchedule(identity)
+			return nil
 		}
+	}
+	return a.loadSchedule(identity, "loading schedule to run", func(scheduled protocol.Schedule) {
+		a.runSchedule(scheduled.ID)
 	})
 }
+
+func (a *app) runSchedule(id string) {
+	a.status.note("running schedule " + id)
+	started := a.runApplicationOperation(scheduleOperation, false,
+		func(ctx context.Context) (conversation.RunReference, error) {
+			return installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleRunIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.schedules.PrepareRunNow(ctx, id)
+			}, a.schedules.DecodeRunNow)
+		},
+		func(handle conversation.RunReference, err error) {
+			if err != nil {
+				message := "run schedule now failed: " + err.Error()
+				if a.workbench != nil {
+					if _, pending := a.workbench.PendingInstalledCommand(scheduleRunIntent(id)); pending {
+						message += " · retry /schedule-run " + id + " to reconcile the original command"
+					}
+				}
+				a.message(message)
+				return
+			}
+			a.message("schedule started · session " + handle.SessionID + " · run " + handle.RunID)
+		},
+	)
+	if !started {
+		a.message("another schedule operation is running")
+	}
+}
+
+func scheduleRunIntent(id string) string { return "schedule-run:" + id }
 
 func (a *app) loadSchedule(identity, label string, apply func(protocol.Schedule)) error {
 	if a.schedules == nil {
@@ -251,9 +276,10 @@ func (a *app) deleteSchedule(id string) {
 	a.status.note("deleting schedule " + id)
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (string, error) {
-			return id, installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+			_, err := installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareDelete(ctx, id)
-			})
+			}, func(*protocol.CallPluginResponse) (struct{}, error) { return struct{}{}, nil })
+			return id, err
 		},
 		func(deleted string, err error) {
 			if err != nil {

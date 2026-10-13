@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.8";
+export const PROTOCOL_VERSION = "2026-10-14.9";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1669,15 +1669,6 @@ export interface RunReplayLimits {
 }
 
 export type RunReplayScope = "runtimeInstanceRootSegment";
-
-export interface RunScheduleNowRequest {
-  id: string;
-}
-
-export interface RunScheduleNowResponse {
-  runId: string;
-  sessionId: string;
-}
 
 export interface RunSessionOpening {
   runId: string;

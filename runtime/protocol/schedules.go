@@ -64,13 +64,3 @@ type UpdateScheduleRequest struct {
 	Cron             *string               `json:"cron,omitzero"`
 	Enabled          *bool                 `json:"enabled,omitzero"`
 }
-
-// RunScheduleNowRequest — schedules.runNow body.
-type RunScheduleNowRequest struct {
-	ID string `json:"id"`
-}
-
-type RunScheduleNowResponse struct {
-	SessionID string `json:"sessionId"`
-	RunID     string `json:"runId"`
-}

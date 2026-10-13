@@ -873,11 +873,6 @@ func registerScheduleValues(s *Shapes) {
 			{Field: "cron", Kind: ConstraintNonEmpty},
 		}...), modelSelectionIdentities()...),
 	})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RunScheduleNowRequest](), Constraints: requiredScheduleIdentity("id")})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.RunScheduleNowResponse](),
-		Constraints: append(requiredResourceIdentity("sessionId"), requiredResourceIdentity("runId")...),
-	})
 }
 
 func registerGoalValues(s *Shapes) {

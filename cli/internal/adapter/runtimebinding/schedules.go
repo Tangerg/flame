@@ -12,6 +12,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -26,7 +27,6 @@ const (
 type scheduleBinding interface {
 	CreateSchedule(context.Context, protocol.CreateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
 	UpdateSchedule(context.Context, protocol.UpdateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
-	RunScheduleNow(context.Context, protocol.RunScheduleNowRequest, flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error)
 }
 
 func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error) {
@@ -122,11 +122,23 @@ func (r *Connection) Update(ctx context.Context, request protocol.UpdateSchedule
 }
 
 func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	bound, err := r.selectedSchedules(ctx)
+	input, err := jsoninput.Encode(SchedulesDeleteV1Input{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	input, err := jsoninput.Encode(SchedulesDeleteV1Input{ID: strings.TrimSpace(id)})
+	return r.prepareSchedulesCommand(ctx, schedulesDeleteV1Method, input)
+}
+
+func (r *Connection) PrepareRunNow(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
+	input, err := jsoninput.Encode(SchedulesRunNowV1Input{ID: strings.TrimSpace(id)})
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	return r.prepareSchedulesCommand(ctx, schedulesRunNowV1Method, input)
+}
+
+func (r *Connection) prepareSchedulesCommand(ctx context.Context, name string, input jsoninput.Input) (protocol.CallPluginRequest, error) {
+	bound, err := r.selectedSchedules(ctx)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -134,31 +146,29 @@ func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.Cal
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	method, found := contract.Method(schedulesDeleteV1Method)
+	method, found := contract.Method(name)
 	if !found {
 		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 	}
 	if err := method.ValidateInput(input); err != nil {
-		return protocol.CallPluginRequest{}, fmt.Errorf("delete schedule: %w", err)
+		return protocol.CallPluginRequest{}, fmt.Errorf("schedule command: %w", err)
 	}
-	bound.Method, bound.Input = schedulesDeleteV1Method, input.JSON()
+	bound.Method, bound.Input = name, input.JSON()
 	return bound, nil
 }
 
-func (r *Connection) RunNow(ctx context.Context, id string) (protocol.RunScheduleNowResponse, error) {
-	request := protocol.RunScheduleNowRequest{ID: strings.TrimSpace(id)}
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.RunScheduleNowResponse{}, fmt.Errorf("run schedule now: %w", err)
+func (r *Connection) DecodeRunNow(reply *protocol.CallPluginResponse) (conversation.RunReference, error) {
+	if reply == nil {
+		return conversation.RunReference{}, runtimeContractViolation("run schedule now returned nil")
 	}
-	options := r.commandOptions()
-	result, err := r.schedules.RunScheduleNow(ctx, request, options)
-	if err != nil {
-		return protocol.RunScheduleNowResponse{}, classifyError(err)
+	var result SchedulesRunNowV1Output
+	if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
+		return conversation.RunReference{}, runtimeContractViolation("run schedule now output: %v", err)
 	}
-	if result == nil {
-		return protocol.RunScheduleNowResponse{}, runtimeContractViolation("run schedule now returned nil")
+	if err := errors.Join(protocol.ValidateSessionID(result.SessionID), protocol.ValidateRunID(result.RunID)); err != nil {
+		return conversation.RunReference{}, runtimeContractViolation("run schedule now identity: %v", err)
 	}
-	return *result, nil
+	return conversation.RunReference{SessionID: result.SessionID, RunID: result.RunID}, nil
 }
 
 func scheduleResult(operation, expectedID string, result *protocol.Schedule, err error) (protocol.Schedule, error) {

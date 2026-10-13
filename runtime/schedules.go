@@ -16,8 +16,3 @@ func (r *binding) CreateSchedule(ctx context.Context, request protocol.CreateSch
 func (r *binding) UpdateSchedule(ctx context.Context, request protocol.UpdateScheduleRequest, options CommandOptions) (*protocol.Schedule, error) {
 	return r.invoke[protocol.UpdateScheduleRequest, *protocol.Schedule](ctx, delivery.SchedulesUpdate, request, commandOptions(options))
 }
-
-// RunScheduleNow fires a schedule without advancing its cron cursor.
-func (r *binding) RunScheduleNow(ctx context.Context, request protocol.RunScheduleNowRequest, options CommandOptions) (*protocol.RunScheduleNowResponse, error) {
-	return r.invoke[protocol.RunScheduleNowRequest, *protocol.RunScheduleNowResponse](ctx, delivery.SchedulesRunNow, request, commandOptions(options))
-}

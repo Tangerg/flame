@@ -58,6 +58,18 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 	if request.InstallationID != scheduleInstallation || request.Target.Reference != scheduleInstallation || request.Target.Scope != "installation" || request.Contract != schedulesCapabilityJSON {
 		s.t.Fatalf("unbound schedule query: %+v", request)
 	}
+	if request.Method == schedulesRunNowV1Method {
+		var input SchedulesRunNowV1Input
+		if err := json.Unmarshal(request.Input, &input); err != nil {
+			s.t.Fatal(err)
+		}
+		s.assertCommand("run:"+input.ID, flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		output, err := jsoninput.Encode(SchedulesRunNowV1Output{SessionID: "ses_headless", RunID: "run_headless"})
+		if err != nil {
+			s.t.Fatal(err)
+		}
+		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
+	}
 	if request.Method == schedulesDeleteV1Method {
 		var input SchedulesDeleteV1Input
 		if err := json.Unmarshal(request.Input, &input); err != nil {
@@ -178,11 +190,6 @@ func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol
 	return &updated, nil
 }
 
-func (s *scheduleBindingStub) RunScheduleNow(_ context.Context, request protocol.RunScheduleNowRequest, options flameruntime.CommandOptions) (*protocol.RunScheduleNowResponse, error) {
-	s.assertCommand("run:"+request.ID, options)
-	return &protocol.RunScheduleNowResponse{SessionID: "ses_headless", RunID: "run_headless"}, nil
-}
-
 func (s *scheduleBindingStub) assertMeta(meta protocol.RequestMeta) {
 	s.t.Helper()
 	if meta.ProtocolVersion != protocol.ProtocolVersion {
@@ -256,7 +263,15 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	if _, err := runtime.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); err != nil {
 		t.Fatal(err)
 	}
-	handle, err := runtime.RunNow(t.Context(), "sch_1")
+	runRequest, err := runtime.PrepareRunNow(t.Context(), "sch_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runReply, err := runtime.CallPlugin(t.Context(), runRequest, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := runtime.DecodeRunNow(runReply)
 	if err != nil || handle.SessionID != "ses_headless" || handle.RunID != "run_headless" {
 		t.Fatalf("RunNow = (%+v, %v)", handle, err)
 	}
@@ -371,5 +386,24 @@ func TestScheduleReadRefusesAnotherPublishedProtocol(t *testing.T) {
 	caller := &Connection{plugins: stub, meta: requestMeta("test")}
 	if _, err := caller.Schedules(t.Context()); err == nil || len(stub.queries) != 0 {
 		t.Fatal("metadata protocol was rewritten before query admission")
+	}
+}
+
+func TestScheduleRunNowRequiresACompleteCoreReference(t *testing.T) {
+	r := &Connection{}
+	for _, output := range []string{
+		`{}`, `{"SessionID":"ses_original"}`, `{"SessionID":"bad session","RunID":"run_original"}`,
+		`{"SessionID":"ses_original","RunID":"bad run"}`, `{"SessionID":"ses_original","RunID":"run_original","extra":true}`,
+	} {
+		if _, err := r.DecodeRunNow(&protocol.CallPluginResponse{Output: []byte(output)}); err == nil {
+			t.Fatalf("invalid accepted reference became success: %s", output)
+		}
+	}
+	if _, err := r.DecodeRunNow(nil); err == nil {
+		t.Fatal("absent acknowledgement became success")
+	}
+	value, err := r.DecodeRunNow(&protocol.CallPluginResponse{Output: []byte(`{"SessionID":"ses_original","RunID":"run_original"}`)})
+	if err != nil || value.SessionID != "ses_original" || value.RunID != "run_original" {
+		t.Fatalf("accepted Core reference: %+v, %v", value, err)
 	}
 }

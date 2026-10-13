@@ -8,6 +8,11 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+type RunReference struct {
+	SessionID string
+	RunID     string
+}
+
 // Run is the lifecycle projection needed by the CLI. ActiveSegmentID exists
 // exactly while Status is [protocol.RunStatusRunning].
 type Run struct {

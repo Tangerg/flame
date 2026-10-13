@@ -68,6 +68,11 @@ func request(t *testing.T) protocol.CallPluginRequest {
 	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: []byte(`{"id":"sch_original"}`)}
 }
 
+func execute(ctx context.Context, caller Caller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
+	_, err := Execute(ctx, caller, store, intent, policy, prepare, func(*protocol.CallPluginResponse) (struct{}, error) { return struct{}{}, nil })
+	return err
+}
+
 func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 	storage := &persistence{files: make(map[string][]byte)}
 	store, err := workbench.Open(storage, workbench.Config{})
@@ -89,7 +94,7 @@ func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 		cancel()
 		return nil, conversation.ErrDisconnected
 	})
-	if err := Execute(ctx, lost, store, "schedule-delete:sch_original", policy(t, "original-store", &now), prepare); err == nil {
+	if err := execute(ctx, lost, store, "schedule-delete:sch_original", policy(t, "original-store", &now), prepare); err == nil {
 		t.Fatal("lost acknowledgement became success")
 	}
 	if err := store.Close(); err != nil {
@@ -112,10 +117,10 @@ func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 		}
 		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
 	})
-	if err := Execute(t.Context(), recover, reopened, "schedule-delete:sch_original", policy(t, "other-store", &now), prepare); err == nil || calls != 0 {
+	if err := execute(t.Context(), recover, reopened, "schedule-delete:sch_original", policy(t, "other-store", &now), prepare); err == nil || calls != 0 {
 		t.Fatal("store mismatch dispatched or confirmed the original command")
 	}
-	if err := Execute(t.Context(), recover, reopened, "schedule-delete:sch_original", policy(t, "original-store", &now), prepare); err != nil || calls != 1 {
+	if err := execute(t.Context(), recover, reopened, "schedule-delete:sch_original", policy(t, "original-store", &now), prepare); err != nil || calls != 1 {
 		t.Fatalf("recover original receipt: calls=%d, error=%v", calls, err)
 	}
 	if _, pending := reopened.PendingInstalledCommand("schedule-delete:sch_original"); pending {
@@ -137,18 +142,18 @@ func TestFailedPersistenceAndUnavailableOwnerCannotDiscardIntent(t *testing.T) {
 		calls++
 		return nil, protocol.ErrPluginUnavailable
 	})
-	if err := Execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil || calls != 0 {
+	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil || calls != 0 {
 		t.Fatal("failed durable staging dispatched the command")
 	}
 	storage.fail = false
-	if err := Execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil || calls != 1 {
+	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil || calls != 1 {
 		t.Fatal("unavailable original owner became success")
 	}
 	if _, pending := store.PendingInstalledCommand("delete"); !pending {
 		t.Fatal("unavailable original owner lost its pending intent")
 	}
 	now = now.Add(2 * time.Hour)
-	if err := Execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil || calls != 1 {
+	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil || calls != 1 {
 		t.Fatal("expired replay guarantee dispatched a fresh command")
 	}
 }
@@ -171,7 +176,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 		storage.fail = true
 		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
 	})
-	if err := Execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil {
+	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil {
 		t.Fatal("failed retirement became complete cleanup")
 	}
 	if _, pending := store.PendingInstalledCommand("delete"); !pending {
@@ -184,7 +189,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 		}
 		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
 	})
-	if err := Execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err != nil {
+	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err != nil {
 		t.Fatal(err)
 	}
 	if _, pending := store.PendingInstalledCommand("delete"); pending {
@@ -197,10 +202,49 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 		}
 		return nil, refusal
 	})
-	if err := Execute(t.Context(), owner, store, "refused", policy(t, "store", &now), prepare); !errors.Is(err, refusal) {
+	if err := execute(t.Context(), owner, store, "refused", policy(t, "store", &now), prepare); !errors.Is(err, refusal) {
 		t.Fatalf("owner refusal: %v", err)
 	}
 	if _, pending := store.PendingInstalledCommand("refused"); pending {
 		t.Fatal("definite owner refusal remains unresolved")
+	}
+}
+
+func TestDecodedAcknowledgementPrecedesIntentRetirement(t *testing.T) {
+	store, err := workbench.OpenMemory(workbench.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	now := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
+	preparations := 0
+	prepare := func(context.Context) (protocol.CallPluginRequest, error) {
+		preparations++
+		return request(t), nil
+	}
+	var originalID replay.CommandID
+	owner := callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+		if originalID != "" && id != originalID {
+			t.Fatal("invalid acknowledgement replaced the original command")
+		}
+		originalID = id
+		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	})
+	decode := func(*protocol.CallPluginResponse) (string, error) {
+		return "", &capability.Refusal{Code: "invalid_projection", Message: "invalid owner acknowledgement"}
+	}
+	if _, err := Execute(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode); err == nil {
+		t.Fatal("invalid decoded acknowledgement became success")
+	}
+	if _, pending := store.PendingInstalledCommand("accept"); !pending {
+		t.Fatal("invalid decoded acknowledgement retired the original intent")
+	}
+	decode = func(*protocol.CallPluginResponse) (string, error) { return "original acceptance", nil }
+	result, err := Execute(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode)
+	if err != nil || result != "original acceptance" || preparations != 1 {
+		t.Fatalf("decoded original acceptance: %q, preparations=%d, error=%v", result, preparations, err)
+	}
+	if _, pending := store.PendingInstalledCommand("accept"); pending {
+		t.Fatal("validated acknowledgement remains unresolved")
 	}
 }

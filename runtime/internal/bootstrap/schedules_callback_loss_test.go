@@ -86,8 +86,8 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
 	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
-	request := protocol.RunScheduleNowRequest{ID: saved.ID}
-	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	request := scheduleRunRequest(r, saved.ID)
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {
 		t.Fatal("lost Core acknowledgement became private success")
 	}
@@ -114,7 +114,7 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	r = poMCPOpen(t, cfg)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
-	replay := r.must(delivery.SchedulesRunNow, request, "lost-core").(*protocol.RunScheduleNowResponse)
+	replay := readScheduleRun(r, request, "lost-core")
 	if replay.SessionID != current.SessionID || replay.RunID != accepted.RunID {
 		t.Fatalf("retired Core acceptance opened another Run: %+v", replay)
 	}

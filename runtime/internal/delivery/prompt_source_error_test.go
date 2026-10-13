@@ -17,7 +17,6 @@ func TestPromptBudgetFailuresAreActionableWithoutSourceContent(t *testing.T) {
 	}{
 		{"runs.start", wireRunStartErr},
 		{"agentDocs.list", wireWorkspaceError},
-		{"schedules.runNow", func(err error) error { return mapScheduleErr(err, "sch_test") }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.project(fmt.Errorf("private AGENTS.md content: %w", workspaceapp.ErrPromptSourceTooLarge))

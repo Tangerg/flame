@@ -82,7 +82,6 @@ import type {
   RunRef,
   RunAcceptance,
   GetRunAcceptanceRequest,
-  RunScheduleNowResponse,
   Schedule,
   CreateScheduleRequest,
   UpdateScheduleRequest,
@@ -394,7 +393,6 @@ export interface Methods {
   schedules: {
     create: (params: CreateScheduleRequest) => MutationPromise<Schedule>;
     update: (params: UpdateScheduleRequest) => MutationPromise<Schedule>;
-    runNow: (id: string) => MutationPromise<RunScheduleNowResponse>;
   };
 }
 
@@ -704,7 +702,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     schedules: {
       create: (params) => call("schedules.create", params),
       update: (params) => call("schedules.update", params),
-      runNow: (id) => call("schedules.runNow", { id }),
     },
   };
 }

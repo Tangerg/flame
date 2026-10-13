@@ -237,13 +237,17 @@ required callable contract once, then page through `plugins.call`. The CLI's Go
 request/output projection is generated from the same publisher contracts as TS;
 no private backend package is imported. Selection changes cannot mix providers
 inside one traversal. Cursor/request/row bounds and duplicate ID rejection remain.
-Schedule deletion uses the same public installed operation. Before dispatch, the
+Schedule deletion and manual execution use public installed operations. Before dispatch, the
 CLI workbench persists the original installation, release, contribution, contract,
 target, input bytes and command ID. After a lost acknowledgement or restart,
-`/schedule-delete <original-full-id>` resumes that request without reading the
+`/schedule-delete <original-full-id>` or `/schedule-run <original-full-id>` resumes that request without reading the
 current provider. Startup reports unresolved intents. An unavailable original
 owner, expired replay guarantee or changed Runtime store leaves the intent
-unconfirmed; it cannot submit the deletion to another installation. Only an owner
+unconfirmed; it cannot resubmit the command to another installation. Only an owner
 acknowledgement or business refusal retires it. This record contains no business
-result. Create, update and run-now entrances remain under migration.
-The retired `schedules.list` and `schedules.delete` Core operations have no aliases.
+result. Manual execution decodes the publisher's generated output and validates
+the Core Session/Run reference before retiring intent. It returns the existing
+Runtime acceptance; the Run survives terminal navigation and closure. A settled
+command permits a new manual execution with a new identity. Create and update
+entrances remain under migration. The retired `schedules.list`, `schedules.delete`
+and `schedules.runNow` Core operations have no aliases.

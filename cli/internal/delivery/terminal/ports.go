@@ -112,7 +112,8 @@ type Schedules interface {
 	Update(context.Context, protocol.UpdateScheduleRequest) (protocol.Schedule, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
-	RunNow(context.Context, string) (protocol.RunScheduleNowResponse, error)
+	PrepareRunNow(context.Context, string) (protocol.CallPluginRequest, error)
+	DecodeRunNow(*protocol.CallPluginResponse) (conversation.RunReference, error)
 }
 
 type AgentMemory interface {

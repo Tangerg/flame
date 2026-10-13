@@ -9,7 +9,6 @@ import (
 const (
 	SchedulesCreate Name = "schedules.create"
 	SchedulesUpdate Name = "schedules.update"
-	SchedulesRunNow Name = "schedules.runNow"
 )
 
 func registerSchedules(registry *Registry) {
@@ -32,12 +31,4 @@ func registerSchedules(registry *Registry) {
 		return service.UpdateSchedule(ctx, request)
 	})
 
-	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
-		Name: SchedulesRunNow, CapabilityRules: requires(protocol.FeatureSchedules),
-		Errors: []string{protocol.ErrPluginUnavailable.Error(), protocol.ErrScheduleNotFound.Error(), protocol.ErrPromptSourceTooLarge.Error()},
-	}, func(service interface {
-		RunScheduleNow(context.Context, protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error)
-	}, ctx context.Context, request protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {
-		return service.RunScheduleNow(ctx, request)
-	})
 }

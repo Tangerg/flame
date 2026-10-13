@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -53,15 +54,23 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 	configureIntegrationRuntime(t)
 	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
 	activateManagedPlugins(t, runtime, "schedules")
+
+	t.Run("installed schedule", func(t *testing.T) {
+		request, err := runtime.PrepareRunNow(t.Context(), "sch_missing")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = runtime.CallPlugin(t.Context(), request, mutation.NewCommandID())
+		var refusal *capability.Refusal
+		if !errors.As(err, &refusal) || refusal.Code != "not_found" {
+			t.Fatalf("missing installed schedule: %v", err)
+		}
+	})
 	for _, tc := range []struct {
 		name string
 		kind error
 		call func() error
 	}{
-		{"schedule", protocol.ErrScheduleNotFound, func() error {
-			_, err := runtime.RunNow(t.Context(), "sch_missing")
-			return err
-		}},
 		{"session", protocol.ErrSessionNotFound, func() error {
 			_, err := runtime.GetSession(t.Context(), "missing-session")
 			return err

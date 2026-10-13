@@ -63,17 +63,6 @@ func (s *Handler) UpdateSchedule(ctx context.Context, in protocol.UpdateSchedule
 	return &wire, nil
 }
 
-// RunScheduleNow fires a schedule immediately (schedules.runNow) — a manual
-// extra run that records the firing without shifting the schedule's next due
-// time.
-func (s *Handler) RunScheduleNow(ctx context.Context, in protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {
-	handle, err := s.schedules.RunNow(ctx, in.ID)
-	if err != nil {
-		return nil, mapScheduleErr(err, in.ID)
-	}
-	return &protocol.RunScheduleNowResponse{SessionID: handle.SessionID, RunID: handle.RunID}, nil
-}
-
 func scheduleWorkspacePathPatch(ref *protocol.WorkspaceRef, mode protocol.ScheduleWorkspaceMode) *string {
 	if mode == protocol.ScheduleWorkspaceDefault {
 		path := ""

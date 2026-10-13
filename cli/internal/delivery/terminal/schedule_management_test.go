@@ -37,20 +37,27 @@ type blockingScheduleRunService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingScheduleRunService) RunNow(ctx context.Context, id string) (protocol.RunScheduleNowResponse, error) {
+func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+	var input struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(request.Input, &input); err != nil {
+		return nil, err
+	}
+	id := input.ID
 	select {
 	case b.started <- id:
 	default:
 	}
 	select {
 	case <-b.release:
-		return b.scheduleServiceStub.RunNow(ctx, id)
+		return b.scheduleServiceStub.CallPlugin(ctx, request, commandID)
 	case <-ctx.Done():
 		select {
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return protocol.RunScheduleNowResponse{}, context.Cause(ctx)
+		return nil, context.Cause(ctx)
 	}
 }
 
@@ -120,7 +127,7 @@ func (s *scheduleServiceStub) Update(_ context.Context, request protocol.UpdateS
 }
 
 func (s *scheduleServiceStub) PrepareDelete(_ context.Context, id string) (protocol.CallPluginRequest, error) {
-	contract, err := capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)})
+	contract, err := capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)}, capability.MethodDescriptor{Name: "flame.schedules/runNow.v1", Kind: capability.Mutation, Target: "installation", Description: "Run a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{"sessionId":{"type":"string"},"runId":{"type":"string"}},"required":["sessionId","runId"],"additionalProperties":false}`)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -135,6 +142,10 @@ func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.Cal
 	}
 	if err := json.Unmarshal(request.Input, &input); err != nil {
 		return nil, err
+	}
+	if request.Method == "flame.schedules/runNow.v1" {
+		s.run <- input.ID
+		return &protocol.CallPluginResponse{Output: []byte(`{"sessionId":"ses_scheduled","runId":"run_scheduled"}`)}, nil
 	}
 	if err := s.delete(input.ID); err != nil {
 		return nil, err
@@ -154,9 +165,18 @@ func (s *scheduleServiceStub) delete(id string) error {
 	return errors.New("schedule not found")
 }
 
-func (s *scheduleServiceStub) RunNow(_ context.Context, id string) (protocol.RunScheduleNowResponse, error) {
-	s.run <- id
-	return protocol.RunScheduleNowResponse{SessionID: "ses_scheduled", RunID: "run_scheduled"}, nil
+func (s *scheduleServiceStub) PrepareRunNow(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
+	request, err := s.PrepareDelete(ctx, id)
+	request.Method = "flame.schedules/runNow.v1"
+	return request, err
+}
+func (s *scheduleServiceStub) DecodeRunNow(reply *protocol.CallPluginResponse) (conversation.RunReference, error) {
+	var value struct {
+		SessionID string `json:"sessionId"`
+		RunID     string `json:"runId"`
+	}
+	err := json.Unmarshal(reply.Output, &value)
+	return conversation.RunReference{SessionID: value.SessionID, RunID: value.RunID}, err
 }
 
 func cloneSchedule(scheduled protocol.Schedule) protocol.Schedule {

@@ -14,6 +14,7 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -51,20 +52,13 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 		t.Fatalf("created Schedule = %+v, want pristine revision one", created)
 	}
 
-	options := flameruntime.CommandOptions{IdempotencyKey: "live-deepseek-manual-schedule"}
-	started, err := fixture.runtime.RunScheduleNow(
-		fixture.ctx,
-		protocol.RunScheduleNowRequest{ID: created.ID},
-		options,
-	)
+	request := fixtureScheduleRunRequest(t, fixture, created.ID)
+	options := flameruntime.PluginCallOptions{IdempotencyKey: "live-deepseek-manual-schedule"}
+	started, err := fixtureScheduleRun(fixture, request, options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	replayed, err := fixture.runtime.RunScheduleNow(
-		fixture.ctx,
-		protocol.RunScheduleNowRequest{ID: created.ID},
-		options,
-	)
+	replayed, err := fixtureScheduleRun(fixture, request, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -840,4 +834,51 @@ func assertDeepSeekRun(t *testing.T, run *protocol.RunRef) {
 		run.Metrics.Usage.CostUSD == nil || *run.Metrics.Usage.CostUSD <= 0 {
 		t.Fatalf("Run did not use metered DeepSeek: %+v", run)
 	}
+}
+
+func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id string) protocol.CallPluginRequest {
+	t.Helper()
+	providers, err := fixture.runtime.ListPluginProviders(fixture.ctx, flameruntime.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	installations, err := fixture.runtime.ListPlugins(fixture.ctx, flameruntime.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contracts, err := schedulerpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := json.Marshal(schedulerpc.ItemInput{ID: id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, provider := range providers.Data {
+		if provider.Role != "schedules" {
+			continue
+		}
+		for _, installation := range installations.Data {
+			if installation.ID == provider.InstallationID {
+				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.RunNow, Input: input, Target: capability.Target{Scope: "installation", Reference: installation.ID}}
+			}
+		}
+	}
+	t.Fatal("selected schedules contribution unavailable")
+	return protocol.CallPluginRequest{}
+}
+
+func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*scheduleapp.RunReference, error) {
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, options)
+	if err != nil {
+		return nil, err
+	}
+	if reply.Failure != nil {
+		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+	}
+	var value scheduleapp.RunReference
+	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	return &value, nil
 }

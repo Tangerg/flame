@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.8",
+  "protocolVersion": "2026-10-14.9",
   "features": [
     "reasoning",
     "multimodal",
@@ -1171,23 +1171,6 @@
       ]
     },
     {
-      "name": "schedules.runNow",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "schedule_not_found",
-        "prompt_source_too_large",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "schedules"
-      ]
-    },
-    {
       "name": "goals.start",
       "kind": "unary",
       "operation": "command",
@@ -1600,7 +1583,6 @@
           "runs.subscribe",
           "runtime.subscribe",
           "schedules.create",
-          "schedules.runNow",
           "schedules.update",
           "sessions.export",
           "sessions.exportTrajectory",
@@ -1871,7 +1853,6 @@
           "plugins.stage",
           "plugins.uninstall",
           "schedules.create",
-          "schedules.runNow",
           "schedules.update"
         ]
       },
@@ -1881,8 +1862,7 @@
         "recoveryAction": "promptUser",
         "methods": [
           "agentDocs.list",
-          "runs.start",
-          "schedules.runNow"
+          "runs.start"
         ]
       },
       {
@@ -1970,7 +1950,6 @@
         "code": -32036,
         "recoveryAction": "refetch",
         "methods": [
-          "schedules.runNow",
           "schedules.update"
         ]
       },
@@ -2700,16 +2679,6 @@
     },
     {
       "method": "schedules.update",
-      "rules": [
-        {
-          "requires": [
-            "schedules"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "schedules.runNow",
       "rules": [
         {
           "requires": [
@@ -9783,56 +9752,6 @@
         {
           "field": "reasoningEffort",
           "constraint": "maxLength(32)"
-        }
-      ]
-    },
-    {
-      "type": "RunScheduleNowRequest",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "identity"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "id",
-          "constraint": "prefix(\"sch_\")"
-        }
-      ]
-    },
-    {
-      "type": "RunScheduleNowResponse",
-      "rules": [
-        {
-          "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "identity"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "runId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "runId",
-          "constraint": "identity"
-        },
-        {
-          "field": "runId",
-          "constraint": "maxLength(256)"
         }
       ]
     },

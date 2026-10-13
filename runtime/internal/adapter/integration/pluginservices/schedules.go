@@ -4,13 +4,11 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
@@ -147,18 +145,4 @@ func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedu
 	}
 	saved, err := schedule.Restore(value.value)
 	return saved, err
-}
-func (s *Schedules) RunNow(ctx context.Context, id string) (app.RunReference, error) {
-	reply, err := invokeResolvedCommand[rpc.ItemInput, app.RunReference](ctx, s.commands, rpc.RunNow, rpc.ItemInput{ID: id}, func(value app.RunReference) error {
-		return errors.Join(resourceid.ValidateSession(value.SessionID), resourceid.ValidateRun(value.RunID))
-	}, func(ctx context.Context) (plugins.ContributionBinding, error) {
-		binding, found, err := plugins.SelectedContribution(ctx, s.installations, s.commands.selections, s.contracts.Capability)
-		if err == nil && !found {
-			err = plugin.ErrUnavailable
-		}
-		return binding, err
-	}, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
-		return s.pool.OpenRPC(ctx, binding.ServerID, session)
-	})
-	return reply.value, rpc.DecodeError(err)
 }

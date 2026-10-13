@@ -497,15 +497,6 @@ func (u UpdateScheduleRequest) ValidateWire() error {
 	)
 }
 
-func (r RunScheduleNowRequest) ValidateWire() error {
-	return collectWireViolations("RunScheduleNowRequest",
-		requiredText("id", r.ID),
-		identity("id", r.ID),
-		maxLength("id", r.ID, 256),
-		requiredTextPrefix("id", r.ID, "sch_"),
-	)
-}
-
 func (s StartGoalRequest) ValidateWire() error {
 	return collectWireViolations("StartGoalRequest",
 		requiredText("sessionId", s.SessionID),
@@ -2806,17 +2797,6 @@ func (a AgentDoc) ValidateWire() error {
 	return collectWireViolations("AgentDoc",
 		requiredTextPattern("path", a.Path, "\\S"),
 		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
-	)
-}
-
-func (r RunScheduleNowResponse) ValidateWire() error {
-	return collectWireViolations("RunScheduleNowResponse",
-		requiredText("sessionId", r.SessionID),
-		identity("sessionId", r.SessionID),
-		maxLength("sessionId", r.SessionID, 256),
-		requiredText("runId", r.RunID),
-		identity("runId", r.RunID),
-		maxLength("runId", r.RunID, 256),
 	)
 }
 
