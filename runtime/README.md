@@ -629,7 +629,7 @@ acceptance; component/build evidence does not close that requirement.
 
 ## Protocol 2026-10-10.3
 
-`agentMemory.list` returns canonical `Page<AgentMemoryItem>` values, with target-bound
+The published Memory list returns its generated page/snapshot values, with target-bound
 sort-position cursors and at most 100 items per page. CLI and shared-client collectors
 traverse the complete bounded target. The former `{items}` response is removed.
 The optional [Memory package](../plugins/memory/plugin.json) is an ordinary component
