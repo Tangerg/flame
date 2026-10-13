@@ -2251,6 +2251,9 @@ for await (const line of lines) {
   it("reconciles MCP and managed-Skill moves after their responses are lost", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
+    const retainedSkills = (
+      await client.workspace({ path: root }).skills.listDiscovered()
+    ).skills.filter((skill) => !(skill.scope === "user" && skill.name === managedSkillName));
     const requestMeta = (): RequestMeta => ({
       protocolVersion: PROTOCOL_VERSION,
       clientInfo: { name: "runtime-http-resource-cutpoint-e2e", version: "1" },
@@ -2338,7 +2341,7 @@ for await (const line of lines) {
       });
       await expect(client.workspace({ path: root }).skills.listDiscovered()).resolves.toMatchObject(
         {
-          skills: [],
+          skills: retainedSkills,
         },
       );
 
@@ -4046,9 +4049,13 @@ for await (const line of lines) {
     await expect(client.skills.listLibrary()).resolves.toMatchObject({
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
     });
-    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      skills: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
-    });
+    const discoveredSkills = (await workspace.skills.listDiscovered()).skills;
+    expect(discoveredSkills).toContainEqual(
+      expect.objectContaining({ name: managedSkillName, scope: "user" }),
+    );
+    const retainedSkills = discoveredSkills.filter(
+      (skill) => !(skill.scope === "user" && skill.name === managedSkillName),
+    );
 
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
@@ -4067,7 +4074,9 @@ for await (const line of lines) {
     await expect(client.skills.listLibrary()).resolves.toMatchObject({
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "archived" })],
     });
-    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({ skills: [] });
+    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
+      skills: retainedSkills,
+    });
 
     await client.skills.restore(managedSkillName);
     await expect(nextRuntimeEvent(runtimeEvents, "skills.changed")).resolves.toMatchObject({
@@ -4077,7 +4086,7 @@ for await (const line of lines) {
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
     });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      skills: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
+      skills: discoveredSkills,
     });
 
     const projectSkillName = "external-project-skill";
