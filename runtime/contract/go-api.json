@@ -1097,6 +1097,214 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/runtime/capability",
+      "imports": [
+        "encoding/json/jsontext",
+        "github.com/Tangerg/flame/runtime/jsoninput"
+      ],
+      "constants": [
+        {
+          "name": "Collection",
+          "type": "Composition",
+          "value": "\"collection\""
+        },
+        {
+          "name": "Decoration",
+          "type": "Composition",
+          "value": "\"decoration\""
+        },
+        {
+          "name": "Mutation",
+          "type": "MethodKind",
+          "value": "\"command\""
+        },
+        {
+          "name": "Protocol",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/backend/2026-10-13.3\""
+        },
+        {
+          "name": "Query",
+          "type": "MethodKind",
+          "value": "\"query\""
+        },
+        {
+          "name": "Selection",
+          "type": "Composition",
+          "value": "\"selection\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "AdmitMethod",
+          "signature": "func(descriptor MethodDescriptor) (*Method, error)"
+        },
+        {
+          "name": "FromDescriptor",
+          "signature": "func(descriptor Descriptor) (*Contract, error)"
+        },
+        {
+          "name": "New",
+          "signature": "func(config Config, methods ...MethodDescriptor) (*Contract, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(data []byte) (*Contract, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Composition",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Config",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Reference",
+              "type": "string"
+            },
+            {
+              "name": "Composition",
+              "type": "Composition"
+            },
+            {
+              "name": "Scope",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "Contract",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() Descriptor"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "Method",
+              "signature": "func(name string) (*Method, bool)"
+            }
+          ]
+        },
+        {
+          "name": "Descriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            },
+            {
+              "name": "Composition",
+              "type": "Composition",
+              "tag": "json:\"composition\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Methods",
+              "type": "[]MethodDescriptor",
+              "tag": "json:\"methods\""
+            }
+          ]
+        },
+        {
+          "name": "Method",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() MethodDescriptor"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "Kind",
+              "signature": "func() MethodKind"
+            },
+            {
+              "name": "Name",
+              "signature": "func() string"
+            },
+            {
+              "name": "ValidateInput",
+              "signature": "func(input jsoninput.Input) error"
+            },
+            {
+              "name": "ValidateOutput",
+              "signature": "func(output jsontext.Value) error"
+            }
+          ]
+        },
+        {
+          "name": "MethodDescriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Kind",
+              "type": "MethodKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Target",
+              "type": "string",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "Input",
+              "type": "jsontext.Value",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "Output",
+              "type": "jsontext.Value",
+              "tag": "json:\"output\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Clone",
+              "signature": "func() MethodDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "MethodKind",
+          "kind": "defined",
+          "underlying": "string"
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime/jsoninput",
       "imports": [
         "encoding/json/jsontext"
@@ -1222,6 +1430,7 @@
       "imports": [
         "context",
         "encoding/json/jsontext",
+        "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/jsoninput",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/tool",
@@ -1229,44 +1438,14 @@
       ],
       "constants": [
         {
-          "name": "BackendProtocol",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-13.3\""
-        },
-        {
-          "name": "Collection",
-          "type": "Composition",
-          "value": "\"collection\""
-        },
-        {
-          "name": "Decoration",
-          "type": "Composition",
-          "value": "\"decoration\""
-        },
-        {
           "name": "InvocationKey",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/invocationId\""
         },
         {
-          "name": "Mutation",
-          "type": "MethodKind",
-          "value": "\"command\""
-        },
-        {
-          "name": "Query",
-          "type": "MethodKind",
-          "value": "\"query\""
-        },
-        {
           "name": "ReceiptMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/commands.get\""
-        },
-        {
-          "name": "Selection",
-          "type": "Composition",
-          "value": "\"selection\""
         }
       ],
       "variables": [
@@ -1314,7 +1493,7 @@
         },
         {
           "name": "NewBinding",
-          "signature": "func(session *mcp.ClientSession, descriptor MethodDescriptor) (*Binding, error)"
+          "signature": "func(session *mcp.ClientSession, descriptor capability.MethodDescriptor) (*Binding, error)"
         },
         {
           "name": "NewCallback",
@@ -1325,20 +1504,12 @@
           "signature": "func() *Callbacks"
         },
         {
-          "name": "NewCapability",
-          "signature": "func(config CapabilityConfig, methods ...MethodDescriptor) (*Capability, error)"
-        },
-        {
           "name": "NewCapabilityBinding",
-          "signature": "func(session *mcp.ClientSession, name string, capability *Capability) (*CapabilityBinding, error)"
+          "signature": "func(session *mcp.ClientSession, name string, contract *capability.Contract) (*CapabilityBinding, error)"
         },
         {
           "name": "NewMethod",
           "signature": "func[P, R any](config MethodConfig) (*Method[P, R], error)"
-        },
-        {
-          "name": "ParseCapability",
-          "signature": "func(data []byte) (*Capability, error)"
         },
         {
           "name": "ReadReceipt",
@@ -1374,7 +1545,7 @@
         },
         {
           "name": "ResolveCapability",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *Capability) (*CapabilityBinding, error)"
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *capability.Contract) (*CapabilityBinding, error)"
         },
         {
           "name": "ToolCommandID",
@@ -1388,7 +1559,7 @@
           "methods": [
             {
               "name": "BindCapability",
-              "signature": "func(name string, capability *Capability) error"
+              "signature": "func(name string, contract *capability.Contract) error"
             },
             {
               "name": "Publish",
@@ -1406,7 +1577,7 @@
             },
             {
               "name": "Descriptor",
-              "signature": "func() MethodDescriptor"
+              "signature": "func() capability.MethodDescriptor"
             },
             {
               "name": "Invoke",
@@ -1525,75 +1696,12 @@
           ]
         },
         {
-          "name": "Capability",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Contract",
-              "signature": "func() jsoninput.Input"
-            },
-            {
-              "name": "Descriptor",
-              "signature": "func() CapabilityDescriptor"
-            }
-          ]
-        },
-        {
           "name": "CapabilityBinding",
           "kind": "struct",
           "methods": [
             {
               "name": "Method",
               "signature": "func(name string) (*Binding, error)"
-            }
-          ]
-        },
-        {
-          "name": "CapabilityConfig",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Reference",
-              "type": "string"
-            },
-            {
-              "name": "Composition",
-              "type": "Composition"
-            },
-            {
-              "name": "Scope",
-              "type": "string"
-            }
-          ]
-        },
-        {
-          "name": "CapabilityDescriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Protocol",
-              "type": "string",
-              "tag": "json:\"protocol\""
-            },
-            {
-              "name": "Reference",
-              "type": "string",
-              "tag": "json:\"reference\""
-            },
-            {
-              "name": "Composition",
-              "type": "Composition",
-              "tag": "json:\"composition\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Methods",
-              "type": "[]MethodDescriptor",
-              "tag": "json:\"methods\""
             }
           ]
         },
@@ -1608,7 +1716,7 @@
             },
             {
               "name": "Contract",
-              "type": "CapabilityDescriptor",
+              "type": "capability.Descriptor",
               "tag": "json:\"contract\""
             }
           ]
@@ -1634,11 +1742,6 @@
           ]
         },
         {
-          "name": "Composition",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
           "name": "Description",
           "kind": "struct",
           "fields": [
@@ -1649,7 +1752,7 @@
             },
             {
               "name": "Methods",
-              "type": "[]MethodDescriptor",
+              "type": "[]capability.MethodDescriptor",
               "tag": "json:\"methods\""
             },
             {
@@ -1699,7 +1802,7 @@
             },
             {
               "name": "Descriptor",
-              "signature": "func() MethodDescriptor"
+              "signature": "func() capability.MethodDescriptor"
             },
             {
               "name": "Name",
@@ -1721,7 +1824,7 @@
             },
             {
               "name": "Kind",
-              "type": "MethodKind"
+              "type": "capability.MethodKind"
             },
             {
               "name": "Target",
@@ -1732,47 +1835,6 @@
               "type": "string"
             }
           ]
-        },
-        {
-          "name": "MethodDescriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
-            },
-            {
-              "name": "Kind",
-              "type": "MethodKind",
-              "tag": "json:\"kind\""
-            },
-            {
-              "name": "Target",
-              "type": "string",
-              "tag": "json:\"target\""
-            },
-            {
-              "name": "Description",
-              "type": "string",
-              "tag": "json:\"description\""
-            },
-            {
-              "name": "Input",
-              "type": "jsontext.Value",
-              "tag": "json:\"input\""
-            },
-            {
-              "name": "Output",
-              "type": "jsontext.Value",
-              "tag": "json:\"output\""
-            }
-          ]
-        },
-        {
-          "name": "MethodKind",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "Params",

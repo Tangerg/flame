@@ -9,12 +9,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
-
-// BackendProtocol identifies public wire behavior, independently of private
-// implementation releases. There is one supported contract and no old reader.
-const BackendProtocol = "io.github.tangerg.flame/backend/2026-10-13.3"
 
 const invokeMethod = "io.github.tangerg.flame/operations.invoke"
 const describeMethod = "io.github.tangerg.flame/operations.describe"
@@ -36,7 +33,7 @@ func (p *invokeParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if decoded.Protocol != BackendProtocol || decoded.Method == "" || len(decoded.Contract) != 64 || len(decoded.Input) == 0 {
+	if decoded.Protocol != capability.Protocol || decoded.Method == "" || len(decoded.Contract) != 64 || len(decoded.Input) == 0 {
 		return errors.New("plugin: current backend protocol, method, contract and input are required")
 	}
 	if (decoded.Export == "") != (decoded.Capability == "") || decoded.Export != "" && (!exportName.MatchString(decoded.Export) || len(decoded.Capability) != 64) {
@@ -57,7 +54,7 @@ func (p *describeParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if decoded.Protocol != BackendProtocol {
+	if decoded.Protocol != capability.Protocol {
 		return errors.New("plugin: current backend protocol is required")
 	}
 	*p = describeParams(decoded)
@@ -65,15 +62,14 @@ func (p *describeParams) UnmarshalJSON(data []byte) error {
 }
 
 type Description struct {
-	Protocol     string             `json:"protocol"`
-	Methods      []MethodDescriptor `json:"methods"`
-	Capabilities []CapabilityExport `json:"capabilities"`
+	Protocol     string                        `json:"protocol"`
+	Methods      []capability.MethodDescriptor `json:"methods"`
+	Capabilities []CapabilityExport            `json:"capabilities"`
 }
 
 type boundMethod struct {
-	descriptor MethodDescriptor
-	contract   string
-	invoke     func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[jsontext.Value], error)
+	contract *capability.Method
+	invoke   func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[jsontext.Value], error)
 }
 
 // Backend owns declaration/code binding and publication. Setup is explicit;
@@ -82,7 +78,7 @@ type Backend struct {
 	server       *sdk.Server
 	mu           sync.RWMutex
 	methods      map[string]boundMethod
-	capabilities map[string]*Capability
+	capabilities map[string]*capability.Contract
 	published    bool
 }
 
@@ -90,9 +86,9 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 	if server == nil {
 		return nil, errors.New("plugin: MCP server is required")
 	}
-	b := &Backend{server: server, methods: map[string]boundMethod{}, capabilities: map[string]*Capability{}}
+	b := &Backend{server: server, methods: map[string]boundMethod{}, capabilities: map[string]*capability.Contract{}}
 	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*Result[jsontext.Value], error) {
-		if params == nil || params.Protocol != BackendProtocol {
+		if params == nil || params.Protocol != capability.Protocol {
 			return nil, errors.New("plugin: current backend protocol is required")
 		}
 		b.mu.RLock()
@@ -103,7 +99,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		if !ready || !found {
 			return nil, errors.New("plugin: operation export is not published")
 		}
-		if params.Contract != method.contract {
+		if params.Contract != method.contract.Identity().Digest() {
 			return nil, errors.New("plugin: operation contract mismatch")
 		}
 		if exportErr != nil {
@@ -114,7 +110,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		return nil, err
 	}
 	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(_ context.Context, _ *sdk.ServerSession, params *describeParams) (*Result[Description], error) {
-		if params == nil || params.Protocol != BackendProtocol {
+		if params == nil || params.Protocol != capability.Protocol {
 			return nil, errors.New("plugin: current backend protocol is required")
 		}
 		b.mu.RLock()
@@ -122,17 +118,17 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		if !b.published {
 			return nil, errors.New("plugin: backend is not published")
 		}
-		methods := make([]MethodDescriptor, 0, len(b.methods))
+		methods := make([]capability.MethodDescriptor, 0, len(b.methods))
 		for _, method := range b.methods {
-			methods = append(methods, cloneDescriptor(method.descriptor))
+			methods = append(methods, method.contract.Descriptor())
 		}
-		slices.SortFunc(methods, func(a, b MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
+		slices.SortFunc(methods, func(a, b capability.MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
 		capabilities := make([]CapabilityExport, 0, len(b.capabilities))
 		for name, capability := range b.capabilities {
 			capabilities = append(capabilities, CapabilityExport{Name: name, Contract: capability.Descriptor()})
 		}
 		slices.SortFunc(capabilities, func(a, b CapabilityExport) int { return strings.Compare(a.Name, b.Name) })
-		return Reply(Description{Protocol: BackendProtocol, Methods: methods, Capabilities: capabilities}, nil, nil)
+		return Reply(Description{Protocol: capability.Protocol, Methods: methods, Capabilities: capabilities}, nil, nil)
 	}); err != nil {
 		return nil, err
 	}
@@ -156,27 +152,19 @@ func (b *Backend) register(method boundMethod) error {
 	if b == nil {
 		return errors.New("plugin: backend is required")
 	}
-	contract, err := methodContract(method.descriptor)
-	if err != nil {
-		return err
+	if method.contract == nil || method.invoke == nil {
+		return errors.New("plugin: admitted method and handler are required")
 	}
-	method.contract = contract.Digest()
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.published {
 		return errors.New("plugin: published backend cannot change exports")
 	}
-	if _, found := b.methods[method.descriptor.Name]; found {
+	if _, found := b.methods[method.contract.Name()]; found {
 		return errors.New("plugin: duplicate operation export")
 	}
-	b.methods[method.descriptor.Name] = method
+	b.methods[method.contract.Name()] = method
 	return nil
-}
-
-func cloneDescriptor(value MethodDescriptor) MethodDescriptor {
-	value.Input = append(jsontext.Value(nil), value.Input...)
-	value.Output = append(jsontext.Value(nil), value.Output...)
-	return value
 }
 
 func Describe(ctx context.Context, session *sdk.ClientSession) (Description, error) {
@@ -184,7 +172,7 @@ func Describe(ctx context.Context, session *sdk.ClientSession) (Description, err
 	if session == nil {
 		return zero, errors.New("plugin: client session is required")
 	}
-	result, err := sdk.CallCustomMethod[*describeParams, *Result[Description]](ctx, session, describeMethod, &describeParams{Protocol: BackendProtocol})
+	result, err := sdk.CallCustomMethod[*describeParams, *Result[Description]](ctx, session, describeMethod, &describeParams{Protocol: capability.Protocol})
 	if err != nil {
 		return zero, err
 	}
@@ -192,7 +180,7 @@ func Describe(ctx context.Context, session *sdk.ClientSession) (Description, err
 	if err != nil {
 		return zero, err
 	}
-	if value.Protocol != BackendProtocol {
+	if value.Protocol != capability.Protocol {
 		return zero, errors.New("plugin: incompatible backend protocol")
 	}
 	return value, nil

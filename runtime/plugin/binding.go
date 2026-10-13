@@ -7,80 +7,41 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 // Binding freezes one public operation contract against one concrete session.
-// It owns structural admission, not the feature's mutation or receipt.
+// The pure capability owner supplies admission; the feature owns its receipt.
 type Binding struct {
 	session    *sdk.ClientSession
-	descriptor MethodDescriptor
-	contract   jsoninput.Input
-	input      jsonschema.Schema
-	output     jsonschema.Schema
+	method     *capability.Method
 	export     string
 	capability string
 }
 
 // NewBinding accepts an already captured contract. The backend checks its exact
 // fingerprint before invocation; restoration does not discover a replacement.
-func NewBinding(session *sdk.ClientSession, descriptor MethodDescriptor) (*Binding, error) {
+func NewBinding(session *sdk.ClientSession, descriptor capability.MethodDescriptor) (*Binding, error) {
 	if session == nil {
 		return nil, errors.New("plugin: client session is required")
 	}
-	binding, err := admitDescriptor(descriptor)
+	method, err := capability.AdmitMethod(descriptor)
 	if err != nil {
 		return nil, err
 	}
-	binding.session = session
-	return binding, nil
+	return &Binding{session: session, method: method}, nil
 }
 
-func admitDescriptor(descriptor MethodDescriptor) (*Binding, error) {
-	if !contractToken(descriptor.Name) || !contractToken(descriptor.Target) {
-		return nil, errors.New("plugin: method and target are required")
-	}
-	if descriptor.Kind != Query && descriptor.Kind != Mutation {
-		return nil, errors.New("plugin: method kind must be query or command")
-	}
-	input, err := jsonschema.Parse(descriptor.Input)
-	if err != nil {
-		return nil, fmt.Errorf("plugin: %s input contract: %w", descriptor.Name, err)
-	}
-	if input.Validate([]byte("null")) == nil {
-		return nil, errors.New("plugin: method input must exclude null")
-	}
-	output, err := jsonschema.Parse(descriptor.Output)
-	if err != nil {
-		return nil, fmt.Errorf("plugin: %s output contract: %w", descriptor.Name, err)
-	}
-	contract, err := methodContract(descriptor)
-	if err != nil {
-		return nil, err
-	}
-	return &Binding{descriptor: cloneDescriptor(descriptor), contract: contract, input: input, output: output}, nil
-}
-
-func methodContract(descriptor MethodDescriptor) (jsoninput.Input, error) {
-	// Prose can change without changing the callable contract. The method,
-	// target, kind and exact schemas cannot.
-	descriptor.Description = ""
-	return jsoninput.Encode(descriptor)
-}
-
-func (b *Binding) Descriptor() MethodDescriptor { return cloneDescriptor(b.descriptor) }
-func (b *Binding) Contract() jsoninput.Input    { return b.contract }
+func (b *Binding) Descriptor() capability.MethodDescriptor { return b.method.Descriptor() }
+func (b *Binding) Contract() jsoninput.Input               { return b.method.Identity() }
 
 func (b *Binding) ValidateInput(input jsoninput.Input) error {
 	if b == nil {
 		return errors.New("plugin: operation binding is required")
 	}
-	if err := input.Validate(); err != nil {
-		return err
-	}
-	return b.input.Validate(input.JSON())
+	return b.method.ValidateInput(input)
 }
 
 // Resolve discovers a published export for a new call. An original command
@@ -90,7 +51,7 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 	if err != nil {
 		return nil, err
 	}
-	var selected *MethodDescriptor
+	var selected *capability.MethodDescriptor
 	seen := make(map[string]bool, len(description.Methods))
 	for _, descriptor := range description.Methods {
 		if seen[descriptor.Name] {
@@ -111,7 +72,7 @@ func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, 
 	if b == nil {
 		return nil, errors.New("plugin: operation binding is required")
 	}
-	if b.descriptor.Kind == Mutation {
+	if b.method.Kind() == capability.Mutation {
 		if err := validateCommandID(id); err != nil {
 			return nil, err
 		}
@@ -119,17 +80,17 @@ func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, 
 		return nil, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := b.ValidateInput(input); err != nil {
-		return nil, fmt.Errorf("plugin: %s input: %w", b.descriptor.Name, err)
+		return nil, fmt.Errorf("plugin: %s input: %w", b.method.Name(), err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: BackendProtocol, Method: b.descriptor.Name, Contract: b.contract.Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
+	result, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: capability.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
 	if err != nil {
 		return nil, err
 	}
-	if _, err := result.value(b.descriptor.Name); err != nil {
+	if _, err := result.value(b.method.Name()); err != nil {
 		return nil, err
 	}
-	if err := b.output.Validate(result.valueJSON); err != nil {
-		return nil, fmt.Errorf("plugin: %s output: %w", b.descriptor.Name, err)
+	if err := b.method.ValidateOutput(result.valueJSON); err != nil {
+		return nil, fmt.Errorf("plugin: %s output: %w", b.method.Name(), err)
 	}
 	return result, nil
 }
@@ -148,7 +109,7 @@ func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsoni
 }
 
 func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, bool, error) {
-	if b == nil || b.descriptor.Kind != Mutation {
+	if b == nil || b.method.Kind() != capability.Mutation {
 		return jsoninput.Input{}, false, errors.New("plugin: command binding is required")
 	}
 	if err := b.ValidateInput(input); err != nil {
@@ -159,12 +120,12 @@ func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsoninput.In
 		return jsoninput.Input{}, false, err
 	}
 	lookup.export, lookup.capability = b.export, b.capability
-	value, found, err := readReceipt(ctx, lookup, id, b.descriptor.Name, input)
+	value, found, err := readReceipt(ctx, lookup, id, b.method.Name(), input)
 	if err != nil || !found {
 		return jsoninput.Input{}, found, err
 	}
-	if err := b.output.Validate(value); err != nil {
-		return jsoninput.Input{}, false, fmt.Errorf("plugin: %s receipt output: %w", b.descriptor.Name, err)
+	if err := b.method.ValidateOutput(value); err != nil {
+		return jsoninput.Input{}, false, fmt.Errorf("plugin: %s receipt output: %w", b.method.Name(), err)
 	}
 	admitted, err := jsoninput.Parse(value)
 	return admitted, err == nil, err

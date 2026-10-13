@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -23,8 +24,8 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := pluginsdk.ParseCapability(capabilityData)
-	if err != nil || capability.Contract() != contracts.Capability.Contract() {
+	contract, err := capability.Parse(capabilityData)
+	if err != nil || contract.Identity() != contracts.Capability.Identity() {
 		t.Fatalf("generated capability differs from the backend owner: %v", err)
 	}
 	methodsData, err := os.ReadFile(filepath.Join(directory, "methods.generated.json"))
@@ -32,12 +33,12 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name        string               `json:"name"`
-		Kind        pluginsdk.MethodKind `json:"kind"`
-		Target      string               `json:"target"`
-		Description string               `json:"description"`
-		Input       string               `json:"input"`
-		Output      string               `json:"output"`
+		Name        string                `json:"name"`
+		Kind        capability.MethodKind `json:"kind"`
+		Target      string                `json:"target"`
+		Description string                `json:"description"`
+		Input       string                `json:"input"`
+		Output      string                `json:"output"`
 	}
 	if err := json.Unmarshal(methodsData, &methods, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
@@ -50,7 +51,7 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 	if err := json.Unmarshal(schemaData, &document); err != nil {
 		t.Fatal(err)
 	}
-	descriptors := []pluginsdk.MethodDescriptor{contracts.List.Descriptor(), contracts.Update.Descriptor()}
+	descriptors := []capability.MethodDescriptor{contracts.List.Descriptor(), contracts.Update.Descriptor()}
 	if len(methods) != len(descriptors) {
 		t.Fatal("generated method surface differs from its backend owner")
 	}
@@ -117,11 +118,11 @@ func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := pluginsdk.ParseCapability(data)
+	contract, err := capability.Parse(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", capability); err != nil {
+	if _, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", contract); err != nil {
 		t.Fatalf("live export differs from generated capability: %v", err)
 	}
 }

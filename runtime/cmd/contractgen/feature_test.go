@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
@@ -29,7 +30,7 @@ type featurePage[T any] struct {
 }
 
 func TestFeatureGenerationPreservesGenericOwnerReferences(t *testing.T) {
-	method, err := pluginsdk.NewMethod[struct{}, featurePage[featureOutput]](pluginsdk.MethodConfig{Name: "acme/read", Kind: pluginsdk.Query, Target: "installation", Description: "Read."})
+	method, err := pluginsdk.NewMethod[struct{}, featurePage[featureOutput]](pluginsdk.MethodConfig{Name: "acme/read", Kind: capability.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +44,7 @@ func TestFeatureGenerationPreservesGenericOwnerReferences(t *testing.T) {
 }
 
 func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
-	method, err := pluginsdk.NewMethod[featureInput, featureOutput](pluginsdk.MethodConfig{Name: "acme/reviews.update", Kind: pluginsdk.Mutation, Target: "installation", Description: "Update review."})
+	method, err := pluginsdk.NewMethod[featureInput, featureOutput](pluginsdk.MethodConfig{Name: "acme/reviews.update", Kind: capability.Mutation, Target: "installation", Description: "Update review."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,8 +60,8 @@ func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
 	if len(generated.methods) != 1 || generated.methods[0].Name != descriptor.Name || !strings.Contains(generated.typescript, `"open" | "resolved"`) || !strings.Contains(generated.typescript, "revision: number;") || !strings.Contains(generated.typescript, "accepted: boolean;") {
 		t.Fatalf("generated surface lost contract: %+v\n%s", generated.methods, generated.typescript)
 	}
-	capability, err := pluginsdk.ParseCapability(data)
-	if err != nil || generated.capability.Contract() != capability.Contract() || !strings.Contains(generated.typescript, capability.Contract().Digest()) {
+	contract, err := capability.Parse(data)
+	if err != nil || generated.capability.Identity() != contract.Identity() || !strings.Contains(generated.typescript, contract.Identity().Digest()) {
 		t.Fatalf("generator changed canonical capability identity: %v", err)
 	}
 	original, err := jsonschema.Parse(descriptor.Input)
@@ -88,12 +89,12 @@ func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
 }
 
 func TestFeatureGenerationRefusesDuplicatesAndExternalSchemas(t *testing.T) {
-	method, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "acme/read", Kind: pluginsdk.Query, Target: "installation", Description: "Read."})
+	method, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "acme/read", Kind: capability.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
 	descriptor := method.Descriptor()
-	for _, descriptors := range [][]pluginsdk.MethodDescriptor{{descriptor, descriptor}, {{Name: "bad", Kind: pluginsdk.Query, Target: "installation", Description: "Read.", Input: []byte(`{"$ref":"https://example.invalid/schema"}`), Output: descriptor.Output}}} {
+	for _, descriptors := range [][]capability.MethodDescriptor{{descriptor, descriptor}, {{Name: "bad", Kind: capability.Query, Target: "installation", Description: "Read.", Input: []byte(`{"$ref":"https://example.invalid/schema"}`), Output: descriptor.Output}}} {
 		data, err := featureDescriptor(descriptors...)
 		if err != nil {
 			t.Fatal(err)
@@ -159,6 +160,6 @@ func TestFeatureGenerationRefusesFormerBareMethodArray(t *testing.T) {
 	}
 }
 
-func featureDescriptor(methods ...pluginsdk.MethodDescriptor) ([]byte, error) {
-	return json.Marshal(pluginsdk.CapabilityDescriptor{Protocol: pluginsdk.BackendProtocol, Reference: "acme/reviews", Composition: pluginsdk.Collection, Scope: "installation", Methods: methods})
+func featureDescriptor(methods ...capability.MethodDescriptor) ([]byte, error) {
+	return json.Marshal(capability.Descriptor{Protocol: capability.Protocol, Reference: "acme/reviews", Composition: capability.Collection, Scope: "installation", Methods: methods})
 }

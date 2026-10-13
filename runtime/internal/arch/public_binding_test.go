@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "jsoninput", "localruntime", "plugin", "protocol"}
+	want := []string{".", "capability", "jsoninput", "localruntime", "plugin", "protocol"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -91,10 +91,12 @@ require (
 
 import (
 	"context"
+	"testing"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/flame/runtime/localruntime"
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/runtime/localruntime"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -110,7 +112,7 @@ var _ = pluginsdk.RegisterClient
 var _ = pluginsdk.CallCommand[string, string]
 var _ pluginsdk.Command[string]
 var _ = pluginsdk.NewMethod[struct{}, string]
-var _ pluginsdk.MethodDescriptor
+var _ capability.MethodDescriptor
 var _ = pluginsdk.NewBinding
 var _ = pluginsdk.Resolve
 var _ *pluginsdk.Binding
@@ -118,6 +120,27 @@ var _ = jsoninput.Encode[struct{}]
 var _ = pluginsdk.RequestInput
 var _ = pluginsdk.NewCallbacks
 var _ pluginsdk.CallbackRef
+
+func TestLocalContractAdmission(t *testing.T) {
+	contract, err := capability.New(capability.Config{Reference: "example.com/records", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "records/read", Kind: capability.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, found := contract.Method("records/read")
+	if !found {
+		t.Fatal("required method unavailable")
+	}
+	input, err := jsoninput.Encode(struct{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := method.ValidateInput(input); err != nil {
+		t.Fatal(err)
+	}
+	if err := method.ValidateOutput([]byte("7")); err == nil {
+		t.Fatal("invalid output admitted")
+	}
+}
 
 func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	if _, err := runtime.Discover(ctx, flameruntime.CallOptions{}); err != nil {
@@ -136,7 +159,7 @@ func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 }
 `
 	writeConsumerFile(t, filepath.Join(directory, "go.mod"), goMod)
-	writeConsumerFile(t, filepath.Join(directory, "consumer.go"), source)
+	writeConsumerFile(t, filepath.Join(directory, "consumer_test.go"), source)
 	checksums, err := os.ReadFile(filepath.Join(root, "go.sum"))
 	if err != nil {
 		t.Fatalf("read Runtime dependency checksums: %v", err)

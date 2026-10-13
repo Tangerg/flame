@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -87,7 +88,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		if bindingErr != nil {
 			return zero, bindingErr
 		}
-		if binding.Descriptor().Kind != pluginsdk.Mutation {
+		if binding.Descriptor().Kind != capability.Mutation {
 			return zero, errors.New("managed plugin: command requires a command contract")
 		}
 		if err := binding.ValidateInput(admitted); err != nil {
@@ -126,12 +127,12 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	var descriptor pluginsdk.MethodDescriptor
+	var descriptor capability.MethodDescriptor
 	if err := json.Unmarshal(record.Contract.JSON(), &descriptor, json.RejectUnknownMembers(true)); err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
 	bound, err := pluginsdk.NewBinding(session, descriptor)
-	if err != nil || descriptor.Name != method || descriptor.Kind != pluginsdk.Mutation {
+	if err != nil || descriptor.Name != method || descriptor.Kind != capability.Mutation {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
 	}
 	if bound.Contract() != record.Contract {

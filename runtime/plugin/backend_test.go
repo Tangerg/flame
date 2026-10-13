@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -32,10 +33,10 @@ func TestBackendPublishesOneCurrentTransportWithIndependentExports(t *testing.T)
 	}
 	session := connectPublishedBackend(t, backend, client)
 	description, err := Describe(t.Context(), session)
-	if err != nil || description.Protocol != BackendProtocol || len(description.Methods) != 2 {
+	if err != nil || description.Protocol != contractsdk.Protocol || len(description.Methods) != 2 {
 		t.Fatalf("published description = %+v, %v", description, err)
 	}
-	if description.Methods[0].Name != "examples.read" || description.Methods[0].Kind != Query || description.Methods[1].Kind != Mutation {
+	if description.Methods[0].Name != "examples.read" || description.Methods[0].Kind != contractsdk.Query || description.Methods[1].Kind != contractsdk.Mutation {
 		t.Fatalf("published semantics = %+v", description.Methods)
 	}
 	description.Methods[0].Input[0] = 'x'
@@ -69,23 +70,23 @@ func TestBackendPublishesOneCurrentTransportWithIndependentExports(t *testing.T)
 func TestBackendRejectsOldOrMalformedTransportBeforeInvocation(t *testing.T) {
 	for _, data := range []string{
 		`{}`, `{"protocol":"old","method":"read","input":{}}`,
-		`{"protocol":"` + BackendProtocol + `","method":"read"}`,
-		`{"protocol":"` + BackendProtocol + `","method":"read","input":{}}`,
-		`{"protocol":"` + BackendProtocol + `","method":"read","input":{},"extra":true}`,
+		`{"protocol":"` + contractsdk.Protocol + `","method":"read"}`,
+		`{"protocol":"` + contractsdk.Protocol + `","method":"read","input":{}}`,
+		`{"protocol":"` + contractsdk.Protocol + `","method":"read","input":{},"extra":true}`,
 	} {
 		var request invokeParams
 		if err := json.Unmarshal([]byte(data), &request); err == nil {
 			t.Fatalf("malformed invocation admitted: %s", data)
 		}
 	}
-	for _, data := range []string{`{}`, `{"protocol":"old"}`, `{"protocol":"` + BackendProtocol + `","extra":true}`} {
+	for _, data := range []string{`{}`, `{"protocol":"old"}`, `{"protocol":"` + contractsdk.Protocol + `","extra":true}`} {
 		var request describeParams
 		if err := json.Unmarshal([]byte(data), &request); err == nil {
 			t.Fatalf("malformed handshake admitted: %s", data)
 		}
 	}
 	for _, extra := range []string{`,"export":"reader"`, `,"capability":"` + strings.Repeat("a", 64) + `"`, `,"export":"../reader","capability":"` + strings.Repeat("a", 64) + `"`} {
-		data := `{"protocol":"` + BackendProtocol + `","method":"read","contract":"` + strings.Repeat("a", 64) + `","input":{}` + extra + `}`
+		data := `{"protocol":"` + contractsdk.Protocol + `","method":"read","contract":"` + strings.Repeat("a", 64) + `","input":{}` + extra + `}`
 		var request invokeParams
 		if err := json.Unmarshal([]byte(data), &request); err == nil {
 			t.Fatalf("incomplete capability binding admitted: %s", data)

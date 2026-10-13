@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -40,7 +41,7 @@ func (c Completion) Complete(ctx context.Context, prompt Prompt) (string, error)
 
 func modelMethod() (*pluginsdk.Method[Prompt, string], error) {
 	return pluginsdk.NewMethod[Prompt, string](pluginsdk.MethodConfig{
-		Name: "flame.memory/model.v1", Kind: pluginsdk.Mutation, Target: "call",
+		Name: "flame.memory/model.v1", Kind: capability.Mutation, Target: "call",
 		Description: "Use the model capability captured by this Memory invocation.",
 	})
 }

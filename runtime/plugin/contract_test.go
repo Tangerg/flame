@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,7 +22,7 @@ type contractInput struct {
 }
 
 func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
-	method, err := NewMethod[contractInput, contractInput](MethodConfig{Name: "reviews.update", Kind: Mutation, Target: "installation", Description: "Update a review."})
+	method, err := NewMethod[contractInput, contractInput](MethodConfig{Name: "reviews.update", Kind: contractsdk.Mutation, Target: "installation", Description: "Update a review."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
 		var params Params[contractInput]
 		data := []byte(`{"commandId":"original","input":` + raw + `}`)
 		if err := json.Unmarshal(data, &params); err == nil {
-			if err := method.input.Validate(params.inputJSON.JSON()); err == nil {
+			if err := method.contract.ValidateInput(params.inputJSON); err == nil {
 				t.Fatalf("schema admitted original malformed input: %s", raw)
 			}
 		}
@@ -73,7 +74,7 @@ func TestMethodBindsOneImmutableSchemaAcrossDescriptorAndWire(t *testing.T) {
 }
 
 func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
-	method, err := NewMethod[struct{}, contractInput](MethodConfig{Name: "reviews.query", Kind: Query, Target: "installation", Description: "Inspect a review."})
+	method, err := NewMethod[struct{}, contractInput](MethodConfig{Name: "reviews.query", Kind: contractsdk.Query, Target: "installation", Description: "Inspect a review."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,15 +103,15 @@ func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
 }
 
 func TestMethodConstructionRefusesInvalidAndUnsupportedContracts(t *testing.T) {
-	for _, config := range []MethodConfig{{}, {Name: "valid", Kind: "unknown", Target: "installation", Description: "Read."}, {Name: strings.Repeat("x", 257), Kind: Query, Target: "installation", Description: "Read."}} {
+	for _, config := range []MethodConfig{{}, {Name: "valid", Kind: "unknown", Target: "installation", Description: "Read."}, {Name: strings.Repeat("x", 257), Kind: contractsdk.Query, Target: "installation", Description: "Read."}} {
 		if _, err := NewMethod[struct{}, struct{}](config); err == nil {
 			t.Fatalf("invalid method admitted: %+v", config)
 		}
 	}
-	if _, err := NewMethod[chan int, struct{}](MethodConfig{Name: "valid", Kind: Query, Target: "installation", Description: "Read."}); err == nil {
+	if _, err := NewMethod[chan int, struct{}](MethodConfig{Name: "valid", Kind: contractsdk.Query, Target: "installation", Description: "Read."}); err == nil {
 		t.Fatal("unsupported input shape admitted")
 	}
-	if _, err := NewMethod[any, struct{}](MethodConfig{Name: "valid", Kind: Query, Target: "installation", Description: "Read."}); err == nil {
+	if _, err := NewMethod[any, struct{}](MethodConfig{Name: "valid", Kind: contractsdk.Query, Target: "installation", Description: "Read."}); err == nil {
 		t.Fatal("nullable input schema conflicts with required non-null method envelope")
 	}
 }
@@ -125,7 +126,7 @@ type rawContractParams struct {
 }
 
 func TestMethodServerRejectsOriginalMissingMembersBeforeBusinessExecution(t *testing.T) {
-	method, err := NewMethod[contractInput, contractInput](MethodConfig{Name: "reviews.update", Kind: Mutation, Target: "installation", Description: "Update."})
+	method, err := NewMethod[contractInput, contractInput](MethodConfig{Name: "reviews.update", Kind: contractsdk.Mutation, Target: "installation", Description: "Update."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,12 +143,9 @@ func TestMethodServerRejectsOriginalMissingMembersBeforeBusinessExecution(t *tes
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
-	contract, err := methodContract(method.Descriptor())
-	if err != nil {
-		t.Fatal(err)
-	}
+	contract := method.contract.Identity()
 	for _, raw := range []string{`{"status":"open"}`, `{"status":"open","revision":null}`, `{"status":"unknown","revision":1}`} {
-		if _, err := sdk.CallCustomMethod[*rawContractParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &rawContractParams{Protocol: BackendProtocol, Method: method.Name(), Contract: contract.Digest(), Input: []byte(raw), CommandID: "original"}); err == nil {
+		if _, err := sdk.CallCustomMethod[*rawContractParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &rawContractParams{Protocol: contractsdk.Protocol, Method: method.Name(), Contract: contract.Digest(), Input: []byte(raw), CommandID: "original"}); err == nil {
 			t.Fatalf("malformed input admitted: %s", raw)
 		}
 	}

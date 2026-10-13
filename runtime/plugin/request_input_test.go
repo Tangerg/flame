@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
@@ -14,7 +15,7 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 	type input struct {
 		N float64 `json:"n"`
 	}
-	method, err := NewMethod[input, struct{}](MethodConfig{Name: "example.update", Kind: Mutation, Target: "installation", Description: "Update a number."})
+	method, err := NewMethod[input, struct{}](MethodConfig{Name: "example.update", Kind: contractsdk.Mutation, Target: "installation", Description: "Update a number."})
 	if err != nil {
 		t.Fatal(err)
 	}

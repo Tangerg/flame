@@ -7,122 +7,26 @@ import (
 	"sync/atomic"
 	"testing"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func testCapability(t *testing.T, methods ...MethodDescriptor) *Capability {
+func testCapability(t *testing.T, methods ...contractsdk.MethodDescriptor) *contractsdk.Contract {
 	t.Helper()
-	capability, err := NewCapability(CapabilityConfig{Reference: "acme/records", Composition: Selection, Scope: "workspace"}, methods...)
+	capability, err := contractsdk.New(contractsdk.Config{Reference: "acme/records", Composition: contractsdk.Selection, Scope: "workspace"}, methods...)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return capability
 }
 
-func TestCapabilityOwnsAnImmutableCanonicalContract(t *testing.T) {
-	read, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: Query, Target: "workspace", Description: "Read."})
-	if err != nil {
-		t.Fatal(err)
-	}
-	write, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: Mutation, Target: "workspace", Description: "Write."})
-	if err != nil {
-		t.Fatal(err)
-	}
-	methods := []MethodDescriptor{write.Descriptor(), read.Descriptor()}
-	capability := testCapability(t, methods...)
-	methods[0].Input[0] = 'x'
-	projection := capability.Descriptor()
-	if projection.Methods[0].Name != read.Name() || projection.Methods[1].Input[0] == 'x' {
-		t.Fatal("capability borrowed mutable author input")
-	}
-	projection.Methods[0].Input[0] = 'x'
-	if capability.Descriptor().Methods[0].Input[0] == 'x' {
-		t.Fatal("projection changed the capability owner")
-	}
-	prose := write.Descriptor()
-	prose.Description = "Revised prose."
-	if testCapability(t, read.Descriptor(), prose).Contract() != capability.Contract() {
-		t.Fatal("method order or prose changed callable identity")
-	}
-	encoded, err := json.Marshal(capability.Descriptor())
-	if err != nil {
-		t.Fatal(err)
-	}
-	parsed, err := ParseCapability(encoded)
-	if err != nil || parsed.Contract() != capability.Contract() {
-		t.Fatalf("generated projection changed callable identity: %v", err)
-	}
-	for _, change := range []struct {
-		name   string
-		change func(*CapabilityDescriptor)
-	}{
-		{"reference", func(d *CapabilityDescriptor) { d.Reference = "acme/other" }},
-		{"composition", func(d *CapabilityDescriptor) { d.Composition = Collection }},
-		{"scope", func(d *CapabilityDescriptor) { d.Scope = "installation" }},
-		{"target", func(d *CapabilityDescriptor) { d.Methods[0].Target = "installation" }},
-		{"kind", func(d *CapabilityDescriptor) { d.Methods[0].Kind = Mutation }},
-		{"required set", func(d *CapabilityDescriptor) { d.Methods = d.Methods[:1] }},
-	} {
-		t.Run(change.name, func(t *testing.T) {
-			descriptor := capability.Descriptor()
-			change.change(&descriptor)
-			data, err := json.Marshal(descriptor)
-			if err != nil {
-				t.Fatal(err)
-			}
-			changed, err := ParseCapability(data)
-			if err != nil || changed.Contract() == capability.Contract() {
-				t.Fatalf("changed callable identity was lost: %v", err)
-			}
-		})
-	}
-}
-
-func TestCapabilityRefusesInvalidDeclarationsWithoutActivation(t *testing.T) {
-	method, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: Query, Target: "installation", Description: "Read."})
-	if err != nil {
-		t.Fatal(err)
-	}
-	capability := testCapability(t, method.Descriptor())
-	for _, change := range []func(*CapabilityDescriptor){
-		func(d *CapabilityDescriptor) { d.Protocol = "old" },
-		func(d *CapabilityDescriptor) { d.Reference = "has space" },
-		func(d *CapabilityDescriptor) { d.Scope = "" },
-		func(d *CapabilityDescriptor) { d.Composition = "unknown" },
-		func(d *CapabilityDescriptor) { d.Methods = nil },
-		func(d *CapabilityDescriptor) { d.Methods = append(d.Methods, d.Methods[0]) },
-		func(d *CapabilityDescriptor) { d.Methods[0].Input = []byte(`{}`) },
-		func(d *CapabilityDescriptor) {
-			d.Methods[0].Output = []byte(`{"$ref":"https://invalid.example/schema"}`)
-		},
-	} {
-		descriptor := capability.Descriptor()
-		change(&descriptor)
-		data, err := json.Marshal(descriptor)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := ParseCapability(data); err == nil {
-			t.Fatalf("invalid declaration admitted: %s", data)
-		}
-	}
-	data, err := json.Marshal(capability.Descriptor())
-	if err != nil {
-		t.Fatal(err)
-	}
-	data = append(data[:len(data)-1], []byte(`,"extra":true}`)...)
-	if _, err := ParseCapability(data); err == nil {
-		t.Fatal("unknown declaration member admitted")
-	}
-}
-
 func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
-	read, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: Query, Target: "workspace", Description: "Read."})
+	read, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: contractsdk.Query, Target: "workspace", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: Mutation, Target: "workspace", Description: "Write."})
+	write, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: contractsdk.Mutation, Target: "workspace", Description: "Write."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,12 +71,12 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 	if err := backend.BindCapability("late", capability); err == nil {
 		t.Fatal("published export changed")
 	}
-	if err := backend.BindCapability("zero", &Capability{}); err == nil {
+	if err := backend.BindCapability("zero", &contractsdk.Contract{}); err == nil {
 		t.Fatal("unvalidated capability bound")
 	}
 	for _, attempt := range []struct {
 		export string
-		need   *Capability
+		need   *contractsdk.Contract
 	}{{"missing", capability}, {"reader", capability}} {
 		if _, err := ResolveCapability(t.Context(), session, attempt.export, attempt.need); err == nil {
 			t.Fatal("unavailable/mismatched export resolved")
@@ -191,10 +95,10 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, attempt := range []Binding{
-		{session: session, descriptor: member.descriptor, input: member.input, output: member.output, contract: member.contract},
-		{session: session, descriptor: member.descriptor, input: member.input, output: member.output, contract: member.contract, export: "missing", capability: member.capability},
-		{session: session, descriptor: member.descriptor, input: member.input, output: member.output, contract: member.contract, export: "records", capability: readOnly.Contract().Digest()},
-		{session: session, descriptor: member.descriptor, input: member.input, output: member.output, contract: member.contract, export: "reader", capability: readOnly.Contract().Digest()},
+		{session: session, method: member.method},
+		{session: session, method: member.method, export: "missing", capability: member.capability},
+		{session: session, method: member.method, export: "records", capability: readOnly.Identity().Digest()},
+		{session: session, method: member.method, export: "reader", capability: readOnly.Identity().Digest()},
 	} {
 		if _, err := attempt.Invoke(t.Context(), "original", input); err == nil {
 			t.Fatal("invalid export identity reached the owner")
@@ -234,7 +138,7 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 }
 
 func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
-	method, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: Mutation, Target: "installation", Description: "Write."})
+	method, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: contractsdk.Mutation, Target: "installation", Description: "Write."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +200,7 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 }
 
 func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T) {
-	method, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: Query, Target: "installation", Description: "Read."})
+	method, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: contractsdk.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,12 +211,12 @@ func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T
 	}{
 		{"missing required method", func(d *Description) { d.Methods = nil }},
 		{"duplicate method", func(d *Description) { d.Methods = append(d.Methods, d.Methods[0]) }},
-		{"wrong required method", func(d *Description) { d.Methods[0].Kind = Mutation }},
+		{"wrong required method", func(d *Description) { d.Methods[0].Kind = contractsdk.Mutation }},
 		{"duplicate export", func(d *Description) { d.Capabilities = append(d.Capabilities, d.Capabilities[0]) }},
 		{"missing export", func(d *Description) { d.Capabilities = nil }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
-			description := Description{Protocol: BackendProtocol, Methods: []MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
+			description := Description{Protocol: contractsdk.Protocol, Methods: []contractsdk.MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
 			change.change(&description)
 			server := sdk.NewServer(&sdk.Implementation{Name: "invalid-publication"}, nil)
 			if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *describeParams) (*Result[Description], error) {

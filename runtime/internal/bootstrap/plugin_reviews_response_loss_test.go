@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -35,13 +36,13 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := pluginsdk.ParseCapability(data)
+	contract, err := capability.Parse(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var method string
-	for _, descriptor := range capability.Descriptor().Methods {
-		if descriptor.Kind == pluginsdk.Mutation {
+	for _, descriptor := range contract.Descriptor().Methods {
+		if descriptor.Kind == capability.Mutation {
 			if method != "" {
 				t.Fatal("fixture requires one mutation")
 			}
@@ -72,7 +73,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 		return session
 	}
 	session := connect(evidence, "response")
-	bound, err := pluginsdk.ResolveCapability(ctx, session, "reviews", capability)
+	bound, err := pluginsdk.ResolveCapability(ctx, session, "reviews", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +121,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 		t.Fatalf("probe did not witness committed business evidence: %s, %v", accepted, err)
 	}
 	restarted := connect(guard, "request")
-	original, err := pluginsdk.NewCapabilityBinding(restarted, "reviews", capability)
+	original, err := pluginsdk.NewCapabilityBinding(restarted, "reviews", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,15 +164,15 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name string               `json:"name"`
-		Kind pluginsdk.MethodKind `json:"kind"`
+		Name string                `json:"name"`
+		Kind capability.MethodKind `json:"kind"`
 	}
 	if err := json.Unmarshal(metadata, &methods); err != nil {
 		t.Fatal(err)
 	}
 	var updateMethod string
 	for _, method := range methods {
-		if method.Kind == pluginsdk.Mutation {
+		if method.Kind == capability.Mutation {
 			if updateMethod != "" {
 				t.Fatal("receipt fixture requires one declared mutation")
 			}
@@ -185,7 +186,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := pluginsdk.ParseCapability(capabilityData)
+	contract, err := capability.Parse(capabilityData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +330,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 			t.Error(err)
 		}
 	})
-	bound, err := pluginsdk.NewCapabilityBinding(backend, "reviews", capability)
+	bound, err := pluginsdk.NewCapabilityBinding(backend, "reviews", contract)
 	if err != nil {
 		t.Fatal(err)
 	}

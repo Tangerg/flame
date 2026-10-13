@@ -8,68 +8,44 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
-type MethodKind string
-
-const (
-	Query    MethodKind = "query"
-	Mutation MethodKind = "command"
-)
-
 type MethodConfig struct {
 	Name        string
-	Kind        MethodKind
+	Kind        capability.MethodKind
 	Target      string
 	Description string
 }
 
-// MethodDescriptor is a build/discovery projection. It cannot change the
-// immutable method that generated it or supply a different admission schema.
-type MethodDescriptor struct {
-	Name        string         `json:"name"`
-	Kind        MethodKind     `json:"kind"`
-	Target      string         `json:"target"`
-	Description string         `json:"description"`
-	Input       jsontext.Value `json:"input"`
-	Output      jsontext.Value `json:"output"`
-}
-
 type Method[P, R any] struct {
-	config MethodConfig
-	input  jsonschema.Schema
-	output jsonschema.Schema
+	contract *capability.Method
 }
 
 func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
-	if config.Kind != Query && config.Kind != Mutation {
-		return nil, errors.New("plugin: method kind must be query or command")
-	}
-	if !contractToken(config.Name) || !contractToken(config.Target) || config.Description == "" || !utf8.ValidString(config.Description) {
-		return nil, errors.New("plugin: method identity, target and description are required")
+	if config.Description == "" || !utf8.ValidString(config.Description) {
+		return nil, errors.New("plugin: method description is required")
 	}
 	input, err := jsonschema.For[P]()
 	if err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", config.Name, err)
 	}
-	if input.Validate([]byte("null")) == nil {
-		return nil, errors.New("plugin: method input must exclude null; wrap optional values in a request object")
-	}
 	output, err := jsonschema.For[R]()
 	if err != nil {
 		return nil, fmt.Errorf("plugin: %s output: %w", config.Name, err)
 	}
-	return &Method[P, R]{config: config, input: input, output: output}, nil
+	contract, err := capability.AdmitMethod(capability.MethodDescriptor{Name: config.Name, Kind: config.Kind, Target: config.Target, Description: config.Description, Input: input.JSON(), Output: output.JSON()})
+	if err != nil {
+		return nil, err
+	}
+	return &Method[P, R]{contract: contract}, nil
 }
 
-func (m *Method[P, R]) Name() string { return m.config.Name }
-
-func (m *Method[P, R]) Descriptor() MethodDescriptor {
-	return MethodDescriptor{Name: m.config.Name, Kind: m.config.Kind, Target: m.config.Target, Description: m.config.Description, Input: m.input.JSON(), Output: m.output.JSON()}
-}
+func (m *Method[P, R]) Name() string                            { return m.contract.Name() }
+func (m *Method[P, R]) Descriptor() capability.MethodDescriptor { return m.contract.Descriptor() }
 
 // Raw input admission precedes typed business execution. Re-encoding the decoded
 // value would erase missing required members by inserting their Go zero values.
@@ -81,7 +57,7 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) str
 }
 
 func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
-	return boundMethod{descriptor: m.Descriptor(), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
+	return boundMethod{contract: m.contract, invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
 		encoded, err := json.Marshal(struct {
 			sdk.ParamsBase
 			Input     jsontext.Value `json:"input"`
@@ -97,16 +73,16 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 		if params.inputJSON.Validate() != nil {
 			return nil, errors.New("plugin: method input is required")
 		}
-		if m.config.Kind == Query && params.CommandID != "" {
+		if m.contract.Kind() == capability.Query && params.CommandID != "" {
 			return nil, errors.New("plugin: query must not carry a command identity")
 		}
-		if m.config.Kind == Mutation {
+		if m.contract.Kind() == capability.Mutation {
 			if err := validateCommandID(params.CommandID); err != nil {
 				return nil, err
 			}
 		}
-		if err := m.input.Validate(params.inputJSON.JSON()); err != nil {
-			return nil, fmt.Errorf("plugin: %s input: %w", m.config.Name, err)
+		if err := m.contract.ValidateInput(params.inputJSON); err != nil {
+			return nil, fmt.Errorf("plugin: %s input: %w", m.Name(), err)
 		}
 		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
 		ctx, err = bindCallbackMetadata(ctx, params.Meta)
@@ -119,8 +95,8 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 			if err != nil {
 				return nil, err
 			}
-			if err := m.output.Validate(encoded); err != nil {
-				return nil, fmt.Errorf("plugin: %s output: %w", m.config.Name, err)
+			if err := m.contract.ValidateOutput(encoded); err != nil {
+				return nil, fmt.Errorf("plugin: %s output: %w", m.Name(), err)
 			}
 		}
 		outcome, err := Reply(value, operationErr, classify)
@@ -141,7 +117,7 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 
 func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, input P) (R, error) {
 	var zero R
-	if m.config.Kind != Query {
+	if m.contract.Kind() != capability.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
 	return m.call(ctx, session, &Params[P]{Input: input})
@@ -149,7 +125,7 @@ func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, inp
 
 func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSession, id string, input P) (R, error) {
 	var zero R
-	if m.config.Kind != Mutation {
+	if m.contract.Kind() != capability.Mutation {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := validateCommandID(id); err != nil {
@@ -163,10 +139,7 @@ func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, par
 	if session == nil {
 		return zero, errors.New("plugin: client session is required")
 	}
-	binding, err := NewBinding(session, m.Descriptor())
-	if err != nil {
-		return zero, err
-	}
+	binding := &Binding{session: session, method: m.contract}
 	return m.callBinding(ctx, binding, params)
 }
 
@@ -184,7 +157,7 @@ func (m *Method[P, R]) callBinding(ctx context.Context, binding *Binding, params
 	if err != nil {
 		return zero, err
 	}
-	return result.value(m.config.Name)
+	return result.value(m.Name())
 }
 
 type BoundMethod[P, R any] struct {
@@ -200,11 +173,7 @@ func (m *Method[P, R]) Bind(capability *CapabilityBinding) (*BoundMethod[P, R], 
 	if err != nil {
 		return nil, err
 	}
-	contract, err := methodContract(m.Descriptor())
-	if err != nil {
-		return nil, err
-	}
-	if contract != binding.contract {
+	if m.contract.Identity() != binding.Contract() {
 		return nil, errors.New("plugin: typed method differs from capability contract")
 	}
 	return &BoundMethod[P, R]{method: m, binding: binding}, nil
@@ -212,7 +181,7 @@ func (m *Method[P, R]) Bind(capability *CapabilityBinding) (*BoundMethod[P, R], 
 
 func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {
 	var zero R
-	if m.method.config.Kind != Query {
+	if m.method.contract.Kind() != capability.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
 	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input})
@@ -220,7 +189,7 @@ func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {
 
 func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id string, input P) (R, error) {
 	var zero R
-	if m.method.config.Kind != Mutation {
+	if m.method.contract.Kind() != capability.Mutation {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := validateCommandID(id); err != nil {

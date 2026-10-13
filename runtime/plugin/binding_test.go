@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -29,13 +30,13 @@ func TestCapturedContractRejectsChangesBeforeBusinessExecution(t *testing.T) {
 	}
 	for _, change := range []struct {
 		name   string
-		change func(*MethodDescriptor)
+		change func(*contractsdk.MethodDescriptor)
 	}{
-		{"method", func(d *MethodDescriptor) { d.Name = "another.write" }},
-		{"target", func(d *MethodDescriptor) { d.Target = "another-target" }},
-		{"kind", func(d *MethodDescriptor) { d.Kind = Query }},
-		{"input", func(d *MethodDescriptor) { d.Input = jsontext.Value(`{"type":"string","minLength":1}`) }},
-		{"output", func(d *MethodDescriptor) { d.Output = jsontext.Value(`{"type":"string","minLength":1}`) }},
+		{"method", func(d *contractsdk.MethodDescriptor) { d.Name = "another.write" }},
+		{"target", func(d *contractsdk.MethodDescriptor) { d.Target = "another-target" }},
+		{"kind", func(d *contractsdk.MethodDescriptor) { d.Kind = contractsdk.Query }},
+		{"input", func(d *contractsdk.MethodDescriptor) { d.Input = jsontext.Value(`{"type":"string","minLength":1}`) }},
+		{"output", func(d *contractsdk.MethodDescriptor) { d.Output = jsontext.Value(`{"type":"string","minLength":1}`) }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			descriptor := original.Descriptor()
@@ -45,7 +46,7 @@ func TestCapturedContractRejectsChangesBeforeBusinessExecution(t *testing.T) {
 				t.Fatal(err)
 			}
 			id := "command"
-			if descriptor.Kind == Query {
+			if descriptor.Kind == contractsdk.Query {
 				id = ""
 			}
 			if _, err := binding.Invoke(t.Context(), id, input); err == nil {
@@ -77,7 +78,7 @@ func TestOriginalBindingValidatesPrivateReceiptWithoutInvokingMutation(t *testin
 	}
 	var mutations, reads atomic.Int32
 	reply := jsontext.Value(`{"value":{}}`)
-	method, err := NewMethod[string, output](MethodConfig{Name: "owner.update", Kind: Mutation, Target: "workspace", Description: "update"})
+	method, err := NewMethod[string, output](MethodConfig{Name: "owner.update", Kind: contractsdk.Mutation, Target: "workspace", Description: "update"})
 	if err != nil {
 		t.Fatal(err)
 	}

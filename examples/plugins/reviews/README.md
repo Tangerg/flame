@@ -17,7 +17,9 @@ starting MCP. Discovery carries the current backend protocol and exact generated
 method schemas; the former per-operation MCP endpoints are not registered.
 
 `backend/contracts.go` owns the two method descriptions, typed bindings and
-the consumer's callable capability contract.
+the consumer's callable capability contract. The pure public `runtime/capability`
+package admits that contract; `runtime/plugin` binds it to MCP without a second
+schema or fingerprint owner.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./...` projects the same methods into
 `package/io.github.tangerg.flame/contracts/{capability.generated.json,schema.json,methods.generated.json,API_REFERENCE.md}`

@@ -14,8 +14,17 @@ relabel commands as queries. Server admission retains and validates original inp
 so typed decoding cannot hide missing fields. Invalid output remains a protocol failure,
 preserving uncertainty about an already committed effect.
 
-`Descriptor` is an independently owned discovery/build projection, not another
-method authority. `NewCapability` groups the exact required method descriptors
+`github.com/Tangerg/flame/runtime/capability` owns the immutable callable
+contracts independently of transport. `capability.AdmitMethod` admits local
+method metadata; typed SDK methods, live bindings, callbacks and generation
+consume that owner. It provides the exact schemas, validation and canonical
+identity. Descriptors are deep-copy discovery/build projections.
+Existing Go authors must move method descriptors, kinds, composition metadata
+and callable contracts from `runtime/plugin` to `runtime/capability`. The old
+SDK definitions and constructors are removed without aliases. Rebuild affected
+Go consumers; the backend wire protocol, canonical JSON and fingerprints are
+unchanged by this source ownership change.
+`capability.New` groups the exact required method descriptors
 under the consumer's semantic reference, composition rule and scope meaning.
 Pipe its capability descriptor JSON into the existing Runtime `contractgen`
 with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
@@ -41,7 +50,7 @@ they are no longer separate MCP methods.
 handlers and checks its complete required set before publication. Several exports
 may share a handler; there is still one semantic method and business receipt
 namespace. Export identity describes routing, not another mutable business fact.
-`ParseCapability` admits generated local metadata without executing code or fetching
+`capability.Parse` admits generated local metadata without executing code or fetching
 schemas. `ResolveCapability` validates a concrete export and all its methods against
 the consumer's exact contract. Missing, duplicate or mismatched exports are unavailable.
 `Method.Bind` returns a typed `BoundMethod` over that concrete binding. It uses the
@@ -130,7 +139,7 @@ arguments or transport IDs. `ToolCommandID` qualifies that identity for receipt
 owners that separate Tool and human command namespaces. These identities are not
 credentials or standing approval grants.
 
-The current SDK requires `BackendProtocol` on invocation and description. It is
+The current SDK requires `capability.Protocol` on invocation and description. It is
 a public wire contract identity, separate from internal build or data-directory
 versions. Only this current protocol is interpreted. Installed declaration/token
 matching remains part of the continuing refactor.

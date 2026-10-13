@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -88,11 +89,14 @@ func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id, 
 }
 
 func receiptBinding(session *sdk.ClientSession) (*Binding, error) {
-	method, err := NewMethod[ReceiptRequest, Receipt](MethodConfig{Name: ReceiptMethod, Kind: Query, Target: "installation", Description: ReceiptMethod})
+	method, err := NewMethod[ReceiptRequest, Receipt](MethodConfig{Name: ReceiptMethod, Kind: capability.Query, Target: "installation", Description: ReceiptMethod})
 	if err != nil {
 		return nil, err
 	}
-	return NewBinding(session, method.Descriptor())
+	if session == nil {
+		return nil, errors.New("plugin: client session is required")
+	}
+	return &Binding{session: session, method: method.contract}, nil
 }
 
 func readReceipt(ctx context.Context, binding *Binding, id, method string, admitted jsoninput.Input) (jsontext.Value, bool, error) {

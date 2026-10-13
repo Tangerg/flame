@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -29,7 +30,7 @@ type callbackOwnerKey struct{}
 
 func callbackTestMethod(t *testing.T, target string) *Method[callbackInput, int64] {
 	t.Helper()
-	method, err := NewMethod[callbackInput, int64](MethodConfig{Name: "test.host/compute", Kind: Query, Target: target, Description: "Compute for the captured owner."})
+	method, err := NewMethod[callbackInput, int64](MethodConfig{Name: "test.host/compute", Kind: contractsdk.Query, Target: target, Description: "Compute for the captured owner."})
 	if err != nil {
 		t.Fatal(err)
 	}

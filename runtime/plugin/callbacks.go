@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -73,11 +74,6 @@ func NewCallback[P, R any](method *Method[P, R], classify func(error) string, ha
 	bound := method.bind(classify, func(ctx context.Context, _ *sdk.ServerSession, command Command[P]) (R, error) {
 		return handler(ctx, command)
 	})
-	contract, err := methodContract(bound.descriptor)
-	if err != nil {
-		return Callback{}, err
-	}
-	bound.contract = contract.Digest()
 	return Callback{method: bound}, nil
 }
 
@@ -178,10 +174,10 @@ func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits
 	methods := make(map[string]boundMethod, len(callbacks))
 	for _, callback := range callbacks {
 		method := callback.method
-		if method.invoke == nil || methods[method.descriptor.Name].invoke != nil {
+		if method.contract == nil || method.invoke == nil || methods[method.contract.Name()].invoke != nil {
 			return CallbackRef{}, nil, errors.New("plugin: callback operations must be valid and unique")
 		}
-		methods[method.descriptor.Name] = method
+		methods[method.contract.Name()] = method
 	}
 	return c.open(ctx, session, limits, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -421,7 +417,7 @@ func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]bo
 		err = json.Unmarshal(body, &wire, json.RejectUnknownMembers(true))
 	}
 	method, found := methods[wire.Method]
-	if err != nil || !found || wire.Contract != method.contract {
+	if err != nil || !found || wire.Contract != method.contract.Identity().Digest() {
 		http.Error(w, "callback contract or input refused", http.StatusBadRequest)
 		return
 	}
@@ -451,7 +447,7 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	if method == nil {
 		return zero, errors.New("plugin: callback method is required")
 	}
-	if method.config.Kind == Mutation {
+	if method.contract.Kind() == capability.Mutation {
 		if err := validateCommandID(id); err != nil {
 			return zero, err
 		}
@@ -462,14 +458,10 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	if err != nil {
 		return zero, err
 	}
-	if err := method.input.Validate(admitted.JSON()); err != nil {
+	if err := method.contract.ValidateInput(admitted); err != nil {
 		return zero, err
 	}
-	contract, err := methodContract(method.Descriptor())
-	if err != nil {
-		return zero, err
-	}
-	encoded, err := json.Marshal(invokeParams{Protocol: BackendProtocol, Method: method.Name(), Contract: contract.Digest(), Input: admitted.JSON(), CommandID: id})
+	encoded, err := json.Marshal(invokeParams{Protocol: capability.Protocol, Method: method.Name(), Contract: method.contract.Identity().Digest(), Input: admitted.JSON(), CommandID: id})
 	if err != nil {
 		return zero, err
 	}
@@ -511,7 +503,7 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	if _, err := result.value(method.Name()); err != nil {
 		return zero, err
 	}
-	if err := method.output.Validate(result.valueJSON); err != nil {
+	if err := method.contract.ValidateOutput(result.valueJSON); err != nil {
 		return zero, fmt.Errorf("plugin: callback output: %w", err)
 	}
 	typed, err := decodeBoundResult[R](&result)

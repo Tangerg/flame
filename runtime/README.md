@@ -689,6 +689,11 @@ provider after update or uninstall. History is not evicted or capped by an arbit
 lifetime command count. The pure public jsoninput value normalizes object order
 without rounding numbers or replacing original request evidence with decoded DTOs.
 The host and private stores persist this input; fingerprints are derived projections.
+The pure public `capability` package owns local callable metadata, schemas and
+canonical identity. It imports no MCP transport or Runtime internals. The public
+`plugin` SDK, callbacks, actual feature bindings and generator consume that owner;
+installation domain code can admit a contract without activating a backend.
+Go API ownership changed without changing the backend protocol or wire identity.
 This storage shape requires a fresh Runtime directory; former digest-only command
 routing and private Memory/Schedules receipts are refused, as are bare-result receipts.
 Retain old directories separately; opening them performs no conversion or deletion.

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -180,7 +181,7 @@ func RegisterServer[P, R any](backend *Backend, name string, classify func(error
 	if handler == nil {
 		return errors.New("plugin: method handler is required")
 	}
-	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: Query, Target: "installation", Description: name})
+	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: capability.Query, Target: "installation", Description: name})
 	if err != nil {
 		return err
 	}
@@ -192,7 +193,7 @@ func RegisterCommand[P, R any](backend *Backend, name string, classify func(erro
 	if handler == nil {
 		return errors.New("plugin: command handler is required")
 	}
-	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: Mutation, Target: "installation", Description: name})
+	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: capability.Mutation, Target: "installation", Description: name})
 	if err != nil {
 		return err
 	}

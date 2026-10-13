@@ -13,23 +13,23 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/flame/runtime/capability"
 )
 
 type featureMethod struct {
-	Name        string               `json:"name"`
-	Kind        pluginsdk.MethodKind `json:"kind"`
-	Target      string               `json:"target"`
-	Description string               `json:"description"`
-	Input       string               `json:"input"`
-	Output      string               `json:"output"`
+	Name        string                `json:"name"`
+	Kind        capability.MethodKind `json:"kind"`
+	Target      string                `json:"target"`
+	Description string                `json:"description"`
+	Input       string                `json:"input"`
+	Output      string                `json:"output"`
 }
 
 type featureArtifacts struct {
 	definitions map[string]jsontext.Value
 	methods     []featureMethod
 	typescript  string
-	capability  *pluginsdk.Capability
+	capability  *capability.Contract
 }
 
 func runFeature(source, dir, tsDir string) error {
@@ -119,13 +119,13 @@ func protectFeatureSource(source, dir, tsDir string) error {
 }
 
 func buildFeature(data []byte) (featureArtifacts, error) {
-	capability, err := pluginsdk.ParseCapability(data)
+	contract, err := capability.Parse(data)
 	if err != nil {
 		return featureArtifacts{}, err
 	}
-	descriptor := capability.Descriptor()
+	descriptor := contract.Descriptor()
 	descriptors := descriptor.Methods
-	artifacts := featureArtifacts{definitions: make(map[string]jsontext.Value), capability: capability}
+	artifacts := featureArtifacts{definitions: make(map[string]jsontext.Value), capability: contract}
 	set := &schemaSet{defs: make(map[string]*schema)}
 	for _, descriptor := range descriptors {
 		if descriptor.Description == "" || !utf8.ValidString(descriptor.Description) {
@@ -172,7 +172,7 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 		emitter.line("  %s: { kind: %s, target: %s },", strconv.Quote(method.Name), strconv.Quote(string(method.Kind)), strconv.Quote(method.Target))
 	}
 	emitter.line("} as const;")
-	emitter.line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", strconv.Quote(descriptor.Protocol), strconv.Quote(descriptor.Reference), strconv.Quote(string(descriptor.Composition)), strconv.Quote(descriptor.Scope), strconv.Quote(capability.Contract().Digest()))
+	emitter.line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", strconv.Quote(descriptor.Protocol), strconv.Quote(descriptor.Reference), strconv.Quote(string(descriptor.Composition)), strconv.Quote(descriptor.Scope), strconv.Quote(contract.Identity().Digest()))
 	artifacts.typescript = emitter.out.String()
 	return artifacts, nil
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -215,8 +216,8 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("original command binding missing: %t, %v", found, err)
 	}
 	contract := original.Snapshot().Contract
-	var descriptor pluginsdk.MethodDescriptor
-	if err := json.Unmarshal(contract.JSON(), &descriptor); err != nil || descriptor.Name != "flame.memory/add.v1" || descriptor.Kind != pluginsdk.Mutation || len(descriptor.Input) == 0 || len(descriptor.Output) == 0 {
+	var descriptor capability.MethodDescriptor
+	if err := json.Unmarshal(contract.JSON(), &descriptor); err != nil || descriptor.Name != "flame.memory/add.v1" || descriptor.Kind != capability.Mutation || len(descriptor.Input) == 0 || len(descriptor.Output) == 0 {
 		t.Fatalf("original contract not captured: %+v, %v", descriptor, err)
 	}
 	requireManagedServiceChange(t, changed)

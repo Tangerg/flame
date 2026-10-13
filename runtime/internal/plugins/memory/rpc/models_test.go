@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -97,7 +98,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if method.Descriptor().Kind != pluginsdk.Mutation {
+			if method.Descriptor().Kind != capability.Mutation {
 				t.Fatal("external model call was declared as a query")
 			}
 			value, err := pluginsdk.CallHost(t.Context(), grant, method, "first", testPrompt())
