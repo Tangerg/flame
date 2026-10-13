@@ -60,7 +60,6 @@ beforeEach(async () => {
     memory: {
       expandedDirs: [],
       lastFilePath: null,
-      diffMode: "worktree",
     },
   });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });

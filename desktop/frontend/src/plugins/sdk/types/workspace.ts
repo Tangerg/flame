@@ -31,7 +31,7 @@ export interface WorkspaceFileRendererSpec {
 export type ContextDockDestinationScope = "workspace" | "session" | "run";
 
 export interface WorkspaceViewSpec {
-  material?: "diff" | "clientDiagnostics";
+  material?: string;
   id: string;
   title: string;
   icon?: string;

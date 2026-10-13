@@ -4,8 +4,16 @@
 components. It exposes an explicit Runtime client, frozen installed contribution
 binding and owned cancellation signal. The binding is absent for a component
 without its own callable contribution; `bindOperations` refuses such a context.
-Static content uses ordinary Hooks and shared UI controls without a backend. It has no application alias, state store,
-ambient service lookup or private source import.
+Static content uses ordinary Hooks and shared UI controls without a backend. The
+SDK exposes no application alias, private state store or ambient service lookup.
+
+Workspace-scoped components receive `context.workspace`: a frozen public
+`WorkspaceRef` plus file-focus path and revision from the Host's existing owners.
+They use `context.runtime.workspace(ref)` for canonical workspace operations. The
+context has no private store or navigation object. Target/focus replacement retires
+the render instance; calls honor its signal and track boundary. A component may
+publish an optional generic material key for a navigation consumer; the loader
+projects it without a business-specific branch.
 
 `bindOperations` consumes the owner's generated `CAPABILITY_JSON` and
 `MethodInputs`/`MethodOutputs`. Its query and command functions enter the ordinary

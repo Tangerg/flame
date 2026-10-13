@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentContext } from "@flame/plugin-sdk";
 import { FileDiff } from "@flame/icons/react";
-import type { Diff } from "@flame/runtime-contract/wire";
+import type { Diff, DiffMode } from "@flame/runtime-contract/wire";
 import {
   Badge,
   Button,
@@ -8,22 +9,16 @@ import {
   Disclosure,
   EmptyState,
   Metadata,
+  Panel,
+  PanelTitle,
   RecordGroup,
   SearchField,
   Select,
   Toolbar,
 } from "@flame/ui";
-import {
-  mountView,
-  ReadStatus,
-  useRead,
-  ViewPanel,
-  type ViewProps,
-} from "../../src/view";
 
-type DiffSnapshot = { diff: Diff; focusPath?: string };
-function WorkspaceDiff({ view }: ViewProps<DiffSnapshot>) {
-  const { data: snapshot } = useRead(view);
+export type DiffSnapshot = { diff: Diff; focusPath?: string };
+export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
   const [filter, setFilter] = useState("");
   const [layout, setLayout] = useState("unified");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
@@ -47,11 +42,7 @@ function WorkspaceDiff({ view }: ViewProps<DiffSnapshot>) {
   );
   const source = snapshot.diff.baseline;
   return (
-    <ViewPanel
-      view={view}
-      title="Workspace diff"
-      description="Current workspace changes. Choose the comparison baseline with the controls above."
-    >
+    <>
       <Metadata>
         <span id="baseline">
           {source.type === "emptyTree"
@@ -59,11 +50,6 @@ function WorkspaceDiff({ view }: ViewProps<DiffSnapshot>) {
             : `Baseline: ${source.type} · ${source.commit}`}
         </span>
       </Metadata>
-      <ReadStatus
-        view={view}
-        ready="Workspace diff loaded."
-        loading="Reading workspace diff…"
-      />
       {snapshot.diff.truncated && (
         <Metadata>
           <span id="truncated">
@@ -173,7 +159,100 @@ function WorkspaceDiff({ view }: ViewProps<DiffSnapshot>) {
         to read again. This page cannot edit files, stage changes or restore a
         checkpoint.
       </Metadata>
-    </ViewPanel>
+    </>
   );
 }
-mountView(WorkspaceDiff);
+
+type Read = {
+  loading: boolean;
+  accepted?: { snapshot: DiffSnapshot; mode: DiffMode };
+  error?: string;
+};
+
+export function WorkspaceDiff({ context }: { context: ComponentContext }) {
+  const workspace = useMemo(() => {
+    if (!context.workspace)
+      throw new Error("Workspace diff requires a workspace context");
+    return context.workspace;
+  }, [context]);
+  const [mode, setMode] = useState<DiffMode>("worktree");
+  const [read, setRead] = useState<Read>({ loading: true });
+  const reading = useRef<AbortController>(undefined);
+  const refresh = useCallback(async () => {
+    reading.current?.abort();
+    const controller = new AbortController();
+    reading.current = controller;
+    const signal = AbortSignal.any([context.signal, controller.signal]);
+    setRead((previous) => ({ ...previous, loading: true, error: undefined }));
+    try {
+      const diff = await context.track(
+        context.runtime
+          .workspace(workspace.ref)
+          .diff.get({ mode, format: "rows" }, signal),
+      );
+      const prefix = workspace.ref.path.endsWith("/")
+        ? workspace.ref.path
+        : `${workspace.ref.path}/`;
+      const focusPath = workspace.focus.path.startsWith(prefix)
+        ? workspace.focus.path.slice(prefix.length)
+        : workspace.focus.path;
+      if (!signal.aborted)
+        setRead({
+          loading: false,
+          accepted: { snapshot: { diff, focusPath }, mode },
+        });
+    } catch (error) {
+      if (!signal.aborted)
+        setRead((previous) => ({
+          ...previous,
+          loading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "The diff could not be read.",
+        }));
+    }
+  }, [context, mode, workspace]);
+  useEffect(() => {
+    void refresh();
+    return () => reading.current?.abort();
+  }, [refresh]);
+  return (
+    <Panel label="Workspace diff">
+      <Toolbar label="Diff comparison actions">
+        <PanelTitle>Workspace diff</PanelTitle>
+        <Select
+          label="Comparison"
+          value={mode}
+          options={[
+            { value: "worktree", label: "Working tree" },
+            { value: "base", label: "Default branch" },
+          ]}
+          onValueChange={(value) => setMode(value as DiffMode)}
+        />
+        <Button disabled={read.loading} onClick={() => void refresh()}>
+          Refresh
+        </Button>
+      </Toolbar>
+      <Metadata>Current workspace changes from {workspace.ref.path}.</Metadata>
+      {read.loading && <p role="status">Reading workspace diff…</p>}
+      {read.error && (
+        <p role="alert">The current diff could not be read: {read.error}</p>
+      )}
+      {read.accepted && (
+        <>
+          <p role="status">
+            Workspace diff loaded.{" "}
+            {read.accepted.mode === "worktree"
+              ? "Working tree"
+              : "Default branch"}{" "}
+            comparison.
+            {read.accepted.mode !== mode &&
+              " Showing the last accepted comparison while the selected comparison is unavailable."}
+          </p>
+          <DiffReport snapshot={read.accepted.snapshot} />
+        </>
+      )}
+    </Panel>
+  );
+}

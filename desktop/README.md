@@ -471,13 +471,17 @@ run-now and confirmed deletion; the guest receives canonical pages and cursor-on
 Opening a package template creates a draft, and only Runtime receipts change the schedule
 projection. Uninstalling the package leaves the Runtime worker and saved schedules intact.
 
-The optional [Diff package](../plugins/diff/plugin.json) renders canonical Runtime workspace
-comparisons. Host controls capture the workspace and baseline, and navigation captures file
-focus without granting guest-selected paths. The guest owns unified/split layout, local file
-filters and folding. A bounded partial diff, binary content, no changes and a failed read
-remain distinct. Tool and header entrances resolve admitted contributions; absent or ambiguous
-choices open the catalogue. The former compiled view and private Diff cache are removed.
-Uninstall preserves files, Git state, recorded results and checkpoint/restore authority.
+The optional [Diff package](../plugins/diff/plugin.json) is an ordinary workspace
+component. Host supplies the captured workspace and file-focus revision; the public
+SDK contains only that data and an explicit Runtime client. The component reads
+`workspace.diff.get` and owns comparison/layout/filter/folding state. Switching the
+workspace or activating file focus retires the instance and cancels its reads. The
+working-tree comparison is the fresh default; failed comparison reads retain and
+label the prior accepted result. The existing navigation consumer selects by a
+public material key and opens the catalogue for absent/competing candidates. Old
+HTML/carrier/query wrappers and the Host baseline preference are removed. Canonical
+files, Git evidence and Runtime authority remain unchanged. Graphical execution of
+the migrated component is not claimed by its production build.
 
 The optional [Skills package](../plugins/skills/plugin.json) supplies discovery, document,
 user-library and proposal presentation. Host controls capture the workspace, section and
@@ -587,8 +591,7 @@ checking page visibility. It selects each admitted contribution through the work
 opaque guest, refreshes recorded data, replaces memory scope, and
 checks withdrawal, re-enablement and physical page retirement. Skills covers discovery,
 document inspection, library archive/restore and trusted publication of a proposal
-created through a normal Run. Diff covers remote Git evidence and trusted baseline
-replacement. Uninstall must preserve
+created through a normal Run. The migrated Diff component has no current graphical acceptance claim. Uninstall must preserve
 canonical trajectory, memory, schedules, usage, workspace diffs and Skill curation.
 The Tool results check displays and refreshes a recorded Skill proposal in its isolated
 page, disables the renderer and verifies physical retirement, generic record visibility
@@ -596,7 +599,7 @@ and unchanged canonical trajectory. The application exits and cleanup completes 
 the single terminal result. File renderers covers a captured remote Markdown file,
 read renewal, physical retirement and preserved canonical source after disablement.
 Diagnostics covers local reads and trusted buffer clearing without changing canonical
-Runtime usage. The migrated ESM Usage and Icon gallery have no current graphical acceptance
+Runtime usage. The migrated ESM Diff, Usage and Icon gallery have no current graphical acceptance
 claim; their retired carrier cases were removed.
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.

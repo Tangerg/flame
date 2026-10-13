@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.9",
+  "protocolVersion": "2026-10-13.10",
   "features": [
     "reasoning",
     "multimodal",
@@ -947,32 +947,6 @@
       ]
     },
     {
-      "name": "plugins.readDiff",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
-        "workspace_unavailable",
-        "vcs_unavailable",
-        "path_outside_root",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins",
-        "git"
-      ],
-      "materializes": [
-        "workspace.diff.get"
-      ]
-    },
-    {
       "name": "plugins.readSkills",
       "kind": "unary",
       "operation": "query",
@@ -1850,7 +1824,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2024,7 +1997,6 @@
         "code": -32013,
         "recoveryAction": "promptUser",
         "methods": [
-          "plugins.readDiff",
           "tools.invoke",
           "workspace.diff.get",
           "workspace.files.head",
@@ -2053,7 +2025,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2085,7 +2056,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2117,7 +2087,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2149,7 +2118,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2186,7 +2154,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2404,7 +2371,6 @@
         "code": -32017,
         "recoveryAction": "promptUser",
         "methods": [
-          "plugins.readDiff",
           "workspace.changes.list",
           "workspace.diff.get"
         ]
@@ -2417,7 +2383,6 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
-          "plugins.readDiff",
           "plugins.readSkill",
           "plugins.readSkillProposals",
           "plugins.readSkills",
@@ -2962,17 +2927,6 @@
         {
           "requires": [
             "plugins"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "plugins.readDiff",
-      "rules": [
-        {
-          "requires": [
-            "plugins",
-            "git"
           ]
         }
       ]
@@ -9406,6 +9360,14 @@
         {
           "field": "contribution",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "material",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "scope",
+          "constraint": "pattern(\"^(installation|workspace)$\")"
         }
       ]
     },

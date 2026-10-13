@@ -23,7 +23,6 @@ import {
 import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { MemoryPackageView } from "./ui/MemoryPackageView";
-import { DiffPackageView } from "./ui/DiffPackageView";
 import { ClientDiagnosticsPackageView } from "./ui/ClientDiagnosticsPackageView";
 import { createClientViewReads, readClientDiagnostics } from "./adapters/clientViewReads";
 import { SkillsPackageView } from "./ui/SkillsPackageView";
@@ -39,7 +38,6 @@ import {
   createMemoryViewReads,
   createScheduleViewReads,
   createSkillViewReads,
-  createDiffViewReads,
 } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
@@ -110,6 +108,7 @@ function createPackageReconciler(
             default: () => (
               <InstalledComponent
                 entry={loaded.component}
+                scope={entry.scope}
                 resources={loaded.signal}
                 runtime={client}
                 binding={binding}
@@ -124,6 +123,7 @@ function createPackageReconciler(
           {
             id,
             title: `${release.name} · ${entry.title}`,
+            material: entry.material,
             component: () => (
               <ComponentBoundary>
                 <Suspense fallback={<p role="status">Loading plugin component…</p>}>
@@ -210,26 +210,6 @@ function createPackageReconciler(
               material: "clientDiagnostics",
               component: () => (
                 <ClientDiagnosticsPackageView
-                  reads={reads}
-                  title={title}
-                  lifetime={lifetime}
-                  carrier={carrier}
-                />
-              ),
-            });
-            break;
-          }
-          case "workspaceDiff": {
-            const reads = (target: Parameters<typeof createDiffViewReads>[2]) =>
-              createDiffViewReads(client.plugins, binding, target);
-            lifetime.contribute(WORKSPACE_VIEW, {
-              id: `package:${installation.id}:${view.id}`,
-              title,
-              icon: "diff",
-              dock: "workspace",
-              material: "diff",
-              component: () => (
-                <DiffPackageView
                   reads={reads}
                   title={title}
                   lifetime={lifetime}

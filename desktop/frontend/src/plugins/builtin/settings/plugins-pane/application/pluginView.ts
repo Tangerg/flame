@@ -6,8 +6,6 @@ import type {
   ManagedSkill,
   SkillProposal,
   WorkspaceRef,
-  GetDiffRequest,
-  Diff,
   ReadPluginViewRequest,
   ReadPluginRendererRequest,
 } from "@flame/runtime-contract/wire";
@@ -46,9 +44,3 @@ export type SkillViewSnapshot =
   | { type: "detail"; data: SkillDetail }
   | { type: "library"; data: Page<ManagedSkill> }
   | { type: "review"; data: Page<SkillProposal> };
-
-export type DiffViewTarget = Pick<GetDiffRequest, "workspace" | "mode"> & { focusPath: string };
-export interface DiffViewSnapshot {
-  diff: Diff;
-  focusPath: string;
-}

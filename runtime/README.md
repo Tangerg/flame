@@ -86,6 +86,15 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-13.10
+
+Component declarations admit workspace scope and an optional generic `material`
+navigation key. Graphical components receive a captured public workspace reference
+and file-focus intent, without private stores or application aliases. The Diff
+component calls canonical `workspace.diff.get`. Its HTML/carrier and duplicate
+`plugins.readDiff` request/bindings are removed. Rebuild clients and installed
+artifacts together. Business storage and workspace authority are unchanged.
+
 ## Protocol 2026-10-13.9
 
 Usage is an ordinary installed React component. It reads the public `usage.summary`
@@ -253,7 +262,7 @@ Schedule tables are imported, decoded or maintained in parallel.
 ## Component-only packages
 
 A namespace declaration may publish ordinary `components` without callable
-contributions or a backend process. Each component declares installation scope,
+contributions or a backend process. Each component declares installation or workspace scope,
 workspace placement, a namespace-local prebuilt ESM entry and its export name.
 An optional `contribution` binds an existing callable contribution from the same
 release. An authored unknown or malformed callable ID is refused; absence is valid
@@ -320,25 +329,24 @@ reading package availability cannot mark an existing admitted connection as fail
 Rebuild Runtime and clients together; older protocol versions are refused. No storage
 schema changes or data conversion are required.
 
-## Protocol 2026-10-10.7
+## Workspace Diff component
 
-The optional [Diff package](../plugins/diff/plugin.json) replaces the compiled Desktop
-Diff view and its dedicated query cache. A `workspaceDiff` view reads `plugins.readDiff`,
-which embeds canonical `GetDiffRequest`, requires plugin and Git capabilities and delegates
-to `workspace.diff.get`. Runtime retains workspace confinement, comparison baselines and
-file, row and byte limits. Canonical binary evidence, renames and whole-file truncation survive.
+The optional [Diff package](../plugins/diff/plugin.json) reads canonical
+`workspace.diff.get` through the public SDK's captured workspace context. Runtime
+owns workspace confinement, Git baselines and file/row/byte limits. Structured
+renames, binary evidence and whole-file truncation remain lossless public data.
 
-The Host captures the Runtime workspace, comparison mode and file-focus intent. The guest
-receives structured rows and may refresh only that captured read; layout, filtering and
-folding are its presentation state. A failed read remains explicit and preserves the previous
-result. Native transport capacity still refuses an oversized publication explicitly.
-File-edit and header navigation consult admitted Diff contributions, opening the catalogue
-when none or several are available. Withdrawal removes the page without changing files,
-Git state, recorded Tool results or restore authority. There is no built-in Diff fallback.
+Host owns the current workspace reference and file-focus revision; changes retire
+that rendering instance and cancel its reads. The component owns comparison mode,
+layout, filtering and folding. A file-focus activation starts a fresh working-tree
+comparison. The former Host diff-mode preference is removed. Failed baseline reads
+retain the last accepted comparison and label its actual mode.
 
-Rebuild Runtime and clients together and install/enable the current Diff package to expose its page.
-Runtime data needs no migration. Desktop dock preference version 1 resets the former
-layout/folding shape; it has no legacy reader or preference migration.
+The component declares `material: "diff"` for the existing workspace navigation
+consumer. That consumer opens the catalogue if no or several admitted candidates
+exist. Generic loading does not interpret the key. Disablement/uninstall withdraws
+presentation/resources while canonical workspace files, Git and Tool evidence remain
+with their original owners. There is no HTML guest or feature-specific read wrapper.
 
 ## Protocol 2026-10-10.6
 
@@ -990,7 +998,7 @@ before publishing its successor.
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
 `type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"skills"`,
-`"workspaceDiff"` or `"clientDiagnostics"`, and a portable
+`"clientDiagnostics"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,

@@ -280,7 +280,6 @@ async function refreshPage(id, method, binding, query, text) {
     "plugins.readTrajectory": "sessions.trajectory",
     "plugins.readMemory": "agentMemory.list",
     "plugins.readSchedules": "schedules.list",
-    "plugins.readDiff": "workspace.diff.get",
     "plugins.readSkills": "skills.discovered.list",
     "plugins.readSkill": "skills.discovered.get",
     "plugins.readSkillLibrary": "skills.library.list",
@@ -509,7 +508,7 @@ try {
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
   const defaults = (await rpc("plugins.list")).data;
   assert.equal(defaults.length, 10);
-  for (const name of ["trajectory", "memory", "schedules", "skills", "diff", "diagnostics"]) {
+  for (const name of ["trajectory", "memory", "schedules", "skills", "diagnostics"]) {
     const installation = defaults.find((item) => item.selected.name === `flame.${name}`);
     assert.ok(installation, `default ${name} package must be installed`);
     assert.equal(installation.state, "enabled");
@@ -852,33 +851,6 @@ try {
   usage = await rpc("usage.summary");
   assert.equal(usage.runs, 2);
 
-  const diffPage = await openPanel(installed.diff.title, "Workspace diff loaded.");
-  assert.match(
-    await guest(diffPage.id, "document.getElementById('files').textContent"),
-    /changed native diff/,
-  );
-  assert.match(
-    await guest(diffPage.id, "document.getElementById('files').textContent"),
-    /Binary content is not displayed/,
-  );
-  await refreshPage(
-    diffPage.id,
-    "plugins.readDiff",
-    installed.diff,
-    { workspace: { path: workspace }, mode: "worktree", format: "rows" },
-    "Workspace diff loaded.",
-  );
-  await clickText("Branch", "[role=tab]");
-  await waitFor("captured diff retirement", pages, (value) =>
-    value.pages.every((page) => page.id !== diffPage.id),
-  );
-  const branchDiff = await pageWith("Workspace diff loaded.");
-  assert.notEqual(branchDiff.id, diffPage.id);
-  await assert.rejects(guest(diffPage.id, "document.body.innerText"), /page is not ready/);
-  await closePanel(installed.diff.title, branchDiff.id);
-  console.log(
-    "Diff: canonical remote workspace, binary evidence, refresh and trusted baseline replacement passed",
-  );
   const skillPage = await openPanel(installed.skills.title, "native-user");
   await refreshPage(
     skillPage.id,

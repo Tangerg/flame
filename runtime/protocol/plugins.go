@@ -142,7 +142,6 @@ const (
 	PluginViewAgentMemory       PluginViewType = "agentMemory"
 	PluginViewSchedules         PluginViewType = "schedules"
 	PluginViewSkills            PluginViewType = "skills"
-	PluginViewWorkspaceDiff     PluginViewType = "workspaceDiff"
 	PluginViewClientDiagnostics PluginViewType = "clientDiagnostics"
 )
 
@@ -205,11 +204,6 @@ type ReadPluginTrajectoryRequest struct {
 type ReadPluginMemoryRequest struct {
 	ReadPluginViewRequest
 	AgentMemoryListRequest
-}
-
-type ReadPluginDiffRequest struct {
-	ReadPluginViewRequest
-	GetDiffRequest
 }
 
 type ReadPluginSchedulesRequest struct {
@@ -446,6 +440,7 @@ type PluginClientComponent struct {
 	Entry        string `json:"entry"`
 	Export       string `json:"export"`
 	Contribution string `json:"contribution,omitzero"`
+	Material     string `json:"material,omitzero"`
 }
 
 type OpenPluginResourcesRequest struct {

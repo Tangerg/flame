@@ -96,7 +96,3 @@ func (r *binding) ReadPluginSkillLibrary(ctx context.Context, request protocol.R
 func (r *binding) ReadPluginSkillProposals(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
 	return r.invoke[protocol.ReadPluginSkillsRequest, *protocol.Page[protocol.SkillProposal]](ctx, delivery.PluginsReadSkillProposals, request, callOptions(options))
 }
-
-func (r *binding) ReadPluginDiff(ctx context.Context, request protocol.ReadPluginDiffRequest, options CallOptions) (*protocol.Diff, error) {
-	return r.invoke[protocol.ReadPluginDiffRequest, *protocol.Diff](ctx, delivery.PluginsReadDiff, request, callOptions(options))
-}

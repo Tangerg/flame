@@ -41,6 +41,7 @@ type wireComponent struct {
 	Entry        string                 `json:"entry"`
 	Export       string                 `json:"export"`
 	Contribution *plugin.ContributionID `json:"contribution,omitzero"`
+	Material     *string                `json:"material,omitzero"`
 }
 
 type wireInput struct {

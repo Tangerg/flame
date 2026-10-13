@@ -1,4 +1,3 @@
-import type { DiffMode } from "@flame/runtime-contract/wire";
 import { lookupExtensionPoint } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import {
@@ -143,7 +142,6 @@ export function openWorkspaceSettingsPane(pane: string): void {
 export function openWorkspaceDiffForFile(path: string): void {
   workspaceNavigation().focusFile(path);
   const views = lookupExtensionPoint(WORKSPACE_VIEW).filter((view) => view.material === "diff");
-  workspaceNavigation().remember({ diffMode: "worktree" });
   workspaceNavigation().openViewInDock(views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG);
 }
 
@@ -173,13 +171,6 @@ export function useWorkspaceSubagentRunId(): string | null {
 
 export function openWorkspaceSubagentRun(runId: string | null): void {
   workspaceNavigation().openSubagentRun(runId);
-}
-
-export function useWorkspaceDiffMode(): DiffMode {
-  return useWorkspaceViewMemory().diffMode;
-}
-export function selectWorkspaceDiffMode(diffMode: DiffMode): void {
-  rememberWorkspaceView({ diffMode });
 }
 
 export function openWorkspaceClientDiagnostics(): void {

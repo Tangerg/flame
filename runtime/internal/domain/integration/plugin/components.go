@@ -10,6 +10,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
+const ComponentScopePattern = `^(installation|workspace)$`
+
+var componentScope = regexp.MustCompile(ComponentScopePattern)
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
 
 // ClientComponent describes a public rendering entry with an optional own
@@ -22,6 +25,7 @@ type ClientComponent struct {
 	Entry        string
 	Export       string
 	Contribution ContributionID
+	Material     string
 }
 
 func (b *Builder) AdmitComponent(value ClientComponent) error {
@@ -33,8 +37,11 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 			return err
 		}
 	}
-	if value.Title == "" || len(value.Title) > MaxViewTitleBytes || !utf8.ValidString(value.Title) || value.Scope != "installation" || value.Placement != "workspaceView" || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
+	if value.Title == "" || len(value.Title) > MaxViewTitleBytes || !utf8.ValidString(value.Title) || !componentScope.MatchString(value.Scope) || value.Placement != "workspaceView" || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
+	}
+	if value.Material != "" && !idPattern.MatchString(value.Material) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid component material %q", value.Material)
 	}
 	if slices.ContainsFunc(b.declaration.Components, func(current ClientComponent) bool { return current.ID == value.ID }) {
 		return refuse(DiagnosticInvalidDeclaration, "duplicate component %q", value.ID)

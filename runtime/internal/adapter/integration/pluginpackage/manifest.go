@@ -239,13 +239,20 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			}
 			contribution = *w.Contribution
 		}
+		var material string
+		if w.Material != nil {
+			if *w.Material == "" {
+				return plugin.ErrInvalid
+			}
+			material = *w.Material
+		}
 		if !plugin.ValidResourcePath(w.Entry) || !strings.HasPrefix(w.Entry, plugin.Namespace+"/") {
 			return plugin.ErrInvalid
 		}
 		if _, err := read(ctx, root, w.Entry, MaxPackageBytes); err != nil {
 			return err
 		}
-		return release.AdmitComponent(plugin.ClientComponent{ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution})
+		return release.AdmitComponent(plugin.ClientComponent{ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component == "renderers" {

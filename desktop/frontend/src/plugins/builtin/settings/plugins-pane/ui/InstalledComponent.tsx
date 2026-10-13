@@ -8,7 +8,9 @@ import {
 } from "react";
 import { Button } from "@flame/ui/button";
 import { asyncDisposeSymbol } from "dougong";
-import type { ComponentContext } from "@flame/plugin-sdk";
+import type { ComponentContext, WorkspaceContext } from "@flame/plugin-sdk";
+import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
+import { useWorkspaceFileFocus } from "@/plugins/builtin/workspace/public/navigation";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginOperationBinding } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
@@ -39,12 +41,19 @@ class ComponentInstance {
     private binding: PluginOperationBinding | undefined,
     private lifetime: ContributionLifetime,
     private resources: AbortSignal,
+    private workspace?: WorkspaceContext,
   ) {
     this.context = this.capture();
   }
   private capture(): ComponentContext {
     return Object.freeze({
       runtime: this.runtime,
+      workspace: this.workspace
+        ? Object.freeze({
+            ref: Object.freeze({ ...this.workspace.ref }),
+            focus: Object.freeze({ ...this.workspace.focus }),
+          })
+        : undefined,
       binding: this.binding ? structuredClone(this.binding) : undefined,
       signal: AbortSignal.any([this.controller.signal, this.lifetime.signal, this.resources]),
       track: <T,>(operation: Promise<T>): Promise<T> => {
@@ -77,22 +86,17 @@ class ComponentInstance {
   };
 }
 
-export function InstalledComponent({
+function RenderingComponent({
   entry,
   runtime,
   binding,
   lifetime,
   resources,
-}: {
-  entry: ComponentType<{ context: ComponentContext }>;
-  runtime: FlameClient;
-  binding: PluginOperationBinding | undefined;
-  lifetime: ContributionLifetime;
-  resources: AbortSignal;
-}) {
+  workspace,
+}: ComponentProps & { workspace?: WorkspaceContext }) {
   const instance = useMemo(
-    () => new ComponentInstance(runtime, binding, lifetime, resources),
-    [runtime, binding, lifetime, resources],
+    () => new ComponentInstance(runtime, binding, lifetime, resources, workspace),
+    [runtime, binding, lifetime, resources, workspace],
   );
   const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   const Entry = entry;
@@ -110,4 +114,50 @@ export function InstalledComponent({
       </Suspense>
     </ComponentBoundary>
   );
+}
+
+type ComponentProps = {
+  entry: ComponentType<{ context: ComponentContext }>;
+  runtime: FlameClient;
+  binding: PluginOperationBinding | undefined;
+  lifetime: ContributionLifetime;
+  resources: AbortSignal;
+};
+
+function WorkspaceComponent(props: ComponentProps) {
+  const selection = useActiveSessionWorkspace();
+  const focus = useWorkspaceFileFocus();
+  const cwd = selection.status === "ready" ? selection.cwd : undefined;
+  const workspace = useMemo<WorkspaceContext | undefined>(
+    () =>
+      cwd
+        ? { ref: { path: cwd }, focus: { path: focus.path, revision: focus.revision } }
+        : undefined,
+    [cwd, focus.path, focus.revision],
+  );
+  if (!workspace)
+    return (
+      <p role="status">
+        {selection.status === "resolving"
+          ? "Resolving the current workspace…"
+          : "Choose a Session with a workspace to use this component."}
+      </p>
+    );
+  return (
+    <RenderingComponent
+      key={JSON.stringify([
+        workspace.ref.path,
+        workspace.focus.revision.toString(),
+        workspace.focus.path,
+      ])}
+      {...props}
+      workspace={workspace}
+    />
+  );
+}
+
+export function InstalledComponent({ scope, ...props }: ComponentProps & { scope: string }) {
+  if (scope === "workspace") return <WorkspaceComponent {...props} />;
+  if (scope === "installation") return <RenderingComponent {...props} />;
+  throw new Error("The component context scope is unsupported.");
 }

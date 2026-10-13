@@ -3,7 +3,6 @@ import {
   createMemoryViewReads,
   createScheduleViewReads,
   createSkillViewReads,
-  createDiffViewReads,
 } from "./pluginViewReads";
 it("captures release and workspace identity while exposing only cursor continuation", async () => {
   const binding = { installationId: "installation", digest: "digest", viewId: "memory" };
@@ -99,38 +98,4 @@ it("binds schedule continuation to the captured release without guest-selected t
     { installationId: "installation", digest: "digest", viewId: "schedules", cursor: "next" },
     signal,
   );
-});
-
-it("captures Diff workspace, baseline and focus while refusing guest continuation", async () => {
-  const binding = { installationId: "installation", digest: "digest", viewId: "diff" };
-  const target = {
-    workspace: { path: "/captured" },
-    mode: "worktree" as const,
-    focusPath: "src/a.ts",
-  };
-  const diff = { baseline: { type: "emptyTree" as const }, truncated: true };
-  const plugins = {
-    readView: vi.fn(async () => ({ html: "<!doctype html>" })),
-    readDiff: vi.fn(async () => diff),
-  };
-  const reads = createDiffViewReads(plugins, binding, target);
-  binding.digest = "replacement";
-  target.workspace.path = "/replacement";
-  target.focusPath = "other.ts";
-  const signal = new AbortController().signal;
-  await expect(reads.initial(signal)).resolves.toEqual({ diff, focusPath: "src/a.ts" });
-  await reads.read(undefined, signal);
-  expect(plugins.readDiff).toHaveBeenLastCalledWith(
-    {
-      installationId: "installation",
-      digest: "digest",
-      viewId: "diff",
-      workspace: { path: "/captured" },
-      mode: "worktree",
-      format: "rows",
-    },
-    signal,
-  );
-  await expect(reads.read("unbound", signal)).rejects.toThrow("no cursor");
-  expect(plugins.readDiff).toHaveBeenCalledTimes(2);
 });

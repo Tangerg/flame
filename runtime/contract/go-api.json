@@ -341,10 +341,6 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
             {
-              "name": "ReadPluginDiff",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginDiffRequest, options CallOptions) (*protocol.Diff, error)"
-            },
-            {
               "name": "ReadPluginMemory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
@@ -1009,10 +1005,6 @@
             {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
-            },
-            {
-              "name": "ReadPluginDiff",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginDiffRequest, options CallOptions) (*protocol.Diff, error)"
             },
             {
               "name": "ReadPluginMemory",
@@ -3600,11 +3592,6 @@
           "value": "\"skills\""
         },
         {
-          "name": "PluginViewWorkspaceDiff",
-          "type": "PluginViewType",
-          "value": "\"workspaceDiff\""
-        },
-        {
           "name": "ProblemAgentStuck",
           "type": "untyped string",
           "value": "\"agent_stuck\""
@@ -3672,7 +3659,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.9\""
+          "value": "\"2026-10-13.10\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8677,6 +8664,11 @@
               "name": "Contribution",
               "type": "string",
               "tag": "json:\"contribution,omitzero\""
+            },
+            {
+              "name": "Material",
+              "type": "string",
+              "tag": "json:\"material,omitzero\""
             }
           ],
           "methods": [
@@ -9943,26 +9935,6 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ReadPluginDiffRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ReadPluginViewRequest",
-              "type": "ReadPluginViewRequest"
-            },
-            {
-              "name": "GetDiffRequest",
-              "type": "GetDiffRequest"
             }
           ],
           "methods": [

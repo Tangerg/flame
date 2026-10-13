@@ -8,11 +8,18 @@ import type {
   Descriptor,
   PluginOperationBinding,
   Target,
+  WorkspaceRef,
 } from "@flame/runtime-contract/wire";
 export { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 
+export interface WorkspaceContext {
+  readonly ref: Readonly<WorkspaceRef>;
+  readonly focus: Readonly<{ path: string; revision: bigint }>;
+}
+
 export interface ComponentContext {
   readonly runtime: FlameClient;
+  readonly workspace?: Readonly<WorkspaceContext>;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly signal: AbortSignal;
   track<T>(operation: Promise<T>): Promise<T>;

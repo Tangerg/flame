@@ -289,7 +289,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"ListModelInvocations":     {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
 		"ReadPluginView":           {Area: "plugin page resource", Mode: desktopDiagnostics, Entry: "Desktop loads approved isolated pages; CLI does not render HTML"},
 		"ReadPluginRenderer":       {Area: "plugin result resource", Mode: desktopDiagnostics, Entry: "Desktop renders captured results in approved isolated pages; CLI retains canonical terminal results"},
-		"ReadPluginDiff":           {Area: "plugin workspace diff", Mode: desktopDiagnostics, Entry: "Desktop binds a structured Diff to an admitted release and workspace; CLI reads canonical diffs directly"},
 		"ReadPluginSchedules":      {Area: "plugin page schedules", Mode: desktopDiagnostics, Entry: "Desktop binds read-only schedule pages to an admitted release; CLI reads canonical schedules directly"},
 		"ReadPluginMemory":         {Area: "plugin page memory", Mode: desktopDiagnostics, Entry: "Desktop binds read-only page queries to the selected memory target; CLI reads canonical memory directly"},
 		"ReadPluginSkills":         {Area: "plugin Skill discovery", Mode: desktopDiagnostics, Entry: "Desktop binds a catalog to an admitted release and workspace; CLI reads discovered Skills directly"},

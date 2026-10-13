@@ -5,9 +5,7 @@ import {
   createClientViewReads,
   readClientDiagnostics,
 } from "@/plugins/builtin/settings/plugins-pane/adapters/clientViewReads";
-import diffHTML from "../../../plugins/diff/views/diff.html?raw";
-import { DiffPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/DiffPackageView";
-import type { DiffViewTarget } from "@/plugins/builtin/settings/plugins-pane/application/pluginView";
+import { DiffReport } from "../../../plugins/diff/src/component";
 import type { Diff } from "@flame/runtime-contract/wire";
 import skillsHTML from "../../../plugins/skills/views/skills.html?raw";
 import { SkillsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SkillsPackageView";
@@ -450,23 +448,6 @@ function workspaceDataPlugin(
           }),
       });
       const diffLifetime = ctx.lifetime("visual-diff");
-      const diffReads = (target: DiffViewTarget) => {
-        const read = async () => {
-          if (state === "dock-loading") return pending<{ diff: Diff; focusPath: string }>();
-          if (state === "dock-error")
-            throw new Error("Visual fixture could not load the workspace diff");
-          return {
-            diff: state === "dock-empty" ? { baseline: review.baseline } : review,
-            focusPath: target.focusPath,
-          };
-        };
-        return {
-          binding: { installationId: "fixture", digest: "release", viewId: "view" },
-          resource: async () => diffHTML,
-          initial: async () => await read(),
-          read,
-        };
-      };
       diffLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:diff",
         title: "Workspace diff",
@@ -474,12 +455,20 @@ function workspaceDataPlugin(
         dock: "workspace",
         material: "diff",
         component: () =>
-          createElement(DiffPackageView, {
-            reads: diffReads,
-            title: "Workspace diff",
-            lifetime: diffLifetime,
-            carrier: createBrowserHost().pluginCarrier,
-          }),
+          state === "dock-loading"
+            ? createElement("p", { role: "status" }, "Reading workspace diff…")
+            : state === "dock-error"
+              ? createElement(
+                  "p",
+                  { role: "alert" },
+                  "Visual fixture could not load the workspace diff",
+                )
+              : createElement(DiffReport, {
+                  snapshot: {
+                    diff: state === "dock-empty" ? { baseline: review.baseline } : review,
+                    focusPath: review.files?.[0]?.path,
+                  },
+                }),
       });
       const skillLifetime = ctx.lifetime("visual-skills");
       const skillReads = (target: SkillViewTarget) => {

@@ -318,19 +318,22 @@ func TestUnknownMethodStaysUnknown(t *testing.T) {
 	}
 }
 
-func (c *capabilityRuntime) ReadPluginDiff(context.Context, protocol.ReadPluginDiffRequest) (*protocol.Diff, error) {
+func (c *capabilityRuntime) GetWorkspaceDiff(context.Context, protocol.GetDiffRequest) (*protocol.Diff, error) {
 	return &protocol.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}}, nil
 }
-func TestDiffPageRequiresPluginAndGitCapabilities(t *testing.T) {
-	const params = `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"1111111111111111111111111111111111111111111111111111111111111111","viewId":"diff","workspace":{"path":"/runtime"},"format":"rows"}`
+func TestCanonicalDiffRequiresGitAndRetiresPluginWrapper(t *testing.T) {
+	const params = `{"workspace":{"path":"/runtime"},"format":"rows"}`
 	for _, features := range []map[string]bool{{protocol.FeaturePlugins: false, protocol.FeatureGit: true}, {protocol.FeaturePlugins: true, protocol.FeatureGit: false}, {protocol.FeaturePlugins: true, protocol.FeatureGit: true}} {
-		response := call(t, features, "plugins.readDiff", params)
-		if features[protocol.FeaturePlugins] && features[protocol.FeatureGit] {
+		response := call(t, features, "workspace.diff.get", params)
+		if features[protocol.FeatureGit] {
 			if response.Error != nil {
-				t.Fatalf("diff read: %+v", response.Error)
+				t.Fatalf("canonical diff: %+v", response.Error)
 			}
 		} else if got := problemType(t, response); got != "capability_not_negotiated" {
-			t.Fatalf("missing diff capability: %s", got)
+			t.Fatalf("missing Git capability: %s", got)
+		}
+		if got := problemType(t, call(t, features, "plugins.readDiff", `{}`)); got != "method_not_found" {
+			t.Fatalf("retired diff entrance: %s", got)
 		}
 	}
 }

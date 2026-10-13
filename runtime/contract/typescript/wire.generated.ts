@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.9";
+export const PROTOCOL_VERSION = "2026-10-13.10";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1228,6 +1228,7 @@ export interface PluginClientComponent {
   entry: string;
   export: string;
   id: string;
+  material?: string;
   placement: string;
   scope: string;
   title: string;
@@ -1452,7 +1453,7 @@ export interface PluginViewResource {
   html: string;
 }
 
-export type PluginViewType = "sessionTrajectory" | "agentMemory" | "schedules" | "skills" | "workspaceDiff" | "clientDiagnostics";
+export type PluginViewType = "sessionTrajectory" | "agentMemory" | "schedules" | "skills" | "clientDiagnostics";
 
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
@@ -1567,17 +1568,6 @@ export interface ReadFileRequest {
   maxBytes?: number;
   path: string;
   startLine?: number;
-  workspace: WorkspaceRef;
-}
-
-export interface ReadPluginDiffRequest {
-  digest: string;
-  format?: DiffFormat;
-  installationId: string;
-  limit?: number;
-  mode?: DiffMode;
-  path?: string;
-  viewId: string;
   workspace: WorkspaceRef;
 }
 
@@ -2425,7 +2415,7 @@ export const WIRE_ENUMS = {
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
-  PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "skills", "workspaceDiff", "clientDiagnostics"],
+  PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "skills", "clientDiagnostics"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],

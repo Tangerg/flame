@@ -1,13 +1,14 @@
 {
   "protocol": "io.github.tangerg.flame/backend/2026-10-13.4",
-  "contributes": {
-    "views": [
-      {
-        "id": "diff",
-        "title": "Workspace diff",
-        "type": "workspaceDiff",
-        "entry": "views/diff.html"
-      }
-    ]
-  }
+  "components": [
+    {
+      "id": "diff",
+      "title": "Workspace diff",
+      "scope": "workspace",
+      "placement": "workspaceView",
+      "material": "diff",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "WorkspaceDiff"
+    }
+  ]
 }

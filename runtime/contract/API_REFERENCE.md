@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-13.9` · 115 methods
+Protocol `2026-10-13.10` · 114 methods
 
 ## Methods
 
@@ -73,7 +73,6 @@ Protocol `2026-10-13.9` · 115 methods
 | `plugins.listProviders` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.selectProvider` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readRenderer` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
-| `plugins.readDiff` | query | unary | none | none | none | `workspace.diff.get` | `plugins`, `git` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `workspace_unavailable`, `vcs_unavailable`, `path_outside_root`, `capability_not_negotiated` |
 | `plugins.readSkills` | query | unary | none | none | none | `skills.discovered.list` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `workspace_unavailable`, `capability_not_negotiated` |
 | `plugins.readSkill` | query | unary | none | none | none | `skills.discovered.get` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `workspace_unavailable`, `skill_not_found`, `skill_unavailable`, `capability_not_negotiated` |
 | `plugins.readSkillLibrary` | query | unary | none | none | none | `skills.library.list` | `plugins`, `skills` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -976,6 +975,8 @@ TypeScript validator from this single registry projection.
 | `MCPServerCandidate` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginClientComponent` | `scope` | `pattern("^(installation|workspace)$")` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPoint` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPointValue` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
@@ -1311,7 +1312,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.listProviders` | always | `plugins` |
 | `plugins.selectProvider` | always | `plugins` |
 | `plugins.readRenderer` | always | `plugins` |
-| `plugins.readDiff` | always | `plugins`, `git` |
 | `plugins.readSkills` | always | `plugins`, `skills` |
 | `plugins.readSkill` | always | `plugins`, `skills` |
 | `plugins.readSkillLibrary` | always | `plugins`, `skills` |

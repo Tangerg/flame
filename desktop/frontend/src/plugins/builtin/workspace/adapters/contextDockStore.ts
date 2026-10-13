@@ -4,7 +4,6 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import type { WorkspaceViewMemory } from "../application/ports/navigationState";
-import { DIFF_MODES } from "../application/diffVocabulary";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
@@ -18,7 +17,6 @@ const persistedDockScopeSchema = z.object({
     .object({
       expandedDirs: z.array(z.string()),
       lastFilePath: z.string().nullable(),
-      diffMode: z.enum(DIFF_MODES),
     })
     .optional(),
 });
@@ -37,7 +35,6 @@ interface WorkspaceFileViewer {
 const EMPTY_MEMORY: WorkspaceViewMemory = {
   expandedDirs: [],
   lastFilePath: null,
-  diffMode: "worktree",
 };
 
 function ancestorsOf(path: string): string[] {

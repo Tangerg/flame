@@ -22,8 +22,6 @@ export {
   selectWorkspaceDockView,
   selectWorkspaceChat,
   useWorkspaceFileFocus,
-  useWorkspaceDiffMode,
-  selectWorkspaceDiffMode,
   useActiveWorkspaceViewId,
   showWorkspaceDock,
   toggleWorkspaceDock,

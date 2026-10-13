@@ -2,34 +2,46 @@
 
 ## Current stage
 
-Stage 3u, committed in 9376b997, migrates Usage to an ordinary installed public React component. Its SDK
-context enters the canonical `usage.summary` query; the existing Runtime accounting
-owner and recorded facts are unchanged. The component owns all-time/30-day/7-day
-selection, grouping, filtering and refresh. An owned request is canceled when its
-period changes or the component retires; failed reads retain the accepted report
-and label its actual period. SDK track joins the query through the current lifetime.
+Stage 3v migrates Diff to an ordinary workspace-scoped public React component.
+Host projects its existing current workspace reference and file-focus revision as
+frozen SDK context data. It exposes no private store or navigation object. Target/
+focus replacement retires the rendering instance; its signal cancels I/O and the
+existing contribution lifetime joins SDK calls. Component scopes are admitted by
+one Domain-owned pattern also projected into generated wire validation.
 
-The former Usage HTML/source, Desktop carrier adapter, closed Usage view kind and
-`plugins.readUsage` Go/Protocol/catalog/shared TS wrapper are deleted together.
-Current fixture DTOs are migrated; obsolete carrier UI/E2E cases are removed without
-adding or executing UI tests. Core protocol is 2026-10-13.9; backend remains .4.
-Rebuild clients/package artifacts; no business storage migration is introduced.
+The component calls canonical `workspace.diff.get` and owns comparison mode,
+layout/filter/folding. Failed comparison reads retain the accepted snapshot with
+its actual mode. Fresh target/focus instances default to working-tree comparison.
+The former Host baseline preference and its API/schema/vocabulary are removed.
+An optional generic material key preserves the existing navigation consumer's
+single-candidate or catalogue behavior; the loader projects it without a Diff branch.
 
-Core generation, production Runtime/CLI/Reviews build, shared Runtime TS/portable/
-Desktop type checks, changed lint, production Vite build and exact component/remaining
-HTML rebuilds pass. The dispatch regression proves canonical usage is independent
-of plugin presentation and the retired endpoint is method-not-found (0.865s).
-Root/Domain/package/Delivery/Bootstrap test sources compile; TestMain is not run.
-Full/vet/race/integration execution remains queued; graphical execution is excluded.
+Delete old Diff HTML/source, Desktop carrier/adapters/types and duplicate public
+`plugins.readDiff` request/Go/catalog/shared TS bindings. Existing GUI fixtures are
+migrated and obsolete carrier tests removed, with no UI execution or new UI tests.
+Core protocol is 2026-10-13.10; backend remains .4. Workspace/business storage stays
+unchanged. Current frontend presentation preference shape drops the old baseline.
 
-Main synchronization reports already up to date at ffaf30c9. Product/source changes
-are committed; all generation/build/typecheck/lint/focused/compile/commit handles
-are terminal. Owned frontend dist, temporary exact-build outputs and test binaries
-are removed. User design input hashes remain unchanged. Full proposal/review/P01-P48 completion remains open, including
-remaining page/renderer carriers, dependency status/retention, all-consumer migration
-and canonical models/stream decorators. Verification remains development first.
+Core generation, production Runtime/CLI/Reviews build, public SDK/shared Runtime
+TS/portable/Desktop type checks, changed lint, production Vite build and exact ESM/
+remaining HTML rebuilds pass. Workspace component admission passes (1.128s), covering
+scope/navigation and invalid authored metadata. Canonical Git gate/retired wrapper
+regression passes (0.686s). Root/Domain/Delivery/Bootstrap test sources compile only;
+Bootstrap TestMain and final full/vet/race/lifecycle checks are not executed.
+
+Product commit, incoming main Desktop Run reconciliation integration and round
+cleanup are in progress. No graphical runtime proof is claimed. Full review/P01-P48
+completion remains open: remaining carriers/placements, dependency status/retention,
+all-consumer migration, canonical models/stream decorators and final requirement audit.
 
 ## Completed
+
+- Stage 3v: public frozen workspace/focus context, workspace scope admission and
+  generic navigation metadata; actual ordinary Diff ESM over canonical Runtime reads.
+- Stage 3v: delete Diff HTML/carrier/read wrapper and Host baseline preference.
+  Preserve Git/path/refusal/rename/binary/truncation/restart/withdrawal/file retention
+  regression source at canonical query and resource owners; final lifecycle queued.
+
 
 - Stage 3u (9376b997): ordinary Usage ESM and direct canonical public query, local period/group/
   filter/refresh state, cancellation and joined I/O, preserved accepted read on failure.
@@ -236,6 +248,8 @@ and canonical models/stream decorators. Verification remains development first.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Host projects immutable workspace/focus context; Diff owns its local comparison mode and calls canonical workspace operations | Current workspace/focus already have owners, and only the replaced Diff carrier consumed the Host baseline preference. Ordinary authors need data and explicit public operations, not private stores | A second workspace selector, copied mutable Host stores, keeping the baseline owner/read wrapper, private author imports or opaque generic service lookup |
+| 2026-10-13 | Project optional generic material keys to the existing workspace navigation consumer | File-edit navigation must find admitted providers or open its catalogue; the consumer owns that meaning while loading remains generic | A Diff branch/package-name check in the loader, preferred first-party fallback, a new routing registry or competing current selection |
 | 2026-10-13 | Ordinary Usage components call the canonical public accounting query through their explicit SDK context | A trusted installed component needs no feature-specific carrier or duplicated query envelope; Runtime still owns all recorded accounting | Keeping plugins.readUsage, a dummy backend contribution, copied accounting/cache state, HTML compatibility or treating component retirement as Run cancellation |
 | 2026-10-13 | Permit an absent own callable contribution for actual content-only components; keep explicitly authored references strict | Icon gallery requires shared React/UI and immutable package content, not a backend; an invented operation would add an ownerless contract | Dummy backend/callable capability, static HTML compatibility, implicit service discovery or weakening invalid-reference admission |
 | 2026-10-13 | Expose the RPC owner cancellation signal to technical resource subscriptions and use it as the sole client closed fact | Clearing stream handlers during client shutdown otherwise strands lease joining; the resource observer must learn the original connection outcome | A second closed boolean, idle lease timers, suppressing cleanup errors or a separate client lifecycle root |
@@ -330,7 +344,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -361,6 +375,23 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3v development and workspace component contracts
+
+- Passed: Core generation, production Runtime/CLI/Reviews build; public SDK/shared
+  Runtime TS/portable/Desktop type checks; changed source lint, production Vite build,
+  portable formatting and exact component/remaining HTML resource checks. Diff ESM
+  is 6,480 bytes and shares host React/JSX/UI modules.
+- Passed focused backend execution: workspace scope and material key admission,
+  including absent key and invalid scope/empty/null/invalid key refusal (1.128s);
+  canonical Git capability gate independent of plugin presentation plus retired
+  wrapper method-not-found (0.686s). Root/Domain/Delivery/Bootstrap source compiles.
+- Source review corrected ambiguous concatenated rendering keys to an encoded tuple
+  and kept required context refusal synchronous inside rendering. These are source/
+  compilation evidence, not graphical execution proof.
+- Not run: full/vet/race/cross-module lifecycle execution, deferred to final phase;
+  all UI/E2E/screenshot/native execution, excluded. Existing fixtures migrate only;
+  removed tests exercise retired carrier/preference APIs, not the ESM replacement.
 
 ### Stage 3u development and canonical usage entrance
 
@@ -779,6 +810,13 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3v advances Core to .10, adds workspace/material component metadata and removes
+  the workspaceDiff kind/read wrapper. Rebuild clients and packages. Host baseline
+  preference disappears; a fresh Diff render starts in working-tree mode. Public SDK
+  workspace context is immutable data, not a private store. Business/workspace formats
+  and Git authority stay unchanged; graphical target replacement remains unexecuted.
+
 
 - Stage 3u advances Core to .9 and deletes plugins.readUsage and the usageSummary view
   kind. Rebuild clients and package resources; use canonical usage.summary. Ordinary

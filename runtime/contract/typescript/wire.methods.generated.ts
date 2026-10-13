@@ -107,7 +107,6 @@ import type {
   Provider,
   ProviderTestResult,
   ReadFileRequest,
-  ReadPluginDiffRequest,
   ReadPluginMemoryRequest,
   ReadPluginRendererRequest,
   ReadPluginResourceRequest,
@@ -257,7 +256,6 @@ const METHOD_NAMES = [
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
-  "plugins.readDiff",
   "plugins.readSkills",
   "plugins.readSkill",
   "plugins.readSkillLibrary",
@@ -388,7 +386,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
-  "plugins.readDiff",
   "plugins.readSkills",
   "plugins.readSkill",
   "plugins.readSkillLibrary",
@@ -885,13 +882,6 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "plugins.readRenderer": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.readDiff": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1442,9 +1432,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.readRenderer": [
     { requires: ["plugins"] },
   ],
-  "plugins.readDiff": [
-    { requires: ["plugins", "git"] },
-  ],
   "plugins.readSkills": [
     { requires: ["plugins", "skills"] },
   ],
@@ -1607,7 +1594,6 @@ export interface WireShapes {
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
   "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };
-  "plugins.readDiff": { params: ReadPluginDiffRequest; result: Diff };
   "plugins.readSkills": { params: ReadPluginSkillsRequest; result: SkillDiscovery };
   "plugins.readSkill": { params: ReadPluginSkillRequest; result: SkillDetail };
   "plugins.readSkillLibrary": { params: ReadPluginViewRequest; result: PageOfManagedSkill };
