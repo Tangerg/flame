@@ -10,14 +10,14 @@ import (
 )
 
 type Contracts struct {
-	Capability    *capability.Contract
-	List          *pluginsdk.Method[ListInput, Page]
-	Create        *pluginsdk.Method[schedule.Draft, schedule.Snapshot]
-	Update        *pluginsdk.Method[UpdateInput, schedule.Snapshot]
-	Delete        *pluginsdk.Method[ItemInput, Ack]
-	PrepareManual *pluginsdk.Method[ItemInput, schedule.RunRequestSnapshot]
-	Scan          *pluginsdk.Method[ScanInput, []schedule.RunRequestSnapshot]
-	Dispatch      *pluginsdk.Method[DispatchInput, app.RunReference]
+	Capability *capability.Contract
+	List       *pluginsdk.Method[ListInput, Page]
+	Create     *pluginsdk.Method[schedule.Draft, schedule.Snapshot]
+	Update     *pluginsdk.Method[UpdateInput, schedule.Snapshot]
+	Delete     *pluginsdk.Method[ItemInput, Ack]
+	RunNow     *pluginsdk.Method[ItemInput, app.RunReference]
+	Scan       *pluginsdk.Method[ScanInput, []schedule.RunRequestSnapshot]
+	Dispatch   *pluginsdk.Method[DispatchInput, app.RunReference]
 }
 
 func NewContracts() (Contracts, error) {
@@ -39,7 +39,7 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.PrepareManual, err = pluginsdk.NewMethod[ItemInput, schedule.RunRequestSnapshot](pluginsdk.MethodConfig{Name: PrepareManual, Kind: capability.Mutation, Target: "installation", Description: "Capture manual dispatch input and stable Session and Run identities."})
+	contracts.RunNow, err = pluginsdk.NewMethod[ItemInput, app.RunReference](pluginsdk.MethodConfig{Name: RunNow, Kind: capability.Mutation, Target: "installation", Description: "Capture and reconcile one manual Run through its original Runtime acceptance."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -51,7 +51,7 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Capability, err = capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.PrepareManual.Descriptor(), contracts.Scan.Descriptor(), contracts.Dispatch.Descriptor())
+	contracts.Capability, err = capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.RunNow.Descriptor(), contracts.Scan.Descriptor(), contracts.Dispatch.Descriptor())
 	if err != nil {
 		return Contracts{}, err
 	}

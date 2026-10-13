@@ -25,11 +25,11 @@
     "Method_flame_2eschedules_2flist_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fPage"
     },
-    "Method_flame_2eschedules_2fprepareManual_2ev1Input": {
+    "Method_flame_2eschedules_2frunNow_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fItemInput"
     },
-    "Method_flame_2eschedules_2fprepareManual_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fRunRequestSnapshot"
+    "Method_flame_2eschedules_2frunNow_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference"
     },
     "Method_flame_2eschedules_2fscan_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fScanInput"

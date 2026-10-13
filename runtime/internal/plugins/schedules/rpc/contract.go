@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	List          = "flame.schedules/list.v1"
-	Create        = "flame.schedules/create.v1"
-	Update        = "flame.schedules/update.v1"
-	Delete        = "flame.schedules/delete.v1"
-	PrepareManual = "flame.schedules/prepareManual.v1"
-	Scan          = "flame.schedules/scan.v1"
-	Dispatch      = "flame.schedules/dispatch.v1"
+	List     = "flame.schedules/list.v1"
+	Create   = "flame.schedules/create.v1"
+	Update   = "flame.schedules/update.v1"
+	Delete   = "flame.schedules/delete.v1"
+	RunNow   = "flame.schedules/runNow.v1"
+	Scan     = "flame.schedules/scan.v1"
+	Dispatch = "flame.schedules/dispatch.v1"
 )
 
 type UpdateInput struct {

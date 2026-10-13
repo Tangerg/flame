@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/identity"
@@ -85,23 +84,8 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		managedmcp.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, coordinator.Delete(ctx, input.ID)
 		}),
-		contracts.PrepareManual.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (schedule.RunRequestSnapshot, error) {
-			return captureCommand(ctx, db, connect, rpc.PrepareManual, command, func(ctx context.Context, input rpc.ItemInput) (schedule.RunRequestSnapshot, error) {
-				invocation, err := pluginsdk.InvocationFromContext(ctx)
-				if err != nil {
-					return schedule.RunRequestSnapshot{}, err
-				}
-				value, err := store.Get(ctx, input.ID)
-				if err != nil {
-					return schedule.RunRequestSnapshot{}, err
-				}
-				request, err := value.ManualRun(identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now(), invocation)
-				if err != nil {
-					return schedule.RunRequestSnapshot{}, err
-				}
-				err = store.QueueManual(ctx, request)
-				return request.Snapshot(), err
-			})
+		contracts.RunNow.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (app.RunReference, error) {
+			return runNow(ctx, db, store, connect, command)
 		}),
 		contracts.Scan.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ScanInput]) ([]schedule.RunRequestSnapshot, error) {
 			return captureCommand(ctx, db, connect, rpc.Scan, command, func(ctx context.Context, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {

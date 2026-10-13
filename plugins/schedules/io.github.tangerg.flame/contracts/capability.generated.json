@@ -473,10 +473,10 @@
       }
     },
     {
-      "name": "flame.schedules/prepareManual.v1",
+      "name": "flame.schedules/runNow.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Capture manual dispatch input and stable Session and Run identities.",
+      "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_ItemInput": {
@@ -506,92 +506,10 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_RunReference": {
             "additionalProperties": false,
             "properties": {
-              "id": {
-                "type": "string"
-              },
-              "origin": {
-                "type": "string"
-              },
-              "parent": {
-                "type": "string"
-              },
-              "target": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
-              }
-            },
-            "required": [
-              "id",
-              "origin",
-              "target"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
-            "additionalProperties": false,
-            "properties": {
-              "reference": {
-                "type": "string"
-              },
-              "scope": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "scope",
-              "reference"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot": {
-            "additionalProperties": false,
-            "properties": {
-              "CWD": {
-                "type": "string"
-              },
-              "Instructions": {
-                "type": "string"
-              },
-              "ModelSelection": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "Title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_RunRequestSnapshot": {
-            "additionalProperties": false,
-            "properties": {
-              "Execution": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot"
-              },
-              "Invocation": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation"
-              },
-              "ManualRanAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "OccurrenceID": {
-                "type": "string"
-              },
               "RunID": {
-                "type": "string"
-              },
-              "ScheduleID": {
                 "type": "string"
               },
               "SessionID": {
@@ -599,13 +517,8 @@
               }
             },
             "required": [
-              "ScheduleID",
-              "Execution",
-              "OccurrenceID",
               "SessionID",
-              "RunID",
-              "ManualRanAt",
-              "Invocation"
+              "RunID"
             ],
             "type": "object"
           }
@@ -613,23 +526,7 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "Execution": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot"
-          },
-          "Invocation": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation"
-          },
-          "ManualRanAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "OccurrenceID": {
-            "type": "string"
-          },
           "RunID": {
-            "type": "string"
-          },
-          "ScheduleID": {
             "type": "string"
           },
           "SessionID": {
@@ -637,13 +534,8 @@
           }
         },
         "required": [
-          "ScheduleID",
-          "Execution",
-          "OccurrenceID",
           "SessionID",
-          "RunID",
-          "ManualRanAt",
-          "Invocation"
+          "RunID"
         ],
         "type": "object"
       }

@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
@@ -63,15 +64,20 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ContributionB
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	method, err := exported.Method(rpc.Dispatch)
-	if err != nil {
-		return app.RunReference{}, err
-	}
+	name, id := rpc.Dispatch, "dispatch:"+request.RunID()
 	input, err := jsoninput.Encode(rpc.DispatchInput{RunID: request.RunID()})
+	if _, manual := request.ManualRecord(); manual {
+		name, id = rpc.RunNow, invocation.ID
+		input, err = jsoninput.Encode(rpc.ItemInput{ID: request.ScheduleID()})
+	}
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	result, err := method.InvokeWithMetadata(ctx, "dispatch:"+request.RunID(), input, metadata)
+	method, err := exported.Method(name)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	result, err := method.InvokeWithMetadata(ctx, id, input, metadata)
 	d.publish.Notify(invalidation.ForSchedules(request.ScheduleID()))
 	if err != nil {
 		return app.RunReference{}, rpc.DecodeError(err)
@@ -86,17 +92,16 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ContributionB
 	return reference, nil
 }
 func (d *Dispatcher) RunNow(ctx context.Context, id string) (app.RunReference, error) {
-	request, err := invokeResolvedCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, d.service.commands, rpc.PrepareManual, rpc.ItemInput{ID: id}, func(value schedule.RunRequestSnapshot) error { _, err := schedule.RestoreRunRequest(value); return err }, func(ctx context.Context) (plugins.ContributionBinding, error) {
+	reply, err := invokeResolvedCommand[rpc.ItemInput, app.RunReference](ctx, d.service.commands, rpc.RunNow, rpc.ItemInput{ID: id}, func(value app.RunReference) error {
+		return errors.Join(resourceid.ValidateSession(value.SessionID), resourceid.ValidateRun(value.RunID))
+	}, func(ctx context.Context) (plugins.ContributionBinding, error) {
 		binding, found, err := plugins.SelectedContribution(ctx, d.service.installations, d.service.commands.selections, d.service.contracts.Capability)
 		if err == nil && !found {
 			err = plugin.ErrUnavailable
 		}
 		return binding, err
 	}, d.openRuntime)
-	if err != nil {
-		return app.RunReference{}, rpc.DecodeError(err)
-	}
-	return d.dispatch(ctx, request.binding, request.session, request.value)
+	return reply.value, rpc.DecodeError(err)
 }
 func (d *Dispatcher) RunWorker(ctx context.Context) {
 	d.pass(ctx)

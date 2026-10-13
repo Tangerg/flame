@@ -32,12 +32,12 @@
     "output": "schema.json#/$defs/Method_flame_2eschedules_2flist_2ev1Output"
   },
   {
-    "name": "flame.schedules/prepareManual.v1",
+    "name": "flame.schedules/runNow.v1",
     "kind": "command",
     "target": "installation",
-    "description": "Capture manual dispatch input and stable Session and Run identities.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2fprepareManual_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2fprepareManual_2ev1Output"
+    "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2frunNow_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2frunNow_2ev1Output"
   },
   {
     "name": "flame.schedules/scan.v1",

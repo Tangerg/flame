@@ -8,7 +8,7 @@ Generated from the feature's Go-owned method contracts.
 | `flame.schedules/delete.v1` | command | installation | Delete one schedule definition. |
 | `flame.schedules/dispatch.v1` | command | installation | Reconcile captured work through the original Runtime Run acceptance. |
 | `flame.schedules/list.v1` | query | installation | List current schedule definitions and revisions. |
-| `flame.schedules/prepareManual.v1` | command | installation | Capture manual dispatch input and stable Session and Run identities. |
+| `flame.schedules/runNow.v1` | command | installation | Capture and reconcile one manual Run through its original Runtime acceptance. |
 | `flame.schedules/scan.v1` | command | installation | Capture due occurrences at the supplied time and return pending dispatch. |
 | `flame.schedules/update.v1` | command | installation | Change one schedule using its inspected revision. |
 

@@ -105,3 +105,23 @@ Use [the local build workflow](../README.md). Backend source lives in
 [`runtime/internal/plugins/schedules`](../../runtime/internal/plugins/schedules) as part of the
 local Runtime application module. Verify from `runtime` with the workspace
 enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
+
+## Public manual operation
+
+`flame.schedules/runNow.v1` owns the complete manual use case. It captures the
+current definition and original invocation with its pending command in one private
+transaction, then invokes the existing Runtime Run admission outside that transaction.
+Private acceptance and the original outcome reply commit together. Host human
+commands and pending-manual recovery invoke this same operation; the separate
+prepareManual export and host prepare-then-dispatch workflow are removed.
+
+Session/Run identifiers derive from the admitted installation target and original
+command identity, so recovery locates the retained private capture without another
+route or mapping store. Edits/deletion cannot replace captured input. Success and
+classified business refusal retain their private replies. Missing acknowledgement
+remains uncertainty; receipt absence cannot originate another command or Run.
+
+The Schedules capability identity changes; rebuild its generated contracts and
+installed backend together. Backend envelope .4 and stored business formats remain
+unchanged. The ordinary bound component and backend-owned background role migration
+remain in progress; this operation alone does not prove all installed lifecycle cases.

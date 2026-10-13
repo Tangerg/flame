@@ -17,9 +17,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
-	schedulesqlite "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
@@ -374,120 +374,73 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	}
 }
 
-func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testing.T) {
-	for _, test := range []struct{ name, method, stage string }{
-		{"prepare reply", schedulerpc.PrepareManual, "response"}, {"dispatch request", schedulerpc.Dispatch, "request"}, {"dispatch reply", schedulerpc.Dispatch, "response"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			source, evidence := managedMessageLossPackage(t, "schedules", test.method, test.stage)
-			cfg := poMCPConfig(t)
-			r := poMCPOpen(t, cfg)
-			installed := poMCPActivate(r, source)
-			server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-			ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
-			r.poMCPTools(server, ready)
-			saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
-			var changed <-chan error
-			if test.method == schedulerpc.Dispatch {
-				changed = managedServiceChange(t, r, protocol.TopicSchedulesChanged)
-			}
-			request := protocol.RunScheduleNowRequest{ID: saved.ID}
-			lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-			if lost.Failure == nil {
-				t.Fatal("withheld dispatch message appeared successful")
-			}
-			if changed != nil {
-				requireManagedServiceChange(t, changed)
-			}
-			raw, err := os.ReadFile(evidence)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var captured struct {
-				DataDirectory string `json:"dataDirectory"`
-				Request       struct {
-					Params struct {
-						Input schedulerpc.DispatchInput `json:"input"`
-					} `json:"params"`
-				} `json:"request"`
-				Response struct {
-					Result pluginsdk.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
-				} `json:"response"`
-			}
-			if err := json.Unmarshal(raw, &captured); err != nil {
-				t.Fatal(err)
-			}
-			accepted := protocol.RunScheduleNowResponse{RunID: captured.Request.Params.Input.RunID}
-			if test.method == schedulerpc.PrepareManual {
-				if captured.Response.Result.Value == nil {
-					t.Fatal("manual queue did not commit before response loss")
-				}
-				accepted.RunID = captured.Response.Result.Value.RunID
-				accepted.SessionID = captured.Response.Result.Value.SessionID
-			}
-			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-			if test.method == schedulerpc.Dispatch {
-				db, err := schedulesqlite.Open(t.Context(), filepath.Join(captured.DataDirectory, "schedules.db"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				pending, readErr := schedulesqlite.NewScheduleStore(db).CapturedRun(t.Context(), accepted.RunID)
-				if err := errors.Join(readErr, db.Close()); err != nil {
-					t.Fatal(err)
-				}
-				accepted.SessionID = pending.SessionID()
-			}
-			if test.method == schedulerpc.Dispatch && test.stage == "request" {
-				result := r.endpoint.Invoke(t.Context(), delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-				if !errors.Is(result.Failure, protocol.ErrRunNotFound) {
-					t.Fatalf("withheld dispatch request created a Run: %v", result.Failure)
-				}
-			}
-			if test.method == schedulerpc.Dispatch && test.stage == "response" {
-				deadline := time.Now().Add(lifecycleWaitBudget(t))
-				for {
-					current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
-					accepted.SessionID = current.SessionID
-					if current.Status == protocol.RunStatusFinished {
-						break
-					}
-					if time.Now().After(deadline) {
-						t.Fatalf("accepted Run did not survive backend withdrawal: %+v", current)
-					}
-					time.Sleep(10 * time.Millisecond)
-				}
-				r.close()
-				r = poMCPOpen(t, cfg)
-				r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: accepted.SessionID}, "delete-accepted-session")
-			}
-			r.close()
-			r = poMCPOpen(t, cfg)
-			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
-			r.poMCPTools(server, ready)
-			replay := r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
-			if *replay != accepted {
-				t.Fatalf("lost dispatch opened another Run: got=%+v want=%+v", replay, accepted)
-			}
-			replay = r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
-			if *replay != accepted {
-				t.Fatal("exact manual replay changed identity")
-			}
-			page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
-			if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
-				t.Fatalf("acceptance replay advanced definition again: %+v", page.Data)
-			}
-			if test.method == schedulerpc.Dispatch && test.stage == "response" {
-				sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
-				if len(sessions.Data) != 0 {
-					t.Fatalf("deleted acceptance recreated Session: %+v", sessions.Data)
-				}
-			}
-		})
+func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(t *testing.T) {
+	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.RunNow, "response")
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, source)
+	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	r.poMCPTools(server, ready)
+	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
+	request := protocol.RunScheduleNowRequest{ID: saved.ID}
+	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if lost.Failure == nil {
+		t.Fatal("withheld manual result appeared successful")
+	}
+	raw, err := os.ReadFile(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var captured struct {
+		Response struct {
+			Result pluginsdk.Result[scheduleapp.RunReference] `json:"result"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(raw, &captured); err != nil {
+		t.Fatal(err)
+	}
+	if captured.Response.Result.Value == nil {
+		t.Fatal("manual acceptance did not commit before response loss")
+	}
+	accepted := protocol.RunScheduleNowResponse{SessionID: captured.Response.Result.Value.SessionID, RunID: captured.Response.Result.Value.RunID}
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
+	deadline := time.Now().Add(lifecycleWaitBudget(t))
+	for {
+		current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
+		if current.Status == protocol.RunStatusFinished {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("accepted Run did not survive withdrawal: %+v", current)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	r.close()
+	r = poMCPOpen(t, cfg)
+	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: accepted.SessionID}, "delete-accepted")
+	r.close()
+	r = poMCPOpen(t, cfg)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
+	r.poMCPTools(server, ready)
+	for range 2 {
+		replay := r.must(delivery.SchedulesRunNow, request, "lost-manual").(*protocol.RunScheduleNowResponse)
+		if *replay != accepted {
+			t.Fatalf("manual replay changed acceptance: %+v", replay)
+		}
+	}
+	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
+		t.Fatalf("manual replay advanced definition: %+v", page.Data)
+	}
+	sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
+	if len(sessions.Data) != 0 {
+		t.Fatal("retired acceptance recreated its Session")
 	}
 }
 
-func TestScheduleLostPrepareReplyRecoversCapturedWorkOnStartup(t *testing.T) {
-	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.PrepareManual, "response")
+func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
+	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.RunNow, "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -498,7 +451,7 @@ func TestScheduleLostPrepareReplyRecoversCapturedWorkOnStartup(t *testing.T) {
 	request := protocol.RunScheduleNowRequest{ID: saved.ID}
 	lost := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if lost.Failure == nil {
-		t.Fatal("withheld prepare reply appeared successful")
+		t.Fatal("withheld manual reply appeared successful")
 	}
 	raw, err := os.ReadFile(evidence)
 	if err != nil {
@@ -506,20 +459,20 @@ func TestScheduleLostPrepareReplyRecoversCapturedWorkOnStartup(t *testing.T) {
 	}
 	var captured struct {
 		Response struct {
-			Result pluginsdk.Result[scheduledomain.RunRequestSnapshot] `json:"result"`
+			Result pluginsdk.Result[scheduleapp.RunReference] `json:"result"`
 		} `json:"response"`
 	}
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
 	if captured.Response.Result.Value == nil {
-		t.Fatal("manual preparation did not commit")
+		t.Fatal("manual acceptance did not commit")
 	}
 	pending := captured.Response.Result.Value
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: server}, "reconnect")
 	r.poMCPTools(&server, ready)
 	title, instructions := "edited title", "edited instructions"
-	r.must(delivery.SchedulesUpdate, protocol.UpdateScheduleRequest{ID: saved.ID, ExpectedRevision: saved.Revision, Title: &title, Instructions: &instructions}, "edit-after-capture")
+	r.must(delivery.SchedulesUpdate, protocol.UpdateScheduleRequest{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}, "edit-after-capture")
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.poMCPTools(&server, ready)
@@ -562,5 +515,34 @@ func TestScheduleLostPrepareReplyRecoversCapturedWorkOnStartup(t *testing.T) {
 	sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
 	if len(sessions.Data) != 1 {
 		t.Fatalf("startup recovery created extra Sessions: %+v", sessions.Data)
+	}
+}
+
+func TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun(t *testing.T) {
+	source, _ := managedMessageLossPackage(t, "schedules", schedulerpc.RunNow, "request")
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, source)
+	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	r.poMCPTools(server, ready)
+	saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured", Instructions: "inspect", Cron: "0 0 1 1 *"}, "create").(*protocol.Schedule)
+	request := protocol.RunScheduleNowRequest{ID: saved.ID}
+	options := delivery.Options{IdempotencyKey: "missing-receipt", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}
+	if outcome := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, options); outcome.Failure == nil {
+		t.Fatal("withheld manual request appeared successful")
+	}
+	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: *server}, "reconnect")
+	r.poMCPTools(server, ready)
+	if outcome := r.endpoint.Invoke(t.Context(), delivery.SchedulesRunNow, request, options); !errors.Is(outcome.Failure, plugin.ErrCommandUnconfirmed) {
+		t.Fatalf("missing receipt became permission to dispatch: %v", outcome.Failure)
+	}
+	sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
+	if len(sessions.Data) != 0 {
+		t.Fatal("receipt reconciliation originated a Run")
+	}
+	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision {
+		t.Fatal("missing receipt advanced the definition")
 	}
 }
