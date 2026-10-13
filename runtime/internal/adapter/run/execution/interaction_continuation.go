@@ -49,13 +49,17 @@ func (i *InteractionExecutor) BeginContinuation(
 	// The previous Agent Process lifetime includes the human wait. Reset the
 	// Segment clock before any answer can make that Process runnable.
 	session.segmentClock.start()
-	session.continuationAccepted()
+	// Deliver every answer while all recipients stay paused, then resume only the
+	// surviving members, and release dispatch last. No recipient can execute an
+	// answered Tool before the whole set is admitted, so a partial delivery never
+	// runs work ahead of the remaining answers.
 	if err := session.deliverContinuationAnswers(ctx, prepared, committedInput); err != nil {
 		return err
 	}
 	if err := session.resumePausedProcesses(ctx, paused); err != nil {
 		return err
 	}
+	session.continuationAccepted()
 	return nil
 }
 
