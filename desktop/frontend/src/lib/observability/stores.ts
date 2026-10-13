@@ -1,3 +1,4 @@
+import type { TelemetryAttributes, SpanRow, MetricRow, LogRow } from "@flame/plugin-sdk";
 import type { ResourceMetrics } from "@opentelemetry/sdk-metrics";
 import { create } from "zustand";
 
@@ -5,47 +6,6 @@ const SPAN_CAP = 500;
 const LOG_CAP = 1000;
 
 const HISTOGRAM_DATA_POINT = 0;
-
-type Attrs = Record<string, string | number | boolean>;
-
-type InstrumentKind = "histogram" | "counter";
-
-export interface MetricRow {
-  id: string;
-  name: string;
-  unit: string;
-  description: string;
-  kind: InstrumentKind;
-  attrs: Attrs;
-  count: number;
-  sum: number;
-  p50?: number;
-  p95?: number;
-  avg?: number;
-}
-
-export interface SpanRow {
-  id: string;
-  traceId: string;
-  parentSpanId?: string;
-  name: string;
-  kind: string;
-  startMs: number;
-  durationMillis: number;
-  status: "unset" | "ok" | "error";
-  statusMessage?: string;
-  attrs: Attrs;
-}
-
-export interface LogRow {
-  id: string;
-  timeMs: number;
-  severity: string;
-  body: string;
-  traceId?: string;
-  spanId?: string;
-  attrs: Attrs;
-}
 
 interface State {
   metrics: Record<string, MetricRow>;
@@ -68,7 +28,7 @@ export const useTelemetryStore = create<State>((set) => ({
       for (const m of scope.metrics) {
         const isHist = m.dataPointType === HISTOGRAM_DATA_POINT;
         for (const dp of m.dataPoints) {
-          const attrs = (dp.attributes ?? {}) as Attrs;
+          const attrs = (dp.attributes ?? {}) as TelemetryAttributes;
           const id = `${m.descriptor.name}|${stableKey(attrs)}`;
           next[id] = isHist
             ? histogramRow(id, m.descriptor, dp.value as HistogramValue, attrs)
@@ -108,7 +68,12 @@ interface Descriptor {
   description: string;
 }
 
-function histogramRow(id: string, desc: Descriptor, v: HistogramValue, attrs: Attrs): MetricRow {
+function histogramRow(
+  id: string,
+  desc: Descriptor,
+  v: HistogramValue,
+  attrs: TelemetryAttributes,
+): MetricRow {
   const sum = v.sum ?? 0;
   const { p50, p95 } = estimatePercentiles(v.buckets);
   return {
@@ -126,7 +91,12 @@ function histogramRow(id: string, desc: Descriptor, v: HistogramValue, attrs: At
   };
 }
 
-function counterRow(id: string, desc: Descriptor, total: number, attrs: Attrs): MetricRow {
+function counterRow(
+  id: string,
+  desc: Descriptor,
+  total: number,
+  attrs: TelemetryAttributes,
+): MetricRow {
   return {
     id,
     name: desc.name,
@@ -139,7 +109,7 @@ function counterRow(id: string, desc: Descriptor, total: number, attrs: Attrs): 
   };
 }
 
-function stableKey(attrs: Attrs): string {
+function stableKey(attrs: TelemetryAttributes): string {
   return Object.entries(attrs)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${String(v)}`)

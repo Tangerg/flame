@@ -175,7 +175,7 @@ export function openWorkspaceSubagentRun(runId: string | null): void {
 
 export function openWorkspaceClientDiagnostics(): void {
   const views = lookupExtensionPoint(WORKSPACE_VIEW).filter(
-    (view) => view.material === "clientDiagnostics",
+    (view) => view.material === "diagnostics",
   );
   workspaceNavigation().openViewInDock(views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG);
 }

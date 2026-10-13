@@ -255,25 +255,6 @@ async function closePanel(panel, id) {
   await assert.rejects(guest(id, "document.body.innerText"), /page is not ready/);
 }
 
-async function closeWithdrawnPanel(binding, id) {
-  const panel = `package:${binding.installationId}:${binding.viewId}`;
-  await clickText(panel, '[role="tab"]');
-  await waitFor(
-    "withdrawn view unavailable",
-    () =>
-      evaluate(
-        `return document.querySelector(${JSON.stringify(`[data-dock-view-id="${panel}"]`)})?.innerText.includes('View unavailable')`,
-      ),
-    Boolean,
-  );
-  await evaluate(
-    `const tab = [...document.querySelectorAll('[role="tab"]')].find(e => e.textContent.trim() === ${JSON.stringify(panel)}); const rect = tab.getBoundingClientRect(); tab.dispatchEvent(new MouseEvent('contextmenu', {bubbles:true, button:2, clientX:rect.x + rect.width / 2, clientY:rect.y + rect.height / 2})); return true`,
-  );
-  await clickText("Close all panels", '[role="menuitem"]');
-  await noPages();
-  await assert.rejects(guest(id, "document.body.innerText"), /page is not ready/);
-}
-
 async function refreshPage(id, method, binding, query, text) {
   const { installationId, digest, viewId } = binding;
   const canonicalMethod = {
@@ -386,7 +367,7 @@ try {
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
   const defaults = (await rpc("plugins.list")).data;
   assert.equal(defaults.length, 10);
-  for (const name of ["memory", "schedules", "skills", "diagnostics"]) {
+  for (const name of ["memory", "schedules", "skills"]) {
     const installation = defaults.find((item) => item.selected.name === `flame.${name}`);
     assert.ok(installation, `default ${name} package must be installed`);
     assert.equal(installation.state, "enabled");
@@ -886,34 +867,6 @@ try {
   await closePanel("Files", filePage.id);
   console.log(
     "File renderers: captured remote file, renewed admission, native retirement and preserved source passed",
-  );
-
-  const diagnosticPage = await openPanel(installed.diagnostics.title, "Client diagnostics");
-  const canonicalUsage = await rpc("usage.summary");
-  await guest(diagnosticPage.id, 'document.querySelector("#refresh").click(); true');
-  await waitFor(
-    "local observation read",
-    () => readGuest(diagnosticPage.id, 'document.querySelector("#refresh").disabled'),
-    (value) => value.ready && JSON.parse(value.value) === false,
-  );
-  await clickText("Clear", "button");
-  await waitFor(
-    "cleared diagnostics page retirement",
-    pages,
-    (state) => !state.pages.some((page) => page.id === diagnosticPage.id),
-  );
-  const clearedPage = await pageWith("Client diagnostics");
-  assert.notEqual(clearedPage.id, diagnosticPage.id);
-  await assert.rejects(guest(diagnosticPage.id, "document.body.innerText"), /page is not ready/);
-  assert.deepEqual(await rpc("usage.summary"), canonicalUsage);
-  await rpc("plugins.setEnablement", {
-    installationId: installed.diagnostics.installationId,
-    enabled: false,
-  });
-  await noPages();
-  await closeWithdrawnPanel(installed.diagnostics, clearedPage.id);
-  console.log(
-    "Client diagnostics: renewed read admission, trusted clear, retired page and unchanged Runtime usage passed",
   );
 
   for (const name of Object.keys(installed))

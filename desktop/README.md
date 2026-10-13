@@ -418,12 +418,13 @@ line navigation starts there. The package builds a closed DOM from Markdown toke
 authored HTML, MDX expressions, images and URLs remain text. Source and trusted file
 controls remain available through absence, failure and withdrawal.
 
-The optional [Diagnostics package](../plugins/diagnostics/plugin.json) receives bounded
-traces, metrics and logs from the current client's existing telemetry buffer. Refresh
-renews installation admission before another local read; the page cannot select a
-Runtime or clear observations. The trusted Clear button calls the existing store owner
-and retires the displayed page. Missing or competing Diagnostics contributions open
-the contribution catalogue from Run recovery controls.
+The optional [Diagnostics package](../plugins/diagnostics/plugin.json) is an ordinary
+React component using the public SDK's explicit client-telemetry collaborator.
+Reads return detached current-buffer snapshots and clearing delegates to the existing
+telemetry owner. Retired contexts refuse both operations. The old HTML transport
+cutoffs and omission DTO are removed; buffer capacity remains at its existing owner.
+Runtime accounting and remote telemetry remain separate. Missing or competing
+`diagnostics` material contributions open the catalogue from Run recovery controls.
 
 The built-in package manager remains available independently of installed views.
 Provider choices come from Runtime's recorded selections and admitted package
@@ -603,18 +604,17 @@ page, disables the renderer and verifies physical retirement, generic record vis
 and unchanged canonical trajectory. The application exits and cleanup completes before
 the single terminal result. File renderers covers a captured remote Markdown file,
 read renewal, physical retirement and preserved canonical source after disablement.
-Diagnostics covers local reads and trusted buffer clearing without changing canonical
-Runtime usage. The migrated ESM Diff, Usage and Icon gallery have no current graphical acceptance
-claim; their retired carrier cases were removed.
+Migrated ESM Diagnostics, Trajectory, Diff, Usage and Icon gallery have no current
+graphical acceptance claim; their retired carrier cases were removed. The remaining
+carrier checks do not qualify ordinary component rendering.
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 
 The following validation records predate removal of installation approval. They do not
 qualify the current enablement contract; UI and E2E execution is excluded from that refactor.
 
-The production native workbench gate also qualifies Tool results, File renderers,
-Diagnostics. Recorded data refresh, trusted clearing, withdrawal,
-unavailable-view presentation, physical retirement and canonical data preservation pass.
+These historical native results cover the former Tool results, File renderers and
+Diagnostics carriers. They do not qualify the current ordinary component contract.
 
 Capacity cases preserve and compare complete initial and cursor-continuation pages above
 the native frame limit. The multi-record case uses separate text Items; the single-item

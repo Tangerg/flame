@@ -137,10 +137,9 @@ type RenamePluginSessionRequest struct {
 type PluginViewType string
 
 const (
-	PluginViewAgentMemory       PluginViewType = "agentMemory"
-	PluginViewSchedules         PluginViewType = "schedules"
-	PluginViewSkills            PluginViewType = "skills"
-	PluginViewClientDiagnostics PluginViewType = "clientDiagnostics"
+	PluginViewAgentMemory PluginViewType = "agentMemory"
+	PluginViewSchedules   PluginViewType = "schedules"
+	PluginViewSkills      PluginViewType = "skills"
 )
 
 type PluginView struct {

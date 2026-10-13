@@ -14,7 +14,7 @@ import (
 func TestViewAdmissionIsBoundedAndIsolatesInvalidSiblings(t *testing.T) {
 	releases := testReleases(t)
 	manifest := `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.views","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
-	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-13.4","contributes":{"views":[{"id":"good","title":"Good","type":"clientDiagnostics","entry":"good.html"},{"id":"escape","title":"Escape","type":"clientDiagnostics","entry":"../escape.html"},{"id":"wrong","title":"Wrong MIME","type":"clientDiagnostics","entry":"wrong.html"},{"id":"large","title":"Large","type":"clientDiagnostics","entry":"large.html"},{"id":"missing","title":"Missing","type":"clientDiagnostics","entry":"missing.html"},{"id":"write","title":"Write","type":"tools.invoke","entry":"good.html"}]}}`, "good.html": "<!doctype html><p>Good</p>", "wrong.html": "plain text", "large.html": "<!doctype html>" + strings.Repeat("x", plugin.MaxViewBytes)}))
+	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-13.4","contributes":{"views":[{"id":"good","title":"Good","type":"skills","entry":"good.html"},{"id":"escape","title":"Escape","type":"skills","entry":"../escape.html"},{"id":"wrong","title":"Wrong MIME","type":"skills","entry":"wrong.html"},{"id":"large","title":"Large","type":"skills","entry":"large.html"},{"id":"missing","title":"Missing","type":"skills","entry":"missing.html"},{"id":"write","title":"Write","type":"tools.invoke","entry":"good.html"}]}}`, "good.html": "<!doctype html><p>Good</p>", "wrong.html": "plain text", "large.html": "<!doctype html>" + strings.Repeat("x", plugin.MaxViewBytes)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestViewReadRejectsChangedBytesAndFilesystemEscape(t *testing.T) {
 			r := testReleases(t)
 			release, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{
 				"plugin.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.views","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-				"io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-13.4","contributes":{"views":[{"id":"view","title":"View","type":"clientDiagnostics","entry":"view.html"}]}}`,
+				"io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-13.4","contributes":{"views":[{"id":"view","title":"View","type":"skills","entry":"view.html"}]}}`,
 				"view.html": "<!doctype html><p>Original</p>",
 			}))
 			if err != nil {

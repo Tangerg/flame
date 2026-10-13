@@ -572,9 +572,6 @@ export const zhTW: Record<string, string> = {
   "commandMenu.empty.sub": "試試名稱的一部分。",
   "command.showShortcuts": "鍵盤快速鍵",
 
-  "diagnostics.clear": "清除",
-  "diagnostics.clear.hint":
-    "僅保留在記憶體中（有上限）；持久紀錄經 OTLP 匯出。「清空」會重設緩衝區。",
   "reasoning.thinking": "思考中",
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "思考了 {{duration}}",

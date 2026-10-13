@@ -720,8 +720,6 @@ export const zh: Record<string, string> = {
   "commandMenu.empty.sub": "试试名称的一部分。",
   "command.showShortcuts": "键盘快捷键",
 
-  "diagnostics.clear": "清除",
-  "diagnostics.clear.hint": "仅保留在内存中（有上限）；持久记录经 OTLP 导出。“清空”会重置缓冲区。",
   "reasoning.thinking": "思考中",
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "思考了 {{duration}}",

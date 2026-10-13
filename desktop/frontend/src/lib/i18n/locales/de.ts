@@ -586,9 +586,6 @@ export const de: Record<string, string> = {
   "commandMenu.empty.sub": "Versuche einen Teil des Namens.",
   "command.showShortcuts": "Tastenkürzel",
 
-  "diagnostics.clear": "Löschen",
-  "diagnostics.clear.hint":
-    "Nur im Speicher (begrenzt); die dauerhafte Aufzeichnung geht über OTLP hinaus. „Leeren“ setzt die Puffer zurück.",
   "reasoning.thinking": "Denkt nach",
   "reasoning.thought": "Gedacht",
   "reasoning.thoughtFor": "{{duration}} nachgedacht",

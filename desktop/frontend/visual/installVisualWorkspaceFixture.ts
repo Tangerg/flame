@@ -1,10 +1,6 @@
-import diagnosticsHTML from "../../../plugins/diagnostics/views/diagnostics.html?raw";
 import { Gallery } from "../../../plugins/icon-gallery/src/component";
-import { ClientDiagnosticsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/ClientDiagnosticsPackageView";
-import {
-  createClientViewReads,
-  readClientDiagnostics,
-} from "@/plugins/builtin/settings/plugins-pane/adapters/clientViewReads";
+import { DiagnosticsReport } from "../../../plugins/diagnostics/src/component";
+import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import { DiffReport } from "../../../plugins/diff/src/component";
 import type { Diff } from "@flame/runtime-contract/wire";
 import skillsHTML from "../../../plugins/skills/views/skills.html?raw";
@@ -399,24 +395,15 @@ function workspaceDataPlugin(
     setup(ctx) {
       ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
       const diagnosticsLifetime = ctx.lifetime("visual-diagnostics");
-      const diagnosticsReads = () =>
-        createClientViewReads(
-          { readView: async () => ({ html: diagnosticsHTML }) },
-          { installationId: "visual", digest: "visual", viewId: "diagnostics" },
-          readClientDiagnostics,
-        );
       diagnosticsLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:diagnostics",
         title: "Diagnostics",
         icon: "activity",
         dock: "workspace",
-        material: "clientDiagnostics",
+        material: "diagnostics",
         component: () =>
-          createElement(ClientDiagnosticsPackageView, {
-            reads: diagnosticsReads,
-            title: "Diagnostics",
-            lifetime: diagnosticsLifetime,
-            carrier: createBrowserHost().pluginCarrier,
+          createElement(DiagnosticsReport, {
+            snapshot: captureClientTelemetry(diagnosticsLifetime.signal).read(),
           }),
       });
       const galleryLifetime = ctx.lifetime("visual-icon-gallery");

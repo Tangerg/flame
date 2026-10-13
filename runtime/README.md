@@ -281,7 +281,7 @@ Schedule tables are imported, decoded or maintained in parallel.
 ## Component-only packages
 
 A namespace declaration may publish ordinary `components` without callable
-contributions or a backend process. Each component declares installation or workspace scope,
+contributions or a backend process. Each component declares installation, workspace or Session scope,
 workspace placement, a namespace-local prebuilt ESM entry and its export name.
 An optional `contribution` binds an existing callable contribution from the same
 release. An authored unknown or malformed callable ID is refused; absence is valid
@@ -289,8 +289,9 @@ for content-only components. Runtime admits resources without executing module c
 The optional icon gallery is the first bundled component-only package. Its former
 static HTML view kind is removed. Graphical clients use the same subscription-owned
 exact-release module resources and shared React/UI graph as the Reviews Board.
-Diagnostics still uses its client's existing bounded telemetry owner and current
-HTML resource until its own component migration.
+Diagnostics is an ordinary component consuming an explicit public client-telemetry
+collaborator; no Runtime diagnostics view kind or HTML resource remains. Its local
+buffer and Runtime accounting retain their separate owners.
 
 ## Protocol 2026-10-11.3
 
@@ -1010,9 +1011,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "agentMemory"`, `"schedules"`, `"skills"`,
-`"clientDiagnostics"`, and a portable
-`.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
+`type: "agentMemory"`, `"schedules"` or `"skills"`, and a portable `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
 and language integrations remain unavailable.

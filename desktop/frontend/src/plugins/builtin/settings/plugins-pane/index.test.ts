@@ -480,9 +480,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
     ...installation("0c31c796-224c-40fa-a721-6696971bb697", "withheld"),
     presentation: "withheld",
   };
-  admitted.selected.views = [
-    { id: "diagnostics", title: "Diagnostics", type: "clientDiagnostics" },
-  ];
+  admitted.selected.views = [];
   admitted.selected.components = [
     {
       id: "icons",
@@ -507,6 +505,15 @@ it("presents and retains only the contributions Runtime admits", async () => {
       placement: "workspaceView",
       entry: "io.github.tangerg.flame/components/component.js",
       export: "Trajectory",
+    },
+    {
+      id: "diagnostics",
+      title: "Diagnostics",
+      scope: "installation",
+      placement: "workspaceView",
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Diagnostics",
+      material: "diagnostics",
     },
   ];
   withheld.selected.components = admitted.selected.components;

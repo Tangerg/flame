@@ -258,7 +258,7 @@ it("opens only a unique admitted client diagnostics contribution", async () => {
     ctx.contribute(WORKSPACE_VIEW, {
       id: "package:first:diagnostics",
       title: "Diagnostics",
-      material: "clientDiagnostics",
+      material: "diagnostics",
       dock: "workspace",
       component: () => null,
     }),
@@ -269,7 +269,7 @@ it("opens only a unique admitted client diagnostics contribution", async () => {
     ctx.contribute(WORKSPACE_VIEW, {
       id: "package:second:diagnostics",
       title: "Other diagnostics",
-      material: "clientDiagnostics",
+      material: "diagnostics",
       dock: "workspace",
       component: () => null,
     }),

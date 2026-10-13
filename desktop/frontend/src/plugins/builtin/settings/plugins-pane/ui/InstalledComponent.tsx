@@ -1,3 +1,4 @@
+import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import {
   Component,
   Suspense,
@@ -59,6 +60,7 @@ class ComponentInstance {
     this.context = this.capture();
   }
   private capture(): ComponentContext {
+    const signal = AbortSignal.any([this.controller.signal, this.lifetime.signal, this.resources]);
     return Object.freeze({
       runtime: this.runtime,
       sessionId: this.sessionId,
@@ -69,7 +71,8 @@ class ComponentInstance {
           })
         : undefined,
       binding: this.binding ? structuredClone(this.binding) : undefined,
-      signal: AbortSignal.any([this.controller.signal, this.lifetime.signal, this.resources]),
+      signal,
+      telemetry: captureClientTelemetry(signal),
       track: <T,>(operation: Promise<T>): Promise<T> =>
         trackContributionIO(this.lifetime, operation),
     });

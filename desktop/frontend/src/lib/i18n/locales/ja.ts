@@ -570,9 +570,6 @@ export const ja: Record<string, string> = {
   "commandMenu.empty.sub": "名前の一部を入力してください。",
   "command.showShortcuts": "キーボードショートカット",
 
-  "diagnostics.clear": "クリア",
-  "diagnostics.clear.hint":
-    "メモリ内のみ（上限あり）で、永続的な記録は OTLP 経由で送られます。「クリア」でバッファをリセットします。",
   "reasoning.thinking": "考えています",
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "{{duration}} 思考",

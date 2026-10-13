@@ -596,9 +596,6 @@ export const fr: Record<string, string> = {
   "commandMenu.empty.sub": "Essayez une partie du nom.",
   "command.showShortcuts": "Raccourcis clavier",
 
-  "diagnostics.clear": "Effacer",
-  "diagnostics.clear.hint":
-    "En mémoire uniquement (borné) ; l'enregistrement durable part via OTLP. « Effacer » réinitialise les tampons.",
   "reasoning.thinking": "Réflexion",
   "reasoning.thought": "Réflexion",
   "reasoning.thoughtFor": "Réflexion de {{duration}}",

@@ -3563,11 +3563,6 @@
           "value": "\"agentMemory\""
         },
         {
-          "name": "PluginViewClientDiagnostics",
-          "type": "PluginViewType",
-          "value": "\"clientDiagnostics\""
-        },
-        {
           "name": "PluginViewSchedules",
           "type": "PluginViewType",
           "value": "\"schedules\""
@@ -3645,7 +3640,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.12\""
+          "value": "\"2026-10-13.13\""
         },
         {
           "name": "ProviderAPIKeyOptional",

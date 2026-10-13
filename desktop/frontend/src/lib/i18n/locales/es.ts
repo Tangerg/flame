@@ -593,9 +593,6 @@ export const es: Record<string, string> = {
   "commandMenu.empty.sub": "Prueba parte del nombre.",
   "command.showShortcuts": "Atajos de teclado",
 
-  "diagnostics.clear": "Limpiar",
-  "diagnostics.clear.hint":
-    "Solo en memoria (con límite); el registro duradero sale por OTLP. «Borrar» reinicia los búferes.",
   "reasoning.thinking": "Pensando",
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",

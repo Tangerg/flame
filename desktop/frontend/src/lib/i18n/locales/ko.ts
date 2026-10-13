@@ -566,9 +566,6 @@ export const ko: Record<string, string> = {
   "commandMenu.empty.sub": "이름의 일부를 입력해 보세요.",
   "command.showShortcuts": "키보드 단축키",
 
-  "diagnostics.clear": "지우기",
-  "diagnostics.clear.hint":
-    '메모리에만 보관되며(상한 있음) 영구 기록은 OTLP로 나갑니다. "지우기"는 버퍼를 초기화합니다.',
   "reasoning.thinking": "생각 중",
   "reasoning.thought": "생각",
   "reasoning.thoughtFor": "{{duration}} 동안 생각",

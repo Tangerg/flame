@@ -20,6 +20,12 @@ existing navigation owner. They call public Session operations directly. A chang
 Session remounts the instance and cancels/joins its old reads; rendering never becomes
 an owner of Session or Run transitions. Trajectory is the concrete consumer.
 
+Every component receives `context.telemetry`, the explicit client-local observation
+collaborator. Public row types describe traces, metrics and logs; `read()` returns
+a detached snapshot of the current buffer and `clear()` delegates to that buffer's
+owner. Both refuse after the component signal ends. Runtime accounting and remote
+telemetry are separate facts. Diagnostics is the concrete ordinary component consumer.
+
 `bindOperations` consumes the owner's generated `CAPABILITY_JSON` and
 `MethodInputs`/`MethodOutputs`. Its query and command functions enter the ordinary
 `plugins.call` endpoint. Runtime admits the exact callable contract and validates

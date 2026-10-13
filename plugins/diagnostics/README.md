@@ -1,17 +1,20 @@
 # Client diagnostics
 
-This optional package displays traces, metrics and logs from the current graphical
-client's existing telemetry buffer. It does not collect telemetry, read remote Runtime
-observations, or calculate Runtime accounting. Enable the package explicitly through
-Plugins; it is not compiled into the application.
+This optional ordinary React component displays traces, metrics and logs from the
+current graphical client's existing telemetry owner through public
+`ComponentContext.telemetry`. All component publishers receive the same explicit,
+lifetime-bound collaborator; author code imports no private store or application alias.
 
-Each read returns at most 256 whole records and 128 KiB of record JSON per signal.
-Newest traces and logs are considered first. Oversized records are omitted, with the
-omission count shown; earlier buffer eviction cannot be reconstructed from a read.
-Refresh renews exact installation and resource admission before projecting the latest
-local observations. It does not expose a cursor, choose a Runtime, or accept queries.
+Read returns a detached snapshot of the current bounded buffer: newest traces/logs
+first and metrics in stable key order. The former HTML transport's 256-record/128-KiB
+cutoffs and omission DTO are removed. The telemetry owner still owns buffer capacity;
+older evictions cannot be reconstructed. Displayed rows are labeled as the last read.
 
-The trusted client owns the Clear button and calls the existing telemetry store's
-clear operation. The isolated page can only read. Clearing remounts the page so its
-display no longer retains the previous observations. Revocation, connection replacement
-and withdrawal retire the page without clearing or otherwise changing telemetry.
+Refresh rereads that owner. Clear delegates to its existing local clear operation
+and discards the displayed snapshot before reading again. The component does not
+clear Runtime accounting or remote telemetry. Retirement invalidates both operations
+without changing the retained buffer. Read failure preserves the last accepted read.
+
+The package declares installation scope and a generic `diagnostics` material key for
+the existing navigation consumer. It uses prebuilt ESM, shared React/UI and normal
+component resources. No callable backend, HTML carrier or private RPC wrapper remains.

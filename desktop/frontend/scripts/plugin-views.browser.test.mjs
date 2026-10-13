@@ -39,7 +39,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped memory, schedule, Skill, recorded result, captured file, current-client diagnostics reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped memory, schedule, Skill, recorded result, captured file reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -696,87 +696,6 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     );
     await page.waitForFunction(() => window.viewStatus?.type === "failure");
     assert.match(await page.evaluate(() => window.failure), /Unsupported captured file format/);
-    assert.equal(await page.locator("iframe").count(), 0);
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
-    const diagnosticsHTML = await readFile(
-      new URL("../../../plugins/diagnostics/views/diagnostics.html", import.meta.url),
-      "utf8",
-    );
-    const observations = {
-      format: "flame.client-diagnostics.v1",
-      source: "currentClient",
-      spans: {
-        rows: [
-          {
-            id: "span",
-            name: "client.rpc",
-            durationMillis: 0,
-            status: "error",
-            attrs: { unsafe: "<img src=x onerror=alert(1)>" },
-          },
-        ],
-        omittedFromRead: 5,
-      },
-      metrics: {
-        rows: [
-          {
-            id: "metric",
-            name: "client.render",
-            kind: "histogram",
-            count: 3,
-            sum: 42,
-            p50: 10,
-            p95: 20,
-            avg: 14,
-            unit: "ms",
-            attrs: {},
-          },
-        ],
-        omittedFromRead: 0,
-      },
-      logs: {
-        rows: [{ id: "log", severity: "WARN", body: "Recorded local log", attrs: {} }],
-        omittedFromRead: 1,
-      },
-    };
-    await page.evaluate(({ html, initial }) => void window.mount(html, initial), {
-      html: diagnosticsHTML,
-      initial: observations,
-    });
-    await frame.getByRole("heading", { name: "Client diagnostics" }).waitFor();
-    await expect(frame.getByRole("status")).toContainText("5 omitted");
-    await reviewAppearance("diagnostics");
-    await frame.locator("#output button[aria-expanded]").click();
-    assert.match(await frame.locator("pre").textContent(), /<img src=x/);
-    assert.equal(await frame.locator("img").count(), 0);
-    await choose(frame, "Telemetry signal", "Metrics");
-    await frame.locator("#output button[aria-expanded]").click();
-    await expect(frame.locator("#output dd")).toHaveCount(5);
-    await choose(frame, "Telemetry signal", "Logs");
-    await frame.getByText("WARN · Recorded local log", { exact: true }).waitFor();
-    await frame.getByRole("button", { name: "Refresh" }).click();
-    await page.waitForFunction(() => window.reads.length === 1);
-    assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
-    assert.equal(await frame.getByRole("button", { name: "Clear" }).count(), 0);
-    await page.evaluate(() => (window.readFailure = true));
-    await expect(frame.getByRole("button", { name: "Refresh" })).toBeEnabled();
-    await frame.getByRole("button", { name: "Refresh" }).click();
-    await frame.getByRole("alert").waitFor();
-    await frame.getByText("WARN · Recorded local log", { exact: true }).waitFor();
-    await page.evaluate(() => window.dispose());
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
-    await page.evaluate(
-      ({ html, initial }) =>
-        void window.mount(html, {
-          ...initial,
-          spans: { rows: [null], omittedFromRead: 0 },
-        }),
-      { html: diagnosticsHTML, initial: observations },
-    );
-    await page.waitForFunction(() => window.viewStatus?.type === "failure");
-    assert.match(await page.evaluate(() => window.failure), /could not be displayed/);
     assert.equal(await page.locator("iframe").count(), 0);
     await page.reload();
     await page.waitForFunction(() => window.mount);

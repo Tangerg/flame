@@ -1,3 +1,4 @@
+import type { ClientTelemetry } from "./telemetry";
 import type { ComponentType } from "react";
 import type {
   FlameClient,
@@ -10,6 +11,14 @@ import type {
   Target,
   WorkspaceRef,
 } from "@flame/runtime-contract/wire";
+export type {
+  ClientTelemetry,
+  TelemetrySnapshot,
+  TelemetryAttributes,
+  SpanRow,
+  MetricRow,
+  LogRow,
+} from "./telemetry";
 export { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 
 export interface WorkspaceContext {
@@ -19,6 +28,7 @@ export interface WorkspaceContext {
 
 export interface ComponentContext {
   readonly runtime: FlameClient;
+  readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;
   readonly sessionId?: string;
   readonly binding?: Readonly<PluginOperationBinding>;

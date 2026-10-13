@@ -8,7 +8,7 @@ import (
 )
 
 func TestViewAuthorityFollowsTheActiveExactRelease(t *testing.T) {
-	view := ViewDeclaration{ID: "trajectory", Title: "Trajectory", Kind: ClientDiagnostics, Entry: "views/index.html"}
+	view := ViewDeclaration{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "views/index.html"}
 	release := testRelease(t, "1", Declaration{Name: "review", Views: []ViewDeclaration{view}})
 	installation := configuredInstallation(t, release, nil)
 	if _, err := installation.AuthorizeView(release, release.Digest(), view.ID); !errors.Is(err, ErrDisabled) {
@@ -41,10 +41,11 @@ func TestViewDeclarationCannotGrantOtherOperationsOrHostPaths(t *testing.T) {
 	for _, view := range []ViewDeclaration{
 		{ID: "trajectory", Title: "Trajectory", Kind: "tools.invoke", Entry: "view.html"},
 		{ID: "trajectory", Title: "Trajectory", Kind: "sessionTrajectory", Entry: "view.html"},
-		{ID: "trajectory", Title: "Trajectory", Kind: ClientDiagnostics, Entry: "../view.html"},
-		{ID: "trajectory", Title: "Trajectory", Kind: ClientDiagnostics, Entry: "/view.html"},
-		{ID: "trajectory", Title: "Trajectory", Kind: ClientDiagnostics, Entry: "https://remote/view.html"},
-		{ID: "trajectory", Title: "Trajectory", Kind: ClientDiagnostics, Entry: "view.js"},
+		{ID: "diagnostics", Title: "Diagnostics", Kind: "clientDiagnostics", Entry: "view.html"},
+		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "../view.html"},
+		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "/view.html"},
+		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "https://remote/view.html"},
+		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "view.js"},
 	} {
 		if _, err := NewRelease(testDigest("1"), Declaration{Name: "review", Views: []ViewDeclaration{view}}); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("invalid view admitted: %+v: %v", view, err)

@@ -799,10 +799,6 @@ export const en: Record<string, string> = {
   "commandMenu.empty.sub": "Try part of its name.",
   "command.showShortcuts": "Keyboard shortcuts",
 
-  "diagnostics.clear": "Clear",
-  "diagnostics.clear.hint":
-    "In-memory only (bounded); the durable record leaves via OTLP. “Clear” resets the buffers.",
-
   "reasoning.thinking": "Thinking",
   "reasoning.thought": "Thought",
   "reasoning.thoughtFor": "Thought for {{duration}}",
