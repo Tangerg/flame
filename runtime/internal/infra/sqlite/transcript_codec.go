@@ -24,6 +24,9 @@ type transcriptItemPayload struct {
 	Tool                   *toolInvocationPayload  `json:"tool,omitzero"`
 	SafetyClass            tool.SafetyClass        `json:"safetyClass,omitempty"`
 	ApprovalDecision       approval.Decision       `json:"approvalDecision,omitempty"`
+	EditedArguments        string                  `json:"editedArguments,omitempty"`
+	DenialReason           string                  `json:"denialReason,omitempty"`
+	RememberScope          approval.Scope          `json:"rememberScope,omitempty"`
 	Failure                *toolFailurePayload     `json:"failure,omitzero"`
 	Summary                string                  `json:"summary,omitempty"`
 	DroppedMessages        int                     `json:"droppedMessages,omitzero"`
@@ -79,9 +82,12 @@ func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 	if phase := item.MessagePhase(); phase != transcript.MessagePhaseNone && !phase.Valid() {
 		return nil, fmt.Errorf("unknown message phase %q", phase)
 	}
+	resolution := item.ApprovalResolution()
 	payload := transcriptItemPayload{
 		Status: item.Status(), Kind: item.Kind(), Phase: item.MessagePhase(), Text: item.Text(), Redacted: item.Redacted(),
 		SafetyClass: item.SafetyClass(), ApprovalDecision: item.ApprovalDecision(),
+		EditedArguments: resolution.EditedArguments, DenialReason: resolution.Reason,
+		RememberScope:   resolution.RememberScope,
 		Summary:         item.Summary(),
 		DroppedMessages: item.DroppedMessages(),
 	}
@@ -142,7 +148,9 @@ func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
 	snapshot := transcript.ItemSnapshot{
 		Status: payload.Status, Kind: payload.Kind, MessagePhase: payload.Phase, Text: payload.Text, Redacted: payload.Redacted,
 		SafetyClass:      payload.SafetyClass,
-		ApprovalDecision: payload.ApprovalDecision, Summary: payload.Summary,
+		ApprovalDecision: payload.ApprovalDecision, EditedArguments: payload.EditedArguments,
+		DenialReason: payload.DenialReason, RememberScope: payload.RememberScope,
+		Summary:         payload.Summary,
 		DroppedMessages: payload.DroppedMessages,
 	}
 	if payload.FinishedAt != nil {

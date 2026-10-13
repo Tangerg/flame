@@ -38,14 +38,14 @@ func TestToolApprovalDecisionIsImmutableAndSurvivesSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToolCall: %v", err)
 	}
-	resolved, err := running.ResolveToolApproval(approval.Allow)
+	resolved, err := running.ResolveToolApproval(approval.Resolution{Decision: approval.Allow})
 	if err != nil {
 		t.Fatalf("ResolveToolApproval: %v", err)
 	}
 	if running.ApprovalDecision() != "" || resolved.ApprovalDecision() != approval.Allow {
 		t.Fatalf("approval decisions = original %q, resolved %q", running.ApprovalDecision(), resolved.ApprovalDecision())
 	}
-	if _, resolveToolApprovalErr := resolved.ResolveToolApproval(approval.Deny); resolveToolApprovalErr == nil {
+	if _, resolveToolApprovalErr := resolved.ResolveToolApproval(approval.Resolution{Decision: approval.Deny}); resolveToolApprovalErr == nil {
 		t.Fatal("ResolveToolApproval accepted a second decision")
 	}
 	result, err := tool.NewResult("ok")

@@ -129,7 +129,12 @@ func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) 
 			case interrupt.Question:
 				return expected.AnswerQuestion(answer.Resolution.Answers)
 			case interrupt.Approval:
-				return expected.ResolveToolApproval(approval.DecisionOf(answer.Resolution.Approved))
+				return expected.ResolveToolApproval(approval.Resolution{
+					Decision:        approval.DecisionOf(answer.Resolution.Approved),
+					EditedArguments: answer.Resolution.Arguments,
+					Reason:          answer.Resolution.Reason,
+					RememberScope:   answer.Resolution.RememberScope,
+				})
 			default:
 				return transcript.Item{}, fmt.Errorf("unknown interrupt kind %q", open.Kind())
 			}

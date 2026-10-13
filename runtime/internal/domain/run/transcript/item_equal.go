@@ -14,8 +14,9 @@ func (i Item) Equal(other Item) bool {
 		!i.OccurredAt().Equal(other.OccurredAt()) || !i.finishedAt.Equal(other.finishedAt) ||
 		i.status != other.status || i.kind != other.kind || i.messagePhase != other.messagePhase ||
 		i.text != other.text || i.redacted != other.redacted || i.safetyClass != other.safetyClass ||
-		i.approvalDecision != other.approvalDecision || i.summary != other.summary ||
-		i.droppedMessages != other.droppedMessages {
+		i.approvalDecision != other.approvalDecision || i.editedArguments != other.editedArguments ||
+		i.denialReason != other.denialReason || i.rememberScope != other.rememberScope ||
+		i.summary != other.summary || i.droppedMessages != other.droppedMessages {
 		return false
 	}
 	duration, known := optional.Present(i.executionDuration)
