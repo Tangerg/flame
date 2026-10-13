@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"iter"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -25,4 +26,21 @@ type CallRequest struct {
 type Call interface {
 	Kind() capability.MethodKind
 	Invoke(context.Context) (jsoninput.Input, error)
+}
+
+type StreamKind string
+
+const (
+	StreamChunk  StreamKind = "chunk"
+	StreamResult StreamKind = "result"
+)
+
+type StreamEvent struct {
+	Kind  StreamKind
+	Value jsoninput.Input
+}
+
+type StreamCall interface {
+	Kind() capability.MethodKind
+	Stream(context.Context) iter.Seq2[StreamEvent, error]
 }

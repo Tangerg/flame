@@ -97,73 +97,11 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 
 func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsoninput.Input, validate func(jsoninput.Input) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error), target func(plugins.ContributionBinding) capability.Target) (commandReply[jsoninput.Input], error) {
 	var zero commandReply[jsoninput.Input]
-	id := operation.Identity(ctx)
-	capture := func(binding plugins.ContributionBinding) (capability.Invocation, error) {
-		return operation.Capture(ctx, target(binding))
-	}
-	command, found, err := c.routing.Find(ctx, id, method, admitted)
-	if err == nil && !found {
-		// Discovery is network I/O outside installation admission. Under that
-		// boundary, recheck the exact provider before persisting its contract.
-		candidate, resolveErr := resolve(ctx)
-		if resolveErr != nil {
-			return zero, resolveErr
-		}
-		session, sessionErr := c.pool.ServiceSession(ctx, candidate.ServerID)
-		if sessionErr != nil {
-			return zero, sessionErr
-		}
-		required, err := capability.Parse(candidate.Contract.JSON())
-		if err != nil {
-			return zero, err
-		}
-		exported, err := pluginsdk.ResolveCapability(ctx, session, candidate.Export, required)
-		if err != nil {
-			return zero, err
-		}
-		binding, err := exported.Method(method)
-		if err != nil {
-			return zero, err
-		}
-		if binding.Descriptor().Kind != capability.Mutation {
-			return zero, errors.New("managed plugin: command requires a command contract")
-		}
-		if err := binding.ValidateInput(admitted); err != nil {
-			return zero, err
-		}
-		command, err = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ContributionBinding, error) {
-			current, err := resolve(ctx)
-			if err != nil {
-				return current, err
-			}
-			if current.InstallationID != candidate.InstallationID || current.Digest != candidate.Digest || current.ServerName != candidate.ServerName || current.ServerID != candidate.ServerID || current.ContributionID != candidate.ContributionID || current.Export != candidate.Export || current.Contract != candidate.Contract {
-				return current, plugin.ErrUnavailable
-			}
-			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
-				return current, err
-			}
-			return current, nil
-		}, capture)
-	}
-	if errors.Is(err, plugin.ErrCommandConflict) {
-		return zero, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, err))
-	}
+	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
 	if err != nil {
 		return zero, err
 	}
-	record := command.Snapshot()
-	invocation, err := capture(plugins.ContributionBinding{InstallationID: record.Provider.InstallationID})
-	if err != nil {
-		return zero, err
-	}
-	if invocation != record.Invocation {
-		return zero, errors.Join(idempotency.ErrKeyConflict, plugin.ErrCommandConflict)
-	}
-	if accepts != nil {
-		if err := accepts(record); err != nil {
-			return zero, err
-		}
-	}
+	id := record.ID
 	ctx, err = pluginsdk.WithInvocation(ctx, record.Invocation)
 	if err != nil {
 		return zero, err
@@ -255,4 +193,78 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	}
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	return nil
+}
+
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted jsoninput.Input, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) capability.Target, streaming bool) (plugin.CommandBinding, error) {
+	id := operation.Identity(ctx)
+	capture := func(binding plugins.ContributionBinding) (capability.Invocation, error) {
+		return operation.Capture(ctx, target(binding))
+	}
+	command, found, err := c.routing.Find(ctx, id, method, admitted)
+	if err == nil && !found {
+		// Discovery is network I/O outside installation admission. Under that
+		// boundary, recheck the exact provider before persisting its contract.
+		candidate, resolveErr := resolve(ctx)
+		if resolveErr != nil {
+			return plugin.CommandBinding{}, resolveErr
+		}
+		session, sessionErr := c.pool.ServiceSession(ctx, candidate.ServerID)
+		if sessionErr != nil {
+			return plugin.CommandBinding{}, sessionErr
+		}
+		required, err := capability.Parse(candidate.Contract.JSON())
+		if err != nil {
+			return plugin.CommandBinding{}, err
+		}
+		exported, err := pluginsdk.ResolveCapability(ctx, session, candidate.Export, required)
+		if err != nil {
+			return plugin.CommandBinding{}, err
+		}
+		binding, err := exported.Method(method)
+		if err != nil {
+			return plugin.CommandBinding{}, err
+		}
+		if (len(binding.Descriptor().Stream) != 0) != streaming {
+			return plugin.CommandBinding{}, plugin.ErrInvalid
+		}
+		if binding.Descriptor().Kind != capability.Mutation {
+			return plugin.CommandBinding{}, errors.New("managed plugin: command requires a command contract")
+		}
+		if err := binding.ValidateInput(admitted); err != nil {
+			return plugin.CommandBinding{}, err
+		}
+		command, err = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ContributionBinding, error) {
+			current, err := resolve(ctx)
+			if err != nil {
+				return current, err
+			}
+			if current.InstallationID != candidate.InstallationID || current.Digest != candidate.Digest || current.ServerName != candidate.ServerName || current.ServerID != candidate.ServerID || current.ContributionID != candidate.ContributionID || current.Export != candidate.Export || current.Contract != candidate.Contract {
+				return current, plugin.ErrUnavailable
+			}
+			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
+				return current, err
+			}
+			return current, nil
+		}, capture)
+	}
+	if errors.Is(err, plugin.ErrCommandConflict) {
+		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, err))
+	}
+	if err != nil {
+		return plugin.CommandBinding{}, err
+	}
+	record := command.Snapshot()
+	invocation, err := capture(plugins.ContributionBinding{InstallationID: record.Provider.InstallationID})
+	if err != nil {
+		return plugin.CommandBinding{}, err
+	}
+	if invocation != record.Invocation {
+		return plugin.CommandBinding{}, errors.Join(idempotency.ErrKeyConflict, plugin.ErrCommandConflict)
+	}
+	if accepts != nil {
+		if err := accepts(record); err != nil {
+			return plugin.CommandBinding{}, err
+		}
+	}
+	return record, nil
 }

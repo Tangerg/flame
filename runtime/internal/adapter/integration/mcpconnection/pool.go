@@ -5,8 +5,10 @@ package mcpconnection
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"sync"
@@ -14,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -381,6 +384,20 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 		return sdk.ParamsBase{}, nil, err
 	}
 	return metadata, release, nil
+}
+
+func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *pluginsdk.Binding, command string, input jsoninput.Input, metadata sdk.ParamsBase) iter.Seq2[pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error] {
+	return func(yield func(pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error) bool) {
+		if _, err := p.SessionActor(ctx, id, session); err != nil {
+			yield(pluginsdk.StreamValue[jsontext.Value, jsontext.Value]{}, err)
+			return
+		}
+		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}, command, input, metadata) {
+			if !yield(value, err) {
+				return
+			}
+		}
+	}
 }
 
 type ToolCall func(toolcontract.Invocation) (chat.ToolOutput, error)

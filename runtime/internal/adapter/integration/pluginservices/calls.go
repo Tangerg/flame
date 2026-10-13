@@ -25,38 +25,9 @@ type installedCall struct {
 }
 
 func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (plugins.Call, error) {
-	if request.Contract == nil {
-		return nil, plugin.ErrInvalid
-	}
-	if err := request.Installation.Validate(); err != nil {
+	method, err := admitCallRequest(request, false)
+	if err != nil {
 		return nil, err
-	}
-	if err := request.Digest.Validate(); err != nil {
-		return nil, err
-	}
-	if err := request.Contribution.Validate(); err != nil {
-		return nil, err
-	}
-	method, found := request.Contract.Method(request.Method)
-	if !found {
-		return nil, plugin.ErrInvalid
-	}
-	if len(method.Descriptor().Stream) != 0 {
-		return nil, errors.Join(plugin.ErrInvalid, errors.New("plugin: installed streaming delivery is not available"))
-	}
-	if err := request.Target.Validate(); err != nil {
-		return nil, errors.Join(plugin.ErrInvalid, err)
-	}
-	if request.Target.Scope != method.Descriptor().Target || request.Target.Scope == "installation" && request.Target.Reference != request.Installation.String() {
-		return nil, plugin.ErrInvalid
-	}
-	if err := request.Input.Validate(); err != nil {
-		return nil, errors.Join(plugin.ErrInvalid, err)
-	}
-	if method.Kind() == capability.Query {
-		if err := method.ValidateInput(request.Input); err != nil {
-			return nil, errors.Join(plugin.ErrInvalid, err)
-		}
 	}
 	return &installedCall{calls: c, request: request, method: method}, nil
 }
@@ -147,4 +118,41 @@ func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 	}
 	defer release()
 	return bound.InvokeWithMetadata(ctx, "", c.request.Input, metadata)
+}
+
+func admitCallRequest(request plugins.CallRequest, streaming bool) (*capability.Method, error) {
+	if request.Contract == nil {
+		return nil, plugin.ErrInvalid
+	}
+	if err := request.Installation.Validate(); err != nil {
+		return nil, err
+	}
+	if err := request.Digest.Validate(); err != nil {
+		return nil, err
+	}
+	if err := request.Contribution.Validate(); err != nil {
+		return nil, err
+	}
+	method, found := request.Contract.Method(request.Method)
+	if !found {
+		return nil, plugin.ErrInvalid
+	}
+	if err := request.Target.Validate(); err != nil {
+		return nil, errors.Join(plugin.ErrInvalid, err)
+	}
+	if request.Target.Scope != method.Descriptor().Target || request.Target.Scope == "installation" && request.Target.Reference != request.Installation.String() {
+		return nil, plugin.ErrInvalid
+	}
+	if err := request.Input.Validate(); err != nil {
+		return nil, errors.Join(plugin.ErrInvalid, err)
+	}
+	if method.Kind() == capability.Query {
+		if err := method.ValidateInput(request.Input); err != nil {
+			return nil, errors.Join(plugin.ErrInvalid, err)
+		}
+	}
+	if (len(method.Descriptor().Stream) != 0) != streaming {
+		return nil, plugin.ErrInvalid
+	}
+	return method, nil
 }

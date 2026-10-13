@@ -55,6 +55,9 @@ func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method
 	var index uint64
 	for value, err := range sequence {
 		if err != nil {
+			if refusal, known := errors.AsType[*capability.Refusal](err); known {
+				return &Result[jsontext.Value]{Failure: refusal}, nil
+			}
 			return nil, err
 		}
 		if value.Kind == "result" {
@@ -190,6 +193,10 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 				close(chunk.consumed)
 			case <-done:
 				if completion.err != nil {
+					if refusal, known := errors.AsType[*capability.Refusal](completion.err); known {
+						yield(StreamValue[jsontext.Value, jsontext.Value]{}, refusal)
+						return
+					}
 					fail(completion.err)
 					return
 				}

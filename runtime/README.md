@@ -203,10 +203,19 @@ MCP request carries the final result; synchronous acknowledged chunk delivery us
 its existing authenticated Runtime callback lifetime. Real stdio executable proof
 includes model-next reentrancy, immutable invocation, demand backpressure, cancel/
 join and known inner response with outer failure. No backend listener or event queue
-is introduced. This SDK support does not replace Runtime's installed command-route
-owner: installation-qualified stream admission/recovery, production model chains,
-dependency retention and TS delivery remain open. Existing unary entrances continue
-to refuse stream methods before route creation.
+is introduced. Runtime's internal installed command stream now shares unary route
+admission and the same durable Commands owner. First invocation captures exact
+installation/release/contribution/export/contract, raw input, target and caller.
+Dispatched recovery reads only the original private receipt; it never reproduces
+chunks or invokes a replacement provider. Consumer stop and missing receipt retain
+uncertainty. Valid final evidence or explicit owner refusal ends the route; generic
+transport failure does not. Callback preparation precedes dispatch and resources
+are joined when consumption ends.
+
+This internal mutation stream does not yet expose a public Go/Protocol entrance.
+Production model chains, query streams, dependency retention and TS delivery remain
+open. Existing unary entrances continue to refuse stream methods before route
+creation. Stream recovery stores no competing business result or chunk history.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
