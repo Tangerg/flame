@@ -1152,7 +1152,8 @@ for await (const line of lines) {
     if (!client) throw new Error("runtime client was not initialized");
     const installation = managedOwners.get("memory")!;
     const release = { installationId: installation.id, digest: installation.selected.digest };
-    const view = { ...release, viewId: "memory" };
+    const component = installation.selected.components[0]!;
+    const resourceRequest = { ...release, componentId: component.id, path: component.entry };
     const workspace = { path: root };
     let created: Awaited<ReturnType<typeof client.agentMemory.add>> | undefined;
     try {
@@ -1161,25 +1162,27 @@ for await (const line of lines) {
         .workspace(workspace)
         .agentMemory.add("Memory page canonical ownership fixture");
       const query = { scope: "project" as const, workspace, limit: 1 };
-      expect(await client.plugins.readMemory({ ...view, ...query })).toEqual(
-        await client.agentMemory.list(query),
-      );
-      await expect(client.plugins.readMemory({ ...view, scope: "project" })).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-      );
+      expect((await client.agentMemory.list(query)).data).toContainEqual(created);
       await expect(
-        client.plugins.readMemory({ ...view, scope: "user", workspace }),
+        client.agentMemory.list({ scope: "project" } as Parameters<
+          typeof client.agentMemory.list
+        >[0]),
       ).rejects.toSatisfy(
         (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
       );
-      expect((await client.plugins.readView(view)).html).toBe(
-        await readFile(resolve(runtimeDirectory, "../plugins/memory/views/memory.html"), "utf8"),
+      await expect(
+        client.agentMemory.list({ scope: "user", workspace } as Parameters<
+          typeof client.agentMemory.list
+        >[0]),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
       );
-      await expect(client.plugins.readSkills({ ...view, workspace })).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
-      );
+      expect(component.scope).toBe("client");
+      expect(
+        Buffer.from((await client.plugins.readResource(resourceRequest)).body, "base64"),
+      ).toEqual(await readFile(resolve(runtimeDirectory, "../plugins/memory", component.entry)));
       await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
-      await expect(client.plugins.readMemory({ ...view, ...query })).rejects.toMatchObject({
+      await expect(client.plugins.readResource(resourceRequest)).rejects.toMatchObject({
         code: -32042,
       });
       await expect(client.agentMemory.list(query)).rejects.toSatisfy(
@@ -1226,7 +1229,9 @@ for await (const line of lines) {
           "utf8",
         ),
       );
-      await expect(client.plugins.readMemory({ ...view, scope: "user" })).rejects.toSatisfy(
+      await expect(
+        client.plugins.readSkills({ ...view, workspace: { path: root } }),
+      ).rejects.toSatisfy(
         (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
       );
       await client.plugins.setEnablement({ installationId: installation.id, enabled: false });

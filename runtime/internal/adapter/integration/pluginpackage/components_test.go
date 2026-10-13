@@ -48,6 +48,7 @@ func TestComponentAdmissionPreservesTargetScopeAndNavigationKey(t *testing.T) {
 		{"valid", "workspace", `,"material":"diff"`, true},
 		{"absent", "workspace", "", true},
 		{"session", "session", "", true},
+		{"client", "client", "", true},
 		{"unsupported scope", "unknown", `,"material":"diff"`, false},
 		{"invalid key", "workspace", `,"material":"Invalid"`, false},
 		{"empty key", "workspace", `,"material":""`, false},

@@ -23,7 +23,7 @@ export { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/muta
 
 export interface WorkspaceContext {
   readonly ref: Readonly<WorkspaceRef>;
-  readonly focus: Readonly<{ path: string; revision: bigint }>;
+  readonly focus?: Readonly<{ path: string; revision: bigint }>;
 }
 
 export interface ComponentContext {

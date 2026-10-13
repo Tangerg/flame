@@ -3,7 +3,12 @@ package bootstrap
 import (
 	"context"
 	"encoding/base64"
+	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -140,41 +145,54 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	}
 }
 
-func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
+func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "memory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewAgentMemory {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "client" {
 		t.Fatalf("memory admission: %+v", installed.Selected)
 	}
-	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "memory"}
+	resourceRequest := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "memory"}, Path: installed.Selected.Components[0].Entry}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-memory")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: installed.ID, Contribution: "memory-provider"}, "select-memory")
-	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
-	authored, err := os.ReadFile(filepath.Join(source, "views", "memory.html"))
-	if err != nil || html.HTML != string(authored) {
+	resource := r.must(delivery.PluginsReadResource, resourceRequest, "").(*protocol.PluginResource)
+	authored, err := os.ReadFile(filepath.Join(source, resourceRequest.Path))
+	body, decodeErr := base64.StdEncoding.DecodeString(resource.Body)
+	if err != nil || decodeErr != nil || !reflect.DeepEqual(body, authored) {
 		t.Fatalf("memory resource differs from admitted bytes: %v", err)
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	for _, content := range []string{"first fact", "second fact"} {
 		r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: content}, content)
 	}
+	contracts, err := memoryrpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
 	query := protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser, PageQuery: protocol.PageQuery{Limit: new(1)}}
 	for {
-		page := r.must(delivery.PluginsReadMemory, protocol.ReadPluginMemoryRequest{ReadPluginViewRequest: view, AgentMemoryListRequest: query}, "").(*protocol.Page[protocol.AgentMemoryItem])
+		input, err := jsoninput.Encode(memoryrpc.ListInput{Scope: memorydomain.ScopeUser, Cursor: query.Cursor, Limit: query.Limit})
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: input.JSON(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
+		if result.Failure != nil {
+			t.Fatalf("installed list refusal: %+v", result.Failure)
+		}
+		var page memoryrpc.Page
+		if err := json.Unmarshal(result.Output, &page); err != nil {
+			t.Fatal(err)
+		}
 		canonical := r.must(delivery.AgentMemoryList, query, "").(*protocol.Page[protocol.AgentMemoryItem])
-		if !reflect.DeepEqual(page, canonical) || len(page.Data) != 1 {
-			t.Fatal("memory view differs from canonical query")
+		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID.String() != canonical.Data[0].ID || page.Rows[0].Content != canonical.Data[0].Content || page.NextCursor != canonical.NextCursor {
+			t.Fatal("installed Memory operation differs from the private owner's canonical projection")
 		}
 		if page.NextCursor == "" {
 			break
 		}
 		query.Cursor = page.NextCursor
-	}
-	wrong := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSkills, protocol.ReadPluginSkillsRequest{ReadPluginViewRequest: view, Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-	if !errors.Is(wrong.Failure, protocol.ErrPluginNotFound) {
-		t.Fatalf("memory page admitted Skills: %v", wrong.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
 	result := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
@@ -220,9 +238,9 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 		}
 		query.Cursor = page.NextCursor
 	}
-	wrong := r.endpoint.Invoke(t.Context(), delivery.PluginsReadMemory, protocol.ReadPluginMemoryRequest{ReadPluginViewRequest: view, AgentMemoryListRequest: protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	wrong := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSkills, protocol.ReadPluginSkillsRequest{ReadPluginViewRequest: view, Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if !errors.Is(wrong.Failure, protocol.ErrPluginNotFound) {
-		t.Fatalf("schedule page admitted memory: %v", wrong.Failure)
+		t.Fatalf("schedule page admitted Skills: %v", wrong.Failure)
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)

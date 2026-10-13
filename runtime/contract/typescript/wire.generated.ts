@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.13";
+export const PROTOCOL_VERSION = "2026-10-13.14";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1443,7 +1443,7 @@ export interface PluginViewResource {
   html: string;
 }
 
-export type PluginViewType = "agentMemory" | "schedules" | "skills";
+export type PluginViewType = "schedules" | "skills";
 
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
@@ -1559,16 +1559,6 @@ export interface ReadFileRequest {
   path: string;
   startLine?: number;
   workspace: WorkspaceRef;
-}
-
-export interface ReadPluginMemoryRequest {
-  cursor?: string;
-  digest: string;
-  installationId: string;
-  limit?: number;
-  scope: AgentMemoryScope;
-  viewId: string;
-  workspace?: WorkspaceRef;
 }
 
 export interface ReadPluginRendererRequest {
@@ -2395,7 +2385,7 @@ export const WIRE_ENUMS = {
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
-  PluginViewType: ["agentMemory", "schedules", "skills"],
+  PluginViewType: ["schedules", "skills"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],

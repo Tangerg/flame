@@ -259,22 +259,6 @@ func (s *Handler) ReadPluginRenderer(ctx context.Context, in protocol.ReadPlugin
 	return &protocol.PluginViewResource{HTML: html}, nil
 }
 
-func (s *Handler) ReadPluginMemory(ctx context.Context, in protocol.ReadPluginMemoryRequest) (page *protocol.Page[protocol.AgentMemoryItem], err error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	err = s.plugins.WithView(ctx, id, digest, in.ViewID, plugin.AgentMemory, func(*plugin.Installation, plugin.ViewDeclaration) error {
-		var readErr error
-		page, readErr = s.ListAgentMemory(ctx, in.AgentMemoryListRequest)
-		return readErr
-	})
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return page, nil
-}
-
 func (s *Handler) ReadPluginSchedules(ctx context.Context, in protocol.ReadPluginSchedulesRequest) (page *protocol.Page[protocol.Schedule], err error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {

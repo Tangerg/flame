@@ -137,9 +137,8 @@ type RenamePluginSessionRequest struct {
 type PluginViewType string
 
 const (
-	PluginViewAgentMemory PluginViewType = "agentMemory"
-	PluginViewSchedules   PluginViewType = "schedules"
-	PluginViewSkills      PluginViewType = "skills"
+	PluginViewSchedules PluginViewType = "schedules"
+	PluginViewSkills    PluginViewType = "skills"
 )
 
 type PluginView struct {
@@ -189,11 +188,6 @@ type PluginRenderer struct {
 type ReadPluginRendererRequest struct {
 	PluginReleaseRequest
 	RendererID string `json:"rendererId"`
-}
-
-type ReadPluginMemoryRequest struct {
-	ReadPluginViewRequest
-	AgentMemoryListRequest
 }
 
 type ReadPluginSchedulesRequest struct {

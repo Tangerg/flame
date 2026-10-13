@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.13",
+  "protocolVersion": "2026-10-13.14",
   "features": [
     "reasoning",
     "multimodal",
@@ -1067,29 +1067,6 @@
       ]
     },
     {
-      "name": "plugins.readMemory",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "cursor",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins",
-        "agentMemory"
-      ],
-      "materializes": [
-        "agentMemory.list"
-      ]
-    },
-    {
       "name": "plugins.renameSession",
       "kind": "unary",
       "operation": "command",
@@ -1802,7 +1779,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
           "plugins.readSchedules",
@@ -2002,7 +1978,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
           "plugins.readSchedules",
@@ -2032,7 +2007,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
           "plugins.readSchedules",
@@ -2062,7 +2036,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
           "plugins.readSchedules",
@@ -2092,7 +2065,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
           "plugins.readSchedules",
@@ -2127,7 +2099,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readMemory",
           "plugins.readRenderer",
           "plugins.readResource",
           "plugins.readSchedules",
@@ -2953,17 +2924,6 @@
           "requires": [
             "plugins",
             "schedules"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "plugins.readMemory",
-      "rules": [
-        {
-          "requires": [
-            "plugins",
-            "agentMemory"
           ]
         }
       ]
@@ -9328,7 +9288,7 @@
         },
         {
           "field": "scope",
-          "constraint": "pattern(\"^(installation|workspace|session)$\")"
+          "constraint": "pattern(\"^(installation|workspace|session|client)$\")"
         }
       ]
     },

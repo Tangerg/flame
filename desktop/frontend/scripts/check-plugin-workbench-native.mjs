@@ -258,7 +258,6 @@ async function closePanel(panel, id) {
 async function refreshPage(id, method, binding, query, text) {
   const { installationId, digest, viewId } = binding;
   const canonicalMethod = {
-    "plugins.readMemory": "agentMemory.list",
     "plugins.readSchedules": "schedules.list",
     "plugins.readSkills": "skills.discovered.list",
     "plugins.readSkill": "skills.discovered.get",
@@ -367,7 +366,7 @@ try {
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
   const defaults = (await rpc("plugins.list")).data;
   assert.equal(defaults.length, 10);
-  for (const name of ["memory", "schedules", "skills"]) {
+  for (const name of ["schedules", "skills"]) {
     const installation = defaults.find((item) => item.selected.name === `flame.${name}`);
     assert.ok(installation, `default ${name} package must be installed`);
     assert.equal(installation.state, "enabled");
@@ -385,7 +384,7 @@ try {
       await readFile(join(fixture, "plugins", name, "views", `${name}.html`), "utf8"),
     );
     installed[name] = { ...binding, title: `${installation.selected.name} · ${view.title}` };
-    if (["memory", "schedules"].includes(name)) {
+    if (["schedules"].includes(name)) {
       await waitFor(
         `${name} backend`,
         () =>
@@ -470,7 +469,7 @@ try {
     expectedRevision: schedule.revision,
     enabled: false,
   });
-  for (const name of ["memory", "schedules"]) {
+  for (const name of ["schedules"]) {
     const method = name === "memory" ? "agentMemory.list" : "schedules.list";
     const params = name === "memory" ? { scope: "project", workspace: { path: workspace } } : {};
     const saved = await rpc(method, params);
@@ -642,27 +641,6 @@ try {
   );
   await clickText(title);
   await clickLabel("Open right workspace");
-
-  const memory = await openPanel(installed.memory.title, memoryFact);
-  const refreshedMemoryFact = "Refreshed native memory fact";
-  await rpc("agentMemory.add", {
-    scope: "project",
-    workspace: { path: workspace },
-    content: refreshedMemoryFact,
-  });
-  await refreshPage(
-    memory.id,
-    "plugins.readMemory",
-    installed.memory,
-    { scope: "project", workspace: { path: workspace } },
-    refreshedMemoryFact,
-  );
-  await clickText("User");
-  const user = await pageWith(userFact);
-  assert.notEqual(user.id, memory.id, "scope replacement must retire the captured project query");
-  await assert.rejects(guest(memory.id, "document.body.innerText"), /page is not ready/);
-  await closePanel(installed.memory.title, user.id);
-  console.log("Memory: remote project and user scope, refresh, retirement passed");
 
   const schedules = await openPanel(installed.schedules.title, scheduleTitle);
   const refreshedScheduleTitle = "Refreshed native saved schedule";

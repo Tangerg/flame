@@ -13,8 +13,7 @@ import { UsageReport } from "../../../plugins/usage/src/component";
 import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
 import scheduleDeclaration from "../../../plugins/schedules/io.github.tangerg.flame/declaration.json";
 import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
-import memoryHTML from "../../../plugins/memory/views/memory.html?raw";
-import { MemoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/MemoryPackageView";
+import { MemoryReport } from "../../../plugins/memory/src/component";
 import { TrajectoryReport } from "../../../plugins/trajectory/src/component";
 import { createElement } from "react";
 import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
@@ -521,23 +520,34 @@ function workspaceDataPlugin(
           }),
       });
       const memoryLifetime = ctx.lifetime("visual-memory");
-      const memoryReads = () => ({
-        binding: { installationId: "fixture", digest: "release", viewId: "view" },
-        resource: async () => memoryHTML,
-        initial: async () => ({ data: visualMemory }),
-        read: async () => ({ data: visualMemory }),
-      });
       memoryLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:memory",
         title: "Agent memory",
         icon: "brain",
         dock: "workspace",
         component: () =>
-          createElement(MemoryPackageView, {
-            reads: memoryReads,
-            title: "Agent memory",
-            lifetime: memoryLifetime,
-            carrier: createBrowserHost().pluginCarrier,
+          createElement(MemoryReport, {
+            page: {
+              Rows: visualMemory.map((item) => ({
+                ID: item.id,
+                Content: item.content,
+                Scope: item.scope,
+                Origin: item.origin,
+                Status: item.status,
+                Pinned: item.pinned,
+                SessionID: item.sessionId ?? "",
+                Day: "",
+                CreatedAt: item.createdAt,
+                UpdatedAt: item.updatedAt,
+                Project: "",
+                Embedding: [],
+                EmbeddingSpace: "",
+              })),
+              NextCursor: "",
+            },
+            disabled: true,
+            edit: () => {},
+            command: () => {},
           }),
       });
 

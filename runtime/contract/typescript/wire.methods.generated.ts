@@ -107,7 +107,6 @@ import type {
   Provider,
   ProviderTestResult,
   ReadFileRequest,
-  ReadPluginMemoryRequest,
   ReadPluginRendererRequest,
   ReadPluginResourceRequest,
   ReadPluginSchedulesRequest,
@@ -260,7 +259,6 @@ const METHOD_NAMES = [
   "plugins.readSkillLibrary",
   "plugins.readSkillProposals",
   "plugins.readSchedules",
-  "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
   "plugins.list",
@@ -389,7 +387,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.readSkillLibrary",
   "plugins.readSkillProposals",
   "plugins.readSchedules",
-  "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
   "plugins.list",
@@ -920,13 +917,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "cursor",
   },
-  "plugins.readMemory": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "cursor",
-  },
   "plugins.renameSession": {
     operation: "command",
     response: "unary",
@@ -1437,9 +1427,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.readSchedules": [
     { requires: ["plugins", "schedules"] },
   ],
-  "plugins.readMemory": [
-    { requires: ["plugins", "agentMemory"] },
-  ],
   "plugins.renameSession": [
     { requires: ["plugins"] },
   ],
@@ -1586,7 +1573,6 @@ export interface WireShapes {
   "plugins.readSkillLibrary": { params: ReadPluginViewRequest; result: PageOfManagedSkill };
   "plugins.readSkillProposals": { params: ReadPluginSkillsRequest; result: PageOfSkillProposal };
   "plugins.readSchedules": { params: ReadPluginSchedulesRequest; result: PageOfSchedule };
-  "plugins.readMemory": { params: ReadPluginMemoryRequest; result: PageOfAgentMemoryItem };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };

@@ -42,6 +42,7 @@ func TestViewDeclarationCannotGrantOtherOperationsOrHostPaths(t *testing.T) {
 		{ID: "trajectory", Title: "Trajectory", Kind: "tools.invoke", Entry: "view.html"},
 		{ID: "trajectory", Title: "Trajectory", Kind: "sessionTrajectory", Entry: "view.html"},
 		{ID: "diagnostics", Title: "Diagnostics", Kind: "clientDiagnostics", Entry: "view.html"},
+		{ID: "memory", Title: "Memory", Kind: "agentMemory", Entry: "view.html"},
 		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "../view.html"},
 		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "/view.html"},
 		{ID: "trajectory", Title: "Trajectory", Kind: Skills, Entry: "https://remote/view.html"},
@@ -87,8 +88,8 @@ func TestScheduleTemplatesRemainImmutableAuthoringContent(t *testing.T) {
 func TestScheduleTemplatesUseScheduleValidationAndOnlyTheirDeclaredKind(t *testing.T) {
 	template := ScheduleTemplate{ID: "daily", Title: "Daily", Instructions: "Review", Cron: "0 9 * * *"}
 	for _, view := range []ViewDeclaration{
-		{ID: "memory", Title: "Memory", Kind: AgentMemory, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{template}},
-		{ID: "memory", Title: "Memory", Kind: AgentMemory, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{}},
+		{ID: "memory", Title: "Memory", Kind: Skills, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{template}},
+		{ID: "memory", Title: "Memory", Kind: Skills, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{}},
 		{ID: "schedules", Title: "Schedules", Kind: Schedules, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{template, template}},
 		{ID: "schedules", Title: "Schedules", Kind: Schedules, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{{ID: "daily", Title: "Daily", Instructions: "Review", Cron: "broken"}}},
 		{ID: "schedules", Title: "Schedules", Kind: Schedules, Entry: "view.html", ScheduleTemplates: []ScheduleTemplate{{ID: "daily", Title: "Daily", Cron: template.Cron}}},

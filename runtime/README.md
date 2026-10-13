@@ -438,16 +438,17 @@ future claims; captured work keeps its dispatch identity. Accepted Runs require 
 `agentMemory.list` returns canonical `Page<AgentMemoryItem>` values, with target-bound
 sort-position cursors and at most 100 items per page. CLI and shared-client collectors
 traverse the complete bounded target. The former `{items}` response is removed.
-`plugins.readMemory` embeds that same request and requires both plugin and memory capability.
-View admission grants only the declared kind: a memory page cannot read trajectory evidence,
-and a trajectory page cannot read memory items.
+The optional [Memory package](../plugins/memory/plugin.json) is an ordinary component
+bound to its own installation/contribution and generated Memory capability. Reads,
+add/edit/pin/delete and human review use the public installed operation entrance and
+the backend's existing command/receipt owner. No plugin-specific readMemory wrapper,
+Memory view kind, HTML carrier or private Desktop mutation control remains.
 
-The optional [Memory package](../plugins/memory/plugin.json) replaces the compiled Desktop
-memory view. The trusted Host captures project/user scope, workspace and command targets;
-add, review, edit, pin and delete use existing Runtime commands. The guest receives read-only
-pages and can request only a cursor or refresh. Mutation receipts trigger a fresh projection;
-read failure is distinct from an empty target. Ledger, generation, CAS publication, review
-and mining remain Runtime-owned. Removing the package does not delete committed memory.
+Client-scoped components capture optional Session/workspace targets from their existing
+owners. Memory keeps user scope available without a workspace and captures the project
+path before dispatch. Read failure keeps the accepted page/cursor; uncertain mutations
+retain their original command and block new changes. Ledger/publication/private data
+ownership remains with the Memory backend. Full cross-reload recovery stays queued.
 
 The current HTML bridge and package rebuild requirements are described in Protocol 2026-10-10.5.
 Immutable older HTML is not rewritten and superseded handshakes have no aliases.
@@ -1011,7 +1012,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "agentMemory"`, `"schedules"` or `"skills"`, and a portable `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
+`type: "schedules"` or `"skills"`, and a portable `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
 and language integrations remain unavailable.

@@ -1,7 +1,8 @@
 # First-party portable packages
 
-Memory and Schedules are complete optional backends. Their HTML views, MCP model
-Tools and human Runtime commands all enter the same backend owner. Installing a
+Memory and Schedules are complete optional backends. Memory uses an ordinary public
+component; remaining Schedules HTML, MCP model Tools and human Runtime commands
+enter their existing backend owners. Installing a
 view does not create a second store in the host.
 
 The Flame namespace in root plugin.json references one local declaration file.
@@ -74,7 +75,7 @@ admitted read projection, pending request and pagination history; individual pag
 own only filters, disclosures and the rendering of their canonical data. Errors
 retain the last accepted snapshot and cursor. Appearance preferences remain with
 the Host, and its shared v3 bootstrap updates the existing page without rereading
-business data for the remaining HTML pages. Diagnostics, Trajectory, Diff, Usage and Icon gallery are ordinary
+business data for the remaining HTML pages. Memory, Diagnostics, Trajectory, Diff, Usage and Icon gallery are ordinary
 React components built through the public SDK. Usage reads the existing public
 Runtime accounting query; Diff reads the canonical workspace query using a captured
 public context. Trajectory reads canonical Session history through a frozen public

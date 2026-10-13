@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
-const ComponentScopePattern = `^(installation|workspace|session)$`
+const ComponentScopePattern = `^(installation|workspace|session|client)$`
 
 var componentScope = regexp.MustCompile(ComponentScopePattern)
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)

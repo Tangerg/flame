@@ -171,9 +171,9 @@ type Read = {
 
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const workspace = useMemo(() => {
-    if (!context.workspace)
+    if (!context.workspace || !context.workspace.focus)
       throw new Error("Workspace diff requires a workspace context");
-    return context.workspace;
+    return { ...context.workspace, focus: context.workspace.focus };
   }, [context]);
   const [mode, setMode] = useState<DiffMode>("worktree");
   const [read, setRead] = useState<Read>({ loading: true });

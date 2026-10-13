@@ -12,7 +12,7 @@ process lease. Its local declaration binds `memory-provider` to the `memory`
 server and export with the exact generated consumer contract. Multiple candidates may be enabled; product composition explicitly
 selects one installation/contribution for new calls. Runtime connects its human
 `agentMemory.*` operations, Run context reads and source-qualified `search_memory`
-Tool to that exact generation. Closing a view cannot stop this process.
+Tool to that exact generation. Closing a component cannot stop this process.
 
 Optional model work uses the public SDK's invocation-scoped `CallbackRef`, bound
 to this concrete backend generation. Runtime owns one lazily opened loopback
@@ -98,3 +98,17 @@ enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
 The standalone resource is generated from `src/view.tsx`. It uses the same `@flame/ui` components and document stylesheet as Desktop. Theme selection remains with the trusted Host; the v3 carrier applies its initial projection and later updates without replacing the page or requesting memory again. Filters and pagination remain read-only, and trusted authoring stays outside the guest.
 
 Build `icons` and `ui`, run `npm ci --prefix plugins`, then `npm run check --prefix plugins`. Rebuild the tracked HTML after changing shared UI or this source. The resource check enforces the Runtime size bound and byte-for-byte build reproducibility.
+
+The ordinary Memory component consumes the generated CAPABILITY_JSON and typed
+method maps through the public SDK. Its exact own installation/contribution binds
+reads and human mutations; no public operation selects another current provider.
+The backend still owns validation, business changes and original command receipts.
+
+The Host supplies optional frozen Session/workspace targets under client scope;
+user memory remains available without a workspace. The component owns only local
+scope/filter/edit and accepted page/cursor state. Unknown acknowledgement retains the
+original mutation handle/key, blocks new changes and exposes same-command reconciliation.
+A failed read preserves the accepted page. No optimistic item or competing result
+owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
+Complete cross-reload command recovery and cross-entrance invalidation acceptance
+remain in the final public-consumer work.

@@ -8,14 +8,16 @@
       "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
     }
   ],
-  "contributes": {
-    "views": [
-      {
-        "id": "memory",
-        "title": "Agent memory",
-        "type": "agentMemory",
-        "entry": "views/memory.html"
-      }
-    ]
-  }
+  "components": [
+    {
+      "id": "memory",
+      "title": "Agent memory",
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Memory",
+      "contribution": "memory-provider",
+      "material": "memory"
+    }
+  ]
 }

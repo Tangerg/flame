@@ -67,7 +67,7 @@ class ComponentInstance {
       workspace: this.workspace
         ? Object.freeze({
             ref: Object.freeze({ ...this.workspace.ref }),
-            focus: Object.freeze({ ...this.workspace.focus }),
+            focus: this.workspace.focus ? Object.freeze({ ...this.workspace.focus }) : undefined,
           })
         : undefined,
       binding: this.binding ? structuredClone(this.binding) : undefined,
@@ -131,7 +131,7 @@ function WorkspaceComponent(props: ComponentProps) {
   const selection = useActiveSessionWorkspace();
   const focus = useWorkspaceFileFocus();
   const cwd = selection.status === "ready" ? selection.cwd : undefined;
-  const workspace = useMemo<WorkspaceContext | undefined>(
+  const workspace = useMemo(
     () =>
       cwd
         ? { ref: { path: cwd }, focus: { path: focus.path, revision: focus.revision } }
@@ -159,6 +159,24 @@ function WorkspaceComponent(props: ComponentProps) {
   );
 }
 
+function ClientComponent(props: ComponentProps) {
+  const selection = useActiveSessionWorkspace();
+  const sessionId = useActiveSessionId();
+  const cwd = selection.status === "ready" ? selection.cwd : undefined;
+  const workspace = useMemo<WorkspaceContext | undefined>(
+    () => (cwd ? { ref: { path: cwd } } : undefined),
+    [cwd],
+  );
+  return (
+    <RenderingComponent
+      key={JSON.stringify([sessionId, cwd])}
+      {...props}
+      workspace={workspace}
+      sessionId={sessionId ?? undefined}
+    />
+  );
+}
+
 function SessionComponent(props: ComponentProps) {
   const t = useT();
   const sessionId = useActiveSessionId();
@@ -167,6 +185,7 @@ function SessionComponent(props: ComponentProps) {
 }
 
 export function InstalledComponent({ scope, ...props }: ComponentProps & { scope: string }) {
+  if (scope === "client") return <ClientComponent {...props} />;
   if (scope === "session") return <SessionComponent {...props} />;
   if (scope === "workspace") return <WorkspaceComponent {...props} />;
   if (scope === "installation") return <RenderingComponent {...props} />;

@@ -1,5 +1,4 @@
 import type {
-  AgentMemoryListRequest,
   SkillDiscovery,
   SkillDetail,
   Page,
@@ -31,8 +30,6 @@ export interface PluginViewReads<T> {
   initial(signal: AbortSignal): Promise<T>;
   read(cursor: string | undefined, signal: AbortSignal): Promise<T>;
 }
-
-export type MemoryViewTarget = Pick<AgentMemoryListRequest, "scope" | "workspace">;
 
 export type SkillViewTarget =
   | { type: "available" | "review"; workspace: WorkspaceRef }

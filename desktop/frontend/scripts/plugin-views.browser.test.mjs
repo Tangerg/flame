@@ -18,11 +18,7 @@ async function choose(frame, label, option) {
   await frame.getByRole("option", { name: option, exact: true }).click();
 }
 const html = await readFile(
-  new URL("../../../plugins/memory/views/memory.html", import.meta.url),
-  "utf8",
-);
-const memoryHTML = await readFile(
-  new URL("../../../plugins/memory/views/memory.html", import.meta.url),
+  new URL("../../../plugins/schedules/views/schedules.html", import.meta.url),
   "utf8",
 );
 const scheduleHTML = await readFile(
@@ -39,7 +35,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped memory, schedule, Skill, recorded result, captured file reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped schedule, Skill, recorded result, captured file reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -236,99 +232,6 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);
-    const memoryInitial = {
-      data: [
-        {
-          id: "mem_00000000000000000000000000000001",
-          scope: "project",
-          content: "Candidate <script> must render as text.",
-          origin: "auto",
-          status: "pending",
-          pinned: false,
-          createdAt: "2026-10-10T00:00:00Z",
-          updatedAt: "2026-10-10T00:00:00Z",
-        },
-        {
-          id: "mem_00000000000000000000000000000002",
-          scope: "project",
-          content: "Approved pinned fact",
-          origin: "user",
-          status: "active",
-          pinned: true,
-          createdAt: "2026-10-09T00:00:00Z",
-          updatedAt: "2026-10-09T00:00:00Z",
-        },
-      ],
-      nextCursor: "memory-next",
-    };
-    await page.evaluate(
-      ({ html, initial }) => {
-        window.continuation = { data: [] };
-        void window.mount(html, initial);
-      },
-      { html: memoryHTML, initial: memoryInitial },
-    );
-    await frame
-      .getByText("1 pending · 1 active on this page")
-      .waitFor()
-      .catch((error) => {
-        throw new AggregateError(
-          errors.map((message) => new Error(message)),
-          "memory guest did not render",
-          { cause: error },
-        );
-      });
-    assert.equal(await frame.locator("article[data-memory-id]").count(), 2);
-    assert.equal(await frame.locator("script").count(), 2);
-    await frame.getByRole("combobox", { name: "Memory status" }).click();
-    await frame.getByRole("option", { name: "Pending review", exact: true }).click();
-    assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
-    await frame.getByRole("combobox", { name: "Memory status" }).click();
-    await frame.getByRole("option", { name: "All statuses", exact: true }).click();
-    await frame.getByRole("checkbox", { name: "Pinned only" }).check();
-    assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
-    await frame.getByRole("checkbox", { name: "Pinned only" }).uncheck();
-    await frame.getByRole("searchbox").fill("Candidate");
-    assert.equal(await frame.locator("article[data-memory-id]").count(), 1);
-    await frame.getByRole("searchbox").fill("");
-    assert.equal(await page.evaluate(() => window.reads.length), 0);
-    await reviewAppearance("memory");
-    const loads = await page.evaluate(() => window.loads);
-    await page.evaluate(() => {
-      document.documentElement.style.setProperty("--color-accent", "#7344aa");
-      window.frameController.updateTheme(window.captureTheme(document.documentElement, "dark", 18));
-    });
-    await expect(frame.locator("html")).toHaveAttribute("data-flame-ui-font-size", "18");
-    assert.equal(
-      await frame
-        .locator("html")
-        .evaluate((element) => element.style.getPropertyValue("--color-accent")),
-      "#7344aa",
-    );
-    assert.equal(await page.evaluate(() => window.loads), loads);
-    assert.equal(await page.evaluate(() => window.reads.length), 0);
-    await page.setViewportSize({ width: 320, height: 700 });
-    assert.equal(
-      await frame.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth),
-      true,
-    );
-    await frame.getByRole("button", { name: "Next page" }).click();
-    await frame.getByText("0 memory items loaded on this page.").waitFor();
-    assert.equal(await page.evaluate(() => window.reads[0].cursor), "memory-next");
-    await page.evaluate(() => (window.readFailure = true));
-    await frame.getByRole("button", { name: "Previous page" }).click();
-    await frame.getByRole("alert").waitFor();
-    assert.equal(await frame.locator("article[data-memory-id]").count(), 0);
-    assert.equal(await frame.getByRole("button", { name: "Previous page" }).isEnabled(), true);
-    await page.evaluate(() => (window.readFailure = false));
-    await frame.getByRole("button", { name: "Previous page" }).click();
-    await frame.getByText("2 memory items loaded on this page.").waitFor();
-    await page.setViewportSize({ width: 1280, height: 720 });
-    assert.equal(await frame.locator("article[data-memory-id]").count(), 2);
-    await page.evaluate(() => window.dispose());
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
-    await page.setViewportSize({ width: 640, height: 720 });
     for (const initial of [
       {
         type: "available",

@@ -1,31 +1,10 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
-import type {
-  AgentMemoryItem,
-  Page,
-  Schedule,
-  ReadPluginViewRequest,
-} from "@flame/runtime-contract/wire";
+import type { Page, Schedule, ReadPluginViewRequest } from "@flame/runtime-contract/wire";
 import type {
   PluginViewReads,
-  MemoryViewTarget,
   SkillViewTarget,
   SkillViewSnapshot,
 } from "../application/pluginView";
-
-export function createMemoryViewReads(
-  plugins: Pick<FlameClient["plugins"], "readView" | "readMemory">,
-  binding: Readonly<ReadPluginViewRequest>,
-  target: Readonly<MemoryViewTarget>,
-): PluginViewReads<Page<AgentMemoryItem>> {
-  const view = Object.freeze({ ...binding });
-  const captured = {
-    ...target,
-    ...(target.workspace ? { workspace: { ...target.workspace } } : {}),
-  };
-  return createViewReads(plugins, view, (cursor, signal) =>
-    plugins.readMemory({ ...view, ...captured, cursor }, signal),
-  );
-}
 
 export function createScheduleViewReads(
   plugins: Pick<FlameClient["plugins"], "readView" | "readSchedules">,

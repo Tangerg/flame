@@ -15,7 +15,6 @@ import type {
   PluginViewResource,
   ReadPluginViewRequest,
   ReadPluginRendererRequest,
-  ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
   ReadPluginSkillsRequest,
   ReadPluginSkillRequest,
@@ -364,10 +363,6 @@ export interface Methods {
       params: ReadPluginSchedulesRequest,
       signal?: AbortSignal,
     ) => Promise<Page<Schedule>>;
-    readMemory: (
-      params: ReadPluginMemoryRequest,
-      signal?: AbortSignal,
-    ) => Promise<Page<AgentMemoryItem>>;
     list: (signal?: AbortSignal) => Promise<Page<PluginInstallation>>;
     install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
     stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
@@ -691,7 +686,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       readSkillProposals: (params, signal) =>
         call("plugins.readSkillProposals", params, { signal }),
       readSchedules: (params, signal) => call("plugins.readSchedules", params, { signal }),
-      readMemory: (params, signal) => call("plugins.readMemory", params, { signal }),
       list: (signal) => call("plugins.list", {}, { signal }),
       install: (params) => call("plugins.install", params),
       stage: (params) => call("plugins.stage", params),

@@ -667,3 +667,12 @@ usage were synthetic, so this check does not qualify a live provider or its acco
 ## Shared presentation package
 
 Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party pages are generated from each package's `src/view.tsx` by `npm run build --prefix plugins`. The frontend gate checks the tracked resources against that build. Portable pages use the v3 ready/connect handshake and receive a closed appearance projection. Explicitly select changed resources through the existing installation workflow. Durable plugin data formats are unchanged.
+
+The optional Memory package uses its generated typed contracts and public installed
+operation binding for reads and human add/edit/pin/delete/review. Client scope projects
+optional frozen Session/workspace targets without private store access; user scope
+remains available without a workspace. Local filters, drafts and accepted page/cursor
+state belong to the component. Unknown acknowledgement retains the original command
+and prevents new submission until reconciliation. The former Memory HTML/carrier and
+trusted private mutation controls are removed. Full graphical/cross-reload acceptance
+remains unclaimed in this refactor.

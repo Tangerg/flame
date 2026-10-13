@@ -15,6 +15,12 @@ the render instance; calls honor its signal and track boundary. A component may
 publish an optional generic material key for a navigation consumer; the loader
 projects it without a business-specific branch.
 
+Client-scoped components receive optional frozen Session/workspace targets and can
+render when either is absent. They do not receive file-focus changes; workspace-scoped
+components retain their required focus projection. Memory uses this scope to keep user
+memory available without a workspace while capturing project targets explicitly.
+`WorkspaceContext.focus` is optional for client scope; focus consumers require it.
+
 Session-scoped components receive `context.sessionId`, a frozen projection of the
 existing navigation owner. They call public Session operations directly. A changed
 Session remounts the instance and cancels/joins its old reads; rendering never becomes

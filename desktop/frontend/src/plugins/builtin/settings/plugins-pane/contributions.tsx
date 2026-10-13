@@ -21,7 +21,6 @@ import {
   type FileSnapshot,
 } from "./adapters/rendererReads";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
-import { MemoryPackageView } from "./ui/MemoryPackageView";
 import { SkillsPackageView } from "./ui/SkillsPackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
@@ -36,11 +35,7 @@ import {
   PROVIDERS_KEY,
   usePackageRealization,
 } from "./application/packages";
-import {
-  createMemoryViewReads,
-  createScheduleViewReads,
-  createSkillViewReads,
-} from "./adapters/pluginViewReads";
+import { createScheduleViewReads, createSkillViewReads } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
 
@@ -232,25 +227,6 @@ function createPackageReconciler(
                 <SchedulePackageView
                   reads={reads}
                   templates={view.scheduleTemplates ?? []}
-                  title={title}
-                  lifetime={lifetime}
-                  carrier={carrier}
-                />
-              ),
-            });
-            break;
-          }
-          case "agentMemory": {
-            const reads = (target: Parameters<typeof createMemoryViewReads>[2]) =>
-              createMemoryViewReads(client.plugins, binding, target);
-            lifetime.contribute(WORKSPACE_VIEW, {
-              id: `package:${installation.id}:${view.id}`,
-              title,
-              icon: "brain",
-              dock: "workspace",
-              component: () => (
-                <MemoryPackageView
-                  reads={reads}
                   title={title}
                   lifetime={lifetime}
                   carrier={carrier}
