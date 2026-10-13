@@ -33,7 +33,7 @@ func TestFeatureGenerationPreservesGenericOwnerReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal([]pluginsdk.MethodDescriptor{method.Descriptor()})
+	data, err := featureDescriptor(method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
 		t.Fatal(err)
 	}
 	descriptor := method.Descriptor()
-	data, err := json.Marshal([]pluginsdk.MethodDescriptor{descriptor})
+	data, err := featureDescriptor(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,6 +58,10 @@ func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
 	}
 	if len(generated.methods) != 1 || generated.methods[0].Name != descriptor.Name || !strings.Contains(generated.typescript, `"open" | "resolved"`) || !strings.Contains(generated.typescript, "revision: number;") || !strings.Contains(generated.typescript, "accepted: boolean;") {
 		t.Fatalf("generated surface lost contract: %+v\n%s", generated.methods, generated.typescript)
+	}
+	capability, err := pluginsdk.ParseCapability(data)
+	if err != nil || generated.capability.Contract() != capability.Contract() || !strings.Contains(generated.typescript, capability.Contract().Digest()) {
+		t.Fatalf("generator changed canonical capability identity: %v", err)
 	}
 	original, err := jsonschema.Parse(descriptor.Input)
 	if err != nil {
@@ -90,7 +94,7 @@ func TestFeatureGenerationRefusesDuplicatesAndExternalSchemas(t *testing.T) {
 	}
 	descriptor := method.Descriptor()
 	for _, descriptors := range [][]pluginsdk.MethodDescriptor{{descriptor, descriptor}, {{Name: "bad", Kind: pluginsdk.Query, Target: "installation", Description: "Read.", Input: []byte(`{"$ref":"https://example.invalid/schema"}`), Output: descriptor.Output}}} {
-		data, err := json.Marshal(descriptors)
+		data, err := featureDescriptor(descriptors...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,17 +134,31 @@ func TestFeatureNullableObjectPreservesRequiredProperties(t *testing.T) {
 }
 
 func TestFeatureGenerationCannotOverwriteDescriptorSource(t *testing.T) {
-	directory := t.TempDir()
-	source := filepath.Join(directory, "methods.generated.json")
-	data := []byte(`[{"authored":"retained"}]`)
-	if err := os.WriteFile(source, data, 0600); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"methods.generated.json", "capability.generated.json"} {
+		t.Run(name, func(t *testing.T) {
+			directory := t.TempDir()
+			source := filepath.Join(directory, name)
+			data := []byte(`{"authored":"retained"}`)
+			if err := os.WriteFile(source, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := runFeature(source, directory, ""); err == nil {
+				t.Fatal("generator overwrote its descriptor input")
+			}
+			retained, err := os.ReadFile(source)
+			if err != nil || string(retained) != string(data) {
+				t.Fatalf("source changed: %s, %v", retained, err)
+			}
+		})
 	}
-	if err := runFeature(source, directory, ""); err == nil {
-		t.Fatal("generator overwrote its descriptor input")
+}
+
+func TestFeatureGenerationRefusesFormerBareMethodArray(t *testing.T) {
+	if _, err := buildFeature([]byte(`[]`)); err == nil {
+		t.Fatal("former generator input was accepted")
 	}
-	retained, err := os.ReadFile(source)
-	if err != nil || string(retained) != string(data) {
-		t.Fatalf("source changed: %s, %v", retained, err)
-	}
+}
+
+func featureDescriptor(methods ...pluginsdk.MethodDescriptor) ([]byte, error) {
+	return json.Marshal(pluginsdk.CapabilityDescriptor{Protocol: pluginsdk.BackendProtocol, Reference: "acme/reviews", Composition: pluginsdk.Collection, Scope: "installation", Methods: methods})
 }

@@ -5,8 +5,9 @@ package reviews
 import pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 
 type Contracts struct {
-	List   *pluginsdk.Method[struct{}, ListResult]
-	Update *pluginsdk.Method[Update, UpdateResult]
+	Capability *pluginsdk.Capability
+	List       *pluginsdk.Method[struct{}, ListResult]
+	Update     *pluginsdk.Method[Update, UpdateResult]
 }
 
 type ListResult struct {
@@ -28,5 +29,9 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	return Contracts{List: list, Update: update}, nil
+	capability, err := pluginsdk.NewCapability(pluginsdk.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews", Composition: pluginsdk.Collection, Scope: "installation"}, list.Descriptor(), update.Descriptor())
+	if err != nil {
+		return Contracts{}, err
+	}
+	return Contracts{List: list, Update: update, Capability: capability}, nil
 }

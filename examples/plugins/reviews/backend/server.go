@@ -87,6 +87,9 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	}); err != nil {
 		return nil, err
 	}
+	if err := backend.BindCapability("reviews", contracts.Capability); err != nil {
+		return nil, err
+	}
 	if err := backend.Publish(); err != nil {
 		return nil, err
 	}

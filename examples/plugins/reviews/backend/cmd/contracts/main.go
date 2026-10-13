@@ -8,7 +8,6 @@ import (
 	"os"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 func main() {
@@ -23,7 +22,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	data, err := json.Marshal([]pluginsdk.MethodDescriptor{contracts.List.Descriptor(), contracts.Update.Descriptor()}, json.Deterministic(true))
+	data, err := json.Marshal(contracts.Capability.Descriptor(), json.Deterministic(true))
 	if err != nil {
 		return err
 	}

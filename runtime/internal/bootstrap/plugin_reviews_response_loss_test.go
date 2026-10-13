@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"iter"
 	"os"
 	"os/exec"
@@ -15,12 +16,128 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
+
+func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResending(t *testing.T) {
+	source := reviewExamplePackage(t)
+	probe := filepath.Join(source, "bin", "response-loss")
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", probe, "./testdata/managed-message-loss")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build transport probe: %s, %v", output, err)
+	}
+	data, err := os.ReadFile(filepath.Join(source, "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	capability, err := pluginsdk.ParseCapability(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var method string
+	for _, descriptor := range capability.Descriptor().Methods {
+		if descriptor.Kind == pluginsdk.Mutation {
+			if method != "" {
+				t.Fatal("fixture requires one mutation")
+			}
+			method = descriptor.Name
+		}
+	}
+	if method == "" {
+		t.Fatal("fixture has no mutation")
+	}
+	privateData := t.TempDir()
+	evidence := filepath.Join(t.TempDir(), "committed.json")
+	guard := filepath.Join(t.TempDir(), "unexpected-mutation.json")
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	defer cancel()
+	connect := func(path, stage string) *sdk.ClientSession {
+		t.Helper()
+		command := exec.CommandContext(ctx, probe, path, filepath.Join(source, "bin", "reviews"), method, "", stage)
+		command.Env = append(os.Environ(), "PLUGIN_DATA="+privateData)
+		client := sdk.NewClient(&sdk.Implementation{Name: "capability-recovery-test"}, nil)
+		if err := pluginsdk.RegisterClient(client); err != nil {
+			t.Fatal(err)
+		}
+		session, err := client.Connect(ctx, &sdk.CommandTransport{Command: command}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = session.Close() })
+		return session
+	}
+	session := connect(evidence, "response")
+	bound, err := pluginsdk.ResolveCapability(ctx, session, "reviews", capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write, err := bound.Method(method)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := jsoninput.Parse([]byte(`{"id":"example-review","expectedRevision":1,"status":"resolved"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := write.Invoke(ctx, "original-command", input); err == nil {
+		t.Fatal("lost acknowledgement became known success")
+	} else if _, known := errors.AsType[*pluginsdk.Failure](err); known {
+		t.Fatalf("lost observation became a business refusal: %v", err)
+	}
+	_ = session.Close()
+	encoded, err := os.ReadFile(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var captured struct {
+		Response struct {
+			Result jsontext.Value `json:"result"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(encoded, &captured); err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := pluginsdk.DecodeReply[jsontext.Value](captured.Response.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected, err := jsoninput.Parse(accepted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var outcome struct {
+		Type   string `json:"type"`
+		Review struct {
+			Revision int64 `json:"revision"`
+		} `json:"review"`
+	}
+	if err := json.Unmarshal(accepted, &outcome); err != nil || outcome.Type != "updated" || outcome.Review.Revision != 2 {
+		t.Fatalf("probe did not witness committed business evidence: %s, %v", accepted, err)
+	}
+	restarted := connect(guard, "request")
+	original, err := pluginsdk.NewCapabilityBinding(restarted, "reviews", capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lookup, err := original.Method(method)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered, found, err := lookup.ReadReceipt(ctx, "original-command", input); err != nil || !found || recovered != expected {
+		t.Fatalf("original export recovery = %s, %t, %v", recovered, found, err)
+	}
+	if _, found, err := lookup.ReadReceipt(ctx, "never-admitted", input); err != nil || found {
+		t.Fatalf("missing receipt became success: %t, %v", found, err)
+	}
+	if _, err := os.Stat(guard); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("recovery attempted to resend the mutation: %v", err)
+	}
+}
 
 func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *testing.T) {
 	source := reviewExamplePackage(t)
@@ -63,6 +180,14 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	}
 	if updateMethod == "" {
 		t.Fatal("backend contract does not declare its mutation")
+	}
+	capabilityData, err := os.ReadFile(filepath.Join(source, "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	capability, err := pluginsdk.ParseCapability(capabilityData)
+	if err != nil {
+		t.Fatal(err)
 	}
 	var modelCalls atomic.Int32
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -204,10 +329,23 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 			t.Error(err)
 		}
 	})
-	result, found, err := pluginsdk.ReadReceipt[jsontext.Value, jsontext.Value](ctx, backend, identity, updateMethod, evidence.Request.Params.Arguments)
-	if err != nil || !found {
-		t.Fatalf("read-only lookup did not recover the committed receipt: %+v, %t, %v", result, found, err)
+	bound, err := pluginsdk.NewCapabilityBinding(backend, "reviews", capability)
+	if err != nil {
+		t.Fatal(err)
 	}
+	original, err := bound.Method(updateMethod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := jsoninput.Parse(evidence.Request.Params.Arguments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovered, found, err := original.ReadReceipt(ctx, identity, input)
+	if err != nil || !found {
+		t.Fatalf("read-only lookup did not recover the committed receipt: %+v, %t, %v", recovered, found, err)
+	}
+	result := jsontext.Value(recovered.JSON())
 	expected, err := json.Marshal(evidence.Response.Result.StructuredContent)
 	if err != nil {
 		t.Fatal(err)
@@ -222,7 +360,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if !bytes.Equal(result, expectedResult) {
 		t.Fatalf("receipt changed the original business evidence: %s, want %s", result, expectedResult)
 	}
-	if _, found, err := pluginsdk.ReadReceipt[jsontext.Value, jsontext.Value](ctx, backend, "never-dispatched", updateMethod, evidence.Request.Params.Arguments); err != nil || found {
+	if _, found, err := original.ReadReceipt(ctx, "never-dispatched", input); err != nil || found {
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
 	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: sdk.Meta{"io.github.tangerg.flame/invocationId": "new-inspected-call"}})

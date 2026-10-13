@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type featureMethod struct {
@@ -30,6 +29,7 @@ type featureArtifacts struct {
 	definitions map[string]jsontext.Value
 	methods     []featureMethod
 	typescript  string
+	capability  *pluginsdk.Capability
 }
 
 func runFeature(source, dir, tsDir string) error {
@@ -64,12 +64,17 @@ func runFeature(source, dir, tsDir string) error {
 	if err := writeJSON(filepath.Join(dir, "methods.generated.json"), artifacts.methods); err != nil {
 		return err
 	}
+	if err := writeJSON(filepath.Join(dir, "capability.generated.json"), artifacts.capability.Descriptor()); err != nil {
+		return err
+	}
 	var reference strings.Builder
 	reference.WriteString("# Feature operations\n\nGenerated from the feature's Go-owned method contracts.\n\n| Method | Kind | Target | Description |\n| --- | --- | --- | --- |\n")
 	for _, method := range artifacts.methods {
 		description := strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(method.Description)
 		fmt.Fprintf(&reference, "| `%s` | %s | %s | %s |\n", method.Name, method.Kind, method.Target, description)
 	}
+	descriptor := artifacts.capability.Descriptor()
+	fmt.Fprintf(&reference, "\nCapability `%s` uses `%s` composition in `%s` scope. Required backend protocol: `%s`.\n\n`capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.\n", descriptor.Reference, descriptor.Composition, descriptor.Scope, descriptor.Protocol)
 	if err := os.WriteFile(filepath.Join(dir, "API_REFERENCE.md"), []byte(reference.String()), 0644); err != nil {
 		return err
 	}
@@ -93,7 +98,7 @@ func protectFeatureSource(source, dir, tsDir string) error {
 	if err != nil {
 		return err
 	}
-	outputs := []string{filepath.Join(dir, "schema.json"), filepath.Join(dir, "methods.generated.json"), filepath.Join(dir, "API_REFERENCE.md")}
+	outputs := []string{filepath.Join(dir, "schema.json"), filepath.Join(dir, "methods.generated.json"), filepath.Join(dir, "capability.generated.json"), filepath.Join(dir, "API_REFERENCE.md")}
 	if tsDir != "" {
 		outputs = append(outputs, filepath.Join(tsDir, "methods.generated.ts"))
 	}
@@ -114,22 +119,17 @@ func protectFeatureSource(source, dir, tsDir string) error {
 }
 
 func buildFeature(data []byte) (featureArtifacts, error) {
-	var descriptors []pluginsdk.MethodDescriptor
-	if err := json.Unmarshal(data, &descriptors, json.RejectUnknownMembers(true)); err != nil {
+	capability, err := pluginsdk.ParseCapability(data)
+	if err != nil {
 		return featureArtifacts{}, err
 	}
-	if len(descriptors) == 0 {
-		return featureArtifacts{}, fmt.Errorf("feature contracts: at least one method is required")
-	}
-	slices.SortFunc(descriptors, func(a, b pluginsdk.MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
-	artifacts := featureArtifacts{definitions: make(map[string]jsontext.Value)}
+	descriptor := capability.Descriptor()
+	descriptors := descriptor.Methods
+	artifacts := featureArtifacts{definitions: make(map[string]jsontext.Value), capability: capability}
 	set := &schemaSet{defs: make(map[string]*schema)}
-	for index, descriptor := range descriptors {
-		if descriptor.Name == "" || len(descriptor.Name) > 256 || !utf8.ValidString(descriptor.Name) || descriptor.Target == "" || len(descriptor.Target) > 256 || !utf8.ValidString(descriptor.Target) || descriptor.Description == "" || !utf8.ValidString(descriptor.Description) || (descriptor.Kind != pluginsdk.Query && descriptor.Kind != pluginsdk.Mutation) {
-			return featureArtifacts{}, fmt.Errorf("feature contracts: invalid method descriptor %q", descriptor.Name)
-		}
-		if index > 0 && descriptors[index-1].Name == descriptor.Name {
-			return featureArtifacts{}, fmt.Errorf("feature contracts: duplicate method %q", descriptor.Name)
+	for _, descriptor := range descriptors {
+		if descriptor.Description == "" || !utf8.ValidString(descriptor.Description) {
+			return featureArtifacts{}, fmt.Errorf("feature contracts: method description is required for %q", descriptor.Name)
 		}
 		root := featureTypeName(descriptor.Name)
 		method := featureMethod{Name: descriptor.Name, Kind: descriptor.Kind, Target: descriptor.Target, Description: descriptor.Description, Input: "schema.json" + refPrefix + root + "Input", Output: "schema.json" + refPrefix + root + "Output"}
@@ -137,9 +137,6 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 			name string
 			raw  jsontext.Value
 		}{{root + "Input", descriptor.Input}, {root + "Output", descriptor.Output}} {
-			if _, err := jsonschema.Parse(frame.raw); err != nil {
-				return featureArtifacts{}, fmt.Errorf("feature contracts: %s: %w", frame.name, err)
-			}
 			if err := addFeatureSchema(&artifacts, frame.name, frame.raw); err != nil {
 				return featureArtifacts{}, err
 			}
@@ -175,6 +172,7 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 		emitter.line("  %s: { kind: %s, target: %s },", strconv.Quote(method.Name), strconv.Quote(string(method.Kind)), strconv.Quote(method.Target))
 	}
 	emitter.line("} as const;")
+	emitter.line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", strconv.Quote(descriptor.Protocol), strconv.Quote(descriptor.Reference), strconv.Quote(string(descriptor.Composition)), strconv.Quote(descriptor.Scope), strconv.Quote(capability.Contract().Digest()))
 	artifacts.typescript = emitter.out.String()
 	return artifacts, nil
 }

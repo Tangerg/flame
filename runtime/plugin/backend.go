@@ -14,18 +14,20 @@ import (
 
 // BackendProtocol identifies public wire behavior, independently of private
 // implementation releases. There is one supported contract and no old reader.
-const BackendProtocol = "io.github.tangerg.flame/backend/2026-10-13.2"
+const BackendProtocol = "io.github.tangerg.flame/backend/2026-10-13.3"
 
 const invokeMethod = "io.github.tangerg.flame/operations.invoke"
 const describeMethod = "io.github.tangerg.flame/operations.describe"
 
 type invokeParams struct {
 	sdk.ParamsBase
-	Protocol  string         `json:"protocol"`
-	Method    string         `json:"method"`
-	Contract  string         `json:"contract"`
-	Input     jsontext.Value `json:"input"`
-	CommandID string         `json:"commandId,omitzero"`
+	Protocol   string         `json:"protocol"`
+	Method     string         `json:"method"`
+	Contract   string         `json:"contract"`
+	Export     string         `json:"export,omitzero"`
+	Capability string         `json:"capability,omitzero"`
+	Input      jsontext.Value `json:"input"`
+	CommandID  string         `json:"commandId,omitzero"`
 }
 
 func (p *invokeParams) UnmarshalJSON(data []byte) error {
@@ -36,6 +38,9 @@ func (p *invokeParams) UnmarshalJSON(data []byte) error {
 	}
 	if decoded.Protocol != BackendProtocol || decoded.Method == "" || len(decoded.Contract) != 64 || len(decoded.Input) == 0 {
 		return errors.New("plugin: current backend protocol, method, contract and input are required")
+	}
+	if (decoded.Export == "") != (decoded.Capability == "") || decoded.Export != "" && (!exportName.MatchString(decoded.Export) || len(decoded.Capability) != 64) {
+		return errors.New("plugin: capability export and contract must be supplied together")
 	}
 	*p = invokeParams(decoded)
 	return nil
@@ -60,8 +65,9 @@ func (p *describeParams) UnmarshalJSON(data []byte) error {
 }
 
 type Description struct {
-	Protocol string             `json:"protocol"`
-	Methods  []MethodDescriptor `json:"methods"`
+	Protocol     string             `json:"protocol"`
+	Methods      []MethodDescriptor `json:"methods"`
+	Capabilities []CapabilityExport `json:"capabilities"`
 }
 
 type boundMethod struct {
@@ -73,17 +79,18 @@ type boundMethod struct {
 // Backend owns declaration/code binding and publication. Setup is explicit;
 // after Publish no export can change. User code runs outside this owner's lock.
 type Backend struct {
-	server    *sdk.Server
-	mu        sync.RWMutex
-	methods   map[string]boundMethod
-	published bool
+	server       *sdk.Server
+	mu           sync.RWMutex
+	methods      map[string]boundMethod
+	capabilities map[string]*Capability
+	published    bool
 }
 
 func NewBackend(server *sdk.Server) (*Backend, error) {
 	if server == nil {
 		return nil, errors.New("plugin: MCP server is required")
 	}
-	b := &Backend{server: server, methods: map[string]boundMethod{}}
+	b := &Backend{server: server, methods: map[string]boundMethod{}, capabilities: map[string]*Capability{}}
 	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*Result[jsontext.Value], error) {
 		if params == nil || params.Protocol != BackendProtocol {
 			return nil, errors.New("plugin: current backend protocol is required")
@@ -91,12 +98,16 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		b.mu.RLock()
 		method, found := b.methods[params.Method]
 		ready := b.published
+		exportErr := b.checkCapability(params)
 		b.mu.RUnlock()
 		if !ready || !found {
 			return nil, errors.New("plugin: operation export is not published")
 		}
 		if params.Contract != method.contract {
 			return nil, errors.New("plugin: operation contract mismatch")
+		}
+		if exportErr != nil {
+			return nil, exportErr
 		}
 		return method.invoke(ctx, session, params)
 	}); err != nil {
@@ -116,7 +127,12 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 			methods = append(methods, cloneDescriptor(method.descriptor))
 		}
 		slices.SortFunc(methods, func(a, b MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
-		return Reply(Description{Protocol: BackendProtocol, Methods: methods}, nil, nil)
+		capabilities := make([]CapabilityExport, 0, len(b.capabilities))
+		for name, capability := range b.capabilities {
+			capabilities = append(capabilities, CapabilityExport{Name: name, Contract: capability.Descriptor()})
+		}
+		slices.SortFunc(capabilities, func(a, b CapabilityExport) int { return strings.Compare(a.Name, b.Name) })
+		return Reply(Description{Protocol: BackendProtocol, Methods: methods, Capabilities: capabilities}, nil, nil)
 	}); err != nil {
 		return nil, err
 	}

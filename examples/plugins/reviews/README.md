@@ -6,23 +6,29 @@ deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares no graphical view or host action.
 
 The backend uses the public Go binding in `github.com/Tangerg/flame/runtime/plugin`.
-Its typed `reviews.list` and `reviews.update` MCP custom methods share the same
+Its typed `reviews.list` and `reviews.update` operations share the same
 private use cases and receipt owner as the model Tools. These are backend method
 bindings; a general installed-provider host operation entrance is still pending.
 
 The exports use the SDK's single invocation transport. Server setup binds both
-contracts and the read-only receipt query to one Backend, then publishes it before
+contracts and the read-only receipt query to one Backend, binds the `reviews`
+capability export, then publishes it before
 starting MCP. Discovery carries the current backend protocol and exact generated
 method schemas; the former per-operation MCP endpoints are not registered.
 
-`backend/contracts.go` owns the two method descriptions and typed bindings.
+`backend/contracts.go` owns the two method descriptions, typed bindings and
+the consumer's callable capability contract.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./...` projects the same methods into
-`package/io.github.tangerg.flame/contracts/{schema.json,methods.generated.json,API_REFERENCE.md}`
+`package/io.github.tangerg.flame/contracts/{capability.generated.json,schema.json,methods.generated.json,API_REFERENCE.md}`
 and `client/methods.generated.ts` through Runtime's existing `contractgen`.
 Do not edit those generated files or maintain a second input/output schema.
-The generated references and data maps are contract artifacts; this package still
-does not declare a generic Flame capability or graphical component entry.
+The canonical capability descriptor supplies the same contract for live export
+resolution, original-binding restoration and the generated TypeScript token.
+Schema and method references are presentation projections. Capability calls and
+receipt queries carry the original export identity; omitting it is refused before
+the business owner. The package still lacks the generic installed contribution
+declaration and graphical component entry required by the complete proposal.
 
 The backend owns one example review in `PLUGIN_DATA/reviews.sqlite`. Runtime
 owns execution and approval; its stored Tool results are historical observations,
@@ -42,7 +48,7 @@ go build -trimpath -ldflags='-s -w' -o ../package/bin/reviews ./cmd/reviews
 Install the `package` directory, not the source module. Flame accepts the packaged
 command `./bin/reviews`, binds `PLUGIN_ROOT` to immutable execution content, and
 binds `PLUGIN_DATA` to the installation's private data directory. The stripped
-build fits the existing 16 MiB single-file admission limit on macOS arm64.
+package must fit the existing 128 MiB aggregate admission limit.
 Rebuild and admit new bytes when changing the backend. A selected new digest
 is an explicit trust decision; it preserves desired enablement when configuration remains valid.
 

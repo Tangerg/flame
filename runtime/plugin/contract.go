@@ -48,7 +48,7 @@ func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
 	if config.Kind != Query && config.Kind != Mutation {
 		return nil, errors.New("plugin: method kind must be query or command")
 	}
-	if config.Name == "" || len(config.Name) > 256 || !utf8.ValidString(config.Name) || config.Target == "" || len(config.Target) > 256 || !utf8.ValidString(config.Target) || config.Description == "" || !utf8.ValidString(config.Description) {
+	if !contractToken(config.Name) || !contractToken(config.Target) || config.Description == "" || !utf8.ValidString(config.Description) {
 		return nil, errors.New("plugin: method identity, target and description are required")
 	}
 	input, err := jsonschema.For[P]()
@@ -167,6 +167,11 @@ func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, par
 	if err != nil {
 		return zero, err
 	}
+	return m.callBinding(ctx, binding, params)
+}
+
+func (m *Method[P, R]) callBinding(ctx context.Context, binding *Binding, params *Params[P]) (R, error) {
+	var zero R
 	input, err := jsoninput.Encode(params.Input)
 	if err != nil {
 		return zero, err
@@ -180,4 +185,63 @@ func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, par
 		return zero, err
 	}
 	return result.value(m.config.Name)
+}
+
+type BoundMethod[P, R any] struct {
+	method  *Method[P, R]
+	binding *Binding
+}
+
+func (m *Method[P, R]) Bind(capability *CapabilityBinding) (*BoundMethod[P, R], error) {
+	if m == nil {
+		return nil, errors.New("plugin: method is required")
+	}
+	binding, err := capability.Method(m.Name())
+	if err != nil {
+		return nil, err
+	}
+	contract, err := methodContract(m.Descriptor())
+	if err != nil {
+		return nil, err
+	}
+	if contract != binding.contract {
+		return nil, errors.New("plugin: typed method differs from capability contract")
+	}
+	return &BoundMethod[P, R]{method: m, binding: binding}, nil
+}
+
+func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {
+	var zero R
+	if m.method.config.Kind != Query {
+		return zero, errors.New("plugin: command requires a logical identity")
+	}
+	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input})
+}
+
+func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id string, input P) (R, error) {
+	var zero R
+	if m.method.config.Kind != Mutation {
+		return zero, errors.New("plugin: query must not carry a command identity")
+	}
+	if err := validateCommandID(id); err != nil {
+		return zero, err
+	}
+	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input, CommandID: id})
+}
+
+func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id string, input P) (R, bool, error) {
+	var zero R
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		return zero, false, err
+	}
+	value, found, err := m.binding.ReadReceipt(ctx, id, admitted)
+	if err != nil || !found {
+		return zero, found, err
+	}
+	var result R
+	if err := json.Unmarshal(value.JSON(), &result, json.RejectUnknownMembers(true)); err != nil {
+		return zero, false, err
+	}
+	return result, true, nil
 }

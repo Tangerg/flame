@@ -125,8 +125,20 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
+	capability, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateMethod, err := contracts.Update.Bind(capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listMethod, err := contracts.List.Bind(capability)
+	if err != nil {
+		t.Fatal(err)
+	}
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
-	accepted, err := contracts.Update.CallCommand(t.Context(), session, "shared-command", input)
+	accepted, err := updateMethod.CallCommand(t.Context(), "shared-command", input)
 	if err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
 		t.Fatalf("typed update = %+v, %v", accepted, err)
 	}
@@ -142,24 +154,24 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err := json.Unmarshal(encoded, &observed); err != nil || observed.Type != accepted.Type || observed.Review == nil || *observed.Review != *accepted.Review {
 		t.Fatalf("Tool entrance created a different business result: %+v, %v", observed, err)
 	}
-	conflict, err := contracts.Update.CallCommand(t.Context(), session, "second-command", input)
+	conflict, err := updateMethod.CallCommand(t.Context(), "second-command", input)
 	if err != nil || conflict.Type != Conflict || conflict.Review == nil || conflict.Review.Revision != 2 {
 		t.Fatalf("typed business refusal lost its current-review evidence: %+v, %v", conflict, err)
 	}
 	changed := input
 	changed.Status = Open
-	identityConflict, err := contracts.Update.CallCommand(t.Context(), session, "shared-command", changed)
+	identityConflict, err := updateMethod.CallCommand(t.Context(), "shared-command", changed)
 	if err != nil || identityConflict.Type != IdentityConflict {
 		t.Fatalf("identity conflict = %+v, %v", identityConflict, err)
 	}
-	listed, err := contracts.List.Call(t.Context(), session, struct{}{})
+	listed, err := listMethod.Call(t.Context(), struct{}{})
 	if err != nil || len(listed.Reviews) != 1 || listed.Reviews[0] != *accepted.Review {
 		t.Fatalf("canonical typed read = %+v, %v", listed, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = contracts.Update.CallCommand(t.Context(), session, "unknown-command", changed)
+	_, err = updateMethod.CallCommand(t.Context(), "unknown-command", changed)
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}

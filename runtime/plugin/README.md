@@ -15,10 +15,16 @@ so typed decoding cannot hide missing fields. Invalid output remains a protocol 
 preserving uncertainty about an already committed effect.
 
 `Descriptor` is an independently owned discovery/build projection, not another
-method authority. Pipe descriptor JSON into the existing Runtime `contractgen`
+method authority. `NewCapability` groups the exact required method descriptors
+under the consumer's semantic reference, composition rule and scope meaning.
+Pipe its capability descriptor JSON into the existing Runtime `contractgen`
 with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
-It emits standard self-contained Schema, operation descriptors, reference prose
-and TypeScript input/output maps from that same source. It reuses Scope schema
+It emits canonical `capability.generated.json`, standard self-contained Schema,
+operation references, reference prose and TypeScript input/output maps with a
+derived `CAPABILITY` token from that same source. The canonical descriptor keeps
+the original self-contained schemas. The presentation Schema rewrites local
+references for its data maps and never supplies the callable fingerprint. The
+generator no longer accepts a bare method array. It reuses Scope schema
 derivation and Runtime's Schema-to-TypeScript emitter; no new IDL or Go DTO copy
 is introduced. Numeric/cross-field constraints remain in Schema and the business
 owner where TypeScript cannot express them. Output filenames are fixed; method
@@ -30,6 +36,32 @@ the server. Missing or duplicate exports and later registration are refused.
 `Describe` returns immutable method/schema projections through the current public
 backend protocol. Semantic operation names are entries in that description;
 they are no longer separate MCP methods.
+
+`BindCapability(export, contract)` associates a named export with those existing
+handlers and checks its complete required set before publication. Several exports
+may share a handler; there is still one semantic method and business receipt
+namespace. Export identity describes routing, not another mutable business fact.
+`ParseCapability` admits generated local metadata without executing code or fetching
+schemas. `ResolveCapability` validates a concrete export and all its methods against
+the consumer's exact contract. Missing, duplicate or mismatched exports are unavailable.
+`Method.Bind` returns a typed `BoundMethod` over that concrete binding. It uses the
+same structural admission, invocation and outcome decoding as ordinary methods.
+
+Each bound invocation checks export name, capability fingerprint, membership and
+method fingerprint before business execution. A capability member cannot omit its
+export and fall back to a bare call. Unassociated method primitives remain useful
+for ordinary backend utilities and host callbacks. `NewCapabilityBinding` restores
+the original export and complete contract without rediscovery; its methods also
+retain that identity during read-only receipt lookup. Lookup checks membership
+before entering the existing receipt owner and validates the original output schema.
+It cannot switch exports or invoke the mutation. The host must retain installation,
+release and contribution bindings through its existing command routing owner;
+a direct backend session does not supply those installed guarantees.
+
+Composition and scope here describe the callable contract. This binding does not
+yet resolve collection membership, provider selections or remote decorator chains.
+Full point applicability, optionality and ordering still belong to the forthcoming
+point/composition consumer rather than being inferred from an export name.
 
 `RegisterServer[P, R]` binds a query and `RegisterCommand[P, R]` binds a command
 against the same backend. `NewMethod.RegisterServer` preserves its declared kind,
@@ -112,7 +144,7 @@ version still named by application module metadata does not contain it.
 
 This package currently supplies backend wire primitives. Runtime's existing
 Memory/Schedules commands retain original installed routing before dispatch and
-reconcile through this lookup. Generic installed-provider proxies, point descriptors,
+reconcile through this lookup. Generic installed-provider proxies, full point descriptors,
 generic contribution declaration and component bindings remain separate unfinished
 parts of the unified-plugin refactor. A direct backend session is not a public
 installed-provider proxy. Canonical Core callbacks use the existing typed Runtime

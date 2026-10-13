@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -18,6 +19,14 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := filepath.Join("..", "package", "io.github.tangerg.flame", "contracts")
+	capabilityData, err := os.ReadFile(filepath.Join(directory, "capability.generated.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	capability, err := pluginsdk.ParseCapability(capabilityData)
+	if err != nil || capability.Contract() != contracts.Capability.Contract() {
+		t.Fatalf("generated capability differs from the backend owner: %v", err)
+	}
 	methodsData, err := os.ReadFile(filepath.Join(directory, "methods.generated.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -80,5 +89,39 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
+	store := openTestStore(t, t.TempDir())
+	server, err := NewServer(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := sdk.NewClient(&sdk.Implementation{Name: "contract-client"}, nil)
+	if err := pluginsdk.RegisterClient(client); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sdk.NewInMemoryTransports()
+	backend, err := server.Connect(t.Context(), a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = backend.Close() })
+	session, err := client.Connect(t.Context(), b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	data, err := os.ReadFile(filepath.Join("..", "package", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	capability, err := pluginsdk.ParseCapability(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", capability); err != nil {
+		t.Fatalf("live export differs from generated capability: %v", err)
 	}
 }

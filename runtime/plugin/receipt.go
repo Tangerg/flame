@@ -72,20 +72,56 @@ func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id, 
 	if err != nil {
 		return zero, false, err
 	}
-	request := ReceiptRequest{ID: id, Method: method, InputDigest: admitted.Digest()}
-	if err := request.validate(); err != nil {
-		return zero, false, err
-	}
-	receipt, err := Call[ReceiptRequest, Receipt](ctx, session, ReceiptMethod, request)
+	binding, err := receiptBinding(session)
 	if err != nil {
 		return zero, false, err
 	}
+	value, found, err := readReceipt(ctx, binding, id, method, admitted)
+	if err != nil || !found {
+		return zero, found, err
+	}
+	var typed R
+	if err := json.Unmarshal(value, &typed, json.RejectUnknownMembers(true)); err != nil {
+		return zero, false, err
+	}
+	return typed, true, nil
+}
+
+func receiptBinding(session *sdk.ClientSession) (*Binding, error) {
+	method, err := NewMethod[ReceiptRequest, Receipt](MethodConfig{Name: ReceiptMethod, Kind: Query, Target: "installation", Description: ReceiptMethod})
+	if err != nil {
+		return nil, err
+	}
+	return NewBinding(session, method.Descriptor())
+}
+
+func readReceipt(ctx context.Context, binding *Binding, id, method string, admitted jsoninput.Input) (jsontext.Value, bool, error) {
+	request := ReceiptRequest{ID: id, Method: method, InputDigest: admitted.Digest()}
+	if err := request.validate(); err != nil {
+		return nil, false, err
+	}
+	input, err := jsoninput.Encode(request)
+	if err != nil {
+		return nil, false, err
+	}
+	wire, err := binding.invoke(ctx, "", input, sdk.ParamsBase{})
+	if err != nil {
+		return nil, false, err
+	}
+	result, err := decodeBoundResult[Receipt](wire)
+	if err != nil {
+		return nil, false, err
+	}
+	receipt, err := result.value(ReceiptMethod)
+	if err != nil {
+		return nil, false, err
+	}
 	if receipt.Found != (len(receipt.Reply) != 0) {
-		return zero, false, errors.New("plugin: malformed receipt evidence")
+		return nil, false, errors.New("plugin: malformed receipt evidence")
 	}
 	if !receipt.Found {
-		return zero, false, nil
+		return nil, false, nil
 	}
-	value, err := DecodeReply[R](receipt.Reply)
+	value, err := DecodeReply[jsontext.Value](receipt.Reply)
 	return value, true, err
 }

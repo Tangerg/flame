@@ -1231,7 +1231,17 @@
         {
           "name": "BackendProtocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-13.2\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-13.3\""
+        },
+        {
+          "name": "Collection",
+          "type": "Composition",
+          "value": "\"collection\""
+        },
+        {
+          "name": "Decoration",
+          "type": "Composition",
+          "value": "\"decoration\""
         },
         {
           "name": "InvocationKey",
@@ -1252,6 +1262,11 @@
           "name": "ReceiptMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/commands.get\""
+        },
+        {
+          "name": "Selection",
+          "type": "Composition",
+          "value": "\"selection\""
         }
       ],
       "variables": [
@@ -1310,8 +1325,20 @@
           "signature": "func() *Callbacks"
         },
         {
+          "name": "NewCapability",
+          "signature": "func(config CapabilityConfig, methods ...MethodDescriptor) (*Capability, error)"
+        },
+        {
+          "name": "NewCapabilityBinding",
+          "signature": "func(session *mcp.ClientSession, name string, capability *Capability) (*CapabilityBinding, error)"
+        },
+        {
           "name": "NewMethod",
           "signature": "func[P, R any](config MethodConfig) (*Method[P, R], error)"
+        },
+        {
+          "name": "ParseCapability",
+          "signature": "func(data []byte) (*Capability, error)"
         },
         {
           "name": "ReadReceipt",
@@ -1346,6 +1373,10 @@
           "signature": "func(ctx context.Context, session *mcp.ClientSession, name string) (*Binding, error)"
         },
         {
+          "name": "ResolveCapability",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *Capability) (*CapabilityBinding, error)"
+        },
+        {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
         }
@@ -1355,6 +1386,10 @@
           "name": "Backend",
           "kind": "struct",
           "methods": [
+            {
+              "name": "BindCapability",
+              "signature": "func(name string, capability *Capability) error"
+            },
             {
               "name": "Publish",
               "signature": "func() error"
@@ -1388,6 +1423,24 @@
             {
               "name": "ValidateInput",
               "signature": "func(input jsoninput.Input) error"
+            }
+          ]
+        },
+        {
+          "name": "BoundMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Call",
+              "signature": "func(ctx context.Context, input P) (R, error)"
+            },
+            {
+              "name": "CallCommand",
+              "signature": "func(ctx context.Context, id string, input P) (R, error)"
+            },
+            {
+              "name": "ReadReceipt",
+              "signature": "func(ctx context.Context, id string, input P) (R, bool, error)"
             }
           ]
         },
@@ -1472,6 +1525,95 @@
           ]
         },
         {
+          "name": "Capability",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Contract",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "Descriptor",
+              "signature": "func() CapabilityDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityBinding",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Method",
+              "signature": "func(name string) (*Binding, error)"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityConfig",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Reference",
+              "type": "string"
+            },
+            {
+              "name": "Composition",
+              "type": "Composition"
+            },
+            {
+              "name": "Scope",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "CapabilityDescriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            },
+            {
+              "name": "Composition",
+              "type": "Composition",
+              "tag": "json:\"composition\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Methods",
+              "type": "[]MethodDescriptor",
+              "tag": "json:\"methods\""
+            }
+          ]
+        },
+        {
+          "name": "CapabilityExport",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Contract",
+              "type": "CapabilityDescriptor",
+              "tag": "json:\"contract\""
+            }
+          ]
+        },
+        {
           "name": "Command",
           "kind": "struct",
           "fields": [
@@ -1492,6 +1634,11 @@
           ]
         },
         {
+          "name": "Composition",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "Description",
           "kind": "struct",
           "fields": [
@@ -1504,6 +1651,11 @@
               "name": "Methods",
               "type": "[]MethodDescriptor",
               "tag": "json:\"methods\""
+            },
+            {
+              "name": "Capabilities",
+              "type": "[]CapabilityExport",
+              "tag": "json:\"capabilities\""
             }
           ]
         },
@@ -1533,6 +1685,10 @@
           "name": "Method",
           "kind": "struct",
           "methods": [
+            {
+              "name": "Bind",
+              "signature": "func(capability *CapabilityBinding) (*BoundMethod[P, R], error)"
+            },
             {
               "name": "Call",
               "signature": "func(ctx context.Context, session *mcp.ClientSession, input P) (R, error)"

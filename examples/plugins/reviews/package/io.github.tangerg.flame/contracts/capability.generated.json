@@ -1,0 +1,241 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-13.3",
+  "reference": "io.github.tangerg.flame.examples/reviews",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "io.github.tangerg.flame.examples/reviews.list",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the review backend's current review and revision.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_ListResult": {
+            "additionalProperties": false,
+            "properties": {
+              "reviews": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "reviews"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "revision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "open",
+                  "resolved"
+                ],
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "status",
+              "revision"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "reviews": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "reviews"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "io.github.tangerg.flame.examples/reviews.update",
+      "kind": "command",
+      "target": "installation",
+      "description": "Change one review's status using its inspected revision.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Update": {
+            "additionalProperties": false,
+            "properties": {
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "open",
+                  "resolved"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "expectedRevision",
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision",
+          "status"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "revision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "open",
+                  "resolved"
+                ],
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "status",
+              "revision"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_UpdateResult": {
+            "additionalProperties": false,
+            "properties": {
+              "review": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
+              },
+              "type": {
+                "enum": [
+                  "updated",
+                  "revisionConflict",
+                  "notFound",
+                  "invalidUpdate",
+                  "invocationConflict",
+                  "receiptCapacity",
+                  "revisionExhausted"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "review": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
+          },
+          "type": {
+            "enum": [
+              "updated",
+              "revisionConflict",
+              "notFound",
+              "invalidUpdate",
+              "invocationConflict",
+              "receiptCapacity",
+              "revisionExhausted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

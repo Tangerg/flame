@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"strings"
 	"testing"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -81,6 +82,13 @@ func TestBackendRejectsOldOrMalformedTransportBeforeInvocation(t *testing.T) {
 		var request describeParams
 		if err := json.Unmarshal([]byte(data), &request); err == nil {
 			t.Fatalf("malformed handshake admitted: %s", data)
+		}
+	}
+	for _, extra := range []string{`,"export":"reader"`, `,"capability":"` + strings.Repeat("a", 64) + `"`, `,"export":"../reader","capability":"` + strings.Repeat("a", 64) + `"`} {
+		data := `{"protocol":"` + BackendProtocol + `","method":"read","contract":"` + strings.Repeat("a", 64) + `","input":{}` + extra + `}`
+		var request invokeParams
+		if err := json.Unmarshal([]byte(data), &request); err == nil {
+			t.Fatalf("incomplete capability binding admitted: %s", data)
 		}
 	}
 	if _, err := NewBackend(nil); err == nil {

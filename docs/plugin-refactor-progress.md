@@ -2,6 +2,8 @@
 
 ## Current stage
 
+Stage 3e complete in source and verification: public immutable callable capabilities now associate consumer-owned required contracts with named Backend exports. Discovery and dispatch check the entire canonical contract, export and method membership; original receipt recovery retains the same export. Actual Reviews and the existing feature generator consume the same Go-owned capability. Real stdio committed-response loss recovers through the original export without resending a mutation. Generic installed declarations, selection migration and the installed operation entrance remain open. Commit/main synchronization is the next round-close action.
+
 Stage 3d complete: actual Schedules backend dispatch now uses the public Runtime Client and canonical RPC/SSE callback. Captured new Session/Run opening shares runs.start and its durable command acceptance. StartAutomation, its receipt store/table and the host's direct opening/remote Accept path are removed. Real Core opening-response loss, private dispatch-message loss, restart, source withdrawal and retired material reconciliation pass focused races. Runtime/CLI full module checks, final changed-owner races, shared client contracts and independent SDK/Reviews checks pass. Committed as 875375fa and merged local main 78f9f08b in b13f7527. Final integrated Runtime/CLI test/vet/build and affected acceptance/approval/SQLite/bootstrap races pass. Generic declarations, installed dependency rendezvous, components, model execution/decorators and full author parity remain open.
 
 Stage 3c complete: canonical Runtime RPC/SSE callbacks share the ordinary Router/Endpoint and typed Client; the one callback owner gates and joins each call.
@@ -60,6 +62,12 @@ Read-only design inputs:
 - /Users/tangerg/Desktop/docs/Scope-Flame-Agent-Architecture-and-Upgrade-Report-2026-10-12.md
 
 ## Completed
+
+- Stage 3e adds Capability as a validated immutable consumer contract: current public backend protocol, semantic reference, composition metadata, scope meaning and exact required methods. The one method/schema admission path validates local metadata; descriptors and schemas are deep-copy projections. Canonical method ordering is stable and callable fingerprints exclude prose.
+- BindCapability associates named exports with existing Backend handlers after checking every required method. Publication remains single-assignment. Discovery validates the complete export against the consumer contract and the actual published method set. Dispatch gates export/capability fingerprint, membership and exact method fingerprint; associated members cannot fall back to bare invocation or receipt lookup.
+- Method.Bind supplies a typed bound proxy using the existing admission/invocation/outcome algorithm. NewCapabilityBinding restores the original export/contract without discovery. Receipt queries retain that export, enter the existing private receipt owner and validate original output; no mutation/result store or new command identity is added. Shared handlers retain one semantic method/receipt namespace across exports.
+- Reviews owns one capability in NewContracts, reused by server publication and contract generation. The generator now requires a capability descriptor, emits the canonical capability.generated.json and derives its TS token from that canonical fingerprint. Rewritten Schema and method references remain presentation projections. The former bare-array generation input is deleted and explicitly refused.
+- A real Reviews stdio capability command commits while a probe withholds its response. After backend restart, original-export restoration reads the same receipt. A second transport probe would refuse and record any mutation resend; no such request occurs. Existing Runtime/Tool lost-response recovery now also retains the original capability export.
 
 - Stage 3d moves captured pending → canonical Run acceptance → private acknowledgement into Schedules. The executable main package translates its pure admission port through ConnectCallback and the ordinary Runtime Client. Runtime commits captured Session/Run/Segment and its existing command acceptance atomically; the former automation API, reader/store/table and segment receipt branch are deleted.
 - Actual managed session/release/source authority supplies a closed installed actor. Opening rechecks that authority in its transaction; known withdrawal remains plugin_changed, unknown storage failure retains uncertainty. Caller keys are installation-scoped and retain original identity across activation/release/configuration replacement.
@@ -138,6 +146,8 @@ Read-only design inputs:
 
 ## In progress
 
+- Stage 3e proves the callable capability/export primitive only. Full point value/applicability/optionality/order semantics, package declaration/activation matching, independent contribution identity, actual provider selection/composition and installed Go/Protocol/CLI operation admission remain required. Composition enum metadata is not an implemented decoration chain. Memory/Schedules still use their current Services declarations; no deletion is claimed.
+
 - Prior goal turn classification: progress in the Schedules/Core cutover; the intervening user clarification verified read-only input preservation. This round adds boundary/real-loss evidence and repairs the publication race exposed by that evidence. Full goal remains active.
 - Stage 3b does not close the complete callback requirement. The installed declaration/activation rendezvous, public Runtime Delivery catalog linkage, cross-plugin dependency binding and streaming/remote next remain required; no narrower completion criterion is adopted.
 
@@ -152,7 +162,7 @@ Read-only design inputs:
 
 ## Next
 
-1. Implement installed operations and original receipt recovery through one public Go/Protocol/CLI entrance, including consumer-owned declarations, exact contribution/contract/target/origin/parent binding and declared dependencies. Migrate Memory/Schedules routing and remove ServiceOwner/ServiceKind with their consumers. Full apiVersion:1/closed-view deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
+1. Use the verified Capability owner to replace Services candidacy with generic local contribution declarations and exact live exports, migrate actual Memory/Schedules consumers and hidden feature preparation, and remove ServiceOwner/ServiceKind without substituting string branches. Preserve contribution identity independently of server identity. Then implement installed operations and original receipt recovery through one public Go/Protocol/CLI entrance, including consumer-owned declarations, exact contribution/contract/target/origin/parent binding and declared dependencies. Migrate Memory/Schedules routing and remove ServiceOwner/ServiceKind with their consumers. Full apiVersion:1/closed-view deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
 2. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 3. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
 4. Complete requirement-level audit and final clean delivery.
@@ -161,6 +171,9 @@ Read-only design inputs:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Bind consumer-owned immutable callable capabilities to named exports in the existing Backend, with the whole canonical contract checked on discovery and dispatch | Generic declarations need a real required-method/export relationship; a flat method list cannot prove it | A second handler registry, discovery-only checking or omission-triggered bare-call fallback |
+| 2026-10-13 | Generate canonical capability metadata separately from presentation Schema/TS data, using the same Go-owned Method source | The existing emitter rewrites local references and must not originate callable identity | Fingerprinting rewritten Schema, handwritten required-method/schema twins or retaining bare-array generator input |
+| 2026-10-13 | Retain export identity on original receipt queries while keeping one semantic method/private receipt namespace for shared handlers | Export identifies routing; the same handler still owns one business fact and logical identity across entrances | Rediscovering a replacement export, export-qualified duplicate business receipts or a host result cache |
 | 2026-10-13 | Extend the one runs.start opening owner with captured new Session/Run targets and delete the automation opening/receipt path | Schedules requires atomic Core acceptance with exact captured identities and durable reconciliation after material retirement | Separate sessions.create plus runs.start, a Schedules-only alias, competing automation receipts or legacy readers |
 | 2026-10-13 | Scope Core logical command keys by installed actor, excluding release/activation/configuration | The actual managed session establishes source authority; replacement must not invent a new original command identity | Publisher/input-supplied actor identity or release-qualified replay keys |
 | 2026-10-13 | Pass ephemeral callback references in MCP metadata, outside admitted business input | Activation/call replacement changes observation but cannot change original business identity or saved pending work | Persisting credentials/grants, adding refs to private command input or rehashing DTOs |
@@ -223,13 +236,13 @@ Status is open until code and appropriate verification prove the requirement.
 | Public operation shared by Tool, CLI, UI and other plugins | Backend typed/Tool owner sharing verified; generic host/CLI/UI/other-plugin admission open | runtime/plugin; examples/plugins/reviews/backend/server.go; server_test.go |
 | Preserve origin, parent identity and concrete target | Open | shared call envelope and execution context |
 | Public React/TS components and shared module instances | Open | public SDK and installed component loader |
-| Consumer-owned collection/selection/decoration and plugin-defined points | Open | public point contracts and Reviews analyzer |
+| Consumer-owned collection/selection/decoration and plugin-defined points | Callable contract/export identity and composition metadata verified with actual Reviews; complete installed points, composition and analyzer remain open | runtime/plugin/capability.go; capability_test.go; public point consumers and Reviews analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
-| No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules boundary and Reviews typed read-only receipt lookup verified; generic/public operation application open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
-| One executable contract generation source | Go/Scope Schema/TypeScript data and method-doc generation verified with real Reviews; contribution/component binding generation still open | runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
+| No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules boundary and original-export Reviews receipt lookup verified with real committed-response loss; generic/public installed operation application open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
+| One executable contract generation source | Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified; installed contribution/component binding generation still open | runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Public Go/backend and Reviews typed/Tool semantics plus generated TS outcome vocabulary verified; generic host/CLI/TS call projections open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
-| Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method contract verified; installed declaration/activation requirement open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
+| Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method/capability/export contract verified; installed declaration/activation requirement open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
 | Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; generic provider selection open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
 | Reject old host encodings without data mutation | Installation/command-route host shapes, digest-only/private bare-result and Reviews former DTO format refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; managedmcp/receipts_test.go; Reviews schema_test.go; runtime/README.md |
 | Preserve Memory ledger, watermark, curation and receipts | Existing private maintenance admission/publication/receipt and failure boundaries verified; public capability migration open | managedmcp/prepared.go; memory/transport/maintenance.go; prepared_test.go; memory transport tests; bootstrap/plugin_memory_maintenance_receipt_test.go |
@@ -253,6 +266,16 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 3e verification:
+
+- Passed: Runtime and CLI complete module go test ./..., go vet ./... and go build ./.... Runtime architecture/dependency gates and public Go API discovery are included; generated go-api.json reflects the new public contracts.
+- Passed: full SDK/plugin and feature-generator race suites, actual Reviews complete race suite plus vet/build. Failure coverage includes incomplete or changed required contracts, missing/duplicate/late exports, forged fingerprint, nonmember invocation, bare-call/lookup bypass, deep-copy invariants, invalid publication and original receipt recovery without mutation.
+- Passed: real bootstrap races for existing Runtime/Tool committed-response loss and new direct capability-command committed-response loss/restart. The guard probe records any mutation on the recovery process; no mutation is resent. Broader managed Memory/Schedules focused bootstrap race checks also pass.
+- Passed: canonical Runtime and Reviews regeneration hash stability; standalone generated Reviews TypeScript contract check. Initial TypeScript invocation encountered TS5112 because TypeScript 7 requires --ignoreConfig with explicit input files; the corrected command passes without source or assertion changes.
+- Passed: independent Reviews author tidy/full race/vet/build with GOWORK=off, no replace, offline file proxy, isolated private module cache and a source archive containing only public plugin/jsoninput plus module metadata. The first fixture used an unescaped mixed-case proxy path; corrected Go proxy path escaping and reran successfully. This is a source-snapshot proof, not published SDK/Core Client distribution parity.
+- Passed: read-only implementation review found no concrete blocker; actual test evidence is recorded above. Changed Go formatting and git diff --check pass. Input SHA-256 values remain identical to the recorded baseline.
+- Not run: frontend UI/E2E/screenshot tests, per explicit user restriction. This slice changes backend SDK/generator and Reviews data bindings only; full UI/component and Wails acceptance remains open.
 
 Stage 3d verification:
 
@@ -390,6 +413,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3e: both independent-author fixture attempts, source archives, proxies and private module caches were removed by TemporaryDirectory, including the failed fixture. Test-owned stdio probes, backend processes, sessions and databases are torn down. No frontend build artifact, scratch script, shared configuration edit, external state change or user-data operation was introduced. Keep the active managed worktree for the full goal; final commit/main synchronization and clean-state checks are pending.
+
 - Stage 3d: public SDK/Reviews temporary source snapshots, file proxies, module caches and author copies have been removed by TemporaryDirectory. Tests own every helper process, callback listener and database. Owned icons/UI/frontend dist outputs created for Desktop consumer compilation have been removed; no frontend test or tracked source edit was introduced. All verification/integration/commit handles are terminal. Product commit 875375fa and incoming-main merge b13f7527 retain the completed slice; this milestone record is the only remaining change before the final clean-worktree check. Retain the active managed worktree for the full goal.
 
 - Stage 3b: every module/race/real-process/isolated-author handle returned a terminal result. Test cleanup closes callback endpoints, connections, helper executables and databases. TemporaryDirectory removed both independent-author attempts, archives, file proxies and module caches. No scratch script, shared configuration edit, frontend artifact or background verification remains. The managed checkout is committed and clean; preserve it and its dependencies for the full goal. Original input hashes remain unchanged.
@@ -417,6 +442,8 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Bind the verified callable capability/export owner into the installed declaration and activation lifecycle, migrate real Memory/Schedules required contracts and preserve contribution independently of server identity. Move callback preparation/notifications out of generic source authority. Reuse existing durable Commands routing for captured contribution/export/target/origin/parent; no second route or receipt owner.
+
 - Unary callbacks now have a public transport and real Memory consumer. Complete installed activation/dependency rendezvous must still replace remaining private feature integration; canonical Delivery binding and actual Schedules acceptance are verified, while decorators/remote next remain open.
 
 - Extend the verified private maintenance admission/publication receipt and original host routing to public contribution bindings. Preserve the distinction between recovering a completed receipt and unknown/canceled original work; never restart its models from host routing alone.
@@ -429,6 +456,8 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3e requires BackendProtocol io.github.tangerg.flame/backend/2026-10-13.3 and capability-shaped feature-generator input. External SDK callers/backend binaries require rebuild; former protocol and bare-array generator input are refused. Existing Reviews bare method/receipt callers must use the published reviews capability binding. Core Protocol and private business storage do not change in this slice. Installed declaration/token migration and published module metadata remain open.
 
 - Stage 3d Protocol 2026-10-13.2 changes runs.start target shape and runs.getAcceptance request verification; external compiled clients and Schedules backends require rebuild. Host directories with automation_starts and private Schedules directories without runtime_target are strictly refused and retained; use fresh directories. No original user data was opened, converted or deleted. The native author package remains bounded by 128 MiB aggregate capacity.
 

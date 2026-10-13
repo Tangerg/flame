@@ -55,23 +55,39 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
+	capability, err := pluginsdk.NewCapabilityBinding(session, "reviews", contracts.Capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateMethod, err := contracts.Update.Bind(capability)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, expected := range []struct {
 		id     string
 		result UpdateResult
 	}{{"original", original}, {"refused", refused}} {
-		value, found, err := pluginsdk.ReadReceipt[Update, UpdateResult](t.Context(), session, expected.id, contracts.Update.Name(), input)
+		value, found, err := updateMethod.ReadReceipt(t.Context(), expected.id, input)
 		if err != nil || !found || !reflect.DeepEqual(value, expected.result) {
 			t.Fatalf("original receipt = %+v, %t, %v", value, found, err)
 		}
 	}
-	if _, found, err := pluginsdk.ReadReceipt[Update, UpdateResult](t.Context(), session, "missing", contracts.Update.Name(), input); err != nil || found {
+	if _, found, err := updateMethod.ReadReceipt(t.Context(), "missing", input); err != nil || found {
 		t.Fatalf("missing receipt became a mutation/outcome: %t, %v", found, err)
 	}
 	for _, binding := range []struct {
 		method string
 		input  Update
 	}{{contracts.List.Name(), input}, {contracts.Update.Name(), later}} {
-		_, _, err := pluginsdk.ReadReceipt[Update, UpdateResult](t.Context(), session, "original", binding.method, binding.input)
+		original, err := capability.Method(binding.method)
+		if err != nil {
+			t.Fatal(err)
+		}
+		admitted, err := jsoninput.Encode(binding.input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = original.ReadReceipt(t.Context(), "original", admitted)
 		if err == nil {
 			t.Fatal("changed binding adopted an earlier receipt")
 		}
@@ -86,7 +102,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := pluginsdk.ReadReceipt[Update, UpdateResult](t.Context(), session, "original", contracts.Update.Name(), input); err == nil {
+	if _, _, err := updateMethod.ReadReceipt(t.Context(), "original", input); err == nil {
 		t.Fatal("closed owner invented receipt evidence")
 	}
 }

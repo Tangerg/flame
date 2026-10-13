@@ -6,7 +6,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -21,13 +20,27 @@ type Binding struct {
 	contract   jsoninput.Input
 	input      jsonschema.Schema
 	output     jsonschema.Schema
+	export     string
+	capability string
 }
 
 // NewBinding accepts an already captured contract. The backend checks its exact
 // fingerprint before invocation; restoration does not discover a replacement.
 func NewBinding(session *sdk.ClientSession, descriptor MethodDescriptor) (*Binding, error) {
-	if session == nil || descriptor.Name == "" || len(descriptor.Name) > 256 || !utf8.ValidString(descriptor.Name) || descriptor.Target == "" || len(descriptor.Target) > 256 || !utf8.ValidString(descriptor.Target) {
-		return nil, errors.New("plugin: session, method and target are required")
+	if session == nil {
+		return nil, errors.New("plugin: client session is required")
+	}
+	binding, err := admitDescriptor(descriptor)
+	if err != nil {
+		return nil, err
+	}
+	binding.session = session
+	return binding, nil
+}
+
+func admitDescriptor(descriptor MethodDescriptor) (*Binding, error) {
+	if !contractToken(descriptor.Name) || !contractToken(descriptor.Target) {
+		return nil, errors.New("plugin: method and target are required")
 	}
 	if descriptor.Kind != Query && descriptor.Kind != Mutation {
 		return nil, errors.New("plugin: method kind must be query or command")
@@ -47,7 +60,7 @@ func NewBinding(session *sdk.ClientSession, descriptor MethodDescriptor) (*Bindi
 	if err != nil {
 		return nil, err
 	}
-	return &Binding{session: session, descriptor: cloneDescriptor(descriptor), contract: contract, input: input, output: output}, nil
+	return &Binding{descriptor: cloneDescriptor(descriptor), contract: contract, input: input, output: output}, nil
 }
 
 func methodContract(descriptor MethodDescriptor) (jsoninput.Input, error) {
@@ -108,7 +121,7 @@ func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, 
 	if err := b.ValidateInput(input); err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", b.descriptor.Name, err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: BackendProtocol, Method: b.descriptor.Name, Contract: b.contract.Digest(), Input: input.JSON(), CommandID: id})
+	result, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: BackendProtocol, Method: b.descriptor.Name, Contract: b.contract.Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +154,12 @@ func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsoninput.In
 	if err := b.ValidateInput(input); err != nil {
 		return jsoninput.Input{}, false, err
 	}
-	value, found, err := ReadReceipt[jsontext.Value, jsontext.Value](ctx, b.session, id, b.descriptor.Name, input.JSON())
+	lookup, err := receiptBinding(b.session)
+	if err != nil {
+		return jsoninput.Input{}, false, err
+	}
+	lookup.export, lookup.capability = b.export, b.capability
+	value, found, err := readReceipt(ctx, lookup, id, b.descriptor.Name, input)
 	if err != nil || !found {
 		return jsoninput.Input{}, found, err
 	}
