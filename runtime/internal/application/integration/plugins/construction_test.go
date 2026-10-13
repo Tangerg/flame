@@ -45,6 +45,11 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 }
 
 func TestRegistryRejectsMissingCollaborators(t *testing.T) {
+	for _, selections := range []SelectionStore{nil, (*requirementSelections)(nil)} {
+		if registry, err := NewRegistry(userMemory{}, &installationMemory{}, &singleServerPackages{}, selections); err == nil || registry != nil {
+			t.Fatalf("missing selection store constructed a registry: %v, %v", registry, err)
+		}
+	}
 	for _, test := range []struct {
 		name          string
 		user          userServers
@@ -59,7 +64,7 @@ func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 		{"typed nil packages", userMemory{}, &installationMemory{}, (*singleServerPackages)(nil)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			registry, err := NewRegistry(test.user, test.installations, test.packages)
+			registry, err := NewRegistry(test.user, test.installations, test.packages, requirementSelections{})
 			if err == nil || registry != nil {
 				t.Fatalf("invalid registry constructed: %v, %v", registry, err)
 			}

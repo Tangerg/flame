@@ -79,6 +79,11 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 	if slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool { return current.ID == value.ID }) {
 		return refuse(DiagnosticInvalidDeclaration, "duplicate contribution %q", value.ID)
 	}
+	if slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool {
+		return current.Server == value.Server && current.Export == value.Export && current.Contract != value.Contract
+	}) {
+		return refuse(DiagnosticInvalidDeclaration, "contribution %q conflicts with the same server export", value.ID)
+	}
 	if _, found := b.release().server(value.Server); !found {
 		return refuse(DiagnosticInvalidDependencies, "contribution %q requires a declared server", value.ID)
 	}

@@ -25,6 +25,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
+type emptySelections struct{ plugins.SelectionStore }
+
+func (emptySelections) List(context.Context) ([]plugin.ProviderSelection, error) {
+	return nil, nil
+}
+
 func testReleases(t *testing.T) *Releases {
 	releases, _, _ := testReleaseStore(t)
 	return releases
@@ -314,7 +320,7 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, store, releases)
+	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +402,7 @@ func TestMCPDefinitionsStayStableWhenBackendAvailabilityChanges(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, store, releases)
+	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{})
 	if err != nil {
 		t.Fatal(err)
 	}

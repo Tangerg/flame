@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 type Store interface {
@@ -50,20 +51,21 @@ type Registry struct {
 	user          userServers
 	installations Store
 	packages      PackageSources
+	selections    SelectionStore
 }
 
-func NewRegistry(user userServers, installations Store, packages PackageSources) (*Registry, error) {
+func NewRegistry(user userServers, installations Store, packages PackageSources, selections SelectionStore) (*Registry, error) {
 	for _, required := range []struct {
 		name  string
 		value any
 	}{
-		{"user server store", user}, {"installation store", installations}, {"package sources", packages},
+		{"user server store", user}, {"installation store", installations}, {"package sources", packages}, {"selection store", selections},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("plugins: registry %s is required", required.name)
 		}
 	}
-	return &Registry{user: user, installations: installations, packages: packages}, nil
+	return &Registry{user: user, installations: installations, packages: packages, selections: selections}, nil
 }
 
 // Definitions projects desired configuration without observing executable bytes
@@ -132,7 +134,25 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 		if !exists {
 			return mcpapp.Launch{}, mcpapp.ErrUnknownServer
 		}
+		if snapshot.Installation.ServerEnabled(id.Name()) {
+			for _, contribution := range snapshot.Selected.Declaration().Contributions {
+				if contribution.Server == id.Name() && len(contribution.Requires) > 0 {
+					if _, err := ResolveRequirements(ctx, r.installations, r.selections, installationID, snapshot.Selected.Digest(), contribution.ID); err != nil {
+						return mcpapp.Launch{}, err
+					}
+					break
+				}
+			}
+		}
 		connection, found, err = r.packages.Connection(ctx, snapshot.Installation, snapshot.Selected, id.Name())
+		if err == nil && found {
+			connection.Exports = make(map[string]jsoninput.Input)
+			for _, contribution := range snapshot.Selected.Declaration().Contributions {
+				if contribution.Server == id.Name() {
+					connection.Exports[contribution.Export] = contribution.Contract
+				}
+			}
+		}
 	} else {
 		connection.Server, found, err = r.user.Get(ctx, id.Name())
 	}

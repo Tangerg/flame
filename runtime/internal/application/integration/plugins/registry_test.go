@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -45,6 +46,28 @@ type serverRead struct {
 	reach Reach
 }
 
+func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *testing.T) {
+	contract := requirementContract(t, "consumer", capability.Collection)
+	dependency := requirementContract(t, "model", capability.Selection)
+	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: dependency.Identity()})
+	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
+	packages := &singleServerPackages{}
+	registry, err := NewRegistry(userMemory{}, store, packages, requirementSelections{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := root.Installation.ServerID(testsupport.ServerName("backend"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := registry.Connection(t.Context(), id); !errors.Is(err, plugin.ErrUnavailable) {
+		t.Fatalf("missing binding admitted a launch: %v", err)
+	}
+	if len(packages.reads) != 0 || !root.Installation.ServerEnabled(id.Name()) {
+		t.Fatal("dependency failure acquired resources or changed desired enablement")
+	}
+}
+
 func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
@@ -64,7 +87,7 @@ func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
 	} {
 		for _, operation := range []string{"definition", "dispatchable", "connection"} {
 			t.Run(failure.name+"/"+operation, func(t *testing.T) {
-				registry, err := NewRegistry(userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{})
+				registry, err := NewRegistry(userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -100,7 +123,7 @@ func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewRegistry(userMemory{}, store, &singleServerPackages{})
+	registry, err := NewRegistry(userMemory{}, store, &singleServerPackages{}, requirementSelections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +202,7 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Transport: mcpserver.TransportStdio, Command: "paused"},
 	}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(users, installations, packages)
+	registry, err := NewRegistry(users, installations, packages, requirementSelections{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,7 +20,11 @@ edges are checked across all contributions sharing an executable entry; optional
 collection members do not introduce startup edges. Fresh cross-plugin installed
 calls must match the caller entry's declared dependencies. Decoration composition,
 setup-time binding and lifetime freezing are still pending; this query does not
-activate a backend or freeze future selection changes.
+activate a backend or freeze future selection changes. Managed connection admission
+checks required declaration bindings before acquiring launch resources. Callable
+backends must publish the exact declared capability export set and method contracts
+before the connection owner publishes their session or Tools. Refused handshakes
+retire the session and leased executable without changing desired enablement.
 
 Build target-specific packages from the repository's local `go.work`:
 

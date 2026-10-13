@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
@@ -102,6 +104,16 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 	session, cleanupSession, err := dial(ctx, c.lifetime, c.client, prepared)
 	step := mcpserver.FailureConnection
 	var verifiedTools []Executable
+	if err == nil && prepared.admit != nil {
+		step = mcpserver.FailureConfiguration
+		admissionCtx := ctx
+		if duration, bounded := cfg.HandshakeTimeout.Duration(); bounded {
+			var cancel context.CancelFunc
+			admissionCtx, cancel = context.WithTimeout(ctx, duration)
+			defer cancel()
+		}
+		err = admitSession(admissionCtx, session, prepared.admit)
+	}
 	if err == nil {
 		// Prove the session is usable before publishing it as connected.
 		step = mcpserver.FailureToolDiscovery
@@ -154,6 +166,15 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 		err = errors.Join(err, c.closeSession(attempt.ctx, staleSession))
 	}
 	return err
+}
+
+func admitSession(ctx context.Context, session *sdk.ClientSession, admit func(context.Context, *sdk.ClientSession) error) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("mcp: connection admission panicked: %v", recovered)
+		}
+	}()
+	return errors.Join(admit(ctx, session), cancellation.Err(ctx))
 }
 
 var errConnectionSuperseded = errors.New("mcp: connection operation superseded")

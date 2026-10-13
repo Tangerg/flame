@@ -65,7 +65,7 @@ func BenchmarkInstalledSourceRuleList(b *testing.B) {
 	if err := installations.Save(b.Context(), installation); err != nil {
 		b.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, releases)
+	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, releases, sqlite.NewProviderSelectionStore(db))
 	if err != nil {
 		b.Fatal(err)
 	}

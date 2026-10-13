@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 // Launch transfers a fresh launch to the connection owner. Server describes
@@ -15,6 +16,8 @@ type Launch struct {
 	Server mcpserver.Server
 	Stdio  *Stdio
 	Retire io.Closer
+	// Callable entries must prove this declared set before connection publication.
+	Exports map[string]jsoninput.Input
 }
 
 type Stdio struct {

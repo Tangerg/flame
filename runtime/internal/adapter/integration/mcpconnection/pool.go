@@ -6,7 +6,10 @@ package mcpconnection
 import (
 	"context"
 	"errors"
+	"maps"
+	"slices"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -102,7 +105,25 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.La
 		executable := connection.Stdio
 		stdio = &mcp.Stdio{Command: executable.Command, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}
 	}
-	return mcp.NewLaunch(mcp.ServerConfig{Server: connection.Server}, stdio, retire)
+	var admit func(context.Context, *sdk.ClientSession) error
+	if len(connection.Exports) > 0 {
+		exports := make([]pluginsdk.CapabilityExport, 0, len(connection.Exports))
+		for _, name := range slices.Sorted(maps.Keys(connection.Exports)) {
+			identity := connection.Exports[name]
+			contract, err := capability.Parse(identity.JSON())
+			if err != nil {
+				if retire != nil {
+					err = errors.Join(err, retire())
+				}
+				return nil, err
+			}
+			exports = append(exports, pluginsdk.CapabilityExport{Name: name, Contract: contract.Descriptor()})
+		}
+		admit = func(ctx context.Context, session *sdk.ClientSession) error {
+			return pluginsdk.VerifyCapabilities(ctx, session, exports)
+		}
+	}
+	return mcp.NewLaunch(mcp.ServerConfig{Server: connection.Server}, stdio, retire, admit)
 }
 
 func (p *Pool) Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {

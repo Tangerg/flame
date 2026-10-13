@@ -115,7 +115,7 @@ func TestAttemptRejectsCanceledConfigurationBeforeExternalIO(t *testing.T) {
 				Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp",
 			}}
 			var retired int
-			input, err := NewLaunch(config, nil, func() error { retired++; return nil })
+			input, err := NewLaunch(config, nil, func() error { retired++; return nil }, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -214,7 +214,7 @@ func TestPublishedAttemptRetainsSuccessAfterCallerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(t.Context())
 	defer cancel(nil)
 	attempt, err := c.BeginConnect(ctx, config.ID(), func(context.Context, mcpserver.ID) (*Launch, error) {
-		return NewLaunch(config, nil, nil)
+		return NewLaunch(config, nil, nil, nil)
 	})
 	if err != nil {
 		t.Fatal(err)

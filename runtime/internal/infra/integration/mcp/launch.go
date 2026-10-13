@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -8,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 // Launch transfers a fresh configuration and its execution resource exactly
@@ -32,10 +34,11 @@ type launch struct {
 	config ServerConfig
 	stdio  *Stdio
 	retire sessionCleanup
+	admit  func(context.Context, *sdk.ClientSession) error
 }
 
 // NewLaunch consumes retire even when construction fails.
-func NewLaunch(config ServerConfig, stdio *Stdio, retire func() error) (_ *Launch, err error) {
+func NewLaunch(config ServerConfig, stdio *Stdio, retire func() error, admit func(context.Context, *sdk.ClientSession) error) (_ *Launch, err error) {
 	defer func() {
 		if err != nil && retire != nil {
 			err = errors.Join(err, retire())
@@ -57,7 +60,7 @@ func NewLaunch(config ServerConfig, stdio *Stdio, retire func() error) (_ *Launc
 	if _, _, installed := config.Source.Release(); installed && config.Transport == mcpserver.TransportStdio && stdio == nil {
 		return nil, errors.New("mcp: installation stdio requires leased execution content")
 	}
-	return &Launch{claim: &launchClaim{pending: &launch{config: config.Clone(), stdio: stdio, retire: retire}}}, nil
+	return &Launch{claim: &launchClaim{pending: &launch{config: config.Clone(), stdio: stdio, retire: retire, admit: admit}}}, nil
 }
 
 func (l *Launch) take() (*launch, error) {

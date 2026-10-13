@@ -68,6 +68,20 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
+	exports := []CapabilityExport{{Name: "records", Contract: capability.Descriptor()}, {Name: "reader", Contract: readOnly.Descriptor()}}
+	if err := VerifyCapabilities(t.Context(), session, exports); err != nil {
+		t.Fatal(err)
+	}
+	for _, invalid := range [][]CapabilityExport{
+		exports[:1],
+		{{Name: "records", Contract: readOnly.Descriptor()}, exports[1]},
+		{exports[0], exports[0]},
+		{{Name: "unknown", Contract: capability.Descriptor()}, exports[1]},
+	} {
+		if err := VerifyCapabilities(t.Context(), session, invalid); err == nil {
+			t.Fatal("different declared export set was admitted")
+		}
+	}
 	if err := backend.BindCapability("late", capability); err == nil {
 		t.Fatal("published export changed")
 	}

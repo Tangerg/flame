@@ -23,6 +23,15 @@ func (s requirementInstallations) List(context.Context) ([]plugin.Snapshot, erro
 	return s.snapshots, nil
 }
 
+func (s requirementInstallations) Get(_ context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+	for _, snapshot := range s.snapshots {
+		if snapshot.Installation.ID() == id {
+			return snapshot, true, nil
+		}
+	}
+	return plugin.Snapshot{}, false, nil
+}
+
 type requirementSelections struct {
 	SelectionStore
 	values []plugin.ProviderSelection

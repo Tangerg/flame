@@ -95,6 +95,48 @@ func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name str
 	if err != nil {
 		return nil, err
 	}
+	published, err := admitDescription(description)
+	if err != nil {
+		return nil, err
+	}
+	if actual := published[name]; actual == nil || actual.Identity() != required.Identity() {
+		return nil, errors.New("plugin: capability export contract mismatch")
+	}
+	return binding, nil
+}
+
+// VerifyCapabilities admits the complete declared export set before an installed
+// entry's session or Tools can be published by the connection owner.
+func VerifyCapabilities(ctx context.Context, session *sdk.ClientSession, required []CapabilityExport) error {
+	description, err := Describe(ctx, session)
+	if err != nil {
+		return err
+	}
+	published, err := admitDescription(description)
+	if err != nil {
+		return err
+	}
+	if len(published) != len(required) {
+		return errors.New("plugin: declared and published capability exports differ")
+	}
+	seen := make(map[string]bool, len(required))
+	for _, exported := range required {
+		if !capability.ValidExportName(exported.Name) || seen[exported.Name] {
+			return errors.New("plugin: invalid or duplicate declared capability export")
+		}
+		seen[exported.Name] = true
+		contract, err := capability.FromDescriptor(exported.Contract)
+		if err != nil {
+			return err
+		}
+		if actual := published[exported.Name]; actual == nil || actual.Identity() != contract.Identity() {
+			return fmt.Errorf("plugin: capability export %s contract mismatch", exported.Name)
+		}
+	}
+	return nil
+}
+
+func admitDescription(description Description) (map[string]*capability.Contract, error) {
 	methods := make(map[string]jsoninput.Input, len(description.Methods))
 	for _, descriptor := range description.Methods {
 		if _, exists := methods[descriptor.Name]; exists {
@@ -106,22 +148,14 @@ func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name str
 		}
 		methods[descriptor.Name] = method.Identity()
 	}
-	seen := make(map[string]bool, len(description.Capabilities))
-	found := false
+	exports := make(map[string]*capability.Contract, len(description.Capabilities))
 	for _, published := range description.Capabilities {
-		if !capability.ValidExportName(published.Name) || seen[published.Name] {
+		if !capability.ValidExportName(published.Name) || exports[published.Name] != nil {
 			return nil, errors.New("plugin: invalid or duplicate published capability export")
-		}
-		seen[published.Name] = true
-		if published.Name != name {
-			continue
 		}
 		actual, err := capability.FromDescriptor(published.Contract)
 		if err != nil {
 			return nil, err
-		}
-		if actual.Identity() != required.Identity() {
-			return nil, errors.New("plugin: capability contract mismatch")
 		}
 		for _, descriptor := range actual.Descriptor().Methods {
 			method, _ := actual.Method(descriptor.Name)
@@ -129,12 +163,9 @@ func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name str
 				return nil, errors.New("plugin: capability method is not published with its exact contract")
 			}
 		}
-		found = true
+		exports[published.Name] = actual
 	}
-	if !found {
-		return nil, errors.New("plugin: capability export is not published")
-	}
-	return binding, nil
+	return exports, nil
 }
 
 func (b *CapabilityBinding) Method(name string) (*Binding, error) {
