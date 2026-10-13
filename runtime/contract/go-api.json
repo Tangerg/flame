@@ -1216,7 +1216,7 @@
         {
           "name": "Protocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-13.4\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-14.1\""
         },
         {
           "name": "Query",
@@ -1439,6 +1439,28 @@
           "underlying": "string"
         },
         {
+          "name": "Refusal",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Code",
+              "type": "string",
+              "tag": "json:\"code\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
           "name": "Target",
           "kind": "struct",
           "fields": [
@@ -1590,13 +1612,17 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/jsoninput",
-        "github.com/Tangerg/flame/runtime/protocol",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/tool",
         "io",
         "net/http"
       ],
       "constants": [
+        {
+          "name": "InvocationHeader",
+          "type": "untyped string",
+          "value": "\"Flame-Invocation\""
+        },
         {
           "name": "InvocationMetadataKey",
           "type": "untyped string",
@@ -1874,6 +1900,10 @@
               "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits) (CallbackRef, func(), error)"
             },
             {
+              "name": "OpenRPCWithInvocation",
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, project func(context.Context, capability.Invocation) (context.Context, error)) (CallbackRef, func(), error)"
+            },
+            {
               "name": "PublishRPC",
               "signature": "func(handler http.Handler) error"
             },
@@ -1951,28 +1981,6 @@
               "name": "Capabilities",
               "type": "[]CapabilityExport",
               "tag": "json:\"capabilities\""
-            }
-          ]
-        },
-        {
-          "name": "Failure",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Code",
-              "type": "string",
-              "tag": "json:\"code\""
-            },
-            {
-              "name": "Message",
-              "type": "string",
-              "tag": "json:\"message\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Error",
-              "signature": "func() string"
             }
           ]
         },
@@ -2124,7 +2132,7 @@
             },
             {
               "name": "Failure",
-              "type": "*Failure",
+              "type": "*capability.Refusal",
               "tag": "json:\"failure,omitzero\""
             }
           ],
@@ -2154,9 +2162,40 @@
           ]
         },
         {
+          "name": "SetupBinding",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "Contract",
+              "type": "capability.Descriptor",
+              "tag": "json:\"contract\""
+            }
+          ]
+        },
+        {
           "name": "SetupContribution",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Background",
+              "type": "*capability.Target",
+              "tag": "json:\"background,omitzero\""
+            },
             {
               "name": "ID",
               "type": "string",
@@ -2195,7 +2234,7 @@
             },
             {
               "name": "Bindings",
-              "type": "[]protocol.PluginOperationBinding",
+              "type": "[]SetupBinding",
               "tag": "json:\"bindings\""
             }
           ]
@@ -3569,7 +3608,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.1\""
+          "value": "\"2026-10-14.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8646,6 +8685,11 @@
           "name": "PluginContribution",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Background",
+              "type": "bool",
+              "tag": "json:\"background,omitzero\""
+            },
             {
               "name": "ID",
               "type": "string",

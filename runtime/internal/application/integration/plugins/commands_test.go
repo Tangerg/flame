@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -139,4 +140,69 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 func capturedCommand(binding plugins.ContributionBinding) (capability.Invocation, error) {
 	invocation := capability.Invocation{ID: "command", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: binding.InstallationID.String()}}
 	return invocation, invocation.Validate()
+}
+
+func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	commands, err := plugins.NewCommands(sqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "owner", Export: "operations"}
+	original, err := capturedCommand(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original.Parent = "original-parent"
+	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }, func(plugins.ContributionBinding) (capability.Invocation, error) { return original, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor, err := operation.NewActor(provider.InstallationID.String(), provider.Digest.String(), testsupport.Digest("2").String(), provider.ServerName.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	calling := operation.WithActor(t.Context(), actor)
+	if _, err := commands.RestoreInvocation(calling, original); !errors.Is(err, plugin.ErrCommandConflict) {
+		t.Fatalf("unsent original was accepted: %v", err)
+	}
+	if err := commands.Dispatch(t.Context(), command.Snapshot().ID, func(context.Context, plugin.CommandBinding) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := commands.RestoreInvocation(calling, original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caller, err := operation.Capture(restored, original.Target)
+	if err != nil || caller != original || operation.Identity(restored) != original.ID {
+		t.Fatalf("caller was replaced: %+v, %v", caller, err)
+	}
+	retained, found := operation.ActorFrom(restored)
+	if !found || retained.InstallationID() != actor.InstallationID() || retained.Authority() != actor.Authority() {
+		t.Fatal("invocation replaced authenticated Actor")
+	}
+	for _, change := range []func(*capability.Invocation){
+		func(v *capability.Invocation) { v.Origin = capability.Model },
+		func(v *capability.Invocation) { v.Parent = "changed-parent" },
+		func(v *capability.Invocation) { v.ID = "unknown-human" },
+		func(v *capability.Invocation) { v.Target.Reference = testsupport.InstallationID(t).String() },
+	} {
+		altered := original
+		change(&altered)
+		if _, err := commands.RestoreInvocation(calling, altered); !errors.Is(err, plugin.ErrCommandConflict) {
+			t.Fatalf("changed caller accepted: %+v, %v", altered, err)
+		}
+	}
+	automatic := capability.Invocation{ID: "private-trigger", Origin: capability.Automatic, Target: original.Target}
+	if _, err := commands.RestoreInvocation(calling, automatic); err != nil {
+		t.Fatal(err)
+	}
+	automatic.Parent = "unrecorded-parent"
+	if _, err := commands.RestoreInvocation(calling, automatic); !errors.Is(err, plugin.ErrCommandConflict) {
+		t.Fatalf("unrecorded parent accepted: %v", err)
+	}
 }

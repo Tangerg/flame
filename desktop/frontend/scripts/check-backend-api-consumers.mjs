@@ -208,7 +208,7 @@ const materializedOperations = creditMaterializedOperationConsumers(
 // are insufficient evidence. Catalog names and Connection ports are parsed from Go
 // source rather than listed as operation exemptions.
 const cliCalls = JSON.parse(
-  execFileSync("go", ["run", "./runtime/internal/cmd/apiconsumers", "."], {
+  execFileSync("go", ["run", "./runtime/cmd/apiconsumers", "."], {
     cwd: resolve(ROOT, "../.."),
     encoding: "utf8",
     maxBuffer: 1024 * 1024,

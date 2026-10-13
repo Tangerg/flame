@@ -2501,6 +2501,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   PluginComponentChange: enumOf(["enable", "disable"]),
   PluginComponentType: enumOf(["manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"]),
   PluginContribution: object({
+    background: flag(),
     contract: ref(() => CHECKS.Descriptor),
     export: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),

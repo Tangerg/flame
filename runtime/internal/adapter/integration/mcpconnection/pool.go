@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -23,7 +24,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -31,6 +31,7 @@ import (
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
 type Pool struct {
+	commands  *plugins.Commands
 	registry  sourceRegistry
 	inner     *mcp.Connections
 	prepare   ToolPreparation
@@ -51,6 +52,7 @@ func Open(
 	callbacks *pluginsdk.Callbacks,
 	prepare ToolPreparation,
 	publish invalidation.Publish,
+	commands *plugins.Commands,
 ) (*Pool, error) {
 	if dependency.Missing(registry) {
 		return nil, errors.New("mcp connection: source registry is required")
@@ -59,7 +61,7 @@ func Open(
 	for index, server := range servers {
 		configs[index] = mcp.ServerConfig{Server: server.Clone()}
 	}
-	pool := &Pool{registry: registry, prepare: prepare, publish: publish, lifetime: lifetime, callbacks: callbacks, ready: make(chan struct{})}
+	pool := &Pool{commands: commands, registry: registry, prepare: prepare, publish: publish, lifetime: lifetime, callbacks: callbacks, ready: make(chan struct{})}
 	client := mcp.NewClient()
 	if err := pluginsdk.RegisterClient(client); err != nil {
 		return nil, err
@@ -163,7 +165,8 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.La
 				return err
 			}
 			var metadata sdk.ParamsBase
-			if len(connection.Requirements.Snapshot()) > 0 {
+			background := slices.ContainsFunc(connection.Contributions, func(value plugin.Contribution) bool { return value.Background })
+			if background || len(connection.Requirements.Snapshot()) > 0 {
 				if p.callbacks == nil {
 					return errors.New("mcp: declared collaborators require Runtime callbacks")
 				}
@@ -176,7 +179,24 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.La
 				if err != nil {
 					return err
 				}
-				ref, closeRPC, err := p.callbacks.OpenRPC(operation.WithActor(activationCtx, actor.WithBindings(connection.Requirements)), session, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20})
+				calling := operation.WithActor(activationCtx, actor.WithBindings(connection.Requirements))
+				limits := pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
+				var ref pluginsdk.CallbackRef
+				var closeRPC func()
+				if background {
+					if p.commands == nil {
+						return errors.New("mcp: background role requires original invocation routing")
+					}
+					ref, closeRPC, err = p.callbacks.OpenRPCWithInvocation(calling, session, limits, func(ctx context.Context, invocation capability.Invocation) (context.Context, error) {
+						ctx, err := p.commands.RestoreInvocation(ctx, invocation)
+						if err != nil {
+							return nil, err
+						}
+						return pluginsdk.WithInvocation(ctx, invocation)
+					})
+				} else {
+					ref, closeRPC, err = p.callbacks.OpenRPC(calling, session, limits)
+				}
 				if err != nil {
 					return err
 				}
@@ -240,6 +260,13 @@ func setupContributions(connection mcpapp.Launch) ([]pluginsdk.SetupContribution
 	values := make([]pluginsdk.SetupContribution, 0, len(connection.Contributions))
 	for _, contribution := range connection.Contributions {
 		value := pluginsdk.SetupContribution{ID: contribution.ID.String(), Export: contribution.Export, Requires: []pluginsdk.SetupDependency{}}
+		if contribution.Background {
+			installation, found := connection.Server.ID().Origin().Installation()
+			if !found {
+				return nil, errors.New("mcp: background role requires an installed entry")
+			}
+			value.Background = &capability.Target{Scope: "installation", Reference: installation.String()}
+		}
 		for _, required := range connection.Requirements.Snapshot() {
 			if required.Contribution != contribution.ID {
 				continue
@@ -248,9 +275,9 @@ func setupContributions(connection mcpapp.Launch) ([]pluginsdk.SetupContribution
 			if err != nil {
 				return nil, err
 			}
-			dependency := pluginsdk.SetupDependency{ID: required.ID.String(), Contract: contract.Descriptor(), Optional: required.Optional, Bindings: []protocol.PluginOperationBinding{}}
+			dependency := pluginsdk.SetupDependency{ID: required.ID.String(), Contract: contract.Descriptor(), Optional: required.Optional, Bindings: []pluginsdk.SetupBinding{}}
 			for _, binding := range required.Bindings {
-				dependency.Bindings = append(dependency.Bindings, protocol.PluginOperationBinding{InstallationID: binding.Provider.InstallationID.String(), Digest: binding.Provider.Digest.String(), Contribution: binding.Contribution.String(), Contract: contract.Descriptor()})
+				dependency.Bindings = append(dependency.Bindings, pluginsdk.SetupBinding{InstallationID: binding.Provider.InstallationID.String(), Digest: binding.Provider.Digest.String(), Contribution: binding.Contribution.String(), Contract: contract.Descriptor()})
 			}
 			value.Requires = append(value.Requires, dependency)
 		}

@@ -162,7 +162,7 @@ numeric schema limits through Go, CLI and TypeScript serialization. The built-in
 manager inspects a reviewed target, attributes and explicit order without activation;
 results are labeled as the last inspected snapshot. No former object reader remains.
 Core clients must rebuild against the generated current shapes; backend callable
-contracts retain their independent `2026-10-13.4` identity.
+contracts use their independent current backend protocol identity.
 
 Start and Resume use one Run-owned command acceptance. A keyed Resume commits
 its request fingerprint and original Run, Segment, and optional input Item
@@ -412,6 +412,36 @@ Failed reads retain the last accepted report and label its actual period. Refres
 reuses the selected query. Disablement/uninstall withdraws presentation and resources
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
+
+## Protocol 2026-10-14.2 and plugin backend 2026-10-14.1
+
+Callable contributions may explicitly declare background activation. Setup receives
+that entry's immutable installation target and an activation-owned Runtime callback.
+Connection publication still waits for declared dependencies and successful setup;
+background resources are canceled and joined on session withdrawal. This does not
+create another installation-enable or provider-selection owner.
+
+The callback's Actor comes from the connection owner. A backend may supply its
+retained invocation through the public callback client context; original human/model
+identity must match an already dispatched host command's installation/release/server
+and complete invocation. Fresh automatic work is restricted to that installation
+and cannot invent a retained parent. The routing owner validates and projects the
+caller without copying its business result or advancing command state.
+
+Schedules declares this role and checks the attached Runtime namespace during setup
+without binding or modifying private work. Its callback connection is joined before
+the private database closes. Its existing host scan driver still owns scheduling;
+the subsequent cutover must move the loop/clock and captured recovery into the backend
+and delete the driver and retired scan/dispatch exports together. No second loop is
+introduced by this activation slice.
+
+Known business refusal is capability.Refusal, independent of MCP. The former
+plugin.Failure Go type is removed, with all in-repository callers migrated.
+
+Rebuild all Go/Protocol/TS/SDK/installed packages together. Current backend description,
+setup and generated feature contract identities use 2026-10-14.1; former frames and
+routes are not converted. Retain former data directories separately for this breaking
+pre-release change. The five CLI-consumed Schedule Core facades remain migration work.
 
 ## Protocol 2026-10-14.1
 

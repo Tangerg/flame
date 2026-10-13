@@ -222,7 +222,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 			err = plugin.ErrCommandUnconfirmed
 		}
 	}
-	_, known := errors.AsType[*pluginsdk.Failure](err)
+	_, known := errors.AsType[*capability.Refusal](err)
 	if err != nil && !known {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}

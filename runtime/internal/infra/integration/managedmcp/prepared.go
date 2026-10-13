@@ -1,6 +1,7 @@
 package managedmcp
 
 import (
+ "github.com/Tangerg/flame/runtime/capability"
 	"bytes"
 	"context"
 	"database/sql"
@@ -75,7 +76,7 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 		return errors.New("managed plugin: prepared command is required")
 	}
 	if _, err := pluginsdk.DecodeReply[jsoninput.Input](reply); err != nil {
-		if _, known := errors.AsType[*pluginsdk.Failure](err); !known {
+		if _, known := errors.AsType[*capability.Refusal](err); !known {
 			return err
 		}
 	}

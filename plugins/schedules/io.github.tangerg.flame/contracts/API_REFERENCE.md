@@ -12,6 +12,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.schedules/scan.v1` | command | installation | Capture due occurrences at the supplied time and return pending dispatch. |
 | `flame.schedules/update.v1` | command | installation | Change one schedule using its inspected revision. |
 
-Capability `schedules` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-13.4`.
+Capability `schedules` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-14.1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

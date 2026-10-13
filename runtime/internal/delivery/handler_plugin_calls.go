@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/point"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -128,7 +127,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 	}
 	return kind, func(ctx context.Context) (*protocol.CallPluginResponse, error) {
 		output, err := call.Invoke(ctx)
-		if failure, known := errors.AsType[*pluginsdk.Failure](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		if failure, known := errors.AsType[*capability.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 			return &protocol.CallPluginResponse{Failure: &protocol.PluginCallFailure{Code: failure.Code, Message: failure.Message}}, nil
 		}
 		if err != nil {

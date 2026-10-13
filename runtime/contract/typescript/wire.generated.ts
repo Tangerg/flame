@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.1";
+export const PROTOCOL_VERSION = "2026-10-14.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1244,6 +1244,7 @@ export type PluginComponentChange = "enable" | "disable";
 export type PluginComponentType = "manifestField" | "flameExtension" | "extensionField" | "contribution" | "mcp" | "mcpServer" | "skills" | "skill";
 
 export interface PluginContribution {
+  background?: boolean;
   contract: Descriptor;
   export: string;
   id: string;

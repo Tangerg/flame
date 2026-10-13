@@ -10,23 +10,34 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/protocol"
+	domainplugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const setupMethod = "io.github.tangerg.flame/operations.setup"
 
 type SetupContribution struct {
-	ID       string            `json:"id"`
-	Export   string            `json:"export"`
-	Requires []SetupDependency `json:"requires"`
+	Background *capability.Target `json:"background,omitzero"`
+	ID         string             `json:"id"`
+	Export     string             `json:"export"`
+	Requires   []SetupDependency  `json:"requires"`
 }
 
 type SetupDependency struct {
-	ID       string                            `json:"id"`
-	Contract capability.Descriptor             `json:"contract"`
-	Optional bool                              `json:"optional"`
-	Bindings []protocol.PluginOperationBinding `json:"bindings"`
+	ID       string                `json:"id"`
+	Contract capability.Descriptor `json:"contract"`
+	Optional bool                  `json:"optional"`
+	Bindings []SetupBinding        `json:"bindings"`
+}
+
+// SetupBinding is the setup transport projection of one resolved implementation.
+type SetupBinding struct {
+	InstallationID string                `json:"installationId"`
+	Digest         string                `json:"digest"`
+	Contribution   string                `json:"contribution"`
+	Contract       capability.Descriptor `json:"contract"`
 }
 
 // Setup supplies only the entry's named, already resolved dependencies.
@@ -153,9 +164,9 @@ func (b *Backend) registerSetup() error {
 				b.mu.Unlock()
 				return nil, errors.New("plugin: setup contribution export is not registered")
 			}
-			if len(value.Requires) > 0 && b.setup == nil {
+			if (len(value.Requires) > 0 || value.Background != nil) && b.setup == nil {
 				b.mu.Unlock()
-				return nil, errors.New("plugin: declared dependencies require a setup handler")
+				return nil, errors.New("plugin: declared dependencies or background role require a setup handler")
 			}
 		}
 		lifetime, cancel := context.WithCancel(context.WithoutCancel(ctx))
@@ -204,8 +215,19 @@ func validateSetup(values []SetupContribution) error {
 		if !capability.ValidExportName(value.Export) || seen[value.ID] || value.Requires == nil {
 			return errors.New("plugin: invalid or duplicate setup contribution")
 		}
+		if value.Background != nil {
+			if err := value.Background.Validate(); err != nil {
+				return err
+			}
+			if value.Background.Scope != "installation" {
+				return errors.New("plugin: background role must identify its installation")
+			}
+			if err := validateSetupInstallation(value.Background.Reference); err != nil {
+				return err
+			}
+		}
 		seen[value.ID] = true
-		if err := protocol.ValidateWireTree(protocol.PluginCollaborator{ID: value.ID, Bindings: []protocol.PluginOperationBinding{}}); err != nil {
+		if err := validateSetupID(value.ID); err != nil {
 			return err
 		}
 		dependencies := map[string]bool{}
@@ -214,7 +236,7 @@ func validateSetup(values []SetupContribution) error {
 				return errors.New("plugin: duplicate setup dependency")
 			}
 			dependencies[dependency.ID] = true
-			if err := protocol.ValidateWireTree(protocol.PluginCollaborator{ID: dependency.ID, Bindings: dependency.Bindings}); err != nil {
+			if err := validateSetupBindings(dependency.ID, dependency.Bindings); err != nil {
 				return err
 			}
 			contract, err := capability.FromDescriptor(dependency.Contract)
@@ -251,4 +273,33 @@ func SetUp(ctx context.Context, session *sdk.ClientSession, contributions []Setu
 		return errors.New("plugin: backend setup was not accepted")
 	}
 	return err
+}
+
+func validateSetupInstallation(value string) error {
+	_, err := resourceid.ParseInstallation(value)
+	return err
+}
+func validateSetupID(value string) error {
+	_, err := domainplugin.ParseContributionID(value)
+	return err
+}
+func validateSetupBindings(id string, bindings []SetupBinding) error {
+	if err := validateSetupID(id); err != nil {
+		return err
+	}
+	if bindings == nil {
+		return errors.New("plugin: setup dependency bindings are required")
+	}
+	for _, value := range bindings {
+		if err := validateSetupInstallation(value.InstallationID); err != nil {
+			return err
+		}
+		if _, err := fingerprint.ParseDigest(value.Digest); err != nil {
+			return err
+		}
+		if err := validateSetupID(value.Contribution); err != nil {
+			return err
+		}
+	}
+	return nil
 }

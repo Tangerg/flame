@@ -82,6 +82,13 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 	if c.callbackCall != "" {
 		request.Header.Set("Authorization", c.token)
 		request.Header.Set("Flame-Call", c.callbackCall)
+		if invocation, invocationErr := pluginsdk.InvocationFromContext(call.ctx); invocationErr == nil {
+			value, encodeErr := json.Marshal(invocation)
+			if encodeErr != nil {
+				return delivery.Result{}, encodeErr
+			}
+			request.Header.Set(pluginsdk.InvocationHeader, string(value))
+		}
 	} else if c.token != "" {
 		request.Header.Set("Authorization", "Bearer "+c.token)
 	}

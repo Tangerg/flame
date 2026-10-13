@@ -38,11 +38,17 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	host := &observedRunHost{db: db, namespace: "original-runtime"}
 	host.lost.Store(true)
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-test"}, nil)
-	if err := RegisterServer(server, db, store, workspace.Resolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
+	registered, err := RegisterServer(server, db, store, workspace.Resolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
 		return host, func() error { return nil }, nil
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := registered.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "public-author"}, nil)
 	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)

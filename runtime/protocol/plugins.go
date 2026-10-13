@@ -310,11 +310,12 @@ type PluginValueChange struct {
 }
 
 type PluginContribution struct {
-	ID       string                `json:"id"`
-	Server   string                `json:"server"`
-	Export   string                `json:"export"`
-	Contract capability.Descriptor `json:"contract"`
-	Requires []PluginRequirement   `json:"requires"`
+	Background bool                  `json:"background,omitzero"`
+	ID         string                `json:"id"`
+	Server     string                `json:"server"`
+	Export     string                `json:"export"`
+	Contract   capability.Descriptor `json:"contract"`
+	Requires   []PluginRequirement   `json:"requires"`
 }
 
 type PluginRequirement struct {

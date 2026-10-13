@@ -237,6 +237,39 @@ func (c *Callbacks) OpenRPC(ctx context.Context, session *sdk.ClientSession, lim
 	return c.open(ctx, session, limits, handler)
 }
 
+// OpenRPCWithInvocation binds backend-owned background work through an admission
+// projection. The authenticated activation owns the Actor; wire context cannot
+// replace it. The projection must validate retained calling-owner evidence.
+func (c *Callbacks) OpenRPCWithInvocation(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, project func(context.Context, capability.Invocation) (context.Context, error)) (CallbackRef, func(), error) {
+	if project == nil {
+		return CallbackRef{}, nil, errors.New("plugin: background invocation projection is required")
+	}
+	c.mu.Lock()
+	handler := c.rpc
+	c.mu.Unlock()
+	if handler == nil {
+		return CallbackRef{}, nil, errors.New("plugin: runtime RPC is not published")
+	}
+	return c.open(ctx, session, limits, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if value := r.Header.Get(InvocationHeader); value != "" {
+			var invocation capability.Invocation
+			if err := json.Unmarshal([]byte(value), &invocation, json.RejectUnknownMembers(true)); err != nil {
+				http.Error(w, "invalid background invocation", http.StatusBadRequest)
+				return
+			}
+			calling, err := project(r.Context(), invocation)
+			if err != nil || calling == nil {
+				http.Error(w, "background invocation refused", http.StatusForbidden)
+				return
+			}
+			r = r.WithContext(calling)
+		}
+		handler.ServeHTTP(w, r)
+	}))
+}
+
+const InvocationHeader = "Flame-Invocation"
+
 func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, handler http.Handler) (CallbackRef, func(), error) {
 	if ctx == nil || session == nil || limits.MaxRequestBytes <= 0 || limits.MaxResponseBytes <= 0 || limits.MaxResponseBytes == math.MaxInt64 {
 		return CallbackRef{}, nil, errors.New("plugin: callback context, session and capacities are required")

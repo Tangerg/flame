@@ -9,11 +9,12 @@ import (
 )
 
 type wireContribution struct {
-	ID       plugin.ContributionID `json:"id"`
-	Server   mcpserver.ServerName  `json:"server"`
-	Export   string                `json:"export"`
-	Contract string                `json:"contract"`
-	Requires []wireRequirement     `json:"requires,omitzero"`
+	Background bool                  `json:"background,omitzero"`
+	ID         plugin.ContributionID `json:"id"`
+	Server     mcpserver.ServerName  `json:"server"`
+	Export     string                `json:"export"`
+	Contract   string                `json:"contract"`
+	Requires   []wireRequirement     `json:"requires,omitzero"`
 }
 
 type wireRequirement struct {

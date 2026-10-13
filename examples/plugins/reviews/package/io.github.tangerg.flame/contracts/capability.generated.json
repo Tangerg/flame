@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.flame/backend/2026-10-13.4",
+  "protocol": "io.github.tangerg.flame/backend/2026-10-14.1",
   "reference": "io.github.tangerg.flame.examples/reviews",
   "composition": "collection",
   "scope": "installation",
@@ -30,10 +30,7 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
               }
             },
-            "required": [
-              "review",
-              "findings"
-            ],
+            "required": ["review", "findings"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding": {
@@ -58,12 +55,7 @@
                 "type": "integer"
               }
             },
-            "required": [
-              "code",
-              "message",
-              "reviewId",
-              "revision"
-            ],
+            "required": ["code", "message", "reviewId", "revision"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot": {
@@ -82,22 +74,14 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
-                ],
+                "enum": ["open", "resolved"],
                 "type": "string"
               },
               "title": {
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "title",
-              "status",
-              "revision"
-            ],
+            "required": ["id", "title", "status", "revision"],
             "type": "object"
           }
         },
@@ -114,10 +98,7 @@
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
           }
         },
-        "required": [
-          "review",
-          "findings"
-        ],
+        "required": ["review", "findings"],
         "type": "object"
       }
     },
@@ -144,9 +125,7 @@
                 "type": "array"
               }
             },
-            "required": [
-              "reviews"
-            ],
+            "required": ["reviews"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot": {
@@ -165,22 +144,14 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
-                ],
+                "enum": ["open", "resolved"],
                 "type": "string"
               },
               "title": {
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "title",
-              "status",
-              "revision"
-            ],
+            "required": ["id", "title", "status", "revision"],
             "type": "object"
           }
         },
@@ -194,9 +165,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "reviews"
-        ],
+        "required": ["reviews"],
         "type": "object"
       }
     },
@@ -223,18 +192,11 @@
                 "type": "string"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
-                ],
+                "enum": ["open", "resolved"],
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "expectedRevision",
-              "status"
-            ],
+            "required": ["id", "expectedRevision", "status"],
             "type": "object"
           }
         },
@@ -254,18 +216,11 @@
             "type": "string"
           },
           "status": {
-            "enum": [
-              "open",
-              "resolved"
-            ],
+            "enum": ["open", "resolved"],
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "expectedRevision",
-          "status"
-        ],
+        "required": ["id", "expectedRevision", "status"],
         "type": "object"
       },
       "output": {
@@ -286,22 +241,14 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
-                ],
+                "enum": ["open", "resolved"],
                 "type": "string"
               },
               "title": {
                 "type": "string"
               }
             },
-            "required": [
-              "id",
-              "title",
-              "status",
-              "revision"
-            ],
+            "required": ["id", "title", "status", "revision"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_UpdateResult": {
@@ -323,9 +270,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "type"
-            ],
+            "required": ["type"],
             "type": "object"
           }
         },
@@ -348,9 +293,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type"
-        ],
+        "required": ["type"],
         "type": "object"
       }
     }

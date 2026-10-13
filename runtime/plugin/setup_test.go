@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -63,7 +62,7 @@ func TestSetupProvidesNamedImmutableBindingsAndJoinsResources(t *testing.T) {
 				t.Fatal(err)
 			}
 			session := connectPublishedBackend(t, backend, client)
-			values := []SetupContribution{{ID: "consumer", Export: "records", Requires: []SetupDependency{{ID: "model", Contract: contract.Descriptor(), Bindings: []protocol.PluginOperationBinding{{InstallationID: "11111111-1111-4111-8111-111111111111", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "provider", Contract: contract.Descriptor()}}}}}}
+			values := []SetupContribution{{ID: "consumer", Export: "records", Requires: []SetupDependency{{ID: "model", Contract: contract.Descriptor(), Bindings: []SetupBinding{{InstallationID: "11111111-1111-4111-8111-111111111111", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "provider", Contract: contract.Descriptor()}}}}}}
 			err = SetUp(t.Context(), session, values, sdk.ParamsBase{})
 			if (err != nil) != refuses {
 				t.Fatalf("setup refusal=%v, error=%v", refuses, err)

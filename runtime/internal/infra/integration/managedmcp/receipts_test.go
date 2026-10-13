@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"path/filepath"
 	"testing"
 
 	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
@@ -41,7 +41,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		}
 	}
 	_, err = Command(t.Context(), db, "update", "refused", "known", receiptInput(t, "known"), classify, handler)
-	failure, ok := errors.AsType[*pluginsdk.Failure](err)
+	failure, ok := errors.AsType[*capability.Refusal](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
@@ -53,7 +53,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
-	if _, ok := errors.AsType[*pluginsdk.Failure](err); ok {
+	if _, ok := errors.AsType[*capability.Refusal](err); ok {
 		t.Fatalf("unknown became known=%v", err)
 	}
 	var count, total int
@@ -69,7 +69,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return "", nil
 		})
 		if key.id == "refused" {
-			if _, ok := errors.AsType[*pluginsdk.Failure](err); !ok {
+			if _, ok := errors.AsType[*capability.Refusal](err); !ok {
 				t.Fatalf("refusal replay=%v", err)
 			}
 		} else if err != nil {

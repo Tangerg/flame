@@ -76,11 +76,17 @@ func TestDispatchAcknowledgementAndReceiptCommitTogether(t *testing.T) {
 	}
 	host := &observedRunHost{db: db, namespace: "original-store"}
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-test"}, nil)
-	if err := RegisterServer(server, db, store, workspace.Resolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
+	registered, err := RegisterServer(server, db, store, workspace.Resolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
 		return host, func() error { return nil }, nil
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := registered.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "host-test"}, nil)
 	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)
@@ -159,7 +165,7 @@ func TestDispatchAcknowledgementAndReceiptCommitTogether(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = method.InvokeWithMetadata(ctx, "original-dispatch", changed, metadata)
-	failure, known := errors.AsType[*pluginsdk.Failure](err)
+	failure, known := errors.AsType[*capability.Refusal](err)
 	if !known || failure.Code != "command_conflict" || host.calls.Load() != calls {
 		t.Fatalf("changed input entered admission: %v", err)
 	}

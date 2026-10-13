@@ -2,12 +2,12 @@ package rpc
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 const (
@@ -75,7 +75,7 @@ var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "
 }
 
 func Classify(err error) string {
-	if failure, ok := errors.AsType[*pluginsdk.Failure](err); ok {
+	if failure, ok := errors.AsType[*capability.Refusal](err); ok {
 		if errorCodes[failure.Code] != nil {
 			return failure.Code
 		}
@@ -88,7 +88,7 @@ func Classify(err error) string {
 	return ""
 }
 func DecodeError(err error) error {
-	var failure *pluginsdk.Failure
+	var failure *capability.Refusal
 	if errors.As(err, &failure) {
 		if cause := errorCodes[failure.Code]; cause != nil {
 			return errors.Join(cause, err)

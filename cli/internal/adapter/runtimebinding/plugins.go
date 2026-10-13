@@ -5,7 +5,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -62,7 +61,7 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 		return nil, runtimeContractViolation("plugin call returned invalid response: %v", err)
 	}
 	if result.Failure != nil {
-		return nil, &pluginsdk.Failure{Code: result.Failure.Code, Message: result.Failure.Message}
+		return nil, &capability.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
 	contract, err := capability.Parse([]byte(request.Contract))
 	if err != nil {

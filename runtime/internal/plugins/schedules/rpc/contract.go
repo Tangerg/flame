@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
@@ -9,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 const (
@@ -48,7 +48,7 @@ type Ack struct{}
 var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelref.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
 
 func Classify(err error) string {
-	if failure, ok := errors.AsType[*pluginsdk.Failure](err); ok {
+	if failure, ok := errors.AsType[*capability.Refusal](err); ok {
 		if errorCodes[failure.Code] != nil {
 			return failure.Code
 		}
@@ -61,7 +61,7 @@ func Classify(err error) string {
 	return ""
 }
 func DecodeError(err error) error {
-	var failure *pluginsdk.Failure
+	var failure *capability.Refusal
 	if errors.As(err, &failure) {
 		if cause := errorCodes[failure.Code]; cause != nil {
 			return errors.Join(cause, err)

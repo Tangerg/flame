@@ -112,7 +112,7 @@ func TestOriginalBindingValidatesPrivateReceiptWithoutInvokingMutation(t *testin
 	reply = jsontext.Value(`{"failure":{"code":"revision","message":"conflict"}}`)
 	if _, found, err := binding.ReadReceipt(t.Context(), "original", input); !found {
 		t.Fatalf("known refusal disappeared: %v", err)
-	} else if failure, ok := errors.AsType[*Failure](err); !ok || failure.Code != "revision" {
+	} else if failure, ok := errors.AsType[*contractsdk.Refusal](err); !ok || failure.Code != "revision" {
 		t.Fatalf("original refusal changed: %v", err)
 	}
 	if mutations.Load() != 0 || reads.Load() != 3 {

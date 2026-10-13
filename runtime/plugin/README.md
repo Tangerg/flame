@@ -226,3 +226,25 @@ continuations. Canonical Runtime RPC/SSE callbacks now share the ordinary
 Endpoint/Client, and Schedules uses them for durable Run acceptance. Complete
 installed dependency binding and streaming decorators remain
 required parts of the complete plugin refactor.
+
+## Background activation and retained caller projection
+
+A contribution's background declaration supplies SetupContribution.Background with
+its own immutable installation target. An entry declaring background work must
+register OnSetup. Return owned resources as io.Closer; Backend.Close cancels and
+joins setup lifetimes before private stores close. Setup establishes resources and
+checks availability; it does not advance business facts merely to register them.
+
+An activation callback keeps its authenticated Actor and declared dependency bindings.
+For a retained background request, use WithInvocation on the public callback client's
+context. The host verifies the original dispatched route for human/model callers and
+admits fresh automatic triggers only for that installation without an invented parent.
+Origin, parent and target are ephemeral transport context, not business input or
+credentials. Closing the callback observation leaves independently accepted Runs with
+their canonical Runtime owner. Rebuild against backend protocol 2026-10-14.1.
+
+Known business refusals use capability.Refusal. The former plugin.Failure type is
+removed; migrate external Go classifiers and errors.AsType calls to the pure
+contract package. JSON refusal fields stay code/message. SetupDependency.Bindings
+now uses SetupBinding, a setup transport projection validated by the existing
+identity owners; the connection adapter no longer imports Core Protocol DTOs.

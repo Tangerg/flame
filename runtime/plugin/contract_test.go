@@ -97,7 +97,7 @@ func TestMethodOutputSchemaFailurePreservesUncertainty(t *testing.T) {
 	if err == nil {
 		t.Fatal("malformed output became success")
 	}
-	if _, known := errors.AsType[*Failure](err); known {
+	if _, known := errors.AsType[*contractsdk.Refusal](err); known {
 		t.Fatalf("malformed output became known business refusal: %v", err)
 	}
 }

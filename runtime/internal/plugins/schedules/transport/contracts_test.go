@@ -22,11 +22,17 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-contract"}, nil)
-	if err := RegisterServer(server, db, sqlite.NewScheduleStore(db), workspace.Resolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
+	registered, err := RegisterServer(server, db, sqlite.NewScheduleStore(db), workspace.Resolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
 		return &observedRunHost{db: db, namespace: "contract-store"}, func() error { return nil }, nil
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := registered.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "contract-consumer"}, nil)
 	if err := pluginsdk.RegisterClient(client); err != nil {
 		t.Fatal(err)

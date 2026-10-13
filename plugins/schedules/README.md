@@ -140,3 +140,16 @@ The generic Domain/loader/Protocol owns no Schedule template or closed view kind
 The component consumes existing schedule notices and cancels/joins its I/O on
 retirement. Failed pagination keeps the accepted page/cursor. Window-generation
 recovery and backend background-role acceptance remain final integration obligations.
+
+## Declared background activation
+
+The schedules-provider contribution declares background activation independently of
+provider selection or an open component. Its setup uses the public activation callback
+and verifies the attached Runtime against retained namespace evidence without writing
+private state. Backend teardown joins that connection before closing SQLite.
+
+The host scan driver remains the sole scheduling loop in this slice. Moving the clock,
+claim/recovery pass and original private dispatch into the backend, and deleting the
+host driver/scan/dispatch exports, is the next ownership cutover. There is no second
+loop or compatibility reader. Background identity recovery uses validated retained
+host routing; it cannot reclassify a human command as a new automatic trigger.

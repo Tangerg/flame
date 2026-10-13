@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -27,6 +28,32 @@ func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
 		return nil, errors.New("plugins: command store and admission are required")
 	}
 	return &Commands{store: store, admission: admission}, nil
+}
+
+// RestoreInvocation validates a private owner's retained caller against original
+// host routing. A fresh background trigger may only originate automatically in
+// its own installation; human/model callers require an already dispatched route.
+func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.Invocation) (context.Context, error) {
+	if err := invocation.Validate(); err != nil {
+		return nil, err
+	}
+	actor, found := operation.ActorFrom(ctx)
+	if !found || invocation.Target.Scope != "installation" || invocation.Target.Reference != actor.InstallationID().String() {
+		return nil, plugin.ErrCommandConflict
+	}
+	command, found, err := c.store.Get(ctx, invocation.ID)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		record := command.Snapshot()
+		if record.Invocation != invocation || record.Provider.InstallationID != actor.InstallationID() || record.Provider.Digest != actor.Release() || record.Server != actor.Server() || record.Phase == plugin.CommandPrepared {
+			return nil, plugin.ErrCommandConflict
+		}
+	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" {
+		return nil, plugin.ErrCommandConflict
+	}
+	return operation.Adopt(ctx, invocation.ID, invocation.Origin, invocation.Parent), nil
 }
 
 // Find projects an original binding before new-call discovery does network I/O.

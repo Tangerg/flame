@@ -87,7 +87,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	}
 	if _, err := write.Invoke(ctx, "original-command", input); err == nil {
 		t.Fatal("lost acknowledgement became known success")
-	} else if _, known := errors.AsType[*pluginsdk.Failure](err); known {
+	} else if _, known := errors.AsType[*capability.Refusal](err); known {
 		t.Fatalf("lost observation became a business refusal: %v", err)
 	}
 	_ = session.Close()

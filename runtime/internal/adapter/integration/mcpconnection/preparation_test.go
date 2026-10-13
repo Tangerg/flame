@@ -88,7 +88,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 					defer settled.Add(1)
 					return source.Call(ctx, invocation)
 				}, func() { releases.Add(1) }, nil
-			}, nil)
+			}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

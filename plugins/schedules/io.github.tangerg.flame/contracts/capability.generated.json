@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.flame/backend/2026-10-13.4",
+  "protocol": "io.github.tangerg.flame/backend/2026-10-14.1",
   "reference": "schedules",
   "composition": "selection",
   "scope": "installation",
@@ -220,9 +220,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "ID"
-            ],
+            "required": ["ID"],
             "type": "object"
           }
         },
@@ -233,9 +231,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "ID"
-        ],
+        "required": ["ID"],
         "type": "object"
       },
       "output": {
@@ -266,9 +262,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "RunID"
-            ],
+            "required": ["RunID"],
             "type": "object"
           }
         },
@@ -279,9 +273,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "RunID"
-        ],
+        "required": ["RunID"],
         "type": "object"
       },
       "output": {
@@ -296,10 +288,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "SessionID",
-              "RunID"
-            ],
+            "required": ["SessionID", "RunID"],
             "type": "object"
           }
         },
@@ -313,10 +302,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "SessionID",
-          "RunID"
-        ],
+        "required": ["SessionID", "RunID"],
         "type": "object"
       }
     },
@@ -343,9 +329,7 @@
                 "type": "integer"
               }
             },
-            "required": [
-              "Cursor"
-            ],
+            "required": ["Cursor"],
             "type": "object"
           }
         },
@@ -365,9 +349,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "Cursor"
-        ],
+        "required": ["Cursor"],
         "type": "object"
       },
       "output": {
@@ -445,10 +427,7 @@
                 "type": "array"
               }
             },
-            "required": [
-              "Rows",
-              "NextCursor"
-            ],
+            "required": ["Rows", "NextCursor"],
             "type": "object"
           }
         },
@@ -465,10 +444,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "Rows",
-          "NextCursor"
-        ],
+        "required": ["Rows", "NextCursor"],
         "type": "object"
       }
     },
@@ -486,9 +462,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "ID"
-            ],
+            "required": ["ID"],
             "type": "object"
           }
         },
@@ -499,9 +473,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "ID"
-        ],
+        "required": ["ID"],
         "type": "object"
       },
       "output": {
@@ -516,10 +488,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "SessionID",
-              "RunID"
-            ],
+            "required": ["SessionID", "RunID"],
             "type": "object"
           }
         },
@@ -533,10 +502,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "SessionID",
-          "RunID"
-        ],
+        "required": ["SessionID", "RunID"],
         "type": "object"
       }
     },
@@ -555,9 +521,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "Now"
-            ],
+            "required": ["Now"],
             "type": "object"
           }
         },
@@ -569,9 +533,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "Now"
-        ],
+        "required": ["Now"],
         "type": "object"
       },
       "output": {
@@ -592,11 +554,7 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
               }
             },
-            "required": [
-              "id",
-              "origin",
-              "target"
-            ],
+            "required": ["id", "origin", "target"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
@@ -609,10 +567,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "scope",
-              "reference"
-            ],
+            "required": ["scope", "reference"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot": {
@@ -634,12 +589,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection"
-            ],
+            "required": ["Title", "Instructions", "CWD", "ModelSelection"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_RunRequestSnapshot": {
@@ -743,11 +693,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "ID",
-              "ExpectedRevision",
-              "ModelSelection"
-            ],
+            "required": ["ID", "ExpectedRevision", "ModelSelection"],
             "type": "object"
           }
         },
@@ -785,11 +731,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "ID",
-          "ExpectedRevision",
-          "ModelSelection"
-        ],
+        "required": ["ID", "ExpectedRevision", "ModelSelection"],
         "type": "object"
       },
       "output": {

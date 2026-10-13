@@ -89,20 +89,16 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 
 type Result[T any] struct {
 	sdk.ResultBase
-	Value     *T       `json:"value,omitzero"`
-	Failure   *Failure `json:"failure,omitzero"`
+	Value     *T                  `json:"value,omitzero"`
+	Failure   *capability.Refusal `json:"failure,omitzero"`
 	valueJSON jsontext.Value
-}
-type Failure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
 }
 
 func (r *Result[T]) UnmarshalJSON(data []byte) error {
 	var decoded struct {
 		sdk.ResultBase
-		Value   jsontext.Value `json:"value"`
-		Failure *Failure       `json:"failure,omitzero"`
+		Value   jsontext.Value      `json:"value"`
+		Failure *capability.Refusal `json:"failure,omitzero"`
 	}
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
@@ -125,14 +121,12 @@ func (r *Result[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (f *Failure) Error() string { return f.Message }
-
 // Only an explicitly classified business refusal is a known outcome. Storage,
 // transport and unrecognized failures remain protocol errors; encoding them as
 // refusals would falsely claim that a possibly committed effect did not happen.
 func Reply[T any](value T, err error, classify func(error) string) (*Result[T], error) {
 	if err != nil {
-		if failure, ok := errors.AsType[*Failure](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
+		if failure, ok := errors.AsType[*capability.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
 			copy := *failure
 			return &Result[T]{Failure: &copy}, nil
 		}
@@ -146,7 +140,7 @@ func Reply[T any](value T, err error, classify func(error) string) (*Result[T], 
 		if !utf8.ValidString(code) || !utf8.ValidString(err.Error()) {
 			return nil, errors.Join(err, errors.New("plugin: invalid business refusal"))
 		}
-		return &Result[T]{Failure: &Failure{Code: code, Message: err.Error()}}, nil
+		return &Result[T]{Failure: &capability.Refusal{Code: code, Message: err.Error()}}, nil
 	}
 	return &Result[T]{Value: &value}, nil
 }

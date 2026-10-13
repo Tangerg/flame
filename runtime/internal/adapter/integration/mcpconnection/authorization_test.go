@@ -51,7 +51,7 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 	defer transport.Close()
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &heldLaunchRegistry{mutableSourceRegistry: &mutableSourceRegistry{server: server.Clone()}, guard: ctx, captured: make(chan struct{}), resume: make(chan struct{})}
-	pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, nil, nil)
+	pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

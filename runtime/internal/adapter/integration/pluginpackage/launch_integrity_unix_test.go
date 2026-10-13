@@ -103,7 +103,7 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 					}
 					servers = []mcpserver.Server{server}
 				}
-				pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, wrapped, nil, nil, nil)
+				pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, wrapped, nil, nil, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -80,7 +80,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		if err != nil {
 			return protocol.PluginRelease{}, err
 		}
-		presented := protocol.PluginContribution{ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: contract.Descriptor(), Requires: []protocol.PluginRequirement{}}
+		presented := protocol.PluginContribution{Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: contract.Descriptor(), Requires: []protocol.PluginRequirement{}}
 		for _, requirement := range value.Requires {
 			required, err := capability.Parse(requirement.Contract.JSON())
 			if err != nil {

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -154,7 +155,7 @@ func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	method := callbackTestMethod(t, "call")
 	callback, err := NewCallback(method, nil, func(_ context.Context, command Command[callbackInput]) (int64, error) {
 		if command.Input.Value == 1 {
-			return 0, &Failure{Code: "conflict", Message: "original decision"}
+			return 0, &contractsdk.Refusal{Code: "conflict", Message: "original decision"}
 		}
 		return 0, errors.New("unconfirmed storage failure")
 	})
@@ -167,7 +168,7 @@ func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	}
 	defer release()
 	_, err = CallHost(t.Context(), ref, method, "", callbackInput{1})
-	failure, known := errors.AsType[*Failure](err)
+	failure, known := errors.AsType[*contractsdk.Refusal](err)
 	if !known || failure.Code != "conflict" || failure.Message != "original decision" {
 		t.Fatalf("known refusal changed: %v", err)
 	}
@@ -202,7 +203,7 @@ func TestCallbackCapacitiesDoNotInventAnOwnerResult(t *testing.T) {
 			}
 			defer release()
 			_, err = CallHost(t.Context(), ref, method, "", callbackInput{1})
-			var failure *Failure
+			var failure *contractsdk.Refusal
 			if err == nil || errors.As(err, &failure) {
 				t.Fatalf("capacity failure became a known business result: %v", err)
 			}
@@ -449,5 +450,68 @@ func TestPublicCallbacksAreReentrantThroughARealHeadlessBackend(t *testing.T) {
 	value, err := Call[callbackParentInput, int64](ctx, session, "test.backend/outer", callbackParentInput{ref, 5})
 	if err != nil || value != 15 {
 		t.Fatalf("nested headless invocation value=%d error=%v", value, err)
+	}
+}
+
+func TestBackgroundRPCInvocationIsValidatedAfterAuthentication(t *testing.T) {
+	host := newTestCallbacks(t)
+	session := new(sdk.ClientSession)
+	host.AdmitSession(session)
+	var calls atomic.Int32
+	owner := context.WithValue(t.Context(), callbackOwnerKey{}, "activation")
+	original := contractsdk.Invocation{ID: "original", Origin: contractsdk.Automatic, Target: contractsdk.Target{Scope: "installation", Reference: "owner"}}
+	if err := host.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		invocation, err := InvocationFromContext(r.Context())
+		if err != nil || invocation != original || r.Context().Value(callbackOwnerKey{}) != "activation" {
+			http.Error(w, "wrong caller", 500)
+			return
+		}
+		calls.Add(1)
+		w.WriteHeader(http.StatusNoContent)
+	})); err != nil {
+		t.Fatal(err)
+	}
+	ref, release, err := host.OpenRPCWithInvocation(owner, session, callbackTestLimits, func(ctx context.Context, v contractsdk.Invocation) (context.Context, error) {
+		if v != original {
+			return nil, errors.New("different caller")
+		}
+		return WithInvocation(ctx, v)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	value, err := json.Marshal(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		header     string
+		credential string
+		want       int
+	}{
+		{string(value), ref.Credential, http.StatusNoContent},
+		{`{"id":"forged","origin":"human","target":{"scope":"installation","reference":"owner"}}`, ref.Credential, http.StatusForbidden},
+		{`{"unknown":true}`, ref.Credential, http.StatusBadRequest},
+		{string(value), "wrong", http.StatusGone},
+	} {
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, ref.Endpoint+"v2/rpc", strings.NewReader(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.Header.Set("Authorization", test.credential)
+		request.Header.Set("Flame-Call", ref.Call)
+		request.Header.Set(InvocationHeader, test.header)
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = response.Body.Close()
+		if response.StatusCode != test.want {
+			t.Fatalf("status=%d,want %d", response.StatusCode, test.want)
+		}
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("refused work reached Core %d times", calls.Load())
 	}
 }

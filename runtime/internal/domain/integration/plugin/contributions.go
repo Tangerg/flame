@@ -28,11 +28,12 @@ func (id ContributionID) Validate() error {
 // Contribution is an admitted contract-to-export declaration. Composition and
 // role semantics belong to Contract; they are not independently authored here.
 type Contribution struct {
-	ID       ContributionID
-	Server   mcpserver.ServerName
-	Export   string
-	Contract jsoninput.Input
-	Requires []Requirement
+	Background bool
+	ID         ContributionID
+	Server     mcpserver.ServerName
+	Export     string
+	Contract   jsoninput.Input
+	Requires   []Requirement
 }
 
 // Requirement names one collaborator of this contribution. An optional

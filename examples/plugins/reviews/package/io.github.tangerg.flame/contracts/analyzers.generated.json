@@ -1,1 +1,40 @@
-{"protocol":"io.github.tangerg.flame/backend/2026-10-13.4","reference":"io.github.tangerg.flame.examples/reviews.analyzers","composition":"collection","scope":"installation","optional":true,"ordering":"canonicalKeys","value":{"$defs":{"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Analyzer":{"additionalProperties":false,"properties":{"contribution":{"type":"string"},"title":{"type":"string"}},"required":["title","contribution"],"type":"object"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"contribution":{"type":"string"},"title":{"type":"string"}},"required":["title","contribution"],"type":"object"},"applicability":{"properties":{"attributes":{"properties":{"reviewStatus":{"const":"open"}},"required":["reviewStatus"],"type":"object"}},"required":["attributes"],"type":"object"}}
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-14.1",
+  "reference": "io.github.tangerg.flame.examples/reviews.analyzers",
+  "composition": "collection",
+  "scope": "installation",
+  "optional": true,
+  "ordering": "canonicalKeys",
+  "value": {
+    "$defs": {
+      "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Analyzer": {
+        "additionalProperties": false,
+        "properties": {
+          "contribution": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "required": ["title", "contribution"],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "contribution": { "type": "string" },
+      "title": { "type": "string" }
+    },
+    "required": ["title", "contribution"],
+    "type": "object"
+  },
+  "applicability": {
+    "properties": {
+      "attributes": {
+        "properties": { "reviewStatus": { "const": "open" } },
+        "required": ["reviewStatus"],
+        "type": "object"
+      }
+    },
+    "required": ["attributes"],
+    "type": "object"
+  }
+}

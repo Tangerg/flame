@@ -19,9 +19,11 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWd
   title: string;
 }
 
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fSnapshot;
+export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput =
+  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fSnapshot;
 
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fFindings;
+export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput =
+  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fFindings;
 
 export interface MethodInputs {
   "io.github.tangerg.flame.examples/reviews.analyze": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput;
@@ -30,7 +32,17 @@ export interface MethodOutputs {
   "io.github.tangerg.flame.examples/reviews.analyze": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput;
 }
 export const METHODS = {
-  "io.github.tangerg.flame.examples/reviews.analyze": { kind: "query", target: "installation" },
+  "io.github.tangerg.flame.examples/reviews.analyze": {
+    kind: "query",
+    target: "installation",
+  },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.4", reference: "io.github.tangerg.flame.examples/reviews.analyzer", composition: "collection", scope: "installation", contract: "ad2ae1e432bec51f3ec51cf1507d31cec9b7b8cb05d6857a177dbcba2cd7672c" } as const;
-export const CAPABILITY_JSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"status\":{\"enum\":[\"open\",\"resolved\"],\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"status\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"status\":{\"enum\":[\"open\",\"resolved\"],\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"status\",\"revision\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"io.github.tangerg.flame.examples/reviews.analyze\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding\":{\"additionalProperties\":false,\"properties\":{\"code\":{\"type\":\"string\"},\"message\":{\"type\":\"string\"},\"reviewId\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"code\",\"message\",\"reviewId\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Findings\":{\"additionalProperties\":false,\"properties\":{\"findings\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding\"},\"type\":\"array\"}},\"required\":[\"findings\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"findings\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding\"},\"type\":\"array\"}},\"required\":[\"findings\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/backend/2026-10-13.4\",\"reference\":\"io.github.tangerg.flame.examples/reviews.analyzer\",\"scope\":\"installation\"}";
+export const CAPABILITY = {
+  protocol: "io.github.tangerg.flame/backend/2026-10-14.1",
+  reference: "io.github.tangerg.flame.examples/reviews.analyzer",
+  composition: "collection",
+  scope: "installation",
+  contract: "3405cd7184bddab5650f3531c31fa0f83e7b30dfcab7d14f28963054d9cac06c",
+} as const;
+export const CAPABILITY_JSON =
+  '{"composition":"collection","methods":[{"description":"","input":{"$defs":{"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot":{"additionalProperties":false,"properties":{"id":{"type":"string"},"revision":{"allOf":[{"maximum":9223372036854775807,"minimum":-9223372036854775808}],"type":"integer"},"status":{"enum":["open","resolved"],"type":"string"},"title":{"type":"string"}},"required":["id","title","status","revision"],"type":"object"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"id":{"type":"string"},"revision":{"allOf":[{"maximum":9223372036854775807,"minimum":-9223372036854775808}],"type":"integer"},"status":{"enum":["open","resolved"],"type":"string"},"title":{"type":"string"}},"required":["id","title","status","revision"],"type":"object"},"kind":"query","name":"io.github.tangerg.flame.examples/reviews.analyze","output":{"$defs":{"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding":{"additionalProperties":false,"properties":{"code":{"type":"string"},"message":{"type":"string"},"reviewId":{"type":"string"},"revision":{"allOf":[{"maximum":9223372036854775807,"minimum":-9223372036854775808}],"type":"integer"}},"required":["code","message","reviewId","revision"],"type":"object"},"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Findings":{"additionalProperties":false,"properties":{"findings":{"items":{"$ref":"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding"},"type":"array"}},"required":["findings"],"type":"object"}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"findings":{"items":{"$ref":"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding"},"type":"array"}},"required":["findings"],"type":"object"},"target":"installation"}],"protocol":"io.github.tangerg.flame/backend/2026-10-14.1","reference":"io.github.tangerg.flame.examples/reviews.analyzer","scope":"installation"}';

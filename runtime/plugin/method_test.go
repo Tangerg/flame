@@ -24,7 +24,7 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 			result *Result[string]
 		}{
 			{"neither", &Result[string]{}},
-			{"both", &Result[string]{Value: &value, Failure: &Failure{Code: "refused", Message: "failed"}}},
+			{"both", &Result[string]{Value: &value, Failure: &contractsdk.Refusal{Code: "refused", Message: "failed"}}},
 		} {
 			t.Run(caller.name+"/"+reply.name, func(t *testing.T) {
 				session := replySession(t, reply.result)
@@ -37,7 +37,7 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 				if err == nil {
 					t.Fatal("malformed backend reply succeeded")
 				}
-				if _, classified := errors.AsType[*Failure](err); classified {
+				if _, classified := errors.AsType[*contractsdk.Refusal](err); classified {
 					t.Fatalf("malformed backend reply became a classified failure: %v", err)
 				}
 			})
@@ -71,7 +71,7 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 				if err == nil {
 					t.Fatal("failed operation succeeded")
 				}
-				failure, known := errors.AsType[*Failure](err)
+				failure, known := errors.AsType[*contractsdk.Refusal](err)
 				if known != (cause == refused) {
 					t.Fatalf("known business classification = %v; cause = %v", err, cause)
 				}
@@ -229,9 +229,9 @@ func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client)
 }
 
 func TestCallsPreserveBackendFailureClassification(t *testing.T) {
-	session := replySession(t, &Result[string]{Failure: &Failure{Code: "refused", Message: "failed"}})
+	session := replySession(t, &Result[string]{Failure: &contractsdk.Refusal{Code: "refused", Message: "failed"}})
 	_, err := CallCommand[string, string](t.Context(), session, "flame.test/reply.v1", "command", "input")
-	failure, ok := errors.AsType[*Failure](err)
+	failure, ok := errors.AsType[*contractsdk.Refusal](err)
 	if !ok || failure.Code != "refused" || failure.Message != "failed" || err.Error() != "failed" {
 		t.Fatalf("backend classification lost: %v", err)
 	}

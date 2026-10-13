@@ -114,7 +114,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			changed := testPrompt()
 			changed.UserPrompt = "changed input"
 			_, err = pluginsdk.CallHost(t.Context(), grant, method, "first", changed)
-			failure, known := errors.AsType[*pluginsdk.Failure](err)
+			failure, known := errors.AsType[*capability.Refusal](err)
 			if !known || failure.Code != "command_conflict" {
 				t.Fatalf("changed original input did not conflict: %v", err)
 			}

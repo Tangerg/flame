@@ -90,7 +90,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err == nil {
 		t.Fatal("withheld maintenance response became observed success")
 	}
-	if _, known := errors.AsType[*pluginsdk.Failure](err); known {
+	if _, known := errors.AsType[*capability.Refusal](err); known {
 		t.Fatalf("transport loss became known refusal: %v", err)
 	}
 	if _, err := os.Stat(evidence); err != nil {

@@ -185,7 +185,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if err != nil {
 			return err
 		}
-		value := plugin.Contribution{ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()}
+		value := plugin.Contribution{Background: w.Background, ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()}
 		for _, required := range w.Requires {
 			if !plugin.ValidResourcePath(required.Contract) || !strings.HasPrefix(required.Contract, plugin.Namespace+"/") {
 				return plugin.ErrInvalid

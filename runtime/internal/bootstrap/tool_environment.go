@@ -67,7 +67,12 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return toolEnvironment{}, err
 	}
-	mcpPool, err := mcpconnection.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish)
+	admission := plugins.NewAdmission()
+	commands, err := plugins.NewCommands(cfg.Stores.PluginCommands, admission)
+	if err != nil {
+		return toolEnvironment{}, err
+	}
+	mcpPool, err := mcpconnection.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, commands)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
@@ -81,11 +86,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 			return errors.Join(mcpPool.Shutdown(context.WithoutCancel(ctx)), deps.modelServices.callbacks.Close())
 		})},
 	}
-	environment.admission = plugins.NewAdmission()
-	commands, err := plugins.NewCommands(cfg.Stores.PluginCommands, environment.admission)
-	if err != nil {
-		return environment, err
-	}
+	environment.admission = admission
 	commandInvalidations, err := pluginservices.CommandInvalidations(deps.publish)
 	if err != nil {
 		return environment, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/identity"
@@ -26,33 +27,33 @@ type Store interface {
 	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDResolver, models app.ModelAdmitter, connect RunConnector) error {
+func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDResolver, models app.ModelAdmitter, connect RunConnector) (*pluginsdk.Backend, error) {
 	if connect == nil {
-		return errors.New("schedules: Runtime Run connector is required")
+		return nil, errors.New("schedules: Runtime Run connector is required")
 	}
 	contracts, err := rpc.NewContracts()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	backend, err := pluginsdk.NewBackend(server)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	coordinator, err := app.New(app.Dependencies{Store: store, Paths: paths, Models: models, NewScheduleID: func() string { return schedule.IDPrefix + uuid.NewString() }})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	scanner, err := app.NewScanner(store, store, func() string { return identity.SessionPrefix + uuid.NewString() }, func() string { return identity.RunPrefix + uuid.NewString() })
 	if err != nil {
-		return err
+		return nil, err
 	}
 	modelTools, err := tools.BuildSchedules(toolCommands{coordinator: coordinator, db: db})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := pluginsdk.RegisterTools(server, modelTools...); err != nil {
-		return err
+		return nil, err
 	}
 	if err := errors.Join(
 		managedmcp.RegisterReceipts(backend, db),
@@ -108,12 +109,45 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			return dispatchRun(ctx, db, store, connect, command)
 		}),
 	); err != nil {
-		return err
+		return nil, err
 	}
 	if err := backend.BindCapability("schedules", contracts.Capability); err != nil {
-		return err
+		return nil, err
 	}
-	return backend.Publish()
+	if err := backend.OnSetup(func(ctx context.Context, setup pluginsdk.Setup) (io.Closer, error) {
+		values, err := setup.Contributions()
+		if err != nil {
+			return nil, err
+		}
+		for _, value := range values {
+			if value.Export != "schedules" || value.Background == nil {
+				continue
+			}
+			ref, err := pluginsdk.CallbackFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			host, close, err := connect(ctx, ref)
+			if err != nil {
+				return nil, err
+			}
+			namespace, err := host.Namespace(ctx)
+			if err == nil {
+				err = checkRuntime(ctx, db, namespace)
+			}
+			if err != nil {
+				return nil, errors.Join(err, close())
+			}
+			return runtimeLink{close: close}, nil
+		}
+		return nil, nil
+	}); err != nil {
+		return nil, err
+	}
+	if err := backend.Publish(); err != nil {
+		return nil, err
+	}
+	return backend, nil
 }
 
 type toolCommands struct {
@@ -155,4 +189,27 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 		return rpc.Ack{}, t.coordinator.Delete(ctx, id)
 	})
 	return rpc.DecodeError(err)
+}
+
+// The backend joins the activation's callback connection before its private DB closes.
+type runtimeLink struct{ close func() error }
+
+func (l runtimeLink) Close() error { return l.close() }
+
+func checkRuntime(ctx context.Context, db *sql.DB, namespace string) error {
+	if namespace == "" {
+		return errors.New("schedules: Runtime store namespace is required")
+	}
+	var original string
+	err := db.QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if original != namespace {
+		return errors.New("schedules: captured work belongs to another Runtime store")
+	}
+	return nil
 }

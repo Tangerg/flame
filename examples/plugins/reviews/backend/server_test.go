@@ -176,7 +176,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}
-	if _, classified := errors.AsType[*pluginsdk.Failure](err); classified {
+	if _, classified := errors.AsType[*capability.Refusal](err); classified {
 		t.Fatalf("unexpected storage error became a known refusal: %v", err)
 	}
 }

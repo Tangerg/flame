@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -55,7 +56,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 			if found != test.found || value != test.value {
 				t.Fatalf("receipt = %q, %t, %v", value, found, err)
 			}
-			failure, known := errors.AsType[*Failure](err)
+			failure, known := errors.AsType[*capability.Refusal](err)
 			switch {
 			case test.failure != "":
 				if !known || failure.Code != test.failure {

@@ -86,7 +86,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options PluginCa
 		return zero, errors.Join(ErrInvalidResponse, err)
 	}
 	if result.Failure != nil {
-		return zero, &pluginsdk.Failure{Code: result.Failure.Code, Message: result.Failure.Message}
+		return zero, &capability.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
 	if err := m.method.ValidateOutput(result.Output); err != nil {
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(ErrInvalidResponse, err))
