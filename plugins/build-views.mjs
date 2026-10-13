@@ -1,15 +1,6 @@
 import assert from "node:assert/strict";
-import {
-  readFile,
-  writeFile,
-  readdir,
-  access,
-  mkdtemp,
-  rm,
-} from "node:fs/promises";
+import { readFile, writeFile, readdir, access } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { rolldown } from "rolldown";
 
 const require = createRequire(import.meta.url);
@@ -45,7 +36,7 @@ for (const directory of await readdir(root, { withFileTypes: true })) {
   const view = views[0];
   const compiler = await rolldown({
     input: source.pathname,
-    platform: view.type === "static" ? "node" : "browser",
+    platform: "browser",
     resolve: {
       alias: {
         react: [
@@ -75,33 +66,11 @@ for (const directory of await readdir(root, { withFileTypes: true })) {
   let content;
   try {
     const bundle = await compiler.generate({
-      format: view.type === "static" ? "cjs" : "iife",
+      format: "iife",
       minify: true,
     });
     const script = bundle.output[0].code;
-    if (view.type === "static") {
-      const temporary = await mkdtemp(join(tmpdir(), "flame-static-view-"));
-      let render;
-      try {
-        const module = join(temporary, "view.cjs");
-        await writeFile(module, script);
-        render = require(module).render;
-      } finally {
-        await rm(temporary, { recursive: true, force: true });
-      }
-      const { icons } = await import("@flame/icons/catalog");
-      const drawings = await Promise.all(
-        icons.map(async (icon) => ({
-          ...icon,
-          svg: await readFile(
-            require.resolve(`@flame/icons/svg/24/${icon.name}.svg`),
-            "utf8",
-          ),
-        })),
-      );
-      content = render(drawings);
-    } else
-      content = `<div id="root"></div><script>${script.replace(/<\/script/gi, "<\\/script")}</script>`;
+    content = `<div id="root"></div><script>${script.replace(/<\/script/gi, "<\\/script")}</script>`;
   } finally {
     await compiler.close();
   }

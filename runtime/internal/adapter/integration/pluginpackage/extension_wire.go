@@ -34,13 +34,13 @@ type wirePointValue struct {
 }
 
 type wireComponent struct {
-	ID           plugin.ContributionID `json:"id"`
-	Title        string                `json:"title"`
-	Scope        string                `json:"scope"`
-	Placement    string                `json:"placement"`
-	Entry        string                `json:"entry"`
-	Export       string                `json:"export"`
-	Contribution plugin.ContributionID `json:"contribution"`
+	ID           plugin.ContributionID  `json:"id"`
+	Title        string                 `json:"title"`
+	Scope        string                 `json:"scope"`
+	Placement    string                 `json:"placement"`
+	Entry        string                 `json:"entry"`
+	Export       string                 `json:"export"`
+	Contribution *plugin.ContributionID `json:"contribution,omitzero"`
 }
 
 type wireInput struct {

@@ -232,13 +232,20 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 	})
 	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
 	admitContributions(members["components"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "components"}, func(w wireComponent) error {
+		var contribution plugin.ContributionID
+		if w.Contribution != nil {
+			if err := w.Contribution.Validate(); err != nil {
+				return err
+			}
+			contribution = *w.Contribution
+		}
 		if !plugin.ValidResourcePath(w.Entry) || !strings.HasPrefix(w.Entry, plugin.Namespace+"/") {
 			return plugin.ErrInvalid
 		}
 		if _, err := read(ctx, root, w.Entry, MaxPackageBytes); err != nil {
 			return err
 		}
-		return release.AdmitComponent(plugin.ClientComponent{ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: w.Contribution})
+		return release.AdmitComponent(plugin.ClientComponent{ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component == "renderers" {

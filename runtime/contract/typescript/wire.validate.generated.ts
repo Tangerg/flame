@@ -2479,7 +2479,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     placement: text(),
     scope: text(),
     title: text(),
-  }, ["contribution", "entry", "export", "id", "placement", "scope", "title"]),
+  }, ["entry", "export", "id", "placement", "scope", "title"]),
   PluginCollaborator: object({
     bindings: array(ref(() => CHECKS.PluginOperationBinding)),
     id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
@@ -2767,7 +2767,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   PluginViewResource: object({
     html: allOf([text(), maxLength(524288)]),
   }, ["html"]),
-  PluginViewType: enumOf(["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"]),
+  PluginViewType: enumOf(["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics"]),
   ProblemData: allOf([
     object({
       activeRun: ref(() => CHECKS.ActiveRunRef),

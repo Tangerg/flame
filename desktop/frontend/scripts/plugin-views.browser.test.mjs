@@ -43,7 +43,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff, recorded result, captured file, current-client diagnostics and static content reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff, recorded result, captured file, current-client diagnostics reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -1077,27 +1077,6 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     );
     await page.waitForFunction(() => window.viewStatus?.type === "failure");
     assert.match(await page.evaluate(() => window.failure), /could not be displayed/);
-    assert.equal(await page.locator("iframe").count(), 0);
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
-    const galleryHTML = await readFile(
-      new URL("../../../plugins/icon-gallery/views/icon-gallery.html", import.meta.url),
-      "utf8",
-    );
-    await page.evaluate(
-      (html) => void window.mount(html, { format: "flame.static.v1" }),
-      galleryHTML,
-    );
-    await frame.getByRole("heading", { name: "Flame icon gallery" }).waitFor();
-    await reviewAppearance("icon-gallery");
-    await frame.getByRole("searchbox", { name: "Filter icons" }).fill("file-diff");
-    await frame.getByText("FileDiff", { exact: true }).waitFor();
-    await expect(frame.getByText("FileText", { exact: true })).toBeHidden();
-    assert.ok((await frame.locator("article:visible svg path").count()) > 0);
-    await frame.getByRole("searchbox", { name: "Filter icons" }).fill("no-such-flame-glyph");
-    await expect(frame.getByRole("status")).toContainText(/0 of \d+ icons/);
-    assert.equal(await page.evaluate(() => window.reads.length), 0);
-    await page.evaluate(() => window.dispose());
     assert.equal(await page.locator("iframe").count(), 0);
     await page.reload();
     await page.waitForFunction(() => window.mount);

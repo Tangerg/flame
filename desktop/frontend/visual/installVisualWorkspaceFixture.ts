@@ -1,7 +1,6 @@
 import diagnosticsHTML from "../../../plugins/diagnostics/views/diagnostics.html?raw";
-import galleryHTML from "../../../plugins/icon-gallery/views/icon-gallery.html?raw";
+import { Gallery } from "../../../plugins/icon-gallery/src/component";
 import { ClientDiagnosticsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/ClientDiagnosticsPackageView";
-import { PackageView } from "@/plugins/builtin/settings/plugins-pane/ui/PackageView";
 import {
   createClientViewReads,
   readClientDiagnostics,
@@ -425,22 +424,11 @@ function workspaceDataPlugin(
           }),
       });
       const galleryLifetime = ctx.lifetime("visual-icon-gallery");
-      const galleryReads = createClientViewReads(
-        { readView: async () => ({ html: galleryHTML }) },
-        { installationId: "visual", digest: "visual", viewId: "icon-gallery" },
-        () => ({ format: "flame.static.v1" }),
-      );
       galleryLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:icon-gallery",
         title: "Icon gallery",
         dock: "workspace",
-        component: () =>
-          createElement(PackageView, {
-            reads: galleryReads,
-            title: "Icon gallery",
-            lifetime: galleryLifetime,
-            carrier: createBrowserHost().pluginCarrier,
-          }),
+        component: Gallery,
       });
       const lifetime = ctx.lifetime("visual-trajectory");
       const read = async () => ({ data: visualTrajectory(snapshot) });

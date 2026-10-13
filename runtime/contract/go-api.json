@@ -3608,11 +3608,6 @@
           "value": "\"skills\""
         },
         {
-          "name": "PluginViewStatic",
-          "type": "PluginViewType",
-          "value": "\"static\""
-        },
-        {
           "name": "PluginViewUsageSummary",
           "type": "PluginViewType",
           "value": "\"usageSummary\""
@@ -3690,7 +3685,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.7\""
+          "value": "\"2026-10-13.8\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8694,7 +8689,7 @@
             {
               "name": "Contribution",
               "type": "string",
-              "tag": "json:\"contribution\""
+              "tag": "json:\"contribution,omitzero\""
             }
           ],
           "methods": [

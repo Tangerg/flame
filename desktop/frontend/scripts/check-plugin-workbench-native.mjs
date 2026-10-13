@@ -518,7 +518,6 @@ try {
     "skills",
     "diff",
     "diagnostics",
-    "icon-gallery",
   ]) {
     const installation = defaults.find((item) => item.selected.name === `flame.${name}`);
     assert.ok(installation, `default ${name} package must be installed`);
@@ -1131,24 +1130,6 @@ try {
   console.log(
     "Client diagnostics: renewed read admission, trusted clear, retired page and unchanged Runtime usage passed",
   );
-
-  const galleryPage = await openPanel(installed["icon-gallery"].title, "Flame icon gallery");
-  await guest(
-    galleryPage.id,
-    'const search = document.querySelector("#filter"); search.value = "file-diff"; search.dispatchEvent(new Event("input")); true',
-  );
-  assert.match(
-    await guest(galleryPage.id, 'document.querySelector("#icons").innerText'),
-    /FileDiff/,
-  );
-  await rpc("plugins.setEnablement", {
-    installationId: installed["icon-gallery"].installationId,
-    enabled: false,
-  });
-  await noPages();
-  await assert.rejects(guest(galleryPage.id, "document.body.innerText"), /page is not ready/);
-  await closeWithdrawnPanel(installed["icon-gallery"], galleryPage.id);
-  console.log("Icon gallery: static released SVGs, local search and native retirement passed");
 
   for (const name of Object.keys(installed))
     await rpc("plugins.uninstall", { installationId: installed[name].installationId });

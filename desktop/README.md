@@ -424,11 +424,12 @@ Runtime or clear observations. The trusted Clear button calls the existing store
 and retires the displayed page. Missing or competing Diagnostics contributions open
 the contribution catalogue from Run recovery controls.
 
-The optional [Icon gallery](../plugins/icon-gallery/plugin.json) is a static view generated
-from `@flame/icons` public catalog and SVG exports. It receives no product data and
-filters immutable local cards. The compiled gallery and advanced settings showcase
-are removed. The frontend resource check rejects stale generated HTML for both the
-Markdown renderer and icon gallery.
+The optional [Icon gallery](../plugins/icon-gallery/plugin.json) is an ordinary React
+component built from `@flame/icons` public catalog and React drawings. It filters
+immutable local cards with Hooks and uses the workbench's shared React/UI modules.
+It requires no callable contribution or backend. The resource check rejects stale
+prebuilt ESM. Its former static HTML carrier is removed; current graphical execution
+has not been qualified in this refactor because UI/E2E checks are excluded.
 
 An admitted `sessionTrajectory` view registers a Session dock contribution through the
 existing Dougong Host. Runtime owns package admission and canonical trajectory data.
@@ -594,7 +595,8 @@ and unchanged canonical trajectory. The application exits and cleanup completes 
 the single terminal result. File renderers covers a captured remote Markdown file,
 read renewal, physical retirement and preserved canonical source after disablement.
 Diagnostics covers local reads and trusted buffer clearing without changing canonical
-Runtime usage; the static icon gallery covers SVG display, filtering and retirement.
+Runtime usage. The migrated ESM icon gallery has no current graphical acceptance
+claim; the retired static-carrier cases were removed.
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 
@@ -602,7 +604,7 @@ The following validation records predate removal of installation approval. They 
 qualify the current enablement contract; UI and E2E execution is excluded from that refactor.
 
 The production native workbench gate also qualifies Tool results, File renderers,
-Diagnostics and static icon views. Recorded data refresh, trusted clearing, withdrawal,
+Diagnostics. Recorded data refresh, trusted clearing, withdrawal,
 unavailable-view presentation, physical retirement and canonical data preservation pass.
 
 Capacity cases preserve and compare complete initial and cursor-continuation pages above

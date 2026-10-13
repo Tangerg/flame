@@ -74,7 +74,7 @@ admitted read projection, pending request and pagination history; individual pag
 own only filters, disclosures and the rendering of their canonical data. Errors
 retain the last accepted snapshot and cursor. Appearance preferences remain with
 the Host, and its shared v3 bootstrap updates the existing page without rereading
-business data. Static icon content is rendered at build time from the icon owner.
+business data. The icon gallery is an ordinary React component built from the icon owner's public exports. It has no callable contribution or backend process.
 
 Build `icons` and `ui` first, then run:
 
@@ -83,6 +83,10 @@ npm ci --prefix plugins
 npm run build --prefix plugins
 npm run check --prefix plugins
 ```
+
+`build-components.mjs` uses the public SDK to build each `src/component.tsx` as
+prebuilt ESM into its declared namespace resource. `--check` verifies exact
+reproducibility. The graphical loader supplies the actual shared host modules.
 
 `build-views.mjs` builds each `src/view.tsx` into its manifest-declared resource and
 checks the Runtime page bound. Generated HTML is tracked for installation; source

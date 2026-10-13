@@ -2,52 +2,41 @@
 
 ## Current stage
 
-Stage 3s committed in 61180b25 implements the installed Reviews Board loading entrance. The strict
-namespace declaration publishes installation-scoped workspace components bound
-to a same-release callable contribution. Generic admission does not import Reviews
-business types. Core resource subscriptions hold ephemeral URL authority; module
-and asset GETs enter the same public resource query with the captured caller,
-recheck exact enabled release/component and verify package integrity. Scope
-cancellation/shutdown revokes access without another durable store or retained
-execution dependency. Persistent Runtime bearer credentials are absent from URLs.
+Stage 3t migrates the bundled Icon gallery to an ordinary public React component.
+Its prebuilt ESM bundles the canonical icon owner's public catalog/drawings and
+imports the host's shared React/JSX/UI modules. Search is local rendering state.
+The namespace declaration has no callable contribution or backend; Domain/package/
+Protocol/SDK/client admission now supports that actual content-only requirement.
+An authored empty, null, malformed or unknown callable reference remains refused.
+Reviews still declares and requires its own callable binding.
 
-The workbench builds 27 public module mappings from host React/DOM/JSX/SDK/UI
-exports through the existing Vite/Rolldown graph. Installed prebuilt ESM loads
-through relative resource URLs and renders in the ordinary React tree. Per-window
-module identity stays fixed; changed evaluated releases or Runtime generations
-require reload. No module unload or sandboxing is claimed. Existing Dougong scope
-joins import completion, resource subscriptions and SDK I/O. Resource loss retires
-its module scope and exposes unavailable presentation; rendering instances derive
-availability from their owner signals and cancel observation on unmount.
+The old Icon gallery HTML, server-side markup builder, static view enum and host
+carrier branch are deleted. Existing fixture DTOs are migrated; obsolete browser/
+native static-carrier cases are removed without adding or running UI tests.
+Core protocol is 2026-10-13.8; backend identity remains .4. No business storage
+format changes. Remaining feature-specific HTML views/renderers, other placements,
+dependency status/retention, model streaming and all-consumer migration remain open.
 
-Production Core/CLI/Reviews build, shared TS/SDK/Board/Desktop type checks, changed
-frontend lint and production Vite build pass. A backend test exercises real Endpoint
-subscription ownership, original caller preservation, withdrawal and cancellation
-(1.253s). The leased HTTP path refuses unknown authority without exposing a bearer
-credential; other methods retain the bearer gate (0.873s). The built import map
-points at actual emitted ESM files. No graphical rendering, UI/E2E/screenshot or
-native window qualification was run. Compiled graph evidence does not close the
-actual shared Hooks/provider or complete graphical lifecycle acceptance.
+Production Core/CLI/Reviews build, Core generation, shared TS/public SDK/portable
+components/Reviews/Desktop type checks, changed source lint, production Vite build,
+ESM exact rebuild and remaining HTML exact rebuild pass. The component-only package
+admission regression passes in 0.626s. Domain/Delivery/Bootstrap test sources compile;
+Bootstrap TestMain was not executed. Final full/vet/race/integration checks remain
+queued. No graphical rendering, UI/E2E/screenshot or native window qualification.
 
-Core protocol advances to 2026-10-13.7; backend identity remains .4. The full goal
-remains active. Remaining HTML carriers/business view branches, static/other
-placements, complete dependency semantics, durable UI reconciliation across reload,
-models, streaming and all-consumer migration remain open. Current components use
-one own callable contribution; its generalization must follow actual remaining
-static/multi-contract consumers rather than an ambient service locator.
-
-Main d9d0c452 is merged in 06cafa4c. One executor conflict preserves main's
-pure Resume preflight/accepted activation separation and the public installation
-publication owner. Plugin actor/original command state remains intact. Merged
-Core/CLI/Reviews build and execution/Runs/Bootstrap test source compilation pass.
-RPC client closure now has one authoritative cancellation signal; resource
-subscriptions settle on that closure, fixing an otherwise unjoined cleanup. Its
-non-UI shared client contract regression passes in 86ms. User inputs remain read-only.
-
-Verification policy: development first. Full/race/vet/cross-module execution is
-concentrated at the final phase; no frontend UI/E2E/screenshot testing.
+Main synchronization and final round cleanup are in progress. User design inputs
+remain read-only, with SHA-256 unchanged. Verification policy remains development
+first, with final execution concentrated at the final phase.
 
 ## Completed
+
+- Stage 3t: component-only declaration admission and optional callable SDK context;
+  ordinary Icon gallery ESM from canonical icon exports, local Hooks filtering,
+  shared host imports and reproducible package-resource build.
+- Stage 3t: delete static HTML/source generation, static Domain/Protocol kind and
+  Desktop carrier dispatch; update current docs and retired carrier fixtures.
+  Appropriate final graphical execution is not claimed.
+
 
 - Stage 3s (61180b25): declared ordinary components, public resource query/subscription,
   subscription-owned URL authority, current enabled exact-release/package integrity
@@ -223,22 +212,22 @@ concentrated at the final phase; no frontend UI/E2E/screenshot testing.
 
 ## Next
 
-1. Establish exact-release module/resource loading and shared host module mapping,
-   bind Reviews Board through public placement and existing Dougong ownership,
-   then replace the existing closed HTML view/carrier paths with their real owners.
-   Prove the actual common React/provider instances; a compiled artifact is not proof.
+1. Migrate remaining real pages/renderers to public components and delete their
+   closed kinds, feature-specific carrier branches and obsolete resource paths.
+   Keep exact-release loading and shared module identity with their current owners.
 2. Complete remaining point lifecycle/scoped composition, named dependency status/
    retention and actual Tool/automatic/cross-plugin consumer migration. Preserve
    original command/receipt/Run acceptance and execution dependency ownership.
 3. Complete canonical model execution and installed remote streaming decorators,
    explicit frozen order, cancellation/backpressure and inner evidence preservation.
-4. Migrate Memory, Schedules and remaining components/owners; prove independent
-   author parity and complete the requirement-level final verification/deletion audit.
+4. Finish independent author parity and the complete requirement-level final
+   verification/deletion audit. No graphical execution is claimed by builds.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Permit an absent own callable contribution for actual content-only components; keep explicitly authored references strict | Icon gallery requires shared React/UI and immutable package content, not a backend; an invented operation would add an ownerless contract | Dummy backend/callable capability, static HTML compatibility, implicit service discovery or weakening invalid-reference admission |
 | 2026-10-13 | Expose the RPC owner cancellation signal to technical resource subscriptions and use it as the sole client closed fact | Clearing stream handlers during client shutdown otherwise strands lease joining; the resource observer must learn the original connection outcome | A second closed boolean, idle lease timers, suppressing cleanup errors or a separate client lifecycle root |
 | 2026-10-13 | Keep resource URL authority inside an existing Core subscription and route each asset read through the public resource query | Native/browser ESM and relative assets need ordinary URLs without persistent bearer credentials; subscription cancellation supplies an existing stop/join owner | Tokens in durable data, permanent unsigned package URLs, timers/heartbeat leases, bypassing exact source/integrity checks, Blob source rewriting or a second asset/installation database |
 | 2026-10-13 | Build host-provided module exports in the actual workbench graph; require reload after evaluated release/Runtime replacement | React Hooks and provider identities must refer to the actual renderer; ESM disposal cannot unload code or top-level effects | A duplicate React bundle, ambient global module lookup, runtime TSX/new Function, unbounded unique hot-reload URLs or a sandbox claim |
@@ -362,6 +351,23 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3t development and component-only admission
+
+- Passed: production Runtime/CLI/Reviews build; Core generation; shared Runtime TS,
+  public SDK, portable component, Reviews and Desktop type checks; changed component/
+  builder/client lint; production Vite build and Prettier for changed portable sources.
+- Passed: component ESM exact rebuild (399,508 bytes, including the canonical icon
+  drawings) and unchanged remaining HTML resource exact rebuild.
+- Passed focused backend execution: component-only admission needs no server or
+  callable and does not evaluate package code; empty/null/invalid/unknown callable
+  declarations are refused (0.626s). Domain/Delivery/Bootstrap test binaries compile.
+- Corrected development failures: removal left two unused PackageView imports;
+  deleting those imports restores Desktop type/build. A sample-update command used
+  the wrong CWD and made no edits; rerun at the worktree root updates both samples.
+- Not run: full/vet/race/cross-module execution, deferred to final phase; all UI/E2E/
+  screenshot/native execution, excluded. Existing GUI fixtures only migrate DTOs;
+  removed assertions target the retired static carrier, not the new ESM path.
 
 ### Stage 3s development and necessary resource contract evidence
 
@@ -726,6 +732,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3t advances Core to .8 and removes the static view kind. Rebuild clients and
+  installed packages together. Components without an own callable expose no binding;
+  authors invoking bindOperations must declare one. Icon code remains private bundled
+  content while React/JSX/UI come from the host graph. No backend/storage migration.
+
 
 - Stage 3s adds required components projection and resource query/subscription, advancing Core to .7. Rebuild all generated clients; backend protocol/private business formats stay unchanged. Current workspace component scope binds one own callable contribution; static/multi-contract components and remaining placements still need their real owner migration. Existing HTML carriers remain implementation debt. ESM evaluation cannot be canceled/unloaded; disablement retires supported resources and a changed evaluated generation requires window reload. Actual graphical qualification is not claimed.
 

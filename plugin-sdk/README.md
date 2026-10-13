@@ -2,7 +2,9 @@
 
 `@flame/plugin-sdk` is the public TypeScript boundary for ordinary installed React
 components. It exposes an explicit Runtime client, frozen installed contribution
-binding and owned cancellation signal. It has no application alias, state store,
+binding and owned cancellation signal. The binding is absent for a component
+without its own callable contribution; `bindOperations` refuses such a context.
+Static content uses ordinary Hooks and shared UI controls without a backend. It has no application alias, state store,
 ambient service lookup or private source import.
 
 `bindOperations` consumes the owner's generated `CAPABILITY_JSON` and

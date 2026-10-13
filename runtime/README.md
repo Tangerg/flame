@@ -86,6 +86,15 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-13.8
+
+Client components may omit their own callable contribution. The public SDK admits
+that context for component-only content and refuses `bindOperations` without a
+binding. An explicitly authored empty, null or unknown contribution remains invalid.
+The bundled icon gallery now ships ordinary ESM and uses shared React/UI controls;
+its static HTML resource, carrier branch and closed view enum are deleted. Rebuild
+all clients and plugin artifacts together. No business storage format changes.
+
 ## Protocol 2026-10-13.7
 
 Release projections include public `components`. A workspace component references
@@ -232,19 +241,19 @@ schema break: use a fresh
 Runtime data directory and retain the old directory separately. No old Memory or
 Schedule tables are imported, decoded or maintained in parallel.
 
-## Protocol 2026-10-11.4
+## Component-only packages
 
-`clientDiagnostics` and `static` are admitted graphical view kinds. Both read only
-a selected release resource through `plugins.readView`; neither admits Runtime
-trajectory, usage, memory, Skill or workspace queries. The trusted client projects its
-existing bounded telemetry buffer for Diagnostics. Collection and clearing retain
-that client's existing owner. Static pages receive no product data; the first consumer
-is an icon gallery generated from the canonical icon package's public exports.
-
-Rebuild Runtime, CLI and Desktop together for the new closed view enum. Install,
-install and enable the optional packages explicitly. Compiled Diagnostics and icon
-showcases are removed; there is no implicit installation, legacy view ID or resource
-fallback. Persisted data needs no conversion.
+A namespace declaration may publish ordinary `components` without callable
+contributions or a backend process. Each component declares installation scope,
+workspace placement, a namespace-local prebuilt ESM entry and its export name.
+An optional `contribution` binds an existing callable contribution from the same
+release. An authored unknown or malformed callable ID is refused; absence is valid
+for content-only components. Runtime admits resources without executing module code.
+The optional icon gallery is the first bundled component-only package. Its former
+static HTML view kind is removed. Graphical clients use the same subscription-owned
+exact-release module resources and shared React/UI graph as the Reviews Board.
+Diagnostics still uses its client's existing bounded telemetry owner and current
+HTML resource until its own component migration.
 
 ## Protocol 2026-10-11.3
 
@@ -981,7 +990,7 @@ before publishing its successor.
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
 `type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"`, `"skills"`,
-`"workspaceDiff"`, `"clientDiagnostics"` or `"static"`, and a portable
+`"workspaceDiff"` or `"clientDiagnostics"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,

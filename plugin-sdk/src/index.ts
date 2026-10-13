@@ -13,7 +13,7 @@ export { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/muta
 
 export interface ComponentContext {
   readonly runtime: FlameClient;
-  readonly binding: Readonly<PluginOperationBinding>;
+  readonly binding?: Readonly<PluginOperationBinding>;
   readonly signal: AbortSignal;
   track<T>(operation: Promise<T>): Promise<T>;
 }
@@ -69,6 +69,8 @@ export function bindOperations<
   Inputs,
   Outputs extends { [K in keyof Inputs]: unknown },
 >(context: ComponentContext, contract: string, target: Target) {
+  if (!context.binding)
+    throw new Error("component has no declared callable contribution");
   const binding = structuredClone(context.binding);
   const required = JSON.parse(contract) as Descriptor;
   const captured = structuredClone(target);

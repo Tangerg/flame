@@ -2757,7 +2757,7 @@ func (m MCPTool) ValidateWire() error {
 func (p PluginClientComponent) ValidateWire() error {
 	return collectWireViolations("PluginClientComponent",
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
 }
 
@@ -2860,7 +2860,7 @@ func (p PluginView) ValidateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("title", p.Title),
 		maxLength("title", p.Title, 128),
-		closedEnum("type", string(p.Type), []string{"sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"}, false),
+		closedEnum("type", string(p.Type), []string{"sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics"}, false),
 	)
 }
 

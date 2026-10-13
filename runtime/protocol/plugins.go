@@ -145,7 +145,6 @@ const (
 	PluginViewSkills            PluginViewType = "skills"
 	PluginViewWorkspaceDiff     PluginViewType = "workspaceDiff"
 	PluginViewClientDiagnostics PluginViewType = "clientDiagnostics"
-	PluginViewStatic            PluginViewType = "static"
 )
 
 type PluginView struct {
@@ -452,7 +451,7 @@ type PluginClientComponent struct {
 	Placement    string `json:"placement"`
 	Entry        string `json:"entry"`
 	Export       string `json:"export"`
-	Contribution string `json:"contribution"`
+	Contribution string `json:"contribution,omitzero"`
 }
 
 type OpenPluginResourcesRequest struct {

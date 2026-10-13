@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.7";
+export const PROTOCOL_VERSION = "2026-10-13.8";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1224,7 +1224,7 @@ export interface PluginCallFailure {
 }
 
 export interface PluginClientComponent {
-  contribution: string;
+  contribution?: string;
   entry: string;
   export: string;
   id: string;
@@ -1452,7 +1452,7 @@ export interface PluginViewResource {
   html: string;
 }
 
-export type PluginViewType = "sessionTrajectory" | "agentMemory" | "schedules" | "usageSummary" | "skills" | "workspaceDiff" | "clientDiagnostics" | "static";
+export type PluginViewType = "sessionTrajectory" | "agentMemory" | "schedules" | "usageSummary" | "skills" | "workspaceDiff" | "clientDiagnostics";
 
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
@@ -2432,7 +2432,7 @@ export const WIRE_ENUMS = {
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
-  PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"],
+  PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],

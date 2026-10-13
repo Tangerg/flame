@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-13.7",
+  "protocolVersion": "2026-10-13.8",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -6635,7 +6635,6 @@
         }
       },
       "required": [
-        "contribution",
         "entry",
         "export",
         "id",
@@ -7712,8 +7711,7 @@
         "usageSummary",
         "skills",
         "workspaceDiff",
-        "clientDiagnostics",
-        "static"
+        "clientDiagnostics"
       ]
     },
     "ProblemData": {

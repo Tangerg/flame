@@ -487,8 +487,18 @@ it("presents and retains only the contributions Runtime admits", async () => {
     { id: "trajectory", title: "Trajectory", type: "sessionTrajectory" },
     { id: "usage", title: "Usage", type: "usageSummary" },
     { id: "diagnostics", title: "Diagnostics", type: "clientDiagnostics" },
-    { id: "icons", title: "Icons", type: "static" },
   ];
+  admitted.selected.components = [
+    {
+      id: "icons",
+      title: "Icons",
+      scope: "installation",
+      placement: "workspaceView",
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Gallery",
+    },
+  ];
+  withheld.selected.components = admitted.selected.components;
   admitted.selected.renderers = [
     { id: "search", title: "Search", selector: { type: "resultShape", name: "search" } },
     { id: "markdown", title: "Markdown", selector: { type: "fileExtension", name: "md" } },
@@ -513,6 +523,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
       title: entry.item.title,
     })),
   ).toEqual([
+    { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:icons", title: "admitted · Icons" },
     {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:trajectory",
       title: "admitted · Trajectory",
@@ -522,7 +533,6 @@ it("presents and retains only the contributions Runtime admits", async () => {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:diagnostics",
       title: "admitted · Diagnostics",
     },
-    { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:icons", title: "admitted · Icons" },
   ]);
   expect(contributionsTo(WORKSPACE_FILE_RENDERER).map((entry) => entry.item.extension)).toEqual([
     "md",

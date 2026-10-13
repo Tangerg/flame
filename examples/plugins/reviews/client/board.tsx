@@ -30,12 +30,21 @@ type UpdateResult = MethodOutputs[typeof updateMethod];
 type Status = MethodInputs[typeof updateMethod]["status"];
 type Analysis = MethodOutputs[typeof analyzeMethod];
 
+type BoundContext = ComponentContext & {
+  readonly binding: NonNullable<ComponentContext["binding"]>;
+};
+
 export function Board({ context }: { context: ComponentContext }) {
-  const identity = `${context.binding.installationId}/${context.binding.digest}/${context.binding.contribution}`;
-  return <ReviewsBoard key={identity} context={context} />;
+  const bound = useMemo(() => {
+    if (!context.binding)
+      throw new Error("Reviews requires its declared callable contribution");
+    return { ...context, binding: context.binding };
+  }, [context]);
+  const identity = `${bound.binding.installationId}/${bound.binding.digest}/${bound.binding.contribution}`;
+  return <ReviewsBoard key={identity} context={bound} />;
 }
 
-function ReviewsBoard({ context }: { context: ComponentContext }) {
+function ReviewsBoard({ context }: { context: BoundContext }) {
   const operations = useMemo(
     () =>
       bindOperations<MethodInputs, MethodOutputs>(context, CAPABILITY_JSON, {

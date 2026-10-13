@@ -36,7 +36,7 @@ class ComponentInstance {
   private context: ComponentContext;
   constructor(
     private runtime: FlameClient,
-    private binding: PluginOperationBinding,
+    private binding: PluginOperationBinding | undefined,
     private lifetime: ContributionLifetime,
     private resources: AbortSignal,
   ) {
@@ -45,7 +45,7 @@ class ComponentInstance {
   private capture(): ComponentContext {
     return Object.freeze({
       runtime: this.runtime,
-      binding: structuredClone(this.binding),
+      binding: this.binding ? structuredClone(this.binding) : undefined,
       signal: AbortSignal.any([this.controller.signal, this.lifetime.signal, this.resources]),
       track: <T,>(operation: Promise<T>): Promise<T> => {
         // The caller observes the result; the contribution owner joins I/O.
@@ -86,7 +86,7 @@ export function InstalledComponent({
 }: {
   entry: ComponentType<{ context: ComponentContext }>;
   runtime: FlameClient;
-  binding: PluginOperationBinding;
+  binding: PluginOperationBinding | undefined;
   lifetime: ContributionLifetime;
   resources: AbortSignal;
 }) {
