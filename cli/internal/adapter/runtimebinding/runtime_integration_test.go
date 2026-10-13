@@ -329,7 +329,11 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if err != nil || !updated.Pinned {
 		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
 	}
-	if deleteErr := agentMemory.Delete(t.Context(), added.ID); deleteErr != nil {
+	deletion, err := agentMemory.PrepareDelete(t.Context(), added.ID)
+	if err != nil {
+		t.Fatalf("Prepare agent memory deletion: %v", err)
+	}
+	if _, deleteErr := agentMemory.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); deleteErr != nil {
 		t.Fatalf("Delete agent memory: %v", deleteErr)
 	}
 }

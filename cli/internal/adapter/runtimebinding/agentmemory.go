@@ -4,20 +4,21 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
-	"github.com/Tangerg/flame/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type agentMemoryBinding interface {
 	ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest, flameruntime.CommandOptions) error
 	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
-	DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest, flameruntime.CommandOptions) error
 	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 }
 
@@ -105,15 +106,32 @@ func (a *AgentMemory) Update(ctx context.Context, request protocol.AgentMemoryUp
 	return agentMemoryResult("update agent memory", request.ID, "", result, err)
 }
 
-func (a *AgentMemory) Delete(ctx context.Context, id string) error {
-	r := a.runtime
-	id = strings.TrimSpace(id)
-	request := protocol.AgentMemoryItemRequest{ID: id}
-	if err := request.ValidateWire(); err != nil {
-		return err
+func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
+	input, err := jsoninput.Encode(memory.DeleteV1Input{ID: strings.TrimSpace(id)})
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
 	}
-	options := r.commandOptions()
-	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, request, options))
+	bound, err := a.runtime.selectedInstalledCall(ctx, memory.CapabilityJSON, memory.DeleteV1Method)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	contract, err := capability.Parse([]byte(bound.Contract))
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	method, found := contract.Method(memory.DeleteV1Method)
+	if !found {
+		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
+	}
+	if err := method.ValidateInput(input); err != nil {
+		return protocol.CallPluginRequest{}, fmt.Errorf("delete agent memory: %w", err)
+	}
+	bound.Input = input.JSON()
+	return bound, nil
+}
+
+func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+	return a.runtime.CallPlugin(ctx, request, commandID)
 }
 
 func (a *AgentMemory) Add(ctx context.Context, target conversation.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {

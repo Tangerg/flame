@@ -123,7 +123,8 @@ type AgentMemory interface {
 	Items(context.Context, conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error)
 	Review(context.Context, string, protocol.AgentMemoryReviewDecision) error
 	Update(context.Context, protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error)
-	Delete(context.Context, string) error
+	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
+	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
 	Add(context.Context, conversation.MemoryTarget, string) (protocol.AgentMemoryItem, error)
 }
 

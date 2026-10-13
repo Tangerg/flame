@@ -266,4 +266,10 @@ captured once for all pages. Project workspace resolution precedes capture; each
 page keeps that owner and target. Capacity/request/page bounds, repeated IDs/cursors,
 empty continuations and scope mismatches are refused without partial results.
 The former ListAgentMemory/agentMemory.list and workspace list wrapper are removed.
-Memory mutations and their original-command migration remain in progress.
+CLI Memory deletion uses the generated public operation and stages its complete
+binding, raw input, command identity and replay guard in the existing workbench
+before dispatch. An uncertain deletion resumes before workspace or catalog reads,
+including after client restart and provider replacement. The retry accepts a full
+ID or an unambiguous prefix among pending deletions; an invalid acknowledgement
+retains the original intent. Review, update, add and the Desktop deletion consumer
+remain under migration; the remaining Core APIs still serve those real consumers.

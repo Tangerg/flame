@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/installedcommand"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -165,9 +167,33 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 }
 
 func (a *app) PrepareDeleteAgentMemory(argument string) error {
+	if a.agentMemory == nil {
+		return errors.New("this runtime composition has no agent memory service")
+	}
+	_, identity, err := parseAgentMemoryReference(argument)
+	if err != nil {
+		return err
+	}
+	if a.workbench != nil {
+		var ids []string
+		for _, pending := range a.workbench.PendingInstalledCommands() {
+			id, found := strings.CutPrefix(pending.Intent, "memory-delete:")
+			if found && pending.Request.Method == memory.DeleteV1Method && strings.HasPrefix(id, identity) {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) != 0 {
+			id, err := resolveByID(ids, identity, "pending agent memory deletion", func(id string) string { return id })
+			if err != nil {
+				return err
+			}
+			a.deleteAgentMemory(nil, id)
+			return nil
+		}
+	}
 	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.confirmAction("Delete agent memory", "Delete item "+item.ID+" permanently?", "Delete permanently", func() {
-			a.deleteAgentMemory(target, item.ID)
+			a.deleteAgentMemory(&target, item.ID)
 		})
 	})
 }
@@ -223,6 +249,18 @@ func parseAgentMemoryTarget(argument, workspace string) (conversation.MemoryTarg
 }
 
 func parseAgentMemoryIdentity(argument, workspace string) (conversation.MemoryTarget, string, error) {
+	scope, identity, err := parseAgentMemoryReference(argument)
+	if err != nil {
+		return conversation.MemoryTarget{}, "", err
+	}
+	if scope == protocol.AgentMemoryScopeUser {
+		workspace = ""
+	}
+	target, err := conversation.NewMemoryTarget(scope, workspace)
+	return target, identity, err
+}
+
+func parseAgentMemoryReference(argument string) (protocol.AgentMemoryScope, string, error) {
 	fields := strings.Fields(argument)
 	scope, identity := protocol.AgentMemoryScopeProject, ""
 	switch len(fields) {
@@ -231,17 +269,13 @@ func parseAgentMemoryIdentity(argument, workspace string) (conversation.MemoryTa
 	case 2:
 		parsed, err := conversation.ParseMemoryScope(fields[0])
 		if err != nil {
-			return conversation.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
+			return "", "", errors.New("usage: [project|user] <memory-id>")
 		}
 		scope, identity = parsed, fields[1]
 	default:
-		return conversation.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
+		return "", "", errors.New("usage: [project|user] <memory-id>")
 	}
-	if scope == protocol.AgentMemoryScopeUser {
-		workspace = ""
-	}
-	target, err := conversation.NewMemoryTarget(scope, workspace)
-	return target, identity, err
+	return scope, identity, nil
 }
 
 func (a *app) addAgentMemory(target conversation.MemoryTarget, content string, complete func(error) bool) error {
@@ -327,22 +361,35 @@ func (a *app) reviewAgentMemory(target conversation.MemoryTarget, id string, dec
 	}
 }
 
-func (a *app) deleteAgentMemory(target conversation.MemoryTarget, id string) {
+func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
 	presentation := a.session.context
 	a.status.note("deleting agent memory " + id)
-	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (string, error) { return id, a.agentMemory.Delete(ctx, id) },
+	if !a.runApplicationOperation(agentMemoryOperation, false,
+		func(ctx context.Context) (string, error) {
+			_, err := installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.agentMemory.PrepareDelete(ctx, id)
+			}, func(*protocol.CallPluginResponse) (memory.DeleteV1Output, error) { return memory.DeleteV1Output{}, nil })
+			return id, err
+		},
 		func(deleted string, err error) {
 			if err != nil {
-				a.message("delete agent memory failed: " + err.Error())
+				message := "delete agent memory failed: " + err.Error()
+				if a.workbench != nil {
+					if _, pending := a.workbench.PendingInstalledCommand(memoryDeletionIntent(id)); pending {
+						message += " · retry /memory-delete " + id + " to reconcile the original command"
+					}
+				}
+				a.message(message)
 				return
 			}
 			a.message("agent memory deleted · " + deleted)
-			if a.session.context.current(presentation) {
-				a.showAgentMemory(target)
+			if target != nil && a.session.context.current(presentation) {
+				a.showAgentMemory(*target)
 			}
 		},
 	) {
 		a.message("another agent memory operation is running")
 	}
 }
+
+func memoryDeletionIntent(id string) string { return "memory-delete:" + id }

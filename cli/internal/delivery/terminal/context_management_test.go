@@ -2,14 +2,20 @@ package terminal
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
@@ -150,7 +156,30 @@ func (a *agentMemoryServiceStub) Update(_ context.Context, request protocol.Agen
 	return protocol.AgentMemoryItem{}, errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Delete(_ context.Context, id string) error {
+func (*agentMemoryServiceStub) PrepareDelete(_ context.Context, id string) (protocol.CallPluginRequest, error) {
+	input, err := jsoninput.Encode(memory.DeleteV1Input{ID: id})
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	const installation = "12345678-1234-1234-1234-123456789abc"
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: memory.DeleteV1Method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: input.JSON()}, nil
+}
+
+func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+	if request.Method != memory.DeleteV1Method || commandID == "" {
+		return nil, errors.New("invalid memory command")
+	}
+	var input memory.DeleteV1Input
+	if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	if err := a.delete(input.ID); err != nil {
+		return nil, err
+	}
+	return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+}
+
+func (a *agentMemoryServiceStub) delete(id string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for _, items := range []*[]protocol.AgentMemoryItem{&a.project, &a.user} {

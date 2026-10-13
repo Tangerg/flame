@@ -1,17 +1,21 @@
 package runtimebinding
 
 import (
+	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/installedcommand"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -35,6 +39,7 @@ type agentMemoryBindingStub struct {
 	updateResult     *protocol.AgentMemoryItem
 	addResult        *protocol.AgentMemoryItem
 	listPage         func(memory.ListV1Input) (*protocol.Page[protocol.AgentMemoryItem], error)
+	pluginCall       func(protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error)
 }
 
 func (a *agentMemoryBindingStub) list(request memory.ListV1Input, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error) {
@@ -173,12 +178,6 @@ func (a *agentMemoryBindingStub) UpdateAgentMemory(_ context.Context, request pr
 	return a.item(request.ID, protocol.AgentMemoryScopeProject, "edited", true), nil
 }
 
-func (a *agentMemoryBindingStub) DeleteAgentMemory(_ context.Context, request protocol.AgentMemoryItemRequest, options flameruntime.CommandOptions) error {
-	a.assertCommand(options)
-	a.actions = append(a.actions, "delete:"+request.ID)
-	return nil
-}
-
 func (a *agentMemoryBindingStub) AddAgentMemory(_ context.Context, request protocol.AgentMemoryAddRequest, options flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error) {
 	a.assertCommand(options)
 	if request.Scope != protocol.AgentMemoryScopeUser || request.Workspace != nil || request.Content != "authored" {
@@ -250,7 +249,11 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 	if _, err := adapter.Add(t.Context(), user, "authored"); err != nil {
 		t.Fatal(err)
 	}
-	if err := adapter.Delete(t.Context(), adapterMemoryIDOne); err != nil {
+	request, err := adapter.PrepareDelete(t.Context(), adapterMemoryIDOne)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adapter.CallPlugin(t.Context(), request, mutation.NewCommandID()); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"review:" + adapterMemoryIDOne + ":approve", "update:" + adapterMemoryIDOne, "add:user", "delete:" + adapterMemoryIDOne}
@@ -336,10 +339,25 @@ func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ flameruntime.C
 	return protocol.NewPage([]protocol.PluginInstallation{{ID: memoryInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: descriptor}}}}}), nil
 }
 func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
-	if request.InstallationID != memoryInstallation || request.Target.Reference != memoryInstallation || request.Contract != memory.CapabilityJSON || request.Method != memory.ListV1Method || options.IdempotencyKey != "" {
-		a.t.Fatalf("unbound memory query: %+v", request)
+	if request.InstallationID != memoryInstallation || request.Target.Reference != memoryInstallation || request.Contract != memory.CapabilityJSON {
+		a.t.Fatalf("unbound memory operation: %+v", request)
 	}
 	a.calls = append(a.calls, request)
+	if a.pluginCall != nil {
+		return a.pluginCall(request, options)
+	}
+	if request.Method == memory.DeleteV1Method {
+		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		var input memory.DeleteV1Input
+		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+			a.t.Fatal(err)
+		}
+		a.actions = append(a.actions, "delete:"+input.ID)
+		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	}
+	if request.Method != memory.ListV1Method || options.IdempotencyKey != "" {
+		a.t.Fatalf("invalid memory query: %+v", request)
+	}
 	var input memory.ListV1Input
 	if err := json.Unmarshal(request.Input, &input); err != nil {
 		a.t.Fatal(err)
@@ -357,6 +375,82 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		a.t.Fatal(err)
 	}
 	return &protocol.CallPluginResponse{Output: encoded.JSON()}, nil
+}
+
+func TestMemoryDeletionResumesOriginalBindingAfterSelectionChanges(t *testing.T) {
+	directory := t.TempDir()
+	store, err := openTestWorkbench(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	limits, err := replay.NewCapability("original-store", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := mutation.NewReplayPolicy(limits, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	stub := &agentMemoryBindingStub{t: t}
+	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
+	const intent = "memory-delete:" + adapterMemoryIDOne
+	ctx, cancel := context.WithCancel(t.Context())
+	stub.pluginCall = func(request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+		pending, staged := store.PendingInstalledCommand(intent)
+		if !staged || string(pending.CommandID) != options.IdempotencyKey || !bytes.Equal(request.Input, pending.Request.Input) {
+			t.Fatal("delete dispatched before retaining its original identity and input")
+		}
+		cancel()
+		return nil, conversation.ErrDisconnected
+	}
+	execute := func(ctx context.Context) error {
+		_, err := installedcommand.Execute(ctx, adapter, store, intent, policy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+			return adapter.PrepareDelete(ctx, adapterMemoryIDOne)
+		}, func(*protocol.CallPluginResponse) (memory.DeleteV1Output, error) { return memory.DeleteV1Output{}, nil })
+		return err
+	}
+	if err := execute(ctx); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
+		t.Fatalf("lost delete acknowledgement: %v", err)
+	}
+	pending, retained := store.PendingInstalledCommand(intent)
+	if !retained {
+		t.Fatal("unknown delete lost its original request")
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = openTestWorkbench(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	stub.provider = "replacement-installation"
+	stub.pluginCall = func(protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+		return &protocol.CallPluginResponse{Output: []byte(`{"extra":true}`)}, nil
+	}
+	if err := execute(t.Context()); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
+		t.Fatalf("invalid acknowledgement confirmed a delete: %v", err)
+	}
+	if _, retained := store.PendingInstalledCommand(intent); !retained {
+		t.Fatal("invalid acknowledgement retired the original command")
+	}
+	stub.pluginCall = func(request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+		if request.InstallationID != pending.Request.InstallationID || request.Digest != pending.Request.Digest || request.Contribution != pending.Request.Contribution || request.Contract != pending.Request.Contract || request.Method != pending.Request.Method || request.Target != pending.Request.Target || !bytes.Equal(request.Input, pending.Request.Input) || options.IdempotencyKey != string(pending.CommandID) {
+			t.Fatal("delete recovery changed its original command or binding")
+		}
+		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	}
+	if err := execute(t.Context()); err != nil || stub.providerReads != 1 || len(stub.calls) != 3 {
+		t.Fatalf("delete recovery: providers=%d calls=%d error=%v", stub.providerReads, len(stub.calls), err)
+	}
+	if _, retained := store.PendingInstalledCommand(intent); retained {
+		t.Fatal("confirmed delete remains pending")
+	}
 }
 
 func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
