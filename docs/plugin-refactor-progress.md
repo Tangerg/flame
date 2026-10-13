@@ -2,58 +2,58 @@
 
 ## Current stage
 
-Stage 4p (fcfbfa37) migrates actual CLI and workspace-client Memory catalog reads
-to the public installed operation. The CLI consumes generated publisher Go
-input/output in cli/internal/domain/memory; the graphical context reader consumes
-the existing published TS contract. Both capture the selected installation,
-release, contribution, full required contract and target once across all pages.
-Selection changes cannot splice another provider into continuation. Bounds cover
-page width, request count, target materialization, empty continuation, repeated
-cursor/ID and scope. Errors retain failure rather than returning partial results.
+Stage 4q (0b626d89) migrates actual CLI Memory deletion to the generated public
+installed operation. The adapter captures the exact selected installation,
+release, contribution, complete publisher contract and target. The terminal
+stages raw input, command identity and replay guard in the existing workbench
+before any command dispatch; the private backend remains the business/receipt
+owner. The former CLI Delete method and Core deletion dependency are removed,
+and actual integration and terminal fixture consumers use the public request.
+No compatibility wrapper, second outcome ledger or alternate deletion owner is
+introduced. Core remains 2026-10-14.12 and backend remains 2026-10-14.2.
 
-The existing exact-published-contract selection policy is shared by the two actual
-CLI consumers, Memory and Schedules. It parses the advertised protocol unchanged
-and refuses mismatches before dispatch. Workspace resolution precedes initial
-capture. The workspace reader negotiates plugins and exposes its real public
-capability without private-context imports. Runtime verifies the full descriptor
-and live export for each query. Target-specific domain, ledger/watermark, curation,
-maintenance/model and receipt ownership remain unchanged.
+An uncertain deletion resumes before any fresh workspace or item/catalog read.
+The recovery entrance accepts a full ID or one unambiguous prefix among retained
+original deletions; an exact ID wins and ambiguity refuses dispatch. It reuses
+original input, binding and command identity, even after client restart or provider
+replacement. An invalid acknowledgement leaves the original intent pending.
+Resumed deletion has no invented presentation target and does not refresh a
+workspace inferred from the current Session. Existing wire admission validates
+the concrete acknowledgement before the intent can retire.
 
-Delete ListAgentMemory/agentMemory.list, list request DTO, Core Go/TS method,
-workspace list wrapper, delivery/list port, selected-role forwarder and generated
-artifacts in the same change. Remaining Core Memory mutations are real consumers
-awaiting migration. Their current read model is a projection of publisher rows;
-no retired wire reader, new result store, compatibility alias or second fact
-transition is introduced. Core is 2026-10-14.12; backend protocol/business storage
-and callable Memory contract are unchanged. New Go generation shares that exact
-publisher source; canonical publication comparison passes.
+The Desktop workspace gateway still calls Core deletion and loses retry handles
+when its Runtime generation is replaced. Directly substituting a public call
+would leave this guarantee unfinished. Complete that actual consumer and its
+original intent lifecycle before deleting the still-consumed Core deletion API.
+Review/update/add, Tool/cross-plugin consumers, model streaming, scoped dependency
+lifecycle, cross-generation journal recovery, independent author parity and all
+P01-P48/final acceptance remain open. Stage 4p public Memory reads remain intact.
 
-Existing native provider selection, withdrawal, command recovery and restart
-sources now query through captured public operations. Existing E2E source call
-expressions migrate to the actual product reader; obsolete Core-only target
-assertions disappear while other workspace/lifecycle assertions remain. No new
-frontend UI/E2E/screenshot cases are written and none run. Shared pure transport
-contract cases retain unrelated workspace lifetime assertions and pass (42 tests).
+Passed: CLI production build; focused Memory/read/deletion regressions (5.823s),
+including a persisted original request reopened after response loss, changed
+provider selection, invalid acknowledgement retention and final original receipt
+confirmation; terminal test source compilation into an automatically removed
+temporary directory; Runtime API consumer source gate (94/94 operation families,
+109 typed call sites, three sidecars and 15 topics); gofmt and diff checks.
+An initial integration fixture still calling the retired CLI method failed test
+compilation and is migrated; the focused rerun passes. Full/vet/race and native
+process execution remain the final consolidated phase. No frontend UI/E2E/
+screenshot cases are added or executed; existing terminal fixture source is
+migrated without executing UI tests.
 
-Production Runtime/CLI/Reviews builds, Desktop/shared types/Vite and source/layer
-checks pass. CLI Memory plus shared Schedule read/binding regressions pass (7.436s),
-including provider swap between pages, mismatched published protocol, malformed
-rows, duplicate/continuation/partial-failure refusal. Shared-client methods pass
-(458ms). Bootstrap/delivery/protocol/terminal sources compile into removed temporary
-outputs. Initial stale import/DTO assertions and one private-context import failure
-are corrected; no active executed failure remains. Source gate is 94/94 (86
-graphical, one Go headless, six materialized, one HTTP), three sidecars and 15 topics.
-
-Main 993eb865 remains integrated; merge is up to date. Original proposal/review/draft
-hashes remain unchanged. Owned dist and temporary outputs are removed. Full/vet/race,
-native process and credentialed live execution remain final-phase work. Next migrate
-actual Memory mutations/remaining Core facades with original intent recovery, then
-finish Tool/cross-plugin consumers, scoped dependencies, canonical model streaming,
-cross-generation recovery, independent author parity and all P01-P48/final acceptance.
-The full goal remains active.
+Main 993eb865 is integrated; merge reports already up to date. Original proposal,
+review and draft hashes remain unchanged. The canonical progress symlink still
+points here. No temporary output or active test/build process remains after
+completion of this slice. The full goal remains active.
 
 ## Completed
 
+- Stage 4q (0b626d89): actual CLI Memory deletion through generated public installed
+  input, exact published binding and workbench-owned original request recovery.
+- Stage 4q: recover full/prefix pending identity before new target/catalog reads;
+  persisted restart, provider replacement and invalid acknowledgement regression
+  passes. Retire the CLI Core deletion dependency; Desktop/Core deletion is still
+  a real consumer migration, not a completed retirement.
 - Stage 4p (fcfbfa37): actual CLI/workspace public Memory reads with one captured
   provider/contract across pages, bounds/refusals and generated publisher projections.
 - Stage 4p: shared CLI exact-contract/protocol admission for real Memory/Schedules
@@ -389,6 +389,9 @@ The full goal remains active.
 
 ## In progress
 
+- Desktop workspace Memory deletion must retain original public request/command
+  intent across Runtime generations before its still-used Core API can be removed.
+  Remaining CLI/desktop review, update and add need the same original binding rule.
 - Actual Memory reads are public installed operations in CLI and the workspace
   client. Four Core mutations and their CLI/workspace consumers still need original
   pending-intent recovery and simultaneous facade/type/feature deletion. Native
@@ -431,6 +434,9 @@ The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | CLI Memory deletion reuses the existing installed-command workbench owner | Response loss and a changed provider must not turn a retry into a new business command | A fresh command ID, current-provider retry, copied receipt state or retained CLI Core deletion wrapper |
+| 2026-10-14 | Resolve pending deletion identity before new target/item reads; resumed commands have no invented display target | A committed delete may have removed its item, and the current workspace may differ from the original intent | Requiring the deleted row to remain visible, resolving the current workspace before receipt recovery or refreshing inferred original target state |
+| 2026-10-14 | Retire Core deletion only after its Desktop workspace consumer migrates with original recovery | The gateway still consumes Core and replaces its generation; an interface-only substitution would lose an uncertain original handle | Removing a still-used API, labeling the CLI-only cutover as full migration or submitting the uncertain intent to a replacement provider |
 | 2026-10-14 | Memory pages retain one concrete public binding across continuation in every actual client | Paging belongs to that business owner; replacing selection between pages can mix facts from different stores | Retaining agentMemory.list, refreshing selected role per page, partial results on failure or selecting another enabled candidate |
 | 2026-10-14 | Share exact published-contract selection after the second real CLI consumer appears | Memory and Schedules require the same protocol/contract/release refusal policy | Duplicated role arbitration, forcing advertised metadata into the current protocol or private backend imports |
 | 2026-10-14 | Workspace Memory reads expose a real public context capability over the published TS contract | Existing consumers must survive Core list deletion without reaching into private context adapters | A Core query alias, a copied schema/DTO, private-context imports or deleting unrelated workspace lifecycle coverage |
@@ -573,7 +579,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; remaining Core facade migration and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; CLI Schedule list now uses that entrance with frozen pagination; mutations/all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
+| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all CLI Schedule operations, CLI/workspace Memory reads and CLI Memory deletion now use public contracts with original binding; remaining Memory mutations/desktop deletion, all-consumer migration and final execution acceptance open | runtime/plugins.go; pluginservices/calls.go; cli/internal/adapter/runtimebinding/agentmemory.go; cli/internal/delivery/terminal/agent_memory_management.go; cli/internal/application/installedcommand/command.go; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |

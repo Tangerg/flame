@@ -381,7 +381,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"TestMCPServer":                 command("MCP", "TUI /mcp-test"),
 		"UpdateMCPServer":               command("MCP", "TUI /mcp-edit"),
 		"AddAgentMemory":                command("agent memory", "TUI /memory-add"),
-		"DeleteAgentMemory":             command("agent memory", "TUI /memory-delete"),
+		"DeleteAgentMemory":             command("agent memory", "Desktop workspace deletion; CLI uses the public installed operation"),
 		"ReviewAgentMemory":             command("agent memory", "TUI /memory-approve and /memory-reject"),
 		"UpdateAgentMemory":             command("agent memory", "TUI memory edit/pin/unpin"),
 		"InvokeTool":                    command("diagnostic tools", "TUI /tool-invoke"),
