@@ -86,16 +86,20 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
-	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, mcpPool, commands)
+	commandInvalidations, err := pluginservices.CommandInvalidations(deps.publish)
+	if err != nil {
+		return environment, err
+	}
+	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, mcpPool, commands, commandInvalidations)
 	if err != nil {
 		return environment, err
 	}
 	environment.pluginCalls = commandCalls
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Invalidations: deps.publish, Commands: commandCalls})
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}
-	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool, commandCalls, deps.publish)
+	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool, commandCalls)
 	if err != nil {
 		return environment, err
 	}

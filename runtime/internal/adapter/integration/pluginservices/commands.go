@@ -23,13 +23,14 @@ type CommandCalls struct {
 	selections    plugins.SelectionStore
 	pool          *mcpconnection.Pool
 	routing       *plugins.Commands
+	changed       func(plugin.CommandBinding)
 }
 
-func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands) (*CommandCalls, error) {
+func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands, changed func(plugin.CommandBinding)) (*CommandCalls, error) {
 	if dependency.Missing(store) || dependency.Missing(selections) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
-	return &CommandCalls{installations: store, selections: selections, pool: pool, routing: routing}, nil
+	return &CommandCalls{installations: store, selections: selections, pool: pool, routing: routing, changed: changed}, nil
 }
 
 type commandReply[T any] struct {
@@ -166,6 +167,9 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if err != nil {
 		return zero, err
 	}
+	if record.Phase != plugin.CommandPrepared && c.changed != nil {
+		defer c.changed(record)
+	}
 	binding, err := c.original(ctx, record)
 	if err != nil {
 		if record.Phase != plugin.CommandPrepared {
@@ -206,6 +210,9 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		})
 		if err != nil {
 			return zero, err
+		}
+		if c.changed != nil {
+			defer c.changed(record)
 		}
 		result, err = bound.InvokeWithMetadata(ctx, id, record.Input, metadata)
 	} else {

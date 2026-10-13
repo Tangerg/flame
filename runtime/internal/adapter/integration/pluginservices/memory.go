@@ -11,7 +11,6 @@ import (
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -32,7 +31,6 @@ type Memory struct {
 	utility       models.AuxiliaryResolver
 	embedder      func(context.Context) (app.Embedder, error)
 	history       ConversationReader
-	publish       invalidation.Publish
 	commands      *CommandCalls
 }
 
@@ -46,7 +44,6 @@ type MemoryConfig struct {
 	Utility       models.AuxiliaryResolver
 	Embeddings    func(context.Context) (app.Embedder, error)
 	Conversation  ConversationReader
-	Invalidations invalidation.Publish
 	Commands      *CommandCalls
 }
 
@@ -66,7 +63,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
+	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
 func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
@@ -83,33 +80,25 @@ func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page
 func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content string) (memory.Item, error) {
 	value, err := invokeCommand[rpc.AddInput, rpc.AddResult](ctx, m.commands, m.contracts.Capability, rpc.Add, rpc.AddInput{Scope: scope, CWD: cwd, Content: content}, func(value rpc.AddResult) error { _, err := memory.RestoreItem(value.Item); return err })
 	if err != nil {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
 	}
 	item, err := memory.RestoreItem(value.value.Item)
-	if value.value.Changed {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
-	}
 	return item, err
 }
 func (m *Memory) Update(ctx context.Context, id string, content *string, pinned *bool) (memory.Item, error) {
 	value, err := invokeCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, m.commands, m.contracts.Capability, rpc.Update, rpc.UpdateInput{ID: id, Content: content, Pinned: pinned}, func(value memory.ItemSnapshot) error { _, err := memory.RestoreItem(value); return err })
 	if err != nil {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
 	}
 	item, err := memory.RestoreItem(value.value)
-	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return item, err
 }
 func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDecision) error {
 	_, err := invokeCommand[rpc.ReviewInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Review, rpc.ReviewInput{ID: id, Decision: decision}, nil)
-	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Delete(ctx context.Context, id string) error {
 	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Delete, rpc.ItemInput{ID: id}, nil)
-	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
@@ -191,7 +180,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	_, err = invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
 		grant, release, err := rpc.GrantModels(ctx, m.callbacks, original, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 			return m.utility.Complete(ctx, models.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
 		}, nil)
@@ -205,9 +194,6 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		}
 		return metadata, release, nil
 	})
-	if err != nil || result.value.Published {
-		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
-	}
 	return rpc.DecodeError(err)
 }
 func restoreItems(values []memory.ItemSnapshot) ([]memory.Item, error) {

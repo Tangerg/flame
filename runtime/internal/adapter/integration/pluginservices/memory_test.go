@@ -16,6 +16,7 @@ import (
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -107,7 +108,12 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls, err := NewCommandCalls(store, selections, pool, routing)
+	var notices []invalidation.Notice
+	commandInvalidations, err := CommandInvalidations(func(notice invalidation.Notice) { notices = append(notices, notice) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls, err := NewCommandCalls(store, selections, pool, routing, commandInvalidations)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,8 +170,12 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
+	beforeRecovery := len(notices)
 	if _, err := installed.Invoke(addContext); err != nil {
 		t.Fatalf("installed entrance did not recover the feature owner's receipt: %v", err)
+	}
+	if len(notices) != beforeRecovery+1 || notices[len(notices)-1].Resource != invalidation.AgentMemory {
+		t.Fatalf("public command recovery did not invalidate its consumer reads: %+v", notices)
 	}
 	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), capability.Model, "parent-tool")); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("changed calling origin reused an original identity: %v", err)
@@ -178,6 +188,32 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	}
 	if _, err := other.Invoke(addContext); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("changed installed binding reused an original identity: %v", err)
+	}
+	if len(notices) != beforeRecovery+1 {
+		t.Fatal("rejected original-binding conflicts published change notices")
+	}
+	unconfirmedContext := operation.Bind(t.Context(), "memory.add", "unconfirmed")
+	unconfirmedRecord := stored.Snapshot()
+	unconfirmedRecord.ID = operation.Identity(unconfirmedContext)
+	unconfirmedRecord.Invocation, err = operation.Capture(unconfirmedContext, unconfirmedRecord.Invocation.Target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unconfirmed, err := plugin.NewCommand(unconfirmedRecord)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hostsqlite.NewPluginCommandStore(host).Save(t.Context(), unconfirmed); err != nil {
+		t.Fatal(err)
+	}
+	if err := routing.Dispatch(t.Context(), unconfirmedRecord.ID, func(context.Context, plugin.CommandBinding) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := installed.Invoke(unconfirmedContext); !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		t.Fatalf("missing original receipt was not retained as uncertainty: %v", err)
+	}
+	if len(notices) != beforeRecovery+2 || notices[len(notices)-1].Resource != invalidation.AgentMemory {
+		t.Fatal("unconfirmed original command did not invalidate consumer reads")
 	}
 	items, err := owner.Search(t.Context(), project, "keyword", 5)
 	if err != nil || len(items) != 1 || items[0].Content() != "keyword fact" {
