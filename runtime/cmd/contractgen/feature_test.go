@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -198,4 +201,46 @@ func TestFeatureGenerationRefusesFormerBareMethodArray(t *testing.T) {
 
 func featureDescriptor(methods ...capability.MethodDescriptor) ([]byte, error) {
 	return json.Marshal(capability.Descriptor{Protocol: capability.Protocol, Reference: "acme/reviews", Composition: capability.Collection, Scope: "installation", Methods: methods})
+}
+
+func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
+	type Input struct {
+		Limit   *int  `json:"Limit,omitzero"`
+		Enabled *bool `json:"Enabled,omitzero"`
+	}
+	type Output struct {
+		Revision uint64
+		At       time.Time
+		Labels   map[string]string
+	}
+	method, err := pluginsdk.NewMethod[Input, Output](pluginsdk.MethodConfig{Name: "acme/read.v1", Kind: capability.Query, Target: "installation", Description: "Read a typed frame."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := featureDescriptor(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts, err := buildFeature(descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := buildFeatureGo(artifacts, featureGoOutput{Package: "consumer", Prefix: "Example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(generated)
+	for _, required := range []string{"Revision uint64", "At", "time.Time", "map[string]string", "*bool", "*int64", "exampleReadV1Method", "18446744073709551615"} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("Go projection lost %s", required)
+		}
+	}
+	if _, err := parser.ParseFile(token.NewFileSet(), "generated.go", generated, parser.AllErrors); err != nil {
+		t.Fatal(err)
+	}
+	for _, output := range []featureGoOutput{{Package: "consumer; bad", Prefix: "Example"}, {Package: "consumer", Prefix: "lowercase"}} {
+		if _, err := buildFeatureGo(artifacts, output); err == nil {
+			t.Fatal("invalid Go output configuration accepted")
+		}
+	}
 }

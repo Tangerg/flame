@@ -13,6 +13,8 @@ import (
 	"time"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/capability"
+	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -113,19 +115,52 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	schedules, err := fixture.runtime.ListSchedules(fixture.ctx, protocol.PageQuery{}, flameruntime.CallOptions{})
+	providers, err := fixture.runtime.ListPluginProviders(fixture.ctx, flameruntime.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(schedules.Data) != 1 {
-		t.Fatalf("Schedules = %+v, want one", schedules.Data)
+	installations, err := fixture.runtime.ListPlugins(fixture.ctx, flameruntime.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	current := schedules.Data[0]
-	if current.ID != created.ID || current.Revision != created.Revision+1 || current.LastRunAt == nil {
-		t.Fatalf("Schedule after manual Run = %+v, want one committed Run fact", current)
+	var target protocol.PluginInstallation
+	var contribution string
+	for _, provider := range providers.Data {
+		if provider.Role != "schedules" {
+			continue
+		}
+		contribution = provider.Contribution
+		for _, installation := range installations.Data {
+			if installation.ID == provider.InstallationID {
+				target = installation
+			}
+		}
 	}
-	if current.NextRunAt == nil || !current.NextRunAt.Equal(*created.NextRunAt) {
-		t.Fatalf("Schedule next cursor = %v, want unchanged %v", current.NextRunAt, created.NextRunAt)
+	contracts, err := schedulerpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := json.Marshal(schedulerpc.ListInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: input, Target: capability.Target{Scope: "installation", Reference: target.ID}}, flameruntime.PluginCallOptions{})
+	if err != nil || reply.Failure != nil {
+		t.Fatalf("installed schedules: %+v, %v", reply, err)
+	}
+	var schedules schedulerpc.Page
+	if err := json.Unmarshal(reply.Output, &schedules); err != nil {
+		t.Fatal(err)
+	}
+	if len(schedules.Rows) != 1 {
+		t.Fatalf("Schedules: %+v", schedules)
+	}
+	current := schedules.Rows[0]
+	if current.ID != created.ID || current.Revision != created.Revision+1 || current.LastRunAt.IsZero() {
+		t.Fatalf("Schedule after manual Run: %+v", current)
+	}
+	if created.NextRunAt == nil || !current.NextRunAt.Equal(*created.NextRunAt) {
+		t.Fatalf("Schedule next cursor: %v, want %v", current.NextRunAt, created.NextRunAt)
 	}
 }
 

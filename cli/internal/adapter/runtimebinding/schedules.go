@@ -2,7 +2,11 @@ package runtimebinding
 
 import (
 	"context"
+	json "encoding/json/v2"
+	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"strings"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -20,7 +24,6 @@ const (
 )
 
 type scheduleBinding interface {
-	ListSchedules(context.Context, protocol.PageQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Schedule], error)
 	CreateSchedule(context.Context, protocol.CreateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
 	UpdateSchedule(context.Context, protocol.UpdateScheduleRequest, flameruntime.CommandOptions) (*protocol.Schedule, error)
 	DeleteSchedule(context.Context, protocol.DeleteScheduleRequest, flameruntime.CommandOptions) error
@@ -28,6 +31,10 @@ type scheduleBinding interface {
 }
 
 func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error) {
+	bound, err := r.selectedSchedules(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var schedules []protocol.Schedule
 	seenIDs := make(map[string]struct{})
 	cursors, err := newCursorTraversal("list schedules", "", maximumSchedulePageRequests)
@@ -36,21 +43,41 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 	}
 	for {
 		cursor := cursors.Current()
-		page, err := r.schedules.ListSchedules(ctx, protocol.PageQuery{Cursor: cursor, Limit: protocolPositiveInt(schedulePageLimit)}, r.callOptions())
+		input, err := jsoninput.Encode(SchedulesListV1Input{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
+		if err != nil {
+			return nil, err
+		}
+		request := bound
+		request.Input = input.JSON()
+		reply, err := r.CallPlugin(ctx, request, "")
 		if err != nil {
 			return nil, classifyError(err)
 		}
-		if page == nil {
-			return nil, runtimeContractViolation("list schedules returned a nil page")
+		var page SchedulesListV1Output
+		if err := json.Unmarshal(reply.Output, &page, json.RejectUnknownMembers(true)); err != nil {
+			return nil, runtimeContractViolation("list schedules output: %v", err)
 		}
-		if len(page.Data) > schedulePageLimit {
-			return nil, runtimeContractViolation("list schedules returned %d rows for limit %d", len(page.Data), schedulePageLimit)
+		if len(page.Rows) > schedulePageLimit {
+			return nil, runtimeContractViolation("list schedules returned %d rows for limit %d", len(page.Rows), schedulePageLimit)
 		}
-		for _, value := range page.Data {
-			if _, duplicate := seenIDs[value.ID]; duplicate {
-				return nil, runtimeContractViolation("list schedules repeats %q", value.ID)
+		for _, row := range page.Rows {
+			if _, duplicate := seenIDs[row.ID]; duplicate {
+				return nil, runtimeContractViolation("list schedules repeats %q", row.ID)
 			}
-			seenIDs[value.ID] = struct{}{}
+			seenIDs[row.ID] = struct{}{}
+			value := protocol.Schedule{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, Enabled: !row.NextRunAt.IsZero(), CreatedAt: row.CreatedAt, Revision: row.Revision, Provider: row.ModelSelection["provider"], Model: row.ModelSelection["model"], ReasoningEffort: row.ModelSelection["reasoningEffort"]}
+			if row.CWD != "" {
+				value.Workspace = &protocol.WorkspaceRef{Path: row.CWD}
+			}
+			if !row.NextRunAt.IsZero() {
+				value.NextRunAt = &row.NextRunAt
+			}
+			if !row.LastRunAt.IsZero() {
+				value.LastRunAt = &row.LastRunAt
+			}
+			if err := protocol.ValidateWireTree(value); err != nil {
+				return nil, runtimeContractViolation("list schedules row: %v", err)
+			}
 			schedules = append(schedules, value)
 		}
 		more, err := cursors.Advance(page.NextCursor)
@@ -131,4 +158,58 @@ func scheduleResult(operation, expectedID string, result *protocol.Schedule, err
 		return protocol.Schedule{}, err
 	}
 	return *result, nil
+}
+
+// The accepted provider and complete callable contract are captured once for all
+// pages. A later selection cannot splice another installation into this read.
+func (r *Connection) selectedSchedules(ctx context.Context) (protocol.CallPluginRequest, error) {
+	if r.plugins == nil {
+		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
+	}
+	required, err := capability.Parse([]byte(schedulesCapabilityJSON))
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	providers, err := r.ListPluginProviders(ctx)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	var selected protocol.PluginProviderSelection
+	found := false
+	for _, provider := range providers {
+		if provider.Role == required.Descriptor().Reference {
+			selected = provider
+			found = true
+			break
+		}
+	}
+	if !found {
+		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
+	}
+	installations, err := r.ListPlugins(ctx)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	for _, installation := range installations {
+		if installation.ID != selected.InstallationID {
+			continue
+		}
+		if !installation.Enabled {
+			return protocol.CallPluginRequest{}, protocol.ErrPluginDisabled
+		}
+		for _, contribution := range installation.Selected.Contributions {
+			if contribution.ID != selected.Contribution {
+				continue
+			}
+			actual, err := capability.New(capability.Config{Reference: contribution.Contract.Reference, Composition: contribution.Contract.Composition, Scope: contribution.Contract.Scope}, contribution.Contract.Methods...)
+			if err != nil {
+				return protocol.CallPluginRequest{}, errors.Join(protocol.ErrPluginUnavailable, err)
+			}
+			if actual.Identity() != required.Identity() {
+				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
+			}
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution.ID, Contract: schedulesCapabilityJSON, Method: schedulesListV1Method, Target: capability.Target{Scope: required.Descriptor().Scope, Reference: installation.ID}}, nil
+		}
+	}
+	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 }

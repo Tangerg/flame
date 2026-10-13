@@ -7,11 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListSchedules returns one cursor page of schedules.
-func (r *binding) ListSchedules(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Schedule], error) {
-	return r.invoke[protocol.PageQuery, *protocol.Page[protocol.Schedule]](ctx, delivery.SchedulesList, request, callOptions(options))
-}
-
 // CreateSchedule creates a schedule.
 func (r *binding) CreateSchedule(ctx context.Context, request protocol.CreateScheduleRequest, options CommandOptions) (*protocol.Schedule, error) {
 	return r.invoke[protocol.CreateScheduleRequest, *protocol.Schedule](ctx, delivery.SchedulesCreate, request, commandOptions(options))

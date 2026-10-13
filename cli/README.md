@@ -231,3 +231,11 @@ Installed MCP Tools use Runtime's existing Run/Interrupt path. Human plugin busi
 operations use the public installed call entrance; Core operations use their canonical
 commands. The CLI owns terminal interaction, while approval, execution and receipts
 retain their Runtime owners.
+
+Schedule catalog reads capture the selected installation/contribution and full
+required callable contract once, then page through `plugins.call`. The CLI's Go
+request/output projection is generated from the same publisher contracts as TS;
+no private backend package is imported. Selection changes cannot mix providers
+inside one traversal. Cursor/request/row bounds and duplicate ID rejection remain.
+Schedule mutation entrances are still being migrated with original command recovery;
+the retired `schedules.list` Core operation has no alias or fallback reader.

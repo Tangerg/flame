@@ -305,10 +305,6 @@
               "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options CallOptions) (*protocol.Page[protocol.RunRef], error)"
             },
             {
-              "name": "ListSchedules",
-              "signature": "func(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
-            },
-            {
               "name": "ListSessionTrajectory",
               "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
@@ -933,10 +929,6 @@
             {
               "name": "ListRuns",
               "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options CallOptions) (*protocol.Page[protocol.RunRef], error)"
-            },
-            {
-              "name": "ListSchedules",
-              "signature": "func(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
             },
             {
               "name": "ListSessionTrajectory",
@@ -3613,7 +3605,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.6\""
+          "value": "\"2026-10-14.7\""
         },
         {
           "name": "ProviderAPIKeyOptional",

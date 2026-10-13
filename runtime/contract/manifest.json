@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.6",
+  "protocolVersion": "2026-10-14.7",
   "features": [
     "reasoning",
     "multimodal",
@@ -1137,21 +1137,6 @@
       "pagination": "none"
     },
     {
-      "name": "schedules.list",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "cursor",
-      "errors": [
-        "plugin_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "schedules"
-      ]
-    },
-    {
       "name": "schedules.create",
       "kind": "unary",
       "operation": "command",
@@ -1631,7 +1616,6 @@
           "runtime.subscribe",
           "schedules.create",
           "schedules.delete",
-          "schedules.list",
           "schedules.runNow",
           "schedules.update",
           "sessions.export",
@@ -1904,7 +1888,6 @@
           "plugins.uninstall",
           "schedules.create",
           "schedules.delete",
-          "schedules.list",
           "schedules.runNow",
           "schedules.update"
         ]
@@ -2718,16 +2701,6 @@
         {
           "requires": [
             "plugins"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "schedules.list",
-      "rules": [
-        {
-          "requires": [
-            "schedules"
           ]
         }
       ]

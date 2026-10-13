@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.6";
+export const PROTOCOL_VERSION = "2026-10-14.7";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1121,11 +1121,17 @@ export interface OpenPluginResourcesRequest {
   installationId: string;
 }
 
+export interface PageContinuation {
+  nextCursor?: string;
+}
+
 export type PageOfAgentDoc = Page<AgentDoc>;
 
 export type PageOfAgentMemoryItem = Page<AgentMemoryItem>;
 
 export type PageOfFileEntry = Page<FileEntry>;
+
+export type PageOfItem = Page<Item>;
 
 export type PageOfMCPServer = Page<MCPServer>;
 
@@ -1150,8 +1156,6 @@ export type PageOfPluginProviderSelection = Page<PluginProviderSelection>;
 export type PageOfProvider = Page<Provider>;
 
 export type PageOfRunRef = Page<RunRef>;
-
-export type PageOfSchedule = Page<Schedule>;
 
 export type PageOfSession = Page<Session>;
 

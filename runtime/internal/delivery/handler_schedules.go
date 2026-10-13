@@ -17,23 +17,6 @@ import (
 // backend worker fires. A schedule stores the final instructions
 // text, so the runtime fires it without resolving a template.
 
-// ListSchedules returns every schedule, newest-created first (schedules.list).
-func (s *Handler) ListSchedules(ctx context.Context, query protocol.PageQuery) (*protocol.Page[protocol.Schedule], error) {
-	limit, err := requestedPageLimit(query.Limit)
-	if err != nil {
-		return nil, mapScheduleErr(wirePageError(err), "")
-	}
-	page, err := s.schedules.ListPage(ctx, query.Cursor, limit)
-	if err != nil {
-		return nil, mapScheduleErr(wirePageError(err), "")
-	}
-	out := make([]protocol.Schedule, 0, len(page.Rows))
-	for _, scheduled := range page.Rows {
-		out = append(out, presentSchedule(scheduled))
-	}
-	return protocol.NewPageWithCursor(out, page.NextCursor), nil
-}
-
 // CreateSchedule adds an enabled schedule (schedules.create), computing its
 // first due time from the cron.
 func (s *Handler) CreateSchedule(ctx context.Context, in protocol.CreateScheduleRequest) (*protocol.Schedule, error) {

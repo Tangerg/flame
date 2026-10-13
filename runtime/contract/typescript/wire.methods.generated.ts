@@ -88,14 +88,12 @@ import type {
   PageOfPluginProviderSelection,
   PageOfProvider,
   PageOfRunRef,
-  PageOfSchedule,
   PageOfSession,
   PageOfSkillProposal,
   PageOfToolSpec,
   PageOfTrajectoryEntry,
   PageOfWorkspaceFileChange,
   PageOfWorkspaceSummary,
-  PageQuery,
   Plan,
   PluginChangeNotice,
   PluginInstallation,
@@ -262,7 +260,6 @@ const METHOD_NAMES = [
   "approval.setMode",
   "approval.listRules",
   "approval.forgetRule",
-  "schedules.list",
   "schedules.create",
   "schedules.update",
   "schedules.delete",
@@ -378,7 +375,6 @@ const VALUE_METHOD_NAMES = [
   "approval.getMode",
   "approval.setMode",
   "approval.listRules",
-  "schedules.list",
   "schedules.create",
   "schedules.update",
   "schedules.runNow",
@@ -959,13 +955,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "schedules.list": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "cursor",
-  },
   "schedules.create": {
     operation: "command",
     response: "unary",
@@ -1363,9 +1352,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.uninstall": [
     { requires: ["plugins"] },
   ],
-  "schedules.list": [
-    { requires: ["schedules"] },
-  ],
   "schedules.create": [
     { requires: ["schedules"] },
   ],
@@ -1491,7 +1477,6 @@ export interface WireShapes {
   "approval.setMode": { params: SetApprovalModeRequest; result: ApprovalModeResult };
   "approval.listRules": { params: ListApprovalRulesRequest; result: ListApprovalRulesResult };
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
-  "schedules.list": { params: PageQuery; result: PageOfSchedule };
   "schedules.create": { params: CreateScheduleRequest; result: Schedule };
   "schedules.update": { params: UpdateScheduleRequest; result: Schedule };
   "schedules.delete": { params: DeleteScheduleRequest };

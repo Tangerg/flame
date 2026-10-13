@@ -235,6 +235,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatal(err)
 	}
 	query := protocol.PageQuery{Limit: new(1)}
+	seen := map[string]bool{}
 	for {
 		input, err := json.Marshal(schedulerpc.ListInput{Cursor: query.Cursor, Limit: query.Limit})
 		if err != nil {
@@ -245,14 +246,20 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		if err := json.Unmarshal(installedReply.Output, &page); err != nil {
 			t.Fatal(err)
 		}
-		canonical := r.must(delivery.SchedulesList, query, "").(*protocol.Page[protocol.Schedule])
-		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID != canonical.Data[0].ID || page.Rows[0].Revision != canonical.Data[0].Revision || page.Rows[0].Instructions != canonical.Data[0].Instructions || page.NextCursor != canonical.NextCursor {
-			t.Fatal("installed schedule query differs from the canonical owner")
+		if len(page.Rows) != 1 || page.Rows[0].Title != "Inspect" || page.Rows[0].Instructions != "Inspect current work" || page.Rows[0].Revision != 1 {
+			t.Fatal("installed schedule query lost accepted owner data")
 		}
+		if seen[page.Rows[0].ID] {
+			t.Fatal("installed schedule page repeated an ID")
+		}
+		seen[page.Rows[0].ID] = true
 		if page.NextCursor == "" {
 			break
 		}
 		query.Cursor = page.NextCursor
+	}
+	if len(seen) != 2 {
+		t.Fatalf("installed schedule traversal omitted accepted rows: %v", seen)
 	}
 
 	r.close()
@@ -267,8 +274,8 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.SchedulesList, protocol.PageQuery{}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: []byte(`{"Cursor":""}`)}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
 	retained := filepath.Join(cfg.Stores.DataDirectory, "plugins", "data", installed.ID, "schedules.db")

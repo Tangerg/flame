@@ -457,13 +457,6 @@ func (f ForgetApprovalRuleRequest) ValidateWire() error {
 	)
 }
 
-func (p PageQuery) ValidateWire() error {
-	return collectWireViolations("PageQuery",
-		optionalPositiveNumber("limit", p.Limit),
-		maxLength("cursor", p.Cursor, 65536),
-	)
-}
-
 func (c CreateScheduleRequest) ValidateWire() error {
 	return collectWireViolations("CreateScheduleRequest",
 		requiredTextPattern("instructions", c.Instructions, "\\S"),
@@ -2341,6 +2334,13 @@ func (c CallPluginResponse) ValidateWire() error {
 func (p PageContinuation) ValidateWire() error {
 	return collectWireViolations("PageContinuation",
 		maxLength("nextCursor", p.NextCursor, 65536),
+	)
+}
+
+func (p PageQuery) ValidateWire() error {
+	return collectWireViolations("PageQuery",
+		optionalPositiveNumber("limit", p.Limit),
+		maxLength("cursor", p.Cursor, 65536),
 	)
 }
 

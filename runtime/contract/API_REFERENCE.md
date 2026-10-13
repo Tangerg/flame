@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.6` · 105 methods
+Protocol `2026-10-14.7` · 104 methods
 
 ## Methods
 
@@ -87,7 +87,6 @@ Protocol `2026-10-14.6` · 105 methods
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
-| `schedules.list` | query | unary | none | none | cursor | — | `schedules` | `plugin_unavailable`, `capability_not_negotiated` |
 | `schedules.create` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `workspace_unavailable`, `capability_not_negotiated` |
 | `schedules.update` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `schedules.delete` | command | unary | ownerResponse | none | none | — | `schedules` | `plugin_unavailable`, `capability_not_negotiated` |
@@ -1296,7 +1295,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.configure` | always | `plugins` |
 | `plugins.setEnablement` | always | `plugins` |
 | `plugins.uninstall` | always | `plugins` |
-| `schedules.list` | always | `schedules` |
 | `schedules.create` | always | `schedules` |
 | `schedules.update` | always | `schedules` |
 | `schedules.delete` | always | `schedules` |

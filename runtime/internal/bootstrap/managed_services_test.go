@@ -92,7 +92,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 		}
 	})
 	waitForRunEvents(t, collectRunEvents(events), "backend Schedule tool")
-	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || page.Data[0].Title != "model-owned schedule" {
 		t.Fatalf("model Tool did not reach the human fact owner: %+v", page.Data)
 	}
@@ -185,7 +185,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	if *replay != *accepted {
 		t.Fatal("restart reopened an accepted Run")
 	}
-	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
 		t.Fatalf("acceptance replay advanced definition again=%+v", page.Data)
 	}
@@ -368,7 +368,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	replay := r.must(delivery.SchedulesCreate, request, "lost-create").(*protocol.Schedule)
-	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) || replay.ID != captured.Response.Result.Value.ID {
 		t.Fatalf("lost create repeated mutation: %+v", page.Data)
 	}
@@ -429,7 +429,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 			t.Fatalf("manual replay changed acceptance: %+v", replay)
 		}
 	}
-	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
 		t.Fatalf("manual replay advanced definition: %+v", page.Data)
 	}
@@ -541,7 +541,7 @@ func TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun(t *tes
 	if len(sessions.Data) != 0 {
 		t.Fatal("receipt reconciliation originated a Run")
 	}
-	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision {
 		t.Fatal("missing receipt advanced the definition")
 	}

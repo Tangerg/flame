@@ -41,7 +41,10 @@
           "type": "string"
         }
       },
-      "required": ["SessionID", "RunID"],
+      "required": [
+        "SessionID",
+        "RunID"
+      ],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fDraft": {
@@ -151,7 +154,9 @@
           "type": "string"
         }
       },
-      "required": ["ID"],
+      "required": [
+        "ID"
+      ],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fListInput": {
@@ -170,7 +175,9 @@
           "type": "integer"
         }
       },
-      "required": ["Cursor"],
+      "required": [
+        "Cursor"
+      ],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fModelPatch": {
@@ -201,7 +208,10 @@
           "type": "array"
         }
       },
-      "required": ["Rows", "NextCursor"],
+      "required": [
+        "Rows",
+        "NextCursor"
+      ],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fUpdateInput": {
@@ -238,7 +248,11 @@
           "type": "string"
         }
       },
-      "required": ["ID", "ExpectedRevision", "ModelSelection"],
+      "required": [
+        "ID",
+        "ExpectedRevision",
+        "ModelSelection"
+      ],
       "type": "object"
     }
   }

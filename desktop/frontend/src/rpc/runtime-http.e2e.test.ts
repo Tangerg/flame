@@ -1754,113 +1754,6 @@ for await (const line of lines) {
     }
   }, 30_000);
 
-  it("reconciles Schedule response and acknowledgement cutpoints through cold reads", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const requestMeta = (): RequestMeta => ({
-      protocolVersion: PROTOCOL_VERSION,
-      clientInfo: { name: "runtime-http-schedule-cutpoint-e2e", version: "1" },
-      clientCapabilities: { features: {}, interruptTypes: ["approval", "question"] },
-    });
-    const callAfterCommitLoss = async <T>(
-      method: string,
-      call: (faultClient: FlameClient) => Promise<T>,
-    ): Promise<T> => {
-      const fault = faultUnaryResponse(method, "afterCommit");
-      const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
-        requestMeta,
-      });
-      try {
-        const value = await call(faultClient);
-        expect(fault.attempts()).toBe(2);
-        return value;
-      } finally {
-        await faultClient.close();
-      }
-    };
-    const streamController = new AbortController();
-    const subscription = await client.runtimeEvents.subscribe(
-      { topics: ["schedules.changed"] },
-      streamController.signal,
-    );
-    const events = subscription.events[Symbol.asyncIterator]();
-    let scheduleId: string | undefined;
-
-    try {
-      const created = await callAfterCommitLoss("schedules.create", (faultClient) =>
-        faultClient.schedules.create({
-          cron: "0 0 1 1 *",
-          instructions: "Exercise post-commit Schedule replay.",
-          title: "HTTP Schedule replay cutpoint",
-          workspace: { path: root },
-        }),
-      );
-      scheduleId = created.id;
-      await expect(nextRuntimeEvent(events, "schedules.changed")).resolves.toMatchObject({
-        type: "schedules.changed",
-        scheduleIds: [created.id],
-      });
-      await expect(client.schedules.list()).resolves.toMatchObject({
-        data: [expect.objectContaining({ id: created.id, revision: created.revision })],
-      });
-
-      const fired = await callAfterCommitLoss("schedules.runNow", (faultClient) =>
-        faultClient.schedules.runNow(created.id),
-      );
-      await expect(nextRuntimeEvent(events, "schedules.changed")).resolves.toMatchObject({
-        type: "schedules.changed",
-        scheduleIds: [created.id],
-      });
-      let firedRun = await client.runs.get(asRunId(fired.runId));
-      for (let attempt = 0; attempt < 100 && firedRun.status !== "finished"; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        firedRun = await client.runs.get(asRunId(fired.runId));
-      }
-      expect(firedRun).toMatchObject({
-        id: fired.runId,
-        sessionId: fired.sessionId,
-        status: "finished",
-      });
-
-      const current = (await client.schedules.list()).data.find(
-        (schedule) => schedule.id === created.id,
-      );
-      if (!current) throw new Error("Schedule disappeared before replayed update");
-      const updated = await callAfterCommitLoss("schedules.update", (faultClient) =>
-        faultClient.schedules.update({
-          id: created.id,
-          enabled: false,
-          expectedRevision: current.revision,
-          title: "HTTP Schedule replay cutpoint updated",
-          workspaceMode: "default",
-        }),
-      );
-      await expect(nextRuntimeEvent(events, "schedules.changed")).resolves.toMatchObject({
-        type: "schedules.changed",
-        scheduleIds: [created.id],
-      });
-      await expect(client.schedules.list()).resolves.toMatchObject({
-        data: [
-          expect.objectContaining({ id: created.id, revision: updated.revision, enabled: false }),
-        ],
-      });
-
-      await callAfterCommitLoss("schedules.delete", (faultClient) =>
-        faultClient.schedules.delete(created.id),
-      );
-      scheduleId = undefined;
-      await expect(nextRuntimeEvent(events, "schedules.changed")).resolves.toMatchObject({
-        type: "schedules.changed",
-        scheduleIds: [created.id],
-      });
-      await expect(client.schedules.list()).resolves.toMatchObject({ data: [] });
-    } finally {
-      if (scheduleId) await client.schedules.delete(scheduleId).catch(() => undefined);
-      streamController.abort();
-      await events.return?.();
-    }
-  }, 30_000);
-
   it("keeps one Goal drive across lost start, stop and resume responses", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
@@ -3642,119 +3535,6 @@ for await (const line of lines) {
     }
   }, 30_000);
 
-  it("reconciles the schedule lifecycle through schedules.changed", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const streamController = new AbortController();
-    const subscription = await client.runtimeEvents.subscribe(
-      { topics: ["schedules.changed"] },
-      streamController.signal,
-    );
-    const runtimeEvents = subscription.events[Symbol.asyncIterator]();
-
-    const created = await client.schedules.create({
-      cron: "0 0 1 1 *",
-      instructions: "Run the annual HTTP E2E check.",
-      title: "HTTP schedule lifecycle",
-      workspace: { path: root },
-      provider: "openai-compatible",
-      model: "e2e-model",
-      reasoningEffort: "high",
-    });
-    expect(created).toMatchObject({
-      provider: "openai-compatible",
-      model: "e2e-model",
-      reasoningEffort: "high",
-    });
-    await expect(nextRuntimeEvent(runtimeEvents, "schedules.changed")).resolves.toMatchObject({
-      type: "schedules.changed",
-      scheduleIds: [created.id],
-    });
-    await expect(client.schedules.list()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: created.id, revision: created.revision })],
-    });
-
-    const fired = await client.schedules.runNow(created.id);
-    expect(fired.sessionId).toEqual(expect.stringMatching(/^ses_/));
-    expect(fired.runId).toEqual(expect.stringMatching(/^run_/));
-    await expect(nextRuntimeEvent(runtimeEvents, "schedules.changed")).resolves.toMatchObject({
-      type: "schedules.changed",
-      scheduleIds: [created.id],
-    });
-    let firedRun = await client.runs.get(asRunId(fired.runId));
-    for (let attempt = 0; attempt < 100 && firedRun.status !== "finished"; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      firedRun = await client.runs.get(asRunId(fired.runId));
-    }
-    expect(firedRun).toMatchObject({
-      id: fired.runId,
-      sessionId: fired.sessionId,
-      provider: "openai-compatible",
-      model: "e2e-model",
-      reasoningEffort: "high",
-      status: "finished",
-      outcome: { type: "completed" },
-    });
-    const firedSchedule = (await client.schedules.list()).data[0];
-    expect(firedSchedule).toMatchObject({
-      id: created.id,
-      lastRunAt: expect.any(String),
-    });
-    if (!firedSchedule) throw new Error("schedule disappeared after its manual run");
-    expect(firedSchedule.revision).toBeGreaterThan(created.revision);
-
-    const updated = await client.schedules.update({
-      id: created.id,
-      expectedRevision: firedSchedule.revision,
-      enabled: false,
-      title: "HTTP schedule lifecycle updated",
-      workspaceMode: "default",
-      provider: "",
-      model: "",
-      reasoningEffort: "",
-    });
-    expect(updated.revision).toBe(firedSchedule.revision + 1);
-    expect(updated.workspace).toBeUndefined();
-    expect(updated.provider).toBeUndefined();
-    expect(updated.model).toBeUndefined();
-    expect(updated.reasoningEffort).toBeUndefined();
-    await expect(
-      client.schedules.update({
-        id: created.id,
-        expectedRevision: firedSchedule.revision,
-        title: "Stale draft must not overwrite the saved title",
-      }),
-    ).rejects.toMatchObject({ data: { type: "revision_conflict" } });
-    await expect(client.schedules.list()).resolves.toMatchObject({
-      data: [expect.objectContaining({ title: updated.title, revision: updated.revision })],
-    });
-    await expect(nextRuntimeEvent(runtimeEvents, "schedules.changed")).resolves.toMatchObject({
-      type: "schedules.changed",
-      scheduleIds: [created.id],
-    });
-
-    await client.schedules.delete(created.id);
-    await expect(nextRuntimeEvent(runtimeEvents, "schedules.changed")).resolves.toMatchObject({
-      type: "schedules.changed",
-      scheduleIds: [created.id],
-    });
-    await expect(client.schedules.list()).resolves.toMatchObject({ data: [] });
-
-    await expect(client.schedules.runNow(created.id)).rejects.toMatchObject({
-      data: { type: "schedule_not_found" },
-    });
-    await expect(
-      client.schedules.update({
-        id: created.id,
-        expectedRevision: updated.revision,
-        enabled: true,
-      }),
-    ).rejects.toMatchObject({ data: { type: "schedule_not_found" } });
-
-    streamController.abort();
-    await runtimeEvents.return?.();
-  }, 30_000);
-
   it("preserves filters and ordering across every high-cardinality cursor", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
@@ -3805,7 +3585,6 @@ for await (const line of lines) {
     ]);
 
     const waitingRuns: string[] = [];
-    const schedules: string[] = [];
     try {
       for (const suffix of ["A", "B"]) {
         const waitingSession = await client.sessions.create({
@@ -3831,29 +3610,9 @@ for await (const line of lines) {
           .map((set) => set.rootRunId)
           .sort(),
       ).toEqual([...waitingRuns].sort());
-
-      for (const suffix of ["A", "B"]) {
-        const schedule = await client.schedules.create({
-          cron: "0 0 1 1 *",
-          instructions: `Run paged schedule ${suffix}.`,
-          title: `HTTP paged schedule ${suffix}`,
-          workspace: { path: root },
-        });
-        schedules.push(schedule.id);
-      }
-      const pagedSchedules = await client.schedules.list({ limit: 1 }).autoPagingToArray();
-      expect(
-        pagedSchedules
-          .filter((schedule) => schedules.includes(schedule.id))
-          .map((schedule) => schedule.id)
-          .sort(),
-      ).toEqual([...schedules].sort());
     } finally {
       for (const runId of waitingRuns) {
         await client.runs.cancel(asRunId(runId), "HTTP pagination cleanup");
-      }
-      for (const scheduleId of schedules) {
-        await client.schedules.delete(scheduleId);
       }
     }
   }, 30_000);

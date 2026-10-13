@@ -412,6 +412,21 @@ reuses the selected query. Disablement/uninstall withdraws presentation and reso
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
 
+## Protocol 2026-10-14.7
+
+Core removes schedules.list and its Go/TS binding, delivery handler and selected-role
+forwarding read. CLI catalog readers now capture a public installation/contribution
+binding and call the publisher's typed list operation through plugins.call for every
+page. Publisher Go contracts generate canonical JSON, TS and the CLI Go projection
+from one source, preserving integer bounds and optional values. Metadata/contract
+mismatch or withdrawal is an explicit failure; a later selection cannot retarget an
+in-progress traversal. No old reader or compatibility alias remains.
+
+Rebuild generated consumers. Backend wire stays 2026-10-14.2; business/storage
+formats stay unchanged. Schedule mutation Core facades remain real consumers until
+those owning migrations preserve original command/binding recovery. Full native
+execution, external author packaging and final full/vet/race checks remain open.
+
 ## Protocol 2026-10-14.6
 
 Core removes `plugins.renameSession`, the special Go/TS/CLI wrapper, release action

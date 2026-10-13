@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -132,25 +131,6 @@ func NewSchedules(store plugins.Store, pool *mcpconnection.Pool, commands *Comma
 		return nil, err
 	}
 	return &Schedules{contracts: contracts, installations: store, pool: pool, commands: commands}, nil
-}
-func (s *Schedules) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
-	location, session, err := contributionSession(ctx, s.installations, s.commands.selections, s.pool, s.contracts.Capability)
-	if err != nil {
-		return pagination.Page[schedule.Schedule]{}, err
-	}
-	page, err := query(ctx, location, session, s.contracts.List, rpc.ListInput{Cursor: cursor, Limit: limit.Explicit()}, sdk.ParamsBase{})
-	if err != nil {
-		return pagination.Page[schedule.Schedule]{}, rpc.DecodeError(err)
-	}
-	values := make([]schedule.Schedule, len(page.Rows))
-	for i, row := range page.Rows {
-		value, err := schedule.Restore(row)
-		if err != nil {
-			return pagination.Page[schedule.Schedule]{}, err
-		}
-		values[i] = value
-	}
-	return pagination.Page[schedule.Schedule]{Rows: values, NextCursor: page.NextCursor}, nil
 }
 func (s *Schedules) Create(ctx context.Context, input schedule.Draft) (schedule.Schedule, error) {
 	value, err := invokeCommand[schedule.Draft, schedule.Snapshot](ctx, s.commands, s.contracts.Capability, rpc.Create, input, func(value schedule.Snapshot) error { _, err := schedule.Restore(value); return err })

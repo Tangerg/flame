@@ -10,14 +10,14 @@ import (
 func TestConsumptionRequiresAnActualConnectionPortCall(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{
-		"runtime/internal/delivery/methods.go": `package delivery; const SchedulesList Name = "schedules.list"; const Unused Name = "unused"`,
+		"runtime/internal/delivery/methods.go": `package delivery; const CatalogList Name = "catalog.list"; const Unused Name = "unused"`,
 		"runtime/schedules.go": `package runtime
-func (r *binding) ListSchedules() { r.invoke(delivery.SchedulesList) }
+func (r *binding) ListCatalog() { r.invoke(delivery.CatalogList) }
 func (r *binding) Unused() { r.invoke(delivery.Unused) }`,
 		"cli/internal/adapter/runtimebinding/schedules.go": `package runtimebinding
-type scheduleBinding interface { ListSchedules(); Unused() }
+type scheduleBinding interface { ListCatalog(); Unused() }
 type Connection struct { schedules scheduleBinding }
-func (r *Connection) Schedules() { r.schedules.ListSchedules() }
+func (r *Connection) Schedules() { r.schedules.ListCatalog() }
 func (r *Unrelated) Other() { r.schedules.Unused() }`,
 		"cli/internal/adapter/runtimebinding/schedules_test.go": `package runtimebinding; func (r *Connection) Test() { r.schedules.Unused() }`,
 	} {
@@ -30,7 +30,7 @@ func (r *Unrelated) Other() { r.schedules.Unused() }`,
 		}
 	}
 	got := collect(root)
-	want := map[string][]string{"schedules.list": {"cli/internal/adapter/runtimebinding/schedules.go:4"}}
+	want := map[string][]string{"catalog.list": {"cli/internal/adapter/runtimebinding/schedules.go:4"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("consumers = %v, want %v", got, want)
 	}

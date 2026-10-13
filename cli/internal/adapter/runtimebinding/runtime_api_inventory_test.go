@@ -383,7 +383,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"UpdateMCPServer":               command("MCP", "TUI /mcp-edit"),
 		"CreateSchedule":                command("schedules", "TUI /schedule-create"),
 		"DeleteSchedule":                command("schedules", "TUI /schedule-delete"),
-		"ListSchedules":                 command("schedules", "TUI /schedules and schedule forms"),
 		"RunScheduleNow":                command("schedules", "TUI /schedule-run"),
 		"UpdateSchedule":                command("schedules", "TUI schedule edit/enable/disable"),
 		"AddAgentMemory":                command("agent memory", "TUI /memory-add"),

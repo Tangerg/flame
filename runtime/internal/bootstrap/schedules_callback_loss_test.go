@@ -118,7 +118,7 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	if replay.SessionID != current.SessionID || replay.RunID != accepted.RunID {
 		t.Fatalf("retired Core acceptance opened another Run: %+v", replay)
 	}
-	page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule])
+	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
 		t.Fatalf("private acknowledgement did not advance exactly once: %+v", page.Data)
 	}

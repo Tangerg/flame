@@ -164,3 +164,9 @@ publishes an authenticated contribution notice through plugins.notifyChange; cur
 readers receive the existing resync notice and reread rather than infer success.
 No second scheduler, receipt store or compatibility reader exists. Native restart,
 withdrawal and non-selected-entry acceptance remain final verification requirements.
+
+The publisher's go:generate contract command also emits the CLI's typed Go schema
+projection, alongside canonical capability JSON and TS. CLI catalog reads freeze
+the selected binding and enter the same public installed list operation as the
+ordinary component. Remaining Core mutation entrances retain their existing owner
+until their recovery-safe migration; schedules.list is removed without an alias.

@@ -2,6 +2,9 @@ package runtimebinding
 
 import (
 	"context"
+	json "encoding/json/v2"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"testing"
 	"time"
 
@@ -10,31 +13,90 @@ import (
 )
 
 type scheduleBindingStub struct {
-	t            *testing.T
-	now          time.Time
-	actions      []string
-	keys         map[string]struct{}
-	created      protocol.CreateScheduleRequest
-	updated      protocol.UpdateScheduleRequest
-	createResult *protocol.Schedule
-	updateResult *protocol.Schedule
-	list         func(protocol.PageQuery) *protocol.Page[protocol.Schedule]
+	pluginBinding
+	queries       []protocol.CallPluginRequest
+	providerReads int
+	provider      string
+	t             *testing.T
+	now           time.Time
+	actions       []string
+	keys          map[string]struct{}
+	created       protocol.CreateScheduleRequest
+	updated       protocol.UpdateScheduleRequest
+	createResult  *protocol.Schedule
+	updateResult  *protocol.Schedule
+	list          func(protocol.PageQuery) *protocol.Page[protocol.Schedule]
 }
 
-func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.PageQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Schedule], error) {
+const scheduleInstallation = "12345678-1234-1234-1234-123456789abc"
+
+func (s *scheduleBindingStub) ListPluginProviders(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error) {
 	s.assertMeta(options.RequestMeta)
-	if query.Limit == nil || *query.Limit != schedulePageLimit {
-		s.t.Fatalf("schedule page limit = %v", query.Limit)
+	s.providerReads++
+	installation := scheduleInstallation
+	if s.provider != "" {
+		installation = s.provider
 	}
+	return protocol.NewPage([]protocol.PluginProviderSelection{{Role: "schedules", InstallationID: installation, Contribution: "schedules-provider"}}), nil
+}
+func (s *scheduleBindingStub) ListPlugins(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
+	s.assertMeta(options.RequestMeta)
+	contracts, err := capability.Parse([]byte(schedulesCapabilityJSON))
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return protocol.NewPage([]protocol.PluginInstallation{{ID: scheduleInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "schedules-provider", Contract: contracts.Descriptor()}}}}}), nil
+}
+func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+	s.assertMeta(options.RequestMeta)
+	if request.InstallationID != scheduleInstallation || request.Target.Reference != scheduleInstallation || request.Target.Scope != "installation" || request.Method != schedulesListV1Method || request.Contract != schedulesCapabilityJSON || options.IdempotencyKey != "" {
+		s.t.Fatalf("unbound schedule query: %+v", request)
+	}
+	s.queries = append(s.queries, request)
+	var input SchedulesListV1Input
+	if err := json.Unmarshal(request.Input, &input); err != nil {
+		s.t.Fatal(err)
+	}
+	if input.Limit == nil || *input.Limit != schedulePageLimit {
+		s.t.Fatalf("schedule page limit: %v", input.Limit)
+	}
+	query := protocol.PageQuery{Cursor: input.Cursor, Limit: new(int(*input.Limit))}
+	var page *protocol.Page[protocol.Schedule]
 	if s.list != nil {
-		return s.list(query), nil
+		page = s.list(query)
+	} else {
+		first := wireSchedule(s.now.Add(time.Minute), "sch_2")
+		if query.Cursor == "" {
+			page = protocol.NewPageWithCursor([]protocol.Schedule{first}, "next")
+		} else {
+			page = protocol.NewPage([]protocol.Schedule{wireSchedule(s.now, "sch_1")})
+		}
 	}
-	first := wireSchedule(s.now.Add(time.Minute), "sch_2")
-	if query.Cursor == "" {
-		return protocol.NewPageWithCursor([]protocol.Schedule{first}, "next"), nil
+	if page == nil {
+		return nil, nil
 	}
-	second := wireSchedule(s.now, "sch_1")
-	return protocol.NewPage([]protocol.Schedule{second}), nil
+	value := SchedulesListV1Output{NextCursor: page.NextCursor}
+	for _, row := range page.Data {
+		snapshot := SchedulesCreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, Cron: row.Cron, CreatedAt: row.CreatedAt, Revision: row.Revision, ModelSelection: map[string]string{"provider": row.Provider, "model": row.Model, "reasoningEffort": row.ReasoningEffort}}
+		if row.Workspace != nil {
+			snapshot.CWD = row.Workspace.Path
+		}
+		if row.NextRunAt != nil {
+			snapshot.NextRunAt = *row.NextRunAt
+		}
+		if row.LastRunAt != nil {
+			snapshot.LastRunAt = *row.LastRunAt
+		}
+		value.Rows = append(value.Rows, snapshot)
+	}
+	if value.Rows == nil {
+		value.Rows = make([]SchedulesCreateV1Output, 0)
+	}
+	encoded, err := jsoninput.Encode(value)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return &protocol.CallPluginResponse{Output: encoded.JSON()}, nil
 }
 
 func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol.CreateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
@@ -142,6 +204,7 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{})}
 	runtime := &Connection{
 		schedules: stub,
+		plugins:   stub,
 		workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 			Ref:          protocol.WorkspaceRef{Path: "/workspace"},
 			ProjectRoot:  "/workspace",
@@ -152,7 +215,7 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 
 	listed, err := runtime.Schedules(t.Context())
 	if err != nil || len(listed) != 2 || listed[0].ID != "sch_2" || listed[1].ID != "sch_1" {
-		t.Fatalf("Schedules = (%+v, %v)", listed, err)
+		t.Fatalf("public Schedules = (%+v, %v)", listed, err)
 	}
 	candidate := protocol.CreateScheduleRequest{
 		Title: "Daily review", Instructions: "review everything", Workspace: &protocol.WorkspaceRef{Path: "/workspace"},
@@ -197,6 +260,7 @@ func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 	stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{})}
 	runtime := &Connection{
 		schedules: stub,
+		plugins:   stub,
 		workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 			Ref:          protocol.WorkspaceRef{Path: "/workspace"},
 			ProjectRoot:  "/workspace",
@@ -249,4 +313,39 @@ func cloneWorkspaceRef(value *protocol.WorkspaceRef) *protocol.WorkspaceRef {
 		return nil
 	}
 	return &protocol.WorkspaceRef{Path: value.Path}
+}
+
+func TestScheduleReadKeepsOriginalProviderAcrossPages(t *testing.T) {
+	now := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
+	stub := &scheduleBindingStub{t: t, now: now, keys: map[string]struct{}{}}
+	stub.list = func(query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
+		if query.Cursor == "" {
+			stub.provider = "other"
+			return protocol.NewPageWithCursor([]protocol.Schedule{wireSchedule(now, "sch_1")}, "next")
+		}
+		return protocol.NewPage([]protocol.Schedule{wireSchedule(now, "sch_2")})
+	}
+	caller := &Connection{plugins: stub, meta: requestMeta("test")}
+	rows, err := caller.Schedules(t.Context())
+	if err != nil || len(rows) != 2 || stub.providerReads != 1 || len(stub.queries) != 2 {
+		t.Fatalf("frozen provider read: rows=%v, error=%v, selections=%d", rows, err, stub.providerReads)
+	}
+	for _, request := range stub.queries {
+		if request.InstallationID != scheduleInstallation {
+			t.Fatal("read retargeted a captured provider")
+		}
+	}
+}
+
+func TestScheduleReadRejectsDuplicateRowsAcrossPublicPages(t *testing.T) {
+	stub := &scheduleBindingStub{t: t, now: time.Now(), keys: map[string]struct{}{}}
+	stub.list = func(query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
+		if query.Cursor == "" {
+			return protocol.NewPageWithCursor([]protocol.Schedule{wireSchedule(stub.now, "sch_1")}, "next")
+		}
+		return protocol.NewPage([]protocol.Schedule{wireSchedule(stub.now, "sch_1")})
+	}
+	caller := &Connection{plugins: stub, meta: requestMeta("test")}
+	_, err := caller.Schedules(t.Context())
+	requireRuntimeContractViolation(t, err)
 }

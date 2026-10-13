@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	SchedulesList   Name = "schedules.list"
 	SchedulesCreate Name = "schedules.create"
 	SchedulesUpdate Name = "schedules.update"
 	SchedulesDelete Name = "schedules.delete"
@@ -15,13 +14,6 @@ const (
 )
 
 func registerSchedules(registry *Registry) {
-	registry.query(MethodMeta{
-		Name: SchedulesList, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureSchedules),
-	}, func(service interface {
-		ListSchedules(context.Context, protocol.PageQuery) (*protocol.Page[protocol.Schedule], error)
-	}, ctx context.Context, request protocol.PageQuery) (*protocol.Page[protocol.Schedule], error) {
-		return service.ListSchedules(ctx, request)
-	})
 
 	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,
 		Name: SchedulesCreate, CapabilityRules: requires(protocol.FeatureSchedules),

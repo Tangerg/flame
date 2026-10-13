@@ -32,7 +32,7 @@ type featureArtifacts struct {
 	capability  *capability.Contract
 }
 
-func runFeature(source, dir, tsDir string) error {
+func runFeature(source, dir, tsDir string, goOutputs ...featureGoOutput) error {
 	if source != "-" {
 		if err := protectFeatureSource(source, dir, tsDir); err != nil {
 			return err
@@ -51,6 +51,37 @@ func runFeature(source, dir, tsDir string) error {
 	artifacts, err := buildFeature(data)
 	if err != nil {
 		return err
+	}
+	goBodies := make(map[string][]byte, len(goOutputs))
+	for _, output := range goOutputs {
+		if output.Path == "" {
+			continue
+		}
+		if source != "-" {
+			input, err := filepath.Abs(source)
+			if err != nil {
+				return err
+			}
+			target, err := filepath.Abs(output.Path)
+			if err != nil {
+				return err
+			}
+			if input == target {
+				return fmt.Errorf("feature Go output would overwrite input")
+			}
+			original, err := os.Stat(source)
+			if err != nil {
+				return err
+			}
+			if existing, err := os.Stat(output.Path); err == nil && os.SameFile(original, existing) {
+				return fmt.Errorf("feature Go output would overwrite input")
+			}
+		}
+		body, err := buildFeatureGo(artifacts, output)
+		if err != nil {
+			return err
+		}
+		goBodies[output.Path] = body
 	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -86,6 +117,20 @@ func runFeature(source, dir, tsDir string) error {
 			return err
 		}
 	}
+
+	for _, output := range goOutputs {
+		if output.Path == "" {
+			continue
+		}
+		body := goBodies[output.Path]
+		if err := os.MkdirAll(filepath.Dir(output.Path), 0755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(output.Path, body, 0644); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

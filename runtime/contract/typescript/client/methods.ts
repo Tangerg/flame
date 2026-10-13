@@ -392,7 +392,6 @@ export interface Methods {
     forgetRule: (id: string) => MutationPromise<void>;
   };
   schedules: {
-    list: (query?: PageQuery, signal?: AbortSignal) => AutoPagingPromise<Page<Schedule>>;
     create: (params: CreateScheduleRequest) => MutationPromise<Schedule>;
     update: (params: UpdateScheduleRequest) => MutationPromise<Schedule>;
     delete: (id: string) => MutationPromise<void>;
@@ -704,7 +703,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       forgetRule: (id) => call("approval.forgetRule", { id }),
     },
     schedules: {
-      list: (query, signal) => call("schedules.list", query ?? {}, { signal }),
       create: (params) => call("schedules.create", params),
       update: (params) => call("schedules.update", params),
       delete: (id) => call("schedules.delete", { id }),

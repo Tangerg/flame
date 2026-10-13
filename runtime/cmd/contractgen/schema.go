@@ -218,6 +218,19 @@ func (s *schemaSet) define(t reflect.Type, body *schema) *schema {
 // fact.
 func (s *schemaSet) object(t reflect.Type) *schema {
 	out := &schema{Type: schemaTypeObject, Properties: make(map[string]any)}
+	// Flattened fields still have a public named owner and its wire validator.
+	for i := range t.NumField() {
+		field := t.Field(i)
+		if field.Anonymous && field.IsExported() {
+			embedded := field.Type
+			if embedded.Kind() == reflect.Pointer {
+				embedded = embedded.Elem()
+			}
+			if embedded.Kind() == reflect.Struct && embedded.PkgPath() == t.PkgPath() {
+				s.walk(embedded)
+			}
+		}
+	}
 	for _, field := range contractshape.Fields(t) {
 		node := s.walk(field.Type)
 		// A value constraint on a directly-owned field narrows it in place; the
