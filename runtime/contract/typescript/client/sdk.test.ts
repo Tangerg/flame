@@ -79,7 +79,13 @@ describe("createFlameClient", () => {
     const transport = createMemoryTransport();
     const dispose = vi.fn();
     const client = createFlameClient(transport, {
-      mutationJournal: { reserve: () => undefined, dispose },
+      mutationJournal: {
+        reserve: () => undefined,
+        capturePluginCommand: async () => {
+          throw new Error("unexpected plugin command capture");
+        },
+        dispose,
+      },
     });
 
     await client.close();
@@ -93,6 +99,9 @@ describe("createFlameClient", () => {
     const failure = new Error("journal cleanup failed");
     const client = createFlameClient(transport, {
       mutationJournal: {
+        capturePluginCommand: async () => {
+          throw new Error("unexpected plugin command capture");
+        },
         reserve: () => undefined,
         dispose: () => {
           throw failure;
@@ -115,6 +124,9 @@ describe("createFlameClient", () => {
     });
     const client = createFlameClient(transport, {
       mutationJournal: {
+        capturePluginCommand: async () => {
+          throw new Error("unexpected plugin command capture");
+        },
         reserve: () => undefined,
         dispose: () => {
           throw journalFailure;
@@ -146,7 +158,13 @@ describe("createFlameClient", () => {
       throw journalFailure;
     });
     const client = createFlameClient(transport, {
-      mutationJournal: { reserve: () => undefined, dispose },
+      mutationJournal: {
+        reserve: () => undefined,
+        capturePluginCommand: async () => {
+          throw new Error("unexpected plugin command capture");
+        },
+        dispose,
+      },
     });
 
     const first = client.close();

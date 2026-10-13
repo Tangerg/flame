@@ -21,7 +21,6 @@ export type WireTypeName =
   | "AgentDocScope"
   | "AgentMemoryAddRequest"
   | "AgentMemoryItem"
-  | "AgentMemoryItemRequest"
   | "AgentMemoryOrigin"
   | "AgentMemoryReviewDecision"
   | "AgentMemoryReviewRequest"
@@ -443,9 +442,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
-  AgentMemoryItemRequest: object({
-    id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
-  }, ["id"]),
   AgentMemoryOrigin: enumOf(["auto", "user"]),
   AgentMemoryReviewDecision: enumOf(["approve", "reject"]),
   AgentMemoryReviewRequest: object({
@@ -4426,7 +4422,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "usage.summary": ref(() => CHECKS.UsageSummaryRequest),
   "agentMemory.review": ref(() => CHECKS.AgentMemoryReviewRequest),
   "agentMemory.update": ref(() => CHECKS.AgentMemoryUpdateRequest),
-  "agentMemory.delete": ref(() => CHECKS.AgentMemoryItemRequest),
   "agentMemory.add": ref(() => CHECKS.AgentMemoryAddRequest),
   "feedback.create": ref(() => CHECKS.FeedbackRequest),
 };
@@ -4535,7 +4530,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "usage.summary": ref(() => CHECKS.UsageSummary),
   "agentMemory.review": object({}, []),
   "agentMemory.update": ref(() => CHECKS.AgentMemoryItem),
-  "agentMemory.delete": object({}, []),
   "agentMemory.add": ref(() => CHECKS.AgentMemoryItem),
   "feedback.create": object({}, []),
 };

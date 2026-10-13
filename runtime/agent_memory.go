@@ -22,11 +22,6 @@ func (r *binding) UpdateAgentMemory(ctx context.Context, request protocol.AgentM
 	return r.invoke[protocol.AgentMemoryUpdateRequest, *protocol.AgentMemoryItem](ctx, delivery.AgentMemoryUpdate, request, commandOptions(options))
 }
 
-// DeleteAgentMemory deletes one curated Agent memory item.
-func (r *binding) DeleteAgentMemory(ctx context.Context, request protocol.AgentMemoryItemRequest, options CommandOptions) error {
-	return r.invokeAck(ctx, delivery.AgentMemoryDelete, request, commandOptions(options))
-}
-
 // AddAgentMemory adds one curated Agent memory item.
 func (r *binding) AddAgentMemory(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error) {
 	return r.invoke[protocol.AgentMemoryAddRequest, *protocol.AgentMemoryItem](ctx, delivery.AgentMemoryAdd, request, commandOptions(options))

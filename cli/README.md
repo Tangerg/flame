@@ -271,5 +271,9 @@ binding, raw input, command identity and replay guard in the existing workbench
 before dispatch. An uncertain deletion resumes before workspace or catalog reads,
 including after client restart and provider replacement. The retry accepts a full
 ID or an unambiguous prefix among pending deletions; an invalid acknowledgement
-retains the original intent. Review, update, add and the Desktop deletion consumer
-remain under migration; the remaining Core APIs still serve those real consumers.
+retains the original intent. Desktop deletion now also uses the installed operation
+and its existing client journal restores the original route before any new provider
+preparation. Core DeleteAgentMemory/agentMemory.delete and their DTO are removed.
+Review, update and add remain under migration; their Core APIs still serve real
+consumers. Uncertain requests from retired Core contracts are not translated into
+fresh public commands.

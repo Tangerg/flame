@@ -21,7 +21,6 @@ import (
 type agentMemoryUseCases interface {
 	Review(ctx context.Context, id string, decision agentmemory.ReviewDecision) error
 	Update(ctx context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error)
-	Delete(ctx context.Context, id string) error
 	Add(ctx context.Context, scope agentmemory.Scope, cwd, content string) (agentmemory.Item, error)
 }
 
@@ -50,11 +49,6 @@ func (s *Handler) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemory
 		return nil, err
 	}
 	return &w, nil
-}
-
-// DeleteAgentMemory removes an item (agentMemory.delete).
-func (s *Handler) DeleteAgentMemory(ctx context.Context, in protocol.AgentMemoryItemRequest) error {
-	return mapAgentMemoryErr(s.agentMemory.Delete(ctx, in.ID))
 }
 
 // AddAgentMemory stores a user-authored active item (agentMemory.add).

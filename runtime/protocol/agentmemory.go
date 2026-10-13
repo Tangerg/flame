@@ -66,11 +66,6 @@ type AgentMemoryUpdateRequest struct {
 	Pinned  *bool   `json:"pinned,omitzero"`
 }
 
-// AgentMemoryItemRequest — agentMemory.delete body.
-type AgentMemoryItemRequest struct {
-	ID string `json:"id"`
-}
-
 // AgentMemoryAddRequest — agentMemory.add body.
 type AgentMemoryAddRequest struct {
 	Scope     AgentMemoryScope `json:"scope"`

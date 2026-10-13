@@ -65,8 +65,16 @@ The component captures its inspected resource/revision before submitting a
 command. It must not turn response loss into another command identity or render
 an unconfirmed change as saved. Closing a component cancels observation; it does
 not cancel an independently accepted Runtime Run or replace a business receipt.
-The existing client mutation journal retains original command evidence; complete
-UI recovery after a new component generation still needs host integration.
+The existing client mutation journal retains original command evidence. For a
+logical command that must survive client/provider generation changes, use
+context.runtime.plugins.command with a stable intent, generated contract/method/input,
+a binding preparation callback and an output decoder. Recovery runs before the
+callback and retains the original route/key/retention guard. The caller supplies
+the original serialized input; changed input is refused. The decoder must validate
+the publisher acknowledgement before settlement. Journal routing/fingerprints are
+durable; authored input and business results are not copied into it. The workspace
+Memory deletion consumer uses this path. Other component workflows and complete
+cross-reload integration remain under migration.
 
 Use `buildComponent` from `@flame/plugin-sdk/build` with a source entry and output
 directory. It uses the existing Rolldown compiler to emit prebuilt ESM and relative
@@ -89,4 +97,5 @@ is part of this development slice.
 Core Runtime failures are classified with the shared SDK's `isErrorType` export.
 Components must use this host module rather than bundling another RPC error class;
 class identity is part of the Runtime client's typed failure contract. Business
-operation refusals continue to use the SDK's OperationFailure and code/message.
+operation refusals use the shared Runtime client's OperationFailure and code/message,
+which the SDK exports as the same class.

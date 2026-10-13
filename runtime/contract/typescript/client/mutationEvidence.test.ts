@@ -28,7 +28,7 @@ it.each(["AbortError", "TimeoutError"])("retains an in-progress command after %s
   const reservation = journal.reserve("runs.start", params)!;
   const controller = new AbortController();
   const cause = new DOMException("observation stopped", name);
-  const mutation = reservation.track(
+  const mutation = reservation.track(() =>
     createMutationPromise(
       async () => {
         reservation.authorizeDispatch();

@@ -1,4 +1,7 @@
-import { readInstalledMemory } from "../plugins/builtin/workspace/public/memoryReader";
+import {
+  deleteInstalledMemory,
+  readInstalledMemory,
+} from "../plugins/builtin/workspace/public/memory";
 // @vitest-environment-options { "url": "http://localhost:5173/" }
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 import { execFile, spawn } from "node:child_process";
@@ -1187,7 +1190,7 @@ for await (const line of lines) {
       expect(await readInstalledMemory(client, "project", workspace.path)).toContainEqual(created);
     } finally {
       await activateManagedOwner("memory");
-      if (created) await client.agentMemory.delete(created.id);
+      if (created) await deleteInstalledMemory(client, created.id);
       await client.plugins.uninstall(installation.id);
       managedOwners.delete("memory");
     }
@@ -2147,8 +2150,8 @@ for await (const line of lines) {
         ],
       });
 
-      await callAfterCommitLoss("agentMemory.delete", (faultClient) =>
-        faultClient.agentMemory.delete(added.id),
+      await callAfterCommitLoss("plugins.call", (faultClient) =>
+        deleteInstalledMemory(faultClient, added.id),
       );
       memoryId = undefined;
       await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
@@ -2162,7 +2165,7 @@ for await (const line of lines) {
         ).data,
       ).toEqual([]);
     } finally {
-      if (memoryId) await client.agentMemory.delete(memoryId).catch(() => undefined);
+      if (memoryId) await deleteInstalledMemory(client, memoryId).catch(() => undefined);
       streamController.abort();
       await events.return?.();
     }
@@ -4169,11 +4172,11 @@ for await (const line of lines) {
       (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
 
-    await client.agentMemory.delete(project.id);
+    await deleteInstalledMemory(client, project.id);
     await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
       type: "agentMemory.changed",
     });
-    await client.agentMemory.delete(user.id);
+    await deleteInstalledMemory(client, user.id);
     await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
       type: "agentMemory.changed",
     });

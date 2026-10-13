@@ -1,3 +1,4 @@
+import { callPluginCommand } from "./pluginCommand";
 import type {
   OpenPluginResourcesRequest,
   PluginResourceLease,
@@ -116,7 +117,12 @@ import { streamRunEvents, streamRuntimeEvents } from "./stream";
 import { openResourceLease, type ResourceSubscription } from "./resources";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
-import { MutationJournalScopeUnavailableError, createMutationJournal } from "./mutationJournal";
+import {
+  MutationJournalScopeUnavailableError,
+  createMutationJournal,
+  type PluginCommandInput,
+  type PluginCommandBinding,
+} from "./mutationJournal";
 import { RpcProtocolError } from "./errors";
 
 export type { MethodsOptions } from "./wireCallPath";
@@ -305,6 +311,13 @@ export interface Methods {
     };
   };
   plugins: {
+    command: <T>(
+      intent: string,
+      input: PluginCommandInput,
+      prepare: () => Promise<PluginCommandBinding>,
+      decode: (output: unknown) => T,
+      signal?: AbortSignal,
+    ) => Promise<T>;
     listProviders: (signal?: AbortSignal) => Promise<Page<PluginProviderSelection>>;
     selectProvider: (
       request: SelectPluginProviderRequest,
@@ -357,7 +370,6 @@ export interface Methods {
   agentMemory: {
     review: (id: string, decision: AgentMemoryReviewDecision) => MutationPromise<void>;
     update: (params: AgentMemoryUpdateRequest) => MutationPromise<AgentMemoryItem>;
-    delete: (id: string) => MutationPromise<void>;
     add: (params: AgentMemoryTarget & { content: string }) => MutationPromise<AgentMemoryItem>;
   };
   goals: {
@@ -623,6 +635,16 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      command: (intent, input, prepare, decode, signal) =>
+        callPluginCommand(
+          mutationJournal,
+          { perform, openMutation },
+          intent,
+          input,
+          prepare,
+          decode,
+          signal,
+        ),
       listProviders: (signal) => call("plugins.listProviders", {}, { signal }),
       selectProvider: (request, signal) => call("plugins.selectProvider", request, { signal }),
       openResources: (request, signal) => openResourceLease(client, call, request, signal),
@@ -662,7 +684,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           decision,
         }),
       update: (params) => call("agentMemory.update", params),
-      delete: (id) => call("agentMemory.delete", { id }),
       add: (params) => call("agentMemory.add", params),
     },
     goals: {

@@ -85,10 +85,6 @@ func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDe
 	_, err := invokeCommand[rpc.ReviewInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Review, rpc.ReviewInput{ID: id, Decision: decision}, nil)
 	return rpc.DecodeError(err)
 }
-func (m *Memory) Delete(ctx context.Context, id string) error {
-	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Delete, rpc.ItemInput{ID: id}, nil)
-	return rpc.DecodeError(err)
-}
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
 	ctx = operation.Start(ctx, capability.Automatic, "memory.context", uuid.NewString())
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)

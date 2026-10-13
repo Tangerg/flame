@@ -125,10 +125,6 @@
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options CommandOptions) (*protocol.Session, error)"
             },
             {
-              "name": "DeleteAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryItemRequest, options CommandOptions) error"
-            },
-            {
               "name": "DeleteMCPServer",
               "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CommandOptions) error"
             },
@@ -729,10 +725,6 @@
             {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options CommandOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "DeleteAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryItemRequest, options CommandOptions) error"
             },
             {
               "name": "DeleteMCPServer",
@@ -3560,7 +3552,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.12\""
+          "value": "\"2026-10-14.13\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4479,23 +4471,6 @@
               "name": "UpdatedAt",
               "type": "time.Time",
               "tag": "json:\"updatedAt,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "AgentMemoryItemRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
             }
           ],
           "methods": [

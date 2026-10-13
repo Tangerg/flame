@@ -17,6 +17,16 @@ export function isErrorType<Type extends ProblemData["type"]>(
   return error instanceof RpcError && error.data.type === type;
 }
 
+export class OperationFailure extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "OperationFailure";
+  }
+}
+
 export class RpcError extends Error {
   readonly code?: number;
   readonly data: ProblemData;

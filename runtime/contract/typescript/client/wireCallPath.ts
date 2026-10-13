@@ -154,22 +154,23 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
         retry: { enumerable: true, value: retry },
       }) as MutationPromise<Result>;
     }
-    const mutation = createMutationPromise(
-      (idempotencyKey, attempt) => {
-        return execute(
-          idempotencyKey,
-          {
-            ...attempt,
-            lookupNamespace: () => reservation?.lookupNamespace(),
-            authorizeDispatch: () => reservation?.authorizeDispatch(),
-          },
-          preparedParams,
-        );
-      },
-      requestedKey ?? reservation?.idempotencyKey,
-      { signal },
-    );
-    return reservation?.track(mutation) ?? mutation;
+    const create = () =>
+      createMutationPromise(
+        (idempotencyKey, attempt) => {
+          return execute(
+            idempotencyKey,
+            {
+              ...attempt,
+              lookupNamespace: () => reservation?.lookupNamespace(),
+              authorizeDispatch: () => reservation?.authorizeDispatch(),
+            },
+            preparedParams,
+          );
+        },
+        requestedKey ?? reservation?.idempotencyKey,
+        { signal },
+      );
+    return reservation ? reservation.track(create) : create();
   };
 
   const invoke = (<M extends WireMethodName>(

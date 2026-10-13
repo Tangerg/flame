@@ -6,8 +6,13 @@ import {
   type DurableMutationJournal,
   type MutationJournalScope,
   type MutationJournalStorage,
+  type PluginCommandInput,
+  type PluginCommandBinding,
 } from "./durableMutationJournal";
-import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import type { CallPluginRequest } from "@flame/runtime-contract/wire";
+
+export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
 
 export {
   MutationJournalCapacityError,
@@ -21,10 +26,15 @@ export interface MutationReservation {
   readonly idempotencyKey: string;
   lookupNamespace(): string;
   authorizeDispatch(): string;
-  track<T>(mutation: MutationPromise<T>): MutationPromise<T>;
+  track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
 }
 
 export interface MutationJournal {
+  capturePluginCommand(
+    intent: string,
+    input: PluginCommandInput,
+    prepare: () => Promise<PluginCommandBinding>,
+  ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
   dispose(): void;
 }
@@ -55,10 +65,18 @@ interface MutationLifecycle {
 }
 
 function trackedMutation<T>(
-  mutation: MutationPromise<T>,
+  create: () => MutationPromise<T>,
   lifecycle: MutationLifecycle,
 ): MutationPromise<T> {
   lifecycle.begin();
+  let mutation: MutationPromise<T>;
+  try {
+    mutation = create();
+  } catch (error) {
+    const unknown = new MutationLookupError(error);
+    lifecycle.reject(unknown);
+    throw unknown;
+  }
   const tracked = mutation.then(
     (value) => {
       lifecycle.resolve();
@@ -72,7 +90,7 @@ function trackedMutation<T>(
   const retry = (options?: { signal?: AbortSignal }): MutationPromise<T> => {
     try {
       lifecycle.claim();
-      return trackedMutation(mutation.retry(options), lifecycle);
+      return trackedMutation(() => mutation.retry(options), lifecycle);
     } catch (error) {
       return rejectedMutation(error, mutation.idempotencyKey, retry);
     }
@@ -86,10 +104,40 @@ function trackedMutation<T>(
 class MutationAuthority implements MutationJournal {
   readonly #journal: DurableMutationJournal;
   readonly #claims = new Set<string>();
+  readonly #preparing = new Set<string>();
   #retired = false;
 
   constructor(journal: DurableMutationJournal) {
     this.#journal = journal;
+  }
+
+  async capturePluginCommand(
+    intent: string,
+    input: PluginCommandInput,
+    prepare: () => Promise<PluginCommandBinding>,
+  ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }> {
+    this.#assertCurrent();
+    if (this.#preparing.has(intent))
+      throw new MutationJournalOwnershipError("plugin command intent is already being prepared");
+    this.#preparing.add(intent);
+    try {
+      const preparedInput = structuredClone(input);
+      let captured = this.#journal.findPluginCommand(intent, preparedInput, (key) =>
+        this.#claims.has(key),
+      );
+      if (!captured) {
+        const binding = await prepare();
+        this.#assertCurrent();
+        captured = this.#journal.stagePluginCommand(
+          intent,
+          { ...binding, ...preparedInput },
+          (key) => this.#claims.has(key),
+        );
+      }
+      return { request: captured.request, reservation: this.#claim(captured.identity) };
+    } finally {
+      this.#preparing.delete(intent);
+    }
   }
 
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined {
@@ -114,7 +162,7 @@ class MutationAuthority implements MutationJournal {
         this.#assertClaim(identity);
         return this.#journal.authorizeDispatch(identity);
       },
-      track: (mutation) => trackedMutation(mutation, lifecycle),
+      track: (create) => trackedMutation(create, lifecycle),
     };
   }
 

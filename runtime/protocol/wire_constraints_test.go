@@ -472,9 +472,6 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 		shape    string
 		validate func(string) error
 	}{
-		{name: "delete request", shape: "AgentMemoryItemRequest", validate: func(id string) error {
-			return (AgentMemoryItemRequest{ID: id}).ValidateWire()
-		}},
 		{name: "review request", shape: "AgentMemoryReviewRequest", validate: func(id string) error {
 			return (AgentMemoryReviewRequest{ID: id, Decision: AgentMemoryReviewApprove}).ValidateWire()
 		}},

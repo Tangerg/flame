@@ -302,3 +302,12 @@ state belong to the component. Unknown acknowledgement retains the original comm
 and prevents new submission until reconciliation. The former Memory HTML/carrier and
 trusted private mutation controls are removed. Full graphical/cross-reload acceptance
 remains unclaimed in this refactor.
+
+The workspace Memory deletion gateway now uses the generated public operation.
+Its stable logical intent restores the original installed route from the existing
+Runtime mutation journal before any new selected-provider read, including after
+gateway/client generation replacement. The acknowledgement decoder precedes intent
+retirement. The cache rereads its current owner after acknowledgement; an original
+provider's receipt cannot directly remove a row in another provider's projection.
+Core deletion and its DTO are removed without an alias. Review/update/add and final
+process/lifecycle acceptance remain under migration; no UI/E2E tests run here.

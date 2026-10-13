@@ -1,3 +1,6 @@
+import type { CallPluginRequest } from "@flame/runtime-contract/wire";
+import { checkRequest, requestRequiresIdempotency } from "./request";
+
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
@@ -46,6 +49,18 @@ interface JournalEntry {
   idempotencyKey: string;
   createdAt: number;
   expiresAt: number;
+  installed?: {
+    intentFingerprint: string;
+    route: Omit<CallPluginRequest, "input">;
+  };
+}
+
+export type PluginCommandInput = Pick<CallPluginRequest, "contract" | "method" | "input">;
+export type PluginCommandBinding = Omit<CallPluginRequest, keyof PluginCommandInput>;
+
+export interface CapturedPluginCommand {
+  identity: DurableMutationIdentity;
+  request: CallPluginRequest;
 }
 
 export interface DurableMutationIdentity {
@@ -53,6 +68,16 @@ export interface DurableMutationIdentity {
 }
 
 export interface DurableMutationJournal {
+  findPluginCommand(
+    intent: string,
+    input: PluginCommandInput,
+    claimed: (idempotencyKey: string) => boolean,
+  ): CapturedPluginCommand | undefined;
+  stagePluginCommand(
+    intent: string,
+    request: CallPluginRequest,
+    claimed: (idempotencyKey: string) => boolean,
+  ): CapturedPluginCommand;
   reserve(
     method: string,
     params: unknown,
@@ -84,7 +109,8 @@ function validEntry(value: unknown): value is JournalEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const entry = value as Partial<JournalEntry>;
   return (
-    Object.keys(value).length === JOURNAL_ENTRY_FIELD_COUNT &&
+    Object.keys(value).length ===
+      JOURNAL_ENTRY_FIELD_COUNT + (entry.installed === undefined ? 0 : 1) &&
     validText(entry.salt, MAX_IDENTITY_LENGTH) &&
     validText(entry.namespace, MAX_IDENTITY_LENGTH) &&
     typeof entry.fingerprint === "string" &&
@@ -94,8 +120,35 @@ function validEntry(value: unknown): value is JournalEntry {
     Number.isFinite(entry.createdAt) &&
     typeof entry.expiresAt === "number" &&
     Number.isFinite(entry.expiresAt) &&
-    entry.expiresAt > entry.createdAt
+    entry.expiresAt > entry.createdAt &&
+    (entry.installed === undefined || validInstalled(entry.installed))
   );
+}
+
+function validInstalled(value: JournalEntry["installed"]): boolean {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 2 ||
+    typeof value.intentFingerprint !== "string" ||
+    !FINGERPRINT_PATTERN.test(value.intentFingerprint)
+  )
+    return false;
+  if (
+    !value.route ||
+    typeof value.route !== "object" ||
+    Array.isArray(value.route) ||
+    Object.keys(value.route).length !== 6 ||
+    "input" in value.route
+  )
+    return false;
+  try {
+    const request = checkRequest("plugins.call", { ...value.route, input: null });
+    return requestRequiresIdempotency("plugins.call", request);
+  } catch {
+    return false;
+  }
 }
 
 function entryKey(idempotencyKey: string): string {
@@ -212,8 +265,18 @@ function fingerprintFields(...fields: readonly string[]): string {
 }
 
 function matchesCommand(entry: JournalEntry, method: string, params: unknown): boolean {
-  const command = fingerprintFields(method, canonicalJSON(params));
+  const command = commandFields(method, params, entry.installed !== undefined);
   return entry.fingerprint === fingerprint(fingerprintFields(entry.salt, command));
+}
+
+function commandFields(method: string, params: unknown, installed: boolean): string {
+  const command = fingerprintFields(method, canonicalJSON(params));
+  if (!installed) return command;
+  // Installed receipts bind input bytes; semantic JSON equality cannot authorize reordered input.
+  const input = JSON.stringify((params as CallPluginRequest).input);
+  if (input === undefined)
+    throw new MutationJournalError("plugin command input is not serializable");
+  return fingerprintFields(command, input);
 }
 
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
@@ -223,7 +286,8 @@ function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
     left.fingerprint === right.fingerprint &&
     left.idempotencyKey === right.idempotencyKey &&
     left.createdAt === right.createdAt &&
-    left.expiresAt === right.expiresAt
+    left.expiresAt === right.expiresAt &&
+    canonicalJSON(left.installed) === canonicalJSON(right.installed)
   );
 }
 
@@ -287,6 +351,7 @@ export function openDurableMutationJournal(
     params: unknown,
     scope: MutationJournalScope,
     idempotencyKey: string,
+    installed?: { intent: string; route: Omit<CallPluginRequest, "input"> },
   ) => {
     const createdAt = options.now();
     const salt = crypto.randomUUID();
@@ -294,17 +359,73 @@ export function openDurableMutationJournal(
       salt,
       namespace: scope.namespace,
       fingerprint: fingerprint(
-        fingerprintFields(salt, fingerprintFields(method, canonicalJSON(params))),
+        fingerprintFields(salt, commandFields(method, params, installed !== undefined)),
       ),
       idempotencyKey,
       createdAt,
       expiresAt: createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
+      ...(installed === undefined
+        ? {}
+        : {
+            installed: {
+              intentFingerprint: fingerprint(
+                fingerprintFields(salt, "plugins.call", installed.intent),
+              ),
+              route: installed.route,
+            },
+          }),
     };
     persistEntry(entry);
     return entry;
   };
 
-  return {
+  const journal: DurableMutationJournal = {
+    findPluginCommand(intent, input, claimed) {
+      if (!validText(intent, MAX_IDENTITY_LENGTH))
+        throw new MutationJournalError("plugin command intent is invalid");
+      const matches = loadEntries(options.storage).filter(
+        (entry) =>
+          entry.installed?.intentFingerprint ===
+          fingerprint(fingerprintFields(entry.salt, "plugins.call", intent)),
+      );
+      if (matches.length > 1)
+        throw new MutationJournalOwnershipError(
+          "plugin command intent names multiple unresolved commands",
+        );
+      const entry = matches[0];
+      if (!entry) return undefined;
+      const route = entry.installed!.route;
+      const request = { ...structuredClone(route), input: structuredClone(input.input) };
+      if (
+        input.method !== route.method ||
+        input.contract !== route.contract ||
+        !matchesCommand(entry, "plugins.call", request)
+      )
+        throw new MutationJournalOwnershipError(
+          "plugin command intent requires its original contract and input",
+        );
+      if (claimed(entry.idempotencyKey))
+        throw new MutationJournalOwnershipError(
+          "plugin command intent is already owned by an active command",
+        );
+      return { identity: { entry }, request };
+    },
+    stagePluginCommand(intent, request, claimed) {
+      const original = journal.findPluginCommand(intent, request, claimed);
+      if (original) return original;
+      checkRequest("plugins.call", request);
+      if (!requestRequiresIdempotency("plugins.call", request))
+        throw new MutationJournalError("plugin command requires a command operation");
+      const scope = currentScope();
+      if (loadEntries(options.storage).length >= MAX_ENTRIES)
+        throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
+      const { input: _, ...route } = structuredClone(request);
+      const entry = createEntry("plugins.call", request, scope, crypto.randomUUID(), {
+        intent,
+        route,
+      });
+      return { identity: { entry }, request: structuredClone(request) };
+    },
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
@@ -313,7 +434,8 @@ export function openDurableMutationJournal(
       // These records are unresolved evidence, not a cache of completed receipts.
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
-      const matches = (entry: JournalEntry) => matchesCommand(entry, method, params);
+      const matches = (entry: JournalEntry) =>
+        entry.installed === undefined && matchesCommand(entry, method, params);
       const preferred =
         preferredKey === undefined
           ? undefined
@@ -362,4 +484,5 @@ export function openDurableMutationJournal(
       removeEntry(persisted);
     },
   };
+  return journal;
 }

@@ -80,6 +80,20 @@ workspace reader and generated CLI projection consume the same publisher contrac
 remaining Memory mutation Core entrances are under migration. Private ledger,
 watermark, curation, model maintenance and receipt owners are unchanged.
 
+Core 2026-10-14.13 also removes DeleteAgentMemory/agentMemory.delete and its DTO,
+delivery port and selected-provider forwarder. CLI and workspace deletion use the
+published installed operation. The TS client's plugins.command captures a logical
+intent in the existing mutation journal before dispatch. A successor client restores
+the original route before provider preparation and requires the same contract and
+serialized input. Changed input, a replaced store, expired retention, active intent
+ownership or failed persistence refuse delivery and retain unresolved evidence.
+Journal records contain original routing and salted input/intent fingerprints;
+they do not store authored input or business results. A typed decoder runs before
+settlement, and only witnessed owner refusals can settle as business failures.
+Core's removed requests are not converted or resent under a new command identity.
+Business storage and backend protocol remain unchanged. Remaining review/update/add
+and all-consumer/restart/native acceptance are still open.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

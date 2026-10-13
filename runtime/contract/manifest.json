@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.12",
+  "protocolVersion": "2026-10-14.13",
   "features": [
     "reasoning",
     "multimodal",
@@ -1362,21 +1362,6 @@
       ]
     },
     {
-      "name": "agentMemory.delete",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "agentMemory"
-      ]
-    },
-    {
       "name": "agentMemory.add",
       "kind": "unary",
       "operation": "command",
@@ -1485,7 +1470,6 @@
         "recoveryAction": "promptUser",
         "methods": [
           "agentMemory.add",
-          "agentMemory.delete",
           "agentMemory.review",
           "agentMemory.update",
           "goals.clear",
@@ -1781,7 +1765,6 @@
         "recoveryAction": "promptUser",
         "methods": [
           "agentMemory.add",
-          "agentMemory.delete",
           "agentMemory.review",
           "agentMemory.update",
           "plugins.call",
@@ -2672,16 +2655,6 @@
     },
     {
       "method": "agentMemory.update",
-      "rules": [
-        {
-          "requires": [
-            "agentMemory"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "agentMemory.delete",
       "rules": [
         {
           "requires": [
@@ -9265,15 +9238,6 @@
         {
           "field": "path",
           "constraint": "pattern(\"\\\\S\")"
-        }
-      ]
-    },
-    {
-      "type": "AgentMemoryItemRequest",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         }
       ]
     },

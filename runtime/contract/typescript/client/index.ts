@@ -1,5 +1,6 @@
 export {
   isErrorType,
+  OperationFailure,
   RpcConnectionError,
   RpcError,
   RpcProtocolError,
@@ -10,6 +11,7 @@ export type { ItemId, RunId, SegmentId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
 export { MutationLookupError } from "./mutation";
 export { createMutationJournal } from "./mutationJournal";
+export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 export {
   createMutationSettler,
   MUTATION_ATTEMPT_TIMEOUT_MS,

@@ -48,7 +48,7 @@ function deliver<T>(
   reservation: MutationReservation,
   execute: () => Promise<T> | T,
 ): MutationPromise<T> {
-  return reservation.track(
+  return reservation.track(() =>
     createMutationPromise(async () => {
       reservation.authorizeDispatch();
       return execute();

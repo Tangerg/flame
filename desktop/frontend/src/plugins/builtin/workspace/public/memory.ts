@@ -8,3 +8,123 @@ export {
   type AgentMemoryEntry,
   type AgentMemoryQuery,
 } from "../application/agentMemoryConfig";
+
+import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/client";
+import {
+  CAPABILITY_JSON,
+  type MethodInputs,
+  type MethodOutputs,
+} from "../../../../../../../plugins/memory/io.github.tangerg.flame/contracts/methods.generated";
+
+const maximumMemoryItems = 512;
+const memoryPageWidth = 100;
+
+type MemoryPage = MethodOutputs["flame.memory/list.v1"];
+
+export async function readInstalledMemory(
+  client: FlameClient,
+  scope: "project" | "user",
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<AgentMemoryItem[]> {
+  const binding = {
+    ...(await selectMemoryBinding(client, signal)),
+    contract: CAPABILITY_JSON,
+    method: "flame.memory/list.v1",
+  };
+  const items: AgentMemoryItem[] = [];
+  const seen = new Set<string>();
+  const cursors = new Set<string>();
+  let cursor = "";
+  for (let pageCount = 0; pageCount < maximumMemoryItems; pageCount++) {
+    signal?.throwIfAborted();
+    const reply = await client.plugins.call(
+      { ...binding, input: { Scope: scope, CWD: cwd, Cursor: cursor, Limit: memoryPageWidth } },
+      { signal },
+    );
+    if (reply.failure) throw new Error(reply.failure.message);
+    const page = reply.output as MemoryPage;
+    if (
+      !page ||
+      !Array.isArray(page.Rows) ||
+      typeof page.NextCursor !== "string" ||
+      page.Rows.length > memoryPageWidth ||
+      items.length + page.Rows.length > maximumMemoryItems ||
+      (!page.Rows.length && page.NextCursor)
+    )
+      throw new Error("memory page exceeds its declared traversal bounds");
+    for (const row of page.Rows) {
+      if (
+        row.Scope !== scope ||
+        seen.has(row.ID) ||
+        !row.ID ||
+        !["active", "pending"].includes(row.Status) ||
+        !["auto", "user"].includes(row.Origin)
+      )
+        throw new Error("memory page has an invalid or repeated item");
+      seen.add(row.ID);
+      items.push({
+        id: row.ID,
+        scope,
+        content: row.Content,
+        origin: row.Origin as AgentMemoryItem["origin"],
+        status: row.Status as AgentMemoryItem["status"],
+        pinned: row.Pinned,
+        sessionId: row.SessionID,
+        day: row.Day,
+        createdAt: row.CreatedAt,
+        updatedAt: row.UpdatedAt,
+      });
+    }
+    if (!page.NextCursor) return items;
+    if (cursors.has(page.NextCursor)) throw new Error("memory page repeats a cursor");
+    cursors.add(page.NextCursor);
+    cursor = page.NextCursor;
+  }
+  throw new Error("memory traversal exceeds its request bound");
+}
+
+async function selectMemoryBinding(client: FlameClient, signal?: AbortSignal) {
+  const providers = await client.plugins.listProviders(signal);
+  const selected = providers.data.find((value) => value.role === "memory");
+  if (!selected) throw new Error("memory provider is unavailable");
+  const installations = await client.plugins.list(signal);
+  const installation = installations.data.find((value) => value.id === selected.installationId);
+  if (
+    !installation?.enabled ||
+    !installation.selected.contributions.some((value) => value.id === selected.contribution)
+  )
+    throw new Error("selected memory contribution is unavailable");
+  return {
+    installationId: installation.id,
+    digest: installation.selected.digest,
+    contribution: selected.contribution,
+    target: { scope: "installation", reference: installation.id },
+  };
+}
+
+export async function deleteInstalledMemory(
+  client: FlameClient,
+  id: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const input: MethodInputs["flame.memory/delete.v1"] = { ID: id };
+  return client.plugins
+    .command(
+      `memory-delete:${id}`,
+      { contract: CAPABILITY_JSON, method: "flame.memory/delete.v1", input },
+      () => selectMemoryBinding(client, signal),
+      (output) => {
+        if (
+          !output ||
+          typeof output !== "object" ||
+          Array.isArray(output) ||
+          Object.keys(output).length !== 0
+        )
+          throw new Error("memory deletion acknowledgement is invalid");
+        return output as MethodOutputs["flame.memory/delete.v1"];
+      },
+      signal,
+    )
+    .then(() => undefined);
+}

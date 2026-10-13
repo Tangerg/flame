@@ -49,7 +49,6 @@ class AgentMemoryMutationGeneration {
   delete(id: string): Promise<void> {
     return this.#run(id, {
       execute: () => this.#gateway.delete(id),
-      commit: () => removeAgentMemoryItem(id),
     });
   }
 
@@ -154,12 +153,5 @@ function commitAddedAgentMemory(input: AgentMemoryAddInput, saved: AgentMemoryEn
   const query = agentMemoryQuery(input.scope, input.cwd);
   queryClient.setQueryData<AgentMemoryEntry[]>([WORKSPACE_AGENT_MEMORY_KEY, query], (current) =>
     current ? [saved, ...current] : current,
-  );
-}
-
-function removeAgentMemoryItem(id: string): void {
-  queryClient.setQueriesData<AgentMemoryEntry[]>(
-    { queryKey: [WORKSPACE_AGENT_MEMORY_KEY] },
-    (current) => current?.filter((item) => item.id !== id),
   );
 }

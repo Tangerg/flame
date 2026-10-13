@@ -1,4 +1,6 @@
 import type { ClientTelemetry } from "./telemetry";
+import { OperationFailure } from "@flame/runtime-contract/client";
+export { OperationFailure } from "@flame/runtime-contract/client";
 import type { ComponentType } from "react";
 import type {
   FlameClient,
@@ -88,16 +90,6 @@ export interface ComponentContext {
 }
 
 export type PluginComponent = ComponentType<{ context: ComponentContext }>;
-
-export class OperationFailure extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "OperationFailure";
-  }
-}
 
 function output<R>(reply: CallPluginResponse): R {
   if (reply.failure)

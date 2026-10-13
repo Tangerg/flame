@@ -800,10 +800,6 @@ func registerAgentMemoryValues(s *Shapes) {
 		return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: agentmemory.ItemIDPattern}}
 	}
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.AgentMemoryItemRequest](),
-		Constraints: agentMemoryItemIdentity("id"),
-	})
-	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.AgentMemoryReviewRequest](),
 		Constraints: agentMemoryItemIdentity("id"),
 	})

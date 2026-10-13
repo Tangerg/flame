@@ -9,7 +9,6 @@ import (
 const (
 	AgentMemoryReview Name = "agentMemory.review"
 	AgentMemoryUpdate Name = "agentMemory.update"
-	AgentMemoryDelete Name = "agentMemory.delete"
 	AgentMemoryAdd    Name = "agentMemory.add"
 )
 
@@ -29,14 +28,6 @@ func registerAgentMemory(registry *Registry) {
 		UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error)
 	}, ctx context.Context, request protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
 		return service.UpdateAgentMemory(ctx, request)
-	})
-
-	registry.commandAck(MethodMeta{Idempotency: IdempotencyOwnerResponse,
-		Name: AgentMemoryDelete, Errors: []string{protocol.ErrPluginUnavailable.Error()}, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest) error
-	}, ctx context.Context, request protocol.AgentMemoryItemRequest) error {
-		return service.DeleteAgentMemory(ctx, request)
 	})
 
 	registry.command(MethodMeta{Idempotency: IdempotencyOwnerResponse,

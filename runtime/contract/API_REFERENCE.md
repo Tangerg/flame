@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.12` · 99 methods
+Protocol `2026-10-14.13` · 98 methods
 
 ## Methods
 
@@ -107,7 +107,6 @@ Protocol `2026-10-14.12` · 99 methods
 | `usage.summary` | query | unary | none | none | none | — | — | — |
 | `agentMemory.review` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `agentMemory.update` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
-| `agentMemory.delete` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `agentMemory.add` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `feedback.create` | command | unary | replayResponse | none | none | — | — | — |
 
@@ -1064,7 +1063,6 @@ TypeScript validator from this single registry projection.
 | `ModelCapabilities` | `reasoningDefaultLevel` | `maxLength(32)` |
 | `InvokeToolRequest` | `name` | `nonEmpty` |
 | `AgentDoc` | `path` | `pattern("\\S")` |
-| `AgentMemoryItemRequest` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
 | `AgentMemoryReviewRequest` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
 | `AgentMemoryItem` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
 | `AgentMemoryItem` | `sessionId` | `identity` |
@@ -1247,7 +1245,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `goals.resume` | always | `goals` |
 | `agentMemory.review` | always | `agentMemory` |
 | `agentMemory.update` | always | `agentMemory` |
-| `agentMemory.delete` | always | `agentMemory` |
 | `agentMemory.add` | always | `agentMemory` |
 
 ## System invariants

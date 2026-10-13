@@ -570,12 +570,6 @@ func (a AgentMemoryUpdateRequest) ValidateWire() error {
 	)
 }
 
-func (a AgentMemoryItemRequest) ValidateWire() error {
-	return collectWireViolations("AgentMemoryItemRequest",
-		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
-	)
-}
-
 func (a AgentMemoryAddRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryAddRequest",
 		requiredTextPattern("content", a.Content, "\\S"),
