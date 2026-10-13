@@ -27,8 +27,9 @@ type Server struct {
 	corsOrigins  []string
 	healthProbes []*healthProbeRunner
 
-	rpc http.Handler
-	web http.Handler
+	rpc       http.Handler
+	resources http.Handler
+	web       http.Handler
 
 	httpServer   *http.Server
 	handlerCtx   context.Context
@@ -112,6 +113,7 @@ func NewServer(cfg Config) (*Server, error) {
 		corsOrigins:  slices.Clone(cfg.CORSOrigins),
 		healthProbes: newHealthProbeRunners(cfg.HealthProbes),
 		rpc:          rpc,
+		resources:    NewPluginResourceHandler(cfg.Endpoint),
 		web:          cfg.WebApplication,
 		handlerCtx:   handlerCtx,
 		stopHandlers: stopHandlers,

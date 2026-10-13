@@ -33,6 +33,16 @@ type wirePointValue struct {
 	Value    jsontext.Value        `json:"value"`
 }
 
+type wireComponent struct {
+	ID           plugin.ContributionID `json:"id"`
+	Title        string                `json:"title"`
+	Scope        string                `json:"scope"`
+	Placement    string                `json:"placement"`
+	Entry        string                `json:"entry"`
+	Export       string                `json:"export"`
+	Contribution plugin.ContributionID `json:"contribution"`
+}
+
 type wireInput struct {
 	ID       string               `json:"id"`
 	Secret   bool                 `json:"secret"`
@@ -113,5 +123,5 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 	return plugin.Theme{ID: v.ID, Title: v.Title, Scheme: plugin.ThemeScheme(v.Scheme), Colors: colors}, nil
 }
 
-var declarationFields = []string{"protocol", "inputs", "contributions", "contributes", "points", "pointValues"}
+var declarationFields = []string{"protocol", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
 var presentationFields = []string{"views", "renderers", "actions", "themes"}

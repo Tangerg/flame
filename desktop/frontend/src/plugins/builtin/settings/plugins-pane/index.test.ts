@@ -111,7 +111,10 @@ function installation(id: string, name: string): PluginInstallation {
     selected: {
       digest,
       name,
-      services: [],
+      contributions: [],
+      points: [],
+      pointValues: [],
+      components: [],
       servers: [],
       inputs: [],
       skills: [],

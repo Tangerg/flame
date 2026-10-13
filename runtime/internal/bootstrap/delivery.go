@@ -83,6 +83,7 @@ func (h *runtimeApplication) publishCallbacks(endpoint *delivery.Endpoint) error
 		return err
 	}
 	mux := http.NewServeMux()
+	mux.Handle("GET /v2/plugin-resources/", flamehttp.NewPluginResourceHandler(endpoint))
 	for _, entry := range flamehttp.Contract().Endpoints {
 		if entry.Kind == flamehttp.EndpointKindRPC {
 			mux.Handle(entry.Method+" "+entry.Path, rpc)

@@ -86,7 +86,25 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.6
+## Protocol 2026-10-13.7
+
+Release projections include public `components`. A workspace component references
+one same-release callable contribution and prebuilt namespace-local ESM export.
+`plugins.openResources` owns a live Core subscription; its ephemeral capability
+permits ordinary module/asset GETs through `pluginResources`. Each asset read
+still enters `plugins.readResource` under the captured caller, rechecks the exact
+current enabled release/component, and verifies package integrity. Closing the
+subscription or Runtime cancels access without persisting a grant or holding an
+execution dependency. The asset URL contains no persistent Runtime bearer token.
+
+The browser/Wails workbench builds an import map over actual shared module exports
+and loads the declared component in its own React tree. Supported registrations,
+observation and owned calls retire through Dougong; ESM evaluation is not unload.
+A changed evaluated release or Runtime generation requires a window reload.
+The current slice declares the installation-scoped Reviews workspace board;
+remaining placements, static components and former HTML carriers still require
+migration. Compilation and bundle mapping do not establish rendered acceptance.
+
 
 `plugins.call.contract` is the owner's complete canonical JSON string. Client
 serialization must preserve it as a string; parsing a schema into JavaScript

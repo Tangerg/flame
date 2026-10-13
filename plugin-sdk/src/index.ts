@@ -15,6 +15,7 @@ export interface ComponentContext {
   readonly runtime: FlameClient;
   readonly binding: Readonly<PluginOperationBinding>;
   readonly signal: AbortSignal;
+  track<T>(operation: Promise<T>): Promise<T>;
 }
 
 export type PluginComponent = ComponentType<{ context: ComponentContext }>;
@@ -41,15 +42,27 @@ function output<R>(reply: CallPluginResponse): R {
 // closure. A component never creates a replacement command after response loss.
 function mapMutation<R>(
   source: MutationPromise<CallPluginResponse>,
+  context: ComponentContext,
 ): MutationPromise<R> {
-  return Object.defineProperties(source.then(output<R>), {
+  const mapped = Object.defineProperties(source.then(output<R>), {
     idempotencyKey: { enumerable: true, value: source.idempotencyKey },
     retry: {
       enumerable: true,
-      value: (options?: { signal?: AbortSignal }) =>
-        mapMutation<R>(source.retry(options)),
+      value: (options?: { signal?: AbortSignal }) => {
+        context.signal.throwIfAborted();
+        return mapMutation<R>(
+          source.retry({
+            signal: options?.signal
+              ? AbortSignal.any([context.signal, options.signal])
+              : context.signal,
+          }),
+          context,
+        );
+      },
     },
   }) as MutationPromise<R>;
+  context.track(mapped);
+  return mapped;
 }
 
 export function bindOperations<
@@ -91,10 +104,12 @@ export function bindOperations<
       input: Inputs[K],
       signal: AbortSignal = context.signal,
     ): Promise<Outputs[K]> =>
-      output<Outputs[K]>(
-        await context.runtime.plugins.call(request(method, input, "query"), {
-          signal: AbortSignal.any([context.signal, signal]),
-        }),
+      context.track(
+        context.runtime.plugins
+          .call(request(method, input, "query"), {
+            signal: AbortSignal.any([context.signal, signal]),
+          })
+          .then(output<Outputs[K]>),
       ),
     command: <K extends keyof Inputs & string>(
       method: K,
@@ -108,6 +123,7 @@ export function bindOperations<
         throw new Error("Runtime omitted the command identity");
       return mapMutation<Outputs[K]>(
         mutation as MutationPromise<CallPluginResponse>,
+        context,
       );
     },
   };

@@ -29,6 +29,7 @@ type Packages interface {
 	Prepare(context.Context, *plugin.Installation, plugin.Release) error
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
 	ReadPage(context.Context, *plugin.Installation, string) (string, error)
+	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
 }
 
 // Candidate is one package's admitted bytes awaiting publication. Only an

@@ -15,6 +15,17 @@
       ]
     }
   ],
+  "components": [
+    {
+      "id": "board",
+      "title": "Reviews",
+      "scope": "installation",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Board",
+      "contribution": "review-operations"
+    }
+  ],
   "points": [
     {
       "id": "analyzers",

@@ -285,6 +285,10 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 	return content, err
 }
 
+func (r *Releases) ReadResource(ctx context.Context, installation *plugin.Installation, name string) ([]byte, error) {
+	return r.readResource(ctx, installation, name, MaxPackageBytes)
+}
+
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
 	if cause := cancellation.Err(ctx); cause != nil {
 		return nil, cause

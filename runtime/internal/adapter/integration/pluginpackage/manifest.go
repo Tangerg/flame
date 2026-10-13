@@ -231,6 +231,15 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		return release.AdmitPointValue(plugin.PointValue{ID: w.ID, Contract: contract.Identity(), Value: value})
 	})
 	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
+	admitContributions(members["components"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "components"}, func(w wireComponent) error {
+		if !plugin.ValidResourcePath(w.Entry) || !strings.HasPrefix(w.Entry, plugin.Namespace+"/") {
+			return plugin.ErrInvalid
+		}
+		if _, err := read(ctx, root, w.Entry, MaxPackageBytes); err != nil {
+			return err
+		}
+		return release.AdmitComponent(plugin.ClientComponent{ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: w.Contribution})
+	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component == "renderers" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireRenderer) error {

@@ -1,4 +1,8 @@
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
+import { lazy, Suspense } from "react";
+import { ComponentModules } from "./adapters/componentModules";
+import { InstalledComponent, ComponentBoundary } from "./ui/InstalledComponent";
+import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
@@ -51,6 +55,9 @@ function createPackageReconciler(
   scope: ContributionLifetime,
   client: FlameClient,
   carrier: PluginCarrier,
+  modules: ComponentModules,
+  generation: object,
+  moduleScope: ContributionLifetime,
 ): (installations: PluginInstallation[]) => Promise<void> {
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
   return async (installations: PluginInstallation[]) => {
@@ -81,6 +88,54 @@ function createPackageReconciler(
       if (scope.signal.aborted) return;
       const lifetime = scope.lifetime(installation.id);
       resources.set(installation.id, { signature, lifetime });
+      for (const entry of release.components) {
+        const contribution = release.contributions.find((value) => value.id === entry.contribution);
+        if (!contribution)
+          throw new Error("The component's declared callable contribution is unavailable.");
+        const binding = {
+          installationId: installation.id,
+          digest: release.digest,
+          contribution: contribution.id,
+          contract: contribution.contract,
+        };
+        const View = lazy(async () => {
+          const loaded = await modules.component(
+            moduleScope,
+            client,
+            currentRuntimeEndpoint(),
+            generation,
+            installation,
+            entry,
+          );
+          return {
+            default: () => (
+              <InstalledComponent
+                entry={loaded.component}
+                resources={loaded.signal}
+                runtime={client}
+                binding={binding}
+                lifetime={lifetime}
+              />
+            ),
+          };
+        });
+        const id = `package:${installation.id}:${entry.id}`;
+        lifetime.contribute(
+          WORKSPACE_VIEW,
+          {
+            id,
+            title: `${release.name} · ${entry.title}`,
+            component: () => (
+              <ComponentBoundary>
+                <Suspense fallback={<p role="status">Loading plugin component…</p>}>
+                  <View />
+                </Suspense>
+              </ComponentBoundary>
+            ),
+          },
+          { key: id },
+        );
+      }
       for (const renderer of release.renderers) {
         const binding = {
           installationId: installation.id,
@@ -312,6 +367,8 @@ export function registerPackageContributions(
   scope: ContributionLifetime,
   client: FlameClient,
   carrier: PluginCarrier,
+  modules: ComponentModules,
+  generation: object,
 ): void {
   scope.cleanup(packageOperations.configure({ ...client.plugins, signal: scope.signal }));
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
@@ -328,7 +385,14 @@ export function registerPackageContributions(
   const realize = () => {
     withdrawFailure();
     const contributions = scope.lifetime("package-realization");
-    const reconcile = createPackageReconciler(contributions, client, carrier);
+    const reconcile = createPackageReconciler(
+      contributions,
+      client,
+      carrier,
+      modules,
+      generation,
+      scope,
+    );
     // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {
       const refresh = async () => {

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.6";
+export const PROTOCOL_VERSION = "2026-10-13.7";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -38,6 +38,13 @@ export const MAXIMUM_RUNTIME_EVENT_SEQUENCE = MAXIMUM_EXACT_JSON_INTEGER;
 
 // HTTP entrypoints implemented by this runtime build.
 export const HTTP_ENDPOINTS = {
+  pluginResources: {
+    kind: "resource",
+    method: "GET",
+    path: "/v2/plugin-resources/{lease}/*",
+    authentication: "resourceLease",
+    responseStatuses: [200, 410],
+  },
   rpc: {
     kind: "rpc",
     method: "POST",
@@ -1118,6 +1125,12 @@ export interface ModelUsage {
   reasoningTokens?: number;
 }
 
+export interface OpenPluginResourcesRequest {
+  componentId: string;
+  digest: string;
+  installationId: string;
+}
+
 export type PageOfAgentDoc = Page<AgentDoc>;
 
 export type PageOfAgentMemoryItem = Page<AgentMemoryItem>;
@@ -1208,6 +1221,16 @@ export type PluginActionOperation = "renameSession";
 export interface PluginCallFailure {
   code: string;
   message: string;
+}
+
+export interface PluginClientComponent {
+  contribution: string;
+  entry: string;
+  export: string;
+  id: string;
+  placement: string;
+  scope: string;
+  title: string;
 }
 
 export interface PluginCollaborator {
@@ -1321,6 +1344,7 @@ export type PluginRealizationType = "available" | "releaseUnavailable";
 
 export interface PluginRelease {
   actions: PluginAction[];
+  components: PluginClientComponent[];
   contributions: PluginContribution[];
   description?: string;
   diagnostics: PluginDiagnostic[];
@@ -1363,6 +1387,19 @@ export interface PluginRequirement {
   contract: Descriptor;
   id: string;
   optional: boolean;
+}
+
+export interface PluginResource {
+  body: string;
+  mediaType: string;
+}
+
+export interface PluginResourceEvent {
+}
+
+export interface PluginResourceLease {
+  entry: string;
+  token: string;
 }
 
 export interface PluginScheduleTemplate {
@@ -1558,6 +1595,13 @@ export interface ReadPluginRendererRequest {
   digest: string;
   installationId: string;
   rendererId: string;
+}
+
+export interface ReadPluginResourceRequest {
+  componentId: string;
+  digest: string;
+  installationId: string;
+  path: string;
 }
 
 export interface ReadPluginSchedulesRequest {

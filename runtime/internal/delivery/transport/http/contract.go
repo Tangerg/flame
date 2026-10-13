@@ -38,25 +38,30 @@ func requestHeaders() []string {
 type EndpointKind string
 
 const (
-	EndpointKindRPC     EndpointKind = "rpc"
-	EndpointKindSidecar EndpointKind = "sidecar"
+	EndpointKindRPC      EndpointKind = "rpc"
+	EndpointKindSidecar  EndpointKind = "sidecar"
+	EndpointKindResource EndpointKind = "resource"
 )
 
 // EndpointAuthentication states the HTTP-layer gate applied before a handler.
 type EndpointAuthentication string
 
 const (
-	EndpointAuthenticationNone       EndpointAuthentication = "none"
-	EndpointAuthenticationLocalToken EndpointAuthentication = "localToken"
+	EndpointAuthenticationNone          EndpointAuthentication = "none"
+	EndpointAuthenticationLocalToken    EndpointAuthentication = "localToken"
+	EndpointAuthenticationResourceLease EndpointAuthentication = "resourceLease"
 )
 
 const (
-	endpointPrefix    = "/v2"
-	endpointRPC       = "rpc"
-	endpointInfo      = "info"
-	endpointLiveness  = "liveness"
-	endpointReadiness = "readiness"
+	endpointPrefix          = "/v2"
+	endpointRPC             = "rpc"
+	endpointInfo            = "info"
+	endpointLiveness        = "liveness"
+	endpointReadiness       = "readiness"
+	endpointPluginResources = "pluginResources"
 )
+
+const pluginResourcePrefix = endpointPrefix + "/plugin-resources/"
 
 // EndpointSpec is one implemented HTTP entrypoint. ResponseType is nil for the
 // JSON-RPC binding because its typed method results live in operation.Contract;
@@ -95,6 +100,10 @@ var endpointRegistry = struct {
 	Enums     []EnumSpec
 }{
 	Endpoints: []endpointRegistration{
+		{
+			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Kind: EndpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
+			handler:      func(server *Server, w http.ResponseWriter, r *http.Request) { server.resources.ServeHTTP(w, r) },
+		},
 		{
 			EndpointSpec: EndpointSpec{
 				Name:             endpointRPC,

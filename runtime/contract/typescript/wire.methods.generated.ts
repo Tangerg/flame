@@ -72,6 +72,7 @@ import type {
   MCPServerRequest,
   MCPTestResult,
   MCPToolExposure,
+  OpenPluginResourcesRequest,
   PageOfAgentDoc,
   PageOfAgentMemoryItem,
   PageOfFileEntry,
@@ -100,6 +101,8 @@ import type {
   PluginProviderSelection,
   PluginReleaseRequest,
   PluginRequest,
+  PluginResource,
+  PluginResourceLease,
   PluginViewResource,
   Provider,
   ProviderTestResult,
@@ -107,6 +110,7 @@ import type {
   ReadPluginDiffRequest,
   ReadPluginMemoryRequest,
   ReadPluginRendererRequest,
+  ReadPluginResourceRequest,
   ReadPluginSchedulesRequest,
   ReadPluginSkillRequest,
   ReadPluginSkillsRequest,
@@ -246,6 +250,8 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.openResources",
+  "plugins.readResource",
   "plugins.resolvePoint",
   "plugins.resolveRequirements",
   "plugins.call",
@@ -317,6 +323,7 @@ export const WIRE_STREAMING_METHOD_NAMES = [
   "runs.resume",
   "runs.subscribe",
   "runtime.subscribe",
+  "plugins.openResources",
 ] as const;
 
 export type WireStreamingMethodName = (typeof WIRE_STREAMING_METHOD_NAMES)[number];
@@ -375,6 +382,8 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.openResources",
+  "plugins.readResource",
   "plugins.resolvePoint",
   "plugins.resolveRequirements",
   "plugins.call",
@@ -823,6 +832,20 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.openResources": {
+    operation: "subscription",
+    response: "stream",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readResource": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1405,6 +1428,12 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.openResources": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.readResource": [
+    { requires: ["plugins"] },
+  ],
   "plugins.resolvePoint": [
     { requires: ["plugins"] },
   ],
@@ -1583,6 +1612,8 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.openResources": { params: OpenPluginResourcesRequest; result: PluginResourceLease };
+  "plugins.readResource": { params: ReadPluginResourceRequest; result: PluginResource };
   "plugins.resolvePoint": { params: ResolvePluginPointRequest; result: PageOfPluginPointBinding };
   "plugins.resolveRequirements": { params: ResolvePluginRequirementsRequest; result: PageOfPluginCollaborator };
   "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };

@@ -5,6 +5,7 @@ import type { FlameClient } from "@flame/runtime-contract/client";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 import { registerPackageContributions } from "./contributions";
+import { ComponentModules } from "./adapters/componentModules";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
 import { PLUGINS_PANE } from "../kit/panes";
@@ -18,6 +19,7 @@ export function createPluginsPane(runtimeClient: () => FlameClient, carrier: Plu
     name: "flame.builtin.plugins-pane",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
+      const modules = new ComponentModules();
       let current: ContributionLifetime | undefined;
       let retiring = Promise.resolve();
       let latest: object;
@@ -38,7 +40,13 @@ export function createPluginsPane(runtimeClient: () => FlameClient, carrier: Plu
               return;
             const owned = ctx.lifetime("runtime-packages");
             try {
-              registerPackageContributions(owned, runtimeClient(), carrier);
+              registerPackageContributions(
+                owned,
+                runtimeClient(),
+                carrier,
+                modules,
+                ctx.runtime.connectionGeneration()!,
+              );
               current = owned;
             } catch (error) {
               await owned[asyncDisposeSymbol]();

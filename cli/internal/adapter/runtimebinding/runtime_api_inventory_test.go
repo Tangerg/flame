@@ -284,6 +284,8 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		return runtimeAPIConsumption{Area: area, Mode: materializedByAggregate, Entry: entry}
 	}
 	return map[string]runtimeAPIConsumption{
+		"OpenPluginResources":      {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Desktop owns a resource subscription for exact-release ESM loading"},
+		"ReadPluginResource":       {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Core projects the admitted resource query through the leased HTTP module/asset URL"},
 		"ListModelInvocations":     {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
 		"ReadPluginView":           {Area: "plugin page resource", Mode: desktopDiagnostics, Entry: "Desktop loads approved isolated pages; CLI does not render HTML"},
 		"ReadPluginRenderer":       {Area: "plugin result resource", Mode: desktopDiagnostics, Entry: "Desktop renders captured results in approved isolated pages; CLI retains canonical terminal results"},

@@ -25,12 +25,15 @@ directory. It uses the existing Rolldown compiler to emit prebuilt ESM and relat
 assets. Private dependencies are bundled. `HOST_MODULES` names shared React,
 React DOM, JSX runtimes, SDK and UI modules; UI subpath imports are also external.
 The graphical client must map those imports to its actual shared instances before
-evaluating an entry. This package does not itself establish that mapping or module
-retirement; those remain required loader work. Development uses this same format.
+evaluating an entry. The workbench emits an import map to its actual shared ESM exports. Core resource
+subscriptions and exact-release asset queries provide package-relative URLs. The
+component signal cancels observation; its explicit track boundary joins SDK calls
+through the existing contribution lifetime. Development uses this same format.
 
 The checked Reviews Board is the concrete consumer. It displays current owner
 data, submits inspected-revision changes, exposes conflict and uncertainty,
 retains the original recovery identity and invokes the installed analyzer query.
-Component loading, public placement declaration, shared renderer/provider proof
-and complete browser/Wails lifecycle integration remain open. No UI/E2E execution
+The Reviews workspace declaration and actual ESM loader are implemented. Shared
+renderer/provider execution proof, remaining placements and complete browser/Wails
+lifecycle acceptance remain open. No UI/E2E execution
 is part of this development slice.

@@ -103,6 +103,7 @@ type Handler struct {
 	// runtime.subscribe streams. It is ephemeral, lossy, and scoped
 	// to this process; run streams have their own durable replay contract.
 	workspaceHub *workspaceHub
+	resources    *resourceLeases
 }
 
 // featureAvailability is the small closed set of optional runtime facts that
@@ -239,6 +240,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		trajectoryExports:        cfg.TrajectoryExports,
 		serverInfo:               cfg.ServerInfo,
 		workspaceHub:             newWorkspaceHub(),
+		resources:                newResourceLeases(),
 		schedules:                cfg.Schedules,
 		scheduleFiring:           cfg.ScheduleFiring,
 		goals:                    cfg.Goals,

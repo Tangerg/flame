@@ -4,7 +4,16 @@ import (
 	"context"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"iter"
 )
+
+func (r *binding) OpenPluginResources(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
+	return r.invokeStream[protocol.OpenPluginResourcesRequest, *protocol.PluginResourceLease, protocol.PluginResourceEvent](ctx, delivery.PluginsOpenResources, request, subscriptionOptions(options))
+}
+
+func (r *binding) ReadPluginResource(ctx context.Context, request protocol.ReadPluginResourceRequest, options CallOptions) (*protocol.PluginResource, error) {
+	return r.invoke[protocol.ReadPluginResourceRequest, *protocol.PluginResource](ctx, delivery.PluginsReadResource, request, callOptions(options))
+}
 
 func (r *binding) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	return r.invoke[protocol.CallPluginRequest, *protocol.CallPluginResponse](ctx, delivery.PluginsCall, request, pluginCallOptions(options))

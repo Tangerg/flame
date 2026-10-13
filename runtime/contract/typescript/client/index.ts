@@ -16,6 +16,7 @@ export {
 } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
 export type { Methods, StreamingResult } from "./methods";
+export type { ResourceSubscription } from "./resources";
 export { createFlameClient } from "./sdk";
 export type { FlameClient } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";

@@ -26,6 +26,8 @@ type pluginUseCases interface {
 	ReadRenderer(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
 	WithView(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ViewKind, func(*plugin.Installation, plugin.ViewDeclaration) error) error
 	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
+	Component(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
+	Resource(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID, string) ([]byte, error)
 }
 
 type selectionUseCases interface {

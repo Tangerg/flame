@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.6",
+  "protocolVersion": "2026-10-13.7",
   "features": [
     "reasoning",
     "multimodal",
@@ -792,6 +792,44 @@
       ],
       "features": [
         "mcp"
+      ]
+    },
+    {
+      "name": "plugins.openResources",
+      "kind": "stream",
+      "operation": "subscription",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
+      "name": "plugins.readResource",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
       ]
     },
     {
@@ -1727,9 +1765,21 @@
     "runs.start",
     "runs.resume",
     "runs.subscribe",
-    "runtime.subscribe"
+    "runtime.subscribe",
+    "plugins.openResources"
   ],
   "httpEndpoints": [
+    {
+      "name": "pluginResources",
+      "kind": "resource",
+      "method": "GET",
+      "path": "/v2/plugin-resources/{lease}/*",
+      "authentication": "resourceLease",
+      "responseStatuses": [
+        200,
+        410
+      ]
+    },
     {
       "name": "rpc",
       "kind": "rpc",
@@ -1821,9 +1871,11 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.openResources",
           "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
+          "plugins.readResource",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2023,9 +2075,11 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.openResources",
           "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
+          "plugins.readResource",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2054,9 +2108,11 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.openResources",
           "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
+          "plugins.readResource",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2085,9 +2141,11 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.openResources",
           "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
+          "plugins.readResource",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2116,9 +2174,11 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.openResources",
           "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
+          "plugins.readResource",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2152,9 +2212,11 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.openResources",
           "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readRenderer",
+          "plugins.readResource",
           "plugins.readSchedules",
           "plugins.readSkill",
           "plugins.readSkillLibrary",
@@ -2848,6 +2910,26 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.openResources",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readResource",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -9349,6 +9431,28 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "PluginClientComponent",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "contribution",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "OpenPluginResourcesRequest",
+      "rules": [
+        {
+          "field": "componentId",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
         }
       ]
     },

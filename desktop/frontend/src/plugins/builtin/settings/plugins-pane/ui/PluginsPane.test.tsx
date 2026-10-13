@@ -42,7 +42,10 @@ function reviewedInstallation(): PluginInstallation {
     selected: {
       digest: "1".repeat(64),
       name: "Reviewed package",
-      services: [],
+      contributions: [],
+      points: [],
+      pointValues: [],
+      components: [],
       servers: [],
       inputs: [],
       skills: [],

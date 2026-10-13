@@ -24,6 +24,10 @@ func (s *Server) authGate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, pluginResourcePrefix) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if !validBearer(r.Header.Get(headerAuthorization), s.localToken) {
 			// RFC 9110 §15.5.2 requires a 401 challenge. The gate uses Bearer.
 			w.Header().Set("WWW-Authenticate", "Bearer")

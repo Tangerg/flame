@@ -105,6 +105,7 @@ type PluginRelease struct {
 	Contributions []PluginContribution      `json:"contributions"`
 	Points        []PluginPoint             `json:"points"`
 	PointValues   []PluginPointValue        `json:"pointValues"`
+	Components    []PluginClientComponent   `json:"components"`
 	Servers       []PluginServerDeclaration `json:"servers"`
 	Inputs        []PluginInput             `json:"inputs"`
 	Themes        []PluginTheme             `json:"themes"`
@@ -442,4 +443,36 @@ type PluginPointBinding struct {
 	Digest         string         `json:"digest"`
 	Contribution   string         `json:"contribution"`
 	Value          jsontext.Value `json:"value"`
+}
+
+type PluginClientComponent struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Scope        string `json:"scope"`
+	Placement    string `json:"placement"`
+	Entry        string `json:"entry"`
+	Export       string `json:"export"`
+	Contribution string `json:"contribution"`
+}
+
+type OpenPluginResourcesRequest struct {
+	PluginReleaseRequest
+	ComponentID string `json:"componentId"`
+}
+
+type PluginResourceLease struct {
+	Token string `json:"token"`
+	Entry string `json:"entry"`
+}
+
+type PluginResourceEvent struct{}
+
+type ReadPluginResourceRequest struct {
+	OpenPluginResourcesRequest
+	Path string `json:"path"`
+}
+
+type PluginResource struct {
+	Body      string `json:"body"`
+	MediaType string `json:"mediaType"`
 }

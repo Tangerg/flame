@@ -1,4 +1,8 @@
 import type {
+  OpenPluginResourcesRequest,
+  PluginResourceLease,
+  ReadPluginResourceRequest,
+  PluginResource,
   CallPluginRequest,
   CallPluginResponse,
   ResolvePluginPointRequest,
@@ -121,6 +125,7 @@ import type {
   WorkspaceSummary,
 } from "@flame/runtime-contract/wire";
 import { streamRunEvents, streamRuntimeEvents } from "./stream";
+import { openResourceLease, type ResourceSubscription } from "./resources";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 
@@ -299,6 +304,14 @@ export interface Methods {
     };
   };
   plugins: {
+    openResources: (
+      request: OpenPluginResourcesRequest,
+      signal?: AbortSignal,
+    ) => Promise<ResourceSubscription<PluginResourceLease>>;
+    readResource: (
+      request: ReadPluginResourceRequest,
+      signal?: AbortSignal,
+    ) => Promise<PluginResource>;
     resolvePoint: (
       request: ResolvePluginPointRequest,
       signal?: AbortSignal,
@@ -601,6 +614,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      openResources: (request, signal) => openResourceLease(client, call, request, signal),
+      readResource: (request, signal) => call("plugins.readResource", request, { signal }),
       resolvePoint: (request, signal) => call("plugins.resolvePoint", request, { signal }),
       resolveRequirements: (request, signal) =>
         call("plugins.resolveRequirements", request, { signal }),

@@ -200,8 +200,13 @@ then use `npm run typecheck` and `npm run build`. The shared public SDK build em
 SDK and UI imports externalized for the host's actual shared module instances.
 The same prebuilt ESM format is used for development and release builds.
 
-This checked authoring artifact is not yet declared or reachable in the shipping
-workbench. Exact-release resource loading, shared module mapping, component
-placement and generation retirement, durable UI reconciliation after reload,
-browser/Wails integration and replacement of the existing HTML carrier remain
-required. No graphical rendering or lifecycle acceptance is claimed here.
+The namespace declaration now publishes `board` as an installation-scoped
+workspace component with its `review-operations` binding. The workbench uses the
+same generic ESM/resource subscription and shared module mapping for this ordinary
+installed package. Generation replacement requests a window reload; it cannot
+unload evaluated JavaScript. Unmount cancels observation and Dougong joins SDK I/O.
+
+Complete rendered browser/Wails acceptance, durable UI reconciliation after
+reload and replacement of remaining HTML carriers are still required. This slice
+has compilation, production bundle and backend resource-lifetime evidence;
+no graphical rendering or lifecycle acceptance is claimed.

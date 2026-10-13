@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"iter"
 )
 
 const (
@@ -10,6 +11,8 @@ const (
 	PluginsCall                Name = "plugins.call"
 	PluginsResolveRequirements Name = "plugins.resolveRequirements"
 	PluginsResolvePoint        Name = "plugins.resolvePoint"
+	PluginsOpenResources       Name = "plugins.openResources"
+	PluginsReadResource        Name = "plugins.readResource"
 	PluginsListProviders       Name = "plugins.listProviders"
 	PluginsSelectProvider      Name = "plugins.selectProvider"
 	PluginsInstall             Name = "plugins.install"
@@ -45,6 +48,16 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.subscription(MethodMeta{Name: PluginsOpenResources, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		OpenPluginResources(context.Context, protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)
+	}, ctx context.Context, in protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
+		return s.OpenPluginResources(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsReadResource, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ReadPluginResource(context.Context, protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error)
+	}, ctx context.Context, in protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error) {
+		return s.ReadPluginResource(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsResolvePoint, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error)
 	}, ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {

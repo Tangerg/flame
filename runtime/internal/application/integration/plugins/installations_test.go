@@ -92,6 +92,10 @@ type installationPackages struct {
 	realize     func(context.Context, *plugin.Installation) (Realization, error)
 }
 
+func (installationPackages) ReadResource(context.Context, *plugin.Installation, string) ([]byte, error) {
+	return nil, errors.New("unexpected component resource read")
+}
+
 func (installationPackages) ReadPage(context.Context, *plugin.Installation, string) (string, error) {
 	return "", errors.New("unexpected view read")
 }

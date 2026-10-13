@@ -19,7 +19,7 @@ import type {
 import usageHTML from "../../../plugins/usage/views/usage.html?raw";
 import { UsagePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/UsagePackageView";
 import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
-import schedulePackage from "../../../plugins/schedules/plugin.json";
+import scheduleDeclaration from "../../../plugins/schedules/io.github.tangerg.flame/declaration.json";
 import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
 import memoryHTML from "../../../plugins/memory/views/memory.html?raw";
 import { MemoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/MemoryPackageView";
@@ -576,9 +576,7 @@ function workspaceDataPlugin(
         component: () =>
           createElement(SchedulePackageView, {
             reads: scheduleReads,
-            templates:
-              schedulePackage.extensions["io.github.tangerg.flame"].contributes.views[0]!
-                .scheduleTemplates,
+            templates: scheduleDeclaration.contributes.views[0]!.scheduleTemplates,
             title: "Schedules",
             lifetime: scheduleLifetime,
             carrier: createBrowserHost().pluginCarrier,
