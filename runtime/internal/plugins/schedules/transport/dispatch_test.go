@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -62,7 +63,11 @@ func TestDispatchAcknowledgementAndReceiptCommitTogether(t *testing.T) {
 	if err := store.Insert(ctx, definition); err != nil {
 		t.Fatal(err)
 	}
-	request, err := definition.ManualRun("ses_atomic", "run_atomic", now.Add(time.Second))
+	request, err := definition.ManualRun("ses_atomic", "run_atomic", now.Add(time.Second), testsupport.ScheduleInvocation())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, request.Invocation())
 	if err != nil {
 		t.Fatal(err)
 	}

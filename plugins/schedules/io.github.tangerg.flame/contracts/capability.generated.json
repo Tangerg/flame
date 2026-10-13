@@ -506,6 +506,45 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "parent": {
+                "type": "string"
+              },
+              "target": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
+              }
+            },
+            "required": [
+              "id",
+              "origin",
+              "target"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
+            "additionalProperties": false,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "reference"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -539,6 +578,9 @@
               "Execution": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot"
               },
+              "Invocation": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation"
+              },
               "ManualRanAt": {
                 "format": "date-time",
                 "type": "string"
@@ -562,7 +604,8 @@
               "OccurrenceID",
               "SessionID",
               "RunID",
-              "ManualRanAt"
+              "ManualRanAt",
+              "Invocation"
             ],
             "type": "object"
           }
@@ -572,6 +615,9 @@
         "properties": {
           "Execution": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot"
+          },
+          "Invocation": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation"
           },
           "ManualRanAt": {
             "format": "date-time",
@@ -596,7 +642,8 @@
           "OccurrenceID",
           "SessionID",
           "RunID",
-          "ManualRanAt"
+          "ManualRanAt",
+          "Invocation"
         ],
         "type": "object"
       }
@@ -637,6 +684,45 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "parent": {
+                "type": "string"
+              },
+              "target": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
+              }
+            },
+            "required": [
+              "id",
+              "origin",
+              "target"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
+            "additionalProperties": false,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "reference"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -670,6 +756,9 @@
               "Execution": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_ExecutionSnapshot"
               },
+              "Invocation": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation"
+              },
               "ManualRanAt": {
                 "format": "date-time",
                 "type": "string"
@@ -693,7 +782,8 @@
               "OccurrenceID",
               "SessionID",
               "RunID",
-              "ManualRanAt"
+              "ManualRanAt",
+              "Invocation"
             ],
             "type": "object"
           }

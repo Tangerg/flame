@@ -46,9 +46,14 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 			next_run_at INTEGER NOT NULL,
 			session_id  TEXT    NOT NULL UNIQUE,
 			run_id      TEXT    NOT NULL UNIQUE,
+			invocation_json TEXT NOT NULL CHECK(json_valid(invocation_json)),
 			state       TEXT    NOT NULL CHECK(state IN ('%s', '%s')),
 			CHECK (id = schedule_id || ':' || CAST(due_at AS TEXT))
 		)`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue()),
+		`CREATE TRIGGER IF NOT EXISTS immutable_schedule_invocation BEFORE UPDATE OF invocation_json ON schedule_firings
+		 BEGIN SELECT RAISE(ABORT,'captured invocation is immutable'); END`,
+		`CREATE TRIGGER IF NOT EXISTS immutable_manual_request BEFORE UPDATE OF captured_request_json ON manual_firings
+		 BEGIN SELECT RAISE(ABORT,'captured request is immutable'); END`,
 		`CREATE INDEX IF NOT EXISTS idx_schedule_firings_pending
 			ON schedule_firings(state, due_at, id)`,
 		// One pending occurrence prevents unavailable Run admission from accumulating a new firing on each cron tick.

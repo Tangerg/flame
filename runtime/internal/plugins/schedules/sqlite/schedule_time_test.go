@@ -1,6 +1,7 @@
 package sqlite_test
 
 import (
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
@@ -59,7 +60,7 @@ func TestScheduleDueAndPendingPreserveEpochBoundary(t *testing.T) {
 		if err != nil || len(due) != 1 || due[0].ID() != scheduled.ID() {
 			t.Fatalf("Due = %+v, %v, want %s", due, err, scheduled.ID())
 		}
-		claim, err := scheduled.Claim("ses_"+test.id, "run_"+test.id, test.dueAt)
+		claim, err := scheduled.Claim("ses_"+test.id, "run_"+test.id, test.dueAt, testsupport.ScheduleInvocation())
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -138,7 +138,7 @@ func TestScheduleClaimRejectsExhaustedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := scheduled.Claim("ses_exhausted", "run_exhausted", scheduled.NextRunAt()); !errors.Is(err, ErrRevisionExhausted) {
+	if _, err := scheduled.Claim("ses_exhausted", "run_exhausted", scheduled.NextRunAt(), testInvocation()); !errors.Is(err, ErrRevisionExhausted) {
 		t.Fatalf("claim error = %v, want ErrRevisionExhausted before persistence", err)
 	}
 	if _, err := scheduled.AcceptRun(scheduled.NextRunAt()); !errors.Is(err, ErrRevisionExhausted) {
@@ -150,7 +150,7 @@ func TestScheduleClaimRejectsExhaustedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claim, err := penultimate.Claim("ses_last", "run_last", penultimate.NextRunAt())
+	claim, err := penultimate.Claim("ses_last", "run_last", penultimate.NextRunAt(), testInvocation())
 	if err != nil || claim.State().Revision() != exactint.Maximum {
 		t.Fatalf("last exact Claim revision = (%d, %v)", claim.State().Revision(), err)
 	}
@@ -169,7 +169,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	dueAt := scheduled.NextRunAt()
-	if _, err := scheduled.Claim("ses_early", "run_early", dueAt.Add(-time.Second)); err == nil {
+	if _, err := scheduled.Claim("ses_early", "run_early", dueAt.Add(-time.Second), testInvocation()); err == nil {
 		t.Fatal("Claim accepted a firing before its due cursor")
 	}
 	for _, identity := range []string{
@@ -178,14 +178,14 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		"hidden\u200bvalue",
 		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 	} {
-		if _, err := scheduled.Claim(identity, "run_valid", dueAt); err == nil {
+		if _, err := scheduled.Claim(identity, "run_valid", dueAt, testInvocation()); err == nil {
 			t.Errorf("Claim accepted Session identity %q", identity)
 		}
-		if _, err := scheduled.Claim("ses_valid", identity, dueAt); err == nil {
+		if _, err := scheduled.Claim("ses_valid", identity, dueAt, testInvocation()); err == nil {
 			t.Errorf("Claim accepted Run identity %q", identity)
 		}
 	}
-	claim, err := scheduled.Claim("ses_due", "run_due", dueAt)
+	claim, err := scheduled.Claim("ses_due", "run_due", dueAt, testInvocation())
 	if err != nil {
 		t.Fatalf("Claim: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	if request.OccurrenceID() != occurrence.ID() || request.SessionID() != "ses_due" || request.RunID() != "run_due" {
 		t.Fatalf("durable RunRequest identities were not preserved")
 	}
-	manual, err := edited.ManualRun("ses_manual", "run_manual", dueAt)
+	manual, err := edited.ManualRun("ses_manual", "run_manual", dueAt, testInvocation())
 	if err != nil {
 		t.Fatalf("ManualRun: %v", err)
 	}

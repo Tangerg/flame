@@ -3,6 +3,7 @@ package schedule
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -11,21 +12,23 @@ import (
 
 // The ID already encodes Schedule and due cursor; storing either again would add a competing representation.
 type OccurrenceSnapshot struct {
-	ID        string
-	Execution ExecutionSnapshot
-	FiredAt   time.Time
-	NextRunAt time.Time
-	SessionID string
-	RunID     string
+	ID         string
+	Execution  ExecutionSnapshot
+	FiredAt    time.Time
+	NextRunAt  time.Time
+	SessionID  string
+	RunID      string
+	Invocation capability.Invocation
 }
 
 type Occurrence struct {
-	id        occurrenceIdentity
-	execution Execution
-	firedAt   time.Time
-	nextRunAt time.Time
-	sessionID string
-	runID     string
+	id         occurrenceIdentity
+	execution  Execution
+	firedAt    time.Time
+	nextRunAt  time.Time
+	sessionID  string
+	runID      string
+	invocation capability.Invocation
 }
 
 // The consumed revision is a claim precondition; pending work retains only the captured execution.
@@ -42,7 +45,7 @@ type Acceptance struct {
 }
 
 // Stable Session/Run identities are chosen before persistence so retry cannot open a second Run.
-func (s Schedule) Claim(sessionID, runID string, firedAt time.Time) (Claim, error) {
+func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation capability.Invocation) (Claim, error) {
 	if !s.Enabled() {
 		return Claim{}, errors.New("schedule: only an enabled due schedule can form an occurrence")
 	}
@@ -61,6 +64,7 @@ func (s Schedule) Claim(sessionID, runID string, firedAt time.Time) (Claim, erro
 	occurrence := Occurrence{
 		id: occurrenceID, execution: s.Execution(), firedAt: firedAt,
 		nextRunAt: nextRunAt, sessionID: sessionID, runID: runID,
+		invocation: invocation,
 	}
 	if err := occurrence.Validate(); err != nil {
 		return Claim{}, err
@@ -74,6 +78,9 @@ func (s Schedule) Claim(sessionID, runID string, firedAt time.Time) (Claim, erro
 }
 
 func (o Occurrence) Validate() error {
+	if err := o.invocation.Validate(); err != nil {
+		return err
+	}
 	if err := o.id.Validate(); err != nil {
 		return err
 	}
@@ -121,7 +128,8 @@ func RestoreOccurrence(snapshot OccurrenceSnapshot) (Occurrence, error) {
 	value := Occurrence{
 		id: occurrenceID, execution: execution, firedAt: canonicalTime(snapshot.FiredAt),
 		nextRunAt: canonicalTime(snapshot.NextRunAt), sessionID: snapshot.SessionID,
-		runID: snapshot.RunID,
+		runID:      snapshot.RunID,
+		invocation: snapshot.Invocation,
 	}
 	if err := value.Validate(); err != nil {
 		return Occurrence{}, err
@@ -134,6 +142,7 @@ func (o Occurrence) Snapshot() OccurrenceSnapshot {
 		ID: o.id.String(), Execution: o.execution.Snapshot(),
 		FiredAt: o.firedAt, NextRunAt: o.nextRunAt,
 		SessionID: o.sessionID, RunID: o.runID,
+		Invocation: o.invocation,
 	}
 }
 

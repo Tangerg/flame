@@ -29,6 +29,18 @@ export type Method_flame_2eschedules_2fupdate_2ev1Input = Method_go_5fZ2l0aHViLm
 
 export type Method_flame_2eschedules_2fupdate_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fSnapshot;
 
+export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation {
+  id: string;
+  origin: string;
+  parent?: string;
+  target: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget;
+}
+
+export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget {
+  reference: string;
+  scope: string;
+}
+
 export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference {
   RunID: string;
   SessionID: string;
@@ -52,6 +64,7 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJ
 
 export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fRunRequestSnapshot {
   Execution: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fExecutionSnapshot;
+  Invocation: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation;
   ManualRanAt: string;
   OccurrenceID: string;
   RunID: string;
@@ -141,4 +154,4 @@ export const METHODS = {
   "flame.schedules/scan.v1": { kind: "command", target: "installation" },
   "flame.schedules/update.v1": { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.4", reference: "schedules", composition: "selection", scope: "installation", contract: "5de2734b3816b47c2098b46125bf0afcaaab2105a3c3381725291f86fd2a0159" } as const;
+export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.4", reference: "schedules", composition: "selection", scope: "installation", contract: "7b1941d210385f013f94f558e9584e4b4717e6782883e8fc6923ce59e21bc0d1" } as const;

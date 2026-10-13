@@ -868,7 +868,7 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new Schedule: %v", err)
 	}
-	request, err := scheduled.ManualRun("ses_manual", "run_manual", createdAt.Add(time.Second))
+	request, err := scheduled.ManualRun("ses_manual", "run_manual", createdAt.Add(time.Second), testsupport.ScheduleInvocation())
 	if err != nil {
 		t.Fatalf("manual run request: %v", err)
 	}

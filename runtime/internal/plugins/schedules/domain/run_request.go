@@ -3,6 +3,7 @@ package schedule
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/optional"
@@ -22,6 +23,7 @@ type RunRequest struct {
 	occurrenceID occurrenceIdentity
 	sessionID    string
 	runID        string
+	invocation   capability.Invocation
 }
 
 func (s Schedule) RecordRun(ranAt time.Time) (RunRecord, error) {
@@ -64,7 +66,7 @@ func (r RunRecord) Validate() error {
 func (r RunRecord) ScheduleID() string { return r.scheduleID.String() }
 func (r RunRecord) RanAt() time.Time   { return r.ranAt }
 
-func (s Schedule) ManualRun(sessionID, runID string, ranAt time.Time) (RunRequest, error) {
+func (s Schedule) ManualRun(sessionID, runID string, ranAt time.Time, invocation capability.Invocation) (RunRequest, error) {
 	record, err := s.RecordRun(ranAt)
 	if err != nil {
 		return RunRequest{}, err
@@ -72,6 +74,7 @@ func (s Schedule) ManualRun(sessionID, runID string, ranAt time.Time) (RunReques
 	value := RunRequest{
 		execution: s.Execution(), manualRecord: &record,
 		sessionID: sessionID, runID: runID,
+		invocation: invocation,
 	}
 	return value, value.Validate()
 }
@@ -80,10 +83,14 @@ func (o Occurrence) RunRequest() RunRequest {
 	return RunRequest{
 		execution: o.execution, occurrenceID: o.id,
 		sessionID: o.sessionID, runID: o.runID,
+		invocation: o.invocation,
 	}
 }
 
 func (r RunRequest) Validate() error {
+	if err := r.invocation.Validate(); err != nil {
+		return err
+	}
 	if err := r.execution.Validate(); err != nil {
 		return err
 	}
@@ -124,8 +131,9 @@ func (r RunRequest) Acceptance() (Acceptance, bool) {
 	}
 	return Acceptance{occurrenceID: r.occurrenceID, runID: r.runID}, true
 }
-func (r RunRequest) SessionID() string { return r.sessionID }
-func (r RunRequest) RunID() string     { return r.runID }
+func (r RunRequest) SessionID() string                 { return r.sessionID }
+func (r RunRequest) RunID() string                     { return r.runID }
+func (r RunRequest) Invocation() capability.Invocation { return r.invocation }
 
 type RunRequestSnapshot struct {
 	ScheduleID   string
@@ -134,10 +142,11 @@ type RunRequestSnapshot struct {
 	SessionID    string
 	RunID        string
 	ManualRanAt  time.Time
+	Invocation   capability.Invocation
 }
 
 func (r RunRequest) Snapshot() RunRequestSnapshot {
-	value := RunRequestSnapshot{ScheduleID: r.ScheduleID(), Execution: r.execution.Snapshot(), OccurrenceID: r.OccurrenceID(), SessionID: r.sessionID, RunID: r.runID}
+	value := RunRequestSnapshot{ScheduleID: r.ScheduleID(), Execution: r.execution.Snapshot(), OccurrenceID: r.OccurrenceID(), SessionID: r.sessionID, RunID: r.runID, Invocation: r.invocation}
 	if r.manualRecord != nil {
 		value.ManualRanAt = r.manualRecord.ranAt
 	}
@@ -148,7 +157,7 @@ func RestoreRunRequest(value RunRequestSnapshot) (RunRequest, error) {
 	if err != nil {
 		return RunRequest{}, err
 	}
-	request := RunRequest{execution: execution, sessionID: value.SessionID, runID: value.RunID}
+	request := RunRequest{execution: execution, sessionID: value.SessionID, runID: value.RunID, invocation: value.Invocation}
 	if value.OccurrenceID != "" {
 		identity, err := parseOccurrenceIdentity(value.OccurrenceID)
 		if err != nil {

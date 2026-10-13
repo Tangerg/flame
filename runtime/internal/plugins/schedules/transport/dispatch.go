@@ -21,6 +21,9 @@ type RunHost interface {
 type RunConnector func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error)
 
 func captureCommand[P, R any](ctx context.Context, db *sql.DB, connect RunConnector, method string, command pluginsdk.Command[P], handler func(context.Context, P) (R, error)) (result R, err error) {
+	if _, err := pluginsdk.InvocationFromContext(ctx); err != nil {
+		return result, err
+	}
 	_, close, err := connectRuntime(ctx, db, connect)
 	if err != nil {
 		return result, err
@@ -104,6 +107,17 @@ func dispatchRun(ctx context.Context, db *sql.DB, store app.DispatchStore, conne
 	input, err := command.RequestInput()
 	if err != nil {
 		return result, err
+	}
+	request, err := store.CapturedRun(ctx, command.Input.RunID)
+	if err != nil {
+		return result, err
+	}
+	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	if err != nil {
+		return result, err
+	}
+	if invocation != request.Invocation() {
+		return result, errors.New("schedules: dispatch caller differs from captured trigger")
 	}
 	prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Dispatch, command.ID, input, nil)
 	if err != nil {

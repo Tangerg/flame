@@ -3,6 +3,7 @@ package schedules
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 	"sync"
 	"time"
 
@@ -43,10 +44,13 @@ func NewScanner(store WorkerStore, manual ManualQueue, sessionID, runID func() s
 	}
 	return &Scanner{store: store, manual: manual, newSessionID: sessionID, newRunID: runID}, nil
 }
-func (s *Scanner) Scan(ctx context.Context, now time.Time) ([]schedule.RunRequest, error) {
+func (s *Scanner) Scan(ctx context.Context, now time.Time, invocation capability.Invocation) ([]schedule.RunRequest, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := invocation.Validate(); err != nil {
 		return nil, err
 	}
 	manual, err := s.manual.PendingManual(ctx, s.afterManualID, schedule.MaximumDispatchBatch/4)
@@ -82,7 +86,7 @@ func (s *Scanner) Scan(ctx context.Context, now time.Time) ([]schedule.RunReques
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		claim, err := scheduled.Claim(s.newSessionID(), s.newRunID(), now)
+		claim, err := scheduled.Claim(s.newSessionID(), s.newRunID(), now, invocation)
 		if err != nil {
 			return nil, err
 		}

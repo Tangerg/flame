@@ -39,10 +39,20 @@ without mutation; retain the old directory separately and use a fresh directory
 for this breaking change.
 
 Before dispatch, the backend persists the exact instructions, title, workspace,
-model selection and stable Session/Run identities. Editing or deleting the
+model selection, stable Session/Run identities and original calling-owner
+invocation (origin, parent and concrete target). Editing or deleting the
 original definition does not rewrite that captured work. Manual dispatch enters
 this durable queue before Runtime is called, so a lost reply or canceled caller
-can be reconciled by the next dispatch.
+can be reconciled by the next dispatch. Pending scans return this original
+evidence; a scanner cannot replace a human or model trigger with a new automatic
+origin. Runtime restores it before opening the callback, and the backend refuses
+dispatch metadata that differs from the stored trigger.
+
+Cron occurrences retain `invocation_json`; manual work retains the complete
+`captured_request_json`. Their immutable SQL guards prevent rewriting captured
+caller evidence. Former tables are refused before schema creation or data
+mutation; keep them separately and use a fresh Schedules directory. No callback
+credential or mutable Run state is stored in these records.
 
 Runtime rechecks installation authority inside the atomic Session/Run opening and
 records acceptance in the same transaction. Its receipt names the accepted Run;

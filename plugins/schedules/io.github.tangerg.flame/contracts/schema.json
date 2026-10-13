@@ -46,6 +46,45 @@
     "Method_flame_2eschedules_2fupdate_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fSnapshot"
     },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "target"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "reference"
+      ],
+      "type": "object"
+    },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference": {
       "additionalProperties": false,
       "properties": {
@@ -130,6 +169,9 @@
         "Execution": {
           "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fExecutionSnapshot"
         },
+        "Invocation": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation"
+        },
         "ManualRanAt": {
           "format": "date-time",
           "type": "string"
@@ -153,7 +195,8 @@
         "OccurrenceID",
         "SessionID",
         "RunID",
-        "ManualRanAt"
+        "ManualRanAt",
+        "Invocation"
       ],
       "type": "object"
     },

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"time"
@@ -135,6 +136,10 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 	expectedRevision := claim.ExpectedRevision()
 	state := claim.State()
 	execution := snapshot.Execution
+	invocation, err := json.Marshal(snapshot.Invocation)
+	if err != nil {
+		return false, err
+	}
 	err = sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		res, execContextErr := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
 			`UPDATE schedules SET next_run_at = ?, revision = ?
@@ -158,12 +163,12 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 		_, execContextErr = sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
 			`INSERT INTO schedule_firings(
 				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort,
-				due_at, fired_at, next_run_at, session_id, run_id, state
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				due_at, fired_at, next_run_at, session_id, run_id, invocation_json, state
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			snapshot.ID, occurrence.ScheduleID(), execution.Title, execution.Instructions,
 			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(),
 			occurrence.DueAt().UnixMilli(), snapshot.FiredAt.UnixMilli(), snapshot.NextRunAt.UnixMilli(), snapshot.SessionID, snapshot.RunID,
-			scheduleFiringPending.databaseValue())
+			string(invocation), scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: persist schedule occurrence: %w", execContextErr)
 		}
@@ -178,7 +183,7 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 		return nil, errors.New("sqlite: schedule pending limit must be positive")
 	}
 	query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
-			fired_at, next_run_at, session_id, run_id
+			fired_at, next_run_at, session_id, run_id, invocation_json
 		 FROM schedule_firings WHERE state = ?`
 	args := []any{scheduleFiringPending.databaseValue()}
 	if !afterDueAt.IsZero() || afterID != "" {
@@ -361,10 +366,14 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	var snapshot schedule.OccurrenceSnapshot
 	var title, instructions, cwd, provider, model, reasoningEffort string
+	var invocation string
 	var firedAt, nextRunAt int64
 	if err := scan(&snapshot.ID, &title, &instructions,
 		&cwd, &provider, &model, &reasoningEffort,
-		&firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID); err != nil {
+		&firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID, &invocation); err != nil {
+		return schedule.Occurrence{}, err
+	}
+	if err := json.Unmarshal([]byte(invocation), &snapshot.Invocation, json.RejectUnknownMembers(true)); err != nil {
 		return schedule.Occurrence{}, err
 	}
 	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)

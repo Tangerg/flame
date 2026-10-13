@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"github.com/Tangerg/flame/runtime/capability"
 	"testing"
 	"time"
 )
@@ -11,11 +12,11 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manual, err := scheduled.ManualRun("ses_manual", "run_manual", now)
+	manual, err := scheduled.ManualRun("ses_manual", "run_manual", now, testInvocation())
 	if err != nil {
 		t.Fatal(err)
 	}
-	claim, err := scheduled.Claim("ses_cron", "run_cron", scheduled.NextRunAt())
+	claim, err := scheduled.Claim("ses_cron", "run_cron", scheduled.NextRunAt(), testInvocation())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,6 +30,7 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 			name string
 			edit func(*RunRequestSnapshot)
 		}{
+			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = capability.Invocation{} }},
 			{"missing Session", func(v *RunRequestSnapshot) { v.SessionID = "" }},
 			{"missing Run", func(v *RunRequestSnapshot) { v.RunID = "" }},
 			{"invalid Session", func(v *RunRequestSnapshot) { v.SessionID = "ses_bad id" }},
@@ -46,4 +48,8 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 			})
 		}
 	}
+}
+
+func testInvocation() capability.Invocation {
+	return capability.Invocation{ID: "schedule-trigger", Origin: capability.Automatic, Parent: "parent-trigger", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
 }

@@ -38,10 +38,11 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ContributionB
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	invocation, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: binding.InstallationID.String()})
-	if err != nil {
-		return app.RunReference{}, err
+	invocation := request.Invocation()
+	if invocation.Target.Scope != "installation" || invocation.Target.Reference != binding.InstallationID.String() {
+		return app.RunReference{}, errors.New("schedule: captured caller belongs to another installation")
 	}
+	ctx = operation.Adopt(ctx, invocation.ID, invocation.Origin, invocation.Parent)
 	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
 	if err != nil {
 		return app.RunReference{}, err

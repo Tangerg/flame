@@ -87,11 +87,15 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		}),
 		contracts.PrepareManual.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (schedule.RunRequestSnapshot, error) {
 			return captureCommand(ctx, db, connect, rpc.PrepareManual, command, func(ctx context.Context, input rpc.ItemInput) (schedule.RunRequestSnapshot, error) {
+				invocation, err := pluginsdk.InvocationFromContext(ctx)
+				if err != nil {
+					return schedule.RunRequestSnapshot{}, err
+				}
 				value, err := store.Get(ctx, input.ID)
 				if err != nil {
 					return schedule.RunRequestSnapshot{}, err
 				}
-				request, err := value.ManualRun(identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now())
+				request, err := value.ManualRun(identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now(), invocation)
 				if err != nil {
 					return schedule.RunRequestSnapshot{}, err
 				}
@@ -104,7 +108,11 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 				if input.Now.IsZero() {
 					return nil, errors.New("schedule: scan time is required")
 				}
-				requests, err := scanner.Scan(ctx, input.Now)
+				invocation, err := pluginsdk.InvocationFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				requests, err := scanner.Scan(ctx, input.Now, invocation)
 				values := make([]schedule.RunRequestSnapshot, len(requests))
 				for i, value := range requests {
 					values[i] = value.Snapshot()

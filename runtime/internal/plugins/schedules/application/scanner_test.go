@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"testing"
 	"time"
@@ -34,7 +35,7 @@ func TestScannerRotatesBacklogAndPreservesCapturedWorkAcrossRestart(t *testing.T
 	}
 	for i := range 40 {
 		value := create(fmt.Sprintf("sch_backlog_%02d", i), now.Add(-time.Hour-time.Second), true)
-		claim, err := value.Claim(fmt.Sprintf("ses_backlog_%02d", i), fmt.Sprintf("run_backlog_%02d", i), now.Add(-time.Hour))
+		claim, err := value.Claim(fmt.Sprintf("ses_backlog_%02d", i), fmt.Sprintf("run_backlog_%02d", i), now.Add(-time.Hour), testsupport.ScheduleInvocation())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +45,7 @@ func TestScannerRotatesBacklogAndPreservesCapturedWorkAcrossRestart(t *testing.T
 	}
 	manual := create("sch_manual", now.Add(-time.Hour), false)
 	for i := range 20 {
-		request, err := manual.ManualRun(fmt.Sprintf("ses_manual_%02d", i), fmt.Sprintf("run_manual_%02d", i), now)
+		request, err := manual.ManualRun(fmt.Sprintf("ses_manual_%02d", i), fmt.Sprintf("run_manual_%02d", i), now, testsupport.ScheduleInvocation())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +68,7 @@ func TestScannerRotatesBacklogAndPreservesCapturedWorkAcrossRestart(t *testing.T
 	seen := map[string]schedule.RunRequestSnapshot{}
 	newDue := false
 	for pass := range 4 {
-		requests, err := scanner.Scan(t.Context(), now)
+		requests, err := scanner.Scan(t.Context(), now, testsupport.ScheduleInvocation())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +146,7 @@ func TestCanceledScannerDoesNotClaimDueWork(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := scanner.Scan(ctx, time.Now()); !errors.Is(err, context.Canceled) {
+	if _, err := scanner.Scan(ctx, time.Now(), testsupport.ScheduleInvocation()); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled scan=%v", err)
 	}
 	if calls != 0 {

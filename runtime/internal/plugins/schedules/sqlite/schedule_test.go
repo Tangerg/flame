@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"database/sql"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -60,7 +61,7 @@ func insertSchedule(ctx context.Context, store *sqlite.ScheduleStore, snapshot s
 }
 
 func testClaim(scheduled schedule.Schedule, sessionID, runID string, firedAt time.Time) schedule.Claim {
-	value, err := scheduled.Claim(sessionID, runID, firedAt)
+	value, err := scheduled.Claim(sessionID, runID, firedAt, testsupport.ScheduleInvocation())
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +77,7 @@ func testAcceptance(occurrence schedule.Occurrence) schedule.Acceptance {
 }
 
 func recordManual(ctx context.Context, store *sqlite.ScheduleStore, scheduled schedule.Schedule, ranAt time.Time) error {
-	request, err := scheduled.ManualRun("ses_"+uuid.NewString(), "run_"+uuid.NewString(), ranAt)
+	request, err := scheduled.ManualRun("ses_"+uuid.NewString(), "run_"+uuid.NewString(), ranAt, testsupport.ScheduleInvocation())
 	if err != nil {
 		return err
 	}
@@ -261,7 +262,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	if err != nil || !exhausted.LastRunAt().IsZero() || exhausted.Revision() != exactint.Maximum {
 		t.Fatalf("schedule after rejected RecordRun = (%+v, %v)", exhausted, err)
 	}
-	if _, err := exhausted.Claim("ses_exhausted", "run_exhausted", dueAt); !errors.Is(err, schedule.ErrRevisionExhausted) {
+	if _, err := exhausted.Claim("ses_exhausted", "run_exhausted", dueAt, testsupport.ScheduleInvocation()); !errors.Is(err, schedule.ErrRevisionExhausted) {
 		t.Fatalf("prepare Claim error = %v, want ErrRevisionExhausted", err)
 	}
 	if pending, err := store.Pending(ctx, time.Time{}, "", 10); err != nil || len(pending) != 0 {
@@ -526,11 +527,16 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 	insert := func(occurrence schedule.Occurrence) error {
-		_, err := db.ExecContext(ctx, `INSERT INTO schedule_firings(
-			id, schedule_id, instructions, due_at, fired_at, next_run_at, session_id, run_id, state
-		) VALUES (?, ?, 'review', ?, ?, ?, ?, ?, 'pending')`,
+		encoded, err := json.Marshal(occurrence.Snapshot().Invocation)
+		if err != nil {
+			return err
+		}
+		encodedInvocation := string(encoded)
+		_, err = db.ExecContext(ctx, `INSERT INTO schedule_firings(
+			id, schedule_id, instructions, due_at, fired_at, next_run_at, session_id, run_id, invocation_json, state
+		) VALUES (?, ?, 'review', ?, ?, ?, ?, ?, ?, 'pending')`,
 			occurrence.ID(), occurrence.ScheduleID(), occurrence.DueAt().UnixMilli(), occurrence.FiredAt().UnixMilli(),
-			occurrence.NextRunAt().UnixMilli(), occurrence.SessionID(), occurrence.RunID())
+			occurrence.NextRunAt().UnixMilli(), occurrence.SessionID(), occurrence.RunID(), encodedInvocation)
 		return err
 	}
 	first := testClaim(created, "ses_first", "run_first", dueAt)

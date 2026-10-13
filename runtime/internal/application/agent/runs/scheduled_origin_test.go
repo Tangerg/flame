@@ -21,14 +21,14 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manual, err := scheduled.ManualRun("ses_owned", "run_owned", now.Add(time.Second))
+	manual, err := scheduled.ManualRun("ses_owned", "run_owned", now.Add(time.Second), testsupport.ScheduleInvocation())
 	if err != nil {
 		t.Fatal(err)
 	}
 	occurrence, err := schedule.RestoreOccurrence(schedule.OccurrenceSnapshot{
 		ID: "sch_owned:" + strconv.FormatInt(now.UnixMilli(), 10), Execution: scheduled.Execution().Snapshot(),
 		FiredAt: now, NextRunAt: now.Add(24 * time.Hour),
-		SessionID: "ses_owned", RunID: "run_owned",
+		SessionID: "ses_owned", RunID: "run_owned", Invocation: testsupport.ScheduleInvocation(),
 	})
 	if err != nil {
 		t.Fatal(err)

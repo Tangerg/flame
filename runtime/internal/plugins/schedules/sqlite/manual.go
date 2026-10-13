@@ -11,7 +11,7 @@ import (
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
-const manualSchema = `CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, request TEXT NOT NULL CHECK(json_valid(request)), state TEXT NOT NULL CHECK(state IN ('pending','accepted')))`
+const manualSchema = `CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)), state TEXT NOT NULL CHECK(state IN ('pending','accepted')))`
 
 func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunRequest) error {
 	if err := request.Validate(); err != nil {
@@ -24,14 +24,14 @@ func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunReq
 	if err != nil {
 		return err
 	}
-	_, err = sqlitedb.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO manual_firings(run_id,request,state) VALUES(?,?,'pending')`, request.RunID(), string(encoded))
+	_, err = sqlitedb.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO manual_firings(run_id,captured_request_json,state) VALUES(?,?,'pending')`, request.RunID(), string(encoded))
 	return err
 }
 func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit int) ([]schedule.RunRequest, error) {
 	if limit <= 0 || limit > schedule.MaximumDispatchBatch {
 		return nil, errors.New("schedule: invalid manual dispatch limit")
 	}
-	rows, err := sqlitedb.Connection(ctx, s.db).QueryContext(ctx, `SELECT run_id,request FROM manual_firings WHERE state='pending' AND run_id>? ORDER BY run_id LIMIT ?`, afterID, limit)
+	rows, err := sqlitedb.Connection(ctx, s.db).QueryContext(ctx, `SELECT run_id,captured_request_json FROM manual_firings WHERE state='pending' AND run_id>? ORDER BY run_id LIMIT ?`, afterID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
 			return err
 		}
 		var encoded, state string
-		if err := sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT request,state FROM manual_firings WHERE run_id=?`, id).Scan(&encoded, &state); err != nil {
+		if err := sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT captured_request_json,state FROM manual_firings WHERE run_id=?`, id).Scan(&encoded, &state); err != nil {
 			return fmt.Errorf("schedule: find manual dispatch: %w", err)
 		}
 		request, err := restoreManual(id, encoded)
