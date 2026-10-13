@@ -525,9 +525,6 @@
               "Conversation": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Conversation"
               },
-              "Grant": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_CallbackRef"
-              },
               "Project": {
                 "type": "string"
               },
@@ -538,39 +535,8 @@
             "required": [
               "SessionID",
               "Project",
-              "Grant",
               "Compacted",
               "Conversation"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_CallbackRef": {
-            "additionalProperties": false,
-            "properties": {
-              "call": {
-                "type": "string"
-              },
-              "credential": {
-                "type": "string"
-              },
-              "endpoint": {
-                "type": "string"
-              },
-              "maxResponseBytes": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "required": [
-              "endpoint",
-              "credential",
-              "call",
-              "maxResponseBytes"
             ],
             "type": "object"
           }
@@ -584,9 +550,6 @@
           "Conversation": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Conversation"
           },
-          "Grant": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_CallbackRef"
-          },
           "Project": {
             "type": "string"
           },
@@ -597,7 +560,6 @@
         "required": [
           "SessionID",
           "Project",
-          "Grant",
           "Compacted",
           "Conversation"
         ],
@@ -698,9 +660,6 @@
               "EmbeddingSpace": {
                 "type": "string"
               },
-              "Grant": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_CallbackRef"
-              },
               "Project": {
                 "type": "string"
               },
@@ -721,38 +680,7 @@
               "Project",
               "Query",
               "TopK",
-              "Grant",
               "EmbeddingSpace"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_CallbackRef": {
-            "additionalProperties": false,
-            "properties": {
-              "call": {
-                "type": "string"
-              },
-              "credential": {
-                "type": "string"
-              },
-              "endpoint": {
-                "type": "string"
-              },
-              "maxResponseBytes": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "required": [
-              "endpoint",
-              "credential",
-              "call",
-              "maxResponseBytes"
             ],
             "type": "object"
           }
@@ -762,9 +690,6 @@
         "properties": {
           "EmbeddingSpace": {
             "type": "string"
-          },
-          "Grant": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_CallbackRef"
           },
           "Project": {
             "type": "string"
@@ -786,7 +711,6 @@
           "Project",
           "Query",
           "TopK",
-          "Grant",
           "EmbeddingSpace"
         ],
         "type": "object"

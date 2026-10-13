@@ -3,6 +3,7 @@ package transport_test
 import (
 	"context"
 	"database/sql"
+	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -11,12 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	workspace "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/transport"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -50,7 +53,11 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 		t.Fatal(err)
 	}
 	defer release()
-	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "mine", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
+	input := rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
+	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "mine", input); err == nil {
+		t.Fatal("fresh compacted maintenance accepted missing callback metadata")
+	}
+	_, err = invokeMaintenance(t, t.Context(), session, "mine", input, grant)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +79,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	}
 	release()
 
-	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "no-compaction", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4}})
+	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "no-compaction", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Conversation: rpc.Conversation{MessageCount: 4}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +165,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	defer release()
 	result := make(chan error, 1)
 	go func() {
-		_, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}})
+		_, err := invokeMaintenance(t, ctx, session, "maintenance", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}, grant)
 		result <- err
 	}()
 	select {
@@ -200,14 +207,14 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	broker.AdmitSession(session)
-	originalInput := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
+	originalInput := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
 	if _, found, err := pluginsdk.ReadReceipt[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, "maintenance", rpc.Maintain, originalInput); err != nil || found {
 		t.Fatalf("canceled model work became known receipt: %t, %v", found, err)
 	}
 	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", originalInput); err == nil {
 		t.Fatal("pending original maintenance restarted model work")
 	}
-	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "uncompacted", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: grant})
+	_, err = invokeMaintenance(t, ctx, session, "uncompacted", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true}, grant)
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
@@ -221,8 +228,8 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		t.Fatal(err)
 	}
 	defer releaseFresh()
-	input := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Grant: fresh}
-	published, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "recover-pending-ledger", input)
+	input := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true}
+	published, err := invokeMaintenance(t, ctx, session, "recover-pending-ledger", input, fresh)
 	if err != nil || !published.Published {
 		t.Fatalf("pending recovery=%+v %v", published, err)
 	}
@@ -285,8 +292,8 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 		t.Fatal(err)
 	}
 	defer release()
-	input := rpc.MaintenanceInput{SessionID: "ses_receipt_failure", Project: project, Compacted: true, Grant: grant, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
-	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "original", input); err == nil {
+	input := rpc.MaintenanceInput{SessionID: "ses_receipt_failure", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
+	if _, err := invokeMaintenance(t, t.Context(), session, "original", input, grant); err == nil {
 		t.Fatal("receipt failure returned successful publication")
 	}
 	state, err := store.State(t.Context(), project)
@@ -306,5 +313,76 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	}
 	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "original", input); err == nil || calls.Load() != 2 {
 		t.Fatalf("pending admission reran models: %d, %v", calls.Load(), err)
+	}
+}
+
+func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSession, id string, input rpc.MaintenanceInput, ref pluginsdk.CallbackRef) (rpc.MaintenanceResult, error) {
+	t.Helper()
+	metadata, err := pluginsdk.CallbackMetadata(ref)
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	binding, err := pluginsdk.NewBinding(session, contracts.Maintain.Descriptor())
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	reply, err := binding.InvokeWithMetadata(ctx, id, admitted, metadata)
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	var result rpc.MaintenanceResult
+	err = json.Unmarshal(reply.JSON(), &result, json.RejectUnknownMembers(true))
+	return result, err
+}
+
+func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(t *testing.T) {
+	_, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
+	input := rpc.SearchInput{Project: t.TempDir(), Query: "fact", TopK: 5, EmbeddingSpace: "configured-space"}
+	if _, err := pluginsdk.Call[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, rpc.Search, input); err == nil {
+		t.Fatal("configured embedding silently omitted required callback metadata")
+	}
+	input.EmbeddingSpace = ""
+	if _, err := pluginsdk.Call[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, rpc.Search, input); err != nil {
+		t.Fatalf("absent embedding role requires a callback: %v", err)
+	}
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, call := range []struct {
+		descriptor capability.MethodDescriptor
+		input      any
+	}{{contracts.Search.Descriptor(), input}, {contracts.Maintain.Descriptor(), rpc.MaintenanceInput{SessionID: "ses_former", Project: input.Project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}}} {
+		method, err := capability.AdmitMethod(call.descriptor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		admitted, err := jsoninput.Encode(call.input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := method.ValidateInput(admitted); err != nil {
+			t.Fatalf("valid business input: %v", err)
+		}
+		var former map[string]any
+		if err := json.Unmarshal(admitted.JSON(), &former); err != nil {
+			t.Fatal(err)
+		}
+		former["Grant"] = pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1024}
+		admitted, err = jsoninput.Encode(former)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := method.ValidateInput(admitted); err == nil {
+			t.Fatalf("%s accepts former callback Grant as business input", call.descriptor.Name)
+		}
 	}
 }

@@ -24,7 +24,9 @@ ends. Withdrawal cancels and joins admitted callbacks, including incomplete
 request bodies. Standard MCP sampling is not used. An absent embedder or failed
 optional embedding request permits keyword ranking; a storage failure remains
 an error. The Tool's configured collaborator-resolution failure is explicit
-before dispatch rather than being treated as an absent model role.
+before dispatch rather than being treated as an absent model role. The same rule
+applies to human search. Callback references travel only in invocation metadata,
+never in search or maintenance business input or durable routing/receipt records.
 
 The actual Memory tool adapter captures the Run workspace, original invocation
 metadata and the executable's concrete callback session before dispatch. The
@@ -67,11 +69,11 @@ Disable and uninstall withdraw the generation and its capabilities. They
 retain its private data. Reenable uses the same installation directory; a new
 installation receives a different directory. Restart restores private facts from
 the same database. Old Runtime memory tables are not read or migrated.
-The private command table stores original admitted JSON in `input_json` and the
+The private command table stores original admitted JSON in `business_input_json` and the
 typed value/refusal envelope in `reply`. Fingerprints derive from that original
 input, including its exact numeric lexemes. A null reply represents private
 admission without a known outcome; it is not a successful empty result. Former
-completed-only, digest-only and bare-result databases are refused without conversion;
+call-context input, completed-only, digest-only and bare-result databases are refused without conversion;
 retain that directory separately and use a fresh directory for this breaking change.
 
 `runtime/internal/plugins/memory/rpc/contracts.go` is the typed method

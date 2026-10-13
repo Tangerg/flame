@@ -30,11 +30,11 @@ dispatch admission queries the original private receipt; absence or unavailabili
 does not authorize another mutation or a call to a replacement provider. The
 backend atomically stores successes and known refusals, rolling back refused
 mutations. Runtime's routing evidence contains no competing business outcome.
-The private receipt contains `input_json`, the original admitted JSON, and `reply`,
+The private receipt contains `business_input_json`, the original admitted JSON, and `reply`,
 the typed value/refusal envelope. Fingerprints derive from original JSON rather
 than decoded DTOs. The shared command format permits a pending admission with
-no final reply; Schedules' database-only operations still commit their reply in
-the mutation transaction. Former completed-only, digest-only and bare-result databases are refused
+no final reply and stores no invocation metadata; Schedules' database-only operations still commit their reply in
+the mutation transaction. Former call-context input, completed-only, digest-only and bare-result databases are refused
 without mutation; retain the old directory separately and use a fresh directory
 for this breaking change.
 

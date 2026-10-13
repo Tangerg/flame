@@ -55,7 +55,6 @@ type ItemsInput struct {
 type SearchInput struct {
 	Project, Query string
 	TopK           int
-	Grant          pluginsdk.CallbackRef
 	EmbeddingSpace string
 }
 type Conversation struct {
@@ -64,7 +63,6 @@ type Conversation struct {
 }
 type MaintenanceInput struct {
 	SessionID, Project string
-	Grant              pluginsdk.CallbackRef
 	Compacted          bool
 	Conversation       Conversation
 }

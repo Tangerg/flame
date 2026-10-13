@@ -249,9 +249,6 @@
         "Conversation": {
           "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fConversation"
         },
-        "Grant": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef"
-        },
         "Project": {
           "type": "string"
         },
@@ -262,7 +259,6 @@
       "required": [
         "SessionID",
         "Project",
-        "Grant",
         "Compacted",
         "Conversation"
       ],
@@ -321,9 +317,6 @@
         "EmbeddingSpace": {
           "type": "string"
         },
-        "Grant": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef"
-        },
         "Project": {
           "type": "string"
         },
@@ -344,7 +337,6 @@
         "Project",
         "Query",
         "TopK",
-        "Grant",
         "EmbeddingSpace"
       ],
       "type": "object"
@@ -364,36 +356,6 @@
       },
       "required": [
         "ID"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef": {
-      "additionalProperties": false,
-      "properties": {
-        "call": {
-          "type": "string"
-        },
-        "credential": {
-          "type": "string"
-        },
-        "endpoint": {
-          "type": "string"
-        },
-        "maxResponseBytes": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "required": [
-        "endpoint",
-        "credential",
-        "call",
-        "maxResponseBytes"
       ],
       "type": "object"
     }

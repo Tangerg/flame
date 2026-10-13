@@ -2,9 +2,9 @@ package pluginservices
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -19,7 +19,9 @@ import (
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 )
@@ -145,8 +147,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	}
 	embedder, err := m.embedder(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "memory: resolve optional embedding role", "error", err)
-		embedder = nil
+		return nil, err
 	}
 	grant, release, err := rpc.GrantModels(ctx, m.callbacks, session, nil, embedder)
 	if err != nil {
@@ -157,7 +158,24 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	values, err := m.contracts.Search.Call(ctx, session, rpc.SearchInput{Project: project, Query: query, TopK: topK, Grant: grant, EmbeddingSpace: space})
+	metadata, err := pluginsdk.CallbackMetadata(grant)
+	if err != nil {
+		return nil, err
+	}
+	binding, err := pluginsdk.NewBinding(session, m.contracts.Search.Descriptor())
+	if err != nil {
+		return nil, err
+	}
+	admitted, err := jsoninput.Encode(rpc.SearchInput{Project: project, Query: query, TopK: topK, EmbeddingSpace: space})
+	if err != nil {
+		return nil, err
+	}
+	reply, err := binding.InvokeWithMetadata(ctx, "", admitted, metadata)
+	if err != nil {
+		return nil, rpc.DecodeError(err)
+	}
+	var values []memory.ItemSnapshot
+	err = json.Unmarshal(reply.JSON(), &values, json.RejectUnknownMembers(true))
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}
@@ -176,7 +194,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	return items, nil
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
-	binding, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
+	binding, _, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
 	if errors.Is(err, errInactive) {
 		return nil
 	}
@@ -187,14 +205,20 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	grant, release, err := rpc.GrantModels(ctx, m.callbacks, session, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
-		return m.utility.Complete(ctx, models.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
-	}, nil)
-	if err != nil {
-		return err
-	}
-	defer release()
-	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil }, nil)
+	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ServiceBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+		grant, release, err := rpc.GrantModels(ctx, m.callbacks, original, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
+			return m.utility.Complete(ctx, models.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
+		}, nil)
+		if err != nil {
+			return sdk.ParamsBase{}, nil, err
+		}
+		metadata, err := pluginsdk.CallbackMetadata(grant)
+		if err != nil {
+			release()
+			return sdk.ParamsBase{}, nil, err
+		}
+		return metadata, release, nil
+	})
 	if err != nil || result.value.Published {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}

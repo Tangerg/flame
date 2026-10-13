@@ -100,7 +100,7 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	if err := db.QueryRowContext(t.Context(), `SELECT value FROM counter`).Scan(&count); err != nil || count != 1 {
 		t.Fatalf("recovery or conflicting input repeated mutation: %d, %v", count, err)
 	}
-	if err := db.QueryRowContext(t.Context(), `SELECT input_json FROM commands WHERE id='original'`).Scan(&admitted); err != nil || admitted != `{"n":1.0,"z":"same"}` {
+	if err := db.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id='original'`).Scan(&admitted); err != nil || admitted != `{"n":1.0,"z":"same"}` {
 		t.Fatalf("private owner replaced raw request: %s, %v", admitted, err)
 	}
 }

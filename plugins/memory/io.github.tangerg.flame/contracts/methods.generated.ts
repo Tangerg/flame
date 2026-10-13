@@ -87,7 +87,6 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJ
 export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fMaintenanceInput {
   Compacted: boolean;
   Conversation: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fConversation;
-  Grant: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef;
   Project: string;
   SessionID: string;
 }
@@ -108,7 +107,6 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJ
 
 export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fSearchInput {
   EmbeddingSpace: string;
-  Grant: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef;
   Project: string;
   Query: string;
   TopK: number;
@@ -118,13 +116,6 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJ
   Content?: string;
   ID: string;
   Pinned?: boolean;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef {
-  call: string;
-  credential: string;
-  endpoint: string;
-  maxResponseBytes: number;
 }
 
 export interface MethodInputs {
@@ -157,4 +148,4 @@ export const METHODS = {
   "flame.memory/search.v1": { kind: "query", target: "installation" },
   "flame.memory/update.v1": { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.3", reference: "memory", composition: "selection", scope: "installation", contract: "d18423e0200236a1f692a4468be6b4530acad742e46eeb680af91a8a2144033b" } as const;
+export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-13.3", reference: "memory", composition: "selection", scope: "installation", contract: "547ce81e9f70f369f493d8f4be8664a077f5e8655df976d3e3ecc7f47a8dcfaa" } as const;

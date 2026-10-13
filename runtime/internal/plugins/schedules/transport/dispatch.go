@@ -105,7 +105,7 @@ func dispatchRun(ctx context.Context, db *sql.DB, store app.DispatchStore, conne
 	if err != nil {
 		return result, err
 	}
-	prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Dispatch, command.ID, input)
+	prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Dispatch, command.ID, input, nil)
 	if err != nil {
 		return result, err
 	}

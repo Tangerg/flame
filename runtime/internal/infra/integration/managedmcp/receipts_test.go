@@ -125,7 +125,7 @@ func receiptInput[T any](t *testing.T, value T) jsoninput.Input {
 
 func TestFormerCompletedOnlyReceiptSchemaIsRefusedWithoutMutation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
-	former := `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_json TEXT NOT NULL CHECK(json_valid(input_json)), reply TEXT NOT NULL CHECK(json_valid(reply)))`
+	former := `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, business_input_json TEXT NOT NULL CHECK(json_valid(business_input_json)), reply TEXT NOT NULL CHECK(json_valid(reply)))`
 	db, err := sqlitedb.OpenSchema(t.Context(), path, []string{former})
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestFormerCompletedOnlyReceiptSchemaIsRefusedWithoutMutation(t *testing.T) 
 	}
 	defer raw.Close()
 	var input, reply string
-	if err := raw.QueryRowContext(t.Context(), `SELECT input_json,reply FROM commands WHERE id='original'`).Scan(&input, &reply); err != nil || input != `{"captured":true}` || reply != `{"value":{"Published":true}}` {
+	if err := raw.QueryRowContext(t.Context(), `SELECT business_input_json,reply FROM commands WHERE id='original'`).Scan(&input, &reply); err != nil || input != `{"captured":true}` || reply != `{"value":{"Published":true}}` {
 		t.Fatalf("schema refusal changed retained evidence: %s, %s, %v", input, reply, err)
 	}
 }

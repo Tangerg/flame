@@ -17,7 +17,7 @@ func TestFormerUnboundRuntimeSchemaIsRefusedWithoutChangingCapturedWork(t *testi
 	}
 	for _, statement := range []string{
 		`DROP TABLE runtime_target`,
-		`INSERT INTO commands(id,method,input_json,reply) VALUES('retained','schedules.dispatch','{"runId":"run_original"}',NULL)`,
+		`INSERT INTO commands(id,method,business_input_json,reply) VALUES('retained','schedules.dispatch','{"runId":"run_original"}',NULL)`,
 	} {
 		if _, err := db.ExecContext(t.Context(), statement); err != nil {
 			t.Fatal(err)
@@ -39,7 +39,7 @@ func TestFormerUnboundRuntimeSchemaIsRefusedWithoutChangingCapturedWork(t *testi
 	defer raw.Close()
 	var input string
 	var reply sql.NullString
-	if err := raw.QueryRowContext(t.Context(), `SELECT input_json,reply FROM commands WHERE id='retained'`).Scan(&input, &reply); err != nil || input != `{"runId":"run_original"}` || reply.Valid {
+	if err := raw.QueryRowContext(t.Context(), `SELECT business_input_json,reply FROM commands WHERE id='retained'`).Scan(&input, &reply); err != nil || input != `{"runId":"run_original"}` || reply.Valid {
 		t.Fatalf("refused opening changed retained work: %s, %+v, %v", input, reply, err)
 	}
 	var targetTables int

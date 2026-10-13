@@ -23,7 +23,9 @@ type PreparedCommand struct {
 	fresh      bool
 }
 
-func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input) (*PreparedCommand, []byte, error) {
+// validateNew checks only local preconditions before the first durable admission.
+// Existing pending work and receipts must reconcile without acquiring new collaborators.
+func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input, validateNew func() error) (*PreparedCommand, []byte, error) {
 	if db == nil || id == "" || len(id) > 256 || !utf8.ValidString(id) || method == "" || !utf8.ValidString(method) {
 		return nil, nil, errors.New("managed plugin: database, method and bounded command identity are required")
 	}
@@ -34,7 +36,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 	started := false
 	err := sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
 		var previousMethod, previousInput string
-		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
 				return idempotency.ErrKeyConflict
@@ -44,7 +46,12 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		if _, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
+		if validateNew != nil {
+			if err := validateNew(); err != nil {
+				return err
+			}
+		}
+		if _, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
 			return err
 		}
 		started = true
@@ -75,7 +82,7 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 	return sqlitedb.RunInTx(ctx, c.db, func(ctx context.Context) error {
 		var method, input string
 		var original []byte
-		if err := sqlitedb.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
+		if err := sqlitedb.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
 			return err
 		}
 		if method != c.method || input != c.input.String() {

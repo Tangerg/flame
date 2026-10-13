@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -61,8 +63,24 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := memoryrpc.MaintenanceInput{SessionID: "ses_maintenance_receipt", Project: project, Compacted: true, Grant: grant, Conversation: memoryrpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
-	_, err = pluginsdk.CallCommand[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, memoryrpc.Maintain, "original", input)
+	input := memoryrpc.MaintenanceInput{SessionID: "ses_maintenance_receipt", Project: project, Compacted: true, Conversation: memoryrpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
+	metadata, err := pluginsdk.CallbackMetadata(grant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contracts, err := memoryrpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, err := pluginsdk.NewBinding(session, contracts.Maintain.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = binding.InvokeWithMetadata(ctx, "original", admitted, metadata)
 	if err == nil {
 		t.Fatal("withheld maintenance response became observed success")
 	}
@@ -79,6 +97,15 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	broker.RevokeSession(session)
 	_ = session.Close()
 	session = connect(false)
+	db, err := sql.Open("sqlite", filepath.Join(data, "memory.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	var persisted string
+	if err := db.QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id='original'`).Scan(&persisted); err != nil || persisted != admitted.String() {
+		t.Fatalf("private receipt did not retain only the original business input: %s, %v", persisted, err)
+	}
 	result, found, err := pluginsdk.ReadReceipt[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, "original", memoryrpc.Maintain, input)
 	if err != nil || !found || !result.Published {
 		t.Fatalf("original publication receipt=%+v, %t, %v", result, found, err)

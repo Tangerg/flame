@@ -15,7 +15,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_json TEXT NOT NULL CHECK(json_valid(input_json)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))`
+const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, business_input_json TEXT NOT NULL CHECK(json_valid(business_input_json)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))`
 
 var ErrCommandUnconfirmed = errors.New("managed plugin: command outcome is unconfirmed")
 
@@ -31,7 +31,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 	err := sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
 		connection := sqlitedb.Connection(ctx, db)
 		var previousMethod, previousInput string
-		err := connection.QueryRowContext(ctx, `SELECT method,input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		err := connection.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != admitted.String() {
 				return idempotency.ErrKeyConflict
@@ -64,7 +64,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 		if err != nil {
 			return err
 		}
-		_, err = connection.ExecContext(ctx, `INSERT INTO commands(id,method,input_json,reply) VALUES(?,?,?,?)`, id, method, admitted.String(), string(reply))
+		_, err = connection.ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,?)`, id, method, admitted.String(), string(reply))
 		return err
 	})
 	if err != nil {
@@ -91,7 +91,7 @@ func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
 	return pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
 		var method, encoded string
 		var reply []byte
-		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
+		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
 		if errors.Is(err, sql.ErrNoRows) {
 			return pluginsdk.Receipt{}, nil
 		}

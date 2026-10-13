@@ -95,9 +95,12 @@ built and before workers start. `OpenRPC` captures that transport's call lifetim
 backend authors use `ConnectCallback` and the ordinary typed Runtime Client.
 Closing a client detaches observation; callback retirement cancels and joins its
 stream source. Message limits bound replies/frames, not an entire stream.
-Schedules passes its ephemeral callback reference through MCP metadata, outside
-business input and private receipts. Its executable uses the ordinary Client to
-query `runs.getAcceptance` with the original `runs.start` request, then submits
+Memory search/maintenance and Schedules dispatch pass ephemeral callback references
+through MCP metadata, outside business input and durable host routing/private
+receipts. Receipt lookup and completed Memory maintenance redelivery require no
+new callback grant. Current command tables name that input `business_input_json`;
+former call-context input schemas are refused without changing retained evidence.
+The Schedules executable uses the ordinary Client to query `runs.getAcceptance` with the original `runs.start` request, then submits
 the captured `newSession` only when no acceptance exists. Runtime commits the new
 Session, Run and command acceptance atomically. Opened and retired acceptances
 settle the same private pending work without recreating deleted material.

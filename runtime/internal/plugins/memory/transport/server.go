@@ -103,8 +103,12 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			input := command.Input
 			var resolve func(context.Context) (app.Embedder, error)
 			if input.EmbeddingSpace != "" {
+				grant, err := pluginsdk.CallbackFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
 				resolve = func(context.Context) (app.Embedder, error) {
-					return rpc.RemoteModels{Grant: input.Grant, Space: input.EmbeddingSpace}, nil
+					return rpc.RemoteModels{Grant: grant, Space: input.EmbeddingSpace}, nil
 				}
 			}
 			read, err := app.NewReadModel(store, resolve)
@@ -120,7 +124,15 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
-			prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted)
+			var grant pluginsdk.CallbackRef
+			prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func() error {
+				if !input.Compacted {
+					return nil
+				}
+				var err error
+				grant, err = pluginsdk.CallbackFromContext(ctx)
+				return err
+			})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
@@ -142,7 +154,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
-			consolidator, err := maintenance.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, rpc.RemoteModels{Grant: input.Grant}, maintenance.MemoryCurationPolicyValues{})
+			consolidator, err := maintenance.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, rpc.RemoteModels{Grant: grant}, maintenance.MemoryCurationPolicyValues{})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
