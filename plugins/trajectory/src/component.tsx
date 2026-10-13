@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentContext } from "@flame/plugin-sdk";
 import type { ReactNode } from "react";
 import { Activity } from "@flame/icons/react";
 import type { Page, TrajectoryEntry } from "@flame/runtime-contract/wire";
 import {
+  Button,
+  Panel,
+  PanelTitle,
   CodeBlock,
   Disclosure,
   EmptyState,
@@ -16,14 +20,6 @@ import {
   Toolbar,
   type Fact,
 } from "@flame/ui";
-import {
-  mountView,
-  Pagination,
-  ReadStatus,
-  useRead,
-  ViewPanel,
-  type ViewProps,
-} from "../../src/view";
 
 const runId = (row: TrajectoryEntry) =>
   row.type === "run"
@@ -133,8 +129,7 @@ function Observation({ row }: { row: TrajectoryEntry }) {
     </>
   );
 }
-function Trajectory({ view }: ViewProps<Page<TrajectoryEntry>>) {
-  const { data: page } = useRead(view);
+export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
   const [kind, setKind] = useState("all");
   const [run, setRun] = useState("all");
   const [search, setSearch] = useState("");
@@ -168,11 +163,7 @@ function Trajectory({ view }: ViewProps<Page<TrajectoryEntry>>) {
     );
   });
   return (
-    <ViewPanel
-      view={view}
-      title="Session trajectory"
-      description="Recorded Run, model and Item evidence. Execution controls remain in the trusted workbench."
-    >
+    <>
       <Stats
         id="metrics"
         aria-label="Current page observations"
@@ -218,11 +209,6 @@ function Trajectory({ view }: ViewProps<Page<TrajectoryEntry>>) {
           onChange={(event) => setSearch(event.target.value)}
         />
       </Toolbar>
-      <ReadStatus
-        view={view}
-        ready={`${rows.length} recorded observations loaded on this page.`}
-        loading="Reading recorded observations…"
-      />
       <RecordGroup id="records" aria-label="Trajectory observations">
         {matching.map((row) => (
           <Disclosure
@@ -261,19 +247,135 @@ function Trajectory({ view }: ViewProps<Page<TrajectoryEntry>>) {
           />
         )}
       </RecordGroup>
-      <Pagination
-        view={view}
-        nextCursor={page.nextCursor}
-        label="Trajectory pages"
-        previousLabel="Newer records"
-        nextLabel="Older records"
-      />
       <Metadata>
         Counts and filters apply to this page. Missing provider evidence stays
         unrecorded; timestamps do not imply causality. Export complete Session
         trajectory from the trusted command menu.
       </Metadata>
-    </ViewPanel>
+    </>
   );
 }
-mountView(Trajectory);
+type AcceptedPage = {
+  page: Page<TrajectoryEntry>;
+  cursors: (string | undefined)[];
+  includeDescendants: boolean;
+};
+type Read = {
+  loading: boolean;
+  accepted?: AcceptedPage;
+  error?: string;
+};
+
+export function Trajectory({ context }: { context: ComponentContext }) {
+  const sessionId = useMemo(() => {
+    if (!context.sessionId)
+      throw new Error("Session trajectory requires a Session context");
+    return context.sessionId;
+  }, [context]);
+  const [read, setRead] = useState<Read>({ loading: true });
+  const reading = useRef<AbortController>(undefined);
+  const load = useCallback(
+    async (
+      cursors: (string | undefined)[] = [undefined],
+      capturedDescendants?: boolean,
+    ) => {
+      reading.current?.abort();
+      const controller = new AbortController();
+      reading.current = controller;
+      const signal = AbortSignal.any([context.signal, controller.signal]);
+      setRead((previous) => ({ ...previous, loading: true, error: undefined }));
+      try {
+        const includeDescendants =
+          capturedDescendants ??
+          Boolean(
+            (await context.track(context.runtime.runtime.discover(signal)))
+              .capabilities.features?.subagents?.enabled,
+          );
+        signal.throwIfAborted();
+        const page = await context.track(
+          context.runtime.sessions.trajectory(
+            {
+              sessionId,
+              ...(includeDescendants ? { includeDescendants: true } : {}),
+              cursor: cursors.at(-1),
+              limit: 100,
+            },
+            signal,
+          ),
+        );
+        if (!signal.aborted)
+          setRead({
+            loading: false,
+            accepted: { page, cursors, includeDescendants },
+          });
+      } catch (error) {
+        if (!signal.aborted)
+          setRead((previous) => ({
+            ...previous,
+            loading: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Recorded observations could not be read.",
+          }));
+      }
+    },
+    [context, sessionId],
+  );
+  useEffect(() => {
+    void load();
+    return () => reading.current?.abort();
+  }, [load]);
+  const accepted = read.accepted;
+  return (
+    <Panel label="Session trajectory">
+      <Toolbar label="Trajectory read actions">
+        <PanelTitle>Session trajectory</PanelTitle>
+        <Button disabled={read.loading} onClick={() => void load()}>
+          Refresh
+        </Button>
+      </Toolbar>
+      <Metadata>
+        Recorded Run, model and Item evidence for Session {sessionId}.
+      </Metadata>
+      {read.loading && <p role="status">Reading recorded observations…</p>}
+      {read.error && (
+        <p role="alert">The requested page could not be read: {read.error}</p>
+      )}
+      {accepted && (
+        <>
+          <p role="status">
+            {accepted.page.data.length} recorded observations loaded on page{" "}
+            {accepted.cursors.length}.
+            {read.error && " Showing the last accepted page."}
+          </p>
+          <TrajectoryReport page={accepted.page} />
+          <Toolbar label="Trajectory pages">
+            <Button
+              disabled={read.loading || accepted.cursors.length === 1}
+              onClick={() =>
+                void load(
+                  accepted.cursors.slice(0, -1),
+                  accepted.includeDescendants,
+                )
+              }
+            >
+              Newer records
+            </Button>
+            <Button
+              disabled={read.loading || !accepted.page.nextCursor}
+              onClick={() =>
+                void load(
+                  [...accepted.cursors, accepted.page.nextCursor!],
+                  accepted.includeDescendants,
+                )
+              }
+            >
+              Older records
+            </Button>
+          </Toolbar>
+        </>
+      )}
+    </Panel>
+  );
+}

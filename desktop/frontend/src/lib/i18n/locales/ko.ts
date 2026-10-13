@@ -1093,7 +1093,7 @@ export const ko: Record<string, string> = {
   "packages.action.selectSession": "이 작업을 사용할 세션을 선택하세요.",
   "packages.action.target": "세션 {{sessionId}} 이름 변경 · 리비전 {{revision}}",
 
-  "packages.view.selectSession": "경로를 확인할 세션을 선택하세요.",
+  "packages.module.selectSession": "이 페이지를 볼 세션을 선택하세요.",
   "packages.view.retirementFailed": "이전 플러그인 페이지를 종료하지 못했습니다.",
   "packages.view.loading": "플러그인 페이지를 여는 중…",
   "packages.view.identity": "{{title}} · 읽기 전용 플러그인",

@@ -4,7 +4,6 @@ import type {
   Page,
   Schedule,
   ReadPluginViewRequest,
-  TrajectoryEntry,
 } from "@flame/runtime-contract/wire";
 import type {
   PluginViewReads,
@@ -12,27 +11,6 @@ import type {
   SkillViewTarget,
   SkillViewSnapshot,
 } from "../application/pluginView";
-
-export function createTrajectoryViewReads(
-  plugins: Pick<FlameClient["plugins"], "readView" | "readTrajectory">,
-  binding: Readonly<ReadPluginViewRequest>,
-  sessionId: string,
-  includeDescendants: boolean,
-): PluginViewReads<Page<TrajectoryEntry>> {
-  const view = Object.freeze({ ...binding });
-  return createViewReads(plugins, view, (cursor, signal) =>
-    plugins.readTrajectory(
-      {
-        ...view,
-        sessionId,
-        ...(includeDescendants ? { includeDescendants: true } : {}),
-        cursor,
-        limit: 100,
-      },
-      signal,
-    ),
-  );
-}
 
 export function createMemoryViewReads(
   plugins: Pick<FlameClient["plugins"], "readView" | "readMemory">,

@@ -20,6 +20,7 @@ export interface WorkspaceContext {
 export interface ComponentContext {
   readonly runtime: FlameClient;
   readonly workspace?: Readonly<WorkspaceContext>;
+  readonly sessionId?: string;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly signal: AbortSignal;
   track<T>(operation: Promise<T>): Promise<T>;

@@ -74,10 +74,11 @@ admitted read projection, pending request and pagination history; individual pag
 own only filters, disclosures and the rendering of their canonical data. Errors
 retain the last accepted snapshot and cursor. Appearance preferences remain with
 the Host, and its shared v3 bootstrap updates the existing page without rereading
-business data for the remaining HTML pages. Diff, Usage and Icon gallery are ordinary
+business data for the remaining HTML pages. Trajectory, Diff, Usage and Icon gallery are ordinary
 React components built through the public SDK. Usage reads the existing public
 Runtime accounting query; Diff reads the canonical workspace query using a captured
-public context. Icon gallery bundles the icon owner's canonical exports.
+public context. Trajectory reads canonical Session history through a frozen public
+Session ID, preserving accepted pages/cursors after failed reads. Icon gallery bundles the icon owner's canonical exports.
 These packages require no own callable contribution or backend process.
 
 Build `icons` and `ui` first, then run:

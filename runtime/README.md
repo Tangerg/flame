@@ -451,10 +451,10 @@ and mining remain Runtime-owned. Removing the package does not delete committed 
 The current HTML bridge and package rebuild requirements are described in Protocol 2026-10-10.5.
 Immutable older HTML is not rewritten and superseded handshakes have no aliases.
 
-`plugins.readTrajectory` embeds the canonical `sessions.trajectory` request, including
+Trajectory components call the canonical `sessions.trajectory` request, including
 `includeDescendants`, bounded page size and cursor scope. The existing query owns
-capability admission and cursor validation. The trusted Host captures descendant scope
-from negotiated subagent capability; the guest can request only a cursor or refresh.
+capability admission and cursor validation. The component discovers negotiated
+subagent capability and retains that scope with its accepted pagination chain.
 
 The first-party [Session trajectory package](../plugins/trajectory/plugin.json) replaces
 the compiled Desktop Timeline. It is optional and uses ordinary package installation,
@@ -505,24 +505,18 @@ protocol versions are refused. Session artifacts use version 31 so an earlier
 importer cannot discard the new evidence. Effects without an observed output
 remain valid; there is no alternate storage reader or migration path.
 
-## Protocol 2026-10-08.1
+## Installed trajectory components
 
-Portable releases publish `views` alongside themes, Skills and MCP declarations. The only
-admitted view type is `sessionTrajectory`, a bounded, self-contained HTML entry.
-`plugins.readView` addresses an enabled installation by exact selected digest
-and declared view ID. `plugins.readTrajectory` applies the same authorization and delegates
-to the existing Session trajectory query. No second trajectory store or execution path exists.
+Trajectory is an ordinary prebuilt React component with declared Session scope.
+The graphical navigation owner supplies its frozen Session ID through the public
+SDK. Reads enter the canonical `sessions.trajectory` operation; no plugin-specific
+trajectory query, HTML carrier or second history owner remains. Session replacement
+retires its observer and joins reads without changing retained Run evidence.
 
-The client binds the Session before opening the isolated page. The page receives the
-initial result once and can request only the next cursor or a refresh of that bound query.
-It receives no Runtime credential, arbitrary resource path, Session selector or RPC tunnel.
-Authorization is captured under installation admission; accepted reads complete outside
-that lock, and withdrawal refuses subsequent reads. Clients retire their local page when
-installation admission, selected release, Session or Runtime connection changes.
-
-This is a breaking development protocol change. Rebuild the shared client, Desktop and CLI
-against this catalog; earlier protocol versions are refused. Existing package
-releases without a view continue to describe their admitted declarative resources.
+The page owns filters and a cursor history for the last accepted bounded page.
+A failed read keeps that page and cursor. Descendant scope comes from public Runtime
+capability discovery and is captured for the complete pagination chain. The Runtime
+still owns cursor admission, redaction, retention and source evidence.
 
 ## Protocol 2026-10-07.8
 
@@ -1016,7 +1010,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"skills"`,
+`type: "agentMemory"`, `"schedules"`, `"skills"`,
 `"clientDiagnostics"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,

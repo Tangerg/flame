@@ -373,10 +373,6 @@
               "signature": "func(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.SkillDiscovery, error)"
             },
             {
-              "name": "ReadPluginTrajectory",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
-            },
-            {
               "name": "ReadPluginView",
               "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error)"
             },
@@ -1037,10 +1033,6 @@
             {
               "name": "ReadPluginSkills",
               "signature": "func(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.SkillDiscovery, error)"
-            },
-            {
-              "name": "ReadPluginTrajectory",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
             {
               "name": "ReadPluginView",
@@ -3581,11 +3573,6 @@
           "value": "\"schedules\""
         },
         {
-          "name": "PluginViewSessionTrajectory",
-          "type": "PluginViewType",
-          "value": "\"sessionTrajectory\""
-        },
-        {
           "name": "PluginViewSkills",
           "type": "PluginViewType",
           "value": "\"skills\""
@@ -3658,7 +3645,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.11\""
+          "value": "\"2026-10-13.12\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -10056,26 +10043,6 @@
             {
               "name": "WorkspaceQuery",
               "type": "WorkspaceQuery"
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ReadPluginTrajectoryRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ReadPluginViewRequest",
-              "type": "ReadPluginViewRequest"
-            },
-            {
-              "name": "ListSessionTrajectoryRequest",
-              "type": "ListSessionTrajectoryRequest"
             }
           ],
           "methods": [

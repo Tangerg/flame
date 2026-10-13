@@ -137,7 +137,6 @@ type RenamePluginSessionRequest struct {
 type PluginViewType string
 
 const (
-	PluginViewSessionTrajectory PluginViewType = "sessionTrajectory"
 	PluginViewAgentMemory       PluginViewType = "agentMemory"
 	PluginViewSchedules         PluginViewType = "schedules"
 	PluginViewSkills            PluginViewType = "skills"
@@ -191,13 +190,6 @@ type PluginRenderer struct {
 type ReadPluginRendererRequest struct {
 	PluginReleaseRequest
 	RendererID string `json:"rendererId"`
-}
-
-// ReadPluginTrajectoryRequest scopes the existing trajectory projection to
-// the Session selected by the trusted host. It grants no execution operations.
-type ReadPluginTrajectoryRequest struct {
-	ReadPluginViewRequest
-	ListSessionTrajectoryRequest
 }
 
 type ReadPluginMemoryRequest struct {

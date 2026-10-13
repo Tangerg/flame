@@ -295,7 +295,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"ReadPluginSkill":          {Area: "plugin Skill document", Mode: desktopDiagnostics, Entry: "Desktop binds document inspection to an admitted release and selected name; CLI reads the canonical document directly"},
 		"ReadPluginSkillLibrary":   {Area: "plugin Skill library", Mode: desktopDiagnostics, Entry: "Desktop binds managed catalogs to an admitted release; CLI reads the user library directly"},
 		"ReadPluginSkillProposals": {Area: "plugin Skill proposals", Mode: desktopDiagnostics, Entry: "Desktop binds proposals to an admitted release and workspace; CLI reviews canonical proposals directly"},
-		"ReadPluginTrajectory":     {Area: "plugin page trajectory", Mode: desktopDiagnostics, Entry: "Desktop binds read-only page queries to the selected Session; CLI reads canonical trajectory directly"},
 		"ListSessionTrajectory":    {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
 		"ExportTrajectory":         {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
 		"Discover":                 lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),

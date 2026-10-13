@@ -447,29 +447,19 @@ It requires no callable contribution or backend. The resource check rejects stal
 prebuilt ESM. Its former static HTML carrier is removed; current graphical execution
 has not been qualified in this refactor because UI/E2E checks are excluded.
 
-An admitted `sessionTrajectory` view registers a Session dock contribution through the
-existing Dougong Host. Runtime owns package admission and canonical trajectory data.
-The trusted client captures installation, selected digest, view ID, active Session,
-negotiated descendant scope and the host's light/dark appearance;
-the guest can ask only for a cursor or refresh. Initial data is reused on connection.
-The page renders recorded Run, model-call and Item observations, including missing usage,
-without constructing execution, approval or retry state.
+The optional [Trajectory package](../plugins/trajectory/plugin.json) is an ordinary
+Session-scoped React component. The existing navigation owner projects a frozen
+Session ID into the public SDK; target replacement retires the render instance.
+The component reads canonical `sessions.trajectory` directly, using public capability
+discovery for descendant scope. Runtime owns all recorded Run, model-call and Item
+facts and admits every cursor against its captured query scope.
 
-The optional first-party package lives at [`plugins/trajectory`](../plugins/trajectory/plugin.json).
-Fresh Runtime databases enable it by default; subsequent changes use the existing
-package lifecycle. The compiled Timeline,
-its fixed navigation target and its private trajectory data providers have been removed.
-The context catalogue lists admitted package contributions. Run failure recovery opens that
-catalogue, so navigation needs no knowledge of a particular installation ID.
-
-The guest retains only the current bounded page and its cursor history. Type, Run and text
-filters apply to that page; a failed read preserves it without advancing the cursor.
-Details show canonical identities, recorded model usage and Tool duration, keeping zero
-values distinct from absent evidence. Unknown settlement does not imply execution duration;
-redacted reasoning is excluded from display and search. Inline data images load only on expansion;
-the carrier grants no external image origins.
-Complete Session trajectory export is a trusted command-menu operation against Runtime,
-independent of visible filters and pages. Execution and approval controls stay in the workbench.
+The Session dock registration is a projection of component scope. The package owns
+only filters, disclosure and cursor history. Failed reads retain the last accepted
+page and cursor. Zero usage remains distinct from missing evidence, unknown settlement
+does not imply execution duration, and redacted reasoning is excluded from display
+and search. Inline images load on expansion. Complete Session export and execution
+controls retain their existing workbench owners. The former HTML/read adapter is removed.
 
 The optional [Usage package](../plugins/usage/plugin.json) is an ordinary installed
 React component. It owns local period/group/filter controls and reads `usage.summary`

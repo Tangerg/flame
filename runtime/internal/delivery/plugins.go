@@ -23,7 +23,6 @@ const (
 	PluginsUninstall           Name = "plugins.uninstall"
 	PluginsReadView            Name = "plugins.readView"
 	PluginsReadRenderer        Name = "plugins.readRenderer"
-	PluginsReadTrajectory      Name = "plugins.readTrajectory"
 	PluginsReadMemory          Name = "plugins.readMemory"
 	PluginsReadSchedules       Name = "plugins.readSchedules"
 	PluginsReadSkills          Name = "plugins.readSkills"
@@ -126,11 +125,6 @@ func registerPlugins(r *Registry) {
 		ReadPluginView(context.Context, protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error)
 	}, ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error) {
 		return s.ReadPluginView(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadTrajectory, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error()), Materializes: []Name{SessionsTrajectory}}, func(s interface {
-		ReadPluginTrajectory(context.Context, protocol.ReadPluginTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error)
-	}, ctx context.Context, in protocol.ReadPluginTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
-		return s.ReadPluginTrajectory(ctx, in)
 	})
 	r.query(MethodMeta{Name: PluginsList, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPlugins(context.Context) (*protocol.Page[protocol.PluginInstallation], error)

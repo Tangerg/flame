@@ -19,8 +19,7 @@ import scheduleDeclaration from "../../../plugins/schedules/io.github.tangerg.fl
 import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
 import memoryHTML from "../../../plugins/memory/views/memory.html?raw";
 import { MemoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/MemoryPackageView";
-import trajectoryHTML from "../../../plugins/trajectory/views/trajectory.html?raw";
-import { TrajectoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/TrajectoryPackageView";
+import { TrajectoryReport } from "../../../plugins/trajectory/src/component";
 import { createElement } from "react";
 import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
@@ -428,24 +427,12 @@ function workspaceDataPlugin(
         component: Gallery,
       });
       const lifetime = ctx.lifetime("visual-trajectory");
-      const read = async () => ({ data: visualTrajectory(snapshot) });
-      const reads = () => ({
-        binding: { installationId: "fixture", digest: "release", viewId: "view" },
-        resource: async () => trajectoryHTML,
-        initial: async () => await read(),
-        read,
-      });
       lifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:trajectory",
         title: "Session trajectory",
         dock: "session",
         component: () =>
-          createElement(TrajectoryPackageView, {
-            reads,
-            title: "Session trajectory",
-            lifetime,
-            carrier: createBrowserHost().pluginCarrier,
-          }),
+          createElement(TrajectoryReport, { page: { data: visualTrajectory(snapshot) } }),
       });
       const diffLifetime = ctx.lifetime("visual-diff");
       diffLifetime.contribute(WORKSPACE_VIEW, {

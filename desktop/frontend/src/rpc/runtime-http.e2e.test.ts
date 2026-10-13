@@ -1105,29 +1105,22 @@ for await (const line of lines) {
       expect(installed.selected.diagnostics).toEqual([]);
       expect(installed.selected.themes).toHaveLength(1);
       expect(installed.selected.skills).toHaveLength(1);
-      await expect(
-        client.plugins.setEnablement({ installationId: installed.id, enabled: true }),
-      ).rejects.toMatchObject({ code: -32042 });
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
-      const view = { ...target, viewId: "trajectory" };
-      const resource = await client.plugins.readView(view);
-      expect(resource.html).toBe(
-        await readFile(
-          resolve(runtimeDirectory, "../plugins/trajectory/views/trajectory.html"),
-          "utf8",
-        ),
+      const component = installed.selected.components[0]!;
+      expect(component.scope).toBe("session");
+      expect(installed.selected.views).toEqual([]);
+      const resourceRequest = { ...target, componentId: component.id, path: component.entry };
+      const resource = await client.plugins.readResource(resourceRequest);
+      expect(Buffer.from(resource.body, "base64")).toEqual(
+        await readFile(resolve(runtimeDirectory, "../plugins/trajectory", component.entry)),
       );
       const session = await client.sessions.create({
         workspace: { path: root },
         title: "Package evidence",
       });
       const query = { sessionId: session.id, includeDescendants: true, limit: 1 };
-      expect(await reader.plugins.readTrajectory({ ...view, ...query })).toEqual(
-        await reader.sessions.trajectory(query),
-      );
-      await expect(reader.plugins.readMemory({ ...view, scope: "user" })).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
-      );
+      const trajectory = await reader.sessions.trajectory(query);
+      expect(trajectory.data).toEqual([]);
       const skills = await client.workspace({ path: root }).skills.listDiscovered();
       expect(skills.skills).toContainEqual(
         expect.objectContaining({
@@ -1140,10 +1133,10 @@ for await (const line of lines) {
         }),
       );
       await client.plugins.setEnablement({ installationId: installed.id, enabled: false });
-      await expect(client.plugins.readView(view)).rejects.toMatchObject({ code: -32042 });
-      await expect(reader.plugins.readTrajectory({ ...view, ...query })).rejects.toMatchObject({
+      await expect(client.plugins.readResource(resourceRequest)).rejects.toMatchObject({
         code: -32042,
       });
+      expect(await reader.sessions.trajectory(query)).toEqual(trajectory);
       const revokedSkills = await client.workspace({ path: root }).skills.listDiscovered();
       expect(
         revokedSkills.skills.some((skill) => skill.installation?.installationId === installed.id),
@@ -1182,10 +1175,7 @@ for await (const line of lines) {
       expect((await client.plugins.readView(view)).html).toBe(
         await readFile(resolve(runtimeDirectory, "../plugins/memory/views/memory.html"), "utf8"),
       );
-      const session = await client.sessions.create({ workspace });
-      await expect(
-        client.plugins.readTrajectory({ ...view, sessionId: session.id }),
-      ).rejects.toSatisfy(
+      await expect(client.plugins.readSkills({ ...view, workspace })).rejects.toSatisfy(
         (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
       );
       await client.plugins.setEnablement({ installationId: installation.id, enabled: false });

@@ -12,7 +12,7 @@ import (
 )
 
 func TestAcceptedViewReadDoesNotRetainAdmissionOrAuthorizeSubsequentReads(t *testing.T) {
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "page", Views: []plugin.ViewDeclaration{{ID: "trajectory", Title: "Trajectory", Kind: plugin.SessionTrajectory, Entry: "views/trajectory.html"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "page", Views: []plugin.ViewDeclaration{{ID: "trajectory", Title: "Trajectory", Kind: plugin.ClientDiagnostics, Entry: "views/trajectory.html"}}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestAcceptedViewReadDoesNotRetainAdmissionOrAuthorizeSubsequentReads(t *tes
 		t.Fatal(err)
 	}
 	called := false
-	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", plugin.SessionTrajectory, func(snapshot *plugin.Installation, view plugin.ViewDeclaration) error {
+	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", plugin.ClientDiagnostics, func(snapshot *plugin.Installation, view plugin.ViewDeclaration) error {
 		called = true
 		if dependencies.held || !snapshot.Enabled() || view.ID != "trajectory" {
 			t.Fatal("accepted read retained admission or lost its authorized snapshot")
@@ -42,7 +42,7 @@ func TestAcceptedViewReadDoesNotRetainAdmissionOrAuthorizeSubsequentReads(t *tes
 	if err != nil || !called {
 		t.Fatalf("accepted read = %v, called = %t", err, called)
 	}
-	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", plugin.SessionTrajectory, func(*plugin.Installation, plugin.ViewDeclaration) error {
+	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", plugin.ClientDiagnostics, func(*plugin.Installation, plugin.ViewDeclaration) error {
 		t.Fatal("withdrawn installation authorized another read")
 		return nil
 	})

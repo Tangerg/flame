@@ -15,6 +15,11 @@ the render instance; calls honor its signal and track boundary. A component may
 publish an optional generic material key for a navigation consumer; the loader
 projects it without a business-specific branch.
 
+Session-scoped components receive `context.sessionId`, a frozen projection of the
+existing navigation owner. They call public Session operations directly. A changed
+Session remounts the instance and cancels/joins its old reads; rendering never becomes
+an owner of Session or Run transitions. Trajectory is the concrete consumer.
+
 `bindOperations` consumes the owner's generated `CAPABILITY_JSON` and
 `MethodInputs`/`MethodOutputs`. Its query and command functions enter the ordinary
 `plugins.call` endpoint. Runtime admits the exact callable contract and validates

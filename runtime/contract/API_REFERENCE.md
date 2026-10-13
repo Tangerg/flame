@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-13.11` · 114 methods
+Protocol `2026-10-13.12` · 113 methods
 
 ## Methods
 
@@ -81,7 +81,6 @@ Protocol `2026-10-13.11` · 114 methods
 | `plugins.readMemory` | query | unary | none | none | cursor | `agentMemory.list` | `plugins`, `agentMemory` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.renameSession` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `session_not_found`, `revision_conflict`, `session_busy`, `capability_not_negotiated` |
 | `plugins.readView` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
-| `plugins.readTrajectory` | query | unary | none | none | cursor | `sessions.trajectory` | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `plugins.list` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.install` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.stage` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -976,7 +975,7 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `PluginClientComponent` | `scope` | `pattern("^(installation|workspace)$")` |
+| `PluginClientComponent` | `scope` | `pattern("^(installation|workspace|session)$")` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPoint` | `contract` | `nonEmpty` |
 | `PluginPoint` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
@@ -1323,7 +1322,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.readMemory` | always | `plugins`, `agentMemory` |
 | `plugins.renameSession` | always | `plugins` |
 | `plugins.readView` | always | `plugins` |
-| `plugins.readTrajectory` | always | `plugins` |
 | `plugins.list` | always | `plugins` |
 | `plugins.install` | always | `plugins` |
 | `plugins.stage` | always | `plugins` |

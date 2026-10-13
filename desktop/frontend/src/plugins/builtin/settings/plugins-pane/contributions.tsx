@@ -20,7 +20,6 @@ import {
   type ToolResultSnapshot,
   type FileSnapshot,
 } from "./adapters/rendererReads";
-import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { MemoryPackageView } from "./ui/MemoryPackageView";
 import { ClientDiagnosticsPackageView } from "./ui/ClientDiagnosticsPackageView";
@@ -40,7 +39,6 @@ import {
   usePackageRealization,
 } from "./application/packages";
 import {
-  createTrajectoryViewReads,
   createMemoryViewReads,
   createScheduleViewReads,
   createSkillViewReads,
@@ -130,6 +128,7 @@ function createPackageReconciler(
             id,
             title: `${release.name} · ${entry.title}`,
             material: entry.material,
+            dock: entry.scope === "session" ? "session" : undefined,
             component: () => (
               <ComponentBoundary>
                 <Suspense fallback={<ComponentLoading />}>
@@ -235,24 +234,6 @@ function createPackageReconciler(
               dock: "workspace",
               component: () => (
                 <SkillsPackageView
-                  reads={reads}
-                  title={title}
-                  lifetime={lifetime}
-                  carrier={carrier}
-                />
-              ),
-            });
-            break;
-          }
-          case "sessionTrajectory": {
-            const reads = (sessionId: string, includeDescendants: boolean) =>
-              createTrajectoryViewReads(client.plugins, binding, sessionId, includeDescendants);
-            lifetime.contribute(WORKSPACE_VIEW, {
-              id: `package:${installation.id}:${view.id}`,
-              title,
-              dock: "session",
-              component: () => (
-                <TrajectoryPackageView
                   reads={reads}
                   title={title}
                   lifetime={lifetime}

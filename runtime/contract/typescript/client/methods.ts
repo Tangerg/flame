@@ -15,7 +15,6 @@ import type {
   PluginViewResource,
   ReadPluginViewRequest,
   ReadPluginRendererRequest,
-  ReadPluginTrajectoryRequest,
   ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
   ReadPluginSkillsRequest,
@@ -351,10 +350,6 @@ export interface Methods {
       params: ReadPluginRendererRequest,
       signal?: AbortSignal,
     ) => Promise<PluginViewResource>;
-    readTrajectory: (
-      params: ReadPluginTrajectoryRequest,
-      signal?: AbortSignal,
-    ) => Promise<Page<TrajectoryEntry>>;
     readSkills: (params: ReadPluginSkillsRequest, signal?: AbortSignal) => Promise<SkillDiscovery>;
     readSkill: (params: ReadPluginSkillRequest, signal?: AbortSignal) => Promise<SkillDetail>;
     readSkillLibrary: (
@@ -690,7 +685,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),
       readRenderer: (params, signal) => call("plugins.readRenderer", params, { signal }),
-      readTrajectory: (params, signal) => call("plugins.readTrajectory", params, { signal }),
       readSkills: (params, signal) => call("plugins.readSkills", params, { signal }),
       readSkill: (params, signal) => call("plugins.readSkill", params, { signal }),
       readSkillLibrary: (params, signal) => call("plugins.readSkillLibrary", params, { signal }),

@@ -1056,7 +1056,7 @@ export const zhTW: Record<string, string> = {
   "packages.action.selectSession": "選擇一個工作階段以使用此操作。",
   "packages.action.target": "重新命名工作階段 {{sessionId}} · 修訂 {{revision}}",
 
-  "packages.view.selectSession": "選擇一個工作階段來查看其軌跡。",
+  "packages.module.selectSession": "選擇一個工作階段來查看此頁面。",
   "packages.view.retirementFailed": "上一個外掛頁面未能完成退出。",
   "packages.view.loading": "正在開啟外掛程式頁面…",
   "packages.view.identity": "{{title}} · 唯讀外掛程式",

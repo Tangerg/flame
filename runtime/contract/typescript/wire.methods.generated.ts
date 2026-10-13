@@ -113,7 +113,6 @@ import type {
   ReadPluginSchedulesRequest,
   ReadPluginSkillRequest,
   ReadPluginSkillsRequest,
-  ReadPluginTrajectoryRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
   ResolvePluginPointRequest,
@@ -264,7 +263,6 @@ const METHOD_NAMES = [
   "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
-  "plugins.readTrajectory",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -394,7 +392,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
-  "plugins.readTrajectory",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -944,13 +941,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "plugins.readTrajectory": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "cursor",
-  },
   "plugins.list": {
     operation: "query",
     response: "unary",
@@ -1456,9 +1446,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.readView": [
     { requires: ["plugins"] },
   ],
-  "plugins.readTrajectory": [
-    { requires: ["plugins"] },
-  ],
   "plugins.list": [
     { requires: ["plugins"] },
   ],
@@ -1602,7 +1589,6 @@ export interface WireShapes {
   "plugins.readMemory": { params: ReadPluginMemoryRequest; result: PageOfAgentMemoryItem };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };
-  "plugins.readTrajectory": { params: ReadPluginTrajectoryRequest; result: PageOfTrajectoryEntry };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
   "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };

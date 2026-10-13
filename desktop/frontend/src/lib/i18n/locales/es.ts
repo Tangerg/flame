@@ -1160,7 +1160,7 @@ export const es: Record<string, string> = {
   "packages.action.selectSession": "Selecciona una sesión para usar esta acción.",
   "packages.action.target": "Renombrar sesión {{sessionId}} · revisión {{revision}}",
 
-  "packages.view.selectSession": "Selecciona una sesión para consultar su trayectoria.",
+  "packages.module.selectSession": "Selecciona una sesión para ver esta página.",
   "packages.view.retirementFailed": "No se pudo cerrar la página anterior del complemento.",
   "packages.view.loading": "Abriendo la página del complemento…",
   "packages.view.identity": "{{title}} · Complemento de solo lectura",

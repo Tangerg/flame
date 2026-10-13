@@ -40,14 +40,15 @@ func TestComponentOnlyPackageAdmissionDoesNotRequireOrExecuteBackend(t *testing.
 	}
 }
 
-func TestWorkspaceComponentAdmissionPreservesScopeAndNavigationKey(t *testing.T) {
+func TestComponentAdmissionPreservesTargetScopeAndNavigationKey(t *testing.T) {
 	for _, test := range []struct {
 		name, scope, material string
 		admitted              bool
 	}{
 		{"valid", "workspace", `,"material":"diff"`, true},
 		{"absent", "workspace", "", true},
-		{"unsupported scope", "session", `,"material":"diff"`, false},
+		{"session", "session", "", true},
+		{"unsupported scope", "unknown", `,"material":"diff"`, false},
 		{"invalid key", "workspace", `,"material":"Invalid"`, false},
 		{"empty key", "workspace", `,"material":""`, false},
 		{"null key", "workspace", `,"material":null`, false},
@@ -64,7 +65,7 @@ func TestWorkspaceComponentAdmissionPreservesScopeAndNavigationKey(t *testing.T)
 			}
 			declaration := release.Declaration()
 			if test.admitted {
-				if len(declaration.Components) != 1 || declaration.Components[0].Scope != "workspace" || (test.material != "" && declaration.Components[0].Material != "diff") || len(declaration.Diagnostics) != 0 {
+				if len(declaration.Components) != 1 || declaration.Components[0].Scope != test.scope || (test.material != "" && declaration.Components[0].Material != "diff") || len(declaration.Diagnostics) != 0 {
 					t.Fatalf("workspace metadata: %+v", declaration)
 				}
 			} else if len(declaration.Components) != 0 || len(declaration.Diagnostics) != 1 {

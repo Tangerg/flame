@@ -21,14 +21,16 @@
           "border": "#373b43"
         }
       }
-    ],
-    "views": [
-      {
-        "id": "trajectory",
-        "title": "Session trajectory",
-        "type": "sessionTrajectory",
-        "entry": "views/trajectory.html"
-      }
     ]
-  }
+  },
+  "components": [
+    {
+      "id": "trajectory",
+      "title": "Session trajectory",
+      "scope": "session",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Trajectory"
+    }
+  ]
 }

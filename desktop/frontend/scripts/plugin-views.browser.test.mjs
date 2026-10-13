@@ -18,7 +18,7 @@ async function choose(frame, label, option) {
   await frame.getByRole("option", { name: option, exact: true }).click();
 }
 const html = await readFile(
-  new URL("../../../plugins/trajectory/views/trajectory.html", import.meta.url),
+  new URL("../../../plugins/memory/views/memory.html", import.meta.url),
   "utf8",
 );
 const memoryHTML = await readFile(
@@ -39,7 +39,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill, Diff, recorded result, captured file, current-client diagnostics reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped memory, schedule, Skill, recorded result, captured file, current-client diagnostics reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -92,7 +92,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       window.mount=(html,initial,scheme="light")=>{
        window.reads=[];window.loads=0;window.failures=[];window.controller=new AbortController();
        window.frameController=openPluginViewFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,theme:captureTheme(document.documentElement,scheme,14),
-        reads:{binding:{installationId:"fixture",digest:"fixture",contributionId:"fixture"},resource:async()=>{window.loads++;return html},initial:async()=>initial,read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? window.continuation ?? {data:[{type:"model",occurredAt:"2026-10-07T00:00:00Z",model:{callId:"older-call",runId:"run-2",segmentId:"segment-2",state:"failed",startedAt:"2026-10-07T00:00:00Z"}}]} : initial;}},
+        reads:{binding:{installationId:"fixture",digest:"fixture",contributionId:"fixture"},resource:async()=>{window.loads++;return html},initial:async()=>initial,read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? window.continuation ?? {data:[]} : initial;}},
         status:value=>{window.viewStatus=value;if(value.type==='failure'){window.failure=value.reason;window.failures.push(value.reason)}}});
        window.dispose=window.frameController.close;
       };
@@ -124,79 +124,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
           { cause },
         );
       });
-    const initial = {
-      data: [
-        {
-          type: "model",
-          occurredAt: "2026-10-08T00:00:00Z",
-          model: {
-            callId: "call-1",
-            runId: "run-1",
-            segmentId: "segment-1",
-            state: "unknown",
-            settledAt: "2026-10-08T00:01:00Z",
-            startedAt: "2026-10-08T00:00:00Z",
-          },
-        },
-        {
-          type: "model",
-          occurredAt: "2026-10-08T00:00:00Z",
-          model: {
-            callId: "zero-call",
-            runId: "run-2",
-            segmentId: "segment-2",
-            state: "completed",
-            startedAt: "2026-10-08T00:00:00Z",
-            settledAt: "2026-10-08T00:00:00Z",
-            firstOutputLatencyMillis: 0,
-            usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
-          },
-        },
-        {
-          type: "item",
-          occurredAt: "2026-10-08T00:00:00Z",
-          item: {
-            id: "tool-1",
-            type: "toolCall",
-            runId: "run-1",
-            status: "completed",
-            durationMillis: 0,
-            tool: { name: "shell" },
-            arguments: { command: "go test ./..." },
-          },
-        },
-        {
-          type: "item",
-          occurredAt: "2026-10-08T00:00:00Z",
-          item: {
-            id: "reasoning-1",
-            type: "reasoning",
-            runId: "run-1",
-            status: "completed",
-            redacted: true,
-            text: "must-never-render",
-          },
-        },
-        {
-          type: "item",
-          occurredAt: "2026-10-08T00:00:00Z",
-          item: {
-            id: "image-1",
-            type: "agentMessage",
-            runId: "run-1",
-            status: "completed",
-            content: [
-              {
-                type: "image",
-                mime: "image/png",
-                data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOYuOs/AAQqAktocgm/AAAAAElFTkSuQmCC",
-              },
-            ],
-          },
-        },
-      ],
-      nextCursor: "next-fixture",
-    };
+    const initial = { data: [] };
     await page.evaluate(
       ({ html, initial }) => {
         void window.mount(html, initial);
@@ -305,100 +233,6 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       );
     }
 
-    await frame.getByText("5 recorded observations loaded on this page.").waitFor();
-    assert.equal(
-      await frame.locator("html").evaluate((element) => element.style.colorScheme),
-      "light",
-    );
-    await page.waitForFunction(() => window.viewStatus?.type === "ready");
-    assert.equal(await page.evaluate(() => window.reads.length), 0);
-    assert.equal(await page.evaluate(() => window.loads), 1);
-    assert.equal(await frame.locator("img").count(), 0);
-    const unknown = frame.locator('[data-trajectory-record="model:call-1"]');
-    await unknown.getByRole("button").first().click();
-    await unknown.getByText("Usage was not recorded for this call.").waitFor();
-    await reviewAppearance("trajectory");
-    assert.equal(await unknown.getByText("Wall duration (ms)", { exact: true }).count(), 0);
-    const zeros = frame.locator('[data-trajectory-record="model:zero-call"]');
-    await zeros.getByRole("button").first().click();
-    await zeros.getByText("Input tokens", { exact: true }).waitFor();
-    assert.deepEqual(await zeros.locator("dd").allTextContents(), [
-      "run-2",
-      "segment-2",
-      "2026-10-08T00:00:00Z",
-      "0",
-      "0",
-      "0",
-      "0",
-      "0",
-    ]);
-    assert.equal(await zeros.getByText("Cache write tokens", { exact: true }).count(), 0);
-    const tool = frame.locator('[data-trajectory-record="item:tool-1"]');
-    await tool.getByRole("button").first().click();
-    await tool.getByText("Execution duration (ms)", { exact: true }).waitFor();
-    assert.equal(await tool.locator("dd").last().textContent(), "0");
-    const reasoning = frame.locator('[data-trajectory-record="item:reasoning-1"]');
-    await reasoning.getByRole("button").first().click();
-    await reasoning.getByText("Reasoning was redacted.").waitFor();
-    assert.doesNotMatch(await reasoning.textContent(), /must-never-render/);
-    await frame.getByRole("searchbox").fill("must-never-render");
-    await frame.getByText("No records on this page match this filter.").waitFor();
-    await frame.getByRole("searchbox").fill("");
-    await choose(frame, "Run filter", "run-2");
-    assert.equal(await frame.locator("[data-trajectory-record]").count(), 1);
-    await choose(frame, "Run filter", "All Runs");
-    await choose(frame, "Observation type", "Needs attention");
-    assert.equal(await frame.locator("[data-trajectory-record]").count(), 1);
-    await choose(frame, "Observation type", "All observations");
-    await frame.locator('[data-trajectory-record="item:image-1"] button[aria-expanded]').click();
-    await frame.locator("img").waitFor();
-    await frame.locator("img").evaluate((element) => {
-      if (element.complete) return;
-      return new Promise((resolve) => (element.onload = element.onerror = resolve));
-    });
-    assert.equal(await frame.locator("img").evaluate((element) => element.naturalWidth), 1);
-    assert.equal(
-      await frame.getByRole("button", { name: /^(Refresh|Newer records|Older records)$/ }).count(),
-      3,
-    );
-    assert.equal(
-      await frame.getByRole("button", { name: /^(Stop|Resume|Steer|Continue)$/ }).count(),
-      0,
-    );
-    await frame.getByRole("button", { name: "Older records" }).click();
-    await page.waitForFunction(() => window.reads.length === 1);
-    assert.equal(await page.evaluate(() => window.reads[0].cursor), "next-fixture");
-    await frame.getByText("1 recorded observations loaded on this page.").waitFor();
-    assert.equal(await frame.locator("[data-trajectory-record]").count(), 1);
-    assert.equal(await frame.locator('[data-trajectory-record="model:call-1"]').count(), 0);
-    await page.evaluate(() => (window.readFailure = true));
-    await frame.getByRole("button", { name: "Newer records" }).click();
-    await frame.getByRole("alert").waitFor();
-    assert.equal(await frame.locator('[data-trajectory-record="model:older-call"]').count(), 1);
-    assert.equal(await frame.getByRole("button", { name: "Newer records" }).isEnabled(), true);
-    await page.evaluate(() => (window.readFailure = false));
-    await frame.getByRole("button", { name: "Newer records" }).click();
-    await frame.getByText("5 recorded observations loaded on this page.").waitFor();
-    assert.equal(await page.evaluate(() => window.reads[2].cursor), undefined);
-    assert.equal(await frame.getByRole("button", { name: "Newer records" }).isEnabled(), false);
-    await page.evaluate(() => (window.hold = true));
-    await frame.getByRole("button", { name: "Refresh" }).click();
-    await page.waitForFunction(() => window.reads.length === 4);
-    await page.evaluate(() => window.controller.abort());
-    assert.equal(await page.locator("iframe").count(), 0);
-    assert.equal(await page.evaluate(() => window.reads[3].signal.aborted), true);
-    await page.evaluate(() => window.releaseRead());
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
-    await page.evaluate(({ html, initial }) => void window.mount(html, initial, "dark"), {
-      html,
-      initial,
-    });
-    await frame.getByText("5 recorded observations loaded on this page.").waitFor();
-    assert.equal(
-      await frame.locator("html").evaluate((element) => element.style.colorScheme),
-      "dark",
-    );
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);

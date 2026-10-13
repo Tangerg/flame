@@ -9,7 +9,10 @@ import {
 import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
 import type { ComponentContext, WorkspaceContext } from "@flame/plugin-sdk";
-import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
+import {
+  useActiveSessionId,
+  useActiveSessionWorkspace,
+} from "@/plugins/builtin/agent/public/session";
 import { useWorkspaceFileFocus } from "@/plugins/builtin/workspace/public/navigation";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginOperationBinding } from "@flame/runtime-contract/wire";
@@ -51,12 +54,14 @@ class ComponentInstance {
     private lifetime: ContributionLifetime,
     private resources: AbortSignal,
     private workspace?: WorkspaceContext,
+    private sessionId?: string,
   ) {
     this.context = this.capture();
   }
   private capture(): ComponentContext {
     return Object.freeze({
       runtime: this.runtime,
+      sessionId: this.sessionId,
       workspace: this.workspace
         ? Object.freeze({
             ref: Object.freeze({ ...this.workspace.ref }),
@@ -93,10 +98,11 @@ function RenderingComponent({
   lifetime,
   resources,
   workspace,
-}: ComponentProps & { workspace?: WorkspaceContext }) {
+  sessionId,
+}: ComponentProps & { workspace?: WorkspaceContext; sessionId?: string }) {
   const instance = useMemo(
-    () => new ComponentInstance(runtime, binding, lifetime, resources, workspace),
-    [runtime, binding, lifetime, resources, workspace],
+    () => new ComponentInstance(runtime, binding, lifetime, resources, workspace, sessionId),
+    [runtime, binding, lifetime, resources, workspace, sessionId],
   );
   const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   const Entry = entry;
@@ -150,7 +156,15 @@ function WorkspaceComponent(props: ComponentProps) {
   );
 }
 
+function SessionComponent(props: ComponentProps) {
+  const t = useT();
+  const sessionId = useActiveSessionId();
+  if (!sessionId) return <p role="status">{t("packages.module.selectSession")}</p>;
+  return <RenderingComponent key={sessionId} {...props} sessionId={sessionId} />;
+}
+
 export function InstalledComponent({ scope, ...props }: ComponentProps & { scope: string }) {
+  if (scope === "session") return <SessionComponent {...props} />;
   if (scope === "workspace") return <WorkspaceComponent {...props} />;
   if (scope === "installation") return <RenderingComponent {...props} />;
   throw new Error("The component context scope is unsupported.");
