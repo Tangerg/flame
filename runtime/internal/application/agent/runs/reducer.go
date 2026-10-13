@@ -237,6 +237,10 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 		return r.failModelCall(e)
 	case ToolCallStarted:
 		return r.startToolCall(e)
+	case ToolCallPrepared:
+		reduced, err := r.startToolCall(e.Start)
+		reduced.executionContext = new(e.Context.Clone())
+		return reduced, err
 	case ToolResultsCommitted:
 		return r.finishToolResults(e)
 	case SteerMessagesApplied:

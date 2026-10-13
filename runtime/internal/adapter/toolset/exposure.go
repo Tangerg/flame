@@ -109,7 +109,7 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 	}
 	installations := slices.Clone(m.installations)
 	for _, executable := range append(slices.Clone(m.visible), m.deferred...) {
-		dependency, found, err := releaseDependency(executable)
+		dependency, found, err := InstallationDependency(executable)
 		if err != nil {
 			return Manifest{}, err
 		}

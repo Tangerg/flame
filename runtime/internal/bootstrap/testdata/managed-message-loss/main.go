@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 )
@@ -22,7 +23,7 @@ func main() {
 }
 
 func run() (err error) {
-	if len(os.Args) != 6 || (os.Args[5] != "request" && os.Args[5] != "response") {
+	if len(os.Args) != 6 || (os.Args[5] != "request" && os.Args[5] != "response" && os.Args[5] != "durable") {
 		return fmt.Errorf("message loss probe requires evidence, backend, method, tool and request or response stage")
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -69,6 +70,16 @@ func run() (err error) {
 				semantic = request.Params.Method
 			}
 			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
+			if os.Args[5] == "durable" {
+				phase, err := os.ReadFile(os.Args[1] + ".phase")
+				if err != nil {
+					forwarded <- err
+					cancel()
+					return
+				}
+				stage := strings.TrimSpace(string(phase))
+				matched = (stage == "commit" || stage == "edited") && request.Method == "tools/call" && request.Params.Name == "create_schedule" || stage == "query" && semantic == "io.github.tangerg.flame/commands.get"
+			}
 			if matched {
 				if os.Args[5] == "request" {
 					withheld, err := withhold(line, nil)
@@ -81,6 +92,9 @@ func run() (err error) {
 					updates.Store(string(request.ID), jsontext.Value(line))
 				}
 			}
+			if os.Args[5] == "durable" && semantic == "io.github.tangerg.flame/commands.get" {
+				updates.Store(string(request.ID), jsontext.Value(line))
+			}
 			if _, err := fmt.Fprintln(input, string(line)); err != nil {
 				forwarded <- err
 				cancel()
@@ -88,6 +102,9 @@ func run() (err error) {
 			}
 		}
 		forwarded <- errors.Join(scanner.Err(), input.Close())
+		if os.Args[5] == "durable" {
+			cancel()
+		}
 	}()
 	responses := bufio.NewScanner(output)
 	for responses.Scan() {
@@ -99,6 +116,39 @@ func run() (err error) {
 			return err
 		}
 		if request, ok := updates.LoadAndDelete(string(response.ID)); ok {
+			if os.Args[5] == "durable" {
+				phase, err := os.ReadFile(os.Args[1] + ".phase")
+				if err != nil {
+					return err
+				}
+				record, err := json.Marshal(struct {
+					Request       jsontext.Value `json:"request"`
+					Response      jsontext.Value `json:"response"`
+					DataDirectory string         `json:"dataDirectory"`
+				}{request.(jsontext.Value), jsontext.Value(line), os.Getenv("PLUGIN_DATA")})
+				if err != nil {
+					return err
+				}
+				if err := os.WriteFile(os.Args[1]+"."+strings.TrimSpace(string(phase)), record, 0600); err != nil {
+					return err
+				}
+				if strings.TrimSpace(string(phase)) != "commit" && strings.TrimSpace(string(phase)) != "edited" && strings.TrimSpace(string(phase)) != "query" {
+					if _, err := fmt.Fprintln(os.Stdout, string(line)); err != nil {
+						return err
+					}
+					continue
+				}
+				ready, err := os.OpenFile(os.Args[1]+".ready", os.O_WRONLY, 0600)
+				if err != nil {
+					return err
+				}
+				_, writeErr := ready.WriteString("ready\n")
+				if err := errors.Join(writeErr, ready.Close()); err != nil {
+					return err
+				}
+				<-ctx.Done()
+				return context.Cause(ctx)
+			}
 			withheld, err := withhold(request.(jsontext.Value), line)
 			if err != nil {
 				return err

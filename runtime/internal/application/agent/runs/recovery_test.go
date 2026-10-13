@@ -154,7 +154,7 @@ func TestRecoveryRejectsInvalidTranscriptBeforePlanning(t *testing.T) {
 				messageMarks: map[string]int{},
 			}
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+				func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 			))
 			if err != nil {
 				t.Fatalf("NewRecovery: %v", err)
@@ -216,7 +216,7 @@ func TestRecoveryRejectsActiveOpenToolWithoutItsRunningItem(t *testing.T) {
 				messageMarks: map[string]int{},
 			}
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+				func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 			))
 			if err != nil {
 				t.Fatalf("NewRecovery: %v", err)
@@ -294,11 +294,11 @@ func (r *recoveryStoreStub) CommitRecovery(_ context.Context, commit RecoveryCom
 	return r.commitErr
 }
 
-type waitingExecutionResumabilityFunc func(context.Context, WaitingContinuation) (bool, error)
+type waitingExecutionResumabilityFunc func(context.Context, ExecutionContinuation) (bool, error)
 
 func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 	ctx context.Context,
-	continuation WaitingContinuation,
+	continuation ExecutionContinuation,
 ) (WaitingResumption, error) {
 	resumable, err := w(ctx, continuation)
 	if err != nil || resumable {
@@ -350,7 +350,7 @@ func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
 			admissions := &selectiveRecoveryAdmissions{released: map[string]int{}}
 			recovery, err := NewRecovery(
 				store,
-				waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+				waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 					return false, nil
 				}),
 				admissions,
@@ -406,7 +406,7 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 				transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
 			}
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+				func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 			))
 			if err != nil {
 				t.Fatalf("NewRecovery: %v", err)
@@ -428,7 +428,7 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 
 func TestNewRecoveryRejectsTypedNilDependencies(t *testing.T) {
 	validStore := &recoveryStoreStub{}
-	validResumability := waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	validResumability := waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		return true, nil
 	})
 	validAdmissions := &selectiveRecoveryAdmissions{}
@@ -483,7 +483,7 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	var notices []invalidation.Notice
 	recovery, err := NewRecovery(
 		store,
-		waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+		waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 			return true, nil
 		}),
 		admissions,
@@ -550,7 +550,7 @@ func TestRecoveryOwnsOpenInvocationCatalogsBeforeFiltering(t *testing.T) {
 		messageMarks: map[string]int{},
 	}
 	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-		func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+		func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 	))
 	if err != nil {
 		t.Fatalf("NewRecovery: %v", err)
@@ -574,7 +574,7 @@ func TestRecoveryOwnsPendingCatalogBeforeFiltering(t *testing.T) {
 		transcripts: map[string][]transcript.Item{run.SessionID(): {item}},
 	}
 	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-		func(context.Context, WaitingContinuation) (bool, error) { return true, nil },
+		func(context.Context, ExecutionContinuation) (bool, error) { return true, nil },
 	))
 	if err != nil {
 		t.Fatalf("NewRecovery: %v", err)
@@ -602,7 +602,7 @@ func TestRecoveryRejectsInvalidClaimedPendingBeforePlanning(t *testing.T) {
 		transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
 	}
 	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-		func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+		func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 	))
 	if err != nil {
 		t.Fatalf("NewRecovery: %v", err)
@@ -663,7 +663,7 @@ func TestRecoveryRejectsInvalidClaimedOpenInvocationsBeforePlanning(t *testing.T
 				transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
 			}
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+				func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 			))
 			if err != nil {
 				t.Fatalf("NewRecovery: %v", err)
@@ -725,7 +725,7 @@ func TestRecoveryRejectsOpenInvocationThatContradictsActiveRun(t *testing.T) {
 				transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
 			}
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+				func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 			))
 			if err != nil {
 				t.Fatalf("NewRecovery: %v", err)
@@ -761,7 +761,7 @@ func TestRecoveryDoesNotPublishBeforeItsCommitSucceeds(t *testing.T) {
 	var notices []invalidation.Notice
 	recovery, err := NewRecovery(
 		store,
-		waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+		waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 			return true, nil
 		}),
 		admissions,
@@ -816,7 +816,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 		messageMarks: map[string]int{root.SessionID(): 7},
 	}
 	checkpointCalls := 0
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		checkpointCalls++
 		return true, nil
 	}))
@@ -991,7 +991,7 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 			}
 
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
-				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+				func(context.Context, ExecutionContinuation) (bool, error) { return false, nil },
 			))
 			if err != nil {
 				t.Fatalf("NewRecovery: %v", err)
@@ -1042,7 +1042,7 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	var notices []invalidation.Notice
 	recovery, err := NewRecovery(
 		store,
-		waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+		waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 			return false, nil
 		}),
 		testsupport.NewAdmissionGate(),
@@ -1092,8 +1092,8 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 		transcripts:  map[string][]transcript.Item{run.SessionID(): {item}},
 		messageMarks: map[string]int{run.SessionID(): 3},
 	}
-	var validated WaitingContinuation
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(_ context.Context, continuation WaitingContinuation) (bool, error) {
+	var validated ExecutionContinuation
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(_ context.Context, continuation ExecutionContinuation) (bool, error) {
 		validated = continuation
 		return true, nil
 	}))
@@ -1146,7 +1146,7 @@ func TestRecoveryPreservesQuestionToolWhileItsCheckpointIsResumable(t *testing.T
 		transcripts: map[string][]transcript.Item{run.SessionID(): {questionItem, toolItem}},
 	}
 	checkpointCalls := 0
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		checkpointCalls++
 		return true, nil
 	}))
@@ -1177,7 +1177,7 @@ func TestRecoveryMarksIsolatedParkLostWithoutProbingExecutorCheckpoint(t *testin
 		},
 	}
 	checkpointCalls := 0
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		checkpointCalls++
 		return true, nil
 	}))
@@ -1202,7 +1202,7 @@ func TestRecoveryTreatsUnavailableExecutorCheckpointAsResourceLoss(t *testing.T)
 		transcripts:  map[string][]transcript.Item{run.SessionID(): {item}},
 		messageMarks: map[string]int{run.SessionID(): 5},
 	}
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		return false, nil
 	}))
 	if err != nil {
@@ -1229,7 +1229,7 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 		checkpointErr: fmt.Errorf("corrupt durable policy: %w", ErrInvalidExecutorCheckpoint),
 	}
 	checkpointCalls := 0
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		checkpointCalls++
 		return true, nil
 	}))
@@ -1281,7 +1281,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 				checkpoint:  &checkpoint,
 			}
 			probeCalls := 0
-			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 				probeCalls++
 				return true, nil
 			}))
@@ -1335,7 +1335,7 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 			run.SessionID(): len(conversation),
 		},
 	}
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		return false, nil
 	}))
 	if err != nil {
@@ -1395,7 +1395,7 @@ func TestRecoveryValidationFailureDoesNotCommitPartialRepair(t *testing.T) {
 		transcripts: map[string][]transcript.Item{run.SessionID(): {item}},
 	}
 	want := errors.New("checkpoint backend unavailable")
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
 		return false, want
 	}))
 	if err != nil {
@@ -1464,7 +1464,7 @@ func TestRecoveryRejectsMissingExactResultEvidenceBeforeMutation(t *testing.T) {
 		messages:     map[string][]corechat.Message{root.SessionID(): {corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{ID: "provider_call", Name: "write", Arguments: `{}`}))}},
 		messageMarks: map[string]int{root.SessionID(): 1}, resultErr: missing,
 	}
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) { return false, nil }))
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) { return false, nil }))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1478,7 +1478,7 @@ func TestRecoveryRejectsMissingExactResultEvidenceBeforeMutation(t *testing.T) {
 
 type waitingVerdict WaitingResumption
 
-func (v waitingVerdict) CanResumeWaitingExecution(context.Context, WaitingContinuation) (WaitingResumption, error) {
+func (v waitingVerdict) CanResumeWaitingExecution(context.Context, ExecutionContinuation) (WaitingResumption, error) {
 	return WaitingResumption(v), nil
 }
 

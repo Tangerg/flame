@@ -43,10 +43,10 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	}
 	for _, test := range []struct {
 		name   string
-		change func(*runs.WaitingMember)
+		change func(*runs.ExecutionMember)
 	}{
-		{name: "missing parent Tool", change: func(member *runs.WaitingMember) { member.DrainedTools = nil }},
-		{name: "changed parent Tool", change: func(member *runs.WaitingMember) {
+		{name: "missing parent Tool", change: func(member *runs.ExecutionMember) { member.DrainedTools = nil }},
+		{name: "changed parent Tool", change: func(member *runs.ExecutionMember) {
 			member.DrainedTools[0].SourceCallID = "different_call"
 		}},
 	} {

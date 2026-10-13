@@ -88,7 +88,12 @@ func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, method *pl
 }
 
 func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
-	return pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
+	return pluginsdk.RegisterServer(server, pluginsdk.ReceiptMethod, func(err error) string {
+		if errors.Is(err, idempotency.ErrKeyConflict) {
+			return "command_conflict"
+		}
+		return ""
+	}, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
 		var method, encoded string
 		var reply []byte
 		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)

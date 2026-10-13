@@ -117,7 +117,9 @@ func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsoninput.In
 	if b == nil || b.method.Kind() != capability.Mutation {
 		return jsoninput.Input{}, false, errors.New("plugin: command binding is required")
 	}
-	if err := b.ValidateInput(input); err != nil {
+	// Receipt lookup compares the original admitted evidence. A Tool may have
+	// translated those arguments before calling this business method.
+	if err := input.Validate(); err != nil {
 		return jsoninput.Input{}, false, err
 	}
 	lookup, err := receiptBinding(b.session)

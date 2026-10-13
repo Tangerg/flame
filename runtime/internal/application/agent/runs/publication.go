@@ -534,6 +534,12 @@ func combineAuthoritativeCommit(route *executorRoute, sessionID string, batch re
 			combined.ResultPublication = new(*reduced.Commit.ResultPublication)
 			combined.ToolResults = cloneToolResults(reduced.Commit.ToolResults)
 		}
+		if reduced.Commit.ExecutionContext != nil {
+			if combined.ExecutionContext != nil {
+				return EventCommit{}, errors.New("runs: repeated execution context")
+			}
+			combined.ExecutionContext = new(reduced.Commit.ExecutionContext.Clone())
+		}
 		combined.Items = append(combined.Items, reduced.Commit.Items...)
 		combined.ConversationMessages = appendClonedMessages(
 			combined.ConversationMessages,

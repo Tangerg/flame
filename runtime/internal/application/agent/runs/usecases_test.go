@@ -143,7 +143,7 @@ type fakeExecutionPorts struct {
 	prepared               ExecutorRef
 	prepareErr             error
 	rehydrated             ExecutorRef
-	continuation           WaitingContinuation
+	continuation           ExecutionContinuation
 	rehydrateErr           error
 	stageContinuationCheck func()
 	resumeCheck            func()
@@ -167,7 +167,7 @@ type fakeExecutionPorts struct {
 	cancelTreeErr          error
 	cancelSubtree          func(ExecutorRef, string, string) error
 	prepareWaiting         func(WaitingSubtreeCancellationRequest) (PreparedWaitingSubtreeCancellation, error)
-	restoreWaiting         []WaitingContinuation
+	restoreWaiting         []ExecutionContinuation
 	restoreErr             error
 	ruleCandidates         []RememberedRuleCandidate
 	deriveRulesErr         error
@@ -219,7 +219,7 @@ func (f *fakeExecutionPorts) BeginRoot(context.Context, ExecutorRef) error {
 	return nil
 }
 
-func (f *fakeExecutionPorts) StageAcceptedContinuation(_ context.Context, continuation WaitingContinuation) (ExecutorRef, error) {
+func (f *fakeExecutionPorts) StageAcceptedContinuation(_ context.Context, continuation ExecutionContinuation) (ExecutorRef, error) {
 	if f.stageContinuationCheck != nil {
 		f.stageContinuationCheck()
 	}
@@ -245,7 +245,7 @@ func (f *fakeExecutionPorts) StageAcceptedContinuation(_ context.Context, contin
 
 func (f *fakeExecutionPorts) PrepareContinuation(
 	_ context.Context,
-	continuation WaitingContinuation,
+	continuation ExecutionContinuation,
 	_ []InterruptAnswer,
 	candidates []RememberedRuleCandidate,
 ) ([]approval.RememberRequest, error) {
@@ -297,7 +297,7 @@ func (s stubAcceptedContinuationStore) Delete(_ context.Context, rootRunID strin
 
 func (f *fakeExecutionPorts) RestoreWaitingExecution(
 	_ context.Context,
-	continuation WaitingContinuation,
+	continuation ExecutionContinuation,
 ) (ExecutorRef, error) {
 	f.restoreWaiting = append(f.restoreWaiting, continuation)
 	if f.operations != nil {
@@ -309,7 +309,7 @@ func (f *fakeExecutionPorts) RestoreWaitingExecution(
 	return ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
 
-func testChildRunBindings(members []WaitingMember) []ChildRunBinding {
+func testChildRunBindings(members []ExecutionMember) []ChildRunBinding {
 	bindings := make([]ChildRunBinding, 0, len(members)-1)
 	for _, member := range members {
 		if member.ParentRunID == "" {

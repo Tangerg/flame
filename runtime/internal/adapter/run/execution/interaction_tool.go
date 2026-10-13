@@ -26,6 +26,7 @@ import (
 
 type observedInteractionTool struct {
 	ref               tool.Ref
+	createEvidence    *scheduleCreateEvidence
 	sourceFingerprint fingerprint.Digest
 	inner             toolcontract.Tool
 	binding           toolcontract.Binding
@@ -106,7 +107,25 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		Arguments: rawArguments, Activity: o.activity(call.Name, arguments),
 		SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
-	if err := o.session.commitFact(ctx, member, start); err != nil {
+	var prepared runs.ExecutionFact = start
+	if o.createEvidence != nil && !denied && prepareErr == nil {
+		proof := *o.createEvidence
+		proof.ProcessID, proof.EffectID = invocation.Relation().ProcessID().String(), invocation.EffectID().String()
+		if err := o.session.rememberToolMetadata(toolResultMetadata{MemberID: member.MemberID, Start: start, Create: &proof}); err != nil {
+			return corechat.ToolOutput{}, o.projectionFailure(err)
+		}
+		root := o.session.state.processHandle()
+		tree, err := o.session.committedTree(ctx, root.Relation().RootID())
+		if err != nil {
+			return corechat.ToolOutput{}, o.projectionFailure(err)
+		}
+		checkpoint, err := o.session.executorCheckpoint(tree)
+		if err != nil {
+			return corechat.ToolOutput{}, o.projectionFailure(err)
+		}
+		prepared = runs.ToolCallPrepared{Start: start, Context: checkpoint}
+	}
+	if err := o.session.commitFact(ctx, member, prepared); err != nil {
 		return corechat.ToolOutput{}, o.projectionFailure(fmt.Errorf("execution: commit Tool call start: %w", err))
 	}
 	o.session.accounting.recordToolCall()
@@ -148,25 +167,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		output = failure.Output()
 	}
-	// Offload and presentation transform values before Scope settles them. They
-	// must never turn an invalid external output into an apparently valid result.
-	if err := output.Validate(); err != nil {
-		return corechat.ToolOutput{}, err
-	}
-	modelOutput, offload := o.offload(ctx, call.Name, output, callErr)
-	metadata := toolResultMetadata{
-		MemberID: member.MemberID, Start: start, Arguments: arguments.Canonical(),
-		Offload: offload, MutatedPaths: normalizeMutationPaths(mutatedPaths),
-	}
-	parsed, present, err := runtimeToolResult(modelOutput)
+	modelOutput, metadata, err := o.resultMetadata(ctx, member, start, arguments, output, callErr, mutatedPaths)
 	if err != nil {
 		return corechat.ToolOutput{}, err
-	}
-	if present {
-		if o.presenter != nil {
-			parsed, metadata.OutputText = o.presenter.Present(o.ref, arguments, parsed)
-		}
-		metadata.Result = &parsed
 	}
 	if failure != nil {
 		metadata.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: executorDiagnostic(callErr)}
@@ -187,6 +190,25 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
 	}
 	return modelOutput, callErr
+}
+
+func (o *observedInteractionTool) resultMetadata(ctx context.Context, member runs.ExecutorMember, start runs.ToolCallStarted, arguments tool.Arguments, output corechat.ToolOutput, callErr error, mutatedPaths []string) (corechat.ToolOutput, toolResultMetadata, error) {
+	if err := output.Validate(); err != nil {
+		return corechat.ToolOutput{}, toolResultMetadata{}, err
+	}
+	modelOutput, offload := o.offload(ctx, start.ToolName, output, callErr)
+	metadata := toolResultMetadata{MemberID: member.MemberID, Start: start, Offload: offload, MutatedPaths: normalizeMutationPaths(mutatedPaths)}
+	parsed, present, err := runtimeToolResult(modelOutput)
+	if err != nil {
+		return corechat.ToolOutput{}, toolResultMetadata{}, err
+	}
+	if present {
+		if o.presenter != nil {
+			parsed, metadata.OutputText = o.presenter.Present(o.ref, arguments, parsed)
+		}
+		metadata.Result = &parsed
+	}
+	return modelOutput, metadata, nil
 }
 
 // invoke validates the effective arguments before entering the external Tool.
@@ -560,6 +582,7 @@ func normalizeMutationPaths(paths []string) []string {
 }
 
 func wrapInteractionTools(
+	ctx context.Context,
 	manifest toolset.Manifest,
 	session *interactionSession,
 	config InteractionExecutorConfig,
@@ -600,6 +623,25 @@ func wrapInteractionTools(
 				hooks: config.ToolHooks, offloader: config.ToolResultStore,
 				offloadPolicy: offloadPolicy,
 				start:         start,
+			}
+			if server, remote, mcp := ref.MCP(); mcp && remote.String() == "create_schedule" {
+				if _, installed := server.Origin().Installation(); installed {
+					dependency, found, err := toolset.InstallationDependency(executable)
+					if err != nil {
+						return nil, err
+					}
+					if found {
+						if config.OriginalScheduleResults != nil {
+							owned, err := config.OriginalScheduleResults.OwnsCreateSource(ctx, ref, dependency.Digest)
+							if err != nil {
+								return nil, err
+							}
+							if owned {
+								observed.createEvidence = &scheduleCreateEvidence{Tool: ref, Release: dependency.Digest, Authority: fingerprint}
+							}
+						}
+					}
+				}
 			}
 			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
 				!slices.Contains(start.InterruptKinds, interrupt.Approval) {

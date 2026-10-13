@@ -1574,13 +1574,13 @@ typed snapshot. Invalid boolean and integer overrides reject startup, including
 settings present only in the environment. List overrides use comma-separated
 entries; the resolved configuration consumes the same values that were validated.
 
-| Change | Effective boundary |
-| --- | --- |
-| Utility model | Next utility invocation, including during an existing Run; an in-flight invocation retains its resolved model |
-| Embedding model | Subsequent semantic searches |
-| MCP configuration | Persisted first; enabled servers connect in the background, and resource status reports readiness |
-| Project hook trust | Next Run opening; waiting resume is not a new Run |
-| Skill archive/restore | Subsequent resolution; existing conversation context is not erased |
+| Change                | Effective boundary                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Utility model         | Next utility invocation, including during an existing Run; an in-flight invocation retains its resolved model |
+| Embedding model       | Subsequent semantic searches                                                                                  |
+| MCP configuration     | Persisted first; enabled servers connect in the background, and resource status reports readiness             |
+| Project hook trust    | Next Run opening; waiting resume is not a new Run                                                             |
+| Skill archive/restore | Subsequent resolution; existing conversation context is not erased                                            |
 
 An unset utility role uses the Runtime composition's default model selection. It does not follow each Run's explicit main-model override. Changing the utility role does not replace the main-model deployment of a live or waiting Run. Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
 
@@ -1742,11 +1742,36 @@ the latest execution-tree head.
 Recovery requires the original member set and Step/Effect progress, paused
 recipients, and unconsumed exact answer receipts. It delivers only missing
 answers under their original Signal identities, proves the complete receipt set,
-then releases execution through the existing Run owner. A current head that has
-advanced into execution remains subject to active-Run loss policy. Terminal Runs
+then releases execution through the existing Run owner. Active execution follows
+the selected recovery class described below; other active cuts retain the Run loss policy. Terminal Runs
 are never revived. The binding survives local Resume intent until the next
 committed waiting or terminal boundary retires it atomically. New waiting context
 and accepted-continuation storage require a fresh pre-release data directory.
+
+The first-party `create_schedule` tool has one cold recovery class: a single
+product root and its ordinary Tool processes. Before external dispatch, the
+effective arguments, exact installation release and source authority, original
+Process/Effect attribution, and complete execution context commit with the
+canonical Tool Item. Active and waiting executions use the same context payload;
+Scope's original JSON remains exclusively in the acknowledged tree head.
+
+Startup acquires the original Session writer lease and reinstalls the original
+Run and Segment pump before Scope restoration. It joins only the captured source's
+already admitted connection attempt. Recovery reads the backend's original command
+receipt, matching invocation identity, method, and the Tool owner's deterministic
+input encoding. The receipt survives Schedule edits and deletion. Its normal Tool
+output enters Scope through typed settlement and explicit Unknown resolution;
+queries do not call the Tool, rerun hooks, or create another Schedule.
+
+The query deadline bounds only evidence collection. Publication uses the existing
+Run owner lifetime, atomically committing the Scope cut, product context, result
+receipt, and original Item. A known committed Scope settlement is adopted without
+another query. The original Segment's committed Items restore its allocation
+sequence and Tool attempt times. Absence, conflict, malformed results, and unavailable
+evidence retain Unknown and the bounded unresolved-outcome policy. Corrupt local
+context or inconclusive local reads stop startup without converting that failure
+into Run loss. Unsupported active trees and pending later model calls remain outside
+this recovery class. Build and exact Deployment compatibility still fence restoration.
 
 ## Scope provider transport
 

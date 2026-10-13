@@ -188,6 +188,12 @@ type ToolCallFinished struct {
 	Failure *tool.Failure
 }
 
+type ToolCallPrepared struct {
+	executionFactBase
+	Start   ToolCallStarted
+	Context ExecutorCheckpoint
+}
+
 type CompactionBoundary struct {
 	executionFactBase
 	Summary        string

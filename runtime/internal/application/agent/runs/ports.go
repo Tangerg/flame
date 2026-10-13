@@ -106,11 +106,11 @@ type WorkingContextInput struct {
 type ExecutionContinuer interface {
 	PrepareContinuation(
 		ctx context.Context,
-		continuation WaitingContinuation,
+		continuation ExecutionContinuation,
 		answers []InterruptAnswer,
 		candidates []RememberedRuleCandidate,
 	) ([]approval.RememberRequest, error)
-	StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation) (ExecutorRef, error)
+	StageAcceptedContinuation(ctx context.Context, continuation ExecutionContinuation) (ExecutorRef, error)
 	BeginContinuation(
 		ctx context.Context,
 		ref ExecutorRef,
@@ -151,7 +151,7 @@ type AcceptedContinuationStore interface {
 type WaitingExecutionRestorer interface {
 	RestoreWaitingExecution(
 		ctx context.Context,
-		continuation WaitingContinuation,
+		continuation ExecutionContinuation,
 	) (ExecutorRef, error)
 }
 
@@ -326,11 +326,11 @@ type RootExecutionStart struct {
 	GoalIncarnationID string
 }
 
-// WaitingMember is the minimum durable Application state an executor needs to
+// ExecutionMember is the minimum durable Application state an executor needs to
 // rebind one surviving member after restoring an opaque tree. Product lineage
 // remains independent of executor topology and is cross-checked at the executor
 // boundary.
-type WaitingMember struct {
+type ExecutionMember struct {
 	RunID           string
 	MemberID        string
 	ParentRunID     string
@@ -342,17 +342,17 @@ type WaitingMember struct {
 	DrainedTools []DrainedTool
 }
 
-// WaitingContinuation is the complete Application-owned input for staging one
-// parked tree. Checkpoint payload interpretation remains executor-private;
+// ExecutionContinuation is the complete Application-owned input for staging one
+// retained tree. Checkpoint payload interpretation remains executor-private;
 // Members carries surviving product identities, accounting, and unfinished Tools.
 // Capabilities and GoalIncarnationID are the root Run's, and Workspace and
 // Isolated the owning Session's: a restored executor reads its policy from
 // them, never from a copy inside the checkpoint.
-type WaitingContinuation struct {
+type ExecutionContinuation struct {
 	SessionID         string
 	ExecutorID        string
 	RootRunID         string
-	Members           []WaitingMember
+	Members           []ExecutionMember
 	Checkpoint        ExecutorCheckpoint
 	Capabilities      run.Capabilities
 	GoalIncarnationID string

@@ -1,15 +1,28 @@
 package runs
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	if err := tree.Update.Validate(); err != nil {
 		return err
 	}
+	if s.routes.root.member.MemberID == "" {
+		member := ExecutorMember{MemberID: tree.Update.Head.RootID}
+		route, err := s.routes.resolve(member)
+		if err != nil || route != s.routes.root {
+			return errors.Join(errors.New("runs: tree activation has no product root"), err)
+		}
+		if err := s.owner.bindExecutorMember(route.runID, member.MemberID); err != nil {
+			return err
+		}
+	}
 	if tree.Update.Head.SessionID != s.spec.SessionID || tree.Update.Head.RootID != s.routes.root.member.MemberID {
 		return fmt.Errorf("runs: foreign execution tree")
 	}
-	commit := ExecutionTreeCommit{Update: tree.Update}
+	commit := ExecutionTreeCommit{Update: tree.Update, Context: tree.Context}
 	startedRoutes := make(map[string]*executorRoute)
 	var children []*managedChildStart
 	seen := make(map[string]struct{})

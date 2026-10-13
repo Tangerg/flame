@@ -19,7 +19,7 @@ import (
 // may claim the live tree or restore this exact checkpoint, but cannot reread
 // Application persistence.
 type WaitingSubtreeCancellationRequest struct {
-	continuation   WaitingContinuation
+	continuation   ExecutionContinuation
 	targetMemberID string
 	reason         string
 }
@@ -27,7 +27,7 @@ type WaitingSubtreeCancellationRequest struct {
 // NewWaitingSubtreeCancellationRequest captures one validated cancellation
 // request without retaining the caller's continuation slices.
 func NewWaitingSubtreeCancellationRequest(
-	continuation WaitingContinuation,
+	continuation ExecutionContinuation,
 	targetMemberID string,
 	reason string,
 ) (WaitingSubtreeCancellationRequest, error) {
@@ -43,25 +43,25 @@ func NewWaitingSubtreeCancellationRequest(
 }
 
 // Continuation returns an ownership-independent waiting tree.
-func (w WaitingSubtreeCancellationRequest) Continuation() WaitingContinuation {
+func (w WaitingSubtreeCancellationRequest) Continuation() ExecutionContinuation {
 	return w.continuation.Clone()
 }
 
 func (w WaitingSubtreeCancellationRequest) TargetMemberID() string { return w.targetMemberID }
 func (w WaitingSubtreeCancellationRequest) Reason() string         { return w.reason }
 
-// NewWaitingContinuation freezes and validates one complete waiting-tree draft.
-func NewWaitingContinuation(draft WaitingContinuation) (WaitingContinuation, error) {
+// NewExecutionContinuation freezes one complete product-to-executor handoff.
+func NewExecutionContinuation(draft ExecutionContinuation) (ExecutionContinuation, error) {
 	continuation := draft.Clone()
 	if err := continuation.Validate(); err != nil {
-		return WaitingContinuation{}, err
+		return ExecutionContinuation{}, err
 	}
 	return continuation, nil
 }
 
-// Clone returns an ownership-independent waiting-tree value.
-func (w WaitingContinuation) Clone() WaitingContinuation {
-	w.Members = append([]WaitingMember(nil), w.Members...)
+// Clone returns an ownership-independent execution handoff.
+func (w ExecutionContinuation) Clone() ExecutionContinuation {
+	w.Members = append([]ExecutionMember(nil), w.Members...)
 	for index := range w.Members {
 		w.Members[index].DrainedTools = slices.Clone(w.Members[index].DrainedTools)
 	}
@@ -104,19 +104,19 @@ func waitingContinuationFromPending(
 	checkpoint ExecutorCheckpoint,
 	parked []run.Run,
 	sess session.Session,
-) (WaitingContinuation, error) {
+) (ExecutionContinuation, error) {
 	if err := pending.Validate(); err != nil {
-		return WaitingContinuation{}, err
+		return ExecutionContinuation{}, err
 	}
 	members, err := waitingMembersFromPending(pending, parked)
 	if err != nil {
-		return WaitingContinuation{}, err
+		return ExecutionContinuation{}, err
 	}
 	root, found := parkedRunsByID(parked)[pending.RootRunID]
 	if !found {
-		return WaitingContinuation{}, fmt.Errorf("runs: waiting root Run %q is not parked", pending.RootRunID)
+		return ExecutionContinuation{}, fmt.Errorf("runs: waiting root Run %q is not parked", pending.RootRunID)
 	}
-	return NewWaitingContinuation(WaitingContinuation{
+	return NewExecutionContinuation(ExecutionContinuation{
 		SessionID: root.SessionID(), ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
 		Capabilities:      root.Capabilities(),
@@ -128,15 +128,15 @@ func waitingContinuationFromPending(
 
 // waitingMembersFromPending joins each hand-off with the parked Run it names;
 // the Run, not the hand-off, owns the member's admission and accounting.
-func waitingMembersFromPending(pending Pending, parked []run.Run) ([]WaitingMember, error) {
+func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMember, error) {
 	runs := parkedRunsByID(parked)
-	members := make([]WaitingMember, len(pending.Continuations))
+	members := make([]ExecutionMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
 		value, found := runs[continuation.RunID]
 		if !found {
 			return nil, fmt.Errorf("runs: waiting member Run %q is not parked", continuation.RunID)
 		}
-		members[index] = WaitingMember{
+		members[index] = ExecutionMember{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
 			ParentRunID:     value.Lineage().ParentRunID,
 			SpawnedByItemID: value.Lineage().SpawnedByItemID,
@@ -149,7 +149,7 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]WaitingMemb
 
 // Validate verifies one surviving product member without interpreting executor
 // topology or checkpoint payload.
-func (w WaitingMember) Validate() error {
+func (w ExecutionMember) Validate() error {
 	if err := resourceid.ValidateRun(w.RunID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
@@ -184,15 +184,15 @@ func (w WaitingMember) Validate() error {
 
 // Validate verifies the complete Application side of one executor continuation.
 // The opaque checkpoint payload remains the executor implementation's responsibility.
-func (w WaitingContinuation) Validate() error {
-	if err := validateWaitingContinuationEnvelope(w); err != nil {
+func (w ExecutionContinuation) Validate() error {
+	if err := validateExecutionContinuationEnvelope(w); err != nil {
 		return err
 	}
-	topology, err := buildWaitingContinuationTopology(w)
+	topology, err := buildExecutionContinuationTopology(w)
 	if err != nil {
 		return err
 	}
-	if err := validateWaitingContinuationOrder(w.Members, topology.tree.Postorder()); err != nil {
+	if err := validateExecutionContinuationOrder(w.Members, topology.tree.Postorder()); err != nil {
 		return err
 	}
 	if len(w.Members) > 1 && !w.Capabilities.ChildRuns {
@@ -201,7 +201,7 @@ func (w WaitingContinuation) Validate() error {
 	return w.Checkpoint.ValidateOwnership(topology.rootMemberID, w.SessionID)
 }
 
-func validateWaitingContinuationEnvelope(continuation WaitingContinuation) error {
+func validateExecutionContinuationEnvelope(continuation ExecutionContinuation) error {
 	if err := resourceid.ValidateSession(continuation.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
@@ -231,8 +231,8 @@ type waitingContinuationTopology struct {
 	tree         run.Tree
 }
 
-func buildWaitingContinuationTopology(
-	continuation WaitingContinuation,
+func buildExecutionContinuationTopology(
+	continuation ExecutionContinuation,
 ) (waitingContinuationTopology, error) {
 	seenRunIDs := make(map[string]struct{}, len(continuation.Members))
 	seenMemberIDs := make(map[string]struct{}, len(continuation.Members))
@@ -277,7 +277,7 @@ func buildWaitingContinuationTopology(
 	return waitingContinuationTopology{rootMemberID: rootMemberID, tree: tree}, nil
 }
 
-func validateWaitingContinuationOrder(members []WaitingMember, canonicalRunIDs []string) error {
+func validateExecutionContinuationOrder(members []ExecutionMember, canonicalRunIDs []string) error {
 	for index, member := range members {
 		if member.RunID != canonicalRunIDs[index] {
 			return fmt.Errorf(
@@ -291,7 +291,7 @@ func validateWaitingContinuationOrder(members []WaitingMember, canonicalRunIDs [
 
 // RootModelSelection is the root Run's frozen model selection, which a restored
 // executor resumes with.
-func (w WaitingContinuation) RootModelSelection() modelref.Selection {
+func (w ExecutionContinuation) RootModelSelection() modelref.Selection {
 	for _, member := range w.Members {
 		if member.RunID == w.RootRunID {
 			return member.ModelSelection

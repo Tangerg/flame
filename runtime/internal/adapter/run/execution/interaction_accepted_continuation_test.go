@@ -48,7 +48,7 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 				t.Fatal(err)
 			}
 			barrier := captureAcceptedTestBarrier(t, executor, ref, 2)
-			waiting := rootInteractionWaitingContinuation(barrier.Checkpoint(), start.CWD, ref.ExecutorID, run.Capabilities{InterruptKinds: start.InterruptKinds})
+			waiting := rootInteractionExecutionContinuation(barrier.Checkpoint(), start.CWD, ref.ExecutorID, run.Capabilities{InterruptKinds: start.InterruptKinds})
 			if _, err := executor.StageAcceptedContinuation(t.Context(), waiting); err != nil {
 				t.Fatal(err)
 			}

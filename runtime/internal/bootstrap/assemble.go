@@ -434,6 +434,9 @@ func buildAssemblyCore(
 	if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: revive accepted continuations: %w", err)
 	}
+	if err := runCoordinator.ReviveUncertainExecutions(ctx, recoveryPersistence, cfg.Stores.ExecutorCheckpoints, execution.executor); err != nil {
+		return nil, fmt.Errorf("runtime: revive uncertain executions: %w", err)
+	}
 	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 	}

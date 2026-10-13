@@ -125,7 +125,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 				return rpc.MaintenanceResult{}, err
 			}
 			var grant pluginsdk.CallbackRef
-			prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func() error {
+			prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func(ctx context.Context) error {
 				if !input.Compacted {
 					return nil
 				}

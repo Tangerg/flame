@@ -2,8 +2,10 @@ package execution
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -17,6 +19,32 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+func TestExecutionContextRequiresFrozenInputs(t *testing.T) {
+	checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
+	for _, field := range []string{"options", "instructions", "mcp_references", "handoff"} {
+		for _, present := range []bool{false, true} {
+			t.Run(field+"/"+fmt.Sprint(present), func(t *testing.T) {
+				var document map[string]jsontext.Value
+				if err := json.Unmarshal(checkpoint.Payload, &document); err != nil {
+					t.Fatal(err)
+				}
+				if present {
+					document[field] = jsontext.Value("null")
+				} else {
+					delete(document, field)
+				}
+				payload, err := json.Marshal(document)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := decodeInteractionCheckpointPayload(payload); err == nil {
+					t.Fatal("missing frozen inputs became defaults")
+				}
+			})
+		}
+	}
+}
 
 func TestCheckpointCapturesFrozenMCPReferences(t *testing.T) {
 	ref := testsupport.MCPTool(testsupport.UserMCPServer("files"), "read")
@@ -50,7 +78,7 @@ func TestWaitingRecoveryDefersOnlyCapturedPendingSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
 	trees := testTrees(t)
 	for _, pending := range []mcpserver.ID{source, testsupport.UserMCPServer("unrelated")} {
 		t.Run(pending.String(), func(t *testing.T) {

@@ -28,10 +28,10 @@ type installationDependencyWire struct {
 
 type interactionCheckpointPayloadWire struct {
 	MCPReferences       *[]string                           `json:"mcp_references"`
-	Options             corechat.Options                    `json:"options"`
+	Options             *corechat.Options                   `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
 	Handoff             *interactionHandoffWire             `json:"handoff"`
-	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
+	Instructions        *[]corechat.Message                 `json:"instructions"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
 	Contexts            []interactionModelContextWire       `json:"contexts,omitempty"`
 	PendingSteers       []interactionPendingSteerWire       `json:"pending_steers,omitempty"`
@@ -86,7 +86,7 @@ type interactionCheckpointState struct {
 	pendingContinuation *pendingInteractionContinuation
 }
 
-func (i interactionCheckpointState) restoredStart(continuation runs.WaitingContinuation) runs.RootExecutionStart {
+func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionContinuation) runs.RootExecutionStart {
 	return runs.RootExecutionStart{
 		SessionID:                continuation.SessionID,
 		CWD:                      continuation.Workspace,
@@ -139,13 +139,17 @@ func encodeInteractionCheckpointPayload(
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
 	}
+	frozenInstructions := cloneChatMessages(instructions)
+	if frozenInstructions == nil {
+		frozenInstructions = []corechat.Message{}
+	}
 	wire := interactionCheckpointPayloadWire{
 		MCPReferences: new(mcpReferences),
-		ToolMetadata:  toolMetadata, Options: options.Clone(),
-		Instructions: cloneChatMessages(instructions),
+		ToolMetadata:  toolMetadata, Options: new(options.Clone()),
+		Instructions: new(frozenInstructions),
 	}
 	wire.Handoff = handoff
-	if _, err := interactionInstructionContext(wire.Instructions); err != nil {
+	if _, err := interactionInstructionContext(*wire.Instructions); err != nil {
 		return nil, err
 	}
 	var err error
@@ -345,6 +349,9 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if wire.MCPReferences == nil {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP dependencies are required")
 	}
+	if wire.Options == nil || wire.Instructions == nil {
+		return interactionCheckpointState{}, errors.New("execution: frozen options and instructions are required")
+	}
 	var sources []mcpserver.ID
 	for _, text := range *wire.MCPReferences {
 		ref, err := domaintool.ParseRef(text)
@@ -366,7 +373,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint handoff: %w", err)
 	}
-	instructions, err := decodeInteractionCheckpointInstructions(wire.Instructions)
+	instructions, err := decodeInteractionCheckpointInstructions(*wire.Instructions)
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint instructions: %w", err)
 	}

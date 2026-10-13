@@ -40,7 +40,7 @@ func TestNewRunWaitsForRecoveryToReleaseItsSessionProbe(t *testing.T) {
 		})}}, claimed: make(chan struct{}), release: make(chan struct{}),
 	}
 	gate := testsupport.NewAdmissionGate()
-	recovery, err := NewRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) { return true, nil }), gate, nil)
+	recovery, err := NewRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) { return true, nil }), gate, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

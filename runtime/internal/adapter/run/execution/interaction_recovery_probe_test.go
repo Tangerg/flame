@@ -34,7 +34,7 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 				}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
-			continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
+			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
 				InterruptKinds: []interrupt.Kind{interrupt.Question},
 			})
 			ctx, cancel := context.WithCancel(t.Context())
@@ -75,7 +75,7 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
-	continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	})
 	head, found, err := store.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
@@ -120,7 +120,7 @@ func TestInteractionWaitingRecoveryPreservesCancellationAfterActivation(t *testi
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
-	continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	})
 	_, err := executor.RestoreWaitingExecution(ctx, continuation)

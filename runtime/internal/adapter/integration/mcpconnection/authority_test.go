@@ -22,6 +22,40 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
+func TestBoundServiceSessionCannotBorrowChangedOrWithdrawnAuthority(t *testing.T) {
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "original-owner"}, nil)
+	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
+	defer transport.Close()
+	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	registry := &mutableSourceRegistry{server: server.Clone()}
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Shutdown(context.WithoutCancel(t.Context()))
+	original, err := pool.BoundServiceSession(t.Context(), server.ID(), server.AuthorityFingerprint())
+	if err != nil || original == nil {
+		t.Fatalf("original session: %v", err)
+	}
+	for _, change := range []struct {
+		name  string
+		apply func(*mcpserver.Server)
+	}{
+		{"disabled", func(s *mcpserver.Server) { s.Enabled = false }},
+		{"other endpoint", func(s *mcpserver.Server) { s.URL += "/replacement" }},
+		{"other installation", func(s *mcpserver.Server) { s.Source = testInstallationSource(t) }},
+	} {
+		t.Run(change.name, func(t *testing.T) {
+			current := server.Clone()
+			change.apply(&current)
+			registry.set(current)
+			if session, err := pool.BoundServiceSession(t.Context(), server.ID(), server.AuthorityFingerprint()); session != nil || !errors.Is(err, inframcp.ErrUnavailable) {
+				t.Fatalf("replacement answered as original authority: %v", err)
+			}
+		})
+	}
+}
+
 func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.T) {
 	var calls atomic.Int32
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "schedule-owner"}, nil)

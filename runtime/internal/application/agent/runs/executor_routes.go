@@ -185,7 +185,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	}
 	opened := parked
 	var resumed *rundomain.Replacement
-	if r.spec.AcceptedContinuation == nil {
+	if !r.spec.restoresSegments() {
 		replacement, err := rundomain.Replace(parked, func(parked rundomain.Run) (rundomain.Run, error) {
 			return parked.Resume(segmentID, r.resumedAt)
 		})
@@ -198,6 +198,38 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	if continuationState.RunID == r.continuation.rootRunID {
 		userInput = r.spec.Input
 	}
+	reducer := newReducer(reducerConfig{
+		Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
+		UserInput: userInput, Continuation: r.continuation, Now: r.now,
+		CancelReason: cancellationReason(r.cancelReason, continuationState.RunID),
+	})
+	if r.spec.restoresSegments() {
+		var ids []string
+		for _, item := range r.continuation.items {
+			if item.RunID() == opened.ID() {
+				ids = append(ids, item.ID())
+			}
+		}
+		if err := reducer.itemIDs.Restore(ids); err != nil {
+			return nil, err
+		}
+	}
+	for _, recovered := range r.continuation.recoveredTools {
+		if recovered.Invocation.RunID != opened.ID() {
+			continue
+		}
+		if recovered.Invocation.SegmentID != segmentID || recovered.Invocation.CallID != recovered.Start.CallID {
+			return nil, errors.New("runs: recovered Tool changed its owner")
+		}
+		if _, err := reducer.toolStart(recovered.Start); err != nil {
+			return nil, err
+		}
+		ref, _ := reducer.tools.get(recovered.Start.CallID)
+		if ref.item.ID() != recovered.Invocation.ItemID {
+			return nil, errors.New("runs: recovered Tool changed its Item")
+		}
+		ref.attemptStartedAt = recovered.Invocation.StartedAt
+	}
 	return &executorRoute{
 		member:      member,
 		memberBound: parked.Lineage().IsRoot(),
@@ -206,17 +238,12 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		rootRunID:   r.continuation.rootRunID,
 		lineage:     parked.Lineage(),
 		resumed:     resumed,
-		reducer: newReducer(reducerConfig{
-			Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
-			UserInput: userInput, Continuation: r.continuation,
-			Now:          r.now,
-			CancelReason: cancellationReason(r.cancelReason, continuationState.RunID),
-		}),
+		reducer:     reducer,
 	}, nil
 }
 
 func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
-	if r.spec.AcceptedContinuation != nil {
+	if r.spec.restoresSegments() {
 		value, found := r.continuation.run(runID)
 		if !found || value.State() != rundomain.Running {
 			return "", errors.New("runs: accepted member is not running")

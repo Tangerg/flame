@@ -285,15 +285,15 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 	ctx context.Context,
 	sess session.Session,
 	plan cancellationPlan,
-) (WaitingContinuation, error) {
+) (ExecutionContinuation, error) {
 	rootContinuation, ok := plan.pending.RootContinuation()
 	if !ok {
-		return WaitingContinuation{}, errors.New("runs: waiting subtree Pending has no root continuation")
+		return ExecutionContinuation{}, errors.New("runs: waiting subtree Pending has no root continuation")
 	}
 	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootContinuation.MemberID)
 	if err != nil {
 		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, ErrExecutorCheckpointNotFound) {
-			return WaitingContinuation{}, err
+			return ExecutionContinuation{}, err
 		}
 		lostErr := c.terminations.ApplyRunLost(
 			ctx,
@@ -302,12 +302,12 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 			c.publications.nowUTC(),
 		)
 		if lostErr != nil {
-			return WaitingContinuation{}, errors.Join(
+			return ExecutionContinuation{}, errors.Join(
 				err,
 				fmt.Errorf("runs: recover lost waiting tree %q: %w", plan.root.run.ID(), lostErr),
 			)
 		}
-		return WaitingContinuation{}, fmt.Errorf("%w: %w", ErrRunNotFound, err)
+		return ExecutionContinuation{}, fmt.Errorf("%w: %w", ErrRunNotFound, err)
 	}
 	return waitingContinuationFromPending(plan.pending, checkpoint, plan.treeRuns(), sess)
 }

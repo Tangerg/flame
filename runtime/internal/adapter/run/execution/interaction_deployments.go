@@ -25,6 +25,8 @@ type interactionDeploymentSet struct {
 	// Immutable Scope Contracts are indexed by the exact Tool deployment so a
 	// checkpoint cannot borrow another layer's input schema.
 	toolContracts map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract
+	toolSets      map[agent.DeploymentRef]interaction.ToolSet
+	observedTools map[agent.DeploymentRef]map[domaintool.Ref]*observedInteractionTool
 	treeLimits    agent.TreeLimits
 }
 
@@ -52,6 +54,20 @@ func (i *interactionDeploymentSet) toolChild(reference agent.DeploymentRef) bool
 	return found
 }
 
+func (i *interactionDeploymentSet) hasScheduleCreates() bool {
+	if i == nil {
+		return false
+	}
+	for _, tools := range i.observedTools {
+		for _, tool := range tools {
+			if tool.createEvidence != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (i *interactionDeploymentSet) delegateTarget(
 	parent agent.DeploymentRef,
 	name string,
@@ -73,7 +89,7 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 	if err != nil {
 		return nil, err
 	}
-	deployments, err := builder.build()
+	deployments, err := builder.build(ctx)
 	if err != nil {
 		return nil, errors.Join(err, builder.deployments.close())
 	}
@@ -115,6 +131,8 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 			manifests:         []toolset.Manifest{rootManifest},
 			toolChildren:      make(map[agent.DeploymentRef]struct{}),
 			toolContracts:     make(map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract),
+			toolSets:          make(map[agent.DeploymentRef]interaction.ToolSet),
+			observedTools:     make(map[agent.DeploymentRef]map[domaintool.Ref]*observedInteractionTool),
 			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.Deployment),
 			managedChildren:   make(map[agent.DeploymentRef]struct{}),
 			treeLimits:        agent.TreeLimits{MaxDepth: 2, MaxActiveChildren: uint32(i.policy.maxConcurrentToolCalls)},
@@ -140,10 +158,10 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	return builder, nil
 }
 
-func (i *interactionDeploymentBuilder) build() (*interactionDeploymentSet, error) {
+func (i *interactionDeploymentBuilder) build(ctx context.Context) (*interactionDeploymentSet, error) {
 	var next agent.Deployment
 	for depth := int(i.maxDepth); depth >= 0; depth-- {
-		deployment, err := i.buildAtDepth(depth, next)
+		deployment, err := i.buildAtDepth(ctx, depth, next)
 		if err != nil {
 			return nil, err
 		}
@@ -161,13 +179,14 @@ func (i *interactionDeploymentBuilder) build() (*interactionDeploymentSet, error
 	return i.deployments, nil
 }
 
-func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deployment) (agent.Deployment, error) {
+func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth int, next agent.Deployment) (agent.Deployment, error) {
 	group, manifest, definitionName, definitionDescription := i.layerIdentity(depth)
 	delegates, err := i.delegateLayer(depth, next)
 	if err != nil {
 		return agent.Deployment{}, err
 	}
 	visible, deferred, contracts, err := wrapInteractionTools(
+		ctx,
 		manifest,
 		i.session,
 		i.executor.config,
@@ -212,6 +231,16 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		i.deployments.managedChildren[toolDeployment.DeploymentRef()] = struct{}{}
 		i.deployments.toolChildren[toolDeployment.DeploymentRef()] = struct{}{}
 		i.deployments.toolContracts[toolDeployment.DeploymentRef()] = contracts
+		i.deployments.toolSets[toolDeployment.DeploymentRef()] = tools
+		observed := make(map[domaintool.Ref]*observedInteractionTool)
+		for _, executable := range append(visible, deferred...) {
+			owner, found, err := toolcontract.Capability[*observedInteractionTool](executable)
+			if err != nil || !found {
+				return agent.Deployment{}, errors.Join(errors.New("execution: Tool owner is unavailable"), err)
+			}
+			observed[owner.ref] = owner
+		}
+		i.deployments.observedTools[toolDeployment.DeploymentRef()] = observed
 	}
 	definition, err := interaction.NewDefinition(definitionConfig)
 	if err != nil {

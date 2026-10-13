@@ -179,6 +179,7 @@ func (m ModelInvocationCommit) Validate() error {
 }
 
 type EventCommit struct {
+	ExecutionContext  *ExecutorCheckpoint
 	ResultPublication *ResultPublication
 	ToolResults       []corechat.ToolResult
 	RunID             string
@@ -218,6 +219,9 @@ type EventCommit struct {
 
 // clone returns an ownership-isolated copy of one complete event write-set.
 func (e EventCommit) clone() EventCommit {
+	if e.ExecutionContext != nil {
+		e.ExecutionContext = new(e.ExecutionContext.Clone())
+	}
 	if e.ResultPublication != nil {
 		e.ResultPublication = new(*e.ResultPublication)
 	}
@@ -317,6 +321,14 @@ func (e EventCommit) validateEnvelope() error {
 	}
 	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
+	}
+	if e.ExecutionContext != nil {
+		if e.State != StateUnchanged {
+			return errors.New("runs: execution context cannot accompany a lifecycle transition")
+		}
+		if err := e.ExecutionContext.ValidateOwnership(e.ExecutionContext.RootMemberID, e.SessionID); err != nil {
+			return err
+		}
 	}
 	if err := resourceid.ValidateSegment(e.SegmentID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
@@ -471,7 +483,7 @@ func (e EventCommit) ChargesGoal() bool {
 }
 
 func (e EventCommit) isEmpty() bool {
-	return len(e.ToolResults) == 0 && len(e.Items) == 0 &&
+	return e.ExecutionContext == nil && len(e.ToolResults) == 0 && len(e.Items) == 0 &&
 		len(e.ConversationMessages) == 0 &&
 		len(e.ModelInvocations) == 0 &&
 		len(e.ToolInvocations) == 0 && e.ResultPublication == nil &&

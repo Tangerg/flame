@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -287,6 +288,17 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 		return nil, mcp.ErrUnavailable
 	}
 	return p.inner.ServiceSession(ctx, descriptor)
+}
+
+func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority fingerprint.Digest) (*sdk.ClientSession, error) {
+	descriptor, found, err := p.registry.Dispatchable(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !found || !descriptor.Enabled || descriptor.AuthorityFingerprint() != authority {
+		return nil, mcp.ErrUnavailable
+	}
+	return p.inner.WaitSession(ctx, descriptor)
 }
 
 // SessionActor captures only the registry source realized by this exact live

@@ -25,7 +25,7 @@ type PreparedCommand struct {
 
 // validateNew checks only local preconditions before the first durable admission.
 // Existing pending work and receipts must reconcile without acquiring new collaborators.
-func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input, validateNew func() error) (*PreparedCommand, []byte, error) {
+func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
 	if db == nil || id == "" || len(id) > 256 || !utf8.ValidString(id) || method == "" || !utf8.ValidString(method) {
 		return nil, nil, errors.New("managed plugin: database, method and bounded command identity are required")
 	}
@@ -47,7 +47,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 			return err
 		}
 		if validateNew != nil {
-			if err := validateNew(); err != nil {
+			if err := validateNew(ctx); err != nil {
 				return err
 			}
 		}

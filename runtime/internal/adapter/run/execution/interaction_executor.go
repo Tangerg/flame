@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -45,6 +46,12 @@ type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error)
 }
 
+type OriginalScheduleResults interface {
+	OwnsCreateSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error)
+	AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) error
+	OriginalCreateResult(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest, string, string) (*corechat.ToolOutput, error)
+}
+
 // InteractionExecutorConfig freezes the host-owned inputs shared by
 // Interaction root executions. Identity strings must change whenever the
 // executable Interaction adapter or behavior-affecting dispatcher configuration
@@ -58,6 +65,7 @@ type InteractionExecutorConfig struct {
 	// execution must outlive the request that created it.
 	Lifetime                  context.Context
 	ExecutionTrees            runs.ExecutionTreeStore
+	OriginalScheduleResults   OriginalScheduleResults
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
 	StreamModelResponses      bool
@@ -120,6 +128,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		value any
 	}{
 		{name: "chat resolver", value: config.ChatResolver},
+		{name: "original schedule results", value: config.OriginalScheduleResults},
 		{name: "Tool resolver", value: config.ToolResolver},
 		{name: "Tool interpreter", value: config.ToolInterpreter},
 		{name: "Tool presenter", value: config.ToolPresenter},
@@ -489,7 +498,7 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 // first prove that the obsolete execution was released.
 func (i *InteractionExecutor) RestoreWaitingExecution(
 	ctx context.Context,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 ) (runs.ExecutorRef, error) {
 	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
@@ -523,7 +532,7 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 func (i *InteractionExecutor) restoreWaitingTree(
 	ctx context.Context,
 	ref runs.ExecutorRef,
-	continuation runs.WaitingContinuation,
+	continuation runs.ExecutionContinuation,
 	boundary interactionBoundary,
 ) (err error) {
 	finishAssembly, err := i.sessions.beginAssembly()
@@ -611,7 +620,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	return nil
 }
 
-func validateRestoreWorkspace(continuation runs.WaitingContinuation) error {
+func validateRestoreWorkspace(continuation runs.ExecutionContinuation) error {
 	if continuation.Isolated {
 		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
 	}

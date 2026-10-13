@@ -42,7 +42,7 @@ type RecoveryStore interface {
 // error means the probe itself was inconclusive and startup must stop without
 // writes.
 type WaitingExecutionResumability interface {
-	CanResumeWaitingExecution(ctx context.Context, continuation WaitingContinuation) (WaitingResumption, error)
+	CanResumeWaitingExecution(ctx context.Context, continuation ExecutionContinuation) (WaitingResumption, error)
 }
 
 // RecoveryAdmissions provides the same per-Session writer boundary used by

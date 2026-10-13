@@ -82,6 +82,15 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	return checkpoint, nil
 }
 
+func (e *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, sessionID string) (runs.ExecutorCheckpoint, bool, error) {
+	record, found, err := e.storage.LoadSessionCheckpoint(ctx, sessionID)
+	if err != nil || !found {
+		return runs.ExecutorCheckpoint{}, found, translateCheckpointStorageError(err)
+	}
+	checkpoint := runs.ExecutorCheckpoint{ToolResultIDs: slices.Clone(record.ToolResultIDs), Installations: slices.Clone(record.Installations), RootMemberID: record.RootMemberID, SessionID: record.SessionID, Payload: slices.Clone(record.Payload), BuildID: record.BuildID}
+	return checkpoint, true, checkpoint.Validate()
+}
+
 func (e *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error {
 	return translateCheckpointStorageError(e.storage.DeleteCheckpoints(ctx, sessionID, rootIDs))
 }
