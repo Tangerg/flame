@@ -21,9 +21,17 @@ two-call budget for extraction plus curation or query plus corpus embedding; the
 public endpoint imposes no Memory policy. The reference carries no Runtime bearer
 or provider credential and expires when the owning call or backend generation
 ends. Withdrawal cancels and joins admitted callbacks, including incomplete
-request bodies. Standard MCP sampling is not used. A
-missing or failed optional embedder preserves keyword ranking; a storage failure
-remains an error.
+request bodies. Standard MCP sampling is not used. An absent embedder or failed
+optional embedding request permits keyword ranking; a storage failure remains
+an error. The Tool's configured collaborator-resolution failure is explicit
+before dispatch rather than being treated as an absent model role.
+
+The actual Memory tool adapter captures the Run workspace, original invocation
+metadata and the executable's concrete callback session before dispatch. The
+generic MCP pool knows no Memory service type or model DTO. After preparation it
+rechecks source/configuration/session authority and cancellation; refusal releases
+the grant without calling the backend. Every dispatched call releases its grant
+after settlement, including a failed or missing reply.
 
 Human commands commit their mutation and reply in one private transaction. Known
 business refusals roll back mutation and commit the refusal receipt in that same

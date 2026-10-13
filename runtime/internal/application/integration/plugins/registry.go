@@ -150,23 +150,3 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 	}
 	return connection, nil
 }
-
-func (r *Registry) Service(ctx context.Context, id mcpserver.ID) (plugin.ServiceKind, bool, error) {
-	installation, installed := id.Origin().Installation()
-	if !installed {
-		return "", false, nil
-	}
-	snapshot, found, err := r.installations.Get(ctx, installation)
-	if err != nil || !found {
-		return "", false, err
-	}
-	if !snapshot.Installation.Enabled() || !snapshot.Installation.ServerEnabled(id.Name()) {
-		return "", false, nil
-	}
-	for _, service := range snapshot.Selected.Declaration().Services {
-		if service.Server == id.Name() {
-			return service.Kind, true, nil
-		}
-	}
-	return "", false, nil
-}

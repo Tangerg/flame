@@ -16,6 +16,12 @@ owns the minute wake-up and dispatch lifecycle; the backend's bounded scanner
 claims due work and rotates pending pages fairly. Failed pending work cannot
 starve new due definitions.
 
+The actual Schedules tool adapter invalidates owner reads after an admitted Tool
+invocation, including a failed or lost reply. The notice contains no Schedule
+facts or competing success. Generic MCP source authorization has no Schedules
+type branch. Withdrawal during tool preparation is rechecked before invocation
+and emits no dispatch-dependent notice.
+
 Human definition commands and manual preparation retain their original
 installation/release/method/input binding in Runtime before dispatch. Unresolved
 commands prevent replacement, configuration and uninstall, even after the host

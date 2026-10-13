@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -437,8 +436,4 @@ func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver
 	}
 	defer attempt.Close()
 	return attempt.Run()
-}
-
-func (testSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
-	return "", false, nil
 }

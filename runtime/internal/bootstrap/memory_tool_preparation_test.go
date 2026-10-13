@@ -1,0 +1,81 @@
+package bootstrap
+
+import (
+	"context"
+	json "encoding/json/v2"
+	"fmt"
+	"iter"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/chatclient"
+)
+
+func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing.T) {
+	const name = "memory_search_memory"
+	const fact = "prepared memory workspace fact"
+	var observed atomic.Bool
+	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+		if len(request.Tools) == 0 {
+			return completedTextResponse("memory"), nil
+		}
+		for _, message := range request.Messages {
+			for _, part := range message.Parts {
+				if part.ToolResult != nil && part.ToolResult.Name == name {
+					encoded, err := json.Marshal(part.ToolResult.Output)
+					if err != nil || part.ToolResult.IsError || !strings.Contains(string(encoded), fact) {
+						return nil, fmt.Errorf("prepared Memory tool lost its captured target: %s: %v", encoded, err)
+					}
+					observed.Store(true)
+					return completedTextResponse("recalled"), nil
+				}
+			}
+		}
+		call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
+		for _, definition := range request.Tools {
+			if definition.Name == name {
+				call = chat.ToolCall{ID: "search", Name: name, Arguments: `{"query":"prepared memory"}`}
+			}
+		}
+		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+	})}
+	client, err := chatclient.New(model, chatclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := poMCPConfig(t)
+	cfg.ChatResolver = testChatResolver(client)
+	cfg.ApprovalMode = approval.ModeYolo
+	r := poMCPOpen(t, cfg)
+	defer r.close()
+	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
+	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
+	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	item := r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeProject, Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Content: fact}, "prepare-fact").(*protocol.AgentMemoryItem)
+	if item.Status != protocol.AgentMemoryStatusActive {
+		t.Fatal("human-created fact was not active")
+	}
+	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Recall prepared Memory", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "memory-session").(*protocol.Session)
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Recall the prepared memory fact."}}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if started.Failure != nil {
+		t.Fatal(started.Failure)
+	}
+	events := iter.Seq2[protocol.RunEvent, error](func(yield func(protocol.RunEvent, error) bool) {
+		for event, err := range started.Events {
+			if !yield(event.(protocol.RunEvent), err) {
+				return
+			}
+		}
+	})
+	waitForRunEvents(t, collectRunEvents(events), "prepared Memory tool")
+	if !observed.Load() {
+		t.Fatal("actual Memory backend tool did not return its original workspace fact")
+	}
+}

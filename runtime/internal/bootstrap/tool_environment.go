@@ -4,18 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"maps"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	inframcp "github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/scope/core/chat"
-	scopemcp "github.com/Tangerg/scope/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
@@ -68,42 +62,11 @@ type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (
 
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
-	mcpPool, err := mcpconnection.Open(
-		ctx,
-		deps.lifetime,
-		deps.mcp.servers,
-		cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks,
-		func(ctx context.Context, source inframcp.Executable) (context.Context, func(), error) {
-			cwd, attached := executionctx.WorkspaceCWD(ctx)
-			if !attached {
-				return nil, nil, errors.New("memory: Run workspace is required")
-			}
-			embedder, err := deps.modelServices.liveEmbedder.ResolveMemory(ctx)
-			if err != nil {
-				slog.WarnContext(ctx, "memory: optional embedding role unavailable", "error", err)
-				embedder = nil
-			}
-			session, err := source.CallbackSession()
-			if err != nil {
-				return nil, nil, err
-			}
-			grant, release, err := rpc.GrantModels(ctx, deps.modelServices.callbacks, session, nil, embedder)
-			if err != nil {
-				return nil, nil, err
-			}
-			space := ""
-			if embedder != nil {
-				space = embedder.ID()
-			}
-			metadata := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
-			if metadata == nil {
-				metadata = make(map[string]any)
-			}
-			metadata[rpc.ToolScopeKey] = rpc.ToolScope{CWD: cwd, Grant: grant, EmbeddingSpace: space}
-			return scopemcp.WithRequestMeta(ctx, metadata), release, nil
-		},
-		deps.publish,
-	)
+	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.Stores.Installations, Callbacks: deps.modelServices.callbacks, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Invalidations: deps.publish})
+	if err != nil {
+		return toolEnvironment{}, err
+	}
+	mcpPool, err := mcpconnection.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}

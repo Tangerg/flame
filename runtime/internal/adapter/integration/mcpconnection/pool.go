@@ -16,16 +16,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
 type Pool struct {
-	registry      sourceRegistry
-	inner         *mcp.Connections
-	memoryContext MemoryContext
-	publish       invalidation.Publish
+	registry sourceRegistry
+	inner    *mcp.Connections
+	prepare  ToolPreparation
+	publish  invalidation.Publish
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -37,7 +38,7 @@ func Open(
 	servers []mcpserver.Server,
 	oauthSessions mcp.OAuthSessionStore, registry sourceRegistry,
 	callbacks *pluginsdk.Callbacks,
-	memoryContext MemoryContext,
+	prepare ToolPreparation,
 	publish invalidation.Publish,
 ) (*Pool, error) {
 	if dependency.Missing(registry) {
@@ -47,7 +48,7 @@ func Open(
 	for index, server := range servers {
 		configs[index] = mcp.ServerConfig{Server: server.Clone()}
 	}
-	pool := &Pool{registry: registry, memoryContext: memoryContext, publish: publish}
+	pool := &Pool{registry: registry, prepare: prepare, publish: publish}
 	client := mcp.NewClient()
 	if err := pluginsdk.RegisterClient(client); err != nil {
 		return nil, err
@@ -161,4 +162,10 @@ func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.
 	return operation.NewActor(installation.String(), release.String(), authority.String(), descriptor.Name.String())
 }
 
-type MemoryContext func(context.Context, mcp.Executable) (context.Context, func(), error)
+type ToolCall func(toolcontract.Invocation) (chat.ToolOutput, error)
+
+// ToolPreparation captures call collaborators for this exact executable. On
+// success the caller owns release, even if final authority admission refuses
+// dispatch. The prepared call owns work and any dispatch-dependent observation.
+// On failure preparation must release any resources it acquired.
+type ToolPreparation func(context.Context, mcp.Executable) (ToolCall, func(), error)

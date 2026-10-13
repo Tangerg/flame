@@ -73,6 +73,17 @@ commands and packaged views use the same backend as model Tools and maintenance.
 The host retains no Memory ledger or Schedule store. With no available selected owner, human
 operations return `plugin_unavailable`; optional Memory context is absent.
 
+The generic MCP connection owner validates only captured source, configuration
+and session authority. Feature tool preparation belongs to the actual feature
+adapter: Memory captures workspace/model collaborators and Schedules observes
+dispatched calls to invalidate reads. Preparation does not hold an installation
+lock across I/O. The source and cancellation state are checked again before the
+prepared call runs; withdrawal releases acquired collaborators without invoking
+the backend or publishing a dispatch observation. Read failures and concurrent
+cancellation preserve both causes. A failed or lost reply still releases the
+Memory callback and invalidates Schedules reads. An unconfigured embedding role
+permits keyword retrieval; an unexpected resolver failure remains an error.
+
 The public `plugin.Callbacks` binding owns one lazily opened loopback endpoint for
 this Runtime instance. MCP session retirement withdraws its callback references,
 cancels all admitted sibling calls before joining them, then closes the backend

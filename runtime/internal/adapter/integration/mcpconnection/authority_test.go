@@ -11,24 +11,17 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	inframcp "github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-type scheduleSourceRegistry struct{ *mutableSourceRegistry }
-
-func (scheduleSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
-	return plugin.SchedulesService, true, nil
-}
-
-func TestFailedScheduleToolInvalidatesReadsOnlyAfterAdmittedDispatch(t *testing.T) {
+func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.T) {
 	var calls atomic.Int32
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "schedule-owner"}, nil)
 	remote.AddTool(&sdkmcp.Tool{Name: "write", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
@@ -39,8 +32,13 @@ func TestFailedScheduleToolInvalidatesReadsOnlyAfterAdmittedDispatch(t *testing.
 	t.Cleanup(transport.Close)
 	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	var notices []invalidation.Notice
-	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, scheduleSourceRegistry{registry}, nil, nil, func(notice invalidation.Notice) { notices = append(notices, notice) })
+	var settlements atomic.Int32
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source inframcp.Executable) (ToolCall, func(), error) {
+		return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+			defer settlements.Add(1)
+			return source.Call(ctx, invocation)
+		}, func() {}, nil
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +53,7 @@ func TestFailedScheduleToolInvalidatesReadsOnlyAfterAdmittedDispatch(t *testing.
 	if len(tools) != 1 {
 		t.Fatalf("tools = %d, want one admitted remote tool", len(tools))
 	}
-	notices = nil
+	settlements.Store(0)
 	binding, err := toolcontract.Bind(tools[0])
 	if err != nil {
 		t.Fatal(err)
@@ -67,15 +65,15 @@ func TestFailedScheduleToolInvalidatesReadsOnlyAfterAdmittedDispatch(t *testing.
 	if _, err := binding.Call(t.Context(), invocation); err == nil {
 		t.Fatal("failed reply appeared successful")
 	}
-	if calls.Load() != 1 || len(notices) != 1 || notices[0].Resource != invalidation.Schedules {
-		t.Fatalf("dispatch=%d invalidations=%+v, want a cold read after uncertain dispatch", calls.Load(), notices)
+	if calls.Load() != 1 || settlements.Load() != 1 {
+		t.Fatalf("dispatch=%d settlements=%d, want one observation after uncertain dispatch", calls.Load(), settlements.Load())
 	}
 	server.Enabled = false
 	registry.set(server)
 	if _, err := binding.Call(t.Context(), invocation); err == nil {
 		t.Fatal("withdrawn source dispatched")
 	}
-	if calls.Load() != 1 || len(notices) != 1 {
+	if calls.Load() != 1 || settlements.Load() != 1 {
 		t.Fatal("withdrawn source produced remote work or a change notice")
 	}
 }
@@ -355,8 +353,4 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	if err := authorizePool(pool, t.Context(), server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
 		t.Fatalf("authorization ignored the owner's static credentials: %v", err)
 	}
-}
-
-func (*mutableSourceRegistry) Service(context.Context, mcpserver.ID) (plugin.ServiceKind, bool, error) {
-	return "", false, nil
 }
