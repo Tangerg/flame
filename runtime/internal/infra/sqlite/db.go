@@ -345,7 +345,9 @@ func currentSchema() []string {
 		`CREATE TABLE IF NOT EXISTS accepted_continuations (
 			root_run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 			session_id  TEXT NOT NULL,
-			interrupt   TEXT NOT NULL
+			interrupt   TEXT NOT NULL,
+			segments    TEXT NOT NULL,
+			input_item_id TEXT NOT NULL
 		)`,
 		// pending_workspace_mutations is the recoverable operation log for file
 		// rollbacks. Git reset is non-atomic across paths; files+history also

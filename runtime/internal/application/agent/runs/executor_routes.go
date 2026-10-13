@@ -183,11 +183,16 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	if !found {
 		return nil, fmt.Errorf("runs: resumed Run %q is not parked", continuationState.RunID)
 	}
-	resumed, err := rundomain.Replace(parked, func(parked rundomain.Run) (rundomain.Run, error) {
-		return parked.Resume(segmentID, r.resumedAt)
-	})
-	if err != nil {
-		return nil, fmt.Errorf("runs: resume Run %q: %w", continuationState.RunID, err)
+	opened := parked
+	var resumed *rundomain.Replacement
+	if r.spec.AcceptedContinuation == nil {
+		replacement, err := rundomain.Replace(parked, func(parked rundomain.Run) (rundomain.Run, error) {
+			return parked.Resume(segmentID, r.resumedAt)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("runs: resume Run %q: %w", continuationState.RunID, err)
+		}
+		resumed, opened = &replacement, replacement.State()
 	}
 	userInput := []transcript.ContentBlock(nil)
 	if continuationState.RunID == r.continuation.rootRunID {
@@ -200,9 +205,9 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		segmentID:   segmentID,
 		rootRunID:   r.continuation.rootRunID,
 		lineage:     parked.Lineage(),
-		resumed:     &resumed,
+		resumed:     resumed,
 		reducer: newReducer(reducerConfig{
-			Opened: resumed.State(), WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
+			Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
 			UserInput: userInput, Continuation: r.continuation,
 			Now:          r.now,
 			CancelReason: cancellationReason(r.cancelReason, continuationState.RunID),
@@ -211,6 +216,13 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 }
 
 func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
+	if r.spec.AcceptedContinuation != nil {
+		value, found := r.continuation.run(runID)
+		if !found || value.State() != rundomain.Running {
+			return "", errors.New("runs: accepted member is not running")
+		}
+		return value.ActiveSegmentID(), nil
+	}
 	if runID == r.continuation.rootRunID {
 		return r.spec.SegmentID, nil
 	}

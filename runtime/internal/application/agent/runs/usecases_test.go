@@ -260,6 +260,10 @@ func (f *fakeExecutionPorts) StageContinuation(_ context.Context, continuation W
 	return ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
 
+func (f *fakeExecutionPorts) StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation, _ []InterruptAnswer) (ExecutorRef, error) {
+	return f.StageContinuation(ctx, continuation)
+}
+
 func (f *fakeExecutionPorts) DeriveRememberedRules(
 	_ context.Context,
 	_ ExecutorRef,
@@ -289,11 +293,15 @@ func (s stubApprovalRulePreparer) PrepareRule(_ context.Context, request approva
 	return request.Rule()
 }
 
-// stubAcceptedContinuationRetirer records retired bindings so a completion test can
+// stubAcceptedContinuationStore records retired bindings so a completion test can
 // assert the acceptance window closed.
-type stubAcceptedContinuationRetirer struct{ retired *[]string }
+type stubAcceptedContinuationStore struct{ retired *[]string }
 
-func (s stubAcceptedContinuationRetirer) Delete(_ context.Context, rootRunID string) error {
+func (s stubAcceptedContinuationStore) List(context.Context) ([]AcceptedContinuation, error) {
+	return nil, nil
+}
+
+func (s stubAcceptedContinuationStore) Delete(_ context.Context, rootRunID string) error {
 	if s.retired != nil {
 		*s.retired = append(*s.retired, rootRunID)
 	}

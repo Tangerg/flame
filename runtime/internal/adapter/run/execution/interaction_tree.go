@@ -248,9 +248,8 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 	return ids, nil
 }
 
-// stagedTree returns the frozen cut this Interaction published its waiting
-// boundary from. Answers and paused members are both read from it rather than
-// from a fresh capture, so they describe the same moment the Interrupts did.
+// stagedTree reads the latest acknowledged head bound to the retained context.
+// Signal admission may advance this head while every member stays paused.
 func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	i.state.mu.Lock()
 	checkpoint := i.state.waitingCheckpoint.Clone()
@@ -259,7 +258,7 @@ func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	if err != nil {
 		return agent.TreeSnapshot{}, err
 	}
-	return state.tree, nil
+	return i.committedTree(i.lifetime.execution, state.handoff.rootID)
 }
 
 // stagedPendingInputs indexes the Tool waits of the staged cut by their WaitID.

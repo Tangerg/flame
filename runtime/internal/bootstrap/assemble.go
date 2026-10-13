@@ -429,6 +429,9 @@ func buildAssemblyCore(
 	if err := pluginCoordinator.Reclaim(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: %w", err)
 	}
+	if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: revive accepted continuations: %w", err)
+	}
 	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 	}

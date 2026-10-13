@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
-func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.WaitingContinuation, checkpoint interactionCheckpointState) error {
+func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.WaitingContinuation, checkpoint interactionCheckpointState, accepted bool) error {
 
 	// A retained Unknown settlement is a restorable fact to the Engine; refusing
 	// to resume on top of one is this Runtime's policy, so it stays here.
@@ -41,8 +41,12 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 	if _, err := restoreInteractionAccounting(checkpoint, members); err != nil {
 		return fmt.Errorf("%w: waiting accounting: %w", runs.ErrExecutorStateLost, err)
 	}
-	if _, _, err := i.restoreDelegateCalls(snapshots, members); err != nil {
+	_, children, err := i.restoreDelegateCalls(snapshots, members)
+	if err != nil {
 		return fmt.Errorf("%w: waiting Delegate bindings: %w", runs.ErrExecutorStateLost, err)
+	}
+	if accepted {
+		return validateAcceptedPausedTree(checkpoint.handoff, checkpoint.tree, acceptedRetiredProcesses(checkpoint.handoff, checkpoint.tree, children))
 	}
 	return nil
 }
@@ -53,7 +57,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	checkpoint interactionCheckpointState,
 	boundary interactionBoundary,
 ) error {
-	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryContinuationStaged {
+	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryContinuationStaged && boundary != interactionBoundaryAcceptedPaused {
 		return errors.New("invalid restored Interaction boundary")
 	}
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot, len(checkpoint.tree.ProcessSnapshots()))

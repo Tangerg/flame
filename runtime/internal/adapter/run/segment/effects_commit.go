@@ -336,6 +336,9 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 		if err := e.executorCheckpoints.SaveCheckpoint(ctx, checkpoint); err != nil {
 			return fmt.Errorf("segment: persist tree barrier executor checkpoint: %w", err)
 		}
+		if err := e.acceptedContinuations.Delete(ctx, pending.RootRunID); err != nil {
+			return err
+		}
 		if err := e.openInterrupt(ctx, pending); err != nil {
 			return err
 		}
@@ -582,9 +585,18 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 	}
 	// The accepted continuation binding commits with the answers it routes, so a
 	// crash before delivery completes leaves exactly one durable accepted-paused
-	// tree for boot revival. It is deleted when delivery completes or revival
-	// succeeds.
-	accepted, err := runs.NewAcceptedContinuation(acceptance.SessionID(), consumed)
+	// tree for boot revival. The next durable waiting/terminal boundary retires it;
+	// a local Resume acknowledgement alone cannot prove the head left this cut.
+	resume, _ := opening.Resume()
+	var inputItemID string
+	for _, event := range opening.Events() {
+		for _, item := range event.Items {
+			if item.Kind() == transcript.UserMessage {
+				inputItemID = item.ID()
+			}
+		}
+	}
+	accepted, err := runs.NewAcceptedContinuation(acceptance.SessionID(), consumed, resume, inputItemID)
 	if err != nil {
 		return fmt.Errorf("segment: derive accepted continuation: %w", err)
 	}
@@ -635,7 +647,13 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 		if err != nil {
 			return err
 		}
-		return e.runState.TerminalizeEvent(ctx, run, commit.SegmentID, commit.CommitID)
+		if err := e.runState.TerminalizeEvent(ctx, run, commit.SegmentID, commit.CommitID); err != nil {
+			return err
+		}
+		if run.Lineage().IsRoot() {
+			return e.acceptedContinuations.Delete(ctx, run.ID())
+		}
+		return nil
 	default:
 		return fmt.Errorf("segment: unknown run state change %q", commit.State)
 	}

@@ -510,6 +510,7 @@ func (i *InteractionExecutor) StageContinuation(
 		ref,
 		continuation,
 		interactionBoundaryContinuationStaged,
+		nil,
 	); err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -546,6 +547,7 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 		ref,
 		continuation,
 		interactionBoundaryWaiting,
+		nil,
 	); err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -557,6 +559,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	ref runs.ExecutorRef,
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
+	acceptedAnswers []runs.InterruptAnswer,
 ) (err error) {
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
@@ -573,7 +576,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
 	rootID, err := agent.ParseProcessID(continuation.Checkpoint.RootMemberID)
-	if err != nil || checkpoint.tree.RootID() != rootID {
+	if err != nil || checkpoint.handoff.rootID != rootID {
 		return fmt.Errorf("%w: checkpoint root differs from its tree", runs.ErrExecutorStateLost)
 	}
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
@@ -585,7 +588,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	}
 	checkpoint.tree, err = decodeExecutionTree(head, rootID)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
 	}
 	processSnapshots := checkpoint.tree.ProcessSnapshots()
 	if len(processSnapshots) == 0 || processSnapshots[0].Relation().ProcessID() != rootID ||
@@ -605,7 +608,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if pendingCheckpointSources(session, checkpoint) {
 		return errors.New("execution: required MCP source is still connecting")
 	}
-	if err := session.validateWaitingTree(ctx, continuation, checkpoint); err != nil {
+	if err := session.validateWaitingTree(ctx, continuation, checkpoint, boundary == interactionBoundaryAcceptedPaused); err != nil {
 		return fmt.Errorf("execution: validate waiting tree: %w", err)
 	}
 	process, err := session.engine.RestoreTree(
@@ -628,11 +631,16 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return fmt.Errorf("%w: restored Interaction has unresolved effects", runs.ErrExecutorStateLost)
 	}
 	interruptions, err := session.pendingInterruptions(checkpoint.tree)
-	if err != nil || len(interruptions) == 0 {
+	if err != nil || (len(interruptions) == 0 && boundary != interactionBoundaryAcceptedPaused) {
 		if err != nil {
 			return fmt.Errorf("%w: inspect restored Interaction input: %w", runs.ErrExecutorStateLost, err)
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
+	}
+	if boundary == interactionBoundaryAcceptedPaused {
+		if _, err := session.prepareContinuationAnswers(ctx, acceptedAnswers); err != nil {
+			return err
+		}
 	}
 	if err := i.installations.publish(ctx, assembly, session.installationDependencies(), func() error {
 		return i.sessions.register(session)
@@ -789,7 +797,7 @@ var (
 	_ runs.ExecutionObserver                = (*InteractionExecutor)(nil)
 	_ runs.ExecutionReleaser                = (*InteractionExecutor)(nil)
 	_ runs.RunningRootCancellationRequester = (*InteractionExecutor)(nil)
-	_ runs.WaitingExecutionContinuer        = (*InteractionExecutor)(nil)
+	_ runs.ExecutionContinuer               = (*InteractionExecutor)(nil)
 	_ runs.RunningExecutionSteerer          = (*InteractionExecutor)(nil)
 )
 

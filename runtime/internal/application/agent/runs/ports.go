@@ -98,13 +98,14 @@ type WorkingContextInput struct {
 	Seed         []corechat.Message
 }
 
-// WaitingExecutionContinuer stages an exact live or restored waiting tree
+// ExecutionContinuer stages an exact waiting or accepted-paused tree
 // without advancing it, then submits its already-validated semantic answers
 // only after the continuation Segment is durable. The opaque checkpoint is
 // supplied by the Application; implementations must never reread Conversation
 // or privately query application persistence.
-type WaitingExecutionContinuer interface {
+type ExecutionContinuer interface {
 	StageContinuation(ctx context.Context, continuation WaitingContinuation) (ExecutorRef, error)
+	StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation, answers []InterruptAnswer) (ExecutorRef, error)
 	// DeriveRememberedRules validates each candidate's confirmed arguments against
 	// its frozen tool invocation on the staged tree and derives the canonical rule
 	// subject. A candidate whose arguments do not satisfy that invocation is
@@ -144,11 +145,9 @@ type ApprovalRulePreparer interface {
 	PrepareRule(ctx context.Context, request approval.RememberRequest) (approval.Rule, error)
 }
 
-// AcceptedContinuationRetirer deletes the Run-owned recovery binding of an
-// accepted continuation once its delivery completes, so a durable row survives
-// only while a crash would still leave an accepted-paused tree to revive. Boot
-// revival reads the survivors through its own lister.
-type AcceptedContinuationRetirer interface {
+// AcceptedContinuationStore reads and retires the accepted answer handoff.
+type AcceptedContinuationStore interface {
+	List(ctx context.Context) ([]AcceptedContinuation, error)
 	Delete(ctx context.Context, rootRunID string) error
 }
 

@@ -14,6 +14,7 @@ import (
 
 // segmentSpec is the prepared input to the package's segment supervisor.
 type segmentSpec struct {
+	AcceptedContinuation *AcceptedContinuation
 	// RunID is stable across every resumed Segment of the same logical Run.
 	RunID string
 	// SegmentID changes for every start or resume and scopes replay.
@@ -43,10 +44,10 @@ type segmentSpec struct {
 	// ResumeAcceptance is the answer write-set a continuation opening consumes in
 	// the same transaction: the open interrupt set and its settled Item
 	// replacements commit with the resumed tree.
-	ResumeAcceptance   *ResumeAcceptance
-	CreatedAt          time.Time
-	OpeningUserText    string
-	Input              []transcript.ContentBlock
+	ResumeAcceptance *ResumeAcceptance
+	CreatedAt        time.Time
+	OpeningUserText  string
+	Input            []transcript.ContentBlock
 	// ConversationInput is the exact composed User message admitted to the
 	// executor. Input remains the independently projected transcript content.
 	ConversationInput *corechat.Message

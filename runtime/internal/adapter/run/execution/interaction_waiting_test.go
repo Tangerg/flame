@@ -634,7 +634,7 @@ func rootRunMetricsForCheckpoint(checkpoint runs.ExecutorCheckpoint) run.Metrics
 	if err != nil {
 		panic(err)
 	}
-	calls := state.callsByProcess[state.tree.RootID()]
+	calls := state.callsByProcess[state.handoff.rootID]
 	if len(calls) == 0 {
 		return run.Metrics{}
 	}

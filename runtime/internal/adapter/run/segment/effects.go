@@ -88,6 +88,7 @@ type RememberedRuleStore interface {
 // only routing; the answer resolutions stay owned by the settled Items.
 type AcceptedContinuationStore interface {
 	Put(ctx context.Context, accepted runs.AcceptedContinuation) error
+	Delete(ctx context.Context, rootRunID string) error
 }
 
 type ToolResultStore interface {

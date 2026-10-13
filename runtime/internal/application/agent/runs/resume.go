@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	corechat "github.com/Tangerg/scope/core/chat"
 
@@ -188,14 +187,6 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 				beginCtx, ref, answers, committedInput,
 			); err != nil {
 				return err
-			}
-			// Delivery is complete and the tree is resumed, so the accepted-paused
-			// window is over. Retiring the recovery binding is best-effort: a leaked
-			// row is reconciled as active-execution loss on the next boot, never as a
-			// second delivery, so a failure here must not fail the running Run.
-			if err := c.acceptedContinuations.Delete(beginCtx, cmd.RunID); err != nil {
-				slog.ErrorContext(beginCtx, "runs: retire accepted continuation binding",
-					"run.id", cmd.RunID, "error", err)
 			}
 			return nil
 		},

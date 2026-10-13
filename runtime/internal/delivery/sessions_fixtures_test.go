@@ -105,7 +105,7 @@ type testRuntime interface {
 	runs.RootExecutionStarter
 	runs.ExecutionObserver
 	runs.ExecutionReleaser
-	runs.WaitingExecutionContinuer
+	runs.ExecutionContinuer
 	runs.RunningExecutionSteerer
 	runs.RunningSubtreeCanceler
 	runs.WaitingSubtreeCancellationPreparer
@@ -174,7 +174,7 @@ type executionRuntime interface {
 	runs.RootExecutionStarter
 	runs.ExecutionObserver
 	runs.ExecutionReleaser
-	runs.WaitingExecutionContinuer
+	runs.ExecutionContinuer
 	runs.RunningExecutionSteerer
 	runs.RunningSubtreeCanceler
 	runs.WaitingSubtreeCancellationPreparer
@@ -550,6 +550,10 @@ func (executionStub) StageRoot(_ context.Context, req runs.RootExecutionStart) (
 	return runs.ExecutorRef{SessionID: req.SessionID, ExecutorID: "exec_test"}, nil
 }
 func (executionStub) BeginRoot(context.Context, runs.ExecutorRef) error { return nil }
+func (s executionStub) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation, _ []runs.InterruptAnswer) (runs.ExecutorRef, error) {
+	return s.StageContinuation(ctx, continuation)
+}
+
 func (executionStub) StageContinuation(_ context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
 	return runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
@@ -595,6 +599,10 @@ func (s stubRuntime) executionController() executionRuntime {
 
 func (s stubRuntime) Observe(ctx context.Context, ref runs.ExecutorRef) (iter.Seq[runs.ExecutorEvent], error) {
 	return s.executionController().Observe(ctx, ref)
+}
+
+func (s stubRuntime) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation, answers []runs.InterruptAnswer) (runs.ExecutorRef, error) {
+	return s.executionController().StageAcceptedContinuation(ctx, continuation, answers)
 }
 
 func (s stubRuntime) StageContinuation(ctx context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
@@ -1546,6 +1554,10 @@ type inertDeliveryAcceptedContinuations struct{}
 func (inertDeliveryAcceptedContinuations) Put(context.Context, runs.AcceptedContinuation) error {
 	return nil
 }
+func (inertDeliveryAcceptedContinuations) List(context.Context) ([]runs.AcceptedContinuation, error) {
+	return nil, nil
+}
+
 func (inertDeliveryAcceptedContinuations) Delete(context.Context, string) error { return nil }
 
 // inertDeliveryApprovalRules derives a rule without a source-authority check so a

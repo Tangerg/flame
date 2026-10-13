@@ -68,11 +68,13 @@ func TestInteractionShutdownJoinsAssemblyBeforeReleasingResources(t *testing.T) 
 func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 	workspace := t.TempDir()
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
+	trees := testTrees(t)
 	synctest.Test(t, func(t *testing.T) {
 		executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 			t.Error("restored waiting tree called the model")
 			return nil, errors.New("unexpected model call")
 		}), InteractionExecutorConfig{
+			ExecutionTrees:  trees,
 			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
 			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		})
@@ -95,10 +97,11 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		entered, proceed := make(chan struct{}), make(chan struct{})
 		unblock := sync.OnceFunc(func() { close(proceed) })
 		defer unblock()
-		writer := state.tree.IncarnationID()
-		if err := session.executionTrees.SaveExecutionTree(t.Context(), runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{Sequence: 1, CommitID: "initial", CommitDigest: "initial", SessionID: start.SessionID, RootID: state.tree.RootID().String(), Writer: writer.String(), Digest: state.tree.Digest().String(), Payload: state.tree.JSON()}}); err != nil {
+		state.tree, err = session.committedTree(t.Context(), state.handoff.rootID)
+		if err != nil {
 			t.Fatal(err)
 		}
+
 		durability := &blockingCheckpointDurability{interactionSession: session, entered: entered, proceed: proceed}
 		session.engine, err = agent.NewEngine(agent.EngineConfig{
 			TreeCommitter: durability,

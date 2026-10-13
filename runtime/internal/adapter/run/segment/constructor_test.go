@@ -220,6 +220,7 @@ func (inertRememberedRules) Put(context.Context, approval.Rule) error { return n
 type inertAcceptedContinuations struct{}
 
 func (inertAcceptedContinuations) Put(context.Context, runs.AcceptedContinuation) error { return nil }
+func (inertAcceptedContinuations) Delete(context.Context, string) error                 { return nil }
 
 type unusedExecutionTrees struct{}
 

@@ -68,7 +68,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint payload cannot be decoded", err)
 	}
 	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID)
-	if err != nil || state.tree.RootID() != rootID {
+	if err != nil || state.handoff.rootID != rootID {
 		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint root member does not own its tree", err)
 	}
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
@@ -102,7 +102,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if pendingCheckpointSources(assembled, state) {
 		return runs.DeferredWaiting(), nil
 	}
-	if err := assembled.validateWaitingTree(ctx, continuation, state); err != nil {
+	if err := assembled.validateWaitingTree(ctx, continuation, state, false); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
 			return unresumable(ctx, continuation, runs.LossConfigurationChanged, "waiting tree validation failed", err)
 		}

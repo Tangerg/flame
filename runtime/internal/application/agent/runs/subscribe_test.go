@@ -80,8 +80,12 @@ func liveCoordinator(t *testing.T, record run.Run) (*Coordinator, *journal) {
 		Runs:     &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},
 	})
 	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
+	owner := testRunTreeOwner(t, hub)
+	if _, err := owner.beginExecution(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	}
 	c.registry.Open(Record{ID: testRunID, SegmentID: testSegmentID, ExecutorID: "turn_1"},
-		testRunTreeOwner(t, hub), func() error { return nil })
+		owner, func() error { return nil })
 	return c, hub
 }
 

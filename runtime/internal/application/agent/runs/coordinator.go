@@ -40,9 +40,9 @@ type Coordinator struct {
 	conversation                       ConversationReader
 	workingContexts                    WorkingContextComposer
 	models                             ModelAdmitter
-	continuation                       WaitingExecutionContinuer
+	continuation                       ExecutionContinuer
 	approvalRules                      ApprovalRulePreparer
-	acceptedContinuations              AcceptedContinuationRetirer
+	acceptedContinuations              AcceptedContinuationStore
 	waitingRestorer                    WaitingExecutionRestorer
 	steering                           RunningExecutionSteerer
 	runningSubtreeCanceler             RunningSubtreeCanceler
@@ -99,9 +99,9 @@ type Dependencies struct {
 	Conversation                       ConversationReader
 	WorkingContexts                    WorkingContextComposer
 	Models                             ModelAdmitter
-	Continuation                       WaitingExecutionContinuer
+	Continuation                       ExecutionContinuer
 	ApprovalRules                      ApprovalRulePreparer
-	AcceptedContinuations              AcceptedContinuationRetirer
+	AcceptedContinuations              AcceptedContinuationStore
 	WaitingRestorer                    WaitingExecutionRestorer
 	Steering                           RunningExecutionSteerer
 	RunningSubtreeCanceler             RunningSubtreeCanceler
@@ -429,6 +429,10 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	if !s.spec.DetachActivation {
 		<-s.treeOwner.activation.done
 	}
+	if s.spec.AcceptedContinuation != nil {
+		subscription.Cancel()
+		return nil, nil
+	}
 	return openingStream(requestContext, subscription), nil
 }
 
@@ -489,6 +493,11 @@ type routeOpening struct {
 }
 
 func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, routes *executorRoutes) ([]routeOpening, error) {
+	if spec.AcceptedContinuation != nil {
+		// Acceptance already committed these exact Segments and Items. Revival
+		// installs their process-local owners without replaying an opening write.
+		return nil, nil
+	}
 	ordered, err := routes.unfinishedInPostorder()
 	if err != nil {
 		return nil, fmt.Errorf("runs: order opening tree: %w", err)
