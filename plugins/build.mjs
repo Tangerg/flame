@@ -47,8 +47,17 @@ export async function buildPlugins({ os, arch, output }) {
       throw error;
     }
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    const contributes =
-      manifest.extensions["io.github.tangerg.flame"].contributes;
+    const declaration = JSON.parse(
+      await readFile(
+        join(
+          source,
+          feature,
+          manifest.extensions["io.github.tangerg.flame"].declaration,
+        ),
+        "utf8",
+      ),
+    );
+    const contributes = declaration.contributes ?? {};
     const target = join(output, feature);
     await mkdir(target);
     await cp(manifestPath, join(target, "plugin.json"));
@@ -69,16 +78,20 @@ export async function buildPlugins({ os, arch, output }) {
       await mkdir(dirname(join(target, resource)), { recursive: true });
       await cp(join(source, feature, resource), join(target, resource));
     }
-    if (!contributes.services?.length) continue;
+    try {
+      await access(join(source, feature, "mcp.json"));
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
     const descriptor = JSON.parse(
       await readFile(join(source, feature, "mcp.json"), "utf8"),
     );
     await mkdir(join(target, "bin"));
-    for (const service of contributes.services) {
-      if (!["memory", "schedules"].includes(service.type))
-        throw new Error("unsupported first-party backend");
-      const executable = service.type + (os === "windows" ? ".exe" : "");
-      descriptor.mcpServers[service.server].command = `./bin/${executable}`;
+    for (const [name, server] of Object.entries(descriptor.mcpServers)) {
+      if (!server.command) continue;
+      const executable = name + (os === "windows" ? ".exe" : "");
+      server.command = `./bin/${executable}`;
       await go(
         [
           "build",
@@ -86,7 +99,7 @@ export async function buildPlugins({ os, arch, output }) {
           "-ldflags=-s -w",
           "-o",
           join(target, "bin", executable),
-          `./runtime/internal/plugins/${service.type}`,
+          `./runtime/internal/plugins/${feature}`,
         ],
         {
           ...process.env,

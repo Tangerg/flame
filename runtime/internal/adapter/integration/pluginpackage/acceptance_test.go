@@ -16,9 +16,10 @@ import (
 
 func TestUnknownRootFieldIsDiagnosedAndOtherwiseIgnored(t *testing.T) {
 	r := testReleases(t)
-	manifest := strings.TrimSuffix(portableManifest, "}") + `,"homepage-extra":{"anything":[1,2]},"extensions":{"io.github.tangerg.flame":{"apiVersion":1,"contributes":{"themes":[{"id":"night","title":"Night","scheme":"dark","colors":{"background":"#101010"}}]}}}}`
+	manifest := strings.TrimSuffix(portableManifest, "}") + `,"homepage-extra":{"anything":[1,2]},"extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
 	source := writePackage(t, map[string]string{
-		"plugin.json":            manifest,
+		"plugin.json": manifest,
+		"io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-13.3","contributes":{"themes":[{"id":"night","title":"Night","scheme":"dark","colors":{"background":"#101010"}}]}}`,
 		"mcp.json":               `{"$schema":"` + MCPSchema + `","mcpServers":{"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
 		"skills/review/SKILL.md": "---\nname: review\ndescription: Review a result\n---\nRead the results carefully.\n",
 	})

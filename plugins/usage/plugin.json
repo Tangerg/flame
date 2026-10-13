@@ -5,17 +5,7 @@
   "description": "Optional first-party usage presentation over Runtime-recorded finished Run usage. Accounting remains Runtime-owned.",
   "extensions": {
     "io.github.tangerg.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "views": [
-          {
-            "id": "usage",
-            "title": "Usage",
-            "type": "usageSummary",
-            "entry": "views/usage.html"
-          }
-        ]
-      }
+      "declaration": "io.github.tangerg.flame/declaration.json"
     }
   }
 }

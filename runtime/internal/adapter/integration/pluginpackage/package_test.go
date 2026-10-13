@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -133,18 +134,19 @@ func TestManifestKeywordsCannotDefaultNullToText(t *testing.T) {
 	}
 }
 
-func TestInvalidContributionMapPreservesIndependentInputs(t *testing.T) {
+func TestInvalidContributionMapRefusesFlameEntriesAndPreservesPortableServers(t *testing.T) {
 	for _, raw := range []string{`null`, `[]`, `"invalid"`} {
 		t.Run(raw, func(t *testing.T) {
 			releases := testReleases(t)
 			release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"apiVersion":1,"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}],"contributes":` + raw + `}}}`,
-				"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
+				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}],"contributes":` + raw + ``),
+				"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
 			}))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(release.Declaration().Inputs) != 1 || len(release.Declaration().Diagnostics) != 1 || release.Declaration().Diagnostics[0] != (plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentExtensionField, Name: "contributes"}, Code: plugin.DiagnosticInvalidDeclaration}) {
+			if len(release.Declaration().Inputs) != 0 || len(release.Declaration().Servers) != 1 || len(release.Declaration().Diagnostics) != 1 || release.Declaration().Diagnostics[0] != (plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentFlameExtension}, Code: plugin.DiagnosticInvalidDeclaration}) {
 				t.Fatalf("invalid contribution map escaped its component boundary: %+v", release)
 			}
 		})
@@ -152,20 +154,21 @@ func TestInvalidContributionMapPreservesIndependentInputs(t *testing.T) {
 }
 
 // Capability requests had no enforcement point and are no longer part of the
-// Flame namespace. A package that still declares them is told so, and the
-// independent members of the namespace are still admitted.
+// Flame namespace. The strict current declaration is refused while portable
+// MCP components remain independently available.
 func TestUnsupportedFlameFieldIsReportedNotAdmitted(t *testing.T) {
 	releases := testReleases(t)
 	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"apiVersion":1,"requests":[{"capability":"tools.invoke","targets":["backend/read"]}],"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}]}}}`,
-		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
+		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"requests":[{"capability":"tools.invoke","targets":["backend/read"]}],"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}]`),
+		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	declaration := release.Declaration()
-	want := []plugin.Diagnostic{{Component: plugin.Component{Kind: plugin.ComponentExtensionField, Name: "requests"}, Code: plugin.DiagnosticUnknownField}}
-	if !reflect.DeepEqual(declaration.Diagnostics, want) || len(declaration.Inputs) != 1 || len(declaration.Servers) != 1 {
+	want := []plugin.Diagnostic{{Component: plugin.Component{Kind: plugin.ComponentFlameExtension}, Code: plugin.DiagnosticInvalidDeclaration}}
+	if !reflect.DeepEqual(declaration.Diagnostics, want) || len(declaration.Inputs) != 0 || len(declaration.Servers) != 1 {
 		t.Fatalf("unsupported Flame field = %+v", declaration)
 	}
 }
@@ -183,8 +186,9 @@ func TestNullCannotBecomeAnImplicitDeclarationDefault(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			releases := testReleases(t)
 			release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"apiVersion":1,` + test.extension + `}}}`,
-				"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":` + test.mcp + `,"healthy":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
+				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"io.github.tangerg.flame/declaration.json": flameDeclaration(`` + test.extension + ``),
+				"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":` + test.mcp + `,"healthy":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
 			}))
 			if err != nil {
 				t.Fatal(err)
@@ -202,8 +206,9 @@ func TestNullCannotBecomeAnImplicitDeclarationDefault(t *testing.T) {
 func TestOptionalEmptyInputsReachTheirDeclaredBindings(t *testing.T) {
 	releases := testReleases(t)
 	source := writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"apiVersion":1,"inputs":[{"id":"environment","server":"process","target":"env","key":"OPTION"},{"id":"header","server":"remote","target":"header","key":"X-Option","secret":true}]}}}`,
-		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"process":{"type":"stdio","command":"fixture"},"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
+		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"environment","server":"process","target":"env","key":"OPTION"},{"id":"header","server":"remote","target":"header","key":"X-Option","secret":true}]`),
+		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"process":{"type":"stdio","command":"fixture"},"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
 	})
 	release, err := publishPackage(t.Context(), releases, source)
 	if err != nil {
@@ -294,7 +299,7 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err := users.Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: user, Transport: mcpserver.TransportStdio, Command: "fixture"}); err != nil {
 		t.Fatal(err)
 	}
-	source := writePackage(t, map[string]string{"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"apiVersion":1}}}`, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
+	source := writePackage(t, map[string]string{"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`, "io.github.tangerg.flame/declaration.json": flameDeclaration(""), "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
 	release, err := publishPackage(t.Context(), releases, source)
 	if err != nil {
 		t.Fatal(err)
@@ -682,8 +687,9 @@ func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
 func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"apiVersion":1,"inputs":[{"id":"tenant","server":"backend","target":"header","key":"x-tenant","secret":true}]}}}`,
-		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp","headers":{"X-Tenant":"fixed"}}}}`,
+		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"tenant","server":"backend","target":"header","key":"x-tenant","secret":true}]`),
+		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp","headers":{"X-Tenant":"fixed"}}}}`,
 	})
 	release, err := publishPackage(t.Context(), r, source)
 	if err != nil {
@@ -727,8 +733,9 @@ func TestUnsupportedContributionDoesNotWithdrawIndependentContributions(t *testi
 	} {
 		t.Run(view, func(t *testing.T) {
 			r := testReleases(t)
-			manifest := strings.TrimSuffix(portableManifest, "}") + `,"extensions":{"io.github.tangerg.flame":{"apiVersion":1,"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}],"views":[` + view + `]}}}}`
-			source := writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/ui/index.html": "<html></html>"})
+			manifest := `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
+			declaration := flameDeclaration(`"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}],"views":[` + view + `]}`)
+			source := writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": declaration, "io.github.tangerg.flame/ui/index.html": "<html></html>"})
 			release, err := publishPackage(t.Context(), r, source)
 			if err != nil || len(release.Declaration().Themes) != 1 || len(release.Declaration().Diagnostics) != 1 {
 				t.Fatalf("component admission = %+v, %v", release, err)
@@ -863,4 +870,11 @@ func publishPackage(ctx context.Context, r *Releases, source string) (plugin.Rel
 	}
 	release, err := candidate.Publish(ctx)
 	return release, errors.Join(err, candidate.Discard())
+}
+
+func flameDeclaration(fields string) string {
+	if fields != "" {
+		fields = "," + fields
+	}
+	return `{"protocol":"` + capability.Protocol + `"` + fields + `}`
 }

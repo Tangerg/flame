@@ -6,11 +6,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 	"io/fs"
 	"maps"
 	"os"
 	"path"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -132,29 +134,59 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 	if !found {
 		return
 	}
-	var members map[string]jsontext.Value
-	var apiVersion int
-	if err := json.Unmarshal(raw, &members); err != nil || members == nil || json.Unmarshal(members["apiVersion"], &apiVersion) != nil || apiVersion != plugin.APIVersion {
+	var reference struct {
+		Declaration string `json:"declaration"`
+	}
+	if err := json.Unmarshal(raw, &reference, json.RejectUnknownMembers(true)); err != nil || !plugin.ValidResourcePath(reference.Declaration) || !strings.HasPrefix(reference.Declaration, plugin.Namespace+"/") {
 		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
 		return
 	}
-	for _, field := range slices.Sorted(maps.Keys(members)) {
-		if !slices.Contains(extensionFields, field) {
-			report(release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: field}, plugin.DiagnosticUnknownField)
+	body, err := read(ctx, root, reference.Declaration, MaxManifestBytes)
+	if err != nil {
+		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+		return
+	}
+	var members map[string]jsontext.Value
+	var requiredProtocol string
+	if err := json.Unmarshal(body, &members); err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != capability.Protocol {
+		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+		return
+	}
+	for field := range members {
+		if !slices.Contains(declarationFields, field) {
+			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+			return
 		}
 	}
-	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
 	var contributes map[string]jsontext.Value
-	if raw := members["contributes"]; len(raw) > 0 {
+	if raw := members["contributes"]; len(raw) != 0 {
 		if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil {
-			report(release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "contributes"}, plugin.DiagnosticInvalidDeclaration)
+			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+			return
+		}
+		for field := range contributes {
+			if !slices.Contains(presentationFields, field) {
+				report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+				return
+			}
 		}
 	}
-	for _, component := range slices.Sorted(maps.Keys(contributes)) {
-		if component == "services" {
-			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireService) error { return release.AdmitService(plugin.Service{Kind: w.Type, Server: w.Server}) })
-			continue
+	admitContributions(members["contributions"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "contributions"}, func(w wireContribution) error {
+		if !plugin.ValidResourcePath(w.Contract) || !strings.HasPrefix(w.Contract, plugin.Namespace+"/") {
+			return plugin.ErrInvalid
 		}
+		body, err := read(ctx, root, w.Contract, MaxManifestBytes)
+		if err != nil {
+			return err
+		}
+		contract, err := capability.Parse(body)
+		if err != nil {
+			return err
+		}
+		return release.AdmitContribution(plugin.Contribution{ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()})
+	})
+	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
+	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component == "renderers" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireRenderer) error {
 				if !plugin.ValidResourcePath(w.Entry) {

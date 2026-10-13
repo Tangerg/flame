@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -72,7 +74,11 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding, err := pluginsdk.NewBinding(session, contracts.Maintain.Descriptor())
+	exported, err := pluginsdk.NewCapabilityBinding(session, "memory", contracts.Capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, err := exported.Method(memoryrpc.Maintain)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,20 +112,29 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err := db.QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id='original'`).Scan(&persisted); err != nil || persisted != admitted.String() {
 		t.Fatalf("private receipt did not retain only the original business input: %s, %v", persisted, err)
 	}
-	result, found, err := pluginsdk.ReadReceipt[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, "original", memoryrpc.Maintain, input)
+	result, found, err := testsupport.ReceiptCapability[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", memoryrpc.Maintain, "original", input)
 	if err != nil || !found || !result.Published {
 		t.Fatalf("original publication receipt=%+v, %t, %v", result, found, err)
 	}
-	replayed, err := pluginsdk.CallCommand[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, memoryrpc.Maintain, "original", input)
+	replayed, err := testsupport.CallCapability[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", memoryrpc.Maintain, "original", input, sdk.ParamsBase{})
 	if err != nil || replayed != result || calls.Load() != 2 {
 		t.Fatalf("receipt replay restarted models: %+v, %d, %v", replayed, calls.Load(), err)
 	}
 	input.Compacted = false
-	if _, err := pluginsdk.CallCommand[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, memoryrpc.Maintain, "original", input); err == nil {
+	if _, err := testsupport.CallCapability[memoryrpc.MaintenanceInput, memoryrpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", memoryrpc.Maintain, "original", input, sdk.ParamsBase{}); err == nil {
 		t.Fatal("same identity adopted changed maintenance input")
 	}
-	listed, err := pluginsdk.Call[memoryrpc.ListInput, memoryrpc.Page](ctx, session, memoryrpc.List, memoryrpc.ListInput{Scope: "project", CWD: project})
+	listed, err := testsupport.CallCapability[memoryrpc.ListInput, memoryrpc.Page](ctx, session, memoryContract(t), "memory", memoryrpc.List, "", memoryrpc.ListInput{Scope: "project", CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(listed.Rows) != 1 || listed.Rows[0].Content != "retained publication" {
 		t.Fatalf("recovered private memory=%+v, %v", listed, err)
 	}
+}
+
+func memoryContract(t *testing.T) *capability.Contract {
+	t.Helper()
+	contracts, err := memoryrpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return contracts.Capability
 }

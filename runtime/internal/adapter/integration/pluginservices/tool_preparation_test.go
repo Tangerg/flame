@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -22,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -58,10 +60,19 @@ func (e *preparedEmbedder) Embed(context.Context, []string) ([][]float32, error)
 }
 
 func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) {
-	for _, role := range []plugin.ServiceKind{plugin.MemoryService, plugin.SchedulesService} {
-		t.Run(string(role), func(t *testing.T) {
+	memoryContracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	schedulesContracts, err := schedulerpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []*capability.Contract{memoryContracts.Capability, schedulesContracts.Capability} {
+		role := contract.Descriptor().Reference
+		t.Run(role, func(t *testing.T) {
 			name := testsupport.ServerName("owner")
-			release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.tools", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Services: []plugin.Service{{Kind: role, Server: name}}})
+			release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.tools", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Contributions: []plugin.Contribution{{ID: "tool-provider", Server: name, Export: "owner", Contract: contract.Identity()}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +99,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				if request.Params.Meta[pluginsdk.InvocationKey] != "original-logical-call" || request.Params.Meta["owner-meta"] != "retained" {
 					return nil, errors.New("original invocation metadata was lost")
 				}
-				if role == plugin.MemoryService {
+				if contract == memoryContracts.Capability {
 					encoded, err := json.Marshal(request.Params.Meta[rpc.ToolScopeKey])
 					if err != nil {
 						return nil, err
@@ -158,7 +169,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if calls.Load() != 1 {
 				t.Fatal("prepared call did not reach its original owner")
 			}
-			if role == plugin.MemoryService {
+			if contract == memoryContracts.Capability {
 				if embedder.calls.Load() != 1 || notices.Load() != 0 {
 					t.Fatal("Memory callback or feature observation escaped its owner")
 				}

@@ -171,6 +171,9 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 	); err != nil {
 		return err
 	}
+	if err := backend.BindCapability("memory", contracts.Capability); err != nil {
+		return err
+	}
 	return backend.Publish()
 }
 

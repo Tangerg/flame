@@ -8,8 +8,8 @@ the backend decides whether extraction and curation are due. Publication uses th
 same watermark compare-and-set and human-review invariants as every other write.
 
 The installed stdio process opens only `PLUGIN_DATA/memory.db`, under an exclusive
-process lease. A release declares the closed `memory` service against its own
-stdio server. Multiple candidates may be enabled; product composition explicitly
+process lease. Its local declaration binds `memory-provider` to the `memory`
+server and export with the exact generated consumer contract. Multiple candidates may be enabled; product composition explicitly
 selects one installation/contribution for new calls. Runtime connects its human
 `agentMemory.*` operations, Run context reads and source-qualified `search_memory`
 Tool to that exact generation. Closing a view cannot stop this process.
@@ -83,9 +83,10 @@ under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runti
 with `go generate ./internal/plugins/memory/rpc`; the existing contractgen
 projects the same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
-Named capability publication and generic installed contribution/selection binding
-remain part of the continuing cutover; these artifacts alone do not establish
-installed operation availability.
+The backend publishes the named `memory` capability. Runtime validates the full
+contract and declared export for queries and captures the contribution/export and
+complete capability for original command recovery. Public installed operation
+entrances, components and point dependency graphs remain in the continuing cutover.
 
 Build packages using [the local application workflow](../README.md). Backend
 source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugins/memory) as part

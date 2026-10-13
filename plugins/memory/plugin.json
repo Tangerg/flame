@@ -5,23 +5,7 @@
   "description": "Owns durable memory, review, mining, curation and retrieval in a private backend. Host commands and model tools use the same owner.",
   "extensions": {
     "io.github.tangerg.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "views": [
-          {
-            "id": "memory",
-            "title": "Agent memory",
-            "type": "agentMemory",
-            "entry": "views/memory.html"
-          }
-        ],
-        "services": [
-          {
-            "type": "memory",
-            "server": "memory"
-          }
-        ]
-      }
+      "declaration": "io.github.tangerg.flame/declaration.json"
     }
   }
 }

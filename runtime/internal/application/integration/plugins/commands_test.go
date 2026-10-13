@@ -24,8 +24,8 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.JSONInput(t, `{"name":"review.update"}`)}
-	resolve := func(context.Context) (plugins.ServiceBinding, error) { return provider, nil }
+	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
+	resolve := func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }
 	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve)
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +34,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 		t.Fatalf("observation before dispatch = %v", err)
 	}
 	provider.Digest = testsupport.Digest("3")
-	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ServiceBinding, error) {
+	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) {
 		t.Fatal("same identity resolved a current provider")
 		return provider, nil
 	})
@@ -102,10 +102,10 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		provider := plugins.ServiceBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.JSONInput(t, `{"name":"review.update"}`)}
+		provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
 		bound := make(chan error, 1)
 		go func() {
-			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ServiceBinding, error) { return provider, nil })
+			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil })
 			bound <- err
 		}()
 		synctest.Wait()

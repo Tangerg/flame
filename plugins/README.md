@@ -4,8 +4,11 @@ Memory and Schedules are complete optional backends. Their HTML views, MCP model
 Tools and human Runtime commands all enter the same backend owner. Installing a
 view does not create a second store in the host.
 
-A managed MCP server binds exactly one closed service kind. Separate service
-kinds require separate declared servers, so invocation authority is unambiguous.
+The Flame namespace in root plugin.json references one local declaration file.
+That strict declaration names each independent contribution ID, its contract file,
+server and export. Composition belongs to the consumer contract. Multiple
+contributions may share one backend; selection never equates their IDs with the
+server name. Installation reads these files without executing package code.
 
 Build target-specific packages from the repository's local `go.work`:
 

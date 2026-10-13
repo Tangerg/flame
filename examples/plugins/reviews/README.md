@@ -1,5 +1,11 @@
 # Review backend example
 
+The root Flame namespace references io.github.tangerg.flame/declaration.json.
+Its review-operations contribution binds the reviews server/export to the existing
+generated capability file. Installation admits this metadata without starting the
+backend; its publisher receives the same generic declaration path as bundled
+Memory/Schedules.
+
 This portable package provides `list_reviews`, `update_review`, and the `review`
 Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.

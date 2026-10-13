@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/transport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -54,7 +55,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	}
 	defer release()
 	input := rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
-	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "mine", input); err == nil {
+	if _, err := testsupport.CallCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "mine", input, sdk.ParamsBase{}); err == nil {
 		t.Fatal("fresh compacted maintenance accepted missing callback metadata")
 	}
 	_, err = invokeMaintenance(t, t.Context(), session, "mine", input, grant)
@@ -68,7 +69,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	if err != nil || state.Watermark != 2 {
 		t.Fatalf("private generation=%+v %v", state, err)
 	}
-	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](t.Context(), session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
+	page, err := testsupport.CallCapability[rpc.ListInput, rpc.Page](t.Context(), session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: memory.ScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 2 {
 		t.Fatalf("published proposals=%+v %v", page, err)
 	}
@@ -79,7 +80,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	}
 	release()
 
-	_, err = pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "no-compaction", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Conversation: rpc.Conversation{MessageCount: 4}})
+	_, err = testsupport.CallCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "no-compaction", rpc.MaintenanceInput{SessionID: "ses_mining", Project: project, Compacted: false, Conversation: rpc.Conversation{MessageCount: 4}}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,12 +174,12 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
-	added, err := pluginsdk.CallCommand[rpc.AddInput, rpc.AddResult](ctx, session, rpc.Add, "human-add", rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "human fact"})
+	added, err := testsupport.CallCapability[rpc.AddInput, rpc.AddResult](ctx, session, memoryContract(t), "memory", rpc.Add, "human-add", rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "human fact"}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	content, pinned := "human edit during curation", true
-	human, err := pluginsdk.CallCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), Content: &content, Pinned: &pinned})
+	human, err := testsupport.CallCapability[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, memoryContract(t), "memory", rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), Content: &content, Pinned: &pinned}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,10 +209,10 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	store, session, _ = connectMemoryBackend(t, path)
 	broker.AdmitSession(session)
 	originalInput := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
-	if _, found, err := pluginsdk.ReadReceipt[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, "maintenance", rpc.Maintain, originalInput); err != nil || found {
+	if _, found, err := testsupport.ReceiptCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", rpc.Maintain, "maintenance", originalInput); err != nil || found {
 		t.Fatalf("canceled model work became known receipt: %t, %v", found, err)
 	}
-	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "maintenance", originalInput); err == nil {
+	if _, err := testsupport.CallCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", rpc.Maintain, "maintenance", originalInput, sdk.ParamsBase{}); err == nil {
 		t.Fatal("pending original maintenance restarted model work")
 	}
 	_, err = invokeMaintenance(t, ctx, session, "uncompacted", rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true}, grant)
@@ -237,7 +238,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err != nil || recovered.Watermark != pending[0].Sequence {
 		t.Fatalf("recovery watermark=%+v %v", recovered, err)
 	}
-	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
+	page, err := testsupport.CallCapability[rpc.ListInput, rpc.Page](ctx, session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: memory.ScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 2 {
 		t.Fatalf("recovered private facts=%+v %v", page, err)
 	}
@@ -252,7 +253,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if !foundHuman || !foundProposal {
 		t.Fatalf("curation replaced human authority: %+v", page.Rows)
 	}
-	repeated, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, rpc.Maintain, "recover-pending-ledger", input)
+	repeated, err := testsupport.CallCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", rpc.Maintain, "recover-pending-ledger", input, sdk.ParamsBase{})
 	if err != nil || repeated != published {
 		t.Fatalf("settled recovery repeated publication: %+v %v", repeated, err)
 	}
@@ -304,14 +305,14 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("receipt failure discarded committed ledger: %+v, %v", pending, err)
 	}
-	page, err := pluginsdk.Call[rpc.ListInput, rpc.Page](t.Context(), session, rpc.List, rpc.ListInput{Scope: memory.ScopeProject, CWD: project})
+	page, err := testsupport.CallCapability[rpc.ListInput, rpc.Page](t.Context(), session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: memory.ScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 0 {
 		t.Fatalf("publication survived failed receipt: %+v, %v", page, err)
 	}
-	if _, found, err := pluginsdk.ReadReceipt[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, "original", rpc.Maintain, input); err != nil || found {
+	if _, found, err := testsupport.ReceiptCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "original", input); err != nil || found {
 		t.Fatalf("failed publication became known: %t, %v", found, err)
 	}
-	if _, err := pluginsdk.CallCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, rpc.Maintain, "original", input); err == nil || calls.Load() != 2 {
+	if _, err := testsupport.CallCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "original", input, sdk.ParamsBase{}); err == nil || calls.Load() != 2 {
 		t.Fatalf("pending admission reran models: %d, %v", calls.Load(), err)
 	}
 }
@@ -326,7 +327,11 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	binding, err := pluginsdk.NewBinding(session, contracts.Maintain.Descriptor())
+	exported, err := pluginsdk.NewCapabilityBinding(session, "memory", contracts.Capability)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, err := exported.Method(rpc.Maintain)
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
@@ -346,11 +351,11 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(t *testing.T) {
 	_, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
 	input := rpc.SearchInput{Project: t.TempDir(), Query: "fact", TopK: 5, EmbeddingSpace: "configured-space"}
-	if _, err := pluginsdk.Call[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, rpc.Search, input); err == nil {
+	if _, err := testsupport.CallCapability[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Search, "", input, sdk.ParamsBase{}); err == nil {
 		t.Fatal("configured embedding silently omitted required callback metadata")
 	}
 	input.EmbeddingSpace = ""
-	if _, err := pluginsdk.Call[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, rpc.Search, input); err != nil {
+	if _, err := testsupport.CallCapability[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Search, "", input, sdk.ParamsBase{}); err != nil {
 		t.Fatalf("absent embedding role requires a callback: %v", err)
 	}
 	contracts, err := rpc.NewContracts()
@@ -385,4 +390,13 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 			t.Fatalf("%s accepts former callback Grant as business input", call.descriptor.Name)
 		}
 	}
+}
+
+func memoryContract(t *testing.T) *capability.Contract {
+	t.Helper()
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return contracts.Capability
 }

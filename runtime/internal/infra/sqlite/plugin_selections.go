@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
@@ -18,7 +17,7 @@ func NewProviderSelectionStore(db *sql.DB) *ProviderSelectionStore {
 
 func (s *ProviderSelectionStore) Get(ctx context.Context, role string) (plugin.ProviderSelection, bool, error) {
 	var installation, contribution string
-	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT installation_id,contribution FROM plugin_provider_selections WHERE role=?`, role).Scan(&installation, &contribution)
+	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT installation_id,contribution_id FROM plugin_provider_selections WHERE role=?`, role).Scan(&installation, &contribution)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plugin.ProviderSelection{}, false, nil
 	}
@@ -30,7 +29,7 @@ func (s *ProviderSelectionStore) Get(ctx context.Context, role string) (plugin.P
 }
 
 func (s *ProviderSelectionStore) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
-	rows, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT role,installation_id,contribution FROM plugin_provider_selections ORDER BY role`)
+	rows, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT role,installation_id,contribution_id FROM plugin_provider_selections ORDER BY role`)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +54,7 @@ func restoreProviderSelection(role, installation, contribution string) (plugin.P
 	if err != nil {
 		return plugin.ProviderSelection{}, err
 	}
-	name, err := mcpserver.ParseServerName(contribution)
+	name, err := plugin.ParseContributionID(contribution)
 	if err != nil {
 		return plugin.ProviderSelection{}, err
 	}
@@ -67,6 +66,6 @@ func (s *ProviderSelectionStore) Save(ctx context.Context, selection plugin.Prov
 		return err
 	}
 	record := selection.Snapshot()
-	_, err := Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_provider_selections(role,installation_id,contribution) VALUES(?,?,?) ON CONFLICT(role) DO UPDATE SET installation_id=excluded.installation_id,contribution=excluded.contribution`, record.Role, record.Installation.String(), record.Contribution.String())
+	_, err := Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_provider_selections(role,installation_id,contribution_id) VALUES(?,?,?) ON CONFLICT(role) DO UPDATE SET installation_id=excluded.installation_id,contribution_id=excluded.contribution_id`, record.Role, record.Installation.String(), record.Contribution.String())
 	return err
 }

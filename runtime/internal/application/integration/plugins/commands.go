@@ -39,7 +39,7 @@ func (c *Commands) Find(ctx context.Context, id, method string, input jsoninput.
 	return command, found, err
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (ServiceBinding, error)) (*plugin.Command, error) {
+func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (ContributionBinding, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Under(ctx, func() error {
 		previous, found, err := c.store.Get(ctx, id)
@@ -57,7 +57,7 @@ func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.
 		if err != nil {
 			return err
 		}
-		command, err = plugin.NewCommand(id, method, input, binding.Contract, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, binding.ServerName)
+		command, err = plugin.NewCommand(plugin.CommandBinding{ID: id, Method: method, Input: input, Contract: binding.Contract, Contribution: binding.ContributionID, Export: binding.Export, Provider: plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, Server: binding.ServerName})
 		if err != nil {
 			return err
 		}

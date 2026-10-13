@@ -37,7 +37,11 @@ func (c capturedConversation) Read(context.Context, string) ([]chat.Message, err
 
 func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFailureIsExplicit(t *testing.T) {
 	name := testsupport.ServerName("memory")
-	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.memory", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Services: []plugin.Service{{Kind: plugin.MemoryService, Server: name}}})
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.memory", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Contributions: []plugin.Contribution{{ID: "memory-provider", Server: name, Export: "memory", Contract: contracts.Capability.Identity()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +94,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	}
 	t.Cleanup(func() { _ = host.Close() })
 	selections := hostsqlite.NewProviderSelectionStore(host)
-	choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: string(plugin.MemoryService), Installation: installation.ID(), Contribution: name})
+	choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contracts.Capability.Descriptor().Reference, Installation: installation.ID(), Contribution: "memory-provider"})
 	if err != nil {
 		t.Fatal(err)
 	}

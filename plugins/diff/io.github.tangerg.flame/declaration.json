@@ -1,0 +1,13 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-13.3",
+  "contributes": {
+    "views": [
+      {
+        "id": "diff",
+        "title": "Workspace diff",
+        "type": "workspaceDiff",
+        "entry": "views/diff.html"
+      }
+    ]
+  }
+}

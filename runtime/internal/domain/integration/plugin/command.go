@@ -3,6 +3,7 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -25,19 +26,22 @@ const (
 // CommandBinding is immutable routing evidence, not a business result. Keeping
 // it after observation prevents an old identity from becoming a new-provider call.
 type CommandBinding struct {
-	ID       string
-	Method   string
-	Input    jsoninput.Input
-	Contract jsoninput.Input
-	Provider Dependency
-	Server   mcpserver.ServerName
-	Phase    CommandPhase
+	ID           string
+	Method       string
+	Input        jsoninput.Input
+	Contract     jsoninput.Input
+	Contribution ContributionID
+	Export       string
+	Provider     Dependency
+	Server       mcpserver.ServerName
+	Phase        CommandPhase
 }
 
 type Command struct{ record CommandBinding }
 
-func NewCommand(id, method string, input, contract jsoninput.Input, provider Dependency, server mcpserver.ServerName) (*Command, error) {
-	return RestoreCommand(CommandBinding{ID: id, Method: method, Input: input, Contract: contract, Provider: provider, Server: server, Phase: CommandPrepared})
+func NewCommand(record CommandBinding) (*Command, error) {
+	record.Phase = CommandPrepared
+	return RestoreCommand(record)
 }
 
 func RestoreCommand(record CommandBinding) (*Command, error) {
@@ -47,9 +51,21 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if err := record.Input.Validate(); err != nil {
 		return nil, err
 	}
-	if err := record.Contract.Validate(); err != nil {
+	if err := record.Contribution.Validate(); err != nil {
 		return nil, err
 	}
+	if !capability.ValidExportName(record.Export) {
+		return nil, fmt.Errorf("%w: command export", ErrInvalid)
+	}
+	contract, err := capability.Parse(record.Contract.JSON())
+	if err != nil {
+		return nil, err
+	}
+	method, found := contract.Method(record.Method)
+	if !found || method.Kind() != capability.Mutation {
+		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
+	}
+	record.Contract = contract.Identity()
 	if err := record.Provider.Validate(); err != nil {
 		return nil, err
 	}

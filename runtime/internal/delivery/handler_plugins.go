@@ -61,7 +61,7 @@ func (s *Handler) SelectPluginProvider(ctx context.Context, in protocol.SelectPl
 	if err != nil {
 		return nil, err
 	}
-	contribution, err := mcpserver.ParseServerName(in.Contribution)
+	contribution, err := plugin.ParseContributionID(in.Contribution)
 	if err != nil {
 		return nil, InvalidParameters(err)
 	}

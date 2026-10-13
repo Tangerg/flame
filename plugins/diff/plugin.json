@@ -5,17 +5,7 @@
   "description": "Optional workspace Diff presentation over canonical Runtime reads. Workspace authority and Git baselines remain Runtime-owned.",
   "extensions": {
     "io.github.tangerg.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "views": [
-          {
-            "id": "diff",
-            "title": "Workspace diff",
-            "type": "workspaceDiff",
-            "entry": "views/diff.html"
-          }
-        ]
-      }
+      "declaration": "io.github.tangerg.flame/declaration.json"
     }
   }
 }

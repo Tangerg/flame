@@ -32,7 +32,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		t.Fatalf("enablement chose a provider: %v", response.Failure)
 	}
 	for _, invalid := range []protocol.SelectPluginProviderRequest{
-		{Role: "schedules", InstallationID: first.ID, Contribution: "memory"},
+		{Role: "schedules", InstallationID: first.ID, Contribution: "memory-provider"},
 		{Role: "memory", InstallationID: first.ID, Contribution: "another"},
 	} {
 		response := r.endpoint.Invoke(t.Context(), delivery.PluginsSelectProvider, invalid, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
@@ -45,7 +45,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		t.Fatalf("refused choice changed configuration: %+v", choices.Data)
 	}
 	choose := func(value *protocol.PluginInstallation, key string) {
-		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: value.ID, Contribution: "memory"}, key)
+		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: value.ID, Contribution: "memory-provider"}, key)
 	}
 	choose(first, "choose-first")
 	request := protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "original owner's fact"}

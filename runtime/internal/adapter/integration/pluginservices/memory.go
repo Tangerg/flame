@@ -2,7 +2,6 @@ package pluginservices
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -15,11 +14,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -71,11 +68,11 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
 }
 func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
-	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
+	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
 	if err != nil {
 		return pagination.Page[memory.Item]{}, err
 	}
-	value, err := m.contracts.List.Call(ctx, session, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()})
+	value, err := query(ctx, location, session, m.contracts.List, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()}, sdk.ParamsBase{})
 	if err != nil {
 		return pagination.Page[memory.Item]{}, rpc.DecodeError(err)
 	}
@@ -83,7 +80,7 @@ func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page
 	return pagination.Page[memory.Item]{Rows: items, NextCursor: value.NextCursor}, err
 }
 func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content string) (memory.Item, error) {
-	value, err := invokeCommand[rpc.AddInput, rpc.AddResult](ctx, m.commands, plugin.MemoryService, rpc.Add, rpc.AddInput{Scope: scope, CWD: cwd, Content: content}, func(value rpc.AddResult) error { _, err := memory.RestoreItem(value.Item); return err })
+	value, err := invokeCommand[rpc.AddInput, rpc.AddResult](ctx, m.commands, m.contracts.Capability, rpc.Add, rpc.AddInput{Scope: scope, CWD: cwd, Content: content}, func(value rpc.AddResult) error { _, err := memory.RestoreItem(value.Item); return err })
 	if err != nil {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
@@ -95,7 +92,7 @@ func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content strin
 	return item, err
 }
 func (m *Memory) Update(ctx context.Context, id string, content *string, pinned *bool) (memory.Item, error) {
-	value, err := invokeCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, m.commands, plugin.MemoryService, rpc.Update, rpc.UpdateInput{ID: id, Content: content, Pinned: pinned}, func(value memory.ItemSnapshot) error { _, err := memory.RestoreItem(value); return err })
+	value, err := invokeCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, m.commands, m.contracts.Capability, rpc.Update, rpc.UpdateInput{ID: id, Content: content, Pinned: pinned}, func(value memory.ItemSnapshot) error { _, err := memory.RestoreItem(value); return err })
 	if err != nil {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 		return memory.Item{}, rpc.DecodeError(err)
@@ -105,24 +102,24 @@ func (m *Memory) Update(ctx context.Context, id string, content *string, pinned 
 	return item, err
 }
 func (m *Memory) Review(ctx context.Context, id string, decision memory.ReviewDecision) error {
-	_, err := invokeCommand[rpc.ReviewInput, rpc.Ack](ctx, m.commands, plugin.MemoryService, rpc.Review, rpc.ReviewInput{ID: id, Decision: decision}, nil)
+	_, err := invokeCommand[rpc.ReviewInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Review, rpc.ReviewInput{ID: id, Decision: decision}, nil)
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Delete(ctx context.Context, id string) error {
-	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, m.commands, plugin.MemoryService, rpc.Delete, rpc.ItemInput{ID: id}, nil)
+	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, m.commands, m.contracts.Capability, rpc.Delete, rpc.ItemInput{ID: id}, nil)
 	m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return rpc.DecodeError(err)
 }
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
-	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
+	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	values, err := m.contracts.Items.Call(ctx, session, rpc.ItemsInput{Scope: scope, Project: project})
+	values, err := query(ctx, location, session, m.contracts.Items, rpc.ItemsInput{Scope: scope, Project: project}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}
@@ -137,8 +134,8 @@ func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) 
 	}
 	return items, nil
 }
-func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([]memory.Item, error) {
-	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
+func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]memory.Item, error) {
+	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
@@ -162,20 +159,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	if err != nil {
 		return nil, err
 	}
-	binding, err := pluginsdk.NewBinding(session, m.contracts.Search.Descriptor())
-	if err != nil {
-		return nil, err
-	}
-	admitted, err := jsoninput.Encode(rpc.SearchInput{Project: project, Query: query, TopK: topK, EmbeddingSpace: space})
-	if err != nil {
-		return nil, err
-	}
-	reply, err := binding.InvokeWithMetadata(ctx, "", admitted, metadata)
-	if err != nil {
-		return nil, rpc.DecodeError(err)
-	}
-	var values []memory.ItemSnapshot
-	err = json.Unmarshal(reply.JSON(), &values, json.RejectUnknownMembers(true))
+	values, err := query(ctx, location, session, m.contracts.Search, rpc.SearchInput{Project: project, Query: text, TopK: topK, EmbeddingSpace: space}, metadata)
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}
@@ -194,7 +178,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	return items, nil
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
-	binding, _, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
+	binding, _, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
 	if errors.Is(err, errInactive) {
 		return nil
 	}
@@ -205,7 +189,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ServiceBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
 		grant, release, err := rpc.GrantModels(ctx, m.callbacks, original, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 			return m.utility.Complete(ctx, models.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
 		}, nil)

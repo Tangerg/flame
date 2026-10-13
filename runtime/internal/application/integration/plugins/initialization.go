@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/google/uuid"
@@ -108,12 +108,20 @@ func selectInitialProviders(ctx context.Context, store Store, selections Selecti
 		if chosen == nil {
 			continue
 		}
-		contribution, err := mcpserver.ParseServerName(initial.Contribution)
+		contribution, err := plugin.ParseContributionID(initial.Contribution)
 		if err != nil {
 			return err
 		}
-		service, found := chosen.Selected.Service(plugin.ServiceKind(initial.Role))
-		if !found || service.Server != contribution {
+		declared, found := chosen.Selected.Contribution(contribution)
+		if !found {
+			return errors.New("plugins: distribution contribution is not declared")
+		}
+		contract, err := capability.Parse(declared.Contract.JSON())
+		if err != nil {
+			return err
+		}
+		descriptor := contract.Descriptor()
+		if descriptor.Reference != initial.Role || descriptor.Composition != capability.Selection {
 			return errors.New("plugins: distribution provider does not declare its selected role")
 		}
 		selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: initial.Role, Installation: chosen.Installation.ID(), Contribution: contribution})

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -148,13 +149,17 @@ func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation 
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
 	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
-	for _, service := range installed.Selected.Services {
-		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: string(service.Type), InstallationID: installed.ID, Contribution: service.Server}, "select-"+string(service.Type))
+	for _, contribution := range installed.Selected.Contributions {
+		if contribution.Contract.Composition != capability.Selection {
+			continue
+		}
+		role := contribution.Contract.Reference
+		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: role, InstallationID: installed.ID, Contribution: contribution.ID}, "select-"+role)
 	}
 	return installed
 }
 
-const poMCPManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package","extensions":{"io.github.tangerg.flame":{"apiVersion":1,"requests":[{"capability":"tools.invoke","targets":["reviews/record","reviews/summarize"]}]}}}`
+const poMCPManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package"}`
 
 func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T) {
 	url := poMCPRemote(t, "record")

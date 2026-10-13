@@ -5,17 +5,7 @@
   "description": "Read-only presentation of bounded current-client telemetry. Collection and clearing remain client-owned.",
   "extensions": {
     "io.github.tangerg.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "views": [
-          {
-            "id": "diagnostics",
-            "title": "Diagnostics",
-            "type": "clientDiagnostics",
-            "entry": "views/diagnostics.html"
-          }
-        ]
-      }
+      "declaration": "io.github.tangerg.flame/declaration.json"
     }
   }
 }

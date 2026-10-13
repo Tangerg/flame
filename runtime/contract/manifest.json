@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.2",
+  "protocolVersion": "2026-10-13.3",
   "features": [
     "reasoning",
     "multimodal",
@@ -9215,11 +9215,19 @@
       ]
     },
     {
-      "type": "PluginService",
+      "type": "PluginContribution",
       "rules": [
         {
           "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "export",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
         }
       ]
     },
@@ -9388,7 +9396,7 @@
       "rules": [
         {
           "field": "contribution",
-          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
         },
         {
           "field": "role",
@@ -9409,7 +9417,7 @@
       "rules": [
         {
           "field": "contribution",
-          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
         },
         {
           "field": "role",

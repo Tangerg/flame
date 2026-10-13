@@ -4,27 +4,46 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/capability"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 var errInactive = errors.New("managed plugin: no enabled owner")
 
-func serviceSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, kind plugin.ServiceKind) (plugins.ServiceBinding, *sdk.ClientSession, error) {
-	binding, found, err := plugins.ServiceOwner(ctx, store, selections, kind)
+func contributionSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, required *capability.Contract) (plugins.ContributionBinding, *sdk.ClientSession, error) {
+	binding, found, err := plugins.SelectedContribution(ctx, store, selections, required)
 	if err != nil {
 		return binding, nil, err
 	}
 	if !found {
-		return binding, nil, fmt.Errorf("%w: %w: %s", plugin.ErrUnavailable, errInactive, kind)
+		return binding, nil, fmt.Errorf("%w: %w: %s", plugin.ErrUnavailable, errInactive, required.Descriptor().Reference)
 	}
 	session, err := pool.ServiceSession(ctx, binding.ServerID)
 	if errors.Is(err, mcp.ErrUnavailable) {
 		err = fmt.Errorf("%w: %w", plugin.ErrUnavailable, err)
 	}
 	return binding, session, err
+}
+
+func query[P, R any](ctx context.Context, location plugins.ContributionBinding, session *sdk.ClientSession, method *pluginsdk.Method[P, R], input P, metadata sdk.ParamsBase) (R, error) {
+	var zero R
+	contract, err := capability.Parse(location.Contract.JSON())
+	if err != nil {
+		return zero, err
+	}
+	exported, err := pluginsdk.ResolveCapability(ctx, session, location.Export, contract)
+	if err != nil {
+		return zero, err
+	}
+	bound, err := method.Bind(exported)
+	if err != nil {
+		return zero, err
+	}
+	return bound.CallWithMetadata(ctx, input, metadata)
 }

@@ -18,8 +18,8 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	}
 	store := sqlite.NewPluginCommandStore(db)
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
-	contract := testsupport.JSONInput(t, `{"name":"review.update","kind":"command","target":"workspace","input":{"type":"object"},"output":{"type":"object"}}`)
-	command, err := plugin.NewCommand("command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), contract, provider, testsupport.ServerName("backend"))
+	contract := testsupport.CommandContract(t, "review.update", "workspace")
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 		t.Fatalf("retargeting=%v", err)
 	}
 	changed = command.Snapshot()
-	changed.Contract = testsupport.JSONInput(t, `{"name":"review.update","kind":"command","target":"another"}`)
+	changed.Contract = testsupport.CommandContract(t, "review.update", "another")
 	other, err = plugin.RestoreCommand(changed)
 	if err != nil {
 		t.Fatal(err)
@@ -95,12 +95,12 @@ func TestPluginCommandHistoryNeverEvictsEarlierIdentityOrCapsLifetimeUsage(t *te
 	t.Cleanup(func() { _ = db.Close() })
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	_, err = db.ExecContext(t.Context(), `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
-INSERT INTO plugin_commands SELECT 'command-'||n,'review.update',?,?,?,?,'backend','dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.JSONInput(t, `{"name":"review.update"}`).String(), provider.InstallationID.String(), provider.Digest.String())
+INSERT INTO plugin_commands SELECT 'command-'||n,'review.update',?,?,?,?,'backend','dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", "installation").String(), provider.InstallationID.String(), provider.Digest.String())
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := sqlite.NewPluginCommandStore(db)
-	command, err := plugin.NewCommand("new", "review.update", testsupport.JSONInput(t, `{"revision":2}`), testsupport.JSONInput(t, `{"name":"review.update"}`), provider, testsupport.ServerName("backend"))
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

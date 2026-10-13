@@ -7,8 +7,8 @@ model/provider configuration. A browser timer or a saved UI draft cannot advance
 any scheduling fact.
 
 The installed stdio process holds an exclusive lease and opens only
-`PLUGIN_DATA/schedules.db`. Its closed `schedules` declaration binds human commands
-to a provider candidate. Product composition explicitly selects an installation
+`PLUGIN_DATA/schedules.db`. Its local declaration binds `schedules-provider` to
+the `schedules` server/export and the exact generated consumer contract. Product composition explicitly selects an installation
 and contribution for human commands and background scans; enabling another
 candidate does not replace it. Source-qualified MCP Tools retain their concrete
 installation identity. Runtime
@@ -59,9 +59,10 @@ under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runti
 with `go generate ./internal/plugins/schedules/rpc`; the existing contractgen
 projects the same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
-Named capability publication and generic installed contribution/selection binding
-remain part of the continuing cutover; these artifacts alone do not establish
-installed operation availability.
+The backend publishes the named `schedules` capability. Runtime validates the
+complete contract and declared export, including dispatch, and captures the
+contribution/export and complete capability for original command recovery. Public
+installed operation entrances, components and point dependency graphs remain open.
 
 The backend executable connects through the public `ConnectCallback` and ordinary
 Runtime Client. `runs.start.newSession` carries the captured Session/Run identities;

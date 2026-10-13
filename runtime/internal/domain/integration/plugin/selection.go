@@ -5,7 +5,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
@@ -17,7 +16,7 @@ type ProviderSelection struct{ record SelectionRecord }
 type SelectionRecord struct {
 	Role         string
 	Installation resourceid.InstallationID
-	Contribution mcpserver.ServerName
+	Contribution ContributionID
 }
 
 func NewProviderSelection(record SelectionRecord) (ProviderSelection, error) {

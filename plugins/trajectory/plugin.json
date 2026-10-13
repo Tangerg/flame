@@ -5,38 +5,7 @@
   "description": "Optional first-party Session trajectory analysis over canonical Runtime evidence.",
   "extensions": {
     "io.github.tangerg.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "actions": [
-          {
-            "id": "rename-session",
-            "title": "Name this investigation",
-            "operation": "renameSession"
-          }
-        ],
-        "themes": [
-          {
-            "id": "graphite",
-            "title": "Graphite",
-            "scheme": "dark",
-            "colors": {
-              "background": "#181a1e",
-              "foreground": "#eef0f4",
-              "accent": "#91baff",
-              "muted": "#a3a8b2",
-              "border": "#373b43"
-            }
-          }
-        ],
-        "views": [
-          {
-            "id": "trajectory",
-            "title": "Session trajectory",
-            "type": "sessionTrajectory",
-            "entry": "views/trajectory.html"
-          }
-        ]
-      }
+      "declaration": "io.github.tangerg.flame/declaration.json"
     }
   }
 }

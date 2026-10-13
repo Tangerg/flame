@@ -97,18 +97,18 @@ type Skill struct {
 // Declaration is the plain data a package declares. It carries no trust of its
 // own: only [NewRelease] or a [Builder] admits it into a [Release].
 type Declaration struct {
-	Name        string
-	Version     string
-	Description string
-	Servers     []Server
-	Services    []Service
-	Inputs      []Input
-	Themes      []Theme
-	Views       []ViewDeclaration
-	Renderers   []Renderer
-	Actions     []Action
-	Skills      []Skill
-	Diagnostics []Diagnostic
+	Name          string
+	Version       string
+	Description   string
+	Servers       []Server
+	Contributions []Contribution
+	Inputs        []Input
+	Themes        []Theme
+	Views         []ViewDeclaration
+	Renderers     []Renderer
+	Actions       []Action
+	Skills        []Skill
+	Diagnostics   []Diagnostic
 }
 
 func (d Declaration) clone() Declaration {
@@ -116,7 +116,7 @@ func (d Declaration) clone() Declaration {
 	for index := range d.Servers {
 		d.Servers[index] = d.Servers[index].clone()
 	}
-	d.Services = slices.Clone(d.Services)
+	d.Contributions = slices.Clone(d.Contributions)
 	d.Inputs = slices.Clone(d.Inputs)
 	d.Themes = slices.Clone(d.Themes)
 	d.Views = slices.Clone(d.Views)
@@ -156,8 +156,8 @@ func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, er
 			return Release{}, err
 		}
 	}
-	for _, service := range declaration.Services {
-		if err := builder.AdmitService(service); err != nil {
+	for _, contribution := range declaration.Contributions {
+		if err := builder.AdmitContribution(contribution); err != nil {
 			return Release{}, err
 		}
 	}

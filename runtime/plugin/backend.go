@@ -36,7 +36,7 @@ func (p *invokeParams) UnmarshalJSON(data []byte) error {
 	if decoded.Protocol != capability.Protocol || decoded.Method == "" || len(decoded.Contract) != 64 || len(decoded.Input) == 0 {
 		return errors.New("plugin: current backend protocol, method, contract and input are required")
 	}
-	if (decoded.Export == "") != (decoded.Capability == "") || decoded.Export != "" && (!exportName.MatchString(decoded.Export) || len(decoded.Capability) != 64) {
+	if (decoded.Export == "") != (decoded.Capability == "") || decoded.Export != "" && (!capability.ValidExportName(decoded.Export) || len(decoded.Capability) != 64) {
 		return errors.New("plugin: capability export and contract must be supplied together")
 	}
 	*p = invokeParams(decoded)

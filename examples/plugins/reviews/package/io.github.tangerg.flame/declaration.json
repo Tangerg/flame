@@ -1,0 +1,11 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-13.3",
+  "contributions": [
+    {
+      "id": "review-operations",
+      "server": "reviews",
+      "export": "reviews",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

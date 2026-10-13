@@ -7,9 +7,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type wireService struct {
-	Type   plugin.ServiceKind   `json:"type"`
-	Server mcpserver.ServerName `json:"server"`
+type wireContribution struct {
+	ID       plugin.ContributionID `json:"id"`
+	Server   mcpserver.ServerName  `json:"server"`
+	Export   string                `json:"export"`
+	Contract string                `json:"contract"`
 }
 
 type wireInput struct {
@@ -92,8 +94,5 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 	return plugin.Theme{ID: v.ID, Title: v.Title, Scheme: plugin.ThemeScheme(v.Scheme), Colors: colors}, nil
 }
 
-// extensionFields are the members of the Flame namespace this API version
-// supports. Any other member is reported as an unknown field and ignored, so
-// a declaration Flame no longer supports, such as capability requests, is
-// visible to the user and never silently accepted or enforced.
-var extensionFields = []string{"apiVersion", "inputs", "contributes"}
+var declarationFields = []string{"protocol", "inputs", "contributions", "contributes"}
+var presentationFields = []string{"views", "renderers", "actions", "themes"}

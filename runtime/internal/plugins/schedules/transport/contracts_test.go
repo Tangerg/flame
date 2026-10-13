@@ -78,7 +78,15 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := contracts.List.Call(t.Context(), session, rpc.ListInput{}); err != nil {
+	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "schedules", required)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := contracts.List.Bind(exported)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := list.Call(t.Context(), rpc.ListInput{}); err != nil {
 		t.Fatal(err)
 	}
 }

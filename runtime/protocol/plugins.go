@@ -1,5 +1,7 @@
 package protocol
 
+import "github.com/Tangerg/flame/runtime/capability"
+
 type PluginProviderSelection struct {
 	Role           string `json:"role"`
 	InstallationID string `json:"installationId"`
@@ -69,19 +71,19 @@ type PluginInputState struct {
 	Value *string              `json:"value,omitzero"`
 }
 type PluginRelease struct {
-	Digest      string                    `json:"digest"`
-	Name        string                    `json:"name"`
-	Version     string                    `json:"version,omitempty"`
-	Description string                    `json:"description,omitempty"`
-	Services    []PluginService           `json:"services"`
-	Servers     []PluginServerDeclaration `json:"servers"`
-	Inputs      []PluginInput             `json:"inputs"`
-	Themes      []PluginTheme             `json:"themes"`
-	Views       []PluginView              `json:"views"`
-	Renderers   []PluginRenderer          `json:"renderers"`
-	Actions     []PluginAction            `json:"actions"`
-	Skills      []PluginSkill             `json:"skills"`
-	Diagnostics []PluginDiagnostic        `json:"diagnostics"`
+	Digest        string                    `json:"digest"`
+	Name          string                    `json:"name"`
+	Version       string                    `json:"version,omitempty"`
+	Description   string                    `json:"description,omitempty"`
+	Contributions []PluginContribution      `json:"contributions"`
+	Servers       []PluginServerDeclaration `json:"servers"`
+	Inputs        []PluginInput             `json:"inputs"`
+	Themes        []PluginTheme             `json:"themes"`
+	Views         []PluginView              `json:"views"`
+	Renderers     []PluginRenderer          `json:"renderers"`
+	Actions       []PluginAction            `json:"actions"`
+	Skills        []PluginSkill             `json:"skills"`
+	Diagnostics   []PluginDiagnostic        `json:"diagnostics"`
 }
 
 type PluginActionOperation string
@@ -349,14 +351,9 @@ type PluginValueChange struct {
 	Value *string               `json:"value,omitzero"`
 }
 
-type PluginServiceType string
-
-const (
-	PluginServiceMemory    PluginServiceType = "memory"
-	PluginServiceSchedules PluginServiceType = "schedules"
-)
-
-type PluginService struct {
-	Type   PluginServiceType `json:"type"`
-	Server string            `json:"server"`
+type PluginContribution struct {
+	ID       string                `json:"id"`
+	Server   string                `json:"server"`
+	Export   string                `json:"export"`
+	Contract capability.Descriptor `json:"contract"`
 }

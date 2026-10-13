@@ -16,7 +16,7 @@ func TestProviderSelectionSurvivesRestartWithoutAnInstallationOrImplicitReplacem
 		t.Fatal(err)
 	}
 	store := sqlite.NewProviderSelectionStore(db)
-	selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: "consumer.role", Installation: testsupport.InstallationID(t), Contribution: testsupport.ServerName("provider")})
+	selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: "consumer.role", Installation: testsupport.InstallationID(t), Contribution: plugin.ContributionID("provider")})
 	if err != nil {
 		t.Fatal(err)
 	}

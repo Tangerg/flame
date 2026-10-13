@@ -33,7 +33,7 @@ func NewDispatcher(service *Schedules, callbacks *pluginsdk.Callbacks, publish i
 	}
 	return &Dispatcher{service: service, callbacks: callbacks, publish: publish}, nil
 }
-func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBinding, session *sdk.ClientSession, snapshot schedule.RunRequestSnapshot) (app.RunReference, error) {
+func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession, snapshot schedule.RunRequestSnapshot) (app.RunReference, error) {
 	request, err := schedule.RestoreRunRequest(snapshot)
 	if err != nil {
 		return app.RunReference{}, err
@@ -50,7 +50,11 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBindin
 		return app.RunReference{}, err
 	}
 	defer release()
-	method, err := pluginsdk.Resolve(ctx, session, rpc.Dispatch)
+	exported, err := pluginsdk.ResolveCapability(ctx, session, binding.Export, d.service.contracts.Capability)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	method, err := exported.Method(rpc.Dispatch)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -73,8 +77,8 @@ func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBindin
 	return reference, nil
 }
 func (d *Dispatcher) RunNow(ctx context.Context, id string) (app.RunReference, error) {
-	request, err := invokeResolvedCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, d.service.commands, rpc.PrepareManual, rpc.ItemInput{ID: id}, func(value schedule.RunRequestSnapshot) error { _, err := schedule.RestoreRunRequest(value); return err }, func(ctx context.Context) (plugins.ServiceBinding, error) {
-		binding, found, err := plugins.ServiceOwner(ctx, d.service.installations, d.service.commands.selections, plugin.SchedulesService)
+	request, err := invokeResolvedCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, d.service.commands, rpc.PrepareManual, rpc.ItemInput{ID: id}, func(value schedule.RunRequestSnapshot) error { _, err := schedule.RestoreRunRequest(value); return err }, func(ctx context.Context) (plugins.ContributionBinding, error) {
+		binding, found, err := plugins.SelectedContribution(ctx, d.service.installations, d.service.commands.selections, d.service.contracts.Capability)
 		if err == nil && !found {
 			err = plugin.ErrUnavailable
 		}
@@ -99,7 +103,7 @@ func (d *Dispatcher) RunWorker(ctx context.Context) {
 	}
 }
 func (d *Dispatcher) pass(ctx context.Context) {
-	binding, session, err := serviceSession(ctx, d.service.installations, d.service.commands.selections, d.service.pool, plugin.SchedulesService)
+	binding, session, err := contributionSession(ctx, d.service.installations, d.service.commands.selections, d.service.pool, d.service.contracts.Capability)
 	if errors.Is(err, errInactive) {
 		return
 	}
@@ -107,7 +111,7 @@ func (d *Dispatcher) pass(ctx context.Context) {
 		slog.ErrorContext(ctx, "schedule: backend admission failed", "error", err)
 		return
 	}
-	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil }, d.openRuntime)
+	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, d.openRuntime)
 	if err != nil {
 		slog.ErrorContext(ctx, "schedule: durable scan failed", "error", err)
 		return
@@ -127,7 +131,7 @@ func (d *Dispatcher) pass(ctx context.Context) {
 	}
 }
 
-func (d *Dispatcher) openRuntime(ctx context.Context, binding plugins.ServiceBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+func (d *Dispatcher) openRuntime(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
 	actor, err := d.service.pool.SessionActor(ctx, binding.ServerID, session)
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err

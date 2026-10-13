@@ -5,7 +5,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"regexp"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -17,12 +16,10 @@ type CapabilityExport struct {
 	Contract capability.Descriptor `json:"contract"`
 }
 
-var exportName = regexp.MustCompile(`^[a-z][a-z0-9._-]{0,63}$`)
-
 // BindCapability associates the consumer contract with existing handlers.
 // The Backend remains the sole publication and invocation owner.
 func (b *Backend) BindCapability(name string, contract *capability.Contract) error {
-	if b == nil || contract == nil || contract.Identity().Validate() != nil || !exportName.MatchString(name) {
+	if b == nil || contract == nil || contract.Identity().Validate() != nil || !capability.ValidExportName(name) {
 		return errors.New("plugin: backend, capability and valid export name are required")
 	}
 	b.mu.Lock()
@@ -83,7 +80,7 @@ type CapabilityBinding struct {
 // The backend checks both before executing; restoration never discovers a new
 // provider. Installation/release retention belongs to the host routing owner.
 func NewCapabilityBinding(session *sdk.ClientSession, name string, contract *capability.Contract) (*CapabilityBinding, error) {
-	if session == nil || contract == nil || contract.Identity().Validate() != nil || !exportName.MatchString(name) {
+	if session == nil || contract == nil || contract.Identity().Validate() != nil || !capability.ValidExportName(name) {
 		return nil, errors.New("plugin: session, capability and valid export name are required")
 	}
 	return &CapabilityBinding{session: session, export: name, contract: contract}, nil
@@ -112,7 +109,7 @@ func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name str
 	seen := make(map[string]bool, len(description.Capabilities))
 	found := false
 	for _, published := range description.Capabilities {
-		if !exportName.MatchString(published.Name) || seen[published.Name] {
+		if !capability.ValidExportName(published.Name) || seen[published.Name] {
 			return nil, errors.New("plugin: invalid or duplicate published capability export")
 		}
 		seen[published.Name] = true

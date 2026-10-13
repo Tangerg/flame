@@ -14,7 +14,6 @@ import (
 )
 
 const Namespace = "io.github.tangerg.flame"
-const APIVersion = 1
 const MaxInstallations = 128
 
 var (

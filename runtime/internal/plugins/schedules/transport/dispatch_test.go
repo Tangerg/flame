@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	workspace "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
@@ -90,7 +91,11 @@ func TestDispatchAcknowledgementAndReceiptCommitTogether(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
-	method, err := pluginsdk.Resolve(ctx, session, rpc.Dispatch)
+	exported, err := pluginsdk.ResolveCapability(ctx, session, "schedules", schedulesContract(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, err := exported.Method(rpc.Dispatch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,4 +187,13 @@ func TestCapturedRuntimeTargetSurvivesRestartAndRefusesAnotherStore(t *testing.T
 	if err := db.QueryRow(`SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original); err != nil || original != "original" {
 		t.Fatalf("original target=%q error=%v", original, err)
 	}
+}
+
+func schedulesContract(t *testing.T) *capability.Contract {
+	t.Helper()
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return contracts.Capability
 }

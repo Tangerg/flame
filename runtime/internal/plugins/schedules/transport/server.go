@@ -118,6 +118,9 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 	); err != nil {
 		return err
 	}
+	if err := backend.BindCapability("schedules", contracts.Capability); err != nil {
+		return err
+	}
 	return backend.Publish()
 }
 

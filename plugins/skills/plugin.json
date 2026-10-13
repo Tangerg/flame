@@ -5,17 +5,7 @@
   "description": "Optional Skill discovery, document, library and proposal presentation. Runtime owns admission and curation; decisions use trusted Host forms.",
   "extensions": {
     "io.github.tangerg.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "views": [
-          {
-            "id": "skills",
-            "title": "Skills",
-            "type": "skills",
-            "entry": "views/skills.html"
-          }
-        ]
-      }
+      "declaration": "io.github.tangerg.flame/declaration.json"
     }
   }
 }

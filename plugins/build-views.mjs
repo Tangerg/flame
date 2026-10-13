@@ -27,8 +27,16 @@ for (const directory of await readdir(root, { withFileTypes: true })) {
   const manifest = JSON.parse(
     await readFile(new URL(`${directory.name}/plugin.json`, root), "utf8"),
   );
-  const views =
-    manifest.extensions["io.github.tangerg.flame"].contributes.views;
+  const declaration = JSON.parse(
+    await readFile(
+      new URL(
+        `${directory.name}/${manifest.extensions["io.github.tangerg.flame"].declaration}`,
+        root,
+      ),
+      "utf8",
+    ),
+  );
+  const views = declaration.contributes.views;
   assert.equal(
     views.length,
     1,

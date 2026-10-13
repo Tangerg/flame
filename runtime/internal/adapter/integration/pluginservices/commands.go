@@ -34,28 +34,32 @@ func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, poo
 
 type commandReply[T any] struct {
 	value   T
-	binding plugins.ServiceBinding
+	binding plugins.ContributionBinding
 	session *sdk.ClientSession
 }
 
-func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBinding) (plugins.ServiceBinding, error) {
+func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBinding) (plugins.ContributionBinding, error) {
 	snapshot, found, err := c.installations.Get(ctx, record.Provider.InstallationID)
 	if err != nil {
-		return plugins.ServiceBinding{}, err
+		return plugins.ContributionBinding{}, err
 	}
 	if !found || snapshot.Selected.Digest() != record.Provider.Digest || !snapshot.Installation.ServerEnabled(record.Server) {
-		return plugins.ServiceBinding{}, plugin.ErrUnavailable
+		return plugins.ContributionBinding{}, plugin.ErrUnavailable
 	}
 	id, err := snapshot.Installation.ServerID(record.Server)
 	if err != nil {
-		return plugins.ServiceBinding{}, err
+		return plugins.ContributionBinding{}, err
 	}
-	return plugins.ServiceBinding{InstallationID: record.Provider.InstallationID, Digest: record.Provider.Digest, ServerName: record.Server, ServerID: id, Contract: record.Contract}, nil
+	contribution, found := snapshot.Selected.Contribution(record.Contribution)
+	if !found || contribution.Server != record.Server || contribution.Export != record.Export || contribution.Contract != record.Contract {
+		return plugins.ContributionBinding{}, plugin.ErrUnavailable
+	}
+	return plugins.ContributionBinding{InstallationID: record.Provider.InstallationID, ContributionID: record.Contribution, Digest: record.Provider.Digest, ServerName: record.Server, ServerID: id, Export: record.Export, Contract: record.Contract}, nil
 }
 
-func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.ServiceKind, method string, input P, validate func(R) error) (commandReply[R], error) {
-	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ServiceBinding, error) {
-		binding, found, err := plugins.ServiceOwner(ctx, c.installations, c.selections, kind)
+func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *capability.Contract, method string, input P, validate func(R) error) (commandReply[R], error) {
+	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ContributionBinding, error) {
+		binding, found, err := plugins.SelectedContribution(ctx, c.installations, c.selections, required)
 		if err != nil {
 			return binding, err
 		}
@@ -65,7 +69,7 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.S
 		return binding, nil
 	}, nil)
 }
-func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ServiceBinding, error), collaborators func(context.Context, plugins.ServiceBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[R], error) {
+func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[R], error) {
 	var zero commandReply[R]
 	id := operation.Identity(ctx)
 	admitted, err := jsoninput.Encode(input)
@@ -84,9 +88,17 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		if sessionErr != nil {
 			return zero, sessionErr
 		}
-		binding, bindingErr := pluginsdk.Resolve(ctx, session, method)
-		if bindingErr != nil {
-			return zero, bindingErr
+		required, err := capability.Parse(candidate.Contract.JSON())
+		if err != nil {
+			return zero, err
+		}
+		exported, err := pluginsdk.ResolveCapability(ctx, session, candidate.Export, required)
+		if err != nil {
+			return zero, err
+		}
+		binding, err := exported.Method(method)
+		if err != nil {
+			return zero, err
 		}
 		if binding.Descriptor().Kind != capability.Mutation {
 			return zero, errors.New("managed plugin: command requires a command contract")
@@ -94,18 +106,17 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		if err := binding.ValidateInput(admitted); err != nil {
 			return zero, err
 		}
-		command, err = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ServiceBinding, error) {
+		command, err = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ContributionBinding, error) {
 			current, err := resolve(ctx)
 			if err != nil {
 				return current, err
 			}
-			if current.InstallationID != candidate.InstallationID || current.Digest != candidate.Digest || current.ServerName != candidate.ServerName || current.ServerID != candidate.ServerID {
+			if current.InstallationID != candidate.InstallationID || current.Digest != candidate.Digest || current.ServerName != candidate.ServerName || current.ServerID != candidate.ServerID || current.ContributionID != candidate.ContributionID || current.Export != candidate.Export || current.Contract != candidate.Contract {
 				return current, plugin.ErrUnavailable
 			}
-			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName}); err != nil {
+			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
 				return current, err
 			}
-			current.Contract = binding.Contract()
 			return current, nil
 		})
 	}
@@ -127,16 +138,17 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	var descriptor capability.MethodDescriptor
-	if err := json.Unmarshal(record.Contract.JSON(), &descriptor, json.RejectUnknownMembers(true)); err != nil {
+	contract, err := capability.Parse(record.Contract.JSON())
+	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	bound, err := pluginsdk.NewBinding(session, descriptor)
-	if err != nil || descriptor.Name != method || descriptor.Kind != capability.Mutation {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
+	exported, err := pluginsdk.NewCapabilityBinding(session, record.Export, contract)
+	if err != nil {
+		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	if bound.Contract() != record.Contract {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, plugin.ErrInvalid)
+	bound, err := exported.Method(method)
+	if err != nil || bound.Descriptor().Kind != capability.Mutation {
+		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
 	}
 	var value R
 	var result jsoninput.Input

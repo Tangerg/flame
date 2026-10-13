@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
+	"github.com/Tangerg/flame/runtime/capability"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -48,10 +48,17 @@ func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord) 
 		if !found {
 			return plugin.ErrNotFound
 		}
-		if !slices.ContainsFunc(snapshot.Selected.Declaration().Services, func(service plugin.Service) bool {
-			return string(service.Kind) == record.Role && service.Server == record.Contribution
-		}) {
-			return fmt.Errorf("%w: contribution does not provide the requested role", plugin.ErrInvalid)
+		contribution, found := snapshot.Selected.Contribution(record.Contribution)
+		if !found {
+			return fmt.Errorf("%w: contribution is not declared", plugin.ErrInvalid)
+		}
+		contract, err := capability.Parse(contribution.Contract.JSON())
+		if err != nil {
+			return err
+		}
+		descriptor := contract.Descriptor()
+		if descriptor.Reference != record.Role || descriptor.Composition != capability.Selection {
+			return fmt.Errorf("%w: contribution does not provide the requested selection role", plugin.ErrInvalid)
 		}
 		return s.store.Save(ctx, selection)
 	})

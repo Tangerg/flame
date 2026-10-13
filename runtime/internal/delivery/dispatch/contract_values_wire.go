@@ -1066,7 +1066,7 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginService](), Constraints: mcpServerName("server")})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginRendererRequest](), Constraints: []FieldConstraint{{Field: "rendererId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRenderer](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxViewTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: plugin.MaxRendererSelectorNameBytes}}})
@@ -1096,11 +1096,12 @@ func registerPluginValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginServerDeclaration](), Constraints: mcpServerName("name")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginInput](), Constraints: mcpServerName("server")})
 	for _, shape := range []reflect.Type{typeOf[protocol.SelectPluginProviderRequest](), typeOf[protocol.PluginProviderSelection]()} {
-		constraints := append(mcpServerName("contribution"),
+		constraints := []FieldConstraint{
+			FieldConstraint{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
 			FieldConstraint{Field: "role", Kind: ConstraintNonEmpty},
 			FieldConstraint{Field: "role", Kind: ConstraintMaxLength, Limit: 256},
 			FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
-		)
+		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
 	for _, shape := range []reflect.Type{typeOf[protocol.StagePluginRequest](), typeOf[protocol.PluginRequest](), typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.SetPluginEnablementRequest](), typeOf[protocol.ConfigurePluginRequest]()} {

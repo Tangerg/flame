@@ -180,11 +180,15 @@ func (m *Method[P, R]) Bind(capability *CapabilityBinding) (*BoundMethod[P, R], 
 }
 
 func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {
+	return m.CallWithMetadata(ctx, input, sdk.ParamsBase{})
+}
+
+func (m *BoundMethod[P, R]) CallWithMetadata(ctx context.Context, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
 	if m.method.contract.Kind() != capability.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
-	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input})
+	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input, ParamsBase: metadata})
 }
 
 func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id string, input P) (R, error) {

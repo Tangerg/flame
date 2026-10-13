@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.2";
+export const PROTOCOL_VERSION = "2026-10-13.3";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -451,6 +451,14 @@ export interface DeleteScheduleRequest {
 
 export interface DeleteSessionRequest {
   sessionId: string;
+}
+
+export interface Descriptor {
+  composition: string;
+  methods: MethodDescriptor[];
+  protocol: string;
+  reference: string;
+  scope: string;
 }
 
 export interface Diff {
@@ -1005,6 +1013,15 @@ export interface ManagedSkill {
 
 export type MessagePhase = "commentary" | "finalAnswer";
 
+export interface MethodDescriptor {
+  description: string;
+  input: unknown;
+  kind: string;
+  name: string;
+  output: unknown;
+  target: string;
+}
+
 export type Modality = "text" | "image" | "audio" | "video" | "pdf";
 
 export interface Model {
@@ -1170,6 +1187,13 @@ export type PluginComponentChange = "enable" | "disable";
 
 export type PluginComponentType = "manifestField" | "flameExtension" | "extensionField" | "contribution" | "mcp" | "mcpServer" | "skills" | "skill";
 
+export interface PluginContribution {
+  contract: Descriptor;
+  export: string;
+  id: string;
+  server: string;
+}
+
 export interface PluginDiagnostic {
   code: PluginDiagnosticCode;
   component: PluginComponent;
@@ -1224,6 +1248,7 @@ export type PluginRealizationType = "available" | "releaseUnavailable";
 
 export interface PluginRelease {
   actions: PluginAction[];
+  contributions: PluginContribution[];
   description?: string;
   diagnostics: PluginDiagnostic[];
   digest: string;
@@ -1231,7 +1256,6 @@ export interface PluginRelease {
   name: string;
   renderers: PluginRenderer[];
   servers: PluginServerDeclaration[];
-  services: PluginService[];
   skills: PluginSkill[];
   themes: PluginTheme[];
   version?: string;
@@ -1270,13 +1294,6 @@ export interface PluginScheduleTemplate {
 export type PluginServerDeclaration =
   | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: Record<string, string>; name: string }
   | { type: "streamableHttp"; headers?: Record<string, string>; name: string; url: string };
-
-export interface PluginService {
-  server: string;
-  type: PluginServiceType;
-}
-
-export type PluginServiceType = "memory" | "schedules";
 
 export interface PluginSkill {
   description: string;
@@ -2269,7 +2286,6 @@ export const WIRE_ENUMS = {
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
-  PluginServiceType: ["memory", "schedules"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
   PluginViewType: ["sessionTrajectory", "agentMemory", "schedules", "usageSummary", "skills", "workspaceDiff", "clientDiagnostics", "static"],

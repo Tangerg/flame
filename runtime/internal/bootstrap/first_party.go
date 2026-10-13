@@ -24,8 +24,8 @@ func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle
 	return plugins.Initialize(ctx, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{
-		{Role: "memory", Package: "flame.memory", Contribution: "memory"},
-		{Role: "schedules", Package: "flame.schedules", Contribution: "schedules"},
+		{Role: "memory", Package: "flame.memory", Contribution: "memory-provider"},
+		{Role: "schedules", Package: "flame.schedules", Contribution: "schedules-provider"},
 	})
 }
 

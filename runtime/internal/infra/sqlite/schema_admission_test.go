@@ -23,6 +23,9 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former host command digest", `ALTER TABLE plugin_commands RENAME COLUMN business_input_json TO input_digest`},
 		{"former command without bound contract", `ALTER TABLE plugin_commands DROP COLUMN contract_json`},
 		{"former host without provider selections", `DROP TABLE plugin_provider_selections`},
+		{"former selection using server identity", `ALTER TABLE plugin_provider_selections RENAME COLUMN contribution_id TO contribution`},
+		{"former command without contribution", `ALTER TABLE plugin_commands RENAME COLUMN contribution_id TO former_contribution`},
+		{"former command without export", `ALTER TABLE plugin_commands RENAME COLUMN export_name TO former_export`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
 		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
 	} {

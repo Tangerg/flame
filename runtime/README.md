@@ -62,10 +62,11 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.2
+## Protocol 2026-10-13.3
 
 Memory and Schedules are optional, complete managed plugin backends. Their
-`services` declarations describe provider candidates. Product composition selects
+Local contribution declarations bind independent IDs to exact contracts and
+server exports; there is no closed service-kind routing enum. Product composition selects
 an exact installation/contribution independently of its enablement. More than
 one candidate may be enabled; absence, disablement or removal of the selected
 provider never chooses another one. Human
@@ -112,7 +113,7 @@ decorators remain open parts of the refactor.
 
 `plugins.listProviders` and `plugins.selectProvider` expose the same composition
 owner through the Go binding and Runtime Protocol. CLI uses `plugins providers`
-and `plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`.
+and `plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory-provider"}'`.
 Selection changes future resolution, preserves each provider's private data and
 never retargets an original command or its receipt. Distribution selects initial
 providers by configured package/contribution once in its initial transaction;
@@ -513,9 +514,20 @@ path. A queued command that has never been dispatched can still prepare its inpu
 
 ## Portable plugins
 
+Current selection rows store contribution_id independently of server identity.
+Original command routes retain that ID, named export and complete capability
+contract alongside immutable provider/server/input evidence. Former host tables
+without these bindings are refused by exact-schema admission without conversion.
+Full public installed operations and component loading remain in the continuing
+cutover; this backend binding does not claim their implementation.
+
 Runtime owns plugin installations under its data directory. `plugin.json` uses Agent
-Plugins 1.0, and Flame's extension namespace is `io.github.tangerg.flame` with
-`apiVersion: 1`. The complete operation schemas and error categories are generated in
+Plugins 1.0. Flame's `io.github.tangerg.flame` namespace contains one `declaration`
+path under that namespace. The referenced local JSON file declares the exact
+current backend protocol requirement, optional inputs, contributions and current
+presentation entries. Its own fields are strict; the former inline apiVersion
+and services shapes have no interpretation. Portable MCP/Skill components remain
+independent when Flame declaration admission fails. The complete operation schemas and error categories are generated in
 [the API reference](contract/API_REFERENCE.md). `plugins` is an advertised capability.
 
 Install from an absolute directory or ZIP path on the Runtime machine. Admission copies

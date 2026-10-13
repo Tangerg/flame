@@ -49,7 +49,15 @@ func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := contracts.List.Call(t.Context(), session, rpc.ListInput{Scope: memory.ScopeUser}); err != nil {
+	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "memory", required)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := contracts.List.Bind(exported)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := list.Call(t.Context(), rpc.ListInput{Scope: memory.ScopeUser}); err != nil {
 		t.Fatal(err)
 	}
 }

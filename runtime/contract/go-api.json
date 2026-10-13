@@ -1150,6 +1150,10 @@
         {
           "name": "Parse",
           "signature": "func(data []byte) (*Contract, error)"
+        },
+        {
+          "name": "ValidExportName",
+          "signature": "func(name string) bool"
         }
       ],
       "types": [
@@ -1610,6 +1614,10 @@
               "signature": "func(ctx context.Context, id string, input P) (R, error)"
             },
             {
+              "name": "CallWithMetadata",
+              "signature": "func(ctx context.Context, input P, metadata mcp.ParamsBase) (R, error)"
+            },
+            {
               "name": "ReadReceipt",
               "signature": "func(ctx context.Context, id string, input P) (R, bool, error)"
             }
@@ -1957,6 +1965,7 @@
       "path": "github.com/Tangerg/flame/runtime/protocol",
       "imports": [
         "encoding/json/jsontext",
+        "github.com/Tangerg/flame/runtime/capability",
         "time"
       ],
       "constants": [
@@ -3081,16 +3090,6 @@
           "value": "\"toolName\""
         },
         {
-          "name": "PluginServiceMemory",
-          "type": "PluginServiceType",
-          "value": "\"memory\""
-        },
-        {
-          "name": "PluginServiceSchedules",
-          "type": "PluginServiceType",
-          "value": "\"schedules\""
-        },
-        {
           "name": "PluginThemeDark",
           "type": "PluginThemeScheme",
           "value": "\"dark\""
@@ -3218,7 +3217,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.2\""
+          "value": "\"2026-10-13.3\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8091,6 +8090,38 @@
           "underlying": "string"
         },
         {
+          "name": "PluginContribution",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Server",
+              "type": "string",
+              "tag": "json:\"server\""
+            },
+            {
+              "name": "Export",
+              "type": "string",
+              "tag": "json:\"export\""
+            },
+            {
+              "name": "Contract",
+              "type": "capability.Descriptor",
+              "tag": "json:\"contract\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "PluginDiagnostic",
           "kind": "struct",
           "fields": [
@@ -8337,9 +8368,9 @@
               "tag": "json:\"description,omitempty\""
             },
             {
-              "name": "Services",
-              "type": "[]PluginService",
-              "tag": "json:\"services\""
+              "name": "Contributions",
+              "type": "[]PluginContribution",
+              "tag": "json:\"contributions\""
             },
             {
               "name": "Servers",
@@ -8553,33 +8584,6 @@
               "signature": "func() error"
             }
           ]
-        },
-        {
-          "name": "PluginService",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Type",
-              "type": "PluginServiceType",
-              "tag": "json:\"type\""
-            },
-            {
-              "name": "Server",
-              "type": "string",
-              "tag": "json:\"server\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "PluginServiceType",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "PluginSkill",

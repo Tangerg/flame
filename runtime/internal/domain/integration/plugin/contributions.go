@@ -1,0 +1,70 @@
+package plugin
+
+import (
+	"fmt"
+	"slices"
+
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/jsoninput"
+)
+
+// ContributionID identifies a declaration within its package, independently of
+// the process or export that implements it.
+type ContributionID string
+
+func ParseContributionID(value string) (ContributionID, error) {
+	id := ContributionID(value)
+	return id, id.Validate()
+}
+func (id ContributionID) String() string { return string(id) }
+func (id ContributionID) Validate() error {
+	if !idPattern.MatchString(string(id)) {
+		return fmt.Errorf("%w: contribution identity", ErrInvalid)
+	}
+	return nil
+}
+
+// Contribution is an admitted contract-to-export declaration. Composition and
+// role semantics belong to Contract; they are not independently authored here.
+type Contribution struct {
+	ID       ContributionID
+	Server   mcpserver.ServerName
+	Export   string
+	Contract jsoninput.Input
+}
+
+func (b *Builder) AdmitContribution(value Contribution) error {
+	if err := value.ID.Validate(); err != nil {
+		return err
+	}
+	if !capability.ValidExportName(value.Export) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid contribution export %q", value.Export)
+	}
+	contract, err := capability.Parse(value.Contract.JSON())
+	if err != nil {
+		return refuse(DiagnosticInvalidDeclaration, "invalid contribution contract: %v", err)
+	}
+	value.Contract = contract.Identity()
+	if slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool { return current.ID == value.ID }) {
+		return refuse(DiagnosticInvalidDeclaration, "duplicate contribution %q", value.ID)
+	}
+	if _, found := b.release().server(value.Server); !found {
+		return refuse(DiagnosticInvalidDependencies, "contribution %q requires a declared server", value.ID)
+	}
+	b.declaration.Contributions = append(b.declaration.Contributions, value)
+	return nil
+}
+
+func (r Release) Contribution(id ContributionID) (Contribution, bool) {
+	index := slices.IndexFunc(r.declaration.Contributions, func(value Contribution) bool { return value.ID == id })
+	if index < 0 {
+		return Contribution{}, false
+	}
+	return r.declaration.Contributions[index], true
+}
+func (r Release) HasImplementation(server mcpserver.ServerName, required *capability.Contract) bool {
+	return required != nil && slices.ContainsFunc(r.declaration.Contributions, func(value Contribution) bool {
+		return value.Server == server && value.Contract == required.Identity()
+	})
+}
