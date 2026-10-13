@@ -2,55 +2,60 @@
 
 ## Current stage
 
-Stage 4i (3f18d71b) migrates the optional Tool results package to ordinary public ESM
-components. Its 24 declarations share one export, with toolResult scope and
-technical toolResultRenderer placement. The existing consumer keeps exact-name
-precedence, shape matching and ambiguity; running/absent results stay generic.
-Core is 2026-10-14.5; backend wire stays 2026-10-14.2 and private business formats
-and recorded outcomes do not change.
+Stage 4j (9f30bd16) replaces the closed plugin action vocabulary with ordinary
+Session-scoped components at sessionAction placement. Trajectory provides its own
+naming form alongside its trajectory export in the same ESM. The existing Session
+row menus consume local admitted metadata and load the module only when opened.
+The click captures accepted ID/revision/title as frozen public CapturedSession data;
+navigation and refreshed row data never retarget the open form. The shared modal
+container owns focus/closing, while the plugin owns its form and public calls.
 
-The SDK owns CapturedToolResult and RecordedFileChange types. The Desktop reducer's
-mutable read model derives from them; ordinary components receive detached frozen
-captures including original call/Run IDs, argument/result bytes, status, error and
-nested ranges/changes. Navigation never replaces captured data. The component keeps
-filtering, incremental expansion, line numbers, ANSI and error/warning text styles
-inside the existing height budget. Result bytes never become HTML, executable URLs
-or Tool replay. Loading/failure/withdrawal retain the generic recorded inspector.
+The component calls canonical sessions.update, which is also used by built-in
+Session editing and the existing CLI session rename. It submits the inspected
+revision and title. Unknown acknowledgement retains the original MutationPromise
+and same-key retry, blocking a new edit until settlement. Accepted responses alone
+produce saved state. Revision refusal retains the inspected target/draft; reopening
+is explicit. Closing supported observation does not retract an accepted Core command.
+Component context sources now use named constructor inputs rather than another
+optional positional target argument.
 
-Delete the HTML renderer declaration/model/array/read operation and Go/TS binding,
-HTML source/resource/builders, graphical carrier adapters, browser/native guest/page
-IPC, probes and their exclusive tests/tasks. Remove shared UI guest theme/bootstrap
-exports, their token inventory and now-unused direct compiler dependency. Ordinary
-components use the actual shared React/UI provider graph and existing resource lease.
-Old metadata is refused without an alias or compatibility reader. Source integrity,
-private receipts, accepted Runs and package/credential authority retain their owners.
+Delete Action/ActionOperation/AuthorizeAction, old declaration/parser/projection,
+release action arrays, title-only DTO, plugins.renameSession and Go/TS/CLI wrappers,
+private Host PackageActions and retired exclusive cases. Preserve canonical Session
+revision/persistence/event/command owners. Old closed metadata is refused without
+aliases; unresolved former wrapper requests retain original evidence and are not
+translated into another method or command. Core is 2026-10-14.6; backend remains
+2026-10-14.2. No private business/storage format changes or data conversion occurs.
 
-The migrated resource security regression exposed bare filesystem errors for missing
-or escaped component resources. Public ReadResource now preserves their causes while
-classifying unavailable resources consistently; invalid inputs/cancellation keep
-their categories. Changed bytes, symlink/missing resources and cancellation checks
-pass, without weakening assertions.
-
-Production Runtime/CLI/Reviews builds, SDK/UI/bundled/Desktop types, targeted lint,
-UI build, exact ESM reproduction, Desktop Vite and layer checks pass. Domain selectors
-and immutable projections pass (0.428s); admission/retired HTML/resource integrity and
-cancellation pass (0.610s). Dependency rule passes (0.792s); CLI API inventory passes
-(25.400s). API source coverage is 101/101 after deleting one obsolete operation.
-Bootstrap/installation/execution and Wails Desktop test sources compile into removed
-temporary binaries. Native linking reports deployment-version/duplicate-library
-warnings; supported platform task qualification remains final work. Tool ESM is
-4,116 bytes. No frontend UI/E2E/screenshot tests were added or run. Full/vet/race and
-native process execution remain concentrated at final verification.
+Production Runtime/CLI/Reviews builds, SDK/shared-client/bundled/Desktop TypeScript,
+targeted lint, exact ESM reproduction, Vite and layer checks pass. Domain placement
+admission (0.602s), package metadata/code-nonexecution/old action refusal (0.510s),
+and the shared RPC client's original Session edit/revision/key retry (220ms) pass.
+Bootstrap and CLI command/binding test sources compile into removed temp binaries;
+canonical restart/receipt execution remains final work. Source gate is 100/100
+(87 graphical, six Go headless, six materialized, one HTTP), with three sidecars and
+15 topics. Trajectory ESM is 10,174 bytes. Locale gate passes 983 keys/eight locales;
+removed action strings and four unused former carrier strings found by the gate.
+No frontend UI/E2E/screenshot tests were added or run. Full/vet/race and supported
+native/process acceptance remain concentrated at final verification.
 
 Main 993eb865 remains integrated; merge is already up to date. Original proposal,
-review and draft hashes remain unchanged. Owned dist/temp binaries and empty retired
-directories are removed. The full goal remains active. Next migrate contextual
-Actions and actual CLI/Core facades, then complete scoped dependencies, canonical
-model decorators/streaming, cross-generation recovery, independent author parity and
-all P01-P48/final acceptance.
+review and draft hashes remain unchanged. Owned dist and temporary binaries are
+removed; the worktree is clean after this anchor commit. The full goal remains
+active. Next unify actual CLI/Core Memory/Schedules and Tool/cross-plugin consumers,
+retaining original bound recovery, then complete scoped dependencies, canonical
+model decorators/streaming, cross-generation recovery, independent author parity
+and all P01-P48/final acceptance.
 
 ## Completed
 
+- Stage 4j (9f30bd16): ordinary contextual Session component placement, local menu
+  contribution and frozen accepted target; Trajectory owns its canonical naming form.
+- Stage 4j: remove closed action declaration/enum/array, wrapper API/DTO/Go/TS/CLI
+  path and private Host form/cases; existing Session revision/receipt owner retained.
+- Stage 4j: Core .6/generated contracts, actual author/client/module docs and retired
+  locale strings updated; focused contracts/source/type/build checks pass, final
+  canonical restart/native execution remains open.
 - Stage 4i (3f18d71b): public recorded Tool-result ESM and frozen SDK context; retain
   exact/shape matching, generic inspection, filtering, rows, ANSI and original evidence.
 - Stage 4i: delete all remaining HTML renderer APIs/models/resources/builders and
@@ -339,7 +344,7 @@ all P01-P48/final acceptance.
 - Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
-- All business View and renderer HTML carriers are removed. Replace remaining contextual actions/Core facades through ordinary public components and operations; complete their real owning lifecycle. No frontend UI/E2E execution is authorized.
+- Business View/renderer HTML carriers and closed contextual action wrappers are removed. Complete actual CLI/Core business facade migration through public installed operations with original binding, command/receipt and lifecycle owners. No frontend UI/E2E execution is authorized.
 - Complete the canonical model execution contract, installed streaming decorators/remote next, frozen order, cancellation/backpressure and preservation of inner model evidence.
 - Retain and execute final acceptance for Stage 3i business-only Memory input and missing-callback admission; Stage 3k installed public calls/refusal/recovery; Stage 3l original target/caller metadata; Stage 3m durable Schedules trigger propagation; Stage 3n dependency resolution/cycles; Stage 3o activation publication/retirement; Stage 3p provider waiting, setup/callback/authority/lifetime integration. Compilation is not runtime acceptance. Stage 3m has implemented the earlier durable handoff gap.
 - Complete public independent-author/module packaging, final declaration/activation/package integrity audit, deletion audit and all requirement-level verification. Current-source author builds do not establish availability of a published Runtime module.
@@ -347,7 +352,7 @@ all P01-P48/final acceptance.
 
 ## Next
 
-1. Retire remaining contextual action and Core business facades by migrating
+1. Retire remaining Core business facades by migrating
    their real consumers. Preserve original binding/receipt/Run ownership and delete
    each replaced API/carrier in its owning slice. Retain Stage 4g native process
    acceptance for the final consolidated phase.
@@ -360,6 +365,8 @@ all P01-P48/final acceptance.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Contextual actions are ordinary Session components; business calls use canonical operations | The plugin owns its form, while Session revision/command/receipt remain with their existing owner; local menus need no I/O | Closed action enums, a special rename RPC/CLI wrapper, private Host forms, querying a new revision to construct a menu or retargeting an open draft |
+| 2026-10-14 | Capture accepted Session ID/revision/title when opening the action and retain the original uncertain mutation | Navigation and response loss cannot change the submitted business intent or fabricate success | Reading current navigation after await, changing command identity on retry, optimistic saved state or silently adopting a conflicting revision |
 | 2026-10-14 | Tool renderers use ordinary components over public frozen recorded data; retire all guest machinery | Current installed presentation is not historical execution authority; the result and its Run remain with existing owners | Historical script installation, Tool replay, old readRenderer aliases, duplicate Tool projection schemas or preserving unused native/page channels |
 | 2026-10-14 | Resource unavailability preserves its I/O cause and cancellation category at the public adapter | Ordinary ESM resources require the same integrity/refusal guarantee as the removed carrier | Weakening symlink/missing assertions, leaking bytes on error, replacing cancellation with unavailable or swallowing the underlying failure |
 | 2026-10-14 | File renderers use ordinary components over frozen accepted reads | The read is already owned by Runtime; a carrier refresh is not another file access owner, and a component needs the same public module/lifetime contract as other placements | File HTML compatibility, live navigation retargeting, backend activation for static data or a second file store |
@@ -481,10 +488,10 @@ Status is open until code and appropriate verification prove the requirement.
 | --- | --- | --- |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i; contextual action and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
+| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; remaining Core facade migration and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | File-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining action placements and final lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -515,6 +522,29 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4j contextual Session components and closed action deletion
+
+- Passed: Runtime/CLI/Reviews production builds; SDK/shared-client/bundled/Desktop
+  TypeScript; targeted lint, exact component ESM reproduction, Vite and layer gate.
+  Source coverage is 100/100 after removing plugins.renameSession, without exemptions;
+  three sidecars and 15 existing topics remain covered.
+- Passed: Session placement scopes/material/selector admission (Domain 0.602s), public
+  component metadata without execution and retired action refusal (package 0.510s).
+  Shared RPC original Session target/revision/key replay passes (one focused test,
+  220ms); other shared-client tests were not run in this focused development check.
+- Passed: Bootstrap and CLI command/binding test-source compilation into removed
+  temporary binaries. Canonical Session revision/receipt/restart regression source
+  now calls sessions.update and verifies component withdrawal independently; final
+  native execution remains outstanding, not proven by source compilation.
+- Passed: locale gate 983 keys/eight locales after removal of old action strings and
+  four unused Stage 4i carrier strings. Initial inherited locale-gate failure is fixed;
+  no valid assertion or check was disabled. Type iteration errors from an accidental
+  extra point argument and an incorrect boundary import were repaired before commit.
+- Deleted: old title-only/closed-action protocol cases and exclusive frontend Host
+  form tests. No new frontend UI/E2E/screenshot tests or execution.
+- Not run: full Go/vet/race and supported native/component/restart acceptance, kept
+  for the final consolidated phase. Cross-generation UI command recovery remains open.
 
 ### Stage 4i public Tool results and all guest machinery deletion
 
@@ -1363,6 +1393,13 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 4j advances Core to 2026-10-14.6 and removes the plugin rename wrapper/DTO,
+  action enum/array/declaration and CLI subcommand; external Go/TS/CLI consumers must
+  rebuild and use canonical Session editing or the public installed business entrance.
+  Reinstall Trajectory at its new digest. Existing uncertain old wrapper requests are
+  not converted into new sessions.update commands. Private business/storage formats
+  remain unchanged; no data is deleted. Full cross-generation recovery/native execution
+  remains final acceptance work rather than a claim from the focused RPC replay test.
 - Stage 4i advances Core to 2026-10-14.5 and removes readRenderer, the HTML DTO/array
   and guest IPC; rebuild generated clients and reinstall Tool results. Shared UI theme
   projection/bootstrap exports are removed; external authors use ordinary provider
