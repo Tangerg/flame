@@ -17,6 +17,8 @@ import { space } from "@flame/ui/tokens.stylex";
 import { SettingsGroup, useAsyncFeedback } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 import { packageOperations, usePackageRealization, usePackages } from "../application/packages";
+import { ProviderSelections } from "./ProviderSelections";
+import { ContributionRequirements } from "./ContributionRequirements";
 import { PackageActions } from "./PackageActions";
 
 const styles = stylex.create({
@@ -81,6 +83,9 @@ export function PackageManager() {
           </SystemMessage>
         )}
       </div>
+      {operations && (
+        <ProviderSelections installations={catalog.data ?? []} operations={operations} />
+      )}
       <DataView
         items={catalog.data ?? []}
         isLoading={catalog.isLoading}
@@ -237,9 +242,33 @@ function PackageRow({
           {t("packages.uninstall")}
         </PillButton>
       </div>
+      <ContributionRequirements installation={installation} operations={operations} />
       <pre {...stylex.props(styles.preview)}>
         {JSON.stringify(
           {
+            contributions: installation.selected.contributions.map((value) => ({
+              id: value.id,
+              server: value.server,
+              export: value.export,
+              contract: value.contract.reference,
+              composition: value.contract.composition,
+              requires: value.requires.map((required) => ({
+                id: required.id,
+                contract: required.contract.reference,
+                optional: required.optional,
+              })),
+            })),
+            components: installation.selected.components,
+            points: installation.selected.points.map((value) => ({
+              id: value.id,
+              contract: value.contract.reference,
+              composition: value.contract.composition,
+              scope: value.contract.scope,
+            })),
+            pointValues: installation.selected.pointValues.map((value) => ({
+              id: value.id,
+              contract: value.contract.reference,
+            })),
             servers: installation.selected.servers,
             inputs: installation.selected.inputs,
             skills: installation.selected.skills,

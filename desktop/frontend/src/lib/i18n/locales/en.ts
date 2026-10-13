@@ -1,4 +1,36 @@
 export const en: Record<string, string> = {
+  "packages.module.loading": "Loading plugin view…",
+  "packages.module.failed": "The plugin view could not be loaded or displayed.",
+  "packages.module.unavailable": "The plugin is unavailable.",
+  "packages.module.reload": "Reload window",
+  "packages.module.resolvingWorkspace": "Resolving the current workspace…",
+  "packages.module.selectWorkspace": "Choose a Session with a workspace to view this page.",
+
+  "packages.providers.title": "Provider selections",
+  "packages.providers.refresh": "Refresh selections",
+  "packages.providers.future":
+    "Selections apply to future activations. Existing execution keeps its captured bindings.",
+  "packages.providers.none": "No provider has been selected.",
+  "packages.providers.count": "{{count}} recorded selections",
+  "packages.providers.current": "Selected: {{name}} · {{contribution}}",
+  "packages.providers.unavailable": "Selected but unavailable: {{name}} · {{contribution}}",
+  "packages.providers.unselected": "No provider selected for this role.",
+  "packages.providers.choose": "Choose provider",
+  "packages.providers.apply": "Apply selection",
+  "packages.providers.failed": "The selection could not be confirmed.",
+  "packages.providers.unknown":
+    "Confirmation is unknown. Keep original command {{id}} before making another selection.",
+  "packages.providers.reconcile": "Check original result",
+  "packages.requirements.title": "Dependencies",
+  "packages.requirements.inspect": "Inspect bindings",
+  "packages.requirements.future":
+    "Read the current declaration bindings. Displayed results are the last inspected snapshot; existing execution retains its admitted set.",
+  "packages.requirements.optional": "Optional",
+  "packages.requirements.required": "Required",
+  "packages.requirements.absent": "Optional dependency is absent.",
+  "packages.requirements.unread": "Bindings have not been read.",
+  "packages.requirements.failed": "The dependency bindings could not be read.",
+
   "common.cancel": "Cancel",
   "common.close": "Close",
 
@@ -233,10 +265,6 @@ export const en: Record<string, string> = {
   "context.usage.statusFull": "{{percent}}% used",
   "context.usage.statusLeft": "{{percent}}% used ({{remaining}}% left)",
   "context.usage.tooltip": "{{used}} / {{window}} tokens used",
-  "usage.range.all": "All",
-  "usage.range.30d": "30d",
-  "usage.range.7d": "7d",
-  "usage.rangeAria": "Usage range",
   "approvals.mode": "Mode",
   "approvals.mode.sub": "How much the agent may do without asking each time.",
   "approvals.mode.aria": "Approval mode",
@@ -688,10 +716,6 @@ export const en: Record<string, string> = {
 
   "composer.removeImage": "Remove image",
 
-  "diff.baselineAria": "Diff baseline",
-  "diff.noProject": "Select a project to inspect its workspace changes.",
-  "diff.mode.worktree": "Worktree",
-  "diff.mode.branch": "Branch",
   "diff.fileCount_one": "{{count}} file",
   "diff.fileCount_other": "{{count}} files",
   "file.lines_one": "{{count}} line",
@@ -774,8 +798,6 @@ export const en: Record<string, string> = {
   "reasoning.thought": "Thought",
   "reasoning.thoughtFor": "Thought for {{duration}}",
   "reasoning.interrupted": "interrupted",
-
-  "vcs.gitNotAvailable": "Git not available",
 
   "rpcError.session_has_active_run":
     "This session already has a run in flight — steer it, answer it, or cancel it first.",

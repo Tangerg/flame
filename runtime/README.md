@@ -86,6 +86,21 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Provider management clients
+
+The shared TypeScript client exposes `plugins.listProviders` and
+`plugins.selectProvider` as the same query/command catalog entries used by Go and
+CLI. The built-in graphical package manager displays recorded choices, including
+missing/disabled selected candidates, and submits explicit role/installation/
+contribution changes. It never infers selection from enablement or picks a default
+candidate. The Runtime selection owner continues to validate and persist the choice;
+existing execution retains its captured binding set. No protocol/storage change.
+
+The graphical dependency inspector uses the public current requirements query and
+labels its accepted read as the last inspected snapshot. Unknown selection outcomes
+retain their original command key and retry closure. Actual graphical execution and
+cross-reload recovery remain final-verification obligations.
+
 ## Protocol 2026-10-13.10
 
 Component declarations admit workspace scope and an optional generic `material`

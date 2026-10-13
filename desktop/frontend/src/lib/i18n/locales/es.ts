@@ -1,4 +1,37 @@
 export const es: Record<string, string> = {
+  "packages.module.loading": "Cargando la vista del plugin…",
+  "packages.module.failed": "No se pudo cargar o mostrar la vista del plugin.",
+  "packages.module.unavailable": "El plugin no está disponible.",
+  "packages.module.reload": "Recargar ventana",
+  "packages.module.resolvingWorkspace": "Resolviendo el espacio de trabajo actual…",
+  "packages.module.selectWorkspace":
+    "Elige una Session con espacio de trabajo para ver esta página.",
+
+  "packages.providers.title": "Selección de proveedores",
+  "packages.providers.refresh": "Actualizar selecciones",
+  "packages.providers.future":
+    "Las selecciones se aplican a futuras activaciones. Las ejecuciones existentes conservan sus enlaces.",
+  "packages.providers.none": "No se ha seleccionado un proveedor.",
+  "packages.providers.count": "{{count}} selecciones registradas",
+  "packages.providers.current": "Seleccionado: {{name}} · {{contribution}}",
+  "packages.providers.unavailable": "Seleccionado pero no disponible: {{name}} · {{contribution}}",
+  "packages.providers.unselected": "No hay proveedor seleccionado para este rol.",
+  "packages.providers.choose": "Elegir proveedor",
+  "packages.providers.apply": "Aplicar selección",
+  "packages.providers.failed": "No se pudo confirmar la selección.",
+  "packages.providers.unknown":
+    "Confirmación desconocida. Comprueba el comando original {{id}} antes de otra selección.",
+  "packages.providers.reconcile": "Comprobar resultado original",
+  "packages.requirements.title": "Dependencias",
+  "packages.requirements.inspect": "Inspeccionar enlaces",
+  "packages.requirements.future":
+    "Lee los enlaces actuales. Los resultados mostrados son la última instantánea inspeccionada; las ejecuciones existentes conservan sus enlaces aceptados.",
+  "packages.requirements.optional": "Opcional",
+  "packages.requirements.required": "Obligatorio",
+  "packages.requirements.absent": "La dependencia opcional está ausente.",
+  "packages.requirements.unread": "Todavía no se han leído los enlaces.",
+  "packages.requirements.failed": "No se pudieron leer los enlaces de dependencias.",
+
   "common.cancel": "Cancelar",
   "common.close": "Cerrar",
 
@@ -491,10 +524,6 @@ export const es: Record<string, string> = {
 
   "composer.removeImage": "Eliminar imagen",
 
-  "diff.baselineAria": "Base del diff",
-  "diff.noProject": "Selecciona un proyecto para revisar los cambios de su espacio de trabajo.",
-  "diff.mode.worktree": "Árbol",
-  "diff.mode.branch": "Rama",
   "diff.fileCount_one": "{{count}} archivo",
   "diff.fileCount_many": "{{count}} archivos",
   "diff.fileCount_other": "{{count}} archivos",
@@ -561,7 +590,6 @@ export const es: Record<string, string> = {
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",
   "reasoning.interrupted": "interrumpido",
-  "vcs.gitNotAvailable": "Git no disponible",
 
   "composer.placeholder.steer": "Envía un mensaje para guiar el turno en curso…",
   "composer.action.steer": "Guiar el turno en curso",
@@ -592,10 +620,6 @@ export const es: Record<string, string> = {
   "context.usage.statusFull": "{{percent}}% usado",
   "context.usage.statusLeft": "{{percent}}% usado (queda {{remaining}}%)",
   "context.usage.tooltip": "{{used}} tokens usados, {{window}} en total",
-  "usage.range.all": "Todo",
-  "usage.range.30d": "30 d",
-  "usage.range.7d": "7 d",
-  "usage.rangeAria": "Periodo de uso",
   "approvals.toolClass.write": "Ediciones",
   "approvals.toolClass.exec": "Comandos",
   "approvals.toolClass.network": "Red",

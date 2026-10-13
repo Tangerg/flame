@@ -1,4 +1,37 @@
 export const ja: Record<string, string> = {
+  "packages.module.loading": "プラグインのビューを読み込み中…",
+  "packages.module.failed": "プラグインのビューを読み込みまたは表示できません。",
+  "packages.module.unavailable": "プラグインは利用できません。",
+  "packages.module.reload": "ウィンドウを再読み込み",
+  "packages.module.resolvingWorkspace": "現在のワークスペースを解決中…",
+  "packages.module.selectWorkspace":
+    "このページを表示するには、ワークスペースを持つ Session を選択してください。",
+
+  "packages.providers.title": "プロバイダーの選択",
+  "packages.providers.refresh": "選択を更新",
+  "packages.providers.future":
+    "選択は次回の起動に適用されます。実行中の処理は既存のバインドを保持します。",
+  "packages.providers.none": "プロバイダーは未選択です。",
+  "packages.providers.count": "記録された選択：{{count}} 件",
+  "packages.providers.current": "選択済み：{{name}} · {{contribution}}",
+  "packages.providers.unavailable": "選択済みですが利用不可：{{name}} · {{contribution}}",
+  "packages.providers.unselected": "このロールのプロバイダーは未選択です。",
+  "packages.providers.choose": "プロバイダーを選択",
+  "packages.providers.apply": "選択を適用",
+  "packages.providers.failed": "選択を確認できませんでした。",
+  "packages.providers.unknown":
+    "確認結果は不明です。別の選択を行う前に元のコマンド {{id}} を確認してください。",
+  "packages.providers.reconcile": "元の結果を確認",
+  "packages.requirements.title": "依存関係",
+  "packages.requirements.inspect": "バインドを確認",
+  "packages.requirements.future":
+    "現在の宣言のバインドを取得できます。表示は前回取得した結果で、既存の実行は受理時のバインドを保持します。",
+  "packages.requirements.optional": "任意",
+  "packages.requirements.required": "必須",
+  "packages.requirements.absent": "任意の依存関係はありません。",
+  "packages.requirements.unread": "バインドは未取得です。",
+  "packages.requirements.failed": "依存関係のバインドを取得できませんでした。",
+
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
 
@@ -471,10 +504,6 @@ export const ja: Record<string, string> = {
 
   "composer.removeImage": "画像を削除",
 
-  "diff.baselineAria": "Diff ベースライン",
-  "diff.noProject": "ワークスペースの変更を確認するプロジェクトを選択してください。",
-  "diff.mode.worktree": "ワークツリー",
-  "diff.mode.branch": "ブランチ",
   "diff.fileCount_other": "{{count}} 個のファイル",
 
   "compaction.compacted": "コンテキストが自動的に圧縮されました",
@@ -539,7 +568,6 @@ export const ja: Record<string, string> = {
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "{{duration}} 思考",
   "reasoning.interrupted": "中断",
-  "vcs.gitNotAvailable": "Git を利用できません",
 
   "composer.placeholder.steer": "実行中のターンを誘導するメッセージを送信…",
   "composer.action.steer": "実行中のターンを誘導",
@@ -566,10 +594,6 @@ export const ja: Record<string, string> = {
   "context.usage.statusFull": "{{percent}}% 使用済み",
   "context.usage.statusLeft": "{{percent}}% 使用済み（残り {{remaining}}%）",
   "context.usage.tooltip": "{{used}} トークン使用、合計 {{window}}",
-  "usage.range.all": "すべて",
-  "usage.range.30d": "30日",
-  "usage.range.7d": "7日",
-  "usage.rangeAria": "使用量の期間",
   "approvals.toolClass.write": "編集",
   "approvals.toolClass.exec": "コマンド",
   "approvals.toolClass.network": "ネットワーク",

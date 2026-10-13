@@ -1,7 +1,12 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import { packageOperations, PACKAGES_KEY, usePackageRealization } from "../application/packages";
+import {
+  packageOperations,
+  PACKAGES_KEY,
+  PROVIDERS_KEY,
+  usePackageRealization,
+} from "../application/packages";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { Host } from "dougong";
@@ -14,6 +19,7 @@ let host: Host | undefined;
 const example = definePlugin({
   name: "flame.builtin.example",
   setup(ctx) {
+    ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
     ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [] });
   },
 });
@@ -68,6 +74,7 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-review",
         setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, {
             key: PACKAGES_KEY,
             fetcher: async () => [installation],
@@ -135,6 +142,7 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-input",
         setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
           ctx.cleanup(
             packageOperations.configure({
@@ -214,6 +222,7 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-realization",
         setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
           ctx.cleanup(
             packageOperations.configure({ signal: ctx.signal } as unknown as ReturnType<
@@ -248,6 +257,7 @@ describe("PluginsPane installation facts", () => {
       definePlugin({
         name: "test.package-release",
         setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
           ctx.cleanup(
             packageOperations.configure({ signal: ctx.signal } as unknown as ReturnType<

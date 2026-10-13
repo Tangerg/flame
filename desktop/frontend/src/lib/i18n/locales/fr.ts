@@ -1,4 +1,37 @@
 export const fr: Record<string, string> = {
+  "packages.module.loading": "Chargement de la vue du plugin…",
+  "packages.module.failed": "La vue du plugin ne peut pas être chargée ou affichée.",
+  "packages.module.unavailable": "Le plugin est indisponible.",
+  "packages.module.reload": "Recharger la fenêtre",
+  "packages.module.resolvingWorkspace": "Résolution de l’espace de travail actuel…",
+  "packages.module.selectWorkspace":
+    "Choisissez une Session avec un espace de travail pour afficher cette page.",
+
+  "packages.providers.title": "Sélection des fournisseurs",
+  "packages.providers.refresh": "Actualiser les sélections",
+  "packages.providers.future":
+    "Les sélections concernent les prochaines activations. Les exécutions en cours conservent leurs liaisons.",
+  "packages.providers.none": "Aucun fournisseur sélectionné.",
+  "packages.providers.count": "{{count}} sélections enregistrées",
+  "packages.providers.current": "Sélectionné : {{name}} · {{contribution}}",
+  "packages.providers.unavailable": "Sélectionné mais indisponible : {{name}} · {{contribution}}",
+  "packages.providers.unselected": "Aucun fournisseur sélectionné pour ce rôle.",
+  "packages.providers.choose": "Choisir un fournisseur",
+  "packages.providers.apply": "Appliquer la sélection",
+  "packages.providers.failed": "La sélection ne peut pas être confirmée.",
+  "packages.providers.unknown":
+    "Confirmation inconnue. Vérifiez la commande initiale {{id}} avant une autre sélection.",
+  "packages.providers.reconcile": "Vérifier le résultat initial",
+  "packages.requirements.title": "Dépendances",
+  "packages.requirements.inspect": "Inspecter les liaisons",
+  "packages.requirements.future":
+    "Lisez les liaisons actuelles. Les résultats affichés sont le dernier instantané inspecté ; les exécutions existantes conservent leurs liaisons admises.",
+  "packages.requirements.optional": "Facultatif",
+  "packages.requirements.required": "Requis",
+  "packages.requirements.absent": "La dépendance facultative est absente.",
+  "packages.requirements.unread": "Les liaisons ne sont pas encore lues.",
+  "packages.requirements.failed": "Impossible de lire les liaisons des dépendances.",
+
   "common.cancel": "Annuler",
   "common.close": "Fermer",
 
@@ -493,11 +526,6 @@ export const fr: Record<string, string> = {
 
   "composer.removeImage": "Supprimer l'image",
 
-  "diff.baselineAria": "Base du diff",
-  "diff.noProject":
-    "Sélectionnez un projet pour examiner les modifications de son espace de travail.",
-  "diff.mode.worktree": "Arbre",
-  "diff.mode.branch": "Branche",
   "diff.fileCount_one": "{{count}} fichier",
   "diff.fileCount_many": "{{count}} de fichiers",
   "diff.fileCount_other": "{{count}} fichiers",
@@ -565,7 +593,6 @@ export const fr: Record<string, string> = {
   "reasoning.thought": "Réflexion",
   "reasoning.thoughtFor": "Réflexion de {{duration}}",
   "reasoning.interrupted": "interrompu",
-  "vcs.gitNotAvailable": "Git non disponible",
 
   "composer.placeholder.steer": "Envoyer un message pour orienter le tour en cours…",
   "composer.action.steer": "Orienter le tour en cours",
@@ -596,10 +623,6 @@ export const fr: Record<string, string> = {
   "context.usage.statusFull": "{{percent}}% utilisés",
   "context.usage.statusLeft": "{{percent}}% utilisés ({{remaining}}% restants)",
   "context.usage.tooltip": "{{used}} tokens utilisés, {{window}} au total",
-  "usage.range.all": "Tout",
-  "usage.range.30d": "30 j",
-  "usage.range.7d": "7 j",
-  "usage.rangeAria": "Période d'utilisation",
   "approvals.toolClass.write": "Modifications",
   "approvals.toolClass.exec": "Commandes",
   "approvals.toolClass.network": "Réseau",

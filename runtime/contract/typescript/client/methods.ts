@@ -9,6 +9,8 @@ import type {
   PluginPointBinding,
   ResolvePluginRequirementsRequest,
   PluginCollaborator,
+  PluginProviderSelection,
+  SelectPluginProviderRequest,
   PluginInstallation,
   PluginViewResource,
   ReadPluginViewRequest,
@@ -318,6 +320,11 @@ export interface Methods {
     };
   };
   plugins: {
+    listProviders: (signal?: AbortSignal) => Promise<Page<PluginProviderSelection>>;
+    selectProvider: (
+      request: SelectPluginProviderRequest,
+      signal?: AbortSignal,
+    ) => MutationPromise<PluginProviderSelection>;
     openResources: (
       request: OpenPluginResourcesRequest,
       signal?: AbortSignal,
@@ -672,6 +679,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      listProviders: (signal) => call("plugins.listProviders", {}, { signal }),
+      selectProvider: (request, signal) => call("plugins.selectProvider", request, { signal }),
       openResources: (request, signal) => openResourceLease(client, call, request, signal),
       readResource: (request, signal) => call("plugins.readResource", request, { signal }),
       resolvePoint: (request, signal) => call("plugins.resolvePoint", request, { signal }),

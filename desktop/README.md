@@ -425,6 +425,21 @@ Runtime or clear observations. The trusted Clear button calls the existing store
 and retires the displayed page. Missing or competing Diagnostics contributions open
 the contribution catalogue from Run recovery controls.
 
+The built-in package manager remains available independently of installed views.
+Provider choices come from Runtime's recorded selections and admitted package
+metadata. Users explicitly select an installation/contribution for a selection role;
+disabled or missing selections remain visible, with no automatic candidate fallback.
+A changed choice affects future activation while existing execution retains its
+captured bindings. Unknown confirmation preserves the original command identity and
+exposes its original retry instead of creating another selection command.
+
+Dependency inspection reads the current selected release/contribution through
+`plugins.resolveRequirements`. Declared required/optional roles remain visible when
+inspection fails; successful empty optional bindings stay explicit. Displayed binding
+results are identified as the last inspected snapshot, not a new source of current
+execution state. Reads and commands use the existing contribution cancellation/join
+owner. Graphical execution is not claimed by source/build verification.
+
 The optional [Icon gallery](../plugins/icon-gallery/plugin.json) is an ordinary React
 component built from `@flame/icons` public catalog and React drawings. It filters
 immutable local cards with Hooks and uses the workbench's shared React/UI modules.

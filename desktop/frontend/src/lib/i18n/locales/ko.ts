@@ -1,4 +1,36 @@
 export const ko: Record<string, string> = {
+  "packages.module.loading": "플러그인 화면 로딩 중…",
+  "packages.module.failed": "플러그인 화면을 불러오거나 표시할 수 없습니다.",
+  "packages.module.unavailable": "플러그인을 사용할 수 없습니다.",
+  "packages.module.reload": "창 다시 로드",
+  "packages.module.resolvingWorkspace": "현재 작업 공간 확인 중…",
+  "packages.module.selectWorkspace": "이 페이지를 보려면 작업 공간이 있는 Session을 선택하세요.",
+
+  "packages.providers.title": "공급자 선택",
+  "packages.providers.refresh": "선택 새로 고침",
+  "packages.providers.future":
+    "선택은 이후 활성화에 적용됩니다. 기존 실행은 이미 연결된 공급자를 유지합니다.",
+  "packages.providers.none": "선택된 공급자가 없습니다.",
+  "packages.providers.count": "기록된 선택 {{count}}개",
+  "packages.providers.current": "선택됨: {{name}} · {{contribution}}",
+  "packages.providers.unavailable": "선택되었지만 사용할 수 없음: {{name}} · {{contribution}}",
+  "packages.providers.unselected": "이 역할에 선택된 공급자가 없습니다.",
+  "packages.providers.choose": "공급자 선택",
+  "packages.providers.apply": "선택 적용",
+  "packages.providers.failed": "선택을 확인할 수 없습니다.",
+  "packages.providers.unknown":
+    "확인 결과를 알 수 없습니다. 다른 선택 전에 원래 명령 {{id}}의 결과를 확인하세요.",
+  "packages.providers.reconcile": "원래 결과 확인",
+  "packages.requirements.title": "종속성",
+  "packages.requirements.inspect": "연결 확인",
+  "packages.requirements.future":
+    "현재 선언의 연결을 읽을 수 있습니다. 표시된 결과는 마지막 조회의 스냅샷이며 기존 실행은 수락 시점의 연결을 유지합니다.",
+  "packages.requirements.optional": "선택 사항",
+  "packages.requirements.required": "필수",
+  "packages.requirements.absent": "선택 종속성이 없습니다.",
+  "packages.requirements.unread": "연결 정보를 아직 읽지 않았습니다.",
+  "packages.requirements.failed": "종속성 연결을 읽을 수 없습니다.",
+
   "common.cancel": "취소",
   "common.close": "닫기",
 
@@ -469,10 +501,6 @@ export const ko: Record<string, string> = {
 
   "composer.removeImage": "이미지 제거",
 
-  "diff.baselineAria": "Diff 기준",
-  "diff.noProject": "작업 공간의 변경 사항을 확인할 프로젝트를 선택하세요.",
-  "diff.mode.worktree": "워크트리",
-  "diff.mode.branch": "브랜치",
   "diff.fileCount_other": "파일 {{count}}개",
 
   "compaction.compacted": "컨텍스트가 자동으로 압축됨",
@@ -536,7 +564,6 @@ export const ko: Record<string, string> = {
   "reasoning.thought": "생각",
   "reasoning.thoughtFor": "{{duration}} 동안 생각",
   "reasoning.interrupted": "중단됨",
-  "vcs.gitNotAvailable": "Git을 사용할 수 없음",
 
   "composer.placeholder.steer": "실행 중인 턴을 조정할 메시지 보내기…",
   "composer.action.steer": "실행 중인 턴 조정",
@@ -562,10 +589,6 @@ export const ko: Record<string, string> = {
   "context.usage.statusFull": "{{percent}}% 사용됨",
   "context.usage.statusLeft": "{{percent}}% 사용됨 ({{remaining}}% 남음)",
   "context.usage.tooltip": "{{used}} 토큰 사용, 총 {{window}}",
-  "usage.range.all": "전체",
-  "usage.range.30d": "30일",
-  "usage.range.7d": "7일",
-  "usage.rangeAria": "사용량 기간",
   "approvals.toolClass.write": "편집",
   "approvals.toolClass.exec": "명령",
   "approvals.toolClass.network": "네트워크",

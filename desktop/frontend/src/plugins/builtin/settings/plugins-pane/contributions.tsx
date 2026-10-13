@@ -1,7 +1,7 @@
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { lazy, Suspense } from "react";
 import { ComponentModules } from "./adapters/componentModules";
-import { InstalledComponent, ComponentBoundary } from "./ui/InstalledComponent";
+import { InstalledComponent, ComponentBoundary, ComponentLoading } from "./ui/InstalledComponent";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
@@ -32,7 +32,13 @@ import {
   contributePaletteTheme,
   retainThemeSelection,
 } from "@/plugins/builtin/theme/public/appearance";
-import { packageOperations, PACKAGES_KEY, usePackageRealization } from "./application/packages";
+import { trackContributionIO } from "@/plugins/sdk/contributionIO";
+import {
+  packageOperations,
+  PACKAGES_KEY,
+  PROVIDERS_KEY,
+  usePackageRealization,
+} from "./application/packages";
 import {
   createTrajectoryViewReads,
   createMemoryViewReads,
@@ -126,7 +132,7 @@ function createPackageReconciler(
             material: entry.material,
             component: () => (
               <ComponentBoundary>
-                <Suspense fallback={<p role="status">Loading plugin component…</p>}>
+                <Suspense fallback={<ComponentLoading />}>
                   <View />
                 </Suspense>
               </ComponentBoundary>
@@ -316,11 +322,34 @@ export function registerPackageContributions(
   modules: ComponentModules,
   generation: object,
 ): void {
-  scope.cleanup(packageOperations.configure({ ...client.plugins, signal: scope.signal }));
+  scope.cleanup(
+    packageOperations.configure({
+      ...client.plugins,
+      signal: scope.signal,
+      track: (operation) => trackContributionIO(scope, operation),
+    }),
+  );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
-    (await client.plugins.list(signal ? AbortSignal.any([scope.signal, signal]) : scope.signal))
-      .data;
+    (
+      await trackContributionIO(
+        scope,
+        client.plugins.list(signal ? AbortSignal.any([scope.signal, signal]) : scope.signal),
+      )
+    ).data;
   scope.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
+  scope.contribute(DATA_PROVIDER, {
+    key: PROVIDERS_KEY,
+    fetcher: async (_params?: unknown, signal?: AbortSignal) =>
+      (
+        await trackContributionIO(
+          scope,
+          client.plugins.listProviders(
+            signal ? AbortSignal.any([scope.signal, signal]) : scope.signal,
+          ),
+        )
+      ).data,
+  });
+
   let failure: { reason: string; retry(): void } | null = null;
   const withdrawFailure = () => {
     if (failure && usePackageRealization.getState().failure === failure)
@@ -346,7 +375,10 @@ export function registerPackageContributions(
         const rows = await fetcher(undefined, signal);
         if (signal.aborted) return;
         await reconcile(rows);
-        if (!signal.aborted) queryClient.setQueryData([PACKAGES_KEY], rows);
+        if (!signal.aborted) {
+          queryClient.setQueryData([PACKAGES_KEY], rows);
+          await queryClient.invalidateQueries({ queryKey: [PROVIDERS_KEY] });
+        }
       };
       try {
         const subscription = await client.runtimeEvents.subscribe(

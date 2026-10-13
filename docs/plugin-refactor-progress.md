@@ -2,54 +2,51 @@
 
 ## Current stage
 
-Stage 3v, committed in a8d757ec, migrates Diff to an ordinary workspace-scoped public React component.
-Host projects its existing current workspace reference and file-focus revision as
-frozen SDK context data. It exposes no private store or navigation object. Target/
-focus replacement retires the rendering instance; its signal cancels I/O and the
-existing contribution lifetime joins SDK calls. Component scopes are admitted by
-one Domain-owned pattern also projected into generated wire validation.
+Stage 3w adds actual built-in package provider management and dependency inspection.
+Shared TS methods now expose the existing listProviders/selectProvider query/command
+catalog bindings; no Core/backend protocol or storage change. Runtime remains the
+selection owner. The manager reads recorded role choices, derives visible candidates
+from admitted metadata, shows missing/disabled/unavailable selections and submits an
+explicit role/installation/contribution choice. It does not select from enablement
+or choose a first candidate. Unknown confirmation retains the original command and
+retry identity while new selection submission stays blocked.
 
-The component calls canonical `workspace.diff.get` and owns comparison mode,
-layout/filter/folding. Failed comparison reads retain the accepted snapshot with
-its actual mode. Fresh target/focus instances default to working-tree comparison.
-The former Host baseline preference and its API/schema/vocabulary are removed.
-An optional generic material key preserves the existing navigation consumer's
-single-candidate or catalogue behavior; the loader projects it without a Diff branch.
+The requirements inspector captures installation/digest/contribution and reads the
+public current binding query. Required/optional declarations remain visible on
+failure, and empty optional bindings are explicit. Its results are labeled as the
+last inspected snapshot, distinct from the immutable set held by existing execution.
+The original built-in manager remains available if an optional component fails.
 
-Delete old Diff HTML/source, Desktop carrier/adapters/types and duplicate public
-`plugins.readDiff` request/Go/catalog/shared TS bindings. Existing GUI fixtures are
-migrated and obsolete carrier tests removed, with no UI execution or new UI tests.
-Core protocol is 2026-10-13.10; backend remains .4. Workspace/business storage stays
-unchanged. Current frontend presentation preference shape drops the old baseline.
+Provider reads use the existing DataQuery projection and plugin notice invalidation.
+New management I/O and existing package/component calls share one contribution join
+mechanism; observer cancellation follows the current operations generation. Original
+promises and mutation handles are retained. Module failure/loading/workspace recovery
+copy is localized across all eight catalogs, and superseded Usage/Diff carrier copy
+is removed. Existing GUI fixtures add the required empty provider read projection;
+no new UI tests or UI execution.
 
-Core generation, production Runtime/CLI/Reviews build, public SDK/shared Runtime
-TS/portable/Desktop type checks, changed lint, production Vite build and exact ESM/
-remaining HTML rebuilds pass. Workspace component admission passes (1.128s), covering
-scope/navigation and invalid authored metadata. Canonical Git gate/retired wrapper
-regression passes (0.686s). Root/Domain/Delivery/Bootstrap test sources compile only;
-Bootstrap TestMain and final full/vet/race/lifecycle checks are not executed.
+Shared TS/Desktop types, changed lint, eight-locale check and production Vite build
+pass. One non-UI shared-client provider contract passes (0.379s): list is a query,
+selection captures its reviewed input and lost acknowledgement retries the original
+command key/input despite caller mutation. Full API-consumer check now fails only
+readResource and resolvePoint; requirements/list/selection have actual consumers.
+Full/vet/race/backend lifecycle execution remains final-phase work. Source/build
+checks do not prove graphical execution or cross-reload recovery.
 
-Main 9ef433b0 is merged in f1401198. Conflicts preserve both RunOpeningResult and
-ResourceSubscription exports and keep the retired Usage carrier test deleted while
-retaining main's actual Run recovery source. Integrated production Runtime/CLI/Reviews
-builds, Desktop/shared Runtime TS/public SDK/Reviews type checks and Vite build pass.
-Eleven non-UI resource-close/Run-opening client contracts pass in 0.600s.
-
-The API consumer checker now follows called helpers within the public SDK source
-and recognizes pure mapped workspace bindings without crediting their uncalled
-methods. Two focused static regressions pass in 0.331s. Its complete gate still fails
-for plugins.readResource, resolvePoint, resolveRequirements, listProviders and
-selectProvider. Resource HTTP-to-query consumption needs its real catalog projection;
-the other four need actual graphical feature consumers. No exclusion/dummy call was
-added. The former runs.getAcceptance source-consumer gap is supplied by main.
-
-Owned dist, temporary compile/build/source-probe outputs are removed. All command
-handles are terminal and user design hashes are unchanged. No graphical runtime
-proof is claimed. Full review/P01-P48
-completion remains open: remaining carriers/placements, dependency status/retention,
-all-consumer migration, canonical models/stream decorators and final requirement audit.
+Product commit, main synchronization and round cleanup are in progress. Full
+proposal/review/P01-P48 scope remains active, including point inspection/HTTP query
+projection, remaining carrier migration, observed dependency retention, canonical
+models/stream decorators and final requirement-level verification.
 
 ## Completed
+
+- Stage 3w: existing public provider APIs gain shared TS bindings and real built-in
+  manager controls; declared dependencies have actual public binding inspection.
+  Unknown commands retain identity; Runtime alone advances provider selection.
+- Stage 3w: DataQuery provider projection/notice invalidation, joined/canceled I/O,
+  generation-scoped observers and shared technical contribution join boundary.
+  Localize module recovery and management copy; remove retired carrier keys.
+
 
 - Stage 3v (a8d757ec): public frozen workspace/focus context, workspace scope admission and
   generic navigation metadata; actual ordinary Diff ESM over canonical Runtime reads.
@@ -248,21 +245,22 @@ all-consumer migration, canonical models/stream decorators and final requirement
 
 ## Next
 
-1. Migrate remaining real pages/renderers to public components and delete their
-   closed kinds, feature-specific carrier branches and obsolete resource paths.
-   Keep exact-release loading and shared module identity with their current owners.
-2. Complete remaining point lifecycle/scoped composition, named dependency status/
-   retention and actual Tool/automatic/cross-plugin consumer migration. Preserve
-   original command/receipt/Run acceptance and execution dependency ownership.
-3. Complete canonical model execution and installed remote streaming decorators,
-   explicit frozen order, cancellation/backpressure and inner evidence preservation.
-4. Finish independent author parity and the complete requirement-level final
-   verification/deletion audit. No graphical execution is claimed by builds.
+1. Complete actual point inspection and HTTP resource-to-query consumption projection.
+   Point contract transport must retain canonical JSON just as callable contracts do;
+   object serialization cannot preserve large numeric schema lexemes across TS.
+2. Continue real page/renderer migration and delete closed carrier paths. Keep capture,
+   ordinary shared modules and supported resource ownership with their current owners.
+3. Complete scoped point lifecycle, observed dependency status/retention, and actual
+   Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
+4. Complete canonical model execution/remote streaming decorators, frozen order,
+   cancellation/backpressure/inner evidence, independent author parity and final audit.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Keep provider choices in Runtime and project them through the existing built-in manager/DataQuery owner | Enablement and availability cannot silently select a role. Real human recovery needs visible recorded choices and explicit candidate submission | Local authoritative selection state, first-candidate defaults, inferred enablement selection or placeholder API calls |
+| 2026-10-13 | Share the existing contribution join mechanism across components and management I/O; preserve original promises | New inspected reads and uncertain settings commands need the same cancellation/join owner and intact mutation identity | A second lifetime root, wrapper promises losing retry/key fields, unjoined fire-and-forget work or automatic replacement commands |
 | 2026-10-13 | Host projects immutable workspace/focus context; Diff owns its local comparison mode and calls canonical workspace operations | Current workspace/focus already have owners, and only the replaced Diff carrier consumed the Host baseline preference. Ordinary authors need data and explicit public operations, not private stores | A second workspace selector, copied mutable Host stores, keeping the baseline owner/read wrapper, private author imports or opaque generic service lookup |
 | 2026-10-13 | Project optional generic material keys to the existing workspace navigation consumer | File-edit navigation must find admitted providers or open its catalogue; the consumer owns that meaning while loading remains generic | A Diff branch/package-name check in the loader, preferred first-party fallback, a new routing registry or competing current selection |
 | 2026-10-13 | Ordinary Usage components call the canonical public accounting query through their explicit SDK context | A trusted installed component needs no feature-specific carrier or duplicated query envelope; Runtime still owns all recorded accounting | Keeping plugins.readUsage, a dummy backend contribution, copied accounting/cache state, HTML compatibility or treating component retirement as Run cancellation |
@@ -390,6 +388,26 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3w development and provider client contracts
+
+- Passed: shared Runtime TS and Desktop type checks; changed source lint; complete
+  eight-locale check (1,046 keys); production Vite build. No backend source/schema
+  changed before main synchronization, so no repeated Go execution is claimed.
+- Passed focused non-UI client contract: provider list is a read; a selection captures
+  original role/installation/contribution and retries its same key/input after lost
+  acknowledgement and caller mutation (0.379s total). Existing GUI fixture data
+  providers are migrated without new assertions or UI execution.
+- Corrected verification failures: observer ownership no longer relies on an unused
+  memo dependency; mount/retirement owns the controller. Locale checks exposed earlier
+  component hard-coded recovery strings and retired carrier keys; translated controls
+  and deletion restore the gate without rule changes.
+- Failed/open: check-backend-api-consumers now names only plugins.readResource and
+  plugins.resolvePoint. The real requirement/provider read/selection callers are
+  recognized. Remaining semantic HTTP projection and point inspection are required.
+- Not run: full/vet/race/backend integration, concentrated at final phase; graphical
+  UI/E2E/screenshot/native execution, excluded. Cross-reload UI outcome recovery and
+  observed dependency state/retention are still open.
 
 ### Stage 3v development and workspace component contracts
 
@@ -851,6 +869,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3w adds shared client methods over existing Core .10/backend .4 and changes
+  graphical provider/read surfaces only. Rebuild the graphical client. Provider choice
+  affects future activation; read snapshots cannot rewrite already captured execution.
+  No storage conversion. Graphical/cross-reload outcome acceptance remains unexecuted.
+
 
 - Stage 3v advances Core to .10, adds workspace/material component metadata and removes
   the workspaceDiff kind/read wrapper. Rebuild clients and packages. Host baseline

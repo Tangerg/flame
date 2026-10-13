@@ -1,4 +1,37 @@
 export const de: Record<string, string> = {
+  "packages.module.loading": "Plugin-Ansicht wird geladen…",
+  "packages.module.failed": "Die Plugin-Ansicht konnte nicht geladen oder angezeigt werden.",
+  "packages.module.unavailable": "Das Plugin ist nicht verfügbar.",
+  "packages.module.reload": "Fenster neu laden",
+  "packages.module.resolvingWorkspace": "Aktueller Arbeitsbereich wird ermittelt…",
+  "packages.module.selectWorkspace":
+    "Wählen Sie eine Session mit Arbeitsbereich, um diese Seite anzuzeigen.",
+
+  "packages.providers.title": "Anbieterauswahl",
+  "packages.providers.refresh": "Auswahl aktualisieren",
+  "packages.providers.future":
+    "Die Auswahl gilt für künftige Aktivierungen. Bestehende Ausführungen behalten ihre Bindungen.",
+  "packages.providers.none": "Kein Anbieter ausgewählt.",
+  "packages.providers.count": "{{count}} gespeicherte Auswahlen",
+  "packages.providers.current": "Ausgewählt: {{name}} · {{contribution}}",
+  "packages.providers.unavailable": "Ausgewählt, aber nicht verfügbar: {{name}} · {{contribution}}",
+  "packages.providers.unselected": "Für diese Rolle ist kein Anbieter ausgewählt.",
+  "packages.providers.choose": "Anbieter wählen",
+  "packages.providers.apply": "Auswahl anwenden",
+  "packages.providers.failed": "Die Auswahl konnte nicht bestätigt werden.",
+  "packages.providers.unknown":
+    "Bestätigung unbekannt. Prüfen Sie den ursprünglichen Befehl {{id}} vor einer weiteren Auswahl.",
+  "packages.providers.reconcile": "Ursprüngliches Ergebnis prüfen",
+  "packages.requirements.title": "Abhängigkeiten",
+  "packages.requirements.inspect": "Bindungen prüfen",
+  "packages.requirements.future":
+    "Aktuelle Bindungen können gelesen werden. Angezeigt wird der zuletzt geprüfte Stand; bestehende Ausführungen behalten ihre bestätigten Bindungen.",
+  "packages.requirements.optional": "Optional",
+  "packages.requirements.required": "Erforderlich",
+  "packages.requirements.absent": "Die optionale Abhängigkeit ist nicht vorhanden.",
+  "packages.requirements.unread": "Bindungen wurden noch nicht gelesen.",
+  "packages.requirements.failed": "Abhängigkeitsbindungen konnten nicht gelesen werden.",
+
   "common.cancel": "Abbrechen",
   "common.close": "Schließen",
 
@@ -485,10 +518,6 @@ export const de: Record<string, string> = {
 
   "composer.removeImage": "Bild entfernen",
 
-  "diff.baselineAria": "Diff-Basis",
-  "diff.noProject": "Wähle ein Projekt, um Änderungen im Arbeitsbereich anzusehen.",
-  "diff.mode.worktree": "Arbeitsbaum",
-  "diff.mode.branch": "Branch",
   "diff.fileCount_one": "{{count}} Datei",
   "diff.fileCount_other": "{{count}} Dateien",
 
@@ -555,7 +584,6 @@ export const de: Record<string, string> = {
   "reasoning.thought": "Gedacht",
   "reasoning.thoughtFor": "{{duration}} nachgedacht",
   "reasoning.interrupted": "unterbrochen",
-  "vcs.gitNotAvailable": "Git nicht verfügbar",
 
   "composer.placeholder.steer": "Nachricht senden, um den laufenden Zug zu steuern…",
   "composer.action.steer": "Laufenden Zug steuern",
@@ -584,10 +612,6 @@ export const de: Record<string, string> = {
   "context.usage.statusFull": "{{percent}}% verwendet",
   "context.usage.statusLeft": "{{percent}}% verwendet ({{remaining}}% übrig)",
   "context.usage.tooltip": "{{used}} Tokens verwendet, {{window}} insgesamt",
-  "usage.range.all": "Alle",
-  "usage.range.30d": "30 T",
-  "usage.range.7d": "7 T",
-  "usage.rangeAria": "Nutzungszeitraum",
   "approvals.toolClass.write": "Änderungen",
   "approvals.toolClass.exec": "Befehle",
   "approvals.toolClass.network": "Netzwerk",

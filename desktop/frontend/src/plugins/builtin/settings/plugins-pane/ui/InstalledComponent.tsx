@@ -6,13 +6,14 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
+import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
-import { asyncDisposeSymbol } from "dougong";
 import type { ComponentContext, WorkspaceContext } from "@flame/plugin-sdk";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useWorkspaceFileFocus } from "@/plugins/builtin/workspace/public/navigation";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginOperationBinding } from "@flame/runtime-contract/wire";
+import { trackContributionIO } from "@/plugins/sdk/contributionIO";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 
 export class ComponentBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -21,15 +22,23 @@ export class ComponentBoundary extends Component<{ children: ReactNode }, { fail
     return { failed: true };
   }
   override render() {
-    return this.state.failed ? (
-      <div role="alert">
-        <p>The plugin component could not be loaded or displayed.</p>
-        <Button onClick={() => location.reload()}>Reload window</Button>
-      </div>
-    ) : (
-      this.props.children
-    );
+    return this.state.failed ? <ComponentRecovery failure="render" /> : this.props.children;
   }
+}
+
+export function ComponentLoading() {
+  const t = useT();
+  return <p role="status">{t("packages.module.loading")}</p>;
+}
+
+function ComponentRecovery({ failure }: { failure: "render" | "connection" }) {
+  const t = useT();
+  return (
+    <div role="alert">
+      <p>{t(failure === "render" ? "packages.module.failed" : "packages.module.unavailable")}</p>
+      <Button onClick={() => location.reload()}>{t("packages.module.reload")}</Button>
+    </div>
+  );
 }
 
 class ComponentInstance {
@@ -56,17 +65,8 @@ class ComponentInstance {
         : undefined,
       binding: this.binding ? structuredClone(this.binding) : undefined,
       signal: AbortSignal.any([this.controller.signal, this.lifetime.signal, this.resources]),
-      track: <T,>(operation: Promise<T>): Promise<T> => {
-        // The caller observes the result; the contribution owner joins I/O.
-        const join = () =>
-          operation.then(
-            () => undefined,
-            () => undefined,
-          );
-        const cleanup = this.lifetime.cleanup(join);
-        void join().then(() => cleanup[asyncDisposeSymbol]());
-        return operation;
-      },
+      track: <T,>(operation: Promise<T>): Promise<T> =>
+        trackContributionIO(this.lifetime, operation),
     });
   }
   getSnapshot = () => (this.context.signal.aborted ? null : this.context);
@@ -102,15 +102,8 @@ function RenderingComponent({
   const Entry = entry;
   return (
     <ComponentBoundary>
-      <Suspense fallback={<p role="status">Loading plugin component…</p>}>
-        {context ? (
-          <Entry context={context} />
-        ) : (
-          <div role="alert">
-            <p>The plugin's resource connection is unavailable.</p>
-            <Button onClick={() => location.reload()}>Reload window</Button>
-          </div>
-        )}
+      <Suspense fallback={<ComponentLoading />}>
+        {context ? <Entry context={context} /> : <ComponentRecovery failure="connection" />}
       </Suspense>
     </ComponentBoundary>
   );
@@ -125,6 +118,7 @@ type ComponentProps = {
 };
 
 function WorkspaceComponent(props: ComponentProps) {
+  const t = useT();
   const selection = useActiveSessionWorkspace();
   const focus = useWorkspaceFileFocus();
   const cwd = selection.status === "ready" ? selection.cwd : undefined;
@@ -139,8 +133,8 @@ function WorkspaceComponent(props: ComponentProps) {
     return (
       <p role="status">
         {selection.status === "resolving"
-          ? "Resolving the current workspace…"
-          : "Choose a Session with a workspace to use this component."}
+          ? t("packages.module.resolvingWorkspace")
+          : t("packages.module.selectWorkspace")}
       </p>
     );
   return (
