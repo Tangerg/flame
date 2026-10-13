@@ -2,7 +2,7 @@
 
 ## Current stage
 
-Stage 3v migrates Diff to an ordinary workspace-scoped public React component.
+Stage 3v, committed in a8d757ec, migrates Diff to an ordinary workspace-scoped public React component.
 Host projects its existing current workspace reference and file-focus revision as
 frozen SDK context data. It exposes no private store or navigation object. Target/
 focus replacement retires the rendering instance; its signal cancels I/O and the
@@ -29,14 +29,29 @@ scope/navigation and invalid authored metadata. Canonical Git gate/retired wrapp
 regression passes (0.686s). Root/Domain/Delivery/Bootstrap test sources compile only;
 Bootstrap TestMain and final full/vet/race/lifecycle checks are not executed.
 
-Product commit, incoming main Desktop Run reconciliation integration and round
-cleanup are in progress. No graphical runtime proof is claimed. Full review/P01-P48
+Main 9ef433b0 is merged in f1401198. Conflicts preserve both RunOpeningResult and
+ResourceSubscription exports and keep the retired Usage carrier test deleted while
+retaining main's actual Run recovery source. Integrated production Runtime/CLI/Reviews
+builds, Desktop/shared Runtime TS/public SDK/Reviews type checks and Vite build pass.
+Eleven non-UI resource-close/Run-opening client contracts pass in 0.600s.
+
+The API consumer checker now follows called helpers within the public SDK source
+and recognizes pure mapped workspace bindings without crediting their uncalled
+methods. Two focused static regressions pass in 0.331s. Its complete gate still fails
+for plugins.readResource, resolvePoint, resolveRequirements, listProviders and
+selectProvider. Resource HTTP-to-query consumption needs its real catalog projection;
+the other four need actual graphical feature consumers. No exclusion/dummy call was
+added. The former runs.getAcceptance source-consumer gap is supplied by main.
+
+Owned dist, temporary compile/build/source-probe outputs are removed. All command
+handles are terminal and user design hashes are unchanged. No graphical runtime
+proof is claimed. Full review/P01-P48
 completion remains open: remaining carriers/placements, dependency status/retention,
 all-consumer migration, canonical models/stream decorators and final requirement audit.
 
 ## Completed
 
-- Stage 3v: public frozen workspace/focus context, workspace scope admission and
+- Stage 3v (a8d757ec): public frozen workspace/focus context, workspace scope admission and
   generic navigation metadata; actual ordinary Diff ESM over canonical Runtime reads.
 - Stage 3v: delete Diff HTML/carrier/read wrapper and Host baseline preference.
   Preserve Git/path/refusal/rename/binary/truncation/restart/withdrawal/file retention
@@ -377,6 +392,17 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 ## Verification
 
 ### Stage 3v development and workspace component contracts
+
+- Passed after main 9ef433b0 integration: production Runtime/CLI/Reviews build,
+  Desktop/shared Runtime TS/public SDK/Reviews type checks and production Vite build.
+  Shared client resource-close/Run-opening 11 tests pass in 0.600s; no React rendering.
+- Passed after checker mapping repair: imported SDK helper is followed without
+  crediting unused returned members, and a bound object does not count as invoking
+  its methods (2 focused source-analysis tests, 0.331s). Scope remains SDK source.
+- Failed/open: full check-backend-api-consumers names readResource, resolvePoint,
+  resolveRequirements, listProviders and selectProvider. Genuine materialization and
+  consumer work remains; rules/exclusions are unchanged and no placeholder is added.
+
 
 - Passed: Core generation, production Runtime/CLI/Reviews build; public SDK/shared
   Runtime TS/portable/Desktop type checks; changed source lint, production Vite build,
@@ -719,6 +745,14 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3v: product a8d757ec and main merge/checker repair f1401198 are committed.
+  Formal Diff ESM/SDK/contract/source and necessary dependencies remain. Owned
+  frontend dist, exact-build temporary dirs, source-analysis probes and Go binaries
+  are removed; command handles are terminal. Empty retired Diff views folder removed.
+  No GUI/native/UI/E2E/screenshot execution, publication, credentials, shared config
+  or user-data mutation occurred. Keep the managed worktree and progress symlink.
+
+
 - Stage 3u: product/source 9376b997 is committed, main ffaf30c9 already included.
   Formal Usage ESM/source/generated contracts and necessary dependency artifacts
   remain. Owned dist, reproducibility directories and temporary Go binaries are
@@ -785,6 +819,13 @@ Stage 2a verification:
 - No remote push, publication, main-history mutation, production operation or credentialed action was performed.
 
 ## Unresolved questions
+
+- Main 9ef433b0 adds actual Desktop Start/Resume receipt reconciliation and the source
+  checker recognizes its GetRunAcceptance consumer. Current static gate still requires
+  real HTTP-resource query projection and graphical point/requirements/provider
+  consumers. See Stage 3v verification for the exact five failures; do not invent
+  calls or hand-written operation exemptions to satisfy it.
+
 
 - Execute real installed Stage 3p dependency waiting/setup/callback lifetime integration on the final source. Generic Tool call preparation, complete observed dependency states and execution-owned durable retention are still implementation requirements; setup callback references must not substitute for an invoked Tool's original calling context.
 
