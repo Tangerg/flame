@@ -56,6 +56,9 @@ type Item struct {
 	tool              *ToolInvocation
 	safetyClass       tool.SafetyClass
 	approvalDecision  approval.Decision
+	editedArguments   string
+	denialReason      string
+	rememberScope     approval.Scope
 	failure           *tool.Failure
 	summary           string
 	droppedMessages   int
@@ -77,6 +80,9 @@ type ItemSnapshot struct {
 	Tool              *ToolInvocation
 	SafetyClass       tool.SafetyClass
 	ApprovalDecision  approval.Decision
+	EditedArguments   string
+	DenialReason      string
+	RememberScope     approval.Scope
 	Failure           *tool.Failure
 	Summary           string
 	DroppedMessages   int
@@ -157,7 +163,9 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 		redacted: snapshot.Redacted, question: cloneQuestion(snapshot.Question),
 		tool: cloneToolInvocation(snapshot.Tool), safetyClass: snapshot.SafetyClass,
 		approvalDecision: snapshot.ApprovalDecision,
-		failure:          optional.Clone(snapshot.Failure), summary: snapshot.Summary,
+		editedArguments:  snapshot.EditedArguments, denialReason: snapshot.DenialReason,
+		rememberScope: snapshot.RememberScope,
+		failure:       optional.Clone(snapshot.Failure), summary: snapshot.Summary,
 		droppedMessages: snapshot.DroppedMessages,
 	}
 	if err := item.validate(); err != nil {
@@ -176,7 +184,8 @@ func (i Item) Snapshot() ItemSnapshot {
 		Redacted: i.redacted, Question: cloneQuestion(i.question),
 		Tool: cloneToolInvocation(i.tool), SafetyClass: i.safetyClass,
 		ApprovalDecision: i.approvalDecision,
-		Failure:          optional.Clone(i.failure), Summary: i.summary,
+		EditedArguments:  i.editedArguments, DenialReason: i.denialReason, RememberScope: i.rememberScope,
+		Failure: optional.Clone(i.failure), Summary: i.summary,
 		DroppedMessages: i.droppedMessages,
 	}
 }
@@ -241,21 +250,33 @@ func (i Item) AbandonStartedToolCall(
 // ToolCall. The decision is a durable semantic fact on the invocation rather
 // than a property of the current policy or its eventual execution outcome.
 // Identity and lifecycle remain unchanged, and a second verdict is rejected.
-func (i Item) ResolveToolApproval(decision approval.Decision) (Item, error) {
+func (i Item) ResolveToolApproval(resolution approval.Resolution) (Item, error) {
 	if i.kind != ToolCall || i.status != ItemRunning || i.tool == nil {
 		return Item{}, errors.New("transcript: only a running ToolCall can resolve approval")
 	}
-	if !decision.Valid() {
-		return Item{}, fmt.Errorf("transcript: unknown Tool approval decision %q", decision)
+	if !resolution.Decision.Valid() {
+		return Item{}, fmt.Errorf("transcript: unknown Tool approval decision %q", resolution.Decision)
 	}
 	if i.approvalDecision != "" {
 		return Item{}, errors.New("transcript: ToolCall approval is already resolved")
 	}
-	i.approvalDecision = decision
+	i.approvalDecision = resolution.Decision
+	i.editedArguments = resolution.EditedArguments
+	i.denialReason = resolution.Reason
+	i.rememberScope = resolution.RememberScope
 	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
 	return i, nil
+}
+
+// ApprovalResolution returns the complete accepted approval verdict. An empty
+// Decision means the ToolCall approval is unresolved.
+func (i Item) ApprovalResolution() approval.Resolution {
+	return approval.Resolution{
+		Decision: i.approvalDecision, EditedArguments: i.editedArguments,
+		Reason: i.denialReason, RememberScope: i.rememberScope,
+	}
 }
 
 func (i Item) settleToolCall(
@@ -419,6 +440,9 @@ func (i Item) rejectDisallowedPayload() error {
 		{i.kind != ToolCall && i.tool != nil, "Tool invocation"},
 		{i.kind != ToolCall && i.safetyClass != "", "Tool safety class"},
 		{i.kind != ToolCall && i.approvalDecision != "", "Tool approval decision"},
+		{i.kind != ToolCall && i.editedArguments != "", "Tool edited arguments"},
+		{i.kind != ToolCall && i.denialReason != "", "Tool denial reason"},
+		{i.kind != ToolCall && i.rememberScope != "", "Tool remember scope"},
 		{i.kind != ToolCall && i.failure != nil, "Tool failure"},
 		{i.kind != ToolCall && !i.finishedAt.IsZero(), "finish time"},
 		{i.kind != ToolCall && i.executionDuration != nil, "execution duration"},

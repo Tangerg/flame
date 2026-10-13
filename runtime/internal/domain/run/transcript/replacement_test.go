@@ -61,7 +61,7 @@ func TestReplacementRejectsReconstructedTranscriptRewrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	approved, err := started.ResolveToolApproval(approval.Allow)
+	approved, err := started.ResolveToolApproval(approval.Resolution{Decision: approval.Allow})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestReplacementAcceptsToolApprovalAndSettlement(t *testing.T) {
 		t.Fatal(err)
 	}
 	change, err := Replace(started, func(item Item) (Item, error) {
-		approved, err := item.ResolveToolApproval(approval.Allow)
+		approved, err := item.ResolveToolApproval(approval.Resolution{Decision: approval.Allow})
 		if err != nil {
 			return Item{}, err
 		}

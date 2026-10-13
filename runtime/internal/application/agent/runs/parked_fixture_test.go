@@ -168,7 +168,7 @@ func testTreeContinuationOf(pending Pending, interrupts []transcript.Interrupt) 
 
 func acceptTestApproval(t *testing.T, continuation *treeContinuation, itemID, callID string, decision approval.Decision) {
 	t.Helper()
-	item, err := continuation.items[itemID].ResolveToolApproval(decision)
+	item, err := continuation.items[itemID].ResolveToolApproval(approval.Resolution{Decision: decision})
 	if err != nil {
 		t.Fatal(err)
 	}

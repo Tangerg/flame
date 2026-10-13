@@ -57,7 +57,7 @@ func (r Replacement) validate() error {
 		decided, err = decided.AnswerQuestion(r.state.question.Answers)
 	case decided.kind == ToolCall && decided.status == ItemRunning && r.state.tool != nil:
 		if decided.approvalDecision != r.state.approvalDecision {
-			decided, err = decided.ResolveToolApproval(r.state.approvalDecision)
+			decided, err = decided.ResolveToolApproval(r.state.ApprovalResolution())
 			if err != nil {
 				break
 			}

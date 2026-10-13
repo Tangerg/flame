@@ -106,6 +106,19 @@ const (
 
 func (d Decision) Valid() bool { return d == Allow || d == Deny }
 
+// Resolution is one accepted human approval verdict in full: the decision, the
+// edited arguments the human confirmed, an optional denial reason, and any
+// standing-rule scope requested with it. The transcript Item owns it as the
+// canonical approval fact, so a restart reconstructs the exact accepted command
+// rather than inferring it from a later effective invocation; ApprovalDecision is
+// a derived query over it.
+type Resolution struct {
+	Decision        Decision
+	EditedArguments string
+	Reason          string
+	RememberScope   Scope
+}
+
 // Rule is one standing approval decision. A rule matches a tool call when the
 // call's scope key matches (same session / same project dir / always for
 // global), the tool reference and source fingerprint match, and the call's
