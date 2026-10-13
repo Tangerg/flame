@@ -2,54 +2,59 @@
 
 ## Current stage
 
-Stage 4t (7962f8f35) migrates actual CLI/workspace Memory editing and pin/unpin
-through the generated public update operation. All three share one item intent.
-The CLI freezes nullable patch pointers before asynchronous work, stages original
-raw input/binding/key/replay guard in the existing workbench, and decodes the
-publisher snapshot before retirement. Changed content, pin value or omission
-cannot replace an uncertain patch. Re-entering /memory-edit or pin/unpin first
-resumes the stored original patch before current workspace/catalog reads, without
-an invented display target. A changed editor resubmission fails visibly and keeps
-the editor open; resetting a draft to its old display value cannot bypass pending
-recovery. Original bytes remain with the workbench, not another result store.
+Stage 4u (ba903e64b) migrates actual CLI/workspace Memory additions through the
+publisher's generated public operation. One authoring intent retains original
+scope, captured path, content, binding, raw input, command identity and replay guard.
+CLI /memory-add resumes pending input before current workspace/catalog reads or
+opening another editor; changed target/content cannot replace uncertainty. PrepareAdd
+preserves the captured path rather than resolving it into different retry bytes.
+The private backend remains the sole project-root and deduplication owner. Its
+Changed result controls added/already-present presentation; no copied result store
+or deduplication state is introduced. Decoding and original scope validation precede
+intent retirement. Resumed CLI authoring has no invented current display target.
 
-Workspace update uses the existing named installed journal, freezes a deterministic
-publisher patch and validates identity, visible scope/status/origin, used field
-shapes and timestamps before settlement. Its cache rereads the current owner;
-original-provider output cannot overwrite all matching IDs in current projections.
-Remove the superseded global update projection commit. Read and update Go publisher
-rows share one read-model translation while remaining Core add still serves a real
-consumer. The CLI snapshot decoder rejects invalid projection and identity.
+Workspace additions require a captured project path; user scope ignores irrelevant
+path input. The existing named journal restores the original route before provider
+selection and refuses changed serialized scope/path/content. A validated publisher
+snapshot precedes settlement. Cache projections reread their current owner after
+acknowledgement instead of inserting an old provider's item into current state.
 
-Remove Core UpdateAgentMemory/agentMemory.update, its DTO/shape constraints,
-delivery port/mapping, selected-role forwarder and generated artifacts in the same
-change. Existing native/CLI/terminal/graphical fixture expressions use public
-requests and outputs; obsolete Core-only update assertions disappear and other
-coverage remains. Native restart comparison retains all previously projected
-fields. No frontend UI/E2E/screenshot cases are added or executed. Core is
-2026-10-14.15; backend protocol remains 2026-10-14.2, publisher contract and private
-business/storage/ledger/watermark/curation/receipt owners are unchanged.
+Remove the final Core AddAgentMemory/agentMemory.add facade, request/constraints,
+delivery handler/port, selected-role forwarder, Memory-specific Core feature and
+generated Go/TS artifacts in the same change. CLI negotiation uses plugins and the
+concrete published contract. Existing native/CLI/graphical fixture expressions are
+migrated; original native retries retain their request while genuinely new commands
+capture the newly selected provider. No frontend UI/E2E/screenshot cases are added
+or executed. Core is 2026-10-14.16; backend remains 2026-10-14.2 and private
+business/storage/receipt formats are unchanged. Core Memory read-model/limit/topic
+knowledge still has real consumers and remains an explicit ownership migration.
 
 Passed: Runtime/CLI/Reviews production builds; Desktop/shared types and Vite;
-CLI original-binding/restart/malformed-result regressions including update
-(7.567s) and pure terminal recovery policy including changed patch/omission
-(7.323s); Go protocol/delivery focused checks (0.538s/0.851s); Bootstrap/terminal
-test source compilation into automatically removed temporary outputs; source
-coverage (91/91 operation families, 109 typed calls, three sidecars and 15 topics);
-layer gate (1145 modules, 3701 edges); gofmt/diff checks. The existing identity-drift
-regression source now addresses the real generated snapshot decoder. Initial mock
-callability and native snapshot pointer errors are corrected; no active executed
-failure remains. Full/vet/race/native and real process-loss acceptance stay in the
-final consolidated phase. Source compilation is not native acceptance.
+CLI original-binding/restart/malformed-result regressions including add (8.421s),
+existing Go terminal focused checks (8.181s), protocol/delivery (2.280s/3.179s),
+Bootstrap/terminal/adapter/delivery/protocol test source compilation; source coverage
+(90/90 operation families, 107 typed calls, three sidecars, 15 topics); layer gate
+(1145 modules, 3701 edges). Final fixes pass captured-path adapter regression
+(6.058s), pure pending-add target/content regression (5.469s) and CLI production
+build. gofmt/diff checks pass. Initial compile/type fixture failures are repaired;
+no active executed failure remains. Source compilation is not native acceptance.
+Full/vet/race/native and actual process-loss acceptance stay in the final phase.
 
 Main 993eb865 is integrated; merge reports already up to date. Original proposal,
-review and draft hashes remain unchanged. Owned dist and temporary outputs are
-removed and no live tool process remains. Next migrate Memory add and the remaining
-Core feature/projections, then finish Tool/cross-plugin consumers, model streaming,
-scoped dependencies, all-workflow generation recovery, independent author parity
-and P01-P48/final acceptance. The full goal remains active.
+review and draft hashes are unchanged. Owned dist/temporary outputs are removed;
+user-owned stash is preserved. Next relocate remaining Core Memory projections,
+limits and topics, then complete scoped dependencies, actual Tool/automatic/cross-plugin
+consumers, model streaming, all-workflow generation recovery, independent author
+parity and P01-P48/final acceptance. The full goal remains active.
 
 ## Completed
+
+- Stage 4u (ba903e64b): actual CLI/workspace public additions with one original
+  authoring intent, captured path/content and pending-before-current-target recovery.
+- Stage 4u: publisher Changed/snapshot/scope validation before settlement, private
+  root/deduplication ownership and current-owner cache reread.
+- Stage 4u: remove last Core Memory facade/DTO/handler/forwarder/feature; migrate
+  actual source fixtures, preserve original native retries and fresh new-command binding.
 
 - Stage 4t (7962f8f35): CLI/workspace public update for content/pin/unpin with one
   frozen item intent, nullable patch distinction and original request recovery.
@@ -412,20 +417,14 @@ and P01-P48/final acceptance. The full goal remains active.
 
 ## In progress
 
-- Remaining CLI/desktop Memory add needs public operation and original intent
-  recovery. The named journal primitive and migrated deletion/review/update
-  do not prove recovery of every existing component or Tool workflow.
-- Actual Memory reads/deletion/review/update are public installed operations in
-  CLI and the workspace client. Add remains the last Core mutation; finish its
-  original-intent migration and simultaneous facade/type/feature deletion. Native
-  process selection/withdrawal/restart execution remains for final acceptance.
-- Schedule Core business facade migration is complete for actual CLI reads and
-  all mutations. Final native response-loss/restart/withdrawal/retirement execution
-  and the wider notification/cross-language number/author parity audits remain open.
-- Final native acceptance must exercise all migrated Schedule operations and Memory
-  reads/deletion/review/update across client/Runtime restart, response loss and installation
-  replacement/disablement/uninstall, including missing original receipts. Memory
-  add remains an actual migration; Schedule Core facades have been removed.
+- All actual CLI/workspace Memory reads and human mutations now use the public
+  installed publisher contract. Core business methods/DTOs and the Memory feature
+  are removed. Relocate remaining read-model/limit/topic knowledge and audit every
+  component, Tool and automatic workflow for original-route recovery.
+- Schedule Core business facade migration is complete. Full native lost-response,
+  restart, replacement/disablement/uninstall/retirement execution for every migrated
+  Schedule and Memory operation, including missing original receipts, remains final
+  acceptance. Wider notification, cross-language number and author parity remain open.
 - Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
@@ -437,10 +436,9 @@ and P01-P48/final acceptance. The full goal remains active.
 
 ## Next
 
-1. Retire remaining Core business facades by migrating
-   their real consumers. Preserve original binding/receipt/Run ownership and delete
-   each replaced API/carrier in its owning slice. Retain Stage 4g native process
-   acceptance for the final consolidated phase.
+1. Relocate remaining Core Memory read-model/limit/topic business knowledge through
+   actual consumers. Preserve original binding/receipt/Run ownership, delete replaced
+   contracts in the owning slice and retain native acceptance for the final phase.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
 3. Complete canonical model execution/remote streaming decorators, frozen order,
@@ -450,6 +448,9 @@ and P01-P48/final acceptance. The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | One Memory authoring intent retains original scope/path/content and resolves pending before current-target reads | A lost acknowledgement may already have committed; another target/draft cannot originate a second addition | Target-specific competing intents, current-provider replay, fresh editor prerequisite or copied result store |
+| 2026-10-14 | Public additions retain the captured path; private Memory resolves its project root and owns deduplication/Changed | Host path resolution rewrites retry evidence and adds a second business boundary; the publisher already owns target semantics | Resolving a different default workspace, replacing pending input with canonicalized paths, host deduplication or inferred duplicate status |
+| 2026-10-14 | Retire final Core Memory method and feature with all actual CLI/workspace consumers | Plugin business capabilities are resolved through plugins and exact publisher contracts | Retaining Core add/DTO/handler/forwarder/feature or a compatibility alias; claiming live read models/limits/topics are already eliminated |
 | 2026-10-14 | Content, pin and unpin share one original item update intent | An uncertain content change cannot absorb another pin/draft command or close a newly edited form as saved | Patch-specific parallel intents, fresh catalog before recovery, merging current draft fields into pending input or replacing nil with false |
 | 2026-10-14 | Decode publisher snapshot before intent retirement and reread current cache owner | Malformed or foreign output cannot confirm the original edit or overwrite another provider's projection | Core update DTO/alias, blindly trusted JSON casts, global cached-ID replacement or another copied business result store |
 | 2026-10-14 | Approve and reject share one stable item review intent in each actual client | Unknown approval may already have changed or removed the pending item; opposite submission cannot replace its original outcome | Decision-specific parallel intents, fresh catalog prerequisite, another command ID or reporting a new desired choice as the old command's result |
@@ -602,8 +603,8 @@ Status is open until code and appropriate verification prove the requirement.
 | --- | --- | --- |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; remaining Core facade migration and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; CLI Schedules and CLI/workspace Memory reads/deletion/review/update use public contracts with original binding/input; Core Memory list/deletion/review/update removed; add, Tool/all-consumer migration and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; CLI runtimebinding/agentmemory.go and terminal/agent_memory_management.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
+| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory read-model/limit/topic knowledge and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
+| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; all CLI Schedules and CLI/workspace Memory reads/human mutations use public contracts with original binding/input; all Core Memory business methods/DTOs/feature removed; Core projections/limits/topics, Tool/all-consumer migration and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; CLI runtimebinding/agentmemory.go and terminal/agent_memory_management.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
@@ -636,6 +637,24 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4u final Memory Core facade cutover
+
+- Passed: Runtime/CLI/Reviews production builds; Desktop/shared typecheck and Vite;
+  source coverage 90/90, 107 typed calls, three sidecars/15 topics; layer 1145/3701.
+- Passed: CLI original-provider/raw-input/command/restart/malformed-result checks
+  including add (8.421s), Go terminal focused checks (8.181s), protocol/delivery
+  (2.280s/3.179s); source compilation for affected native/terminal/adapter packages.
+- Passed after final fixes: captured project path regression (6.058s), pure pending
+  target/content fence (5.469s), CLI build, gofmt and diff checks. A preceding pure
+  pending-add check also passed (5.884s). No frontend UI/E2E/screenshot execution.
+- Source fixture migration preserves native original requests and captures a new
+  binding only for a genuinely new command after provider replacement. Source
+  compilation is not execution evidence; native/full/vet/race remain final-phase work.
+- Original input hashes are unchanged; owned dist is removed; user stash preserved.
+  Main 993eb865 merge is already up to date. No retired Core command is converted
+  to a new public command; independent/external clients must rebuild.
+
 
 ### Stage 4p public Memory catalog read cutover
 
@@ -1613,27 +1632,27 @@ Stage 2a verification:
 
 - Stage 4p proves actual public read compilation, CLI contracts and binding refusal,
   not the complete native selection/withdrawal/restart matrix or rendered context
-  behavior. Memory mutation/notification/independent-author platform work remains.
+  behavior. Memory notification/independent-author platform work and final mutation acceptance remain.
 - All CLI Schedule Core entrances are now migrated. Native public-call process
   loss/replacement/disablement/uninstall execution, generic notification ownership,
   portable wide-number consumer behavior and independent author packaging remain
   part of the full goal; this slice does not establish them by compilation alone.
 - Stage 4n completes actual public creation/capture and source migration, not the
-  whole native lost-create/revocation/restart matrix. Update still consumes Core
-  Schedule transport types; retire it and those types in the next owning slice.
+  whole native lost-create/revocation/restart matrix. Later Stage 4o retires the
+  last Schedule update method and its types; final execution remains open.
 - Stage 4m migrates the actual manual entrance and preserves original request/typed
   acknowledgement ordering. The native public-call response-loss/restart/disablement
   matrix is compiled but remains unexecuted until final consolidated acceptance.
 - Stage 4l proves CLI intent persistence/reopen and public adapter dispatch, not the
   complete native client-plus-Runtime response-loss/restart/replacement matrix.
-  Remaining Schedule create/update/run-now and Memory facades are still real work.
+  Later owning slices retire Schedule/Memory business facades; full integration remains open.
 - Stage 4g implements post-setup activation, private clock/scan/original recovery,
   generic owner notices and host-driver deletion. Execute native acceptance for enabled
   non-selected installations, lost Core acknowledgement, restart/disable/replacement
   and independently accepted Runs on the final source. No second wake owner is permitted.
-- Retire the five remaining Schedule Core business facades through actual CLI/native
-  consumer migration. Their static product consumption is not proof of complete shared
-  installed entrance migration. Cross-generation command journal recovery remains open.
+- All Schedule Core business facades are retired through actual consumer migration.
+  Compilation does not prove all native/automatic/cross-plugin lifecycle behavior.
+  Complete cross-generation command recovery acceptance remains open.
 
 - Stage 4b implements existing Memory/Schedules consumer invalidation for public
   commands, including original receipt recovery/uncertainty, with focused evidence.
@@ -1674,6 +1693,12 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Core .16 removes the last Memory mutation and feature. External clients must
+  rebuild and adopt published installed operations; unknown old Core commands
+  receive no retargeting or conversion. Project additions require the caller's
+  captured workspace. Core read-model/limit/topic migration and full native
+  acceptance remain open, with private data/receipt formats unchanged.
+
 - Core .12 removes a public Memory list API/request and workspace convenience read.
   In-repository callers migrate; external consumers cannot be enumerated here and
   need the installed contract. CLI/workspace materialization remains bounded by
@@ -1688,8 +1713,8 @@ Stage 2a verification:
   or replay promise cannot be restored; the CLI will not originate a new creation.
 - Core .9 removes a public Schedule manual-execution method and both DTOs. All
   in-repository callers and generated projections migrate; external consumers
-  need the published installed operation. Remaining Core create/update methods
-  are actual work, and no removed-method request is translated through an alias.
+  need the published installed operation. Later slices remove Core create/update;
+  no removed-method request is translated through an alias.
 - Stage 4l removes a public Go/Protocol/TS Schedule deletion entrance. In-repository
   callers and generated contracts are migrated; external consumers cannot be
   enumerated from this checkout and must adopt the documented public installed call.
