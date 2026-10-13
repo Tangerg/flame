@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/Tangerg/sse"
 )
@@ -59,7 +60,13 @@ func NewStreamingCallback[P, C, R any](method *StreamingMethod[P, C, R], handler
 	if method == nil || handler == nil {
 		return Callback{}, errors.New("plugin: streaming callback requires its method and owner")
 	}
-	return Callback{method: boundMethod{contract: method.contract, stream: func(ctx context.Context, wire *invokeParams) (iter.Seq2[streamValue, error], error) {
+	return Callback{method: bindStreaming(method, func(ctx context.Context, _ *sdk.ServerSession, command Command[P]) iter.Seq2[StreamValue[C, R], error] {
+		return handler(ctx, command)
+	})}, nil
+}
+
+func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, *sdk.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) boundMethod {
+	return boundMethod{contract: method.contract, stream: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (iter.Seq2[streamValue, error], error) {
 		ctx, command, err := admitCommand[P](ctx, method.contract, wire)
 		if err != nil {
 			return nil, err
@@ -67,7 +74,7 @@ func NewStreamingCallback[P, C, R any](method *StreamingMethod[P, C, R], handler
 		return func(yield func(streamValue, error) bool) {
 			final := false
 			var outcome streamValue
-			for item, err := range handler(ctx, command) {
+			for item, err := range handler(ctx, session, command) {
 				if err != nil {
 					yield(streamValue{}, err)
 					return
@@ -109,11 +116,11 @@ func NewStreamingCallback[P, C, R any](method *StreamingMethod[P, C, R], handler
 				yield(outcome, nil)
 			}
 		}, nil
-	}}}, nil
+	}}
 }
 
 func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMethod, wire *invokeParams, limits CallbackLimits) {
-	sequence, err := method.stream(context.WithValue(r.Context(), streamCapacityKey{}, limits.MaxResponseBytes), wire)
+	sequence, err := method.stream(context.WithValue(r.Context(), streamCapacityKey{}, limits.MaxResponseBytes), nil, wire)
 	if err != nil {
 		http.Error(w, "callback stream input refused", http.StatusBadRequest)
 		return

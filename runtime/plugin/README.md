@@ -316,3 +316,33 @@ decorator selection/retention, host-to-backend streaming, TS author parity and
 Interaction/auxiliary/Memory production migration remain open. Ordinary unary binding
 and installed unary admission refuse stream methods before delivery/route persistence.
 Only the actual streaming callback APIs advertise stream support.
+
+## Backend streams
+
+StreamingMethod.RegisterServer binds a real SDK backend stream under the same
+method/capability publication checks. StreamingMethod.StreamWithMetadata and
+Binding.StreamWithMetadata keep one original MCP request for input/final result.
+The backend sends ordered chunks synchronously to a captured Runtime callback,
+whose acknowledgement follows actual consumer demand. That existing second
+direction supplies backpressure without another listener, standard-pipe reverse
+request assumptions, notification queue or business result store.
+
+The receiving reference belongs to the MCP session and call; original callback
+metadata remains available for a decorator's model next. Concurrent/out-of-order
+chunk delivery is refused, bytes/schema are checked before consumption and final
+schema/capacity checks precede completion. Early stop cancels and joins the control
+request and receiver. A failed stream retains observed chunks and an unconfirmed
+final outcome; it is delivered once without retry. Typed stream input is captured
+before lazy delivery. Metadata is also captured as original JSON before iteration;
+per-key raw values avoid narrowing numeric lexemes through float64. A caller's
+replacement callback/parent metadata cannot retarget the retained stream. Unary
+raw/typed invocation still refuses stream contracts.
+
+The external-package stdio subprocess publishes an exact decoration export, calls
+captured model next within its original request, transforms input/outer chunks and
+preserves known inner response/usage with outer failure. This proves real bidirectional
+SDK transport; Runtime installation admission/original route/recovery and production
+model/dependency composition are the next owning migration. General plugins.call and
+component bindings remain unary until that path is implemented; no compatibility
+alias or falsely streaming unary method is added. Backend protocol/private formats
+are unchanged.

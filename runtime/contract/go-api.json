@@ -1792,6 +1792,10 @@
               "signature": "func(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, bool, error)"
             },
             {
+              "name": "StreamWithMetadata",
+              "signature": "func(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id string, input jsoninput.Input, metadata mcp.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error]"
+            },
+            {
               "name": "ValidateInput",
               "signature": "func(input jsoninput.Input) error"
             }
@@ -2309,6 +2313,14 @@
             {
               "name": "Descriptor",
               "signature": "func() capability.MethodDescriptor"
+            },
+            {
+              "name": "RegisterServer",
+              "signature": "func(backend *Backend, handler func(context.Context, *mcp.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) error"
+            },
+            {
+              "name": "StreamWithMetadata",
+              "signature": "func(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id string, input P, metadata mcp.ParamsBase) iter.Seq2[StreamValue[C, R], error]"
             }
           ]
         }

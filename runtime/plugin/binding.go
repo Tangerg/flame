@@ -69,6 +69,13 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 }
 
 func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, meta sdk.ParamsBase) (*Result[jsontext.Value], error) {
+	if b != nil && len(b.method.Descriptor().Stream) != 0 {
+		return nil, errors.New("plugin: streaming method requires streaming delivery")
+	}
+	return b.invokeMode(ctx, id, input, meta)
+}
+
+func (b *Binding) invokeMode(ctx context.Context, id string, input jsoninput.Input, meta sdk.ParamsBase) (*Result[jsontext.Value], error) {
 	var err error
 	meta, err = invocationMetadata(ctx, meta)
 	if err != nil {

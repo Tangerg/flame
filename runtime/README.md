@@ -198,6 +198,16 @@ Backend remains 2026-10-14.2; no private storage or receipt format changes. Rebu
 current Core/Go/TS consumers together; no new method or descriptor promises streaming
 through a transport that has not implemented it.
 
+The public SDK now also registers and consumes real backend streams. One original
+MCP request carries the final result; synchronous acknowledged chunk delivery uses
+its existing authenticated Runtime callback lifetime. Real stdio executable proof
+includes model-next reentrancy, immutable invocation, demand backpressure, cancel/
+join and known inner response with outer failure. No backend listener or event queue
+is introduced. This SDK support does not replace Runtime's installed command-route
+owner: installation-qualified stream admission/recovery, production model chains,
+dependency retention and TS delivery remain open. Existing unary entrances continue
+to refuse stream methods before route creation.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

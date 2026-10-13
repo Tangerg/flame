@@ -72,7 +72,7 @@ type Description struct {
 type boundMethod struct {
 	contract *capability.Method
 	invoke   func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[jsontext.Value], error)
-	stream   func(context.Context, *invokeParams) (iter.Seq2[streamValue, error], error)
+	stream   func(context.Context, *sdk.ServerSession, *invokeParams) (iter.Seq2[streamValue, error], error)
 }
 
 // Backend owns declaration/code binding and publication. Setup is explicit;
@@ -116,6 +116,9 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		}
 		if exportErr != nil {
 			return nil, exportErr
+		}
+		if method.stream != nil {
+			return invokeBackendStream(ctx, session, method, params)
 		}
 		return method.invoke(ctx, session, params)
 	}); err != nil {
@@ -164,7 +167,7 @@ func (b *Backend) register(method boundMethod) error {
 	if b == nil {
 		return errors.New("plugin: backend is required")
 	}
-	if method.contract == nil || method.invoke == nil {
+	if method.contract == nil || method.invoke == nil && method.stream == nil {
 		return errors.New("plugin: admitted method and handler are required")
 	}
 	b.mu.Lock()
