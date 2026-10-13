@@ -12,6 +12,7 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
@@ -136,6 +137,28 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 		return nil, mcp.ErrUnavailable
 	}
 	return p.inner.ServiceSession(ctx, descriptor)
+}
+
+// SessionActor captures only the registry source realized by this exact live
+// session. The Run transaction rechecks its immutable authority before commit.
+func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.ClientSession) (operation.Actor, error) {
+	descriptor, found, err := p.registry.Dispatchable(ctx, id)
+	if err != nil {
+		return operation.Actor{}, err
+	}
+	if !found || !descriptor.Enabled {
+		return operation.Actor{}, mcp.ErrUnavailable
+	}
+	current, err := p.inner.ServiceSession(ctx, descriptor)
+	if err != nil || current != expected {
+		return operation.Actor{}, errors.Join(mcp.ErrUnavailable, err)
+	}
+	release, authority, managed := descriptor.Source.Release()
+	if !managed {
+		return operation.Actor{}, mcp.ErrUnavailable
+	}
+	installation, _ := id.Origin().Installation()
+	return operation.NewActor(installation.String(), release.String(), authority.String(), descriptor.Name.String())
 }
 
 type MemoryContext func(context.Context, mcp.Executable) (context.Context, func(), error)

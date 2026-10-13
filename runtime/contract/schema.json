@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-13.1",
+  "protocolVersion": "2026-10-13.2",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -2723,6 +2723,9 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 255
+        },
+        "request": {
+          "$ref": "#/$defs/StartRunRequest"
         }
       },
       "required": [
@@ -9410,6 +9413,35 @@
         "sessionId"
       ]
     },
+    "RunSessionOpening": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspace": {
+          "$ref": "#/$defs/WorkspaceRef"
+        }
+      },
+      "required": [
+        "runId",
+        "sessionId",
+        "title",
+        "workspace"
+      ]
+    },
     "RunStatus": {
       "type": "string",
       "enum": [
@@ -11206,6 +11238,9 @@
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
+        "newSession": {
+          "$ref": "#/$defs/RunSessionOpening"
+        },
         "params": {
           "$ref": "#/$defs/GenerationParams"
         },
@@ -11221,16 +11256,40 @@
         },
         "sessionId": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         }
       },
       "required": [
-        "input",
-        "sessionId"
+        "input"
       ],
       "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "sessionId"
+              ]
+            },
+            {
+              "required": [
+                "newSession"
+              ]
+            }
+          ]
+        },
+        {
+          "if": {
+            "required": [
+              "newSession"
+            ]
+          },
+          "then": {
+            "properties": {
+              "sessionId": false
+            }
+          }
+        },
         {
           "if": {
             "required": [

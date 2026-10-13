@@ -71,9 +71,16 @@ func (h *runtimeApplication) newDeliveryEndpoint(
 	if err != nil {
 		return nil, err
 	}
+	if err := h.publishCallbacks(endpoint); err != nil {
+		return nil, err
+	}
+	return endpoint, nil
+}
+
+func (h *runtimeApplication) publishCallbacks(endpoint *delivery.Endpoint) error {
 	rpc, err := flamehttp.NewRPCHandler(endpoint)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	mux := http.NewServeMux()
 	for _, entry := range flamehttp.Contract().Endpoints {
@@ -81,10 +88,7 @@ func (h *runtimeApplication) newDeliveryEndpoint(
 			mux.Handle(entry.Method+" "+entry.Path, rpc)
 		}
 	}
-	if err := h.callbacks.PublishRPC(mux); err != nil {
-		return nil, err
-	}
-	return endpoint, nil
+	return h.callbacks.PublishRPC(mux)
 }
 
 func (h *runtimeApplication) notifyExternalChange() {

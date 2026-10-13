@@ -17,7 +17,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former column", `ALTER TABLE model_invocations DROP COLUMN usage`},
 		{"former installation trust state", `ALTER TABLE plugin_installations RENAME COLUMN enabled TO admission_state`},
 		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},
-		{"missing table", `DROP TABLE automation_starts`},
+		{"retired automation receipt", `CREATE TABLE automation_starts (run_id TEXT PRIMARY KEY, request_digest TEXT NOT NULL, session_id TEXT NOT NULL, segment_id TEXT NOT NULL)`},
 		{"former host without command routing", `DROP TABLE plugin_commands`},
 		{"former host command digest", `ALTER TABLE plugin_commands RENAME COLUMN input_json TO input_digest`},
 		{"former command without bound contract", `ALTER TABLE plugin_commands DROP COLUMN contract_json`},

@@ -210,6 +210,10 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	}
 	continuedEvents := collectInteractionEvents(sequence)
 	binding := pending.Bindings[0]
+	// Restoration starts a new observation; the earlier sibling's wait deadline
+	// cannot measure whether this newly admitted continuation finishes.
+	resumeCtx, cancelResume := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancelResume()
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
 		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
@@ -219,7 +223,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	var observed []runs.ExecutorEvent
 	select {
 	case observed = <-continuedEvents:
-	case <-ctx.Done():
+	case <-resumeCtx.Done():
 		t.Fatal("restored sibling tree did not finish")
 	}
 	var parentStarts, parentResults []string

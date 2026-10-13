@@ -18,14 +18,7 @@ func (i *interactionSession) sendExecutorRequest(
 ) error {
 	ctx, cancel := i.lifetime.bind(ctx)
 	defer cancel()
-	select {
-	case i.lifetime.events <- event:
-		return nil
-	case <-i.lifetime.releasing.Done():
-		return errInteractionReleased
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return i.lifetime.sendAuthoritative(ctx, event)
 }
 
 // reconcileCompletedDelegateChildren projects terminal children in postorder.

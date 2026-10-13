@@ -20,9 +20,10 @@ type PreparedCommand struct {
 	db         *sql.DB
 	id, method string
 	input      jsoninput.Input
+	fresh      bool
 }
 
-func PrepareCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input) (*PreparedCommand, []byte, error) {
+func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input) (*PreparedCommand, []byte, error) {
 	if db == nil || id == "" || len(id) > 256 || !utf8.ValidString(id) || method == "" || !utf8.ValidString(method) {
 		return nil, nil, errors.New("managed plugin: database, method and bounded command identity are required")
 	}
@@ -38,9 +39,6 @@ func PrepareCommand(ctx context.Context, db *sql.DB, method, id string, input js
 			if previousMethod != method || previousInput != input.String() {
 				return idempotency.ErrKeyConflict
 			}
-			if len(reply) == 0 {
-				return ErrCommandUnconfirmed
-			}
 			return nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -55,11 +53,15 @@ func PrepareCommand(ctx context.Context, db *sql.DB, method, id string, input js
 	if err != nil {
 		return nil, nil, err
 	}
-	if !started {
+	if !started && len(reply) != 0 {
 		return nil, reply, nil
 	}
-	return &PreparedCommand{db: db, id: id, method: method, input: input}, nil, nil
+	return &PreparedCommand{db: db, id: id, method: method, input: input, fresh: started}, nil, nil
 }
+
+// NewlyAdmitted authorizes the first effect attempt. A pending admission requires
+// owner-provided reconciliation evidence before its caller can proceed.
+func (c *PreparedCommand) NewlyAdmitted() bool { return c != nil && c.fresh }
 
 func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 	if c == nil {

@@ -193,9 +193,8 @@ func buildAssemblyCore(
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
-	runSegmentConfig.AutomationStarts = cfg.Stores.AutomationStarts
 	runSegmentConfig.CommandAcceptances = cfg.Stores.CommandAcceptances
-	runSegmentConfig.AutomationAuthority, err = plugins.NewAutomationAdmission(cfg.Stores.Installations)
+	runSegmentConfig.ActorAuthority, err = plugins.NewRunActorAdmission(cfg.Stores.Installations)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +217,6 @@ func buildAssemblyCore(
 	}
 	workspaceNotifier := segment.NewWorkspaceNotifier(fileChanges.Publish)
 	runDependencies := runs.Dependencies{
-		AutomationStarts:                   cfg.Stores.AutomationStarts,
 		CommandAcceptances:                 cfg.Stores.CommandAcceptances,
 		RootStarts:                         execution.executor,
 		Observations:                       execution.executor,
@@ -268,7 +266,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
-	scheduleFiring, err := pluginservices.NewDispatcher(execution.tools.schedules, runCoordinator, policy.invalidations.Publish)
+	scheduleFiring, err := pluginservices.NewDispatcher(execution.tools.schedules, execution.models.callbacks, policy.invalidations.Publish)
 	if err != nil {
 		return nil, err
 	}

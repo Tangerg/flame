@@ -24,9 +24,13 @@ type Store interface {
 	QueueManual(context.Context, schedule.RunRequest) error
 	PendingManual(context.Context, string, int) ([]schedule.RunRequest, error)
 	AcceptRun(context.Context, string) error
+	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDResolver, models app.ModelAdmitter) error {
+func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDResolver, models app.ModelAdmitter, connect RunConnector) error {
+	if connect == nil {
+		return errors.New("schedules: Runtime Run connector is required")
+	}
 	backend, err := pluginsdk.NewBackend(server)
 	if err != nil {
 		return err
@@ -76,31 +80,35 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		managedmcp.RegisterCommand(backend, db, rpc.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, coordinator.Delete(ctx, input.ID)
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.PrepareManual, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (schedule.RunRequestSnapshot, error) {
-			value, err := store.Get(ctx, input.ID)
-			if err != nil {
-				return schedule.RunRequestSnapshot{}, err
-			}
-			request, err := value.ManualRun(identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now())
-			if err != nil {
-				return schedule.RunRequestSnapshot{}, err
-			}
-			err = store.QueueManual(ctx, request)
-			return request.Snapshot(), err
+		pluginsdk.RegisterCommand(backend, rpc.PrepareManual, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (schedule.RunRequestSnapshot, error) {
+			return captureCommand(ctx, db, connect, rpc.PrepareManual, command, func(ctx context.Context, input rpc.ItemInput) (schedule.RunRequestSnapshot, error) {
+				value, err := store.Get(ctx, input.ID)
+				if err != nil {
+					return schedule.RunRequestSnapshot{}, err
+				}
+				request, err := value.ManualRun(identity.SessionPrefix+uuid.NewString(), identity.RunPrefix+uuid.NewString(), time.Now())
+				if err != nil {
+					return schedule.RunRequestSnapshot{}, err
+				}
+				err = store.QueueManual(ctx, request)
+				return request.Snapshot(), err
+			})
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Scan, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {
-			if input.Now.IsZero() {
-				return nil, errors.New("schedule: scan time is required")
-			}
-			requests, err := scanner.Scan(ctx, input.Now)
-			values := make([]schedule.RunRequestSnapshot, len(requests))
-			for i, value := range requests {
-				values[i] = value.Snapshot()
-			}
-			return values, err
+		pluginsdk.RegisterCommand(backend, rpc.Scan, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ScanInput]) ([]schedule.RunRequestSnapshot, error) {
+			return captureCommand(ctx, db, connect, rpc.Scan, command, func(ctx context.Context, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {
+				if input.Now.IsZero() {
+					return nil, errors.New("schedule: scan time is required")
+				}
+				requests, err := scanner.Scan(ctx, input.Now)
+				values := make([]schedule.RunRequestSnapshot, len(requests))
+				for i, value := range requests {
+					values[i] = value.Snapshot()
+				}
+				return values, err
+			})
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Accept, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AcceptInput) (rpc.Ack, error) {
-			return rpc.Ack{}, store.AcceptRun(ctx, input.RunID)
+		pluginsdk.RegisterCommand(backend, rpc.Dispatch, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.DispatchInput]) (app.RunReference, error) {
+			return dispatchRun(ctx, db, store, connect, command)
 		}),
 	); err != nil {
 		return err

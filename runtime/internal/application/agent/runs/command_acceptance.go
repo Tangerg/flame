@@ -28,8 +28,7 @@ func (o CommandOperation) Valid() bool { return o == CommandStartOpening }
 
 // CommandAcceptance is the immutable fact that Runtime accepted one externally
 // initiated Run command and bound it to the exact opening it produced. It is the
-// external-command peer of [AutomationStart]'s acceptance: the acceptance use
-// case commits it in the same transaction as the Run opening, so a lost response
+// acceptance use case commits it in the same transaction as the Run opening, so a lost response
 // never splits "this command was accepted" from "this Run was opened".
 //
 // Key is the caller's original idempotency key within the store's own namespace;

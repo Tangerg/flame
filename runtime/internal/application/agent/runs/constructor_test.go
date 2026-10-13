@@ -131,9 +131,6 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Projection.Finalizer == nil {
 		deps.Projection.Finalizer = effects
 	}
-	if deps.AutomationStarts == nil {
-		deps.AutomationStarts = noAutomationStarts{}
-	}
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}
 	}
@@ -160,12 +157,6 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 		panic(err)
 	}
 	return coordinator
-}
-
-type noAutomationStarts struct{}
-
-func (noAutomationStarts) Get(context.Context, string) (AutomationReceipt, bool, error) {
-	return AutomationReceipt{}, false, nil
 }
 
 type noCommandAcceptances struct{}

@@ -291,9 +291,9 @@ func (i *interactionSession) finish() {
 		i.state.phase = interactionFinished
 		i.state.mu.Unlock()
 		i.lifetime.stopExecution()
-		i.stopReconciliation()
-		close(i.lifetime.events)
 		close(i.lifetime.done)
+		i.stopReconciliation()
+		i.lifetime.closePublication()
 	})
 }
 

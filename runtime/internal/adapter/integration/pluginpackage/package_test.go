@@ -433,7 +433,7 @@ func TestMaterializationFreezesBytesAndDetectsTampering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := r.readResource(t.Context(), installation, "notes.txt", MaxFileBytes)
+	got, err := r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes)
 	if err != nil || string(got) != "original" {
 		t.Fatalf("immutable resource = %q, %v", got, err)
 	}
@@ -445,7 +445,7 @@ func TestMaterializationFreezesBytesAndDetectsTampering(t *testing.T) {
 	if err = os.WriteFile(file, []byte("tampered"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.readResource(t.Context(), installation, "notes.txt", MaxFileBytes); err == nil {
+	if _, err = r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes); err == nil {
 		t.Fatal("served a changed content-addressed resource")
 	}
 }
@@ -469,7 +469,7 @@ func TestColdResourceReadAfterAdmissionPressure(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	content, err := r.readResource(t.Context(), installation, "notes.txt", MaxFileBytes)
+	content, err := r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes)
 	if err != nil || string(content) != "original" {
 		t.Fatalf("cold immutable resource = %q, %v", content, err)
 	}
@@ -520,11 +520,11 @@ func TestVerifiedResourceRetainsItsDirectoryAuthority(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "notes.txt"), []byte("replacement"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	content, err := read(t.Context(), verified, "notes.txt", MaxFileBytes)
+	content, err := read(t.Context(), verified, "notes.txt", MaxPackageBytes)
 	if err != nil || string(content) != "original" {
 		t.Fatalf("verified resource = %q, %v; want original directory", content, err)
 	}
-	if _, err := r.readResource(t.Context(), installation, "notes.txt", MaxFileBytes); !errors.Is(err, plugin.ErrUnavailable) {
+	if _, err := r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("replacement release admission = %v, want unavailable", err)
 	}
 }
@@ -708,7 +708,7 @@ func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 func TestOversizedFileAdmissionRetiresStaging(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "oversized": ""})
-	if err := os.Truncate(filepath.Join(source, "oversized"), MaxFileBytes+1); err != nil {
+	if err := os.Truncate(filepath.Join(source, "oversized"), MaxPackageBytes+1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publishPackage(t.Context(), r, source); err == nil {

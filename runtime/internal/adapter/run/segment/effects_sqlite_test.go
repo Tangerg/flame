@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -811,7 +812,7 @@ func assertStoredRunState(t testing.TB, db *sql.DB, runID, want string) {
 	}
 }
 
-func TestAutomationOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
+func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 	for _, withdrawn := range []bool{false, true} {
 		t.Run(fmt.Sprint(withdrawn), func(t *testing.T) {
 			db, err := sqlite.Open(t.Context(), ":memory:")
@@ -821,21 +822,29 @@ func TestAutomationOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) 
 			defer db.Close()
 			sessions := sqlite.NewSessionStore(db)
 			state := sqlite.NewRunStore(db)
-			receipts := persistence.NewAutomationStartStore(db)
-			authority := automationAuthority{withdrawn: withdrawn}
-			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, AutomationStarts: receipts, AutomationAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }})
+			receipts := persistence.NewCommandAcceptanceStore(db)
+			authority := actorAuthority{withdrawn: withdrawn}
+			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, CommandAcceptances: receipts, ActorAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }})
 			now := time.Now().UTC()
 			initial := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_automation", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: now, UpdatedAt: now, Revision: 1})
 			draft := testsupport.RunDraft(run.Draft{RunID: "run_automation", SessionID: initial.ID(), SegmentID: "seg_automation", CreatedAt: now})
-			request := runs.AutomationStart{Origin: runs.AutomationOrigin{InstallationID: "11111111-1111-4111-8111-111111111111", ReleaseDigest: testsupport.Digest("release").String(), ServerName: "schedules"}, SessionID: draft.SessionID, RunID: draft.RunID, Instructions: "review", CWD: "/work"}
-			opening := mustAdmissionOpening(t, testCommitID("run_commit_automation"), draft, &initial, nil, &request, nil)
+			actor, actorErr := operation.NewActor("11111111-1111-4111-8111-111111111111", testsupport.Digest("release").String(), testsupport.Digest("authority").String(), "schedules")
+			if actorErr != nil {
+				t.Fatal(actorErr)
+			}
+			opening := mustAdmissionOpening(t, testCommitID("run_commit_actor"), draft, &initial, nil, &actor, nil)
+			acceptance := runs.CommandAcceptance{Key: "captured-start", Fingerprint: testsupport.Digest("captured request").String(), Operation: runs.CommandStartOpening, SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, UserItemID: "item_opening"}
+			opening, err = opening.WithCommandAcceptance(acceptance)
+			if err != nil {
+				t.Fatal(err)
+			}
 			err = effects.CommitOpening(t.Context(), opening)
-			receipt, found, readErr := receipts.Get(t.Context(), draft.RunID)
+			receipt, readErr := receipts.Lookup(t.Context(), "captured-start")
 			if readErr != nil {
 				t.Fatal(readErr)
 			}
 			if withdrawn {
-				if !errors.Is(err, errAutomationWithdrawn) || found {
+				if !errors.Is(err, errActorWithdrawn) || receipt.Found {
 					t.Fatalf("withdrawn opening: %v, receipt=%+v", err, receipt)
 				}
 				if _, err := sessions.Get(t.Context(), initial.ID()); !errors.Is(err, session.ErrNotFound) {
@@ -846,8 +855,7 @@ func TestAutomationOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) 
 				}
 				return
 			}
-			digest, _ := request.Digest()
-			if err != nil || !found || receipt.RequestDigest != digest || receipt.SessionID != initial.ID() || receipt.SegmentID != draft.SegmentID {
+			if err != nil || !receipt.Found || receipt.Acceptance.Fingerprint != acceptance.Fingerprint || receipt.Acceptance.SessionID != initial.ID() || receipt.Acceptance.SegmentID != draft.SegmentID {
 				t.Fatalf("accepted opening: %v, receipt=%+v", err, receipt)
 			}
 			if err := effects.CommitOpening(t.Context(), opening); err != nil {
@@ -856,20 +864,20 @@ func TestAutomationOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) 
 			if err := state.Delete(t.Context(), draft.SessionID, draft.RunID); err != nil {
 				t.Fatal(err)
 			}
-			if _, found, err := receipts.Get(t.Context(), draft.RunID); err != nil || !found {
-				t.Fatalf("acceptance lost after Run deletion: %v %v", found, err)
+			if record, err := receipts.Lookup(t.Context(), "captured-start"); err != nil || !record.Found || record.MaterialAvailable {
+				t.Fatalf("acceptance lost after Run deletion: %+v %v", record, err)
 			}
 		})
 	}
 }
 
-var errAutomationWithdrawn = errors.New("automation authority withdrawn")
+var errActorWithdrawn = errors.New("actor authority withdrawn")
 
-type automationAuthority struct{ withdrawn bool }
+type actorAuthority struct{ withdrawn bool }
 
-func (a automationAuthority) Admit(context.Context, runs.AutomationStart) error {
+func (a actorAuthority) Admit(context.Context, operation.Actor) error {
 	if a.withdrawn {
-		return errAutomationWithdrawn
+		return errActorWithdrawn
 	}
 	return nil
 }

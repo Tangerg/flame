@@ -46,6 +46,23 @@ acknowledgement redelivers the same identity and receives the existing acceptanc
 including after terminal execution or Runtime restart. Selecting a new release
 can reconcile old captured work from the same installation without changing it.
 
+The backend executable connects through the public `ConnectCallback` and ordinary
+Runtime Client. `runs.start.newSession` carries the captured Session/Run identities;
+`runs.getAcceptance` checks that same original request before submission or
+reconciliation. A retired acceptance still proves the original opening. Core
+observation detachment does not cancel an accepted Run. The backend completes
+pending work and its dispatch reply in one private transaction, with Runtime I/O
+outside that transaction. A pending dispatch may reconcile again; a completed
+receipt never invokes Runtime again.
+
+Callback references travel as ephemeral MCP metadata, outside business input,
+fingerprints and saved pending work. The actual managed connection establishes
+the installed actor and its release/source authority. The private database binds
+to one Runtime store namespace before capturing work and refuses another store.
+Former private databases without this binding are refused without conversion;
+retain them separately and use a fresh directory. The host's former automation
+receipt table and special opening API are removed in the same cutover.
+
 Disable and uninstall withdraw new Run admission and stop the process.
 Already accepted Runs continue under Runtime. Pending private work and command
 receipts remain in the installation directory. Reenable and restart resume that

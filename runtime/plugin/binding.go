@@ -122,7 +122,12 @@ func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, 
 }
 
 func (b *Binding) Invoke(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, error) {
-	result, err := b.invoke(ctx, id, input, sdk.ParamsBase{})
+	return b.InvokeWithMetadata(ctx, id, input, sdk.ParamsBase{})
+}
+
+// InvokeWithMetadata keeps ephemeral call collaborators outside admitted input.
+func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsoninput.Input, metadata sdk.ParamsBase) (jsoninput.Input, error) {
+	result, err := b.invoke(ctx, id, input, metadata)
 	if err != nil {
 		return jsoninput.Input{}, err
 	}

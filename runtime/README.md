@@ -62,7 +62,7 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.1
+## Protocol 2026-10-13.2
 
 Memory and Schedules are optional, complete managed plugin backends. Their
 `services` declarations describe provider candidates. Product composition selects
@@ -84,8 +84,17 @@ built and before workers start. `OpenRPC` captures that transport's call lifetim
 backend authors use `ConnectCallback` and the ordinary typed Runtime Client.
 Closing a client detaches observation; callback retirement cancels and joins its
 stream source. Message limits bound replies/frames, not an entire stream.
-Installed dependency rendezvous, Schedules backend Run submission, canonical
-model execution and streaming decorators remain open parts of the refactor.
+Schedules passes its ephemeral callback reference through MCP metadata, outside
+business input and private receipts. Its executable uses the ordinary Client to
+query `runs.getAcceptance` with the original `runs.start` request, then submits
+the captured `newSession` only when no acceptance exists. Runtime commits the new
+Session, Run and command acceptance atomically. Opened and retired acceptances
+settle the same private pending work without recreating deleted material.
+The actual managed connection supplies the installed actor; Runtime rechecks its
+release and source authority inside the opening transaction. Logical command
+keys are scoped by installation independently of activation and release.
+Installed dependency rendezvous, canonical model execution and streaming
+decorators remain open parts of the refactor.
 
 `plugins.listProviders` and `plugins.selectProvider` expose the same composition
 owner through the Go binding and Runtime Protocol. CLI uses `plugins providers`
@@ -106,6 +115,15 @@ The former route encoding without a method contract is refused without conversio
 Run acceptance remains a separate
 Runtime fact, recorded atomically with its opening. Already accepted automated
 Runs survive backend disable and can be reconciled after restart.
+
+Protocol `2026-10-13.2` adds mutually exclusive existing-Session and captured
+new-Session targets to `runs.start`, and optional original-request verification to
+`runs.getAcceptance`. Captured openings require an idempotency key. The former
+automation opening API and receipt table are removed. Schedules binds its private
+pending work to one Runtime store namespace before capture; attaching that private
+directory to another Runtime store is refused. Old host schemas containing the
+automation receipt table and old Schedules schemas without the namespace binding
+are refused before conversion. Retain those directories and use fresh ones.
 
 Build target-specific backend packages from the repository's `go.work` using
 [the first-party package workflow](../plugins/README.md). Their executable sources
@@ -857,7 +875,7 @@ The [first-party trajectory package](../plugins/trajectory/plugin.json) exercise
 a Skill, an isolated Session trajectory page and a trusted Session rename form. The public page API requires no code
 execution in Runtime. Desktop's [carrier acceptance](../desktop/README.md#plugin-carrier-acceptance)
 owns rendering qualification; an unavailable renderer does not change installation state.
-Package limits are 128 MiB total copied bytes, 16 MiB per file, 4096 entries, 256 Skills and
+Package limits are 128 MiB total copied bytes, 4096 entries, 256 Skills and
 128 installations. Skill documents and resources obey the existing 1 MiB Skill limits.
 HTML views are limited to 16 declarations per release and 512 KiB per entry.
 

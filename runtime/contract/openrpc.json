@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-10-13.1",
+    "version": "2026-10-13.2",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -1094,12 +1094,16 @@
       "params": [
         {
           "name": "sessionId",
-          "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1,
             "maxLength": 256,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "newSession",
+          "schema": {
+            "$ref": "#/components/schemas/RunSessionOpening"
           }
         },
         {
@@ -1212,6 +1216,9 @@
             }
           },
           "model": {},
+          "newSession": {
+            "$ref": "#/components/schemas/RunSessionOpening"
+          },
           "params": {
             "$ref": "#/components/schemas/GenerationParams"
           },
@@ -1688,6 +1695,12 @@
           }
         },
         {
+          "name": "request",
+          "schema": {
+            "$ref": "#/components/schemas/StartRunRequest"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -1710,7 +1723,10 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
-          "key": {}
+          "key": {},
+          "request": {
+            "$ref": "#/components/schemas/StartRunRequest"
+          }
         },
         "unevaluatedProperties": false,
         "allOf": [
@@ -9456,6 +9472,22 @@
           }
         ]
       },
+      "RunSessionOpening": {
+        "properties": {
+          "runId": {},
+          "sessionId": {},
+          "title": {},
+          "workspace": {
+            "$ref": "#/components/schemas/WorkspaceRef"
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/RunSessionOpening"
+          }
+        ]
+      },
       "SessionArtifact": {
         "properties": {
           "items": {
@@ -9503,6 +9535,31 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/SessionTitleEdit"
+          }
+        ]
+      },
+      "StartRunRequest": {
+        "properties": {
+          "input": {
+            "items": {
+              "$ref": "#/components/schemas/ContentBlock"
+            }
+          },
+          "model": {},
+          "newSession": {
+            "$ref": "#/components/schemas/RunSessionOpening"
+          },
+          "params": {
+            "$ref": "#/components/schemas/GenerationParams"
+          },
+          "provider": {},
+          "reasoningEffort": {},
+          "sessionId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/StartRunRequest"
           }
         ]
       },

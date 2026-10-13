@@ -715,6 +715,12 @@ func registerObjectConstraints(s *Shapes) {
 		typeOf[protocol.Schedule](),
 	} {
 		rules := modelSelectionRules
+		if target == typeOf[protocol.StartRunRequest]() {
+			rules = slices.Concat([]ConditionalRule{
+				{RequiredAny: []string{"sessionId", "newSession"}},
+				{When: []delivery.FieldCondition{{Field: "newSession", Operator: delivery.OperatorPresent}}, Forbidden: []string{"sessionId"}},
+			}, rules)
+		}
 		if target == typeOf[protocol.Schedule]() {
 			rules = slices.Concat([]ConditionalRule{{Required: []string{"createdAt"}}}, rules)
 		}

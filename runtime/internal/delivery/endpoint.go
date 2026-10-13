@@ -137,6 +137,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 		return failed(ProjectError(err))
 	}
 
+	options.IdempotencyKey = operation.ScopedKey(ctx, options.IdempotencyKey)
 	ctx = operation.Bind(ctx, e.idempotencyNamespace.String(), options.IdempotencyKey)
 	ctx = WithRequestMeta(ctx, options.RequestMeta)
 	ctx = withAfterEventID(ctx, options.AfterEventID)

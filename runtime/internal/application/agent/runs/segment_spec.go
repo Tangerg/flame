@@ -2,6 +2,7 @@ package runs
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
@@ -36,13 +37,13 @@ type segmentSpec struct {
 	GoalIncarnationID  string
 	InitialSession     *session.Session
 	SessionReplacement *session.Replacement
-	Automation         *AutomationStart
+	Actor              *operation.Actor
 	// CommandAcceptance binds an externally initiated command to this fresh
 	// admission; its run_opening acceptance commits in the opening transaction.
-	CommandAcceptance  *CommandIdentity
-	CreatedAt          time.Time
-	OpeningUserText    string
-	Input              []transcript.ContentBlock
+	CommandAcceptance *CommandIdentity
+	CreatedAt         time.Time
+	OpeningUserText   string
+	Input             []transcript.ContentBlock
 	// ConversationInput is the exact composed User message admitted to the
 	// executor. Input remains the independently projected transcript content.
 	ConversationInput *corechat.Message

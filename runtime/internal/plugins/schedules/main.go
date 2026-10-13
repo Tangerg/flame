@@ -33,7 +33,7 @@ func run(ctx context.Context) (err error) {
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.schedules", Version: "3.0.0"}, nil)
-	if err := transport.RegisterServer(server, db, sqlite.NewScheduleStore(db), workspace.Resolver{}, models.Selections{}); err != nil {
+	if err := transport.RegisterServer(server, db, sqlite.NewScheduleStore(db), workspace.Resolver{}, models.Selections{}, connectRunHost); err != nil {
 		return err
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})

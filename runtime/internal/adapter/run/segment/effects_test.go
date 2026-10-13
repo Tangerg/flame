@@ -3,6 +3,7 @@ package segment
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"slices"
 	"strings"
 	"sync"
@@ -107,7 +108,7 @@ func mustAdmissionOpening(
 	admission run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
-	scheduled *runs.AutomationStart,
+	scheduled *operation.Actor,
 	events []runs.EventCommit,
 ) runs.OpeningCommit {
 	t.Helper()

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"iter"
 	"sync/atomic"
 	"testing"
@@ -372,7 +373,6 @@ func newTestHandler(rt testRuntime) *Handler {
 	workspaceNotifier := segment.NewWorkspaceNotifier(nil)
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
-		AutomationStarts:                   noDeliveryAutomationStarts{},
 		CommandAcceptances:                 noDeliveryCommandAcceptances{},
 		Observations:                       rt,
 		Releases:                           rt,
@@ -1317,11 +1317,11 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		ExecutorCheckpoints: stores,
 		ExecutionTrees:      stores,
 		ChildRunStarts:      stores,
-		AutomationStarts:    inertSegmentAutomation{}, AutomationAuthority: inertSegmentAutomation{},
-		CommandAcceptances: inertSegmentCommandAcceptances{},
-		GoalRuns:           inertSegmentGoalRuns{},
-		ToolResults:        inertSegmentToolResults{},
-		Tx:                 s.RunInTx,
+		ActorAuthority:      inertSegmentActor{},
+		CommandAcceptances:  inertSegmentCommandAcceptances{},
+		GoalRuns:            inertSegmentGoalRuns{},
+		ToolResults:         inertSegmentToolResults{},
+		Tx:                  s.RunInTx,
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults
@@ -1515,10 +1515,9 @@ func (inertEmbeddingRoles) SaveEmbeddingRole(context.Context, modelref.Role) err
 
 // The segment write-sets require every store; delivery fixtures that do not
 // exercise a capability supply an inert one rather than an absent one.
-type inertSegmentAutomation struct{}
+type inertSegmentActor struct{}
 
-func (inertSegmentAutomation) Save(context.Context, runs.AutomationReceipt) error { return nil }
-func (inertSegmentAutomation) Admit(context.Context, runs.AutomationStart) error  { return nil }
+func (inertSegmentActor) Admit(context.Context, operation.Actor) error { return nil }
 
 type inertSegmentCommandAcceptances struct{}
 
@@ -1556,12 +1555,6 @@ func (stubRunState) UnpublishedToolResults(context.Context, string, string) ([]c
 }
 func (s stubMessageCounter) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
 	return s.rt.ReadHistory(ctx, sessionID)
-}
-
-type noDeliveryAutomationStarts struct{}
-
-func (noDeliveryAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
-	return runs.AutomationReceipt{}, false, nil
 }
 
 type noDeliveryCommandAcceptances struct{}

@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"testing"
 	"time"
 
@@ -234,29 +235,13 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	scheduled := automationRequest(testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, root.RunID), "/work")
-	if _, err := NewAdmissionOpeningCommit(
-		testCommitID("run_commit_schedule_without_session"), root,
-		nil, nil, &scheduled, nil,
-	); err == nil {
-		t.Fatal("OpeningCommit accepted a schedule admission without its initial Session")
+	actor := openingCommand(testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, root.RunID), "/work").Actor
+	if _, err := NewAdmissionOpeningCommit(testCommitID("run_commit_actor_existing"), root, nil, nil, actor, nil); err != nil {
+		t.Fatalf("installed actor may start in an existing Session: %v", err)
 	}
-	scheduledSession := testsupport.MustRestoreSession(session.Snapshot{
-		ID: root.SessionID, Workspace: testsupport.MustWorkspace("/work"),
-		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
-	})
-	if _, err := NewAdmissionOpeningCommit(
-		testCommitID("run_commit_schedule_session"), root,
-		&scheduledSession, nil, &scheduled, nil,
-	); err != nil {
-		t.Fatalf("schedule admission with its initial Session: %v", err)
-	}
-	foreign := automationRequest(testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, "run_other"), "/work")
-	if _, err := NewAdmissionOpeningCommit(
-		testCommitID("run_commit_schedule_foreign_run"), root,
-		&scheduledSession, nil, &foreign, nil,
-	); err == nil {
-		t.Fatal("OpeningCommit accepted a schedule launch for another Run")
+	invalid := operation.Actor{}
+	if _, err := NewAdmissionOpeningCommit(testCommitID("run_commit_invalid_actor"), root, nil, nil, &invalid, nil); err == nil {
+		t.Fatal("opening accepted an invalid installed actor")
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_existing_session"), root,

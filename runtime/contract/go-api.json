@@ -1274,6 +1274,14 @@
           "signature": "func[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error)"
         },
         {
+          "name": "CallbackFromContext",
+          "signature": "func(ctx context.Context) (CallbackRef, error)"
+        },
+        {
+          "name": "CallbackMetadata",
+          "signature": "func(ref CallbackRef) (mcp.ParamsBase, error)"
+        },
+        {
           "name": "DecodeReply",
           "signature": "func[T any](data []byte) (T, error)"
         },
@@ -1368,6 +1376,10 @@
             {
               "name": "Invoke",
               "signature": "func(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, error)"
+            },
+            {
+              "name": "InvokeWithMetadata",
+              "signature": "func(ctx context.Context, id string, input jsoninput.Input, metadata mcp.ParamsBase) (jsoninput.Input, error)"
             },
             {
               "name": "ReadReceipt",
@@ -2988,7 +3000,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.1\""
+          "value": "\"2026-10-13.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -5624,6 +5636,11 @@
               "name": "Key",
               "type": "string",
               "tag": "json:\"key\""
+            },
+            {
+              "name": "Request",
+              "type": "*StartRunRequest",
+              "tag": "json:\"request,omitzero\""
             }
           ],
           "methods": [
@@ -9529,6 +9546,38 @@
           ]
         },
         {
+          "name": "RunSessionOpening",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Workspace",
+              "type": "WorkspaceRef",
+              "tag": "json:\"workspace\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "RunStatus",
           "kind": "defined",
           "underlying": "string"
@@ -10697,7 +10746,12 @@
             {
               "name": "SessionID",
               "type": "string",
-              "tag": "json:\"sessionId\""
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "NewSession",
+              "type": "*RunSessionOpening",
+              "tag": "json:\"newSession,omitzero\""
             },
             {
               "name": "Input",

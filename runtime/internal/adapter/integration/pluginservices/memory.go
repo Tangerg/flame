@@ -189,7 +189,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	defer release()
-	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil })
+	result, err := invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Grant: grant, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil }, nil)
 	if err != nil || result.value.Published {
 		m.publish.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	}

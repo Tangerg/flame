@@ -176,12 +176,19 @@ type RunOutcome struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-// StartRunRequest is the runs.start body. The session owns cwd,
-// available tools, and its Plan, so clients send only the user input and
-// explicit model selection.
+// RunSessionOpening captures a Session and Run created in one keyed acceptance.
+type RunSessionOpening struct {
+	SessionID string       `json:"sessionId"`
+	RunID     string       `json:"runId"`
+	Title     string       `json:"title"`
+	Workspace WorkspaceRef `json:"workspace"`
+}
+
+// StartRunRequest addresses exactly one existing Session or atomic new opening.
 type StartRunRequest struct {
-	SessionID string         `json:"sessionId"`
-	Input     []ContentBlock `json:"input"`
+	SessionID  string             `json:"sessionId,omitempty"`
+	NewSession *RunSessionOpening `json:"newSession,omitzero"`
+	Input      []ContentBlock     `json:"input"`
 	// Provider + Model select the model for this run. They are paired: send
 	// both to pick a model, or neither to use the Session's stored selection. Sending
 	// one without the other is invalid_params — the provider is explicit,
@@ -299,6 +306,9 @@ type GetRunRequest struct {
 // what to do without opening a second run.
 type GetRunAcceptanceRequest struct {
 	Key string `json:"key"`
+	// Request optionally verifies the original immutable start before returning
+	// acceptance. A changed request yields conflict, including retired material.
+	Request *StartRunRequest `json:"request,omitzero"`
 }
 
 // RunAcceptanceType is the closed outcome of a command-acceptance lookup.

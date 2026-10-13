@@ -20,7 +20,7 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := receiptInput(t, "input")
-	prepared, reply, err := PrepareCommand(t.Context(), db, "maintain", "original", input)
+	prepared, reply, err := AdmitCommand(t.Context(), db, "maintain", "original", input)
 	if err != nil || prepared == nil || len(reply) != 0 {
 		t.Fatalf("admission=%v, %s, %v", prepared, reply, err)
 	}
@@ -32,13 +32,13 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, _, err := PrepareCommand(t.Context(), db, "maintain", "original", input); !errors.Is(err, ErrCommandUnconfirmed) {
-		t.Fatalf("unknown command restarted work: %v", err)
+	if pending, reply, err := AdmitCommand(t.Context(), db, "maintain", "original", input); err != nil || pending == nil || pending.NewlyAdmitted() || len(reply) != 0 {
+		t.Fatalf("pending command lost its reconciliation-only admission: %v, %s, %v", pending, reply, err)
 	}
-	if _, _, err := PrepareCommand(t.Context(), db, "changed", "original", input); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("changed method=%v", err)
 	}
-	if _, _, err := PrepareCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed")); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed")); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
 	if _, err := Command(t.Context(), db, "maintain", "original", "input", input, nil, func(context.Context, string) (string, error) {
@@ -56,7 +56,7 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	input := receiptInput(t, "input")
-	prepared, _, err := PrepareCommand(t.Context(), db, "maintain", "original", input)
+	prepared, _, err := AdmitCommand(t.Context(), db, "maintain", "original", input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("completed outcome changed: %v", err)
 	}
-	duplicate, original, err := PrepareCommand(t.Context(), db, "maintain", "original", input)
+	duplicate, original, err := AdmitCommand(t.Context(), db, "maintain", "original", input)
 	if err != nil || duplicate != nil || string(original) != string(reply) {
 		t.Fatalf("original result=%v, %s, %v", duplicate, original, err)
 	}

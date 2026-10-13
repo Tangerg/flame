@@ -15,16 +15,8 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// Only the two start entry points form this projection. An automation request's
-// execution input cannot be authored separately from its ownership proof.
-type rootStartCommand struct {
-	StartCommand
-	automation    *AutomationStart
-	workspacePath string
-}
-
 type rootStartPreparation struct {
-	command            rootStartCommand
+	command            StartCommand
 	requestedSelection modelref.Selection
 	session            session.Session
 	initialSession     *session.Session
@@ -34,18 +26,33 @@ type rootStartPreparation struct {
 	openingUserText    string
 }
 
-// Start opens a Run in the existing Session supplied by its caller. When the
+// Start opens a Run in the supplied Session or captured new Session. When the
 // command carries an external acceptance identity, an exact prior acceptance is
 // returned as the original opening before any mutable preparation, so a retried
 // key never admits a second Run.
 func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
-	if err := resourceid.ValidateSession(cmd.SessionID); err != nil {
+	if cmd.NewSession != nil {
+		if cmd.SessionID != "" || cmd.Acceptance == nil {
+			return StartResult{}, fmt.Errorf("%w: new Session opening requires its own target and command identity", ErrInvalidStart)
+		}
+		if err := resourceid.ValidateSession(cmd.NewSession.SessionID); err != nil {
+			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
+		}
+		if err := resourceid.ValidateRun(cmd.NewSession.RunID); err != nil {
+			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
+		}
+	} else if err := resourceid.ValidateSession(cmd.SessionID); err != nil {
 		return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 	}
 	if cmd.Acceptance != nil {
 		if err := cmd.Acceptance.Validate(); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 		}
+		release, err := c.startAdmissions.Acquire(ctx, cmd.Acceptance.Key)
+		if err != nil {
+			return StartResult{}, err
+		}
+		defer release()
 		reopened, found, err := c.lookupAcceptedStart(ctx, *cmd.Acceptance)
 		if err != nil {
 			return StartResult{}, err
@@ -54,7 +61,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 			return reopened, nil
 		}
 	}
-	return c.startRoot(ctx, rootStartCommand{StartCommand: cmd.clone()})
+	return c.startRoot(ctx, cmd.clone())
 }
 
 // lookupAcceptedStart returns a previously accepted command's original opening.
@@ -82,9 +89,9 @@ func (c *Coordinator) lookupAcceptedStart(ctx context.Context, identity CommandI
 }
 
 // startRoot claims the Session and working tree, stages execution, and commits
-// the opening. An automation Session commits in the same write-set. Activation
+// the opening. A captured new Session commits in the same write-set. Activation
 // continues under the lifecycle supervisor after that acceptance boundary.
-func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (result StartResult, err error) {
+func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
 	runAdmission, preparation, err := c.admitRootStart(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
@@ -135,8 +142,8 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (resu
 
 	cmd = preparation.command
 	var runID string
-	if cmd.automation != nil {
-		runID = cmd.automation.RunID
+	if cmd.NewSession != nil {
+		runID = cmd.NewSession.RunID
 	} else {
 		runID = c.newRunID()
 	}
@@ -162,7 +169,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (resu
 		GoalIncarnationID:  cmd.GoalIncarnationID,
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
-		Automation:         cmd.automation,
+		Actor:              cmd.Actor,
 		CommandAcceptance:  cmd.Acceptance,
 		CreatedAt:          createdAt,
 		OpeningUserText:    preparation.openingUserText,
@@ -198,7 +205,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (resu
 // one. A Session that is not durable yet has no other writer.
 func (c *Coordinator) admitRootStart(
 	ctx context.Context,
-	cmd rootStartCommand,
+	cmd StartCommand,
 ) (ownership.RunAdmission, rootStartPreparation, error) {
 	for {
 		preparation, err := c.prepareRootStart(ctx, cmd)
@@ -226,7 +233,7 @@ func (c *Coordinator) admitRootStart(
 
 func (c *Coordinator) prepareRootStart(
 	ctx context.Context,
-	cmd rootStartCommand,
+	cmd StartCommand,
 ) (rootStartPreparation, error) {
 	requestedSelection := cmd.ModelSelection
 	currentMessage, err := MaterializeUserMessage(cmd.Input)
@@ -303,7 +310,7 @@ func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string,
 // the opening will freeze. Existing Sessions never fall back to Runtime config.
 func (c *Coordinator) resolveSessionSelection(
 	ctx context.Context,
-	cmd rootStartCommand,
+	cmd StartCommand,
 ) (session.Session, *session.Session, modelref.Selection, error) {
 	requested := cmd.ModelSelection
 	if requested.Configured() {
@@ -332,13 +339,13 @@ func (c *Coordinator) resolveSessionSelection(
 
 func (c *Coordinator) resolveSession(
 	ctx context.Context,
-	cmd rootStartCommand,
+	cmd StartCommand,
 	selection modelref.Selection,
 ) (session.Session, *session.Session, error) {
-	if cmd.automation != nil {
-		return c.sessionCreator.PrepareAutomation(
-			ctx, cmd.automation.SessionID, cmd.automation.Title,
-			cmd.workspacePath, selection,
+	if cmd.NewSession != nil {
+		return c.sessionCreator.PrepareOpening(
+			ctx, cmd.NewSession.SessionID, cmd.NewSession.Title,
+			cmd.NewSession.CWD, selection,
 		)
 	}
 	sess, err := c.sessionReader.Get(ctx, cmd.SessionID)

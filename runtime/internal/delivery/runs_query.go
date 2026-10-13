@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -39,9 +40,18 @@ func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*proto
 // key. Every outcome — never seen, opened, retired, or bound elsewhere — is a
 // normal read, so the result is a closed union rather than a not-found refusal.
 func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error) {
-	record, err := s.runs.LookupCommandAcceptance(ctx, in.Key)
+	record, err := s.runs.LookupCommandAcceptance(ctx, operation.ScopedKey(ctx, in.Key))
 	if err != nil {
 		return nil, err
+	}
+	if in.Request != nil && record.Found {
+		fingerprint, err := operationFingerprint(RunsStart, *in.Request)
+		if err != nil {
+			return nil, err
+		}
+		if record.Acceptance.Fingerprint != fingerprint {
+			return &protocol.RunAcceptance{Type: protocol.RunAcceptanceConflict}, nil
+		}
 	}
 	return presentRunAcceptance(record), nil
 }

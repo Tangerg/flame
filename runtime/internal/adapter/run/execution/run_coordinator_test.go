@@ -28,9 +28,6 @@ func (acceptAllRunModelInputs) AdmitInput(modelref.Selection, []corechat.Message
 
 func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinator {
 	t.Helper()
-	if deps.AutomationStarts == nil {
-		deps.AutomationStarts = noAutomationStarts{}
-	}
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}
 	}
@@ -109,12 +106,6 @@ func fillRunDependency[T any](t *testing.T, target *T, source any, name string) 
 		t.Fatalf("test fixture source does not implement %s", name)
 	}
 	*target = value
-}
-
-type noAutomationStarts struct{}
-
-func (noAutomationStarts) Get(context.Context, string) (runs.AutomationReceipt, bool, error) {
-	return runs.AutomationReceipt{}, false, nil
 }
 
 type noCommandAcceptances struct{}

@@ -3,6 +3,7 @@ package segment
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"strings"
 	"testing"
 	"time"
@@ -67,14 +68,11 @@ func mustNewEffects(cfg Config) *Effects {
 	if dependency.Missing(cfg.ExecutionTrees) {
 		cfg.ExecutionTrees = unusedExecutionTrees{}
 	}
-	if dependency.Missing(cfg.AutomationStarts) {
-		cfg.AutomationStarts = inertAutomationStarts{}
-	}
 	if dependency.Missing(cfg.CommandAcceptances) {
 		cfg.CommandAcceptances = inertCommandAcceptances{}
 	}
-	if dependency.Missing(cfg.AutomationAuthority) {
-		cfg.AutomationAuthority = inertAutomationAuthority{}
+	if dependency.Missing(cfg.ActorAuthority) {
+		cfg.ActorAuthority = inertActorAuthority{}
 	}
 	if dependency.Missing(cfg.GoalRuns) {
 		cfg.GoalRuns = inertGoalRuns{}
@@ -194,17 +192,13 @@ func (inertToolInvocations) MarkToolInvocationIncomplete(context.Context, string
 
 // The segment write-sets require every store; a test that does not exercise a
 // capability supplies an inert one rather than an absent one.
-type inertAutomationStarts struct{}
-
-func (inertAutomationStarts) Save(context.Context, runs.AutomationReceipt) error { return nil }
-
 type inertCommandAcceptances struct{}
 
 func (inertCommandAcceptances) Save(context.Context, runs.CommandAcceptance) error { return nil }
 
-type inertAutomationAuthority struct{}
+type inertActorAuthority struct{}
 
-func (inertAutomationAuthority) Admit(context.Context, runs.AutomationStart) error { return nil }
+func (inertActorAuthority) Admit(context.Context, operation.Actor) error { return nil }
 
 type inertGoalRuns struct{}
 

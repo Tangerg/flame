@@ -10,6 +10,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -41,14 +42,21 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	if err != nil {
 		return nil, nil, err
 	}
-	result, err := s.runs.Start(ctx, runs.StartCommand{
+	command := runs.StartCommand{
 		SessionID:      in.SessionID,
 		ModelSelection: selection,
 		Options:        options,
 		Capabilities:   capabilities,
 		Input:          input,
 		Acceptance:     startAcceptance(ctx),
-	})
+	}
+	if in.NewSession != nil {
+		command.NewSession = &runs.SessionOpening{SessionID: in.NewSession.SessionID, RunID: in.NewSession.RunID, Title: in.NewSession.Title, CWD: in.NewSession.Workspace.Path}
+	}
+	if actor, present := operation.ActorFrom(ctx); present {
+		command.Actor = &actor
+	}
+	result, err := s.runs.Start(ctx, command)
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}
@@ -139,6 +147,8 @@ func wireRunStartErr(err error) error {
 	case errors.Is(err, runs.ErrUnsupportedModelSelection):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrInvalidStart):
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+	case errors.Is(err, session.ErrInvalid):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrSessionBusy):
 		return protocol.ErrSessionBusy

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -33,12 +34,8 @@ type SessionStore interface {
 	Save(ctx context.Context, replacement session.Replacement) error
 }
 
-type AutomationAuthority interface {
-	Admit(context.Context, runs.AutomationStart) error
-}
-
-type AutomationStartStore interface {
-	Save(context.Context, runs.AutomationReceipt) error
+type ActorAuthority interface {
+	Admit(context.Context, operation.Actor) error
 }
 
 // CommandAcceptanceStore records the Run-owned run_opening acceptance in the
@@ -220,8 +217,7 @@ type Config struct {
 	Interrupts          InterruptStore
 	ResumeClaims        ResumeClaimStore
 	Sessions            SessionStore
-	AutomationAuthority AutomationAuthority
-	AutomationStarts    AutomationStartStore
+	ActorAuthority      ActorAuthority
 	CommandAcceptances  CommandAcceptanceStore
 	GoalRuns            GoalRunRecorder
 	Transcript          TranscriptStore
@@ -244,8 +240,7 @@ type Effects struct {
 	interrupts          InterruptStore
 	resumeClaims        ResumeClaimStore
 	sessions            SessionStore
-	automationAuthority AutomationAuthority
-	automationStarts    AutomationStartStore
+	actorAuthority      ActorAuthority
 	commandAcceptances  CommandAcceptanceStore
 	goalRuns            GoalRunRecorder
 	transcript          TranscriptStore
@@ -294,8 +289,7 @@ func New(cfg Config) (*Effects, error) {
 		{"executor checkpoint store", cfg.ExecutorCheckpoints},
 		{"execution tree store", cfg.ExecutionTrees},
 		{"child run start store", cfg.ChildRunStarts},
-		{"automation authority", cfg.AutomationAuthority},
-		{"automation start store", cfg.AutomationStarts},
+		{"actor authority", cfg.ActorAuthority},
 		{"command acceptance store", cfg.CommandAcceptances},
 		{"goal run recorder", cfg.GoalRuns},
 		{"tool result store", cfg.ToolResults},
@@ -310,8 +304,7 @@ func New(cfg Config) (*Effects, error) {
 		interrupts:          cfg.Interrupts,
 		resumeClaims:        cfg.ResumeClaims,
 		sessions:            cfg.Sessions,
-		automationAuthority: cfg.AutomationAuthority,
-		automationStarts:    cfg.AutomationStarts,
+		actorAuthority:      cfg.ActorAuthority,
 		commandAcceptances:  cfg.CommandAcceptances,
 		goalRuns:            cfg.GoalRuns,
 		transcript:          cfg.Transcript,

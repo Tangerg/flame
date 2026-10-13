@@ -24,6 +24,44 @@ import (
 
 var ErrStaleCall = errors.New("plugin: callback call is no longer active")
 
+const callbackMetadataKey = "io.github.tangerg.flame/callback.v1"
+
+type callbackRefKey struct{}
+
+func CallbackMetadata(ref CallbackRef) (sdk.ParamsBase, error) {
+	if err := ref.Validate(); err != nil {
+		return sdk.ParamsBase{}, err
+	}
+	return sdk.ParamsBase{Meta: sdk.Meta{callbackMetadataKey: ref}}, nil
+}
+
+func CallbackFromContext(ctx context.Context) (CallbackRef, error) {
+	ref, present := ctx.Value(callbackRefKey{}).(CallbackRef)
+	if !present {
+		return CallbackRef{}, errors.New("plugin: captured callback reference is required")
+	}
+	return ref, nil
+}
+
+func bindCallbackMetadata(ctx context.Context, metadata sdk.Meta) (context.Context, error) {
+	value, present := metadata[callbackMetadataKey]
+	if !present {
+		return ctx, nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var ref CallbackRef
+	if err := json.Unmarshal(encoded, &ref, json.RejectUnknownMembers(true)); err != nil {
+		return nil, errors.New("plugin: callback metadata is invalid")
+	}
+	if err := ref.Validate(); err != nil {
+		return nil, err
+	}
+	return context.WithValue(ctx, callbackRefKey{}, ref), nil
+}
+
 // Callback is an immutable binding to an existing operation contract. The
 // handler owns its business behavior, effect identities and resource budget.
 type Callback struct{ method boundMethod }

@@ -19,7 +19,7 @@ const (
 	Delete        = "flame.schedules/delete.v1"
 	PrepareManual = "flame.schedules/prepareManual.v1"
 	Scan          = "flame.schedules/scan.v1"
-	Accept        = "flame.schedules/accept.v1"
+	Dispatch      = "flame.schedules/dispatch.v1"
 )
 
 type UpdateInput struct {
@@ -42,7 +42,7 @@ type Page struct {
 }
 type ItemInput struct{ ID string }
 type ScanInput struct{ Now time.Time }
-type AcceptInput struct{ RunID string }
+type DispatchInput struct{ RunID string }
 type Ack struct{}
 
 var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelref.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}

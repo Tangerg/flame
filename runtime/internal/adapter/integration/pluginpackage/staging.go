@@ -122,7 +122,7 @@ func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 		if err != nil {
 			return err
 		}
-		f, opened, err := fileinput.OpenAtExpected(input, name, info, MaxFileBytes)
+		f, opened, err := fileinput.OpenAtExpected(input, name, info, MaxPackageBytes)
 		if err != nil {
 			return packageInputError(err)
 		}
@@ -238,7 +238,7 @@ func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, 
 	if err != nil {
 		return err
 	}
-	limit := min(MaxFileBytes, MaxPackageBytes-s.copied)
+	limit := MaxPackageBytes - s.copied
 	n, copyErr := io.Copy(f, io.LimitReader(cancellation.Reader(ctx, input), limit+1))
 	closeErr := f.Close()
 	s.copied += n

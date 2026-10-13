@@ -41,6 +41,10 @@ func poMCPOpen(t *testing.T, cfg Config) *poMCPRuntime {
 		_ = host.Close()
 		t.Fatal(err)
 	}
+	if err := host.application.publishCallbacks(endpoint); err != nil {
+		_ = host.Close()
+		t.Fatal(err)
+	}
 	runtime := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 	t.Cleanup(runtime.close)
 	return runtime

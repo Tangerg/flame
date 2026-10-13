@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.1",
+  "protocolVersion": "2026-10-13.2",
   "features": [
     "reasoning",
     "multimodal",
@@ -5691,6 +5691,23 @@
       "type": "StartRunRequest",
       "rules": [
         {
+          "requiredAny": [
+            "sessionId",
+            "newSession"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "newSession",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "sessionId"
+          ]
+        },
+        {
           "when": [
             {
               "field": "provider",
@@ -7807,10 +7824,6 @@
       "rules": [
         {
           "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "sessionId",
           "constraint": "identity"
         },
         {
@@ -7844,6 +7857,35 @@
         {
           "field": "reasoningEffort",
           "constraint": "maxLength(32)"
+        }
+      ]
+    },
+    {
+      "type": "RunSessionOpening",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
         }
       ]
     },

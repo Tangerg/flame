@@ -62,9 +62,9 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, kind plugin.S
 			return binding, plugin.ErrUnavailable
 		}
 		return binding, nil
-	})
+	}, nil)
 }
-func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ServiceBinding, error)) (commandReply[R], error) {
+func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ServiceBinding, error), collaborators func(context.Context, plugins.ServiceBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[R], error) {
 	var zero commandReply[R]
 	id := operation.Identity(ctx)
 	admitted, err := jsoninput.Encode(input)
@@ -140,6 +140,15 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	var value R
 	var result jsoninput.Input
 	if record.Phase == plugin.CommandPrepared {
+		metadata := sdk.ParamsBase{}
+		if collaborators != nil {
+			var release func()
+			metadata, release, err = collaborators(ctx, binding, session)
+			if err != nil {
+				return zero, err
+			}
+			defer release()
+		}
 		err = c.routing.Dispatch(ctx, id, func(ctx context.Context, record plugin.CommandBinding) error {
 			_, err := c.original(ctx, record)
 			return err
@@ -147,7 +156,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		if err != nil {
 			return zero, err
 		}
-		result, err = bound.Invoke(ctx, id, record.Input)
+		result, err = bound.InvokeWithMetadata(ctx, id, record.Input, metadata)
 	} else {
 		var found bool
 		result, found, err = bound.ReadReceipt(ctx, id, record.Input)

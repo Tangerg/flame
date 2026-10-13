@@ -1,0 +1,69 @@
+package operation
+
+import (
+	"context"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+)
+
+// Actor identifies the managed code making a nested call. It is captured by
+// the connection owner and never decoded from a plugin's business arguments.
+type Actor struct {
+	installation resourceid.InstallationID
+	release      fingerprint.Digest
+	authority    fingerprint.Digest
+	server       mcpserver.ServerName
+}
+
+func NewActor(installation, release, authority, server string) (Actor, error) {
+	id, err := resourceid.ParseInstallation(installation)
+	if err != nil {
+		return Actor{}, err
+	}
+	digest, err := fingerprint.ParseDigest(release)
+	if err != nil {
+		return Actor{}, err
+	}
+	name, err := mcpserver.ParseServerName(server)
+	if err != nil {
+		return Actor{}, err
+	}
+	admitted, err := fingerprint.ParseDigest(authority)
+	if err != nil {
+		return Actor{}, err
+	}
+	return Actor{installation: id, release: digest, authority: admitted, server: name}, nil
+}
+
+func (a Actor) InstallationID() resourceid.InstallationID { return a.installation }
+func (a Actor) Release() fingerprint.Digest               { return a.release }
+func (a Actor) Server() mcpserver.ServerName              { return a.server }
+func (a Actor) Authority() fingerprint.Digest             { return a.authority }
+
+func (a Actor) Validate() error {
+	_, err := NewActor(a.installation.String(), a.release.String(), a.authority.String(), a.server.String())
+	return err
+}
+
+type actorKey struct{}
+
+func WithActor(ctx context.Context, actor Actor) context.Context {
+	return context.WithValue(ctx, actorKey{}, actor)
+}
+
+func ActorFrom(ctx context.Context) (Actor, bool) {
+	actor, found := ctx.Value(actorKey{}).(Actor)
+	return actor, found
+}
+
+// ScopedKey separates actors while preserving a logical command across release
+// and activation replacement. Release bytes are authority, not command identity.
+func ScopedKey(ctx context.Context, key string) string {
+	actor, found := ActorFrom(ctx)
+	if key == "" || !found {
+		return key
+	}
+	return scopedIdentity(actor.installation.String(), key)
+}

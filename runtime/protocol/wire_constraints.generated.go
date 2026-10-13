@@ -116,7 +116,6 @@ func (l ListModelInvocationsRequest) ValidateWire() error {
 
 func (s StartRunRequest) ValidateWire() error {
 	return collectWireViolations("StartRunRequest",
-		requiredText("sessionId", s.SessionID),
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
 		requiredItems("input", s.Input),
@@ -126,6 +125,8 @@ func (s StartRunRequest) ValidateWire() error {
 		maxLength("model", s.Model, 256),
 		identity("reasoningEffort", s.ReasoningEffort),
 		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		requiredAnyWhen(true, []string{"sessionId", "newSession"}, s),
+		forbiddenWhen(wireFieldPresent(s, "newSession"), "sessionId", s),
 		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
 		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
 		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
@@ -2469,6 +2470,17 @@ func (r RunProtocolProfile) ValidateWire() error {
 		uniqueItems("interruptTypes", r.InterruptTypes),
 		closedEnumItems("requiredFeatures", r.RequiredFeatures, []string{"subagents"}),
 		closedEnumItems("interruptTypes", r.InterruptTypes, []string{"approval", "question"}),
+	)
+}
+
+func (r RunSessionOpening) ValidateWire() error {
+	return collectWireViolations("RunSessionOpening",
+		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		requiredText("runId", r.RunID),
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
 	)
 }
 

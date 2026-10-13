@@ -32,9 +32,8 @@ var ErrClosed = errors.New("runs: coordinator closed")
 // Reading Start and the pump explains a Run end to end through canonical
 // application events.
 type Coordinator struct {
-	automationStarts                   AutomationStartReader
 	commandAcceptances                 CommandAcceptanceReader
-	automationAdmissions               *keylock.Set
+	startAdmissions                    *keylock.Set
 	rootStarts                         RootExecutionStarter
 	rootCancellation                   RunningRootCancellationRequester
 	conversation                       ConversationReader
@@ -89,7 +88,6 @@ func (c *Coordinator) AdmitSelection(selection modelref.Selection) error {
 // Dependencies is the complete collaborator set for the user-visible run use
 // cases and the segment supervisor they own.
 type Dependencies struct {
-	AutomationStarts                   AutomationStartReader
 	CommandAcceptances                 CommandAcceptanceReader
 	RootStarts                         RootExecutionStarter
 	Observations                       ExecutionObserver
@@ -136,7 +134,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		value any
 	}{
 		{"root execution starter", deps.RootStarts},
-		{"automated start reader", deps.AutomationStarts},
 		{"command acceptance reader", deps.CommandAcceptances},
 		{"execution observer", deps.Observations},
 		{"execution releaser", deps.Releases},
@@ -178,9 +175,8 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		return nil, errors.New("runs: isolation provider must not be typed nil")
 	}
 	return &Coordinator{
-		automationStarts:                   deps.AutomationStarts,
 		commandAcceptances:                 deps.CommandAcceptances,
-		automationAdmissions:               keylock.NewSet(),
+		startAdmissions:                    keylock.NewSet(),
 		rootStarts:                         deps.RootStarts,
 		rootCancellation:                   deps.RootCancellation,
 		conversation:                       deps.Conversation,
@@ -536,7 +532,7 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	if routes.admission != nil {
 		opening, err = NewAdmissionOpeningCommit(
 			commitID, *routes.admission, spec.InitialSession, spec.SessionReplacement,
-			spec.Automation, events,
+			spec.Actor, events,
 		)
 	} else {
 		opening, err = NewResumeOpeningCommit(commitID, *resume, events)

@@ -48,6 +48,7 @@ type interactionLifetime struct {
 	stateWake       chan struct{}
 	releaseOnce     sync.Once
 	finishOnce      sync.Once
+	publication     sync.RWMutex
 	workers         sync.WaitGroup
 	reconcilers     sync.WaitGroup
 }
@@ -103,6 +104,13 @@ func (i *interactionLifetime) beginRelease() {
 }
 
 func (i *interactionLifetime) offer(event runs.ExecutorEvent) bool {
+	i.publication.RLock()
+	defer i.publication.RUnlock()
+	select {
+	case <-i.done:
+		return false
+	default:
+	}
 	select {
 	case i.events <- event:
 		return true
@@ -112,10 +120,19 @@ func (i *interactionLifetime) offer(event runs.ExecutorEvent) bool {
 }
 
 func (i *interactionLifetime) send(event runs.ExecutorEvent) bool {
+	i.publication.RLock()
+	defer i.publication.RUnlock()
+	select {
+	case <-i.done:
+		return false
+	default:
+	}
 	select {
 	case i.events <- event:
 		return true
 	case <-i.releasing.Done():
+		return false
+	case <-i.done:
 		return false
 	}
 }
@@ -124,14 +141,31 @@ func (i *interactionLifetime) sendAuthoritative(
 	ctx context.Context,
 	event runs.ExecutorEvent,
 ) error {
+	i.publication.RLock()
+	defer i.publication.RUnlock()
+	select {
+	case <-i.done:
+		return errInteractionReleased
+	default:
+	}
 	select {
 	case i.events <- event:
 		return nil
 	case <-i.releasing.Done():
 		return errInteractionReleased
+	case <-i.done:
+		return errInteractionReleased
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// Process settlement can precede the last model observation callback. Withdraw
+// publication and unblock senders through done before closing the channel.
+func (i *interactionLifetime) closePublication() {
+	i.publication.Lock()
+	defer i.publication.Unlock()
+	close(i.events)
 }
 
 // publicationContext preserves observed results after execution cancellation.

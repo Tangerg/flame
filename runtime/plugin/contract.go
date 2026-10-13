@@ -109,6 +109,10 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 			return nil, fmt.Errorf("plugin: %s input: %w", m.config.Name, err)
 		}
 		ctx = context.WithValue(ctx, requestInputKey{}, params.inputJSON)
+		ctx, err = bindCallbackMetadata(ctx, params.Meta)
+		if err != nil {
+			return nil, err
+		}
 		value, operationErr := handler(ctx, session, Command[P]{ID: params.CommandID, Input: params.Input, inputJSON: params.inputJSON})
 		if operationErr == nil {
 			encoded, err := json.Marshal(value)

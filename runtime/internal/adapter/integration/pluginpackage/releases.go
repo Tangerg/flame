@@ -23,7 +23,6 @@ import (
 )
 
 const MaxPackageBytes int64 = 128 << 20
-const MaxFileBytes int64 = 16 << 20
 const MaxManifestBytes int64 = 4 << 20
 
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")

@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
+	schedulesqlite "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
@@ -374,7 +375,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 
 func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testing.T) {
 	for _, test := range []struct{ name, method, stage string }{
-		{"prepare reply", schedulerpc.PrepareManual, "response"}, {"accept request", schedulerpc.Accept, "request"}, {"accept reply", schedulerpc.Accept, "response"},
+		{"prepare reply", schedulerpc.PrepareManual, "response"}, {"dispatch request", schedulerpc.Dispatch, "request"}, {"dispatch reply", schedulerpc.Dispatch, "response"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source, evidence := managedMessageLossPackage(t, "schedules", test.method, test.stage)
@@ -386,7 +387,7 @@ func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testi
 			r.poMCPTools(server, ready)
 			saved := r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "create").(*protocol.Schedule)
 			var changed <-chan error
-			if test.method == schedulerpc.Accept {
+			if test.method == schedulerpc.Dispatch {
 				changed = managedServiceChange(t, r, protocol.TopicSchedulesChanged)
 			}
 			request := protocol.RunScheduleNowRequest{ID: saved.ID}
@@ -402,9 +403,10 @@ func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testi
 				t.Fatal(err)
 			}
 			var captured struct {
-				Request struct {
+				DataDirectory string `json:"dataDirectory"`
+				Request       struct {
 					Params struct {
-						Input schedulerpc.AcceptInput `json:"input"`
+						Input schedulerpc.DispatchInput `json:"input"`
 					} `json:"params"`
 				} `json:"request"`
 				Response struct {
@@ -423,7 +425,24 @@ func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testi
 				accepted.SessionID = captured.Response.Result.Value.SessionID
 			}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-			if test.method == schedulerpc.Accept {
+			if test.method == schedulerpc.Dispatch {
+				db, err := schedulesqlite.Open(t.Context(), filepath.Join(captured.DataDirectory, "schedules.db"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				pending, readErr := schedulesqlite.NewScheduleStore(db).CapturedRun(t.Context(), accepted.RunID)
+				if err := errors.Join(readErr, db.Close()); err != nil {
+					t.Fatal(err)
+				}
+				accepted.SessionID = pending.SessionID()
+			}
+			if test.method == schedulerpc.Dispatch && test.stage == "request" {
+				result := r.endpoint.Invoke(t.Context(), delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+				if !errors.Is(result.Failure, protocol.ErrRunNotFound) {
+					t.Fatalf("withheld dispatch request created a Run: %v", result.Failure)
+				}
+			}
+			if test.method == schedulerpc.Dispatch && test.stage == "response" {
 				deadline := time.Now().Add(lifecycleWaitBudget(t))
 				for {
 					current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
@@ -456,7 +475,7 @@ func TestScheduleDispatchMessageLossReplaysCapturedIdentityAfterRestart(t *testi
 			if len(page.Data) != 1 || page.Data[0].Revision != saved.Revision+1 {
 				t.Fatalf("acceptance replay advanced definition again: %+v", page.Data)
 			}
-			if test.method == schedulerpc.Accept {
+			if test.method == schedulerpc.Dispatch && test.stage == "response" {
 				sessions := r.must(delivery.SessionsList, protocol.ListSessionsRequest{}, "").(*protocol.Page[protocol.Session])
 				if len(sessions.Data) != 0 {
 					t.Fatalf("deleted acceptance recreated Session: %+v", sessions.Data)

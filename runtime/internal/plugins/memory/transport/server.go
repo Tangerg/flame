@@ -113,12 +113,15 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
-			prepared, original, err := managedmcp.PrepareCommand(ctx, db, rpc.Maintain, command.ID, admitted)
+			prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted)
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
 			if prepared == nil {
 				return pluginsdk.DecodeReply[rpc.MaintenanceResult](original)
+			}
+			if !prepared.NewlyAdmitted() {
+				return rpc.MaintenanceResult{}, managedmcp.ErrCommandUnconfirmed
 			}
 			if !input.Compacted {
 				reply, err := maintenanceReply(false)

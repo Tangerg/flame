@@ -17,11 +17,15 @@ func Bind(ctx context.Context, namespace, key string) context.Context {
 	if key == "" {
 		key = uuid.NewString()
 	}
+	return context.WithValue(ctx, identityKey{}, scopedIdentity(namespace, key))
+}
+
+func scopedIdentity(namespace, key string) string {
 	encoded := binary.BigEndian.AppendUint64(nil, uint64(len(namespace)))
 	encoded = append(encoded, namespace...)
 	encoded = append(encoded, key...)
 	digest := sha256.Sum256(encoded)
-	return context.WithValue(ctx, identityKey{}, hex.EncodeToString(digest[:]))
+	return hex.EncodeToString(digest[:])
 }
 
 func Identity(ctx context.Context) string {

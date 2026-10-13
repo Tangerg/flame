@@ -351,7 +351,7 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 // directory to exist in the exact bytes being admitted.
 func inspectServerFiles(root *os.Root, s plugin.Server) error {
 	if packaged, found := s.PackagedCommand(); found {
-		f, _, err := fileinput.OpenAt(root, packaged, MaxFileBytes)
+		f, _, err := fileinput.OpenAt(root, packaged, MaxPackageBytes)
 		if err != nil {
 			return fmt.Errorf("pluginpackage: open server command: %w", packageInputError(err))
 		}

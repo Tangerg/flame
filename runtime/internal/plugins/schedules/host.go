@@ -1,0 +1,65 @@
+package main
+
+import (
+	"context"
+	"errors"
+
+	flameruntime "github.com/Tangerg/flame/runtime"
+	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/transport"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+type runHost struct{ client *flameruntime.Client }
+
+func connectRunHost(ctx context.Context, ref pluginsdk.CallbackRef) (transport.RunHost, func() error, error) {
+	client, err := flameruntime.ConnectCallback(ctx, ref)
+	if err != nil {
+		return nil, nil, err
+	}
+	return runHost{client: client}, client.Close, nil
+}
+
+func (h runHost) Namespace(ctx context.Context) (string, error) {
+	discovery, err := h.client.Discover(ctx, flameruntime.CallOptions{})
+	if err != nil {
+		return "", err
+	}
+	return discovery.Capabilities.Limits.Idempotency.Namespace, nil
+}
+
+func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
+	execution := request.Execution()
+	selection := execution.ModelSelection()
+	start := protocol.StartRunRequest{
+		NewSession: &protocol.RunSessionOpening{SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title(), Workspace: protocol.WorkspaceRef{Path: execution.CWD()}},
+		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: execution.Instructions()}},
+		Provider:   selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
+	}
+	key := "schedules:run:" + request.RunID()
+	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Key: key, Request: &start}, flameruntime.CallOptions{})
+	if err != nil {
+		return err
+	}
+	switch acceptance.Type {
+	case protocol.RunAcceptanceOpened, protocol.RunAcceptanceRetired:
+		if acceptance.SessionID != request.SessionID() || acceptance.RunID != request.RunID() {
+			return errors.New("schedules: Runtime acceptance differs from captured dispatch")
+		}
+		return nil
+	case protocol.RunAcceptanceConflict:
+		return protocol.ErrIdempotencyConflict
+	case protocol.RunAcceptanceNotRecorded:
+	default:
+		return flameruntime.ErrInvalidResponse
+	}
+	ack, _, err := h.client.StartRun(ctx, start, flameruntime.RunCommandOptions{IdempotencyKey: key})
+	if err != nil {
+		return err
+	}
+	if ack.RunID != request.RunID() {
+		return flameruntime.ErrInvalidResponse
+	}
+	return nil
+}

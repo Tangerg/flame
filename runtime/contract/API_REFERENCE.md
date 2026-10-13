@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-13.1` · 111 methods
+Protocol `2026-10-13.2` · 111 methods
 
 ## Methods
 
@@ -722,7 +722,6 @@ TypeScript validator from this single registry projection.
 | `Usage` | `byModel` | `maxPropertyNameLength(256)` |
 | `RunProtocolProfile` | `requiredFeatures` | `uniqueItems` |
 | `RunProtocolProfile` | `interruptTypes` | `uniqueItems` |
-| `StartRunRequest` | `sessionId` | `nonEmpty` |
 | `StartRunRequest` | `sessionId` | `identity` |
 | `StartRunRequest` | `sessionId` | `maxLength(256)` |
 | `StartRunRequest` | `input` | `nonEmptyItems` |
@@ -732,6 +731,12 @@ TypeScript validator from this single registry projection.
 | `StartRunRequest` | `model` | `maxLength(256)` |
 | `StartRunRequest` | `reasoningEffort` | `identity` |
 | `StartRunRequest` | `reasoningEffort` | `maxLength(32)` |
+| `RunSessionOpening` | `sessionId` | `nonEmpty` |
+| `RunSessionOpening` | `sessionId` | `identity` |
+| `RunSessionOpening` | `sessionId` | `maxLength(256)` |
+| `RunSessionOpening` | `runId` | `nonEmpty` |
+| `RunSessionOpening` | `runId` | `identity` |
+| `RunSessionOpening` | `runId` | `maxLength(256)` |
 | `GenerationParams` | `temperature` | `nonNegative` |
 | `GenerationParams` | `temperature` | `maximum(2)` |
 | `GenerationParams` | `maxTokens` | `positive` |

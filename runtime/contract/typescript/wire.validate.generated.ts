@@ -301,6 +301,7 @@ export type WireTypeName =
   | "RunReplayScope"
   | "RunScheduleNowRequest"
   | "RunScheduleNowResponse"
+  | "RunSessionOpening"
   | "RunStatus"
   | "RunSummary"
   | "RuntimeEvent"
@@ -1243,6 +1244,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   GetRunAcceptanceRequest: object({
     key: allOf([text(), minLength(1), maxLength(255)]),
+    request: ref(() => CHECKS.StartRunRequest),
   }, ["key"]),
   GetRunRequest: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3385,6 +3387,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "sessionId"]),
+  RunSessionOpening: object({
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    title: text(),
+    workspace: ref(() => CHECKS.WorkspaceRef),
+  }, ["runId", "sessionId", "title", "workspace"]),
   RunStatus: enumOf(["running", "waiting", "finished"]),
   RunSummary: allOf([
     object({
@@ -3919,11 +3927,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      newSession: ref(() => CHECKS.RunSessionOpening),
       params: ref(() => CHECKS.GenerationParams),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    }, ["input", "sessionId"]),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    }, ["input"]),
+    anyOf([fields({}, ["sessionId"]), fields({}, ["newSession"])]),
+    ifThen(
+      fields({}, ["newSession"]),
+      fields({
+        sessionId: absent(),
+      }, []),
+    ),
     ifThen(
       fields({}, ["provider"]),
       fields({}, ["model"]),

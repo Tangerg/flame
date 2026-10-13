@@ -126,7 +126,7 @@ type scheduleManagementUseCases interface {
 }
 
 type scheduleFiringUseCases interface {
-	RunNow(ctx context.Context, id string) (runs.StartResult, error)
+	RunNow(ctx context.Context, id string) (schedules.RunReference, error)
 }
 
 type workspaceFileUseCases interface {

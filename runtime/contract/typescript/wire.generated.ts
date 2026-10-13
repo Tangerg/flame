@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.1";
+export const PROTOCOL_VERSION = "2026-10-13.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -626,6 +626,7 @@ export interface GetPlanRequest {
 
 export interface GetRunAcceptanceRequest {
   key: string;
+  request?: StartRunRequest;
 }
 
 export interface GetRunRequest {
@@ -1642,6 +1643,13 @@ export interface RunScheduleNowResponse {
   sessionId: string;
 }
 
+export interface RunSessionOpening {
+  runId: string;
+  sessionId: string;
+  title: string;
+  workspace: WorkspaceRef;
+}
+
 export type RunStatus = "running" | "waiting" | "finished";
 
 export interface RunSummary {
@@ -1954,10 +1962,11 @@ export interface StartGoalRequest {
 export interface StartRunRequest {
   input: ContentBlock[];
   model?: string;
+  newSession?: RunSessionOpening;
   params?: GenerationParams;
   provider?: string;
   reasoningEffort?: string;
-  sessionId: string;
+  sessionId?: string;
 }
 
 export interface StartRunResponse {

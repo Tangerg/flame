@@ -75,19 +75,16 @@ func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Se
 	return created, nil
 }
 
-// PrepareAutomation resolves a schedule-owned Session without writing it. When
-// the identity already exists, it returns that durable aggregate and no initial
-// value. Otherwise it returns one initial aggregate for the Run opening write-set.
-// This makes a retried occurrence reuse its Session without asking persistence
-// to derive or normalize product state.
-func (c *Coordinator) PrepareAutomation(
+// PrepareOpening creates a captured Session without writing it. An existing
+// identity is refused: only the original Run acceptance may authorize replay.
+func (c *Coordinator) PrepareOpening(
 	ctx context.Context,
 	id, title, cwd string,
 	selection modelref.Selection,
 ) (current session.Session, initial *session.Session, err error) {
-	existing, err := c.Get(ctx, id)
+	_, err = c.Get(ctx, id)
 	if err == nil {
-		return existing, nil, nil
+		return session.Session{}, nil, fmt.Errorf("%w: new opening Session already exists", session.ErrInvalid)
 	}
 	if !errors.Is(err, session.ErrNotFound) {
 		return session.Session{}, nil, err

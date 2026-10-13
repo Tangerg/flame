@@ -329,17 +329,9 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}
-	automation, present := opening.Automation()
-	if present {
-		if err := e.automationAuthority.Admit(ctx, automation); err != nil {
+	if actor, present := opening.Actor(); present {
+		if err := e.actorAuthority.Admit(ctx, actor); err != nil {
 			return err
-		}
-		receipt, err := runs.AcceptAutomation(automation, opening)
-		if err != nil {
-			return err
-		}
-		if err := e.automationStarts.Save(ctx, receipt); err != nil {
-			return fmt.Errorf("segment: record automated Run admission: %w", err)
 		}
 	}
 	// An externally initiated command binds its acceptance here, in the same

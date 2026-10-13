@@ -2,17 +2,19 @@ package pluginservices
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"log/slog"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/google/uuid"
 
@@ -20,50 +22,66 @@ import (
 )
 
 type Dispatcher struct {
-	service *Schedules
-	runs    *runs.Coordinator
-	publish invalidation.Publish
+	service   *Schedules
+	callbacks *pluginsdk.Callbacks
+	publish   invalidation.Publish
 }
 
-func NewDispatcher(service *Schedules, coordinator *runs.Coordinator, publish invalidation.Publish) (*Dispatcher, error) {
-	if service == nil || coordinator == nil {
-		return nil, errors.New("schedule: service and Run coordinator are required")
+func NewDispatcher(service *Schedules, callbacks *pluginsdk.Callbacks, publish invalidation.Publish) (*Dispatcher, error) {
+	if service == nil || callbacks == nil {
+		return nil, errors.New("schedule: service and Runtime callbacks are required")
 	}
-	return &Dispatcher{service: service, runs: coordinator, publish: publish}, nil
+	return &Dispatcher{service: service, callbacks: callbacks, publish: publish}, nil
 }
-func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBinding, session *sdk.ClientSession, snapshot schedule.RunRequestSnapshot) (runs.StartResult, error) {
+func (d *Dispatcher) dispatch(ctx context.Context, binding plugins.ServiceBinding, session *sdk.ClientSession, snapshot schedule.RunRequestSnapshot) (app.RunReference, error) {
 	request, err := schedule.RestoreRunRequest(snapshot)
 	if err != nil {
-		return runs.StartResult{}, err
+		return app.RunReference{}, err
 	}
 	current, err := d.service.pool.ServiceSession(ctx, binding.ServerID)
 	if err != nil {
-		return runs.StartResult{}, err
+		return app.RunReference{}, err
 	}
 	if current != session {
-		return runs.StartResult{}, errors.New("schedule: captured backend generation was withdrawn")
+		return app.RunReference{}, errors.New("schedule: captured backend generation was withdrawn")
 	}
-	execution := request.Execution()
-	startContext, cancel := context.WithCancel(ctx)
-	result, err := d.runs.StartAutomation(startContext, runs.AutomationStart{
-		Origin:    runs.AutomationOrigin{InstallationID: binding.InstallationID.String(), ReleaseDigest: binding.Digest.String(), ServerName: binding.ServerName.String()},
-		SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title(), Instructions: execution.Instructions(), CWD: execution.CWD(), ModelSelection: execution.ModelSelection(),
-	})
-	cancel()
+	metadata, release, err := d.openRuntime(ctx, binding, session)
 	if err != nil {
-		return runs.StartResult{}, err
+		return app.RunReference{}, err
 	}
-	_, err = pluginsdk.CallCommand[rpc.AcceptInput, rpc.Ack](ctx, session, rpc.Accept, "accept:"+request.RunID(), rpc.AcceptInput{RunID: request.RunID()})
+	defer release()
+	method, err := pluginsdk.Resolve(ctx, session, rpc.Dispatch)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	input, err := jsoninput.Encode(rpc.DispatchInput{RunID: request.RunID()})
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	result, err := method.InvokeWithMetadata(ctx, "dispatch:"+request.RunID(), input, metadata)
 	d.publish.Notify(invalidation.ForSchedules(request.ScheduleID()))
 	if err != nil {
-		return runs.StartResult{}, rpc.DecodeError(err)
+		return app.RunReference{}, rpc.DecodeError(err)
 	}
-	return result, nil
+	var reference app.RunReference
+	if err := json.Unmarshal(result.JSON(), &reference, json.RejectUnknownMembers(true)); err != nil {
+		return app.RunReference{}, err
+	}
+	if reference.SessionID != request.SessionID() || reference.RunID != request.RunID() {
+		return app.RunReference{}, errors.New("schedule: backend acceptance differs from captured request")
+	}
+	return reference, nil
 }
-func (d *Dispatcher) RunNow(ctx context.Context, id string) (runs.StartResult, error) {
-	request, err := invokeCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, d.service.commands, plugin.SchedulesService, rpc.PrepareManual, rpc.ItemInput{ID: id}, func(value schedule.RunRequestSnapshot) error { _, err := schedule.RestoreRunRequest(value); return err })
+func (d *Dispatcher) RunNow(ctx context.Context, id string) (app.RunReference, error) {
+	request, err := invokeResolvedCommand[rpc.ItemInput, schedule.RunRequestSnapshot](ctx, d.service.commands, rpc.PrepareManual, rpc.ItemInput{ID: id}, func(value schedule.RunRequestSnapshot) error { _, err := schedule.RestoreRunRequest(value); return err }, func(ctx context.Context) (plugins.ServiceBinding, error) {
+		binding, found, err := plugins.ServiceOwner(ctx, d.service.installations, d.service.commands.selections, plugin.SchedulesService)
+		if err == nil && !found {
+			err = plugin.ErrUnavailable
+		}
+		return binding, err
+	}, d.openRuntime)
 	if err != nil {
-		return runs.StartResult{}, rpc.DecodeError(err)
+		return app.RunReference{}, rpc.DecodeError(err)
 	}
 	return d.dispatch(ctx, request.binding, request.session, request.value)
 }
@@ -89,7 +107,7 @@ func (d *Dispatcher) pass(ctx context.Context) {
 		slog.ErrorContext(ctx, "schedule: backend admission failed", "error", err)
 		return
 	}
-	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil })
+	reply, err := invokeResolvedCommand[rpc.ScanInput, []schedule.RunRequestSnapshot](operation.Bind(ctx, "plugins.automatic", uuid.NewString()), d.service.commands, rpc.Scan, rpc.ScanInput{Now: time.Now()}, nil, func(context.Context) (plugins.ServiceBinding, error) { return binding, nil }, d.openRuntime)
 	if err != nil {
 		slog.ErrorContext(ctx, "schedule: durable scan failed", "error", err)
 		return
@@ -107,4 +125,21 @@ func (d *Dispatcher) pass(ctx context.Context) {
 			slog.ErrorContext(ctx, "schedule: Run admission failed", "run.id", request.RunID, "error", err)
 		}
 	}
+}
+
+func (d *Dispatcher) openRuntime(ctx context.Context, binding plugins.ServiceBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	actor, err := d.service.pool.SessionActor(ctx, binding.ServerID, session)
+	if err != nil {
+		return sdk.ParamsBase{}, nil, err
+	}
+	ref, release, err := d.callbacks.OpenRPC(operation.WithActor(ctx, actor), session, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20})
+	if err != nil {
+		return sdk.ParamsBase{}, nil, err
+	}
+	metadata, err := pluginsdk.CallbackMetadata(ref)
+	if err != nil {
+		release()
+		return sdk.ParamsBase{}, nil, err
+	}
+	return metadata, release, nil
 }

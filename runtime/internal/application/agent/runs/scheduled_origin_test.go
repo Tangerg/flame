@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"strconv"
 	"testing"
 	"time"
@@ -43,7 +44,7 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 			control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_owned", ExecutorID: "exec_owned"}}
 			effects := &fakeEffects{}
 			coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
-			result, err := coordinator.StartAutomation(t.Context(), automationRequest(test.request, "/default"))
+			result, err := coordinator.Start(t.Context(), openingCommand(test.request, "/default"))
 			if err != nil {
 				t.Fatalf("start from captured request: %v", err)
 			}
@@ -61,8 +62,8 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 			opening := effects.opening()
 			initial, initialized := opening.InitialSession()
 			admission, admitted := opening.Admission()
-			captured, present := opening.Automation()
-			if !initialized || !admitted || !present || captured != automationRequest(test.request, "/default") ||
+			captured, present := opening.Actor()
+			if !initialized || !admitted || !present || captured != *openingCommand(test.request, "/default").Actor ||
 				initial.Title() != scheduled.Title() || initial.Workspace().Path() != "/captured" ||
 				initial.Selection() != selection || admission.ModelSelection != selection {
 				t.Fatalf("durable opening changed captured execution: %+v", opening)
@@ -82,10 +83,14 @@ func TestScheduledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 	}
 }
 
-func automationRequest(request schedule.RunRequest, cwd string) AutomationStart {
+func openingCommand(request schedule.RunRequest, cwd string) StartCommand {
 	execution := request.Execution()
 	if execution.CWD() != "" {
 		cwd = execution.CWD()
 	}
-	return AutomationStart{Origin: AutomationOrigin{InstallationID: "11111111-1111-4111-8111-111111111111", ReleaseDigest: testsupport.Digest("release").String(), ServerName: "schedules"}, SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title(), Instructions: execution.Instructions(), CWD: cwd, ModelSelection: execution.ModelSelection()}
+	actor, err := operation.NewActor("11111111-1111-4111-8111-111111111111", testsupport.Digest("release").String(), testsupport.Digest("authority").String(), "schedules")
+	if err != nil {
+		panic(err)
+	}
+	return StartCommand{NewSession: &SessionOpening{SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title(), CWD: cwd}, Actor: &actor, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: execution.Instructions()}}, ModelSelection: execution.ModelSelection(), Acceptance: &CommandIdentity{Key: request.RunID(), Fingerprint: testsupport.Digest("opening:" + request.RunID()).String()}}
 }

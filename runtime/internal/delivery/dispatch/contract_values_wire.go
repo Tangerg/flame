@@ -336,9 +336,13 @@ func registerRunValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.StartRunRequest](),
-		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
+		Constraints: append(append(resourceIdentity("sessionId"), []FieldConstraint{
 			{Field: "input", Kind: ConstraintNonEmptyItems},
 		}...), modelSelectionIdentities()...),
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.RunSessionOpening](),
+		Constraints: append(requiredResourceIdentity("sessionId"), requiredResourceIdentity("runId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GenerationParams](),

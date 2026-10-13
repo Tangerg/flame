@@ -34,7 +34,6 @@ type Bundle struct {
 
 	Sessions            *sqlitestore.SessionStore
 	Runs                *sqlitestore.RunStore
-	AutomationStarts    *AutomationStartStore
 	CommandAcceptances  *CommandAcceptanceStore
 	WorkspaceMutations  *WorkspaceMutationStore
 	ExecutorCheckpoints *ExecutorCheckpointStore
@@ -179,7 +178,6 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		},
 		Sessions:            sqlitestore.NewSessionStore(db),
 		Runs:                sqlitestore.NewRunStore(db),
-		AutomationStarts:    NewAutomationStartStore(db),
 		CommandAcceptances:  NewCommandAcceptanceStore(db),
 		WorkspaceMutations:  NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
 		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),

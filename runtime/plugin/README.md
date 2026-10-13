@@ -112,11 +112,11 @@ version still named by application module metadata does not contain it.
 
 This package currently supplies backend wire primitives. Runtime's existing
 Memory/Schedules commands retain original installed routing before dispatch and
-reconcile through this lookup. Generic installed-provider proxies, Runtime callback
-catalog binding, point descriptors,
+reconcile through this lookup. Generic installed-provider proxies, point descriptors,
 generic contribution declaration and component bindings remain separate unfinished
 parts of the unified-plugin refactor. A direct backend session is not a public
-installed-provider proxy, and these primitives do not authorize core Runtime calls.
+installed-provider proxy. Canonical Core callbacks use the existing typed Runtime
+Client and the same Delivery Endpoint as ordinary host calls.
 
 ## Unary host callbacks
 
@@ -147,9 +147,19 @@ package or expose its loopback address to browser components. Call `Close` from
 the Runtime's teardown owner, after operation admission has stopped; handlers
 must not synchronously join their own callback lifetime.
 
+`CallbackMetadata` validates and projects a reference into MCP request metadata.
+`Binding.InvokeWithMetadata` leaves this ephemeral collaborator outside admitted
+business input and its identity. The receiving method validates it before business
+execution and exposes it through `CallbackFromContext`. Changing the reference
+for a later observation does not change the original command input or receipt.
+This projection supplies no durable authority of its own; the enclosing callback
+owner and actual managed connection retain call and installation authority.
+
 Memory search and maintenance now use this public unary transport. Memory owns
 its two-call policy and captured model collaborators. Real-process tests prove
 MCP → callback → nested MCP reentrancy without a Desktop relay. This slice does
-not yet provide installed dependency/entry rendezvous, named Runtime Delivery
-catalog callbacks, streaming or remote decorator continuations; those remain
+not yet provide installed dependency/entry rendezvous or remote decorator
+continuations. Canonical Runtime RPC/SSE callbacks now share the ordinary
+Endpoint/Client, and Schedules uses them for durable Run acceptance. Complete
+installed dependency binding and streaming decorators remain
 required parts of the complete plugin refactor.

@@ -408,7 +408,7 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 		}
 		var file *os.File
 		if !entry.IsDir() {
-			file, info, err = fileinput.OpenAtExpected(root, name, info, MaxFileBytes)
+			file, info, err = fileinput.OpenAtExpected(root, name, info, MaxPackageBytes)
 			if err != nil {
 				return err
 			}
@@ -431,7 +431,7 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 		}
 		fmt.Fprintf(h, "%d:%s:%o:%d:", len(name), name, info.Mode().Perm()&0111, info.Size())
 		fileHash := sha256.New()
-		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancellation.Reader(ctx, file), MaxFileBytes+1))
+		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancellation.Reader(ctx, file), MaxPackageBytes+1))
 		err = errors.Join(err, fileinput.VerifyAtVersion(file, info, root, name))
 		if n != info.Size() {
 			return errors.Join(errors.New("pluginpackage: release changed during inspection"), err)

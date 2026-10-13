@@ -161,7 +161,7 @@ func TestCoordinatorSessionCRUD(t *testing.T) {
 	}
 }
 
-func TestPrepareAutomationBuildsOneUnpersistedInitialAggregate(t *testing.T) {
+func TestPrepareOpeningBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 	store := &crudSessionStore{getErr: session.ErrNotFound}
 	createdAt := time.Unix(9, 0).UTC()
 	coordinator := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{
@@ -169,12 +169,12 @@ func TestPrepareAutomationBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 		Now:   func() time.Time { return createdAt },
 	}))
 
-	current, initial, err := coordinator.PrepareAutomation(
+	current, initial, err := coordinator.PrepareOpening(
 		t.Context(), "ses_scheduled", " Scheduled ", "/requested",
 		testsupport.MustModelSelection("provider", "model"),
 	)
 	if err != nil {
-		t.Fatalf("PrepareAutomation: %v", err)
+		t.Fatalf("PrepareOpening: %v", err)
 	}
 	if initial == nil || current.Snapshot() != initial.Snapshot() {
 		t.Fatalf("scheduled current=%+v initial=%+v", current.Snapshot(), initial)
@@ -186,11 +186,11 @@ func TestPrepareAutomationBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 		t.Fatalf("scheduled aggregate = %+v", current.Snapshot())
 	}
 	if store.inserted.ID() != "" {
-		t.Fatalf("PrepareAutomation persisted before Run opening: %+v", store.inserted.Snapshot())
+		t.Fatalf("PrepareOpening persisted before Run opening: %+v", store.inserted.Snapshot())
 	}
 }
 
-func TestPrepareAutomationReusesCommittedAggregateWithoutWorkspaceAdmission(t *testing.T) {
+func TestPrepareOpeningRefusesAnExistingSessionWithoutWorkspaceAdmission(t *testing.T) {
 	existing := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_scheduled", Title: "Existing", Workspace: testsupport.MustWorkspace("/existing"),
 		Selection: testsupport.MustModelSelection("provider", "existing-model"),
@@ -200,14 +200,14 @@ func TestPrepareAutomationReusesCommittedAggregateWithoutWorkspaceAdmission(t *t
 		Paths: testWorkspaceResolver{err: errors.New("must not inspect workspace")},
 	}))
 
-	current, initial, err := coordinator.PrepareAutomation(
+	current, initial, err := coordinator.PrepareOpening(
 		t.Context(), existing.ID(), "Ignored", "/unavailable",
 		testsupport.MustModelSelection("ignored-provider", "ignored-model"),
 	)
-	if err != nil {
-		t.Fatalf("PrepareAutomation existing: %v", err)
+	if !errors.Is(err, session.ErrInvalid) {
+		t.Fatalf("PrepareOpening existing: %v", err)
 	}
-	if initial != nil || current.Snapshot() != existing.Snapshot() {
+	if initial != nil || current.ID() != "" {
 		t.Fatalf("existing current=%+v initial=%+v", current.Snapshot(), initial)
 	}
 }

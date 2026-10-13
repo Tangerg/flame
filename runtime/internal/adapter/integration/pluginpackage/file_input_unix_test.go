@@ -82,7 +82,7 @@ func TestVerifiedResourceRefusesReplacementFIFOWithoutBlocking(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = fifoFailure(t, pipe, func() error {
-		content, err := releases.readResource(t.Context(), installation, "notes.txt", MaxFileBytes)
+		content, err := releases.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes)
 		if len(content) != 0 {
 			return errors.New("special node returned resource content")
 		}

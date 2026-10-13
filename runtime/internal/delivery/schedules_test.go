@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	schedules "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
@@ -287,10 +285,10 @@ type unexpectedScheduleFiring struct {
 	store *fakeScheduleRegistry
 }
 
-func (s unexpectedScheduleFiring) RunNow(ctx context.Context, id string) (runs.StartResult, error) {
+func (s unexpectedScheduleFiring) RunNow(ctx context.Context, id string) (schedules.RunReference, error) {
 	if _, err := s.store.Get(ctx, id); err != nil {
-		return runs.StartResult{}, err
+		return schedules.RunReference{}, err
 	}
 	s.test.Error("unexpected schedule Run dispatch")
-	return runs.StartResult{}, errors.New("unexpected schedule dispatch")
+	return schedules.RunReference{}, errors.New("unexpected schedule dispatch")
 }

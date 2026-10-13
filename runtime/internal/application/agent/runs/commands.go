@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -97,9 +98,16 @@ func invalidInputBlock(index int, field, detail string, cause error) error {
 	return &InputBlockError{Index: index, Field: field, Detail: detail, Cause: cause}
 }
 
-// StartCommand is the input for starting a Run in an existing Session.
+// SessionOpening captures the new Session and Run created by one keyed opening.
+type SessionOpening struct {
+	SessionID, RunID, Title, CWD string
+}
+
+// StartCommand addresses an existing Session or an atomic new Session opening.
 type StartCommand struct {
 	SessionID      string
+	NewSession     *SessionOpening
+	Actor          *operation.Actor
 	ModelSelection modelref.Selection
 	Options        *corechat.Options
 	// Capabilities is the optional behavior enabled for this Run, already resolved
@@ -114,7 +122,7 @@ type StartCommand struct {
 	// Acceptance is the external command reference bound by the delivery boundary
 	// before admission. When present, the opening commits its acceptance record in
 	// the same transaction and a retry with the same key returns the original
-	// opening. nil for application-authored starts (automation, Goal), which carry
+	// opening. nil for application-authored starts (Goal), which carry
 	// their own acceptance owner.
 	Acceptance *CommandIdentity
 }
@@ -130,6 +138,8 @@ func (s StartCommand) clone() StartCommand {
 		acceptance := *s.Acceptance
 		s.Acceptance = &acceptance
 	}
+	s.NewSession = optional.Clone(s.NewSession)
+	s.Actor = optional.Clone(s.Actor)
 	return s
 }
 

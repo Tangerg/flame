@@ -209,7 +209,7 @@ type SessionReader interface {
 // opening write-set inserts with the Run, so a retried occurrence reuses its
 // Session and an unaccepted one leaves none.
 type SessionCreator interface {
-	PrepareAutomation(
+	PrepareOpening(
 		ctx context.Context,
 		id, title, cwd string,
 		selection modelref.Selection,
