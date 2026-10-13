@@ -2,7 +2,7 @@
 
 ## Current stage
 
-Stage 3e complete in source and verification: public immutable callable capabilities now associate consumer-owned required contracts with named Backend exports. Discovery and dispatch check the entire canonical contract, export and method membership; original receipt recovery retains the same export. Actual Reviews and the existing feature generator consume the same Go-owned capability. Real stdio committed-response loss recovers through the original export without resending a mutation. Generic installed declarations, selection migration and the installed operation entrance remain open. Commit/main synchronization is the next round-close action.
+Stage 3e complete: public immutable callable capabilities now associate consumer-owned required contracts with named Backend exports. Discovery and dispatch check the entire canonical contract, export and method membership; original receipt recovery retains the same export. Actual Reviews and the existing feature generator consume the same Go-owned capability. Real stdio committed-response loss recovers through the original export without resending a mutation. Generic installed declarations, selection migration and the installed operation entrance remain open. Committed as a6161bdc. Round-end git merge main reports already up to date at 78f9f08bbb26bba633bd32def0bef7cc8381a7fa. All owned verification handles are terminal and temporary fixtures are removed.
 
 Stage 3d complete: actual Schedules backend dispatch now uses the public Runtime Client and canonical RPC/SSE callback. Captured new Session/Run opening shares runs.start and its durable command acceptance. StartAutomation, its receipt store/table and the host's direct opening/remote Accept path are removed. Real Core opening-response loss, private dispatch-message loss, restart, source withdrawal and retired material reconciliation pass focused races. Runtime/CLI full module checks, final changed-owner races, shared client contracts and independent SDK/Reviews checks pass. Committed as 875375fa and merged local main 78f9f08b in b13f7527. Final integrated Runtime/CLI test/vet/build and affected acceptance/approval/SQLite/bootstrap races pass. Generic declarations, installed dependency rendezvous, components, model execution/decorators and full author parity remain open.
 
@@ -36,6 +36,8 @@ Stage 2h commit: a3b82f77e7a2ffa792ba3926d94f746fd9c84835.
 Stage 3a commit: 859c840bf6593db20f3ea2a4c9613374722389a4.
 Stage 3b commit: e392b751117a8b67f8c04ef8e4984ab594ebbf58.
 Stage 3c commit: de2e91c70ba4fc5751a83e0220e673f21957d0b3.
+Stage 3e commit: a6161bdc.
+Stage 3e main synchronization: git merge main reported already up to date at 78f9f08bbb26bba633bd32def0bef7cc8381a7fa; no incoming code change required another integrated run.
 Stage 3d commit: 875375fa.
 Stage 3d integration commit: b13f7527b45c655021c900ae754b238c7f5372e2.
 Stage 3d main synchronization: merged local main 78f9f08bbb26bba633bd32def0bef7cc8381a7fa without conflict in b13f7527. Final integrated Runtime/CLI full test/vet/build and affected acceptance/approval/SQLite/bootstrap races passed; final main recheck remains at that same commit.
@@ -413,7 +415,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
-- Stage 3e: both independent-author fixture attempts, source archives, proxies and private module caches were removed by TemporaryDirectory, including the failed fixture. Test-owned stdio probes, backend processes, sessions and databases are torn down. No frontend build artifact, scratch script, shared configuration edit, external state change or user-data operation was introduced. Keep the active managed worktree for the full goal; final commit/main synchronization and clean-state checks are pending.
+- Stage 3e: both independent-author fixture attempts, source archives, proxies and private module caches were removed by TemporaryDirectory, including the failed fixture. Test-owned stdio probes, backend processes, sessions and databases are torn down. No frontend build artifact, scratch script, shared configuration edit, external state change or user-data operation was introduced. All verification/commit handles are terminal, the completed slice is committed in a6161bdc and main synchronization reports already up to date at 78f9f08b. Process inspection found no live Reviews/probe helpers. Original inputs retain their baseline hashes. Keep the active managed worktree for the full goal; this milestone update is the sole remaining change before the final clean-state check.
 
 - Stage 3d: public SDK/Reviews temporary source snapshots, file proxies, module caches and author copies have been removed by TemporaryDirectory. Tests own every helper process, callback listener and database. Owned icons/UI/frontend dist outputs created for Desktop consumer compilation have been removed; no frontend test or tracked source edit was introduced. All verification/integration/commit handles are terminal. Product commit 875375fa and incoming-main merge b13f7527 retain the completed slice; this milestone record is the only remaining change before the final clean-worktree check. Retain the active managed worktree for the full goal.
 
