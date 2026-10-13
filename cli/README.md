@@ -298,4 +298,9 @@ public commands. Core Memory read models and enums are also removed in Core .17.
 Terminal presentation owns its compact read projection; generated publisher
 snapshots remain the transport contract. Visible-state and timestamp checks precede
 presentation, while publisher schemas own identity/content admission. Remaining
-capacity/topic migration and final acceptance are still open.
+Core .18 also removes its Memory capacity export. Complete readers obtain the
+publisher's schema-bound Capacity from the first page, require it to remain stable
+under the captured binding and reject cumulative overflow or empty continuation.
+Page width uses the backend default, and the publisher alone derives row/request
+limits from its business constants. Notification migration and final acceptance
+are still open.

@@ -329,5 +329,9 @@ Core add/DTO and the Memory-specific Core feature are removed without an alias.
 Core .17 removes Memory wire read models and enums. Workspace queries own their
 visible presentation vocabulary, while generated publisher snapshots own transport
 fields. Backend snapshot schemas carry identity/content admission, and the ordinary
-Memory ESM resource is rebuilt against that exact contract. Remaining capacity/topic
-migration and final process/lifecycle acceptance are open; no UI/E2E tests run here.
+Memory ESM resource is rebuilt against that exact contract. Core .18 removes the
+Memory capacity export. Complete workspace reads use the publisher's schema-bound
+Capacity and reject capacity drift, cumulative overflow, empty continuation and
+repeated cursors under one captured binding. Workspace/ordinary-component page
+width uses the backend default. Notification migration and final process/lifecycle
+acceptance are open; no UI/E2E tests run here.

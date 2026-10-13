@@ -30,7 +30,8 @@ const (
 	// The prompt envelope may shrink a page but must not authorize an unbounded preceding database read.
 	MaxLedgerFoldFacts = 128
 
-	MaxVisiblePerTarget = 512
+	MaxVisiblePerTarget    = 512
+	MaxManagementPageItems = 100
 
 	// Recent rejections suppress repeated proposals without retaining unbounded history.
 	MaxRejectedPerTarget = 2048

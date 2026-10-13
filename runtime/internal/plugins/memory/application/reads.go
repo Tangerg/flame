@@ -12,7 +12,6 @@ import (
 )
 
 const managementPageNamespace = "agentMemory.management"
-const managementPageLimit = 100
 
 type ListInput struct {
 	Scope  domain.Scope
@@ -27,7 +26,7 @@ func (c *Coordinator) List(ctx context.Context, input ListInput) (pagination.Pag
 	if err != nil {
 		return pagination.Page[domain.Item]{}, err
 	}
-	limit, err := input.Limit.Resolve(managementPageLimit)
+	limit, err := input.Limit.Resolve(domain.MaxManagementPageItems)
 	if err != nil {
 		return pagination.Page[domain.Item]{}, err
 	}

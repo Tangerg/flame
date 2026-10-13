@@ -55,7 +55,7 @@ func TestManagementRefusesMalformedSortPositions(t *testing.T) {
 
 func TestManagementPageBoundAndReadFailure(t *testing.T) {
 	now := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
-	store := &fakeStore{listed: make([]domain.Item, managementPageLimit+1)}
+	store := &fakeStore{listed: make([]domain.Item, domain.MaxManagementPageItems+1)}
 	for i := range store.listed {
 		id, err := domain.ParseItemID(fmt.Sprintf("mem_%032x", i+1))
 		if err != nil {
@@ -65,7 +65,7 @@ func TestManagementPageBoundAndReadFailure(t *testing.T) {
 	}
 	c := newCoordinator(t, Config{Store: store})
 	page, err := c.List(t.Context(), ListInput{Scope: domain.ScopeUser})
-	if err != nil || len(page.Rows) != managementPageLimit || page.NextCursor == "" {
+	if err != nil || len(page.Rows) != domain.MaxManagementPageItems || page.NextCursor == "" {
 		t.Fatalf("bounded page = %+v, %v", page, err)
 	}
 	store.err = errors.New("storage unavailable")

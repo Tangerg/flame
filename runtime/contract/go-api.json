@@ -10,13 +10,6 @@
         "github.com/Tangerg/flame/runtime/protocol",
         "iter"
       ],
-      "constants": [
-        {
-          "name": "MaximumAgentMemoryItemsPerTarget",
-          "type": "untyped int",
-          "value": "512"
-        }
-      ],
       "variables": [
         {
           "name": "ErrAcknowledgementUnknown",
@@ -3483,7 +3476,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.17\""
+          "value": "\"2026-10-14.18\""
         },
         {
           "name": "ProviderAPIKeyOptional",

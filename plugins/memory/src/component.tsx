@@ -256,7 +256,6 @@ export function Memory({ context }: { context: ComponentContext }) {
             Scope: scope,
             CWD: cwd,
             Cursor: cursors.at(-1)!,
-            Limit: 100,
           },
           signal,
         );

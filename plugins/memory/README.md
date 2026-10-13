@@ -91,6 +91,13 @@ together. ItemID publishes its actual patterned string contract. Core has no
 Memory record or business enum; clients own their visible read projections and
 reject hidden/unknown states before presentation. A schema change requires rebuilding
 the ordinary ESM component against the exact generated capability.
+
+Management pages publish Capacity as a projection of MaxVisiblePerTarget, enforced
+by the generated schema const. The existing private owner alone defines target
+capacity and management page width. Input Limit and output Rows bounds derive from
+MaxManagementPageItems; omitting Limit uses that owner's default. Complete collectors
+must retain the captured binding/capacity, reject drift/cumulative overflow and never
+return partial success on continuation failure. Core exports no Memory capacity.
 The backend publishes the named `memory` capability. Runtime validates the full
 contract and declared export for queries and captures the contribution/export and
 complete capability for original command recovery. Public installed operation

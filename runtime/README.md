@@ -143,6 +143,17 @@ backend protocol are unchanged. Native fixtures compare complete owner snapshots
 including vectors, without recreating the retired Core shape. Remaining Core
 capacity/topic knowledge and final runtime acceptance remain open.
 
+Core 2026-10-14.18 removes MaximumAgentMemoryItemsPerTarget and its private-domain
+import from the public root. The Memory publisher page includes Capacity, with a
+schema const derived from MaxVisiblePerTarget. Request page width and response
+row limits derive from one private MaxManagementPageItems constant. CLI/Desktop
+complete collectors retain one binding and the first admitted capacity; invalid
+or changed capacity, cumulative overflow and empty/cyclic continuation fail without
+partial results. Workspace and ordinary component readers request the owner's
+default page width. Regenerate canonical JSON, Go/TS and ordinary ESM together;
+backend protocol and private storage/receipt formats remain unchanged. No Core
+capacity alias remains. Business notification migration and final acceptance are open.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

@@ -385,6 +385,8 @@
                     "minimum": -9223372036854775808
                   }
                 ],
+                "maximum": 100,
+                "minimum": 1,
                 "type": "integer"
               },
               "Scope": {
@@ -419,6 +421,8 @@
                 "minimum": -9223372036854775808
               }
             ],
+            "maximum": 100,
+            "minimum": 1,
             "type": "integer"
           },
           "Scope": {
@@ -522,6 +526,16 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Page": {
             "additionalProperties": false,
             "properties": {
+              "Capacity": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "const": 512,
+                "type": "integer"
+              },
               "NextCursor": {
                 "type": "string"
               },
@@ -529,12 +543,14 @@
                 "items": {
                   "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
                 },
+                "maxItems": 100,
                 "type": "array"
               }
             },
             "required": [
               "Rows",
-              "NextCursor"
+              "NextCursor",
+              "Capacity"
             ],
             "type": "object"
           }
@@ -542,6 +558,16 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "Capacity": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "const": 512,
+            "type": "integer"
+          },
           "NextCursor": {
             "type": "string"
           },
@@ -549,12 +575,14 @@
             "items": {
               "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
             },
+            "maxItems": 100,
             "type": "array"
           }
         },
         "required": [
           "Rows",
-          "NextCursor"
+          "NextCursor",
+          "Capacity"
         ],
         "type": "object"
       }

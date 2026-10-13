@@ -73,7 +73,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 				}
 			}
 			page, err := review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
-			return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor}, err
+			return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, err
 		}),
 		managedmcp.RegisterCommand(backend, db, contracts.Add, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
 			changed := false

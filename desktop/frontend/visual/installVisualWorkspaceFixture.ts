@@ -380,6 +380,7 @@ function workspaceDataPlugin(
                 EmbeddingSpace: "",
               })),
               NextCursor: "",
+              Capacity: 512,
             },
             disabled: true,
             edit: () => {},

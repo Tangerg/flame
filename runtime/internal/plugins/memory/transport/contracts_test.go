@@ -57,7 +57,11 @@ func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := list.Call(t.Context(), rpc.ListInput{Scope: memory.ScopeUser}); err != nil {
+	page, err := list.Call(t.Context(), rpc.ListInput{Scope: memory.ScopeUser})
+	if err != nil {
 		t.Fatal(err)
+	}
+	if page.Capacity != memory.MaxVisiblePerTarget {
+		t.Fatalf("live page capacity = %d", page.Capacity)
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
-	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -28,15 +27,15 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	if err != nil {
 		return nil, err
 	}
-	input := memory.ListV1Input{Scope: string(validated.Scope), CWD: validated.Workspace, Limit: new(int64(100))}
-	traversal, err := newCursorTraversal("list agent memory", "", flameruntime.MaximumAgentMemoryItemsPerTarget)
-	if err != nil {
-		return nil, err
-	}
+	input := memory.ListV1Input{Scope: string(validated.Scope), CWD: validated.Workspace}
+	var traversal *cursorTraversal
+	capacity := int64(0)
 	items := make([]memory.Item, 0)
 	seen := make(map[string]struct{})
 	for {
-		input.Cursor = traversal.Current()
+		if traversal != nil {
+			input.Cursor = traversal.Current()
+		}
 		encoded, err := jsoninput.Encode(input)
 		if err != nil {
 			return nil, err
@@ -51,7 +50,17 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 		if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
 			return nil, runtimeContractViolation("list agent memory output: %v", err)
 		}
-		if len(result.Rows) > 100 || len(items)+len(result.Rows) > flameruntime.MaximumAgentMemoryItemsPerTarget || (len(result.Rows) == 0 && result.NextCursor != "") {
+		if result.Capacity <= 0 || (capacity != 0 && result.Capacity != capacity) {
+			return nil, runtimeContractViolation("list agent memory returned an invalid or changed capacity")
+		}
+		if traversal == nil {
+			capacity = result.Capacity
+			traversal, err = newCursorTraversal("list agent memory", "", int(capacity))
+			if err != nil {
+				return nil, err
+			}
+		}
+		if int64(len(items))+int64(len(result.Rows)) > capacity || (len(result.Rows) == 0 && result.NextCursor != "") {
 			return nil, runtimeContractViolation("list agent memory exceeded its target capacity or returned an empty continuation")
 		}
 		for _, row := range result.Rows {

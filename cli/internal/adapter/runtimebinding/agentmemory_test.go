@@ -39,6 +39,7 @@ type agentMemoryBindingStub struct {
 	updateResult     *memory.Item
 	addResult        *memory.Item
 	listPage         func(memory.ListV1Input) (*protocol.Page[memory.Item], error)
+	pageCapacity     func(memory.ListV1Input) int64
 	pluginCall       func(protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error)
 }
 
@@ -157,6 +158,30 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 				requireRuntimeContractViolation(t, err)
 			}
 		})
+	}
+}
+
+func TestMemoryTraversalRejectsCapacityDriftWithoutPartialSuccess(t *testing.T) {
+	stub := &agentMemoryBindingStub{t: t, now: time.Now()}
+	stub.listPage = func(input memory.ListV1Input) (*protocol.Page[memory.Item], error) {
+		if input.Limit != nil {
+			t.Fatal("collector replaced the owner's default page width")
+		}
+		if input.Cursor == "" {
+			return &protocol.Page[memory.Item]{Data: []memory.Item{*stub.item(adapterMemoryIDOne, memory.ScopeUser, "fact", false)}, NextCursor: "next"}, nil
+		}
+		return &protocol.Page[memory.Item]{Data: []memory.Item{}}, nil
+	}
+	stub.pageCapacity = func(input memory.ListV1Input) int64 {
+		if input.Cursor == "" {
+			return 512
+		}
+		return 513
+	}
+	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
+	items, err := adapter.Items(t.Context(), conversation.MemoryTarget{Scope: memory.ScopeUser})
+	if err == nil || items != nil {
+		t.Fatalf("capacity drift returned partial success: %+v, %v", items, err)
 	}
 }
 
@@ -415,7 +440,10 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if err != nil || page == nil {
 		return nil, err
 	}
-	output := memory.ListV1Output{NextCursor: page.NextCursor, Rows: make([]memory.UpdateV1Output, 0, len(page.Data))}
+	output := memory.ListV1Output{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memory.UpdateV1Output, 0, len(page.Data))}
+	if a.pageCapacity != nil {
+		output.Capacity = a.pageCapacity(input)
+	}
 	for _, row := range page.Data {
 		output.Rows = append(output.Rows, memory.UpdateV1Output{ID: row.ID, Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
 	}

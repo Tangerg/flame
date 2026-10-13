@@ -1,8 +1,12 @@
 package rpc
 
 import (
+	"encoding/json"
 	"errors"
+	"strconv"
+
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/invopop/jsonschema"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -26,10 +30,32 @@ type ListInput struct {
 	CWD, Cursor string
 	Limit       *int `json:"Limit,omitzero"`
 }
+
+func (ListInput) JSONSchemaExtend(schema *jsonschema.Schema) {
+	limit, ok := schema.Properties.Get("Limit")
+	if ok {
+		limit.Minimum = json.Number("1")
+		limit.Maximum = json.Number(strconv.Itoa(memory.MaxManagementPageItems))
+	}
+}
+
 type Page struct {
 	Rows       []memory.ItemSnapshot
 	NextCursor string
+	Capacity   int
 }
+
+func (Page) JSONSchemaExtend(schema *jsonschema.Schema) {
+	rows, ok := schema.Properties.Get("Rows")
+	if ok {
+		rows.MaxItems = new(uint64(memory.MaxManagementPageItems))
+	}
+	capacity, ok := schema.Properties.Get("Capacity")
+	if ok {
+		capacity.Const = memory.MaxVisiblePerTarget
+	}
+}
+
 type AddInput struct {
 	Scope        memory.Scope
 	CWD, Content string

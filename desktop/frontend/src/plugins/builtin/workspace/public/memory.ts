@@ -24,9 +24,6 @@ export interface MemoryItem extends AgentMemoryEntry {
   day: string;
 }
 
-const maximumMemoryItems = 512;
-const memoryPageWidth = 100;
-
 type MemoryPage = MethodOutputs["flame.memory/list.v1"];
 
 export async function readInstalledMemory(
@@ -44,10 +41,11 @@ export async function readInstalledMemory(
   const seen = new Set<string>();
   const cursors = new Set<string>();
   let cursor = "";
-  for (let pageCount = 0; pageCount < maximumMemoryItems; pageCount++) {
+  let capacity: number | undefined;
+  for (let pageCount = 0; ; pageCount++) {
     signal?.throwIfAborted();
     const reply = await client.plugins.call(
-      { ...binding, input: { Scope: scope, CWD: cwd, Cursor: cursor, Limit: memoryPageWidth } },
+      { ...binding, input: { Scope: scope, CWD: cwd, Cursor: cursor } },
       { signal },
     );
     if (reply.failure) throw new Error(reply.failure.message);
@@ -56,11 +54,15 @@ export async function readInstalledMemory(
       !page ||
       !Array.isArray(page.Rows) ||
       typeof page.NextCursor !== "string" ||
-      page.Rows.length > memoryPageWidth ||
-      items.length + page.Rows.length > maximumMemoryItems ||
+      !Number.isSafeInteger(page.Capacity) ||
+      page.Capacity <= 0 ||
+      (capacity !== undefined && capacity !== page.Capacity) ||
+      pageCount >= page.Capacity ||
+      items.length + page.Rows.length > page.Capacity ||
       (!page.Rows.length && page.NextCursor)
     )
       throw new Error("memory page exceeds its declared traversal bounds");
+    capacity = page.Capacity;
     for (const row of page.Rows) {
       if (
         row.Scope !== scope ||
@@ -89,7 +91,6 @@ export async function readInstalledMemory(
     cursors.add(page.NextCursor);
     cursor = page.NextCursor;
   }
-  throw new Error("memory traversal exceeds its request bound");
 }
 
 async function selectMemoryBinding(client: FlameClient, signal?: AbortSignal) {
