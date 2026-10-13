@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.16",
+  "protocolVersion": "2026-10-14.17",
   "features": [
     "reasoning",
     "multimodal",
@@ -5603,34 +5603,6 @@
       ]
     },
     {
-      "type": "AgentMemoryItem",
-      "rules": [
-        {
-          "required": [
-            "createdAt",
-            "updatedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "origin",
-              "operator": "equals",
-              "value": "user"
-            }
-          ],
-          "allowedValues": [
-            {
-              "field": "status",
-              "values": [
-                "active"
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "type": "RollbackSessionRequest",
       "rules": [
         {
@@ -9120,31 +9092,6 @@
       ]
     },
     {
-      "type": "AgentMemoryItem",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "identity"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "content",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "content",
-          "constraint": "maxLength(4096)"
-        }
-      ]
-    },
-    {
       "type": "Goal",
       "rules": [
         {
@@ -10049,10 +9996,6 @@
     {
       "file": "hooksList.json",
       "shape": "HooksListResult"
-    },
-    {
-      "file": "agentMemoryItem.json",
-      "shape": "AgentMemoryItem"
     },
     {
       "file": "goal.json",

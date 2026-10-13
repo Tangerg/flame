@@ -131,6 +131,18 @@ Core Memory read models, limits and topics still have real consumers and require
 their own ownership migration. Native restart/withdrawal/response-loss acceptance,
 wider consumers and final full/vet/race verification remain open.
 
+Core 2026-10-14.17 removes AgentMemoryItem, its scope/origin/status enums, Core
+constraints/sample/schema and Go/TS exports. No Core operation consumes those
+plugin-owned records. CLI and Desktop own only visible read projections over the
+publisher's generated snapshots. Publisher Go models derive closed vocabularies,
+identity patterns and Unicode content limits from their private owner; canonical
+JSON, generated Go/TS and actual ESM resources are regenerated together. ItemID's
+string alias is replaced by its actual patterned schema so identity admission is
+enforced at the public operation boundary. Private storage/receipt formats and
+backend protocol are unchanged. Native fixtures compare complete owner snapshots,
+including vectors, without recreating the retired Core shape. Remaining Core
+capacity/topic knowledge and final runtime acceptance remain open.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

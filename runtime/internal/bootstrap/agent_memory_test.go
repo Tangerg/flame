@@ -3,6 +3,7 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -24,7 +25,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(memoryrpc.UpdateInput{ID: item.ID, Content: &content, Pinned: &pinned})
+	input, err := json.Marshal(memoryrpc.UpdateInput{ID: item.ID.String(), Content: &content, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,15 +35,15 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	if err := json.Unmarshal(reply.Output, &edited); err != nil {
 		t.Fatal(err)
 	}
-	if edited.ID.String() != item.ID || edited.Content != content || !edited.Pinned || edited.Origin != memorydomain.OriginUser || edited.Status != memorydomain.StatusActive || !edited.CreatedAt.Equal(item.CreatedAt) {
+	if edited.ID != item.ID || edited.Content != content || !edited.Pinned || edited.Origin != memorydomain.OriginUser || edited.Status != memorydomain.StatusActive || !edited.CreatedAt.Equal(item.CreatedAt) {
 		t.Fatalf("edited memory=%+v", edited)
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath})
-	expected := protocol.AgentMemoryItem{ID: edited.ID.String(), Scope: protocol.AgentMemoryScope(edited.Scope), Content: edited.Content, Origin: protocol.AgentMemoryOrigin(edited.Origin), Status: protocol.AgentMemoryStatus(edited.Status), Pinned: edited.Pinned, SessionID: edited.SessionID, Day: edited.Day, CreatedAt: edited.CreatedAt, UpdatedAt: edited.UpdatedAt}
-	if len(page.Data) != 1 || page.Data[0] != expected {
+
+	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], edited) {
 		t.Fatalf("restart lost user correction=%+v", page.Data)
 	}
 	replay := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath, Content: "original fact"}), "add-memory")

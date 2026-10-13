@@ -18,7 +18,6 @@ import (
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -52,7 +51,6 @@ func registerValueConstraints(s *Shapes) {
 	registerModelValues(s)
 	registerToolValues(s)
 	registerAuthoringContextValues(s)
-	registerAgentMemoryValues(s)
 	registerGoalValues(s)
 	registerRuntimeValues(s)
 }
@@ -791,20 +789,6 @@ func registerAuthoringContextValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.AgentDoc](),
 		Constraints: []FieldConstraint{{Field: "path", Kind: ConstraintPattern, Value: nonBlankText}},
-	})
-}
-
-func registerAgentMemoryValues(s *Shapes) {
-	const nonBlankContent = `\S`
-	agentMemoryItemIdentity := func(field string) []FieldConstraint {
-		return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: agentmemory.ItemIDPattern}}
-	}
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.AgentMemoryItem](),
-		Constraints: append(append(agentMemoryItemIdentity("id"), resourceIdentity("sessionId")...), []FieldConstraint{
-			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},
-			{Field: "content", Kind: ConstraintMaxLength, Limit: agentmemory.MaxContentCharacters},
-		}...),
 	})
 }
 

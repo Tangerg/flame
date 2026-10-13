@@ -15,16 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
-
-func agentMemoryWireItemID(digit byte) string {
-	return agentmemory.ItemIDPrefix + strings.Repeat(
-		string(digit),
-		agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix),
-	)
-}
 
 func TestPluginThemeColorsRejectNonHexValues(t *testing.T) {
 	for _, test := range []struct {
@@ -401,57 +393,6 @@ func TestSkillWireConstraintsPublishCompleteProjectionIdentity(t *testing.T) {
 	}
 }
 
-func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
-	t.Parallel()
-
-	content := strings.Repeat("界", agentmemory.MaxContentCharacters)
-
-	content += "界"
-	assertConstraintField(
-		t,
-		(AgentMemoryItem{
-			ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: content,
-			Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
-		}).ValidateWire(),
-		"AgentMemoryItem",
-		"content",
-	)
-}
-
-func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
-	t.Parallel()
-
-	validID := agentMemoryWireItemID('a')
-	now := time.Unix(1, 0).UTC()
-	valid := []struct {
-		name     string
-		shape    string
-		validate func(string) error
-	}{
-		{name: "item projection", shape: "AgentMemoryItem", validate: func(id string) error {
-			return (AgentMemoryItem{
-				ID: id, Scope: AgentMemoryScopeUser, Content: "fact",
-				Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
-				CreatedAt: now, UpdatedAt: now,
-			}).ValidateWire()
-		}},
-	}
-	for _, shape := range valid {
-		if err := shape.validate(validID); err != nil {
-			t.Errorf("%s rejected canonical identity: %v", shape.name, err)
-		}
-		for _, id := range []string{
-			"",
-			"mem_1",
-			agentmemory.ItemIDPrefix + strings.Repeat("A", agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix)),
-			" " + validID,
-			validID + "0",
-		} {
-			assertConstraintField(t, shape.validate(id), shape.shape, "id")
-		}
-	}
-}
-
 func TestFeedbackRequiresRatingOrNonBlankText(t *testing.T) {
 	t.Parallel()
 
@@ -466,45 +407,6 @@ func TestFeedbackRequiresRatingOrNonBlankText(t *testing.T) {
 	}
 	assertConstraintField(t, (FeedbackRequest{}).ValidateWire(), "FeedbackRequest", "rating|text")
 	assertConstraintField(t, (FeedbackRequest{Text: " \t"}).ValidateWire(), "FeedbackRequest", "text")
-}
-
-func TestUserAuthoredAgentMemoryCanOnlyBeActive(t *testing.T) {
-	t.Parallel()
-
-	now := time.Unix(1, 0).UTC()
-	base := AgentMemoryItem{
-		ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: "fact",
-		Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
-		CreatedAt: now, UpdatedAt: now,
-	}
-	if err := base.ValidateWire(); err != nil {
-		t.Fatalf("ValidateWire rejected active user memory: %v", err)
-	}
-	pending := base
-	pending.Status = AgentMemoryStatusPending
-	assertConstraintField(t, pending.ValidateWire(), "AgentMemoryItem", "status")
-	pending.Origin = AgentMemoryOriginAuto
-	if err := pending.ValidateWire(); err != nil {
-		t.Fatalf("ValidateWire rejected pending automatic memory: %v", err)
-	}
-}
-
-func TestAgentMemoryItemRequiresTimestamps(t *testing.T) {
-	t.Parallel()
-
-	now := time.Unix(1, 0).UTC()
-	item := AgentMemoryItem{
-		ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: "fact",
-		Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
-		CreatedAt: now, UpdatedAt: now,
-	}
-	if err := item.ValidateWire(); err != nil {
-		t.Fatalf("ValidateWire rejected complete memory item: %v", err)
-	}
-	item.CreatedAt = time.Time{}
-	assertConstraintField(t, item.ValidateWire(), "AgentMemoryItem", "createdAt")
-	item.CreatedAt, item.UpdatedAt = now, time.Time{}
-	assertConstraintField(t, item.ValidateWire(), "AgentMemoryItem", "updatedAt")
 }
 
 func TestOutputCollectionWireConstraints(t *testing.T) {

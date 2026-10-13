@@ -1981,22 +1981,6 @@ func (g GoalReason) ValidateWire() error {
 	)
 }
 
-func (a AgentMemoryItem) ValidateWire() error {
-	return collectWireViolations("AgentMemoryItem",
-		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
-		identity("sessionId", a.SessionID),
-		maxLength("sessionId", a.SessionID, 256),
-		requiredTextPattern("content", a.Content, "\\S"),
-		maxLength("content", a.Content, 4096),
-		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
-		closedEnum("origin", string(a.Origin), []string{"auto", "user"}, false),
-		closedEnum("status", string(a.Status), []string{"active", "pending"}, false),
-		requiredWhen(true, "createdAt", a),
-		requiredWhen(true, "updatedAt", a),
-		allowedValuesWhen(wireFieldEquals(a, "origin", "user"), "status", a, []string{"active"}),
-	)
-}
-
 func (m MCPAuthorizationAttempt) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),

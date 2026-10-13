@@ -412,23 +412,6 @@ describe("the generated wire checks", () => {
         detail: "expected at most 1024 character(s)",
       },
     ]);
-
-    const boundaryMemory = "😀".repeat(4096);
-    expect(
-      validateWire("AgentMemoryItem", {
-        id: "mem_0123456789abcdef0123456789abcdef",
-        scope: "user",
-        content: `${boundaryMemory}😀`,
-        origin: "user",
-        status: "active",
-        pinned: false,
-        createdAt: "2026-08-24T00:00:00Z",
-        updatedAt: "2026-08-24T00:00:00Z",
-      }),
-    ).toContainEqual({
-      path: "AgentMemoryItem.content",
-      detail: "expected at most 4096 character(s)",
-    });
   });
 
   it("states a constraint on a field of a shared shape", () => {

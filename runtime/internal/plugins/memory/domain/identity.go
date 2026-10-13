@@ -66,4 +66,4 @@ func (i *ItemID) UnmarshalText(text []byte) error {
 	return err
 }
 
-func (ItemID) JSONSchemaAlias() any { return "" }
+func (ItemID) JSONSchemaPattern() string { return ItemIDPattern }

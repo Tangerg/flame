@@ -21,6 +21,10 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               }
             },
@@ -42,6 +46,10 @@
             "type": "string"
           },
           "Scope": {
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           }
         },
@@ -58,6 +66,8 @@
             "additionalProperties": false,
             "properties": {
               "Content": {
+                "maxLength": 4096,
+                "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
@@ -77,9 +87,14 @@
                 "type": "string"
               },
               "ID": {
+                "pattern": "^mem_[0-9a-f]{32}$",
                 "type": "string"
               },
               "Origin": {
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -89,12 +104,21 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -213,6 +237,10 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               }
             },
@@ -230,6 +258,10 @@
             "type": "string"
           },
           "Scope": {
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           }
         },
@@ -245,6 +277,8 @@
             "additionalProperties": false,
             "properties": {
               "Content": {
+                "maxLength": 4096,
+                "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
@@ -264,9 +298,14 @@
                 "type": "string"
               },
               "ID": {
+                "pattern": "^mem_[0-9a-f]{32}$",
                 "type": "string"
               },
               "Origin": {
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -276,12 +315,21 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -340,6 +388,10 @@
                 "type": "integer"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               }
             },
@@ -370,6 +422,10 @@
             "type": "integer"
           },
           "Scope": {
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           }
         },
@@ -386,6 +442,8 @@
             "additionalProperties": false,
             "properties": {
               "Content": {
+                "maxLength": 4096,
+                "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
@@ -405,9 +463,14 @@
                 "type": "string"
               },
               "ID": {
+                "pattern": "^mem_[0-9a-f]{32}$",
                 "type": "string"
               },
               "Origin": {
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -417,12 +480,21 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -721,6 +793,8 @@
             "additionalProperties": false,
             "properties": {
               "Content": {
+                "maxLength": 4096,
+                "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
@@ -740,9 +814,14 @@
                 "type": "string"
               },
               "ID": {
+                "pattern": "^mem_[0-9a-f]{32}$",
                 "type": "string"
               },
               "Origin": {
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -752,12 +831,21 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -840,6 +928,8 @@
             "additionalProperties": false,
             "properties": {
               "Content": {
+                "maxLength": 4096,
+                "pattern": "\\S",
                 "type": "string"
               },
               "CreatedAt": {
@@ -859,9 +949,14 @@
                 "type": "string"
               },
               "ID": {
+                "pattern": "^mem_[0-9a-f]{32}$",
                 "type": "string"
               },
               "Origin": {
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -871,12 +966,21 @@
                 "type": "string"
               },
               "Scope": {
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -906,6 +1010,8 @@
         "additionalProperties": false,
         "properties": {
           "Content": {
+            "maxLength": 4096,
+            "pattern": "\\S",
             "type": "string"
           },
           "CreatedAt": {
@@ -925,9 +1031,14 @@
             "type": "string"
           },
           "ID": {
+            "pattern": "^mem_[0-9a-f]{32}$",
             "type": "string"
           },
           "Origin": {
+            "enum": [
+              "auto",
+              "user"
+            ],
             "type": "string"
           },
           "Pinned": {
@@ -937,12 +1048,21 @@
             "type": "string"
           },
           "Scope": {
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           },
           "SessionID": {
             "type": "string"
           },
           "Status": {
+            "enum": [
+              "active",
+              "pending",
+              "rejected"
+            ],
             "type": "string"
           },
           "UpdatedAt": {

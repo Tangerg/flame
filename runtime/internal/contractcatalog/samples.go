@@ -135,7 +135,6 @@ func Samples() []Sample {
 		{"mcpAuthorizationAttempt.json", reflect.TypeFor[protocol.MCPAuthorizationAttempt]()},
 		{"mcpServer.json", reflect.TypeFor[protocol.MCPServer]()},
 		{"hooksList.json", reflect.TypeFor[protocol.HooksListResult]()},
-		{"agentMemoryItem.json", reflect.TypeFor[protocol.AgentMemoryItem]()},
 		{"goal.json", reflect.TypeFor[protocol.Goal]()},
 		{"problemData.json", reflect.TypeFor[protocol.ProblemData]()},
 		{"feedback.req.json", reflect.TypeFor[protocol.FeedbackRequest]()},

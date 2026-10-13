@@ -1,7 +1,8 @@
 import type { AgentMemoryGateway } from "../application/ports/agentMemoryGateway";
-import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/client";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import type { AgentMemoryEntry } from "../application/workspaceQueries";
 import {
+  type MemoryItem,
   addInstalledMemory,
   deleteInstalledMemory,
   reviewInstalledMemory,
@@ -9,7 +10,7 @@ import {
 } from "../public/memory";
 import { AgentMemoryMutationOwner } from "../application/agentMemoryMutationOwner";
 
-export function agentMemoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
+export function agentMemoryEntry(item: MemoryItem): AgentMemoryEntry {
   return {
     id: item.id,
     scope: item.scope,

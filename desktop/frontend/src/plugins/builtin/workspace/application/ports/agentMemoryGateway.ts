@@ -1,10 +1,8 @@
-import type { AgentMemoryScope } from "@flame/runtime-contract/wire";
-
 export type ReviewDecision = "approve" | "reject";
-import type { AgentMemoryEntry } from "../workspaceQueries";
+import type { AgentMemoryEntry, MemoryScope } from "../workspaceQueries";
 
 export interface AgentMemoryAddInput {
-  scope: AgentMemoryScope;
+  scope: MemoryScope;
   cwd?: string;
   content: string;
 }

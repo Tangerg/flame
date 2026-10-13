@@ -189,7 +189,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 			t.Fatal(err)
 		}
 		canonical := readMemoryPage(r, query)
-		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID.String() != canonical.Data[0].ID || page.Rows[0].Content != canonical.Data[0].Content || page.NextCursor != canonical.NextCursor {
+		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID != canonical.Data[0].ID || page.Rows[0].Content != canonical.Data[0].Content || page.NextCursor != canonical.NextCursor {
 			t.Fatal("installed Memory operation differs from the private owner's canonical projection")
 		}
 		if page.NextCursor == "" {

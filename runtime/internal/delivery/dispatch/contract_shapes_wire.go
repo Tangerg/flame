@@ -853,17 +853,6 @@ func registerObjectConstraints(s *Shapes) {
 	})
 
 	s.constraint(ObjectConstraintSpec{
-		GoType: typeOf[protocol.AgentMemoryItem](),
-		Rules: []ConditionalRule{{
-			Required: []string{"createdAt", "updatedAt"},
-		}, {
-			When: []delivery.FieldCondition{{
-				Field: "origin", Operator: delivery.OperatorEquals, Value: string(protocol.AgentMemoryOriginUser),
-			}},
-			AllowedValues: []AllowedValueSet{{Field: "status", Values: []string{string(protocol.AgentMemoryStatusActive)}}},
-		}},
-	})
-	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RollbackSessionRequest](),
 		Rules: []ConditionalRule{{
 			When: []delivery.FieldCondition{{

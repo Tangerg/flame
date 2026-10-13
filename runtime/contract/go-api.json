@@ -2346,36 +2346,6 @@
           "value": "\"projectRoot\""
         },
         {
-          "name": "AgentMemoryOriginAuto",
-          "type": "AgentMemoryOrigin",
-          "value": "\"auto\""
-        },
-        {
-          "name": "AgentMemoryOriginUser",
-          "type": "AgentMemoryOrigin",
-          "value": "\"user\""
-        },
-        {
-          "name": "AgentMemoryScopeProject",
-          "type": "AgentMemoryScope",
-          "value": "\"project\""
-        },
-        {
-          "name": "AgentMemoryScopeUser",
-          "type": "AgentMemoryScope",
-          "value": "\"user\""
-        },
-        {
-          "name": "AgentMemoryStatusActive",
-          "type": "AgentMemoryStatus",
-          "value": "\"active\""
-        },
-        {
-          "name": "AgentMemoryStatusPending",
-          "type": "AgentMemoryStatus",
-          "value": "\"pending\""
-        },
-        {
           "name": "ApprovalApprove",
           "type": "ApprovalDecision",
           "value": "\"approve\""
@@ -3513,7 +3483,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.16\""
+          "value": "\"2026-10-14.17\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4349,83 +4319,6 @@
         },
         {
           "name": "AgentDocScope",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "AgentMemoryItem",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Scope",
-              "type": "AgentMemoryScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"content\""
-            },
-            {
-              "name": "Origin",
-              "type": "AgentMemoryOrigin",
-              "tag": "json:\"origin\""
-            },
-            {
-              "name": "Status",
-              "type": "AgentMemoryStatus",
-              "tag": "json:\"status\""
-            },
-            {
-              "name": "Pinned",
-              "type": "bool",
-              "tag": "json:\"pinned\""
-            },
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"sessionId,omitempty\""
-            },
-            {
-              "name": "Day",
-              "type": "string",
-              "tag": "json:\"day,omitempty\""
-            },
-            {
-              "name": "CreatedAt",
-              "type": "time.Time",
-              "tag": "json:\"createdAt,omitzero\""
-            },
-            {
-              "name": "UpdatedAt",
-              "type": "time.Time",
-              "tag": "json:\"updatedAt,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "AgentMemoryOrigin",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "AgentMemoryScope",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "AgentMemoryStatus",
           "kind": "defined",
           "underlying": "string"
         },

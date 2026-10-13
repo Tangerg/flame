@@ -1,9 +1,8 @@
-import type {
-  AgentMemoryOrigin,
-  AgentMemoryScope,
-  AgentMemoryStatus,
-  FileEntryType,
-} from "@flame/runtime-contract/wire";
+import type { FileEntryType } from "@flame/runtime-contract/wire";
+
+export type MemoryScope = "project" | "user";
+export type MemoryOrigin = "auto" | "user";
+export type MemoryStatus = "active" | "pending";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 
 export interface WorkspaceProjectSummary {
@@ -23,16 +22,16 @@ export interface WorkspaceFileChange {
 }
 
 export interface AgentMemoryQuery {
-  scope: AgentMemoryScope;
+  scope: MemoryScope;
   cwd?: string;
 }
 
 export interface AgentMemoryEntry {
   id: string;
-  scope: AgentMemoryScope;
+  scope: MemoryScope;
   content: string;
-  origin: AgentMemoryOrigin;
-  status: AgentMemoryStatus;
+  origin: MemoryOrigin;
+  status: MemoryStatus;
   pinned: boolean;
   sessionId?: string;
   createdAt: string;

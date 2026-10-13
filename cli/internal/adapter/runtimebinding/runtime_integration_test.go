@@ -313,7 +313,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+	userTarget, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}

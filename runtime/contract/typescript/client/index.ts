@@ -71,7 +71,6 @@ export type {
   ProblemData,
   Provider,
   ProviderConfigChange,
-  AgentMemoryItem,
   ApprovalRule,
   ToolRef,
   SetApprovalRuleRequest,

@@ -10,12 +10,19 @@ export {
   type AgentMemoryQuery,
 } from "../application/agentMemoryConfig";
 
-import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/client";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
   type MethodOutputs,
 } from "../../../../../../../plugins/memory/io.github.tangerg.flame/contracts/methods.generated";
+
+import type { AgentMemoryEntry } from "../application/workspaceQueries";
+
+export interface MemoryItem extends AgentMemoryEntry {
+  sessionId: string;
+  day: string;
+}
 
 const maximumMemoryItems = 512;
 const memoryPageWidth = 100;
@@ -27,13 +34,13 @@ export async function readInstalledMemory(
   scope: "project" | "user",
   cwd: string,
   signal?: AbortSignal,
-): Promise<AgentMemoryItem[]> {
+): Promise<MemoryItem[]> {
   const binding = {
     ...(await selectMemoryBinding(client, signal)),
     contract: CAPABILITY_JSON,
     method: "flame.memory/list.v1",
   };
-  const items: AgentMemoryItem[] = [];
+  const items: MemoryItem[] = [];
   const seen = new Set<string>();
   const cursors = new Set<string>();
   let cursor = "";
@@ -68,8 +75,8 @@ export async function readInstalledMemory(
         id: row.ID,
         scope,
         content: row.Content,
-        origin: row.Origin as AgentMemoryItem["origin"],
-        status: row.Status as AgentMemoryItem["status"],
+        origin: row.Origin as MemoryItem["origin"],
+        status: row.Status as MemoryItem["status"],
         pinned: row.Pinned,
         sessionId: row.SessionID,
         day: row.Day,
@@ -154,7 +161,7 @@ export function updateInstalledMemory(
   client: FlameClient,
   input: MethodInputs["flame.memory/update.v1"],
   signal?: AbortSignal,
-): Promise<AgentMemoryItem> {
+): Promise<MemoryItem> {
   const patch: MethodInputs["flame.memory/update.v1"] = {
     ...(input.Content === undefined ? {} : { Content: input.Content }),
     ID: input.ID,
@@ -176,7 +183,7 @@ export function updateInstalledMemory(
   );
 }
 
-function decodeMemoryItem(output: unknown): AgentMemoryItem {
+function decodeMemoryItem(output: unknown): MemoryItem {
   const row = output as MethodOutputs["flame.memory/update.v1"];
   if (
     !row ||
@@ -212,7 +219,7 @@ export function addInstalledMemory(
   client: FlameClient,
   input: { scope: "project" | "user"; cwd?: string; content: string },
   signal?: AbortSignal,
-): Promise<AgentMemoryItem> {
+): Promise<MemoryItem> {
   if (input.scope === "project" && !input.cwd)
     return Promise.reject(new Error("project memory addition requires a captured workspace"));
   const request: MethodInputs["flame.memory/add.v1"] = {

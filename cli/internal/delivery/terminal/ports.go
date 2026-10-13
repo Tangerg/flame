@@ -121,10 +121,10 @@ type Schedules interface {
 }
 
 type AgentMemory interface {
-	Items(context.Context, conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error)
+	Items(context.Context, conversation.MemoryTarget) ([]memory.Item, error)
 	PrepareReview(context.Context, string, memory.ReviewDecision) (protocol.CallPluginRequest, error)
 	PrepareUpdate(context.Context, memory.UpdateV1Input) (protocol.CallPluginRequest, error)
-	DecodeUpdate(string, *protocol.CallPluginResponse) (protocol.AgentMemoryItem, error)
+	DecodeUpdate(string, *protocol.CallPluginResponse) (memory.Item, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
 	PrepareAdd(context.Context, memory.AddV1Input) (protocol.CallPluginRequest, error)

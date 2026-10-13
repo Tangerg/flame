@@ -294,5 +294,8 @@ Snapshot validation, including original scope, precedes retirement. Core
 AddAgentMemory/agentMemory.add, its DTO and the Memory-specific Core feature are
 removed. Clients negotiate plugins and resolve the concrete published capability.
 Uncertain requests from retired Core contracts are not translated into fresh
-public commands. Remaining read-model/limit/topic migration and final acceptance
-are still open.
+public commands. Core Memory read models and enums are also removed in Core .17.
+Terminal presentation owns its compact read projection; generated publisher
+snapshots remain the transport contract. Visible-state and timestamp checks precede
+presentation, while publisher schemas own identity/content admission. Remaining
+capacity/topic migration and final acceptance are still open.

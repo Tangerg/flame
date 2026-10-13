@@ -83,6 +83,14 @@ under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runti
 with `go generate ./internal/plugins/memory/rpc`; the existing contractgen
 projects the same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
+
+The published snapshot owns its identity pattern, closed scope/origin/status
+vocabularies and Unicode content boundary. These derive from the private Go model
+and its existing constants, with canonical JSON and Go/TS consumers regenerated
+together. ItemID publishes its actual patterned string contract. Core has no
+Memory record or business enum; clients own their visible read projections and
+reject hidden/unknown states before presentation. A schema change requires rebuilding
+the ordinary ESM component against the exact generated capability.
 The backend publishes the named `memory` capability. Runtime validates the full
 contract and declared export for queries and captures the contribution/export and
 complete capability for original command recovery. Public installed operation

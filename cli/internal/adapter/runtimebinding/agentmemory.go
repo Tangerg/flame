@@ -18,7 +18,7 @@ import (
 
 type AgentMemory struct{ runtime *Connection }
 
-func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
+func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarget) ([]memory.Item, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
@@ -33,7 +33,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	if err != nil {
 		return nil, err
 	}
-	items := make([]protocol.AgentMemoryItem, 0)
+	items := make([]memory.Item, 0)
 	seen := make(map[string]struct{})
 	for {
 		input.Cursor = traversal.Current()
@@ -95,23 +95,20 @@ func (a *AgentMemory) PrepareUpdate(ctx context.Context, request memory.UpdateV1
 	return a.prepareCommand(ctx, memory.UpdateV1Method, input)
 }
 
-func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (protocol.AgentMemoryItem, error) {
+func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (memory.Item, error) {
 	if reply == nil {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory returned nil")
+		return memory.Item{}, runtimeContractViolation("update agent memory returned nil")
 	}
 	var output memory.UpdateV1Output
 	if err := json.Unmarshal(reply.Output, &output, json.RejectUnknownMembers(true)); err != nil {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory output: %v", err)
+		return memory.Item{}, runtimeContractViolation("update agent memory output: %v", err)
 	}
 	item := memoryProjection(output)
-	if err := protocol.ValidateWireTree(item); err != nil {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory projection: %v", err)
-	}
 	return agentMemoryResult("update agent memory", id, "", &item, nil)
 }
 
-func memoryProjection(row memory.UpdateV1Output) protocol.AgentMemoryItem {
-	return protocol.AgentMemoryItem{ID: row.ID, Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+func memoryProjection(row memory.UpdateV1Output) memory.Item {
+	return memory.Item{ID: row.ID, Scope: memory.Scope(row.Scope), Content: row.Content, Origin: memory.Origin(row.Origin), Status: memory.Status(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
@@ -147,7 +144,7 @@ func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPlugi
 }
 
 func (a *AgentMemory) PrepareAdd(ctx context.Context, request memory.AddV1Input) (protocol.CallPluginRequest, error) {
-	if _, err := conversation.NewMemoryTarget(protocol.AgentMemoryScope(request.Scope), request.CWD); err != nil {
+	if _, err := conversation.NewMemoryTarget(memory.Scope(request.Scope), request.CWD); err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	input, err := jsoninput.Encode(request)
@@ -166,9 +163,6 @@ func (a *AgentMemory) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddV
 		return memory.AddV1Output{}, runtimeContractViolation("add agent memory output: %v", err)
 	}
 	item := memoryProjection(output.Item)
-	if err := protocol.ValidateWireTree(item); err != nil {
-		return memory.AddV1Output{}, runtimeContractViolation("add agent memory projection: %v", err)
-	}
 	if _, err := agentMemoryResult("add agent memory", "", "", &item, nil); err != nil {
 		return memory.AddV1Output{}, err
 	}
@@ -179,7 +173,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.Mem
 	if err := target.Validate(); err != nil {
 		return conversation.MemoryTarget{}, err
 	}
-	if target.Scope != protocol.AgentMemoryScopeProject {
+	if target.Scope != memory.ScopeProject {
 		return target, nil
 	}
 	resolved, err := a.runtime.Resolve(ctx, workspace.ResolveRequest{Path: target.Workspace})
@@ -191,25 +185,25 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.Mem
 
 func agentMemoryResult(
 	operation, expectedID string,
-	expectedScope protocol.AgentMemoryScope,
-	result *protocol.AgentMemoryItem,
+	expectedScope memory.Scope,
+	result *memory.Item,
 	err error,
-) (protocol.AgentMemoryItem, error) {
+) (memory.Item, error) {
 	if err != nil {
-		return protocol.AgentMemoryItem{}, classifyError(err)
+		return memory.Item{}, classifyError(err)
 	}
 	if result == nil {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned nil", operation)
+		return memory.Item{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	item := *result
 	if err := conversation.ValidateMemoryItem(item); err != nil {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
+		return memory.Item{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
 	}
 	if err := requireIdentity(operation, item.ID, expectedID); err != nil {
-		return protocol.AgentMemoryItem{}, err
+		return memory.Item{}, err
 	}
 	if expectedScope != "" && item.Scope != expectedScope {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
+		return memory.Item{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
 	}
 	return item, nil
 }

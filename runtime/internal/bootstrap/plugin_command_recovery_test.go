@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -103,7 +104,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	}
 	created := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "original provider's fact"}), "new-command")
 	page = readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
-	if len(page.Data) != 1 || page.Data[0] != *created {
+	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *created) {
 		t.Fatalf("new command did not use replacement owner: %+v", page.Data)
 	}
 }

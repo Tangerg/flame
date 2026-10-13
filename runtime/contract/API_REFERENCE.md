@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.16` · 95 methods
+Protocol `2026-10-14.17` · 95 methods
 
 ## Methods
 
@@ -1060,11 +1060,6 @@ TypeScript validator from this single registry projection.
 | `ModelCapabilities` | `reasoningDefaultLevel` | `maxLength(32)` |
 | `InvokeToolRequest` | `name` | `nonEmpty` |
 | `AgentDoc` | `path` | `pattern("\\S")` |
-| `AgentMemoryItem` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
-| `AgentMemoryItem` | `sessionId` | `identity` |
-| `AgentMemoryItem` | `sessionId` | `maxLength(256)` |
-| `AgentMemoryItem` | `content` | `pattern("\\S")` |
-| `AgentMemoryItem` | `content` | `maxLength(4096)` |
 | `Goal` | `sessionId` | `nonEmpty` |
 | `Goal` | `sessionId` | `identity` |
 | `Goal` | `sessionId` | `maxLength(256)` |

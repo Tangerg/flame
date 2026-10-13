@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.16";
+export const PROTOCOL_VERSION = "2026-10-14.17";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -220,25 +220,6 @@ export interface AgentDoc {
 }
 
 export type AgentDocScope = "cwd" | "projectRoot" | "home";
-
-export interface AgentMemoryItem {
-  content: string;
-  createdAt: string;
-  day?: string;
-  id: string;
-  origin: AgentMemoryOrigin;
-  pinned: boolean;
-  scope: AgentMemoryScope;
-  sessionId?: string;
-  status: AgentMemoryStatus;
-  updatedAt: string;
-}
-
-export type AgentMemoryOrigin = "auto" | "user";
-
-export type AgentMemoryScope = "project" | "user";
-
-export type AgentMemoryStatus = "active" | "pending";
 
 export interface AppliedChange {
   from?: string;
@@ -2159,9 +2140,6 @@ export interface WorkspaceSummary {
 // The closed value sets, as data: a union type does not exist at runtime.
 export const WIRE_ENUMS = {
   AgentDocScope: ["cwd", "projectRoot", "home"],
-  AgentMemoryOrigin: ["auto", "user"],
-  AgentMemoryScope: ["project", "user"],
-  AgentMemoryStatus: ["active", "pending"],
   ApprovalDecision: ["approve", "deny"],
   ApprovalGate: ["pass", "prompt", "deny"],
   ApprovalMode: ["safe", "balanced", "yolo"],

@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/invopop/jsonschema"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
@@ -85,6 +87,8 @@ func (s Scope) Validate() error {
 
 func (s Scope) String() string { return string(s) }
 
+func (Scope) JSONSchemaEnum() []string { return []string{string(ScopeProject), string(ScopeUser)} }
+
 func ParseScope(value string) (Scope, error) {
 	scope := Scope(value)
 	return scope, scope.Validate()
@@ -128,6 +132,10 @@ func (s Status) Validate() error {
 
 func (s Status) String() string { return string(s) }
 
+func (Status) JSONSchemaEnum() []string {
+	return []string{string(StatusActive), string(StatusPending), string(StatusRejected)}
+}
+
 func ParseStatus(value string) (Status, error) {
 	status := Status(value)
 	return status, status.Validate()
@@ -152,6 +160,8 @@ func (o Origin) Validate() error {
 }
 
 func (o Origin) String() string { return string(o) }
+
+func (Origin) JSONSchemaEnum() []string { return []string{string(OriginAuto), string(OriginUser)} }
 
 func ParseOrigin(value string) (Origin, error) {
 	origin := Origin(value)
@@ -209,6 +219,14 @@ type ItemSnapshot struct {
 	UpdatedAt      time.Time
 	EmbeddingSpace string
 	Embedding      []float32
+}
+
+func (ItemSnapshot) JSONSchemaExtend(schema *jsonschema.Schema) {
+	content, ok := schema.Properties.Get("Content")
+	if ok {
+		content.Pattern = `\S`
+		content.MaxLength = new(uint64(MaxContentCharacters))
+	}
 }
 
 // Ordinary reads omit vectors, so only content authoring can authorize discarding the persisted cache.

@@ -19,10 +19,6 @@ export type WireTypeName =
   | "ActiveRunRef"
   | "AgentDoc"
   | "AgentDocScope"
-  | "AgentMemoryItem"
-  | "AgentMemoryOrigin"
-  | "AgentMemoryScope"
-  | "AgentMemoryStatus"
   | "AppliedChange"
   | "ApprovalDecision"
   | "ApprovalGate"
@@ -395,31 +391,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     scope: ref(() => CHECKS.AgentDocScope),
   }, ["path", "scope"]),
   AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
-  AgentMemoryItem: allOf([
-    object({
-      content: allOf([text(), maxLength(4096), pattern("\\S")]),
-      createdAt: text(),
-      day: text(),
-      id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
-      origin: ref(() => CHECKS.AgentMemoryOrigin),
-      pinned: flag(),
-      scope: ref(() => CHECKS.AgentMemoryScope),
-      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      status: ref(() => CHECKS.AgentMemoryStatus),
-      updatedAt: text(),
-    }, ["content", "createdAt", "id", "origin", "pinned", "scope", "status", "updatedAt"]),
-    ifThen(
-      fields({
-        origin: literal("user"),
-      }, ["origin"]),
-      fields({
-        status: enumOf(["active"]),
-      }, []),
-    ),
-  ]),
-  AgentMemoryOrigin: enumOf(["auto", "user"]),
-  AgentMemoryScope: enumOf(["project", "user"]),
-  AgentMemoryStatus: enumOf(["active", "pending"]),
   AppliedChange: object({
     from: text(),
     path: text(),

@@ -4,6 +4,7 @@ import (
 	json "encoding/json/v2"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -42,7 +43,7 @@ func memoryQueryResult(r *poMCPRuntime, input memoryrpc.ListInput) delivery.Resu
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 }
-func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[protocol.AgentMemoryItem] {
+func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[memorydomain.ItemSnapshot] {
 	r.t.Helper()
 	result := memoryQueryResult(r, input)
 	if result.Failure != nil {
@@ -56,11 +57,7 @@ func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[p
 	if err := json.Unmarshal(reply.Output, &page); err != nil {
 		r.t.Fatal(err)
 	}
-	rows := make([]protocol.AgentMemoryItem, 0, len(page.Rows))
-	for _, row := range page.Rows {
-		rows = append(rows, protocol.AgentMemoryItem{ID: row.ID.String(), Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt})
-	}
-	return protocol.NewPageWithCursor(rows, page.NextCursor)
+	return protocol.NewPageWithCursor(page.Rows, page.NextCursor)
 }
 
 func memoryAddRequest(r *poMCPRuntime, input memoryrpc.AddInput) protocol.CallPluginRequest {
@@ -76,7 +73,7 @@ func memoryAddRequest(r *poMCPRuntime, input memoryrpc.AddInput) protocol.CallPl
 	request.Method, request.Input = memoryrpc.Add, encoded
 	return request
 }
-func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *protocol.AgentMemoryItem {
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorydomain.ItemSnapshot {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
@@ -86,6 +83,5 @@ func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key stri
 	if err := json.Unmarshal(reply.Output, &result); err != nil {
 		r.t.Fatal(err)
 	}
-	row := result.Item
-	return &protocol.AgentMemoryItem{ID: row.ID.String(), Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return &result.Item
 }

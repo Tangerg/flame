@@ -148,7 +148,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
-	if len(page.Data) != 1 || page.Data[0] != *fact {
+	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *fact) {
 		t.Fatalf("reenable lost private facts=%+v", page)
 	}
 }
