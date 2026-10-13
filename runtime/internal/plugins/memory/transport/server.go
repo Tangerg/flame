@@ -36,6 +36,10 @@ func snapshots(items []memory.Item) []memory.ItemSnapshot {
 }
 
 func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootResolver) error {
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		return err
+	}
 	backend, err := pluginsdk.NewBackend(server)
 	if err != nil {
 		return err
@@ -58,7 +62,8 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 	}
 	if err := errors.Join(
 		managedmcp.RegisterReceipts(backend, db),
-		pluginsdk.RegisterServer(backend, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
+		contracts.List.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
+			input := command.Input
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
 				var err error
@@ -70,7 +75,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			page, err := review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
 			return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor}, err
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Add, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Add, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
 			changed := false
 			owner, err := app.New(app.Config{Store: store, Roots: roots, Invalidations: func(invalidation.Notice) { changed = true }})
 			if err != nil {
@@ -79,21 +84,23 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			item, err := owner.Add(ctx, input.Scope, input.CWD, input.Content)
 			return rpc.AddResult{Item: item.Snapshot(), Changed: changed}, err
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
 			item, err := review.Update(ctx, input.ID, input.Content, input.Pinned)
 			return item.Snapshot(), err
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, review.Delete(ctx, input.ID)
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Review, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Review, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
 			return rpc.Ack{}, review.Review(ctx, input.ID, input.Decision)
 		}),
-		pluginsdk.RegisterServer(backend, rpc.Items, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemsInput) ([]memory.ItemSnapshot, error) {
+		contracts.Items.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
+			input := command.Input
 			items, err := read.Items(ctx, input.Scope, input.Project)
 			return snapshots(items), err
 		}),
-		pluginsdk.RegisterServer(backend, rpc.Search, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, input rpc.SearchInput) ([]memory.ItemSnapshot, error) {
+		contracts.Search.RegisterServer(backend, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[rpc.SearchInput]) ([]memory.ItemSnapshot, error) {
+			input := command.Input
 			var resolve func(context.Context) (app.Embedder, error)
 			if input.EmbeddingSpace != "" {
 				resolve = func(context.Context) (app.Embedder, error) {
@@ -107,7 +114,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			items, err := read.Search(ctx, input.Project, input.Query, input.TopK)
 			return snapshots(items), err
 		}),
-		pluginsdk.RegisterCommand(backend, rpc.Maintain, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
+		contracts.Maintain.RegisterServer(backend, rpc.Classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
 			input := command.Input
 			admitted, err := command.RequestInput()
 			if err != nil {

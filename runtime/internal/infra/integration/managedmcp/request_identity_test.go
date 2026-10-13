@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -31,7 +32,11 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := RegisterCommand(binding, db, "update", nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
+		method, err := pluginsdk.NewMethod[input, string](pluginsdk.MethodConfig{Name: "update", Kind: capability.Mutation, Target: "installation", Description: "update"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := RegisterCommand(binding, db, method, nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
 			_, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
 			return "saved", err
 		}); err != nil {
@@ -97,5 +102,25 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	}
 	if err := db.QueryRowContext(t.Context(), `SELECT input_json FROM commands WHERE id='original'`).Scan(&admitted); err != nil || admitted != `{"n":1.0,"z":"same"}` {
 		t.Fatalf("private owner replaced raw request: %s, %v", admitted, err)
+	}
+}
+
+func TestReceiptRegistrationRequiresACommandMethod(t *testing.T) {
+	server := sdk.NewServer(&sdk.Implementation{Name: "command-admission"}, nil)
+	backend, err := pluginsdk.NewBackend(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "read", Kind: capability.Query, Target: "installation", Description: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, method := range []*pluginsdk.Method[struct{}, string]{nil, query} {
+		if err := RegisterCommand(backend, nil, method, nil, func(context.Context, *sdk.ServerSession, struct{}) (string, error) { return "unexpected", nil }); err == nil {
+			t.Fatal("receipt registration accepted a non-command method")
+		}
+	}
+	if err := backend.Publish(); err == nil {
+		t.Fatal("refused registration left a live export")
 	}
 }

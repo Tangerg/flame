@@ -74,6 +74,17 @@ admission without a known outcome; it is not a successful empty result. Former
 completed-only, digest-only and bare-result databases are refused without conversion;
 retain that directory separately and use a fresh directory for this breaking change.
 
+`runtime/internal/plugins/memory/rpc/contracts.go` is the typed method
+source used by actual server registration and query consumers. Its generated
+canonical capability, Schema, method references and TypeScript data maps live
+under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runtime
+with `go generate ./internal/plugins/memory/rpc`; the existing contractgen
+projects the same methods. The package builder copies this namespace into the
+compiled package. Do not hand-edit generated artifacts or duplicate schemas.
+Named capability publication and generic installed contribution/selection binding
+remain part of the continuing cutover; these artifacts alone do not establish
+installed operation availability.
+
 Build packages using [the local application workflow](../README.md). Backend
 source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugins/memory) as part
 of the local Runtime application module. Verify from `runtime` with the workspace

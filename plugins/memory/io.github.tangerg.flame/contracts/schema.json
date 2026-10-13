@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2ememory_2fadd_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAddInput"
+    },
+    "Method_flame_2ememory_2fadd_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAddResult"
+    },
+    "Method_flame_2ememory_2fdelete_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fItemInput"
+    },
+    "Method_flame_2ememory_2fdelete_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAck"
+    },
+    "Method_flame_2ememory_2fitems_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fItemsInput"
+    },
+    "Method_flame_2ememory_2fitems_2ev1Output": {
+      "items": {
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot"
+      },
+      "type": "array"
+    },
+    "Method_flame_2ememory_2flist_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fListInput"
+    },
+    "Method_flame_2ememory_2flist_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fPage"
+    },
+    "Method_flame_2ememory_2fmaintain_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fMaintenanceInput"
+    },
+    "Method_flame_2ememory_2fmaintain_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fMaintenanceResult"
+    },
+    "Method_flame_2ememory_2freview_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fReviewInput"
+    },
+    "Method_flame_2ememory_2freview_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAck"
+    },
+    "Method_flame_2ememory_2fsearch_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fSearchInput"
+    },
+    "Method_flame_2ememory_2fsearch_2ev1Output": {
+      "items": {
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot"
+      },
+      "type": "array"
+    },
+    "Method_flame_2ememory_2fupdate_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fUpdateInput"
+    },
+    "Method_flame_2ememory_2fupdate_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "Content": {
+          "type": "string"
+        },
+        "CreatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "Day": {
+          "type": "string"
+        },
+        "Embedding": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "Origin": {
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Scope": {
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        },
+        "Status": {
+          "type": "string"
+        },
+        "UpdatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "Scope",
+        "Project",
+        "Content",
+        "Origin",
+        "Status",
+        "Pinned",
+        "SessionID",
+        "Day",
+        "CreatedAt",
+        "UpdatedAt",
+        "EmbeddingSpace",
+        "Embedding"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAck": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAddInput": {
+      "additionalProperties": false,
+      "properties": {
+        "CWD": {
+          "type": "string"
+        },
+        "Content": {
+          "type": "string"
+        },
+        "Scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Scope",
+        "CWD",
+        "Content"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fAddResult": {
+      "additionalProperties": false,
+      "properties": {
+        "Changed": {
+          "type": "boolean"
+        },
+        "Item": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot"
+        }
+      },
+      "required": [
+        "Item",
+        "Changed"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fConversation": {
+      "additionalProperties": false,
+      "properties": {
+        "MessageCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "Transcript": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "MessageCount",
+        "Transcript"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fItemsInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Project": {
+          "type": "string"
+        },
+        "Scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Scope",
+        "Project"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "CWD": {
+          "type": "string"
+        },
+        "Cursor": {
+          "type": "string"
+        },
+        "Limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "Scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Scope",
+        "CWD",
+        "Cursor"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fMaintenanceInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Compacted": {
+          "type": "boolean"
+        },
+        "Conversation": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fConversation"
+        },
+        "Grant": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "SessionID",
+        "Project",
+        "Grant",
+        "Compacted",
+        "Conversation"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fMaintenanceResult": {
+      "additionalProperties": false,
+      "properties": {
+        "Published": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "Published"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fPage": {
+      "additionalProperties": false,
+      "properties": {
+        "NextCursor": {
+          "type": "string"
+        },
+        "Rows": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Rows",
+        "NextCursor"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fReviewInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Decision": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "Decision"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fSearchInput": {
+      "additionalProperties": false,
+      "properties": {
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "Grant": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Query": {
+          "type": "string"
+        },
+        "TopK": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "Project",
+        "Query",
+        "TopK",
+        "Grant",
+        "EmbeddingSpace"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_5fUpdateInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Content": {
+          "type": "string"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ID"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcGx1Z2lu_5fCallbackRef": {
+      "additionalProperties": false,
+      "properties": {
+        "call": {
+          "type": "string"
+        },
+        "credential": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "maxResponseBytes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "endpoint",
+        "credential",
+        "call",
+        "maxResponseBytes"
+      ],
+      "type": "object"
+    }
+  }
+}

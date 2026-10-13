@@ -31,6 +31,10 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 	if connect == nil {
 		return errors.New("schedules: Runtime Run connector is required")
 	}
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		return err
+	}
 	backend, err := pluginsdk.NewBackend(server)
 	if err != nil {
 		return err
@@ -53,7 +57,8 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 	}
 	if err := errors.Join(
 		managedmcp.RegisterReceipts(backend, db),
-		pluginsdk.RegisterServer(backend, rpc.List, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ListInput) (rpc.Page, error) {
+		contracts.List.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
+			input := command.Input
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
 				var err error
@@ -69,18 +74,18 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			}
 			return rpc.Page{Rows: rows, NextCursor: page.NextCursor}, err
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Create, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input schedule.Draft) (schedule.Snapshot, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Create, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input schedule.Draft) (schedule.Snapshot, error) {
 			value, err := coordinator.Create(ctx, input)
 			return value.Snapshot(), err
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (schedule.Snapshot, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (schedule.Snapshot, error) {
 			value, err := coordinator.Update(ctx, app.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: app.Patch{Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
 			return value.Snapshot(), err
 		}),
-		managedmcp.RegisterCommand(backend, db, rpc.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
+		managedmcp.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, coordinator.Delete(ctx, input.ID)
 		}),
-		pluginsdk.RegisterCommand(backend, rpc.PrepareManual, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (schedule.RunRequestSnapshot, error) {
+		contracts.PrepareManual.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (schedule.RunRequestSnapshot, error) {
 			return captureCommand(ctx, db, connect, rpc.PrepareManual, command, func(ctx context.Context, input rpc.ItemInput) (schedule.RunRequestSnapshot, error) {
 				value, err := store.Get(ctx, input.ID)
 				if err != nil {
@@ -94,7 +99,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 				return request.Snapshot(), err
 			})
 		}),
-		pluginsdk.RegisterCommand(backend, rpc.Scan, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ScanInput]) ([]schedule.RunRequestSnapshot, error) {
+		contracts.Scan.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ScanInput]) ([]schedule.RunRequestSnapshot, error) {
 			return captureCommand(ctx, db, connect, rpc.Scan, command, func(ctx context.Context, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {
 				if input.Now.IsZero() {
 					return nil, errors.New("schedule: scan time is required")
@@ -107,7 +112,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 				return values, err
 			})
 		}),
-		pluginsdk.RegisterCommand(backend, rpc.Dispatch, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.DispatchInput]) (app.RunReference, error) {
+		contracts.Dispatch.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.DispatchInput]) (app.RunReference, error) {
 			return dispatchRun(ctx, db, store, connect, command)
 		}),
 	); err != nil {

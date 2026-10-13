@@ -7,6 +7,7 @@ import (
 	"errors"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -72,14 +73,17 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 	return pluginsdk.DecodeReply[R](reply)
 }
 
-func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
-	return pluginsdk.RegisterCommand(server, name, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[P]) (R, error) {
+func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, method *pluginsdk.Method[P, R], classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+	if method == nil || method.Descriptor().Kind != capability.Mutation {
+		return errors.New("managed plugin: command method is required")
+	}
+	return method.RegisterServer(server, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[P]) (R, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
 			var zero R
 			return zero, err
 		}
-		return Command(ctx, db, name, command.ID, command.Input, admitted, classify, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
+		return Command(ctx, db, method.Name(), command.ID, command.Input, admitted, classify, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
 	})
 }
 

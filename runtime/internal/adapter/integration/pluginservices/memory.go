@@ -25,6 +25,7 @@ import (
 )
 
 type Memory struct {
+	contracts     rpc.Contracts
 	installations plugins.Store
 	pool          *mcpconnection.Pool
 	callbacks     *pluginsdk.Callbacks
@@ -61,14 +62,18 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	if config.Commands == nil {
 		return nil, errors.New("memory: command routing is required")
 	}
-	return &Memory{installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		return nil, err
+	}
+	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, publish: config.Invalidations, commands: config.Commands}, nil
 }
 func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
 	_, session, err := serviceSession(ctx, m.installations, m.commands.selections, m.pool, plugin.MemoryService)
 	if err != nil {
 		return pagination.Page[memory.Item]{}, err
 	}
-	value, err := pluginsdk.Call[rpc.ListInput, rpc.Page](ctx, session, rpc.List, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()})
+	value, err := m.contracts.List.Call(ctx, session, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()})
 	if err != nil {
 		return pagination.Page[memory.Item]{}, rpc.DecodeError(err)
 	}
@@ -115,7 +120,7 @@ func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) 
 	if err != nil {
 		return nil, err
 	}
-	values, err := pluginsdk.Call[rpc.ItemsInput, []memory.ItemSnapshot](ctx, session, rpc.Items, rpc.ItemsInput{Scope: scope, Project: project})
+	values, err := m.contracts.Items.Call(ctx, session, rpc.ItemsInput{Scope: scope, Project: project})
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}
@@ -152,7 +157,7 @@ func (m *Memory) Search(ctx context.Context, project, query string, topK int) ([
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	values, err := pluginsdk.Call[rpc.SearchInput, []memory.ItemSnapshot](ctx, session, rpc.Search, rpc.SearchInput{Project: project, Query: query, TopK: topK, Grant: grant, EmbeddingSpace: space})
+	values, err := m.contracts.Search.Call(ctx, session, rpc.SearchInput{Project: project, Query: query, TopK: topK, Grant: grant, EmbeddingSpace: space})
 	if err != nil {
 		return nil, rpc.DecodeError(err)
 	}

@@ -1,0 +1,58 @@
+[
+  {
+    "name": "flame.schedules/create.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create one schedule definition.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2fcreate_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2fcreate_2ev1Output"
+  },
+  {
+    "name": "flame.schedules/delete.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Delete one schedule definition.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2fdelete_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2fdelete_2ev1Output"
+  },
+  {
+    "name": "flame.schedules/dispatch.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Reconcile captured work through the original Runtime Run acceptance.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2fdispatch_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2fdispatch_2ev1Output"
+  },
+  {
+    "name": "flame.schedules/list.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List current schedule definitions and revisions.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2flist_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2flist_2ev1Output"
+  },
+  {
+    "name": "flame.schedules/prepareManual.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Capture manual dispatch input and stable Session and Run identities.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2fprepareManual_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2fprepareManual_2ev1Output"
+  },
+  {
+    "name": "flame.schedules/scan.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Capture due occurrences at the supplied time and return pending dispatch.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2fscan_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2fscan_2ev1Output"
+  },
+  {
+    "name": "flame.schedules/update.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Change one schedule using its inspected revision.",
+    "input": "schema.json#/$defs/Method_flame_2eschedules_2fupdate_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eschedules_2fupdate_2ev1Output"
+  }
+]

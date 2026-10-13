@@ -16,6 +16,11 @@ node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages
 The output directory must not exist. Supported targets are Darwin, Linux and
 Windows on amd64 or arm64. The output contains the complete first-party catalog,
 including all workspace pages and renderers and compiled Memory/Schedules backends.
+Memory/Schedules package namespaces also contain canonical contracts generated
+from the typed methods registered by their actual backends. Run
+`go generate ./internal/plugins/memory/rpc ./internal/plugins/schedules/rpc`
+from `runtime` after changing those methods; the package builder copies the
+namespace resources into the output.
 Runtime and CLI build targets place it in `plugins` beside their executable.
 Runtime installs and enables this catalog only when initializing a fresh
 database. Restart preserves user decisions. Package updates still require explicit

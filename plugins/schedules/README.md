@@ -52,6 +52,17 @@ acknowledgement redelivers the same identity and receives the existing acceptanc
 including after terminal execution or Runtime restart. Selecting a new release
 can reconcile old captured work from the same installation without changing it.
 
+`runtime/internal/plugins/schedules/rpc/contracts.go` is the typed method
+source used by actual server registration and query consumers. Its generated
+canonical capability, Schema, method references and TypeScript data maps live
+under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runtime
+with `go generate ./internal/plugins/schedules/rpc`; the existing contractgen
+projects the same methods. The package builder copies this namespace into the
+compiled package. Do not hand-edit generated artifacts or duplicate schemas.
+Named capability publication and generic installed contribution/selection binding
+remain part of the continuing cutover; these artifacts alone do not establish
+installed operation availability.
+
 The backend executable connects through the public `ConnectCallback` and ordinary
 Runtime Client. `runs.start.newSession` carries the captured Session/Run identities;
 `runs.getAcceptance` checks that same original request before submission or

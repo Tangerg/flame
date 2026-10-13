@@ -52,6 +52,11 @@ export async function buildPlugins({ os, arch, output }) {
     const target = join(output, feature);
     await mkdir(target);
     await cp(manifestPath, join(target, "plugin.json"));
+    const namespace = "io.github.tangerg.flame";
+    if ((await readdir(join(source, feature))).includes(namespace))
+      await cp(join(source, feature, namespace), join(target, namespace), {
+        recursive: true,
+      });
     if ((await readdir(join(source, feature))).includes("skills"))
       await cp(join(source, feature, "skills"), join(target, "skills"), {
         recursive: true,
