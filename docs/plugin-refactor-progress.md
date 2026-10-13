@@ -2,47 +2,53 @@
 
 ## Current stage
 
-Stage 4c (0c0ecad2) migrates Skills to an ordinary 9508-byte prebuilt public
-component with canonical discovery/document/library/proposal reads and human
-archive/restore/approve/reject commands. Client scope captures the optional workspace;
-the personal library works without one. Confirmations retain inspected instructions
-and revision. Unknown acknowledgement retains the original mutation key/promise/
-retry closure and blocks new commands/catalog changes. Accepted same-target reads
-survive failures; navigation cancels and clears the old target's presentation.
+Stage 4d (ca770e48) supplies the missing complete public Schedules manual operation
+needed by its bound component. flame.schedules/runNow.v1 replaces prepareManual.
+The private backend admits the command and captures execution in one transaction,
+then calls the existing Runtime Run admission outside that transaction. Private queue
+acceptance and the original reply commit together through the existing dispatch owner.
+Known business refusal also retains its private reply; unknown outcomes remain pending.
 
-The component consumes existing public Runtime skills/plugins/file notices with
-its captured workspace watch. Subscription and read retirement use the component
-signal and existing contribution I/O joining. Subscription failure is explicit and
-manual refresh remains available. No business outcome or visibility owner is added.
+Manual Session/Run identities derive from the exact installation target and original
+command identity using framed JSON and SHA-256. This locates the immutable queued
+capture after process loss without another routing/mapping/result store. Definition
+edits/deletion do not replace that capture. The invoking command and caller identity
+must agree; pending recovery verifies original origin/parent/target. Finished replay
+requires no new callback collaborators. Human Core commands and pending-manual worker
+recovery invoke this same operation and original identity. Cron dispatch stays with
+its existing captured occurrence contract.
 
-The Skills HTML/view kind, four dedicated plugins.readSkill* APIs and generated
-contracts, private Host controls/curation generation/gateway and unused catalog
-DataQuery projections are deleted together. Retired GUI carrier tests/fixtures are
-removed, and backend resource/withdrawal/curation/revision regression source migrates
-to the current component and canonical owners. Core advances to .15; backend .4 and
-private Skill formats are unchanged. Rebuild clients and installed artifacts together.
+The former host prepare-then-dispatch workflow and prepareManual export disappear.
+Actual typed/live/generated Schedules capability and package artifacts migrate together.
+Its full capability identity changes; rebuild the backend and installed namespace
+contracts together. Core .15, backend envelope .4 and private storage formats remain.
+Old original routes are not rewritten or retargeted to this changed contract.
 
-Public SDK isErrorType comes from the actual shared Host module. A separately bundled
-RPC error class would fail the host client's instanceof classification. The component
-now imports that shared helper. The API gate scans the owning component project as
-well as Desktop, because installed ESM has no static Desktop import; genuine typed
-calls supply 103/103 operation coverage without exceptions or placeholder calls.
+Production Runtime/CLI/Reviews Go builds and bundled TS types pass. A real in-memory
+SDK/backend/private-DB regression verifies original capture, missing acknowledgement,
+private receipt rollback, retained deleted-definition work, exact receipt/replay,
+input conflict and classified refusal (1.119s); generated/live contract identity
+passes (0.651s). Bootstrap and adapter test sources compile. Native message-loss
+fixtures preserve post-acceptance restart/withdrawal/Session deletion and explicit
+missing-receipt uncertainty; full process execution remains queued. No frontend UI/
+E2E work was added or run. Main 993eb865 is already integrated; original inputs unchanged.
 
-Production Go, SDK/contract/plugin/Desktop types, changed lint, exact component
-rebuilds, Vite, layer graph and 1014-key/eight-locale checks pass. Canonical Skill
-capability/retired-method dispatch passes in 0.690s; exact release/retired view-kind
-checks pass in 0.743s; 14 API-checker regressions pass in 0.742s. Bootstrap and owning
-test source compile without native process execution. SDK lint's existing assertion
-warnings are repaired without changing their contracts; execution remains queued.
-No frontend UI/E2E tests were added or run. Main 993eb865 is already integrated.
-
-Full scope remains active: Schedules/renderers/actions, scoped dependency retention,
-all-consumer migration, canonical model decorators/streaming, cross-generation
-mutation recovery, independent author parity and final P01-P48 acceptance. Estimated
-overall delivery remains around 60%; a source/build slice is not full acceptance.
-Original proposal, review and old draft hashes remain unchanged.
+Next is the actual Schedules bound component and deletion of its HTML/kind/template
+coupling. Backend-owned background-role migration, including recovery for enabled
+non-selected installations, remains required; this operation alone does not close
+that lifecycle. Full renderers/actions, scoped dependency retention, all-consumer
+migration, canonical model decorators/streaming, cross-generation mutation recovery,
+independent author parity and final P01-P48 acceptance remain active.
 
 ## Completed
+
+- Stage 4d (ca770e48): complete backend-owned manual Run operation over the existing
+  private command/capture/acknowledgement and canonical Runtime Run acceptance owners;
+  remove the separate prepareManual export and host two-step manual workflow.
+- Stage 4d: original command/caller identity, deterministic capture lookup, immutable
+  pending input and atomic private receipt completion; generated capability migration
+  and real SDK/private-owner regression. Native process source migrates; final execution
+  and backend background-role ownership remain open.
 
 - Stage 4c (0c0ecad2): ordinary Skills component over canonical public reads and
   library/proposal commands, frozen target/revision confirmation, original uncertain
@@ -291,7 +297,8 @@ Original proposal, review and old draft hashes remain unchanged.
 
 ## Next
 
-1. Continue Schedules and renderer/action migration to public components
+1. Bind Schedules to its complete public operation, delete its remaining carrier,
+   then continue renderer/action migration to public components
    and installed operation contracts; remove each replaced carrier/API in its slice.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
@@ -302,6 +309,8 @@ Original proposal, review and old draft hashes remain unchanged.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Schedules owns complete manual Run capture/reconciliation in one typed runNow operation | A component must invoke its exact installation without rebuilding the host prepare/dispatch workflow or changing the captured caller between commands | Keeping prepareManual as a UI prerequisite, a feature-specific public wrapper, a second route/result ledger or new identity after lost acknowledgement |
+| 2026-10-14 | Derive manual resource identities from framed target/command identity and keep execution in the existing private queue | Original capture must be locatable on private-owner recovery without mutable mappings or rereading an edited definition | Ambiguous delimiter framing, random replacement identities, a new mapping store or adapting old uncertain routes to a different contract |
 | 2026-10-13 | Skills consumes canonical Core operations directly from a public client-scoped component | The existing owners already admit discovery, library and revision-based proposal decisions; personal library inspection does not require a project | Another backend/store, four read wrappers, private Host forms, a curation generation or copied DataQuery catalogs |
 | 2026-10-13 | Classify Core errors through the shared Host SDK module | Bundling another RpcError constructor breaks instanceof checks on errors from the existing Runtime client | Structural guesses, copied RPC classes or feature-specific error wrappers |
 | 2026-10-13 | Scan the actual owning production component project for typed API consumers | Installed ESM is loaded from release resources and has no static Desktop import | Dummy imports/calls, counting visual fixtures or adding operation exemptions |
@@ -444,6 +453,27 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4d complete public Schedules manual operation
+
+- Passed: production Runtime/CLI/Reviews Go build and bundled contract/component types.
+- Passed: actual SDK/backend/private-DB manual command regression (1.119s): captured
+  caller/input, missing acceptance reply, failed private receipt commit rollback,
+  deleted-definition retention, exact reply/replay without fresh collaborators,
+  changed-input conflict and retained business refusal. Exactly one private command
+  outcome exists per requested command; no inner manual dispatch receipt is created.
+- Passed: generated Schedules capability equals the actual typed method owner (0.651s).
+- Passed: Bootstrap and pluginservices test binaries compile and are removed by
+  TemporaryDirectory. Native scenarios now use runNow and distinguish unknown missing
+  receipt from committed acceptance surviving restart/withdrawal/Session deletion.
+- Resolved: the first build removed an identity import still needed by cron scanning;
+  it is retained. New fixture Delete result and uncertainty error references were
+  corrected to the existing owner contracts; source compiles without relaxed assertions.
+- Not run: full/native process/vet/race verification, queued for final concentrated
+  checks. No frontend UI/E2E/screenshot tests were added or run.
+- Passed: gofmt, git diff --check and unchanged original input hashes. Core .15 and
+  backend .4 wire envelopes/private SQL formats are unchanged; the full Schedules
+  capability identity intentionally changes and old routes remain untouched.
 
 ### Stage 4c public Skills component and retired wrappers
 
@@ -968,6 +998,13 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 4d: product ca770e48 committed and main already integrated. All owned
+  generation/build/type/focused/source-compile/commit handles are terminal. Temporary
+  binaries, backend sessions and private fixture databases are removed by their
+  lifetimes. No frontend artifact, scratch script, shared source/configuration,
+  external state, original input, credential or user data changed. Keep the managed
+  checkout, formal contracts/regressions and dependencies for the active full goal.
+
 - Stage 4c: product 0c0ecad2 committed and main already integrated. All owned
   generation/build/type/lint/focused/source-compile/commit handles are terminal.
   TemporaryDirectory removes test binaries and exact-rebuild probes. Owned frontend
@@ -1090,6 +1127,14 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Schedules' complete public manual operation is implemented, but its background
+  lifecycle still lives in the existing host role driver. Move that lifecycle to
+  the enabled backend/integration role and remove the former driver together. Prove
+  captured manual recovery for enabled non-selected installations and preservation
+  of accepted Runs after UI/entry withdrawal. Do not add another wake owner.
+- Bind the Schedules editing component to its own generated capability/runNow operation
+  and remove HTML/kind/template knowledge from the generic loader/domain/Protocol.
+
 - Stage 4b implements existing Memory/Schedules consumer invalidation for public
   commands, including original receipt recovery/uncertainty, with focused evidence.
   Complete generic plugin-defined notification and final cross-generation/component
@@ -1128,6 +1173,13 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 4d replaces prepareManual with complete runNow, changing the Schedules
+  capability identity. Rebuild and select matching backend/namespace resources;
+  former original bindings remain unavailable rather than being converted. Root manual
+  request loss with no private receipt remains uncertainty and cannot create another
+  Run. Current selected-role background recovery is retained only until the explicit
+  backend-owned role cutover; full native/cross-generation acceptance is outstanding.
 
 - Stage 4c advances Core to .15 and removes all Skills-specific read/kind/carrier
   contracts. Rebuild Runtime/CLI/TS/SDK/Host/packages together. Components should use
