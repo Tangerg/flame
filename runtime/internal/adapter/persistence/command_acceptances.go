@@ -49,6 +49,19 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 // generic response variant reports that the key belongs to another operation; an
 // absent key reports neither. It performs no mutation and starts no Run.
 func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
+	var record runs.CommandAcceptanceRecord
+	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		var err error
+		record, err = s.lookup(ctx, key)
+		return err
+	})
+	if err != nil {
+		return runs.CommandAcceptanceRecord{}, err
+	}
+	return record, nil
+}
+
+func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	var (
 		kind        string
 		digest      string
@@ -84,9 +97,20 @@ func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.C
 	if err := acceptance.Validate(); err != nil {
 		return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: decode command acceptance: %w", err)
 	}
-	return runs.CommandAcceptanceRecord{
-		Acceptance:        acceptance,
-		Found:             true,
-		MaterialAvailable: materialRun.Valid && materialRun.String != "",
-	}, nil
+	record := runs.CommandAcceptanceRecord{Acceptance: acceptance, Found: true}
+	if !materialRun.Valid {
+		return record, nil
+	}
+	if materialRun.String != acceptance.RunID {
+		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: command material differs from its accepted Run")
+	}
+	current, found, err := sqlite.NewRunStore(s.db).Run(ctx, materialRun.String)
+	if err != nil {
+		return runs.CommandAcceptanceRecord{}, err
+	}
+	if !found || current.SessionID() != acceptance.SessionID {
+		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: accepted Run material is missing or has another Session")
+	}
+	record.CurrentRun = &current
+	return record, nil
 }

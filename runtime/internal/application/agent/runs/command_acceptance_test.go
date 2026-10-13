@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 type recordingAcceptanceReader struct {
@@ -19,7 +21,7 @@ func (r *recordingAcceptanceReader) Lookup(_ context.Context, key string) (Comma
 
 func TestLookupCommandAcceptanceDelegatesNonEmptyKey(t *testing.T) {
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{
-		Found: true, MaterialAvailable: true, Acceptance: validCommandAcceptance(),
+		Found: true, CurrentRun: new(run.Run), Acceptance: validCommandAcceptance(),
 	}}
 	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
 	got, err := coordinator.LookupCommandAcceptance(context.Background(), "cmd-key-1")
@@ -40,7 +42,7 @@ func TestLookupCommandAcceptanceDelegatesNonEmptyKey(t *testing.T) {
 func TestStartReturnsReopenedForAcceptedKey(t *testing.T) {
 	accepted := validCommandAcceptance()
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{
-		Found: true, MaterialAvailable: true, Acceptance: accepted,
+		Found: true, CurrentRun: new(run.Run), Acceptance: accepted,
 	}}
 	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
 	result, err := coordinator.Start(context.Background(), StartCommand{
@@ -112,19 +114,46 @@ func TestCommandAcceptanceValidateAcceptsCompleteOpening(t *testing.T) {
 	if err := validCommandAcceptance().Validate(); err != nil {
 		t.Fatalf("valid acceptance rejected: %v", err)
 	}
+	resume := validCommandAcceptance()
+	resume.Operation, resume.UserItemID = CommandResumeOpening, ""
+	if err := resume.Validate(); err != nil {
+		t.Fatalf("response-only Resume rejected: %v", err)
+	}
+}
+
+func TestResumeReturnsOriginalAcceptanceBeforeReadingTheRun(t *testing.T) {
+	for _, retired := range []bool{false, true} {
+		accepted := validCommandAcceptance()
+		accepted.Operation, accepted.UserItemID = CommandResumeOpening, ""
+		reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, Acceptance: accepted}}
+		if !retired {
+			reader.record.CurrentRun = new(run.Run)
+		}
+		coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader})
+		result, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: accepted.RunID, Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint}})
+		if err != nil || !result.Reopened || result.MaterialRetired != retired || result.SegmentID != accepted.SegmentID || result.UserItemID != "" {
+			t.Fatalf("original Resume acceptance=%+v,%v", result, err)
+		}
+	}
+	accepted := validCommandAcceptance()
+	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, Acceptance: accepted}}})
+	_, err := coordinator.Resume(t.Context(), ResumeCommand{RunID: accepted.RunID, Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint}})
+	if !errors.Is(err, ErrCommandKeyConflict) {
+		t.Fatalf("Start key used for Resume=%v", err)
+	}
 }
 
 func TestCommandAcceptanceValidateRejectsEachMissingFact(t *testing.T) {
 	cases := map[string]func(*CommandAcceptance){
-		"empty key":          func(a *CommandAcceptance) { a.Key = "" },
-		"short fingerprint":  func(a *CommandAcceptance) { a.Fingerprint = strings.Repeat("a", 63) },
-		"uppercase digest":   func(a *CommandAcceptance) { a.Fingerprint = strings.Repeat("A", 64) },
-		"unknown operation":  func(a *CommandAcceptance) { a.Operation = "resume" },
-		"absent operation":   func(a *CommandAcceptance) { a.Operation = "" },
-		"empty session":      func(a *CommandAcceptance) { a.SessionID = "" },
-		"empty run":          func(a *CommandAcceptance) { a.RunID = "" },
-		"empty segment":      func(a *CommandAcceptance) { a.SegmentID = "" },
-		"empty user item":    func(a *CommandAcceptance) { a.UserItemID = "" },
+		"empty key":         func(a *CommandAcceptance) { a.Key = "" },
+		"short fingerprint": func(a *CommandAcceptance) { a.Fingerprint = strings.Repeat("a", 63) },
+		"uppercase digest":  func(a *CommandAcceptance) { a.Fingerprint = strings.Repeat("A", 64) },
+		"unknown operation": func(a *CommandAcceptance) { a.Operation = "unknown" },
+		"absent operation":  func(a *CommandAcceptance) { a.Operation = "" },
+		"empty session":     func(a *CommandAcceptance) { a.SessionID = "" },
+		"empty run":         func(a *CommandAcceptance) { a.RunID = "" },
+		"empty segment":     func(a *CommandAcceptance) { a.SegmentID = "" },
+		"empty user item":   func(a *CommandAcceptance) { a.UserItemID = "" },
 	}
 	for name, break_ := range cases {
 		t.Run(name, func(t *testing.T) {

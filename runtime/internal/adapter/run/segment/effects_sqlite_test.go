@@ -878,7 +878,7 @@ func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 			if err := state.Delete(t.Context(), draft.SessionID, draft.RunID); err != nil {
 				t.Fatal(err)
 			}
-			if record, err := receipts.Lookup(t.Context(), "captured-start"); err != nil || !record.Found || record.MaterialAvailable {
+			if record, err := receipts.Lookup(t.Context(), "captured-start"); err != nil || !record.Found || record.CurrentRun != nil {
 				t.Fatalf("acceptance lost after Run deletion: %+v %v", record, err)
 			}
 		})

@@ -38,18 +38,20 @@ func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
 		Provider:   selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
 	}
 	key := "schedules:run:" + request.RunID()
-	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Key: key, Request: &start}, flameruntime.CallOptions{})
+	namespace, err := h.Namespace(ctx)
+	if err != nil {
+		return err
+	}
+	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, flameruntime.CallOptions{})
 	if err != nil {
 		return err
 	}
 	switch acceptance.Type {
-	case protocol.RunAcceptanceOpened, protocol.RunAcceptanceRetired:
+	case protocol.RunAcceptanceAccepted, protocol.RunAcceptanceRetired:
 		if acceptance.SessionID != request.SessionID() || acceptance.RunID != request.RunID() {
 			return errors.New("schedules: Runtime acceptance differs from captured dispatch")
 		}
 		return nil
-	case protocol.RunAcceptanceConflict:
-		return protocol.ErrIdempotencyConflict
 	case protocol.RunAcceptanceNotRecorded:
 	default:
 		return flameruntime.ErrInvalidResponse

@@ -86,7 +86,42 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.4
+## Protocol 2026-10-13.5
+
+Plugin release projections include required `points` and `pointValues` arrays,
+and `plugins.resolvePoint` resolves the admitted consumer-owned value contract.
+Core clients must rebuild against the generated current shapes; backend callable
+contracts retain their independent `2026-10-13.4` identity.
+
+Start and Resume use one Run-owned command acceptance. A keyed Resume commits
+its request fingerprint and original Run, Segment, and optional input Item
+references with the complete answer set, resumed tree, and requested standing
+rules. Redelivery reads that immutable acceptance before current prompts or
+execution preparation; it never allocates a replacement opening. Delivery no
+longer reserves or caches a separate Run-stream response.
+
+`runs.getAcceptance` requires the original `namespace`, `key`, and `operation`
+(`start` or `resume`) as query parameters. It only reads. `accepted` includes
+the original opening references and a consistent current Run projection;
+`retired` retains those references without material. Deleted material cannot
+be relinked by importing the same Run ID. `notRecorded` describes this read
+and says nothing about an invocation still in flight. Namespace mismatches,
+operation conflicts, and inconclusive reads remain errors.
+An optional captured start `request` verifies the original admitted meaning,
+including its execution capability context. Plugin callbacks retain their
+installation-scoped key; lookup cannot read another plugin's command by spelling
+the same logical key. A changed captured request conflicts even after retirement.
+
+Only the original material and Segment may supply a redelivery stream. A later
+Segment, waiting or terminal Run, retired material, or unavailable replay cursor
+returns the original acknowledgement with no replacement stream. A client uses
+existing snapshot and subscription reads for the current lifecycle. Observation
+defects remain errors and never overwrite acceptance.
+
+Rebuild Runtime and its clients together. The former cached Resume response
+policy and acceptance query shapes are removed without compatibility readers.
+
+## Plugin backend 2026-10-13.4
 
 Memory and Schedules are optional, complete managed plugin backends. Their
 Local contribution declarations bind independent IDs to exact contracts and
@@ -125,7 +160,7 @@ through MCP metadata, outside business input and durable host routing/private
 receipts. Receipt lookup and completed Memory maintenance redelivery require no
 new callback grant. Current command tables name that input `business_input_json`;
 former call-context input schemas are refused without changing retained evidence.
-The Schedules executable uses the ordinary Client to query `runs.getAcceptance` with the original `runs.start` request, then submits
+The Schedules executable uses the ordinary Client to query `runs.getAcceptance` with its namespace, actor-scoped key, start operation and original `runs.start` request, then submits
 the captured `newSession` only when no acceptance exists. Runtime commits the new
 Session, Run and command acceptance atomically. Opened and retired acceptances
 settle the same private pending work without recreating deleted material.
@@ -1737,7 +1772,8 @@ Only an explicitly authored `glob` uses Go `path.Match` (`*` does not cross `/`)
 Exact subjects outrank globs within the same scope. An
 edited command or path cannot grant permission to the original command or path.
 The frozen Scope input contract validates approved arguments before a rule is
-saved; invalid edits produce a failed Tool result without saving a grant. Denials
+saved. An invalid edit with a requested remembered rule rejects the complete
+Resume; a one-shot invalid edit produces a failed Tool result. Denials
 remain bound to the original invocation. Standing rules never replay argument edits.
 If the source changes while approval is pending, requesting a remembered rule
 rejects the complete Resume. A one-shot choice requires an explicit command.

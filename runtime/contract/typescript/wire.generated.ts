@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.4";
+export const PROTOCOL_VERSION = "2026-10-13.5";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -660,6 +660,8 @@ export interface GetPlanRequest {
 
 export interface GetRunAcceptanceRequest {
   key: string;
+  namespace: string;
+  operation: RunCommandOperation;
   request?: StartRunRequest;
 }
 
@@ -1673,11 +1675,12 @@ export interface RollbackSessionResponse {
 
 export type RunAcceptance =
   | { type: "notRecorded" }
-  | { type: "opened"; runId: string; segmentId: string; sessionId: string; userItemId: string }
-  | { type: "retired"; runId: string; sessionId: string; userItemId: string }
-  | { type: "conflict" };
+  | { type: "accepted"; run: RunRef; runId: string; segmentId: string; sessionId: string; userItemId?: string }
+  | { type: "retired"; runId: string; segmentId: string; sessionId: string; userItemId?: string };
 
-export type RunAcceptanceType = "notRecorded" | "opened" | "retired" | "conflict";
+export type RunAcceptanceType = "notRecorded" | "accepted" | "retired";
+
+export type RunCommandOperation = "start" | "resume";
 
 export interface RunEvent {
   event: StreamEvent;
@@ -2393,7 +2396,8 @@ export const WIRE_ENUMS = {
   QuestionFieldType: ["text", "choice"],
   RememberScopeKind: ["session", "project", "global"],
   RestoreType: ["history", "files", "both"],
-  RunAcceptanceType: ["notRecorded", "opened", "retired", "conflict"],
+  RunAcceptanceType: ["notRecorded", "accepted", "retired"],
+  RunCommandOperation: ["start", "resume"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],

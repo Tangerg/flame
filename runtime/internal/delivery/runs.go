@@ -28,7 +28,7 @@ func registerRuns(registry *Registry) {
 
 	// runs.start opens a run and owns its acceptance: the opening transaction
 	// records the key→run binding, so a same-key retry lands back on THAT run even
-	// across a crash. runs.resume still replays its cached ack. Both re-attach the
+	// across a crash. runs.resume commits the same binding with its answers. Both re-attach the
 	// retry to the opened stream — a cached ack alone would give the client a runId
 	// with no stream behind it.
 	registry.runStreamOwnerCommand(MethodMeta{
@@ -49,7 +49,7 @@ func registerRuns(registry *Registry) {
 		return service.StartRun(ctx, request)
 	})
 
-	registry.runStreamCommand(MethodMeta{
+	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsResume,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -141,11 +141,6 @@ func registerRuns(registry *Registry) {
 		return service.GetRun(ctx, request)
 	})
 
-	// runs.getAcceptance answers what Runtime recorded for one runs.start idempotency
-	// key, so a client that lost the start ack learns whether the command opened a
-	// run — and whether that run still exists — instead of opening a second one. A
-	// never-seen key, a retired run, and a key bound elsewhere are all normal reads,
-	// so the result is a closed union rather than a not-found refusal.
 	registry.query(MethodMeta{Name: RunsGetAcceptance}, func(service interface {
 		GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error)
 	}, ctx context.Context, request protocol.GetRunAcceptanceRequest,

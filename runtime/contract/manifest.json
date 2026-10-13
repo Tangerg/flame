@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.4",
+  "protocolVersion": "2026-10-13.5",
   "features": [
     "reasoning",
     "multimodal",
@@ -247,7 +247,7 @@
       "name": "runs.resume",
       "kind": "stream",
       "operation": "command",
-      "idempotency": "replayRunStream",
+      "idempotency": "ownerRunStream",
       "replayCursor": "run",
       "pagination": "none",
       "errors": [
@@ -3833,11 +3833,14 @@
           "tag": "notRecorded"
         },
         {
-          "tag": "opened",
+          "tag": "accepted",
           "required": [
             "runId",
             "segmentId",
             "sessionId",
+            "run"
+          ],
+          "optional": [
             "userItemId"
           ]
         },
@@ -3845,12 +3848,12 @@
           "tag": "retired",
           "required": [
             "runId",
-            "sessionId",
+            "segmentId",
+            "sessionId"
+          ],
+          "optional": [
             "userItemId"
           ]
-        },
-        {
-          "tag": "conflict"
         }
       ]
     },
@@ -8270,6 +8273,14 @@
     {
       "type": "GetRunAcceptanceRequest",
       "rules": [
+        {
+          "field": "namespace",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "namespace",
+          "constraint": "pattern(\"^idp_[0-9a-f]{32}$\")"
+        },
         {
           "field": "key",
           "constraint": "nonEmpty"

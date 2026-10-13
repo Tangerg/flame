@@ -8,7 +8,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"iter"
 	"log/slog"
 	"sort"
 	"sync"
@@ -55,7 +54,6 @@ func (r *replayStore) invoke(
 	parameters any,
 	key string,
 	execute func() Result,
-	target any,
 ) Result {
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
 	if err != nil {
@@ -80,7 +78,7 @@ func (r *replayStore) invoke(
 			return failed(r.persistenceFailure(completionErr))
 		}
 		r.forgetPendingCompletion(key, fingerprint)
-		return r.replay(ctx, method, pending.Payload, target)
+		return r.replay(method, pending.Payload)
 	}
 
 	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
@@ -94,7 +92,7 @@ func (r *replayStore) invoke(
 		if len(record.Payload) == 0 {
 			return failed(NewFailure(protocol.ErrIdempotencyInProgress, "command outcome is not yet known; retain the original request identity"))
 		}
-		return r.replay(ctx, method, record.Payload, target)
+		return r.replay(method, record.Payload)
 	}
 
 	result := execute()
@@ -119,7 +117,7 @@ func (r *replayStore) invoke(
 	return result
 }
 
-func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte, target any) Result {
+func (r *replayStore) replay(method *Method, payload []byte) Result {
 	var stored storedOutcome
 	if err := decodeStoredJSON(payload, &stored); err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
@@ -134,32 +132,7 @@ func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte
 	if err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: decode stored result: %w", err)))
 	}
-	result := Result{Value: value}
-	if method.Meta.Idempotency != IdempotencyReplayRunStream {
-		return result
-	}
-
-	runID, segmentID, ok := runOpeningIdentity(value)
-	if !ok {
-		return failed(ProjectError(errors.New("idempotency: stored run-opening result has an invalid shape")))
-	}
-	subscriber, ok := target.(interface {
-		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	})
-	if !ok || !capabilityAvailable(subscriber) {
-		return failed(ProjectError(errors.New("operation: target cannot handle runs.subscribe")))
-	}
-	_, events, err := subscriber.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: runID, SegmentID: segmentID})
-	switch {
-	case unattachable(err):
-		result.Events = emptyEventStream
-		return result
-	case err != nil:
-		return failed(ProjectError(err))
-	default:
-		result.Events = validateEvents(ctx, method.Meta.Event, eraseEventType(events))
-		return result
-	}
+	return Result{Value: value}
 }
 
 func encodeStoredOutcome(result Result) ([]byte, error) {
@@ -181,16 +154,6 @@ func encodeStoredOutcome(result Result) ([]byte, error) {
 // unknown member, a repeated one, and anything after the value.
 func decodeStoredJSON(encoded []byte, target any) error {
 	return json.Unmarshal(encoded, target, json.RejectUnknownMembers(true))
-}
-
-// runOpeningIdentity reads the run a cached opening ack re-attaches to. Only
-// runs.resume reaches the generic replay store now: runs.start owns its acceptance
-// and re-attaches from the handler, never the stored ack.
-func runOpeningIdentity(value any) (runID, segmentID string, ok bool) {
-	if opening, isResume := value.(*protocol.ResumeRunResponse); isResume && opening != nil {
-		return opening.RunID, opening.SegmentID, true
-	}
-	return "", "", false
 }
 
 func operationFingerprint(name Name, parameters any) (string, error) {
@@ -290,15 +253,6 @@ func (r *replayStore) pendingKeys() []string {
 	sort.Strings(keys)
 	return keys
 }
-
-func unattachable(err error) bool {
-	return errors.Is(err, protocol.ErrRunNotFound) ||
-		errors.Is(err, protocol.ErrRunWaiting) ||
-		errors.Is(err, protocol.ErrRunFinished) ||
-		errors.Is(err, protocol.ErrStaleSegment)
-}
-
-var emptyEventStream iter.Seq2[any, error] = func(func(any, error) bool) {}
 
 type memoryIdempotencyStore struct {
 	mu      sync.Mutex

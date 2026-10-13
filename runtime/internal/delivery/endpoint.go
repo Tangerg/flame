@@ -156,7 +156,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	// optional: an unkeyed start opens a run with no durable acceptance, exactly as
 	// before. Binding only the keyed case keeps that one path un-ambient.
 	if method.Meta.Idempotency == IdempotencyOwnerRunStream && options.IdempotencyKey != "" {
-		fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
+		fingerprint, err := runCommandFingerprint(method.Meta.Name, parameters, options.RequestMeta.ClientCapabilities)
 		if err != nil {
 			return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 		}
@@ -171,10 +171,19 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	}
 	execute := func() Result { return e.execute(ctx, method, parameters) }
 	var result Result
-	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() || method.Meta.Idempotency.OwnsOutcome() {
+	if options.IdempotencyKey != "" && method.Meta.Idempotency == IdempotencyOwnerRunStream {
+		// Serialize through the opening acknowledgement, never the stream lifetime.
+		// The durable Run acceptance remains the only command outcome authority.
+		releaseKey, err := e.idempotency.inFlight.Acquire(ctx, options.IdempotencyKey)
+		if err != nil {
+			return failed(ProjectError(err))
+		}
+		defer releaseKey()
+		result = execute()
+	} else if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() || method.Meta.Idempotency.OwnsOutcome() {
 		result = execute()
 	} else {
-		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute, e.target)
+		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute)
 	}
 	if result.Events == nil {
 		return result

@@ -498,7 +498,7 @@ func TestReplayRejectsUnversionedStoredOutcome(t *testing.T) {
 		t.Fatal("runs.cancel is not registered")
 	}
 	result := newReplayStore(newMemoryIdempotencyStore()).replay(
-		t.Context(), method, []byte(`{"value":{}}`), &countingCancelService{},
+		method, []byte(`{"value":{}}`),
 	)
 	if !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("replay failure = %v, want internal_error", result.Failure)
@@ -552,7 +552,7 @@ func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
 
 	for _, payload := range [][]byte{unknownEnvelope, unknownResultPayload} {
 		result := newReplayStore(newMemoryIdempotencyStore()).replay(
-			t.Context(), method, payload, &countingCancelService{},
+			method, payload,
 		)
 		if !errors.Is(result.Failure, protocol.ErrInternalError) {
 			t.Fatalf("replay failure = %v, want internal_error", result.Failure)
@@ -574,7 +574,7 @@ func TestReplayRejectsInvalidStoredResultShapes(t *testing.T) {
 			if !ok {
 				t.Fatalf("method %s is not registered", test.name)
 			}
-			result := newReplayStore(newMemoryIdempotencyStore()).replay(t.Context(), method, []byte(test.payload), nil)
+			result := newReplayStore(newMemoryIdempotencyStore()).replay(method, []byte(test.payload))
 			if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
 				t.Fatalf("stored result = %+v, want internal_error", result)
 			}
@@ -605,7 +605,7 @@ func TestReplayRejectsMissingRequiredResultFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	method, _ := contract.lookup(SessionsUpdate)
-	result := newReplayStore(newMemoryIdempotencyStore()).replay(t.Context(), method, payload, nil)
+	result := newReplayStore(newMemoryIdempotencyStore()).replay(method, payload)
 	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("missing required title = %+v, want internal_error", result)
 	}
@@ -622,7 +622,7 @@ func TestReplayPreservesOpaqueToolResult(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := newReplayStore(newMemoryIdempotencyStore()).replay(t.Context(), method, payload, nil)
+			result := newReplayStore(newMemoryIdempotencyStore()).replay(method, payload)
 			if result.Failure != nil {
 				t.Fatal(result.Failure)
 			}

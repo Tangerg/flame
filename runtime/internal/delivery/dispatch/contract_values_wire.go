@@ -418,6 +418,8 @@ func registerRunValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GetRunAcceptanceRequest](),
 		Constraints: []FieldConstraint{
+			{Field: "namespace", Kind: ConstraintNonEmpty},
+			{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
 			{Field: "key", Kind: ConstraintNonEmpty},
 			{Field: "key", Kind: ConstraintMaxLength, Limit: protocol.MaximumIdempotencyKeyCharacters},
 		},

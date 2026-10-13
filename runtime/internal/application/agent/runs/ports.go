@@ -108,9 +108,7 @@ type ExecutionContinuer interface {
 	StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation, answers []InterruptAnswer) (ExecutorRef, error)
 	// DeriveRememberedRules validates each candidate's confirmed arguments against
 	// its frozen tool invocation on the staged tree and derives the canonical rule
-	// subject. A candidate whose arguments do not satisfy that invocation is
-	// omitted: its approval still proceeds one-shot and its Tool fails at
-	// execution, so no rule is remembered for an invocation that cannot run.
+	// subject. Invalid arguments reject the complete remembered Resume.
 	// Authority is validated and the rules are persisted by the acceptance owner,
 	// not here.
 	DeriveRememberedRules(

@@ -222,16 +222,15 @@ func registerRunUnions(s *Shapes) {
 		},
 	})
 
-	// Only an opened run still has a live segment; a retired run carries its
-	// historical identity without one, and the two keyless variants carry nothing.
+	// Historical opening references survive retirement. Current Run state belongs
+	// to its material owner and is projected only while that association survives.
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.RunAcceptance](),
 		Discriminator: "type",
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RunAcceptanceNotRecorded)},
-			{Tag: string(protocol.RunAcceptanceOpened), Required: []string{"runId", "segmentId", "sessionId", "userItemId"}},
-			{Tag: string(protocol.RunAcceptanceRetired), Required: []string{"runId", "sessionId", "userItemId"}},
-			{Tag: string(protocol.RunAcceptanceConflict)},
+			{Tag: string(protocol.RunAcceptanceAccepted), Required: []string{"runId", "segmentId", "sessionId", "run"}, Optional: []string{"userItemId"}},
+			{Tag: string(protocol.RunAcceptanceRetired), Required: []string{"runId", "segmentId", "sessionId"}, Optional: []string{"userItemId"}},
 		},
 	})
 

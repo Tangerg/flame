@@ -305,6 +305,7 @@ export type WireTypeName =
   | "RollbackSessionResponse"
   | "RunAcceptance"
   | "RunAcceptanceType"
+  | "RunCommandOperation"
   | "RunEvent"
   | "RunMetrics"
   | "RunOutcome"
@@ -1327,8 +1328,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   GetRunAcceptanceRequest: object({
     key: allOf([text(), minLength(1), maxLength(255)]),
+    namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
+    operation: ref(() => CHECKS.RunCommandOperation),
     request: ref(() => CHECKS.StartRunRequest),
-  }, ["key"]),
+  }, ["key", "namespace", "operation"]),
   GetRunRequest: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId"]),
@@ -3353,6 +3356,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["droppedRuns", "session"]),
   RunAcceptance: allOf([
     object({
+      run: ref(() => CHECKS.RunRef),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3361,6 +3365,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
+        run: absent(),
         runId: absent(),
         segmentId: absent(),
         sessionId: absent(),
@@ -3368,22 +3373,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         userItemId: absent(),
       }, ["type"]),
       fields({
-        type: literal("opened"),
-      }, ["runId", "segmentId", "sessionId", "type", "userItemId"]),
+        type: literal("accepted"),
+      }, ["run", "runId", "segmentId", "sessionId", "type"]),
       fields({
-        segmentId: absent(),
+        run: absent(),
         type: literal("retired"),
-      }, ["runId", "sessionId", "type", "userItemId"]),
-      fields({
-        runId: absent(),
-        segmentId: absent(),
-        sessionId: absent(),
-        type: literal("conflict"),
-        userItemId: absent(),
-      }, ["type"]),
+      }, ["runId", "segmentId", "sessionId", "type"]),
     ]),
   ]),
-  RunAcceptanceType: enumOf(["notRecorded", "opened", "retired", "conflict"]),
+  RunAcceptanceType: enumOf(["notRecorded", "accepted", "retired"]),
+  RunCommandOperation: enumOf(["start", "resume"]),
   RunEvent: object({
     event: ref(() => CHECKS.StreamEvent),
     eventId: allOf([text(), maxLength(65540), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^evt_")]),

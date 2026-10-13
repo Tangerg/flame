@@ -34,8 +34,9 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 		return nil, nil, err
 	}
 	result, err := s.runs.Resume(ctx, runs.ResumeCommand{
-		RunID:     in.RunID,
-		Responses: responses,
+		RunID:      in.RunID,
+		Responses:  responses,
+		Acceptance: runCommandIdentity(ctx),
 		// Added user input goes through the same decoder as a fresh Run: one
 		// reading of what a content block means.
 		Input: input,
@@ -58,11 +59,17 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 	if result.UserItemID != "" {
 		response.UserItemID = &result.UserItemID
 	}
+	if result.Reopened {
+		events, err := s.acceptedRunEvents(ctx, result)
+		return response, events, err
+	}
 	return response, mapRunEvents(result.Events), nil
 }
 
 func wireRunResumeErr(err error) error {
 	switch {
+	case errors.Is(err, runs.ErrCommandKeyConflict):
+		return NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key is already bound to another operation")
 	case errors.Is(err, runs.ErrInterruptNotOpen):
 		return protocol.ErrInterruptNotOpen
 	case errors.Is(err, runs.ErrInvalidInterruptResponse):

@@ -191,8 +191,9 @@ func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, 
 
 // ResumeCommand is the complete input for resuming a waiting Run.
 type ResumeCommand struct {
-	RunID     string
-	Responses []ResumeResponse
+	RunID      string
+	Responses  []ResumeResponse
+	Acceptance *CommandIdentity
 	// Input is optional user content whose transcript Item commits with the
 	// continuation opening. Its model-visible Conversation projection follows the
 	// answered Tool result at the first safe model boundary.
@@ -204,6 +205,7 @@ type ResumeCommand struct {
 }
 
 func (r ResumeCommand) clone() ResumeCommand {
+	r.Acceptance = optional.Clone(r.Acceptance)
 	r.Responses = slices.Clone(r.Responses)
 	for index := range r.Responses {
 		r.Responses[index].Approval = optional.Clone(r.Responses[index].Approval)
@@ -361,15 +363,16 @@ type StartResult struct {
 	RunID     string
 	SegmentID string
 	SessionID string
-	// UserItemID is empty only for an application-authored autonomous Goal
-	// opening. An externally authored user start still receives the durable
-	// opening userMessage identity promised by the application contract.
+	// UserItemID is absent for an autonomous Goal or a response-only Resume.
 	UserItemID string
 	Events     iter.Seq[Event]
 	// Reopened is true when this is a previously accepted command's original
 	// opening returned by acceptance lookup rather than a freshly admitted Run.
 	// Its Events are absent; the caller re-attaches the live stream by identity.
 	Reopened bool
+	// MaterialRetired prevents attachment to imported replacement material that
+	// happens to reuse an accepted command's original Run identity.
+	MaterialRetired bool
 }
 
 // Validate checks the semantic Run-opening invariants before any Session is

@@ -53,7 +53,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 			return StartResult{}, err
 		}
 		defer release()
-		reopened, found, err := c.lookupAcceptedStart(ctx, *cmd.Acceptance)
+		reopened, found, err := c.lookupAcceptedCommand(ctx, *cmd.Acceptance, CommandStartOpening)
 		if err != nil {
 			return StartResult{}, err
 		}
@@ -62,30 +62,6 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 		}
 	}
 	return c.startRoot(ctx, cmd.clone())
-}
-
-// lookupAcceptedStart returns a previously accepted command's original opening.
-// A different fingerprint, a non-start operation, or a key held by another
-// operation conflicts; an absent record proceeds to admission.
-func (c *Coordinator) lookupAcceptedStart(ctx context.Context, identity CommandIdentity) (StartResult, bool, error) {
-	record, err := c.commandAcceptances.Lookup(ctx, identity.Key)
-	if err != nil {
-		return StartResult{}, false, err
-	}
-	if record.OtherOperation {
-		return StartResult{}, false, ErrCommandKeyConflict
-	}
-	if !record.Found {
-		return StartResult{}, false, nil
-	}
-	acceptance := record.Acceptance
-	if acceptance.Fingerprint != identity.Fingerprint || acceptance.Operation != CommandStartOpening {
-		return StartResult{}, false, ErrCommandKeyConflict
-	}
-	return StartResult{
-		RunID: acceptance.RunID, SegmentID: acceptance.SegmentID, SessionID: acceptance.SessionID,
-		UserItemID: acceptance.UserItemID, Reopened: true,
-	}, true, nil
 }
 
 // startRoot claims the Session and working tree, stages execution, and commits

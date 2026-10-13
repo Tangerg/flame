@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -55,11 +56,11 @@ func TestCoreCallbackBackendProcess(t *testing.T) {
 				return "", err
 			}
 			defer client.Close()
-			acceptance, err := client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Key: "original"}, CallOptions{})
+			acceptance, err := client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, CallOptions{})
 			if err != nil || acceptance.Type != protocol.RunAcceptanceNotRecorded {
 				return "", fmt.Errorf("original acceptance: %w", err)
 			}
-			_, err = client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Key: "original"}, CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}})
+			_, err = client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}})
 			if !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
 				return "", fmt.Errorf("core protocol fence: %w", err)
 			}

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-13.4",
+  "protocolVersion": "2026-10-13.5",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -2922,12 +2922,22 @@
           "minLength": 1,
           "maxLength": 255
         },
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^idp_[0-9a-f]{32}$"
+        },
+        "operation": {
+          "$ref": "#/$defs/RunCommandOperation"
+        },
         "request": {
           "$ref": "#/$defs/StartRunRequest"
         }
       },
       "required": [
-        "key"
+        "key",
+        "namespace",
+        "operation"
       ]
     },
     "GetRunRequest": {
@@ -9271,6 +9281,9 @@
     "RunAcceptance": {
       "type": "object",
       "properties": {
+        "run": {
+          "$ref": "#/$defs/RunRef"
+        },
         "runId": {
           "type": "string",
           "maxLength": 256,
@@ -9298,6 +9311,7 @@
       "oneOf": [
         {
           "properties": {
+            "run": false,
             "runId": false,
             "segmentId": false,
             "sessionId": false,
@@ -9313,42 +9327,28 @@
         {
           "properties": {
             "type": {
-              "const": "opened"
+              "const": "accepted"
             }
           },
           "required": [
+            "run",
             "runId",
             "segmentId",
             "sessionId",
-            "type",
-            "userItemId"
+            "type"
           ]
         },
         {
           "properties": {
-            "segmentId": false,
+            "run": false,
             "type": {
               "const": "retired"
             }
           },
           "required": [
             "runId",
+            "segmentId",
             "sessionId",
-            "type",
-            "userItemId"
-          ]
-        },
-        {
-          "properties": {
-            "runId": false,
-            "segmentId": false,
-            "sessionId": false,
-            "type": {
-              "const": "conflict"
-            },
-            "userItemId": false
-          },
-          "required": [
             "type"
           ]
         }
@@ -9358,9 +9358,15 @@
       "type": "string",
       "enum": [
         "notRecorded",
-        "opened",
-        "retired",
-        "conflict"
+        "accepted",
+        "retired"
+      ]
+    },
+    "RunCommandOperation": {
+      "type": "string",
+      "enum": [
+        "start",
+        "resume"
       ]
     },
     "RunEvent": {
