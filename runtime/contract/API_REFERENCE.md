@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-13.15` · 108 methods
+Protocol `2026-10-14.1` · 106 methods
 
 ## Methods
 
@@ -73,9 +73,7 @@ Protocol `2026-10-13.15` · 108 methods
 | `plugins.listProviders` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.selectProvider` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readRenderer` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
-| `plugins.readSchedules` | query | unary | none | none | cursor | `schedules.list` | `plugins`, `schedules` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.renameSession` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `session_not_found`, `revision_conflict`, `session_busy`, `capability_not_negotiated` |
-| `plugins.readView` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.list` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.install` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.stage` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -1017,11 +1015,7 @@ TypeScript validator from this single registry projection.
 | `PluginAction` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginAction` | `title` | `nonEmpty` |
 | `PluginAction` | `title` | `maxLength(128)` |
-| `ReadPluginViewRequest` | `viewId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginViewResource` | `html` | `maxLength(524288)` |
-| `PluginView` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `PluginView` | `title` | `nonEmpty` |
-| `PluginView` | `title` | `maxLength(128)` |
 | `PluginThemeColors` | `background` | `pattern("^#[0-9a-fA-F]{6}$")` |
 | `PluginThemeColors` | `foreground` | `pattern("^#[0-9a-fA-F]{6}$")` |
 | `PluginThemeColors` | `accent` | `pattern("^#[0-9a-fA-F]{6}$")` |
@@ -1309,9 +1303,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.listProviders` | always | `plugins` |
 | `plugins.selectProvider` | always | `plugins` |
 | `plugins.readRenderer` | always | `plugins` |
-| `plugins.readSchedules` | always | `plugins`, `schedules` |
 | `plugins.renameSession` | always | `plugins` |
-| `plugins.readView` | always | `plugins` |
 | `plugins.list` | always | `plugins` |
 | `plugins.install` | always | `plugins` |
 | `plugins.stage` | always | `plugins` |

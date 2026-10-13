@@ -39,13 +39,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		if item.Enabled != true || item.Presentation != protocol.PluginPresentationAdmitted {
 			t.Fatalf("default installation = %+v", item)
 		}
-		for _, view := range item.Selected.Views {
-			views++
-			page, err := current.ReadPluginView(t.Context(), protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: item.ID, Digest: item.Selected.Digest}, ViewID: view.ID}, CallOptions{})
-			if err != nil || len(page.HTML) == 0 {
-				t.Fatalf("default page %s = (%v, %v)", item.Selected.Name, page, err)
-			}
-		}
+
 		if item.Selected.Name == "flame.memory" {
 			memory = item
 		}

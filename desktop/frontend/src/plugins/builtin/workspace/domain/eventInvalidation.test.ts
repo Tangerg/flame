@@ -16,9 +16,7 @@ describe("workspaceInvalidations", () => {
       "mcpExposure",
       "approvalRules",
     ]);
-    expect(workspaceInvalidations({ type: "schedules.changed", sequence: 4 })).toEqual([
-      "schedules",
-    ]);
+    expect(workspaceInvalidations({ type: "schedules.changed", sequence: 4 })).toEqual([]);
     expect(workspaceInvalidations({ type: "sessions.changed", sequence: 5 })).toEqual(["sessions"]);
     expect(workspaceInvalidations({ type: "hooks.changed", sequence: 7 })).toEqual(["hooks"]);
     expect(workspaceInvalidations({ type: "models.changed", sequence: 8 })).toEqual([

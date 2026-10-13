@@ -20,7 +20,6 @@ import {
   type ToolResultSnapshot,
   type FileSnapshot,
 } from "./adapters/rendererReads";
-import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -34,7 +33,6 @@ import {
   PROVIDERS_KEY,
   usePackageRealization,
 } from "./application/packages";
-import { createScheduleViewReads } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
 
@@ -187,35 +185,6 @@ function createPackageReconciler(
           },
           { key: id },
         );
-      }
-      for (const view of release.views) {
-        const binding = {
-          installationId: installation.id,
-          digest: release.digest,
-          viewId: view.id,
-        };
-        const title = `${release.name} · ${view.title}`;
-        switch (view.type) {
-          case "schedules": {
-            const reads = () => createScheduleViewReads(client.plugins, binding);
-            lifetime.contribute(WORKSPACE_VIEW, {
-              id: `package:${installation.id}:${view.id}`,
-              title,
-              icon: "calendar-clock",
-              dock: "workspace",
-              component: () => (
-                <SchedulePackageView
-                  reads={reads}
-                  templates={view.scheduleTemplates ?? []}
-                  title={title}
-                  lifetime={lifetime}
-                  carrier={carrier}
-                />
-              ),
-            });
-            break;
-          }
-        }
       }
       for (const theme of release.themes) {
         const { background, foreground, accent, muted, border } = theme.colors;

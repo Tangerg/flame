@@ -1,9 +1,7 @@
 # First-party portable packages
 
-Memory and Schedules are complete optional backends. Memory uses an ordinary public
-component; remaining Schedules HTML, MCP model Tools and human Runtime commands
-enter their existing backend owners. Installing a
-view does not create a second store in the host.
+Memory and Schedules are complete optional backends. Both use ordinary public components; MCP model Tools and human Runtime commands
+enter the same existing backend owners. A component does not create a second store.
 
 The Flame namespace in root plugin.json references one local declaration file.
 That strict declaration names each independent contribution ID, its contract file,
@@ -70,12 +68,10 @@ separate published Go modules or first-party version resolution.
 
 ## Shared page resources
 
-All first-party workspace pages consume `@flame/ui`. `src/read-view.ts` owns each
-admitted read projection, pending request and pagination history; individual pages
-own only filters, disclosures and the rendering of their canonical data. Errors
-retain the last accepted snapshot and cursor. Appearance preferences remain with
-the Host, and its shared v3 bootstrap updates the existing page without rereading
-business data for the remaining HTML pages. Memory, Skills, Diagnostics, Trajectory, Diff, Usage and Icon gallery are ordinary
+First-party components consume the shared `@flame/ui` and public SDK. Each
+component owns its read requests, accepted pagination history and local drafts;
+failed reads retain the last accepted snapshot and cursor. File/Tool HTML renderers
+still use `src/read-view.ts` and the shared appearance bridge. Memory, Schedules, Skills, Diagnostics, Trajectory, Diff, Usage and Icon gallery are ordinary
 React components built through the public SDK. Usage reads the existing public
 Runtime accounting query; Diff reads the canonical workspace query using a captured
 public context. Trajectory reads canonical Session history through a frozen public
@@ -99,8 +95,6 @@ npm run check --prefix plugins
 prebuilt ESM into its declared namespace resource. `--check` verifies exact
 reproducibility. The graphical loader supplies the actual shared host modules.
 
-`build-views.mjs` builds each `src/view.tsx` into its manifest-declared resource and
-checks the Runtime page bound. Generated HTML is tracked for installation; source
-and shared library styles are authoritative. The Desktop gate checks reproducible
-resources and browser/native acceptance checks their real read-only channel. The
-package remains private. Reinstall changed packages and explicitly select their new digests.
+The retired HTML view build path is removed. File/Tool renderers retain their owning
+builds until their public-component migration. Reinstall changed packages and
+explicitly select their new digests.

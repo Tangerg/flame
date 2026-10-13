@@ -4,9 +4,6 @@ import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import { DiffReport } from "../../../plugins/diff/src/component";
 import type { Diff } from "@flame/runtime-contract/wire";
 import { UsageReport } from "../../../plugins/usage/src/component";
-import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
-import scheduleDeclaration from "../../../plugins/schedules/io.github.tangerg.flame/declaration.json";
-import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
 import { MemoryReport } from "../../../plugins/memory/src/component";
 import { TrajectoryReport } from "../../../plugins/trajectory/src/component";
 import { createElement } from "react";
@@ -40,8 +37,6 @@ import {
   type WorkspaceFileEntry,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
-import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
-import type { Schedule } from "@flame/runtime-contract/wire";
 import { fileView } from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
@@ -191,31 +186,6 @@ const VISUAL_CAPABILITIES: ServerCapabilities = {
     mcpAuthorizationAttempts: { retentionSeconds: 600 },
   },
 };
-
-const VISUAL_SCHEDULES: Schedule[] = [
-  {
-    id: "sch_nightly",
-    title: "Nightly dependency audit",
-    instructions: "Check the lockfile for advisories and open an issue for anything new.",
-    workspace: { path: "/Users/visual/scope" },
-    cron: "0 3 * * *",
-    enabled: true,
-    revision: 3,
-    createdAt: "2026-07-20T09:00:00.000Z",
-    nextRunAt: "2026-08-01T03:00:00.000Z",
-    lastRunAt: "2026-07-31T03:00:00.000Z",
-  },
-  {
-    id: "sch_weekly",
-    title: "Weekly changelog draft",
-    instructions: "Summarise the week's merged work into a draft release note.",
-    workspace: { path: "/Users/visual/scope" },
-    cron: "0 9 * * 1",
-    enabled: false,
-    revision: 1,
-    createdAt: "2026-07-06T09:00:00.000Z",
-  },
-];
 
 function pending<T>(): Promise<T> {
   return new Promise<T>(() => {});
@@ -385,27 +355,6 @@ function workspaceDataPlugin(
         dock: "workspace",
         component: () => createElement(UsageReport, { report: VISUAL_USAGE }),
       });
-      const scheduleLifetime = ctx.lifetime("visual-schedules");
-      const scheduleReads = () => ({
-        binding: { installationId: "fixture", digest: "release", viewId: "view" },
-        resource: async () => scheduleHTML,
-        initial: async () => ({ data: VISUAL_SCHEDULES }),
-        read: async () => ({ data: VISUAL_SCHEDULES }),
-      });
-      scheduleLifetime.contribute(WORKSPACE_VIEW, {
-        id: "package:visual:schedules",
-        title: "Schedules",
-        icon: "calendar-clock",
-        dock: "workspace",
-        component: () =>
-          createElement(SchedulePackageView, {
-            reads: scheduleReads,
-            templates: scheduleDeclaration.contributes.views[0]!.scheduleTemplates,
-            title: "Schedules",
-            lifetime: scheduleLifetime,
-            carrier: createBrowserHost().pluginCarrier,
-          }),
-      });
       const memoryLifetime = ctx.lifetime("visual-memory");
       memoryLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:memory",
@@ -438,14 +387,6 @@ function workspaceDataPlugin(
           }),
       });
 
-      ctx.contribute(DATA_PROVIDER, {
-        key: SCHEDULES_KEY,
-        fetcher: async () =>
-          VISUAL_SCHEDULES.map(({ workspace, ...schedule }) => ({
-            ...schedule,
-            cwd: workspace?.path,
-          })),
-      });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_FILES_CHANGED_KEY,
         fetcher: async () => {
@@ -553,7 +494,6 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "subagents",
   "package:visual:diagnostics",
   "package:visual:memory",
-  "package:visual:schedules",
   "package:visual:usage",
 ]);
 

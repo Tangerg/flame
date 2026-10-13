@@ -9,7 +9,6 @@ import {
   APPROVAL_RULES_KEY,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
-import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/public/queries";
 import {
   EMBEDDING_ROLE_KEY,
   MODELS_KEY,
@@ -50,7 +49,6 @@ const QUERY_KEYS: Record<
   mcpTools: MCP_TOOLS_KEY,
   mcpExposure: MCP_EXPOSURE_KEY,
   providers: PROVIDERS_KEY,
-  schedules: SCHEDULES_KEY,
   sessions: AGENT_SESSIONS_KEY,
   sessionUsage: AGENT_SESSION_USAGE_KEY,
   utilityRole: UTILITY_ROLE_KEY,

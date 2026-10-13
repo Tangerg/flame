@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.15",
+  "protocolVersion": "2026-10-14.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -947,29 +947,6 @@
       ]
     },
     {
-      "name": "plugins.readSchedules",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "cursor",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins",
-        "schedules"
-      ],
-      "materializes": [
-        "schedules.list"
-      ]
-    },
-    {
       "name": "plugins.renameSession",
       "kind": "unary",
       "operation": "command",
@@ -985,25 +962,6 @@
         "session_not_found",
         "revision_conflict",
         "session_busy",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins"
-      ]
-    },
-    {
-      "name": "plugins.readView",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1684,8 +1642,6 @@
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
-          "plugins.readSchedules",
-          "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
@@ -1879,8 +1835,6 @@
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
-          "plugins.readSchedules",
-          "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
@@ -1904,8 +1858,6 @@
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
-          "plugins.readSchedules",
-          "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
@@ -1929,8 +1881,6 @@
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
-          "plugins.readSchedules",
-          "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
@@ -1954,8 +1904,6 @@
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
-          "plugins.readSchedules",
-          "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
@@ -1984,8 +1932,6 @@
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
-          "plugins.readSchedules",
-          "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
@@ -2748,28 +2694,7 @@
       ]
     },
     {
-      "method": "plugins.readSchedules",
-      "rules": [
-        {
-          "requires": [
-            "plugins",
-            "schedules"
-          ]
-        }
-      ]
-    },
-    {
       "method": "plugins.renameSession",
-      "rules": [
-        {
-          "requires": [
-            "plugins"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "plugins.readView",
       "rules": [
         {
           "requires": [
@@ -9397,37 +9322,11 @@
       ]
     },
     {
-      "type": "ReadPluginViewRequest",
-      "rules": [
-        {
-          "field": "viewId",
-          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        }
-      ]
-    },
-    {
       "type": "PluginViewResource",
       "rules": [
         {
           "field": "html",
           "constraint": "maxLength(524288)"
-        }
-      ]
-    },
-    {
-      "type": "PluginView",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        },
-        {
-          "field": "title",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "title",
-          "constraint": "maxLength(128)"
         }
       ]
     },

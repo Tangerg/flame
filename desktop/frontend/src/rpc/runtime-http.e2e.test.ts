@@ -1108,7 +1108,6 @@ for await (const line of lines) {
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
       const component = installed.selected.components[0]!;
       expect(component.scope).toBe("session");
-      expect(installed.selected.views).toEqual([]);
       const resourceRequest = { ...target, componentId: component.id, path: component.entry };
       const resource = await client.plugins.readResource(resourceRequest);
       expect(Buffer.from(resource.body, "base64")).toEqual(
@@ -1197,52 +1196,6 @@ for await (const line of lines) {
       if (created) await client.agentMemory.delete(created.id);
       await client.plugins.uninstall(installation.id);
       managedOwners.delete("memory");
-    }
-  });
-
-  it("reads shipped Schedule backend templates and resumes private facts after withdrawal", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-    const installation = managedOwners.get("schedules")!;
-    const release = { installationId: installation.id, digest: installation.selected.digest };
-    const view = { ...release, viewId: "schedules" };
-    const created: string[] = [];
-    try {
-      expect(installation.selected.diagnostics).toEqual([]);
-      const templates = installation.selected.views[0]!.scheduleTemplates!;
-      for (const template of templates.slice(0, 2)) {
-        const schedule = await client.schedules.create({
-          title: template.title,
-          instructions: template.instructions,
-          cron: template.cron,
-        });
-        created.push(schedule.id);
-      }
-      const query: { cursor?: string; limit: number } = { limit: 1 };
-      do {
-        const page = await client.plugins.readSchedules({ ...view, ...query });
-        expect(page).toEqual(await client.schedules.list(query));
-        query.cursor = page.nextCursor;
-      } while (query.cursor);
-      expect((await client.plugins.readView(view)).html).toBe(
-        await readFile(
-          resolve(runtimeDirectory, "../plugins/schedules/views/schedules.html"),
-          "utf8",
-        ),
-      );
-
-      await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
-      await expect(client.plugins.readSchedules(view)).rejects.toMatchObject({ code: -32042 });
-      await expect(client.schedules.list()).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_unavailable",
-      );
-      await activateManagedOwner("schedules");
-      const persisted = await client.schedules.list().autoPagingToArray();
-      for (const id of created) expect(persisted.some((schedule) => schedule.id === id)).toBe(true);
-    } finally {
-      await activateManagedOwner("schedules");
-      for (const id of created) await client.schedules.delete(id);
-      await client.plugins.uninstall(installation.id);
-      managedOwners.delete("schedules");
     }
   });
 

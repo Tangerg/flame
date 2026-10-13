@@ -45,7 +45,7 @@ func (b *Builder) AdmitRenderer(renderer Renderer) error {
 		return refuse(DiagnosticComponentLimit, "renderer capacity")
 	}
 	duplicate := slices.ContainsFunc(b.declaration.Renderers, func(existing Renderer) bool { return existing.ID == renderer.ID })
-	if duplicate || !idPattern.MatchString(renderer.ID) || renderer.Title == "" || len(renderer.Title) > MaxViewTitleBytes || !utf8.ValidString(renderer.Title) {
+	if duplicate || !idPattern.MatchString(renderer.ID) || renderer.Title == "" || len(renderer.Title) > MaxPresentationTitleBytes || !utf8.ValidString(renderer.Title) {
 		return refuse(DiagnosticInvalidDeclaration, "renderer identity or title %q", renderer.ID)
 	}
 	selector := renderer.Selector

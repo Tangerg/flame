@@ -38,7 +38,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		t.Fatal(err)
 	}
 	installed := poMCPActivate(r, source)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || len(installed.Selected.Views) != 0 || installed.Selected.Components[0].Scope != "client" {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "client" {
 		t.Fatalf("skills component admission: %+v", installed.Selected)
 	}
 	component := installed.Selected.Components[0]

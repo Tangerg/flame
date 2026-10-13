@@ -1,7 +1,4 @@
-import type {
-  ReadPluginViewRequest,
-  ReadPluginRendererRequest,
-} from "@flame/runtime-contract/wire";
+import type { ReadPluginRendererRequest } from "@flame/runtime-contract/wire";
 
 export type PluginViewStage =
   | "carrier"
@@ -19,7 +16,7 @@ export type PluginViewStatus =
   | { type: "failure"; stage: PluginViewStage; reason: string };
 
 export interface PluginViewReads<T> {
-  readonly binding: Readonly<ReadPluginViewRequest | ReadPluginRendererRequest>;
+  readonly binding: Readonly<ReadPluginRendererRequest>;
   resource(signal: AbortSignal): Promise<string>;
   initial(signal: AbortSignal): Promise<T>;
   read(cursor: string | undefined, signal: AbortSignal): Promise<T>;

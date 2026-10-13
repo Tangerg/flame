@@ -21,9 +21,7 @@ const (
 	PluginsConfigure           Name = "plugins.configure"
 	PluginsSetEnablement       Name = "plugins.setEnablement"
 	PluginsUninstall           Name = "plugins.uninstall"
-	PluginsReadView            Name = "plugins.readView"
 	PluginsReadRenderer        Name = "plugins.readRenderer"
-	PluginsReadSchedules       Name = "plugins.readSchedules"
 	PluginsRenameSession       Name = "plugins.renameSession"
 )
 
@@ -80,21 +78,11 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {
 		return s.ReadPluginRenderer(ctx, in)
 	})
-	r.query(MethodMeta{Name: PluginsReadSchedules, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSchedules), Errors: pluginErrors(), Materializes: []Name{SchedulesList}}, func(s interface {
-		ReadPluginSchedules(context.Context, protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error)
-	}, ctx context.Context, in protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error) {
-		return s.ReadPluginSchedules(ctx, in)
-	})
 
 	r.command(MethodMeta{Name: PluginsRenameSession, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrSessionBusy.Error())}, func(s interface {
 		RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {
 		return s.RenamePluginSession(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadView, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		ReadPluginView(context.Context, protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error)
-	}, ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error) {
-		return s.ReadPluginView(ctx, in)
 	})
 	r.query(MethodMeta{Name: PluginsList, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPlugins(context.Context) (*protocol.Page[protocol.PluginInstallation], error)

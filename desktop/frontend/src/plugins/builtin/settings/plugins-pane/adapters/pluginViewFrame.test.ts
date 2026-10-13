@@ -25,7 +25,7 @@ function fixture() {
     },
   };
   const reads = {
-    binding: { installationId: "installation", digest: "release", viewId: "view" },
+    binding: { installationId: "installation", digest: "release", rendererId: "view" },
     resource: vi.fn(async (_signal: AbortSignal) => "<!doctype html>"),
     initial: vi.fn(async (_signal: AbortSignal) => ({ data: [] })),
     read: vi.fn(async (_cursor: string | undefined, _signal: AbortSignal) => ({ data: [] })),

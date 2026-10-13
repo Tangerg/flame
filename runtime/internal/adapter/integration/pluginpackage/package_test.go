@@ -732,15 +732,33 @@ func TestOversizedFileAdmissionRetiresStaging(t *testing.T) {
 	}
 }
 
-func TestUnsupportedContributionDoesNotWithdrawIndependentContributions(t *testing.T) {
-	for _, view := range []string{
+func TestRetiredViewsDeclarationIsRefused(t *testing.T) {
+	r := testReleases(t)
+	manifest := `{"$schema":"` + ManifestSchema + `","name":"test.retired","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
+	source := writePackage(t, map[string]string{
+		"plugin.json": manifest,
+		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"contributes":{"views":[{"id":"schedules","type":"schedules","entry":"view.html"}]}`),
+		"view.html": "<!doctype html><p>Retired</p>",
+	})
+	release, err := publishPackage(t.Context(), r, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := release.Declaration()
+	if len(declaration.Components) != 0 || len(declaration.Diagnostics) != 1 || declaration.Diagnostics[0].Code != plugin.DiagnosticInvalidDeclaration {
+		t.Fatalf("retired vocabulary was accepted: %+v", declaration)
+	}
+}
+
+func TestInvalidRendererDoesNotWithdrawIndependentContributions(t *testing.T) {
+	for _, renderer := range []string{
 		`{"id":"broken","title":"Broken","placement":"workspace","scope":"workspace","renderer":{"kind":"webview","entry":"./io.github.tangerg.flame/ui/index.html","bridgeVersion":1},"actions":["missing"]}`,
 		`{"id":"broken","unknown":true}`,
 	} {
-		t.Run(view, func(t *testing.T) {
+		t.Run(renderer, func(t *testing.T) {
 			r := testReleases(t)
 			manifest := `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
-			declaration := flameDeclaration(`"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}],"views":[` + view + `]}`)
+			declaration := flameDeclaration(`"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}],"renderers":[` + renderer + `]}`)
 			source := writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": declaration, "io.github.tangerg.flame/ui/index.html": "<html></html>"})
 			release, err := publishPackage(t.Context(), r, source)
 			if err != nil || len(release.Declaration().Themes) != 1 || len(release.Declaration().Diagnostics) != 1 {

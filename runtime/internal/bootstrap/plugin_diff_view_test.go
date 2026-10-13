@@ -43,7 +43,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 		t.Fatal(err)
 	}
 	installed := poMCPActivate(r, source)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || len(installed.Selected.Views) != 0 || installed.Selected.Components[0].Scope != "workspace" || installed.Selected.Components[0].Material != "diff" {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "workspace" || installed.Selected.Components[0].Material != "diff" {
 		t.Fatalf("diff component admission: %+v", installed.Selected)
 	}
 	component := installed.Selected.Components[0]

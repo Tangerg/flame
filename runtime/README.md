@@ -200,7 +200,7 @@ server exports; there is no closed service-kind routing enum. Product compositio
 an exact installation/contribution independently of its enablement. More than
 one candidate may be enabled; absence, disablement or removal of the selected
 provider never chooses another one. Human
-commands and packaged views use the same backend as model Tools and maintenance.
+commands and installed components use the same backend as model Tools and maintenance.
 The host retains no Memory ledger or Schedule store. With no available selected owner, human
 operations return `plugin_unavailable`; optional Memory context is absent.
 
@@ -413,26 +413,28 @@ reuses the selected query. Disablement/uninstall withdraws presentation and reso
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
 
-## Protocol 2026-10-10.4
+## Protocol 2026-10-14.1
 
-The optional [Schedules package](../plugins/schedules/plugin.json) replaces the compiled
-Desktop schedule list and cron presets. `plugins.readSchedules` embeds canonical `PageQuery`,
-returns the existing `schedules.list` projection and requires both plugin and schedule capability.
-Admission grants one declared read kind; schedule pages cannot read memory or trajectory data.
+The optional [Schedules component](../plugins/schedules/plugin.json) binds its own
+admitted installation/contribution and generated complete capability. Its canonical
+backend results supply lists, exact revisions, captured workspace/model choices and
+cron times. Add/edit/toggle/delete and complete manual run use that same public
+installed entrance. Unknown commands retain their original key/retry closure; owner
+notices reread accepted data without creating optimistic business outcomes.
 
-Schedule views may declare up to 16 `scheduleTemplates`, each containing `id`, `title`,
-`instructions` and `cron`. Admission uses the Schedule owner's instruction and cron validation.
-Templates are immutable release content. The trusted Host copies a template only after an explicit
-selection; opening a draft submits nothing. Commands use existing Schedule revisions and Runtime
-receipts. A saved Schedule retains complete instructions, never a template reference.
+Templates are Schedules-owned component source, copied into an explicit new draft.
+They are not generic package metadata or persisted schedule references. The component
+uses public model choices and captured optional workspace data. Failed pagination
+retains the accepted page/cursor, and editing keeps the inspected revision until
+submission. Concurrent edits remain business revision refusals.
 
-Rebuild Runtime, the shared client, CLI and Desktop together. Install and enable the new
-package bytes to restore rich graphical scheduling. The former settings pane, sidebar shortcut
-and compiled presets have no aliases or fallback. The Context Dock lists admitted package views.
-Disable or uninstall withdraws presentation, templates and the managed backend generation,
-preserving its private definitions and pending work. Runtime retains dispatch wake-ups;
-reenable or restart resumes the same backend owner. Disabling or deleting a definition stops
-future claims; captured work keeps its dispatch identity. Accepted Runs require separate cancellation.
+The final Views declaration, Domain model, Protocol projection, readView/readSchedules
+operations, generated contracts and HTML build path are removed. The generic loader
+has no remaining business view cases or Schedule-domain import for templates. Rebuild
+Runtime/CLI/TS/SDK/Host/packages together; backend .4 and private data formats remain.
+Renderer HTML and human action migration remain separate ongoing work. The current
+background role still requires its backend-owned lifecycle cutover and full native
+acceptance; component/build evidence does not close that requirement.
 
 ## Protocol 2026-10-10.3
 
@@ -1011,12 +1013,10 @@ preference and the first-paint projection with it. Themes use the existing
 Dougong Host and child lifetimes; client connection replacement retires the predecessor
 before publishing its successor.
 
-The current implementation includes Slice A/B, optional Slice C pages and a bounded
-Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "schedules"` or `"skills"`, and a portable `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
-fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
-Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
-and language integrations remain unavailable.
+Ordinary components declare namespace-local prebuilt ESM and consume public operations
+through their captured SDK context. The former contributes.views vocabulary is
+unsupported; portable Skills/MCP and unrelated admitted contributions keep their own
+failure boundaries. Package integrity and confined resource admission remain in force.
 
 `contributes.actions` accepts at most 16 declarations with `id`, a nonempty UTF-8 `title`
 of at most 128 bytes, and `operation: "renameSession"`. Unsupported operations, unknown
@@ -1034,7 +1034,7 @@ execution in Runtime. Desktop's [carrier acceptance](../desktop/README.md#plugin
 owns rendering qualification; an unavailable renderer does not change installation state.
 Package limits are 128 MiB total copied bytes, 4096 entries, 256 Skills and
 128 installations. Skill documents and resources obey the existing 1 MiB Skill limits.
-HTML views are limited to 16 declarations per release and 512 KiB per entry.
+HTML renderer resources are limited to 32 declarations per release and 512 KiB per entry.
 
 This is a breaking protocol/storage change. Rebuild all clients and generated contracts
 together. Installation records reference immutable declarations by digest. Installation

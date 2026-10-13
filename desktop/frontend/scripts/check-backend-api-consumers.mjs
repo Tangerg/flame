@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, resolve, relative, sep } from "node:path";
 import { API, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
@@ -202,6 +203,28 @@ const materializedOperations = creditMaterializedOperationConsumers(
   errors,
 );
 
+// Installed components use plugins.call. A remaining Go-only facade must still
+// have an actual production CLI binding call; generated wrappers and inventories
+// are insufficient evidence. Catalog names and Connection ports are parsed from Go
+// source rather than listed as operation exemptions.
+const cliCalls = JSON.parse(
+  execFileSync("go", ["run", "./runtime/internal/cmd/apiconsumers", "."], {
+    cwd: resolve(ROOT, "../.."),
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024,
+  }),
+);
+const cliOnlyOperations = new Set();
+for (const [operation, locations] of Object.entries(cliCalls)) {
+  const consumers = operationConsumers.get(operation);
+  if (!consumers) {
+    errors.push(`CLI calls non-manifest operation ${operation}`);
+    continue;
+  }
+  if (consumers.size > 0 || notDesktopOperations.has(operation)) continue;
+  for (const location of locations) consumers.add(`${location} (CLI binding)`);
+  cliOnlyOperations.add(operation);
+}
 checkOperationConsumers(operationConsumers, implementationMap, notDesktopOperations, errors);
 
 checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, errors);
@@ -217,7 +240,7 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Desktop Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
+  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct graphical operations, ${cliOnlyOperations.size} CLI-only operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
 
 function consumedHTTPEndpoints(call) {

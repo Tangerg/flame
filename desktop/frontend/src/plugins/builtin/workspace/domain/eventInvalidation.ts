@@ -13,7 +13,6 @@ export type WorkspaceInvalidationTarget =
   | "mcpTools"
   | "mcpExposure"
   | "providers"
-  | "schedules"
   | "sessionUsage"
   | "sessions"
   | "utilityRole"
@@ -146,7 +145,7 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "mcp.changed":
       return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
     case "schedules.changed":
-      return ["schedules"];
+      return [];
     case "sessions.changed":
       return ["sessions"];
     case "runs.changed":

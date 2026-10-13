@@ -71,9 +71,7 @@ export async function buildPlugins({ os, arch, output }) {
         recursive: true,
       });
     for (const resource of new Set(
-      [...(contributes.views ?? []), ...(contributes.renderers ?? [])].map(
-        (item) => item.entry,
-      ),
+      (contributes.renderers ?? []).map((item) => item.entry),
     )) {
       await mkdir(dirname(join(target, resource)), { recursive: true });
       await cp(join(source, feature, resource), join(target, resource));

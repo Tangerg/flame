@@ -108,7 +108,6 @@ type PluginRelease struct {
 	Servers       []PluginServerDeclaration `json:"servers"`
 	Inputs        []PluginInput             `json:"inputs"`
 	Themes        []PluginTheme             `json:"themes"`
-	Views         []PluginView              `json:"views"`
 	Renderers     []PluginRenderer          `json:"renderers"`
 	Actions       []PluginAction            `json:"actions"`
 	Skills        []PluginSkill             `json:"skills"`
@@ -132,32 +131,6 @@ type RenamePluginSessionRequest struct {
 	PluginReleaseRequest
 	ActionID string           `json:"actionId"`
 	Update   SessionTitleEdit `json:"update"`
-}
-
-type PluginViewType string
-
-const (
-	PluginViewSchedules PluginViewType = "schedules"
-)
-
-type PluginView struct {
-	ID                string                   `json:"id"`
-	Title             string                   `json:"title"`
-	Type              PluginViewType           `json:"type"`
-	ScheduleTemplates []PluginScheduleTemplate `json:"scheduleTemplates,omitempty"`
-}
-
-type PluginScheduleTemplate struct {
-	ID           string `json:"id"`
-	Title        string `json:"title"`
-	Instructions string `json:"instructions"`
-	Cron         string `json:"cron"`
-}
-
-// ReadPluginViewRequest addresses an admitted resource, never a filesystem path.
-type ReadPluginViewRequest struct {
-	PluginReleaseRequest
-	ViewID string `json:"viewId"`
 }
 
 type PluginViewResource struct {
@@ -187,11 +160,6 @@ type PluginRenderer struct {
 type ReadPluginRendererRequest struct {
 	PluginReleaseRequest
 	RendererID string `json:"rendererId"`
-}
-
-type ReadPluginSchedulesRequest struct {
-	ReadPluginViewRequest
-	PageQuery
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

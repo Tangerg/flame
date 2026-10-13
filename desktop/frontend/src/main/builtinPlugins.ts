@@ -33,7 +33,6 @@ import { workspaceKeymap } from "@/plugins/builtin/workspace/keymap";
 import sessionSearch from "@/plugins/builtin/command/session-search";
 import commandMenu from "@/plugins/builtin/command/command-menu";
 import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
-import { createSchedulesPlugin } from "@/plugins/builtin/settings/schedules";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import { createRpcAgentPlugin } from "@/plugins/builtin/agent/rpcAgent";
 import {
@@ -135,7 +134,6 @@ export function createBuiltinPlugins(
     createProvidersPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     createHooksPlugin(runtimeClient),
-    createSchedulesPlugin(runtimeClient),
     fileView,
     subagentsView,
   ];

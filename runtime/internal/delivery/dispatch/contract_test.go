@@ -58,12 +58,18 @@ func (c *capabilityRuntime) ListAgentMemory(context.Context, protocol.AgentMemor
 	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{}}, nil
 }
 
-func (c *capabilityRuntime) ReadPluginSchedules(context.Context, protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error) {
-	return protocol.NewPage([]protocol.Schedule{}), nil
-}
-
 func (c *capabilityRuntime) UsageSummary(context.Context, protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
 	return &protocol.UsageSummary{}, nil
+}
+
+func TestRetiredBusinessViewMethodsAreUnknown(t *testing.T) {
+	for _, method := range []string{"plugins.readView", "plugins.readSchedules"} {
+		response := call(t, map[string]bool{protocol.FeaturePlugins: true, protocol.FeatureSchedules: true}, method, `{}`)
+		failure, ok := response.Error.(*transport.Error)
+		if !ok || failure.Code != -32601 {
+			t.Fatalf("retired %s remains callable: %+v", method, response)
+		}
+	}
 }
 
 func TestUsageSummaryIsIndependentOfPluginPresentation(t *testing.T) {
@@ -131,24 +137,6 @@ func TestCapabilityGateRefusesADisabledFeature(t *testing.T) {
 	on := call(t, map[string]bool{"agentMemory": true}, "agentMemory.list", params)
 	if on.Error != nil {
 		t.Fatalf("agentMemory.list with the feature on: %+v", on.Error)
-	}
-}
-
-func TestSchedulePageRequiresBothServerCapabilities(t *testing.T) {
-	const params = `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"1111111111111111111111111111111111111111111111111111111111111111","viewId":"schedules"}`
-	for _, features := range []map[string]bool{
-		{protocol.FeaturePlugins: false, protocol.FeatureSchedules: true},
-		{protocol.FeaturePlugins: true, protocol.FeatureSchedules: false},
-		{protocol.FeaturePlugins: true, protocol.FeatureSchedules: true},
-	} {
-		response := call(t, features, "plugins.readSchedules", params)
-		if features[protocol.FeaturePlugins] && features[protocol.FeatureSchedules] {
-			if response.Error != nil {
-				t.Fatalf("enabled schedule read: %+v", response.Error)
-			}
-		} else if got := problemType(t, response); got != "capability_not_negotiated" {
-			t.Fatalf("schedule read with %v: %s", features, got)
-		}
 	}
 }
 

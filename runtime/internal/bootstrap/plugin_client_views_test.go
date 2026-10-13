@@ -20,15 +20,15 @@ func TestClientPresentationPackagesAdmitComponentsWithoutBackend(t *testing.T) {
 			if len(installed.Selected.Diagnostics) != 0 {
 				t.Fatalf("admission: %+v", installed.Selected)
 			}
-			view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: name}
+			release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
-			if len(installed.Selected.Components) != 1 || len(installed.Selected.Views) != 0 || len(installed.Selected.Contributions) != 0 || installed.Selected.Components[0].Contribution != "" {
+			if len(installed.Selected.Components) != 1 || len(installed.Selected.Contributions) != 0 || installed.Selected.Components[0].Contribution != "" {
 				t.Fatalf("component-only admission: %+v", installed.Selected)
 			}
 			component := installed.Selected.Components[0]
 			path := component.Entry
 			operation := delivery.PluginsReadResource
-			request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: view.PluginReleaseRequest, ComponentID: component.ID}, Path: path}
+			request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: release, ComponentID: component.ID}, Path: path}
 			resource := r.must(operation, request, "").(*protocol.PluginResource)
 			body, err := base64.StdEncoding.DecodeString(resource.Body)
 			if err != nil {
@@ -42,12 +42,8 @@ func TestClientPresentationPackagesAdmitComponentsWithoutBackend(t *testing.T) {
 			if content != string(authored) {
 				t.Fatal("resource differs from the admitted release")
 			}
-			refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
-			if !errors.Is(refused.Failure, protocol.ErrPluginNotFound) {
-				t.Fatalf("component-only package admitted a legacy Schedules view: %v", refused.Failure)
-			}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-			refused = r.endpoint.Invoke(t.Context(), operation, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+			refused := r.endpoint.Invoke(t.Context(), operation, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 			if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
 				t.Fatalf("disabled resource admitted: %v", refused.Failure)
 			}

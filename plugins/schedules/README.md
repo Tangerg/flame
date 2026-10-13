@@ -125,3 +125,18 @@ The Schedules capability identity changes; rebuild its generated contracts and
 installed backend together. Backend envelope .4 and stored business formats remain
 unchanged. The ordinary bound component and backend-owned background role migration
 remain in progress; this operation alone does not prove all installed lifecycle cases.
+
+## Bound editing component
+
+The client-scoped public component binds its own schedules-provider contribution
+and generated capability. Reads use actual Rows/NextCursor/private Snapshot shapes;
+NextRunAt is the existing enabled projection, not a separate flag. Add/edit/toggle/
+delete and manual Run commands use the same private owner. Edits preserve the captured
+revision, and model choices come from the public Runtime catalog. Same-key retry is
+retained after unknown acknowledgement; new commands are blocked until reconciliation.
+
+Templates live in src/templates.ts as authoring content copied into a new draft.
+The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
+The component consumes existing schedule notices and cancels/joins its I/O on
+retirement. Failed pagination keeps the accepted page/cursor. Window-generation
+recovery and backend background-role acceptance remain final integration obligations.

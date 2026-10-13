@@ -19,7 +19,7 @@ func TestRendererAdmissionAndReleaseCopies(t *testing.T) {
 		{"empty tool name", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererToolName} }},
 		{"escaped entry", func(r *Renderer) { r.Entry = "../search.html" }},
 		{"script entry", func(r *Renderer) { r.Entry = "search.js" }},
-		{"long title", func(r *Renderer) { r.Title = strings.Repeat("x", MaxViewTitleBytes+1) }},
+		{"long title", func(r *Renderer) { r.Title = strings.Repeat("x", MaxPresentationTitleBytes+1) }},
 		{"extension path", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererFileExtension, Name: "../md"} }},
 		{"extension wildcard", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererFileExtension, Name: "*"} }},
 		{"extension case", func(r *Renderer) { r.Selector = RendererSelector{Kind: RendererFileExtension, Name: "MD"} }},

@@ -22,9 +22,7 @@ type pluginUseCases interface {
 	Disable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
 	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, resourceid.InstallationID) error
-	ReadView(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
 	ReadRenderer(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
-	WithView(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ViewKind, func(*plugin.Installation, plugin.ViewDeclaration) error) error
 	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
 	Component(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
 	Resource(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID, string) ([]byte, error)
@@ -235,18 +233,6 @@ func (s *Handler) UninstallPlugin(ctx context.Context, in protocol.PluginRequest
 	return wirePluginError(s.plugins.Uninstall(ctx, id))
 }
 
-func (s *Handler) ReadPluginView(ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	html, err := s.plugins.ReadView(ctx, id, digest, in.ViewID)
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return &protocol.PluginViewResource{HTML: html}, nil
-}
-
 func (s *Handler) ReadPluginRenderer(ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
@@ -257,20 +243,4 @@ func (s *Handler) ReadPluginRenderer(ctx context.Context, in protocol.ReadPlugin
 		return nil, wirePluginError(err)
 	}
 	return &protocol.PluginViewResource{HTML: html}, nil
-}
-
-func (s *Handler) ReadPluginSchedules(ctx context.Context, in protocol.ReadPluginSchedulesRequest) (page *protocol.Page[protocol.Schedule], err error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	err = s.plugins.WithView(ctx, id, digest, in.ViewID, plugin.Schedules, func(*plugin.Installation, plugin.ViewDeclaration) error {
-		var readErr error
-		page, readErr = s.ListSchedules(ctx, in.PageQuery)
-		return readErr
-	})
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return page, nil
 }

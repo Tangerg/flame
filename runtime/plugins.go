@@ -43,10 +43,6 @@ func (r *binding) RenamePluginSession(ctx context.Context, request protocol.Rena
 	return r.invoke[protocol.RenamePluginSessionRequest, *protocol.Session](ctx, delivery.PluginsRenameSession, request, commandOptions(options))
 }
 
-func (r *binding) ReadPluginView(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error) {
-	return r.invoke[protocol.ReadPluginViewRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadView, request, callOptions(options))
-}
-
 func (r *binding) ReadPluginRenderer(ctx context.Context, request protocol.ReadPluginRendererRequest, options CallOptions) (*protocol.PluginViewResource, error) {
 	return r.invoke[protocol.ReadPluginRendererRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadRenderer, request, callOptions(options))
 }
@@ -68,8 +64,4 @@ func (r *binding) SetPluginEnablement(ctx context.Context, request protocol.SetP
 }
 func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.PluginsUninstall, request, commandOptions(options))
-}
-
-func (r *binding) ReadPluginSchedules(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error) {
-	return r.invoke[protocol.ReadPluginSchedulesRequest, *protocol.Page[protocol.Schedule]](ctx, delivery.PluginsReadSchedules, request, callOptions(options))
 }

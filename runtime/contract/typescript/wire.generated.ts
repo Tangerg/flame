@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.15";
+export const PROTOCOL_VERSION = "2026-10-14.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1349,7 +1349,6 @@ export interface PluginRelease {
   skills: PluginSkill[];
   themes: PluginTheme[];
   version?: string;
-  views: PluginView[];
 }
 
 export interface PluginReleaseRequest {
@@ -1393,13 +1392,6 @@ export interface PluginResourceLease {
   token: string;
 }
 
-export interface PluginScheduleTemplate {
-  cron: string;
-  id: string;
-  instructions: string;
-  title: string;
-}
-
 export type PluginServerDeclaration =
   | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: Record<string, string>; name: string }
   | { type: "streamableHttp"; headers?: Record<string, string>; name: string; url: string };
@@ -1432,18 +1424,9 @@ export type PluginValueChange =
 
 export type PluginValueChangeType = "set" | "clear";
 
-export interface PluginView {
-  id: string;
-  scheduleTemplates?: PluginScheduleTemplate[];
-  title: string;
-  type: PluginViewType;
-}
-
 export interface PluginViewResource {
   html: string;
 }
-
-export type PluginViewType = "schedules";
 
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
@@ -1572,20 +1555,6 @@ export interface ReadPluginResourceRequest {
   digest: string;
   installationId: string;
   path: string;
-}
-
-export interface ReadPluginSchedulesRequest {
-  cursor?: string;
-  digest: string;
-  installationId: string;
-  limit?: number;
-  viewId: string;
-}
-
-export interface ReadPluginViewRequest {
-  digest: string;
-  installationId: string;
-  viewId: string;
 }
 
 export interface ReadinessStatus {
@@ -2370,7 +2339,6 @@ export const WIRE_ENUMS = {
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
-  PluginViewType: ["schedules"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],

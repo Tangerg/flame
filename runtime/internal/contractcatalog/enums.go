@@ -22,7 +22,6 @@ import (
 var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.PluginRendererSelectorType]():        {string(protocol.PluginRendererToolName), string(protocol.PluginRendererResultShape), string(protocol.PluginRendererFileExtension)},
 	reflect.TypeFor[protocol.PluginActionOperation]():             {string(protocol.PluginActionRenameSession)},
-	reflect.TypeFor[protocol.PluginViewType]():                    {string(protocol.PluginViewSchedules)},
 	reflect.TypeFor[protocol.ToolAttemptState]():                  {string(protocol.ToolAttemptStarted), string(protocol.ToolAttemptCompleted), string(protocol.ToolAttemptIncomplete)},
 	reflect.TypeFor[protocol.TrajectoryEntryType]():               {string(protocol.TrajectoryEntryRun), string(protocol.TrajectoryEntryModel), string(protocol.TrajectoryEntryItem)},
 	reflect.TypeFor[protocol.ModelInvocationState]():              {string(protocol.ModelInvocationStarted), string(protocol.ModelInvocationCompleted), string(protocol.ModelInvocationFailed), string(protocol.ModelInvocationUnknown)},

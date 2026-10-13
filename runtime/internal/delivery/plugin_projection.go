@@ -111,7 +111,6 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		result.Themes = append(result.Themes, presentPluginTheme(item))
 	}
 	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
-	result.Views = make([]protocol.PluginView, 0, len(v.Views))
 	result.Actions = make([]protocol.PluginAction, 0, len(v.Actions))
 	result.Renderers = make([]protocol.PluginRenderer, 0, len(v.Renderers))
 	for _, renderer := range v.Renderers {
@@ -120,13 +119,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	for _, action := range v.Actions {
 		result.Actions = append(result.Actions, protocol.PluginAction{ID: action.ID, Title: action.Title, Operation: protocol.PluginActionOperation(action.Operation)})
 	}
-	for _, view := range v.Views {
-		presented := protocol.PluginView{ID: view.ID, Title: view.Title, Type: protocol.PluginViewType(view.Kind)}
-		for _, template := range view.ScheduleTemplates {
-			presented.ScheduleTemplates = append(presented.ScheduleTemplates, protocol.PluginScheduleTemplate{ID: template.ID, Title: template.Title, Instructions: template.Instructions, Cron: template.Cron})
-		}
-		result.Views = append(result.Views, presented)
-	}
+
 	for _, item := range v.Skills {
 		result.Skills = append(result.Skills, presentPluginSkill(item))
 	}

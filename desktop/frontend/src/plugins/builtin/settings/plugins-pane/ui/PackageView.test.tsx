@@ -34,7 +34,7 @@ it("retries initial reads only after the predecessor has physically retired", as
     },
   };
   const reads = {
-    binding: { installationId: "fixture", digest: "release", viewId: "view" },
+    binding: { installationId: "fixture", digest: "release", rendererId: "view" },
     resource: vi.fn(async () => "<!doctype html>"),
     initial: vi.fn(async () => ({ data: [] })),
     read: vi.fn(async () => ({ data: [] })),

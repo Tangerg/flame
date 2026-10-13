@@ -49,7 +49,6 @@ import { defaultAccents } from "@/plugins/builtin/defaults";
 import { createGoalPlugin } from "@/plugins/builtin/chat/goal";
 import type { GoalState } from "@/plugins/builtin/chat/goal/application/goalReadModel";
 import planProgress from "@/plugins/builtin/chat/plan-progress";
-import { createSchedulesPlugin } from "@/plugins/builtin/settings/schedules";
 import { workbenchChat } from "@/plugins/builtin/shell/workbench";
 import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/providers/public/queries";
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
@@ -321,7 +320,6 @@ export async function installVisualAgentFixture(
     createGoalPlugin(runtimeClient),
     planProgress,
     subagentsView,
-    createSchedulesPlugin(runtimeClient),
     ...toolRenderingPlugins,
     fileListProvider,
   );

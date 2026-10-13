@@ -120,19 +120,22 @@ tasks:
       - npm ci
 
   build:portable-views:
-    summary: Build shared UI resources for first-party plugin pages
+    summary: Build first-party plugin components and renderer resources
     run: once
     dir: ../plugins
     deps:
       - task: install:portable-views:deps
     sources:
       - src/**/*
-      - "*/src/*.tsx"
+      - build-components.mjs
+      - "*/src/**/*"
       - "*/plugin.json"
-      - build-views.mjs
+      - "*/io.github.tangerg.flame/**/*"
+      - ../plugin-sdk/src/**/*
       - ../ui/dist/**/*
     generates:
       - "*/views/*.html"
+      - "*/io.github.tangerg.flame/components/*.js"
     cmds:
       - npm run build
 

@@ -43,7 +43,6 @@ function fixture(
       servers: [],
       inputs: [],
       themes: [],
-      views: [],
       renderers: [],
       skills: [],
       diagnostics: [],

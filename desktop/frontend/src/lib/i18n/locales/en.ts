@@ -639,34 +639,6 @@ export const en: Record<string, string> = {
 
   "approval.fallbackText": "Approve this action?",
 
-  "schedules.select": "Select a schedule",
-  "schedules.template": "Use a template",
-  "schedules.enable": "Enable",
-  "schedules.disable": "Disable",
-  "schedules.add": "New schedule",
-  "schedules.save": "Save",
-  "schedules.saving": "Saving…",
-  "schedules.untitled": "Untitled schedule",
-  "schedules.runNow": "Run now",
-  "schedules.edit": "Edit schedule",
-  "schedules.delete": "Delete schedule",
-  "schedules.delete.title": "Delete this schedule?",
-  "schedules.delete.body":
-    '"{{title}}" and its instructions go away. This cannot be undone. Already claimed runs may still start and require separate cancellation.',
-  "schedules.delete.confirm": "Delete",
-  "schedules.unavailable": "Schedules unavailable",
-  "schedules.error.save": "Couldn't save the schedule.",
-  "schedules.model.default": "Runtime default",
-  "schedules.reasoning.default": "Model default",
-  "schedules.model.hint":
-    "Applies to future scheduling. Already claimed runs keep their accepted configuration.",
-  "schedules.model.unavailable":
-    "This saved model is not in the current catalog. Its selection is preserved until you change it.",
-  "schedules.form.title": "Title (optional)",
-  "schedules.form.instructions": "Instructions to run…",
-  "schedules.form.cron": "Cron expression",
-  "schedules.form.cwd": "Working directory (optional)",
-
   "shortcuts.sub":
     "Every keybinding registered by built-in and user plugins. Press a combo anywhere in the app to fire it; binding conflicts always resolve to the last registration.",
   "shortcuts.filter": "Filter by action or combo…",

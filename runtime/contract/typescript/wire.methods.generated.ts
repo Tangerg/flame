@@ -109,8 +109,6 @@ import type {
   ReadFileRequest,
   ReadPluginRendererRequest,
   ReadPluginResourceRequest,
-  ReadPluginSchedulesRequest,
-  ReadPluginViewRequest,
   RenamePluginSessionRequest,
   ResolvePluginPointRequest,
   ResolvePluginRequirementsRequest,
@@ -252,9 +250,7 @@ const METHOD_NAMES = [
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
-  "plugins.readSchedules",
   "plugins.renameSession",
-  "plugins.readView",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -376,9 +372,7 @@ const VALUE_METHOD_NAMES = [
   "plugins.listProviders",
   "plugins.selectProvider",
   "plugins.readRenderer",
-  "plugins.readSchedules",
   "plugins.renameSession",
-  "plugins.readView",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -872,24 +866,10 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "plugins.readSchedules": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "cursor",
-  },
   "plugins.renameSession": {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.readView": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1374,13 +1354,7 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.readRenderer": [
     { requires: ["plugins"] },
   ],
-  "plugins.readSchedules": [
-    { requires: ["plugins", "schedules"] },
-  ],
   "plugins.renameSession": [
-    { requires: ["plugins"] },
-  ],
-  "plugins.readView": [
     { requires: ["plugins"] },
   ],
   "plugins.list": [
@@ -1518,9 +1492,7 @@ export interface WireShapes {
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
   "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };
-  "plugins.readSchedules": { params: ReadPluginSchedulesRequest; result: PageOfSchedule };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
-  "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
   "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };

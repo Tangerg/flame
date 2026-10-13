@@ -58,20 +58,6 @@ type wireTheme struct {
 	Scheme string          `json:"scheme"`
 	Colors wireThemeColors `json:"colors"`
 }
-type wireView struct {
-	ID                string                 `json:"id"`
-	Title             string                 `json:"title"`
-	Type              plugin.ViewKind        `json:"type"`
-	Entry             string                 `json:"entry"`
-	ScheduleTemplates []wireScheduleTemplate `json:"scheduleTemplates,omitempty"`
-}
-type wireScheduleTemplate struct {
-	ID           string `json:"id"`
-	Title        string `json:"title"`
-	Instructions string `json:"instructions"`
-	Cron         string `json:"cron"`
-}
-
 type wireAction struct {
 	ID        string                 `json:"id"`
 	Title     string                 `json:"title"`
@@ -125,4 +111,4 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 }
 
 var declarationFields = []string{"protocol", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
-var presentationFields = []string{"views", "renderers", "actions", "themes"}
+var presentationFields = []string{"renderers", "actions", "themes"}

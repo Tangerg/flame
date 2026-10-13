@@ -37,7 +37,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 			return err
 		}
 	}
-	if value.Title == "" || len(value.Title) > MaxViewTitleBytes || !utf8.ValidString(value.Title) || !componentScope.MatchString(value.Scope) || value.Placement != "workspaceView" || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
+	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !componentScope.MatchString(value.Scope) || value.Placement != "workspaceView" || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	if value.Material != "" && !idPattern.MatchString(value.Material) {

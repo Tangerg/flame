@@ -116,7 +116,6 @@ function installation(id: string, name: string): PluginInstallation {
       inputs: [],
       skills: [],
       diagnostics: [],
-      views: [],
       renderers: [],
       actions: [],
       themes: [{ id: "theme", title: name, scheme: "dark", colors: { background: "#181a1e" } }],
@@ -480,7 +479,6 @@ it("presents and retains only the contributions Runtime admits", async () => {
     ...installation("0c31c796-224c-40fa-a721-6696971bb697", "withheld"),
     presentation: "withheld",
   };
-  admitted.selected.views = [];
   admitted.selected.components = [
     {
       id: "icons",
@@ -522,7 +520,6 @@ it("presents and retains only the contributions Runtime admits", async () => {
     { id: "markdown", title: "Markdown", selector: { type: "fileExtension", name: "md" } },
   ];
   withheld.selected.renderers = admitted.selected.renderers;
-  withheld.selected.views = admitted.selected.views;
   await loadPluginsForTest(
     runtimePlugin(),
     createPluginsPane(

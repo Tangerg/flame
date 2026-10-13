@@ -260,11 +260,11 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 				if !plugin.ValidResourcePath(w.Entry) {
 					return plugin.ErrInvalid
 				}
-				body, err := read(ctx, root, w.Entry, plugin.MaxViewBytes)
+				body, err := read(ctx, root, w.Entry, plugin.MaxPresentationBytes)
 				if err != nil {
 					return err
 				}
-				if err := validateViewHTML(body); err != nil {
+				if err := validateRendererHTML(body); err != nil {
 					return err
 				}
 				return release.AdmitRenderer(plugin.Renderer{ID: w.ID, Title: w.Title, Selector: plugin.RendererSelector{Kind: plugin.RendererSelectorKind(w.Selector.Type), Name: w.Selector.Name}, Entry: w.Entry})
@@ -274,29 +274,6 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if component == "actions" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireAction) error {
 				return release.AdmitAction(plugin.Action{ID: w.ID, Title: w.Title, Operation: w.Operation})
-			})
-			continue
-		}
-		if component == "views" {
-			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireView) error {
-				view := plugin.ViewDeclaration{ID: w.ID, Title: w.Title, Kind: w.Type, Entry: w.Entry}
-				if w.ScheduleTemplates != nil {
-					view.ScheduleTemplates = make([]plugin.ScheduleTemplate, 0, len(w.ScheduleTemplates))
-				}
-				for _, template := range w.ScheduleTemplates {
-					view.ScheduleTemplates = append(view.ScheduleTemplates, plugin.ScheduleTemplate{ID: template.ID, Title: template.Title, Instructions: template.Instructions, Cron: template.Cron})
-				}
-				if !plugin.ValidResourcePath(view.Entry) {
-					return plugin.ErrInvalid
-				}
-				body, err := read(ctx, root, view.Entry, plugin.MaxViewBytes)
-				if err != nil {
-					return err
-				}
-				if err := validateViewHTML(body); err != nil {
-					return err
-				}
-				return release.AdmitView(view)
 			})
 			continue
 		}

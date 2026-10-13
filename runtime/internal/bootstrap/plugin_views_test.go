@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"github.com/Tangerg/flame/runtime/capability"
 	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"os"
 	"path/filepath"
@@ -40,7 +42,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "trajectory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	if len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "session" || len(installed.Selected.Views) != 0 || len(installed.Selected.Diagnostics) != 0 {
+	if len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "session" || len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("first-party admission: %+v", installed.Selected)
 	}
 	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "trajectory"}, Path: installed.Selected.Components[0].Entry}
@@ -150,7 +152,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "memory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "client" {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "client" {
 		t.Fatalf("memory admission: %+v", installed.Selected)
 	}
 	resourceRequest := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "memory"}, Path: installed.Selected.Components[0].Entry}
@@ -206,32 +208,46 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 
 }
 
-func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
+func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "schedules")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-schedules").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewSchedules || len(installed.Selected.Views[0].ScheduleTemplates) != 4 {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Contribution != "schedules-provider" {
 		t.Fatalf("schedule admission: %+v", installed.Selected)
 	}
-	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "schedules"}
+	component := installed.Selected.Components[0]
+	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-schedules")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "schedules", InstallationID: installed.ID, Contribution: "schedules-provider"}, "select-schedules")
-	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
-	authored, err := os.ReadFile(filepath.Join(source, "views", "schedules.html"))
-	if err != nil || html.HTML != string(authored) {
-		t.Fatalf("schedule resource differs from admitted bytes: %v", err)
+	projection := r.must(delivery.PluginsReadResource, resource, "").(*protocol.PluginResource)
+	body, err := base64.StdEncoding.DecodeString(projection.Body)
+	authored, readErr := os.ReadFile(filepath.Join(source, component.Entry))
+	if err != nil || readErr != nil || string(body) != string(authored) {
+		t.Fatalf("schedule component bytes: %v, %v", err, readErr)
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
-	for _, template := range installed.Selected.Views[0].ScheduleTemplates[:2] {
-		r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: template.Title, Instructions: template.Instructions, Cron: template.Cron}, template.ID)
+	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
+		r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: "Inspect", Instructions: "Inspect current work", Cron: cron}, fmt.Sprintf("create-%d", index))
+	}
+	contracts, err := schedulerpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
 	}
 	query := protocol.PageQuery{Limit: new(1)}
 	for {
-		page := r.must(delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view, PageQuery: query}, "").(*protocol.Page[protocol.Schedule])
+		input, err := json.Marshal(schedulerpc.ListInput{Cursor: query.Cursor, Limit: query.Limit})
+		if err != nil {
+			t.Fatal(err)
+		}
+		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: input}, "").(*protocol.CallPluginResponse)
+		var page schedulerpc.Page
+		if err := json.Unmarshal(installedReply.Output, &page); err != nil {
+			t.Fatal(err)
+		}
 		canonical := r.must(delivery.SchedulesList, query, "").(*protocol.Page[protocol.Schedule])
-		if !reflect.DeepEqual(page, canonical) || len(page.Data) != 1 {
-			t.Fatal("schedule view differs from canonical query")
+		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID != canonical.Data[0].ID || page.Rows[0].Revision != canonical.Data[0].Revision || page.Rows[0].Instructions != canonical.Data[0].Instructions || page.NextCursor != canonical.NextCursor {
+			t.Fatal("installed schedule query differs from the canonical owner")
 		}
 		if page.NextCursor == "" {
 			break
@@ -242,11 +258,11 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 	r.close()
 	r = poMCPOpen(t, cfg)
 	restarted := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
-	if !reflect.DeepEqual(restarted.Data[0].Selected.Views, installed.Selected.Views) {
-		t.Fatal("restart changed admitted templates")
+	if !reflect.DeepEqual(restarted.Data[0].Selected.Components, installed.Selected.Components) {
+		t.Fatal("restart changed admitted components")
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
-	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
@@ -279,7 +295,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 		t.Fatal(err)
 	}
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-usage").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || len(installed.Selected.Views) != 0 {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 {
 		t.Fatalf("usage admission: %+v", installed.Selected)
 	}
 	release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
@@ -324,7 +340,6 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	invalid := read
 	invalid.SinceDays = new(0)
 	refused(invalid, delivery.UsageSummary, protocol.ErrInvalidParams)
-	refused(protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: protocol.ReadPluginViewRequest{PluginReleaseRequest: release, ViewID: "usage"}}, delivery.PluginsReadSchedules, protocol.ErrPluginNotFound)
 	r.close()
 	r = poMCPOpen(t, cfg)
 	if restarted := r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(restarted, recorded) {

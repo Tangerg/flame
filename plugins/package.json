@@ -3,11 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build-components.mjs && node build-views.mjs && node tool-results/build.mjs && node file-renderers/build.mjs",
+    "build": "node build-components.mjs && node tool-results/build.mjs && node file-renderers/build.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src test */src/*.tsx build-*.mjs render-*.mjs */build.mjs --deny-warnings",
     "format:check": "prettier --check src test */src/*.tsx tool-results/src/result.html build-*.mjs render-*.mjs */build.mjs package.json tsconfig.json",
-    "check:resources": "node build-components.mjs --check && node build-views.mjs --check && node tool-results/build.mjs --check && node file-renderers/build.mjs --check",
+    "check:resources": "node build-components.mjs --check && node tool-results/build.mjs --check && node file-renderers/build.mjs --check",
     "test": "node --test test/read-view.test.ts",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run check:resources"
   },
