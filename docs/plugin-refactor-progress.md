@@ -2,43 +2,49 @@
 
 ## Current stage
 
-Stage 3z, committed in a025360f, migrates Diagnostics to an ordinary public SDK
-component. Core protocol is 2026-10-13.13; backend protocol remains .4.
-The old clientDiagnostics view kind, HTML/source, private Desktop wrapper/read
-adapter, omission DTO and retired carrier cases are removed in the same change.
+Stage 4a, committed in bdf26566, migrates Memory to an ordinary prebuilt component
+bound to its own admitted installation/contribution and generated capability.
+Core protocol is 2026-10-13.14; backend .4 and private Memory business formats remain.
+The agentMemory view kind, HTML/source, private Desktop MemoryActions/MemoryPackageView,
+read adapter/target DTO, public plugins.readMemory wrapper and generated artifacts are removed.
 
-Every component receives the same explicit, lifetime-bound ClientTelemetry
-collaborator. Public SDK row types now own the trace/metric/log projection contract;
-the actual store and OTel sink consume them without private aliases or duplicate
-DTOs. The existing telemetry store still advances ingestion and clearing. The
-collaborator only checks lifetime, returns a detached snapshot and delegates clear.
-Retired contexts refuse both operations before accessing the owner.
+The component calls the existing installed query/command entrance with generated
+CAPABILITY_JSON and MethodInputs/MethodOutputs. Actual private backend results supply
+item and page data; there is no optimistic item or second receipt owner. Human add,
+edit, pin, delete and approve/reject preserve the original method, input and binding.
+Unknown acknowledgement retains the mutation promise/key, blocks new commands/scope
+changes and exposes same-command reconciliation. Read failure keeps the accepted
+page/cursor; scope changes cannot present a former target's page as the new one.
 
-Diagnostics owns local signal selection and last-read display. Refresh reads the
-current client buffer; a failed read retains accepted observations. Successful clear
-invalidates the display before rereading. Runtime accounting/remote telemetry remain
-separate facts. The former 256-row/128-KiB HTML transport cutoffs disappear; existing
-buffer capacities stay with the telemetry owner, and prior eviction is not invented.
+Client component scope captures optional Session/workspace data from their existing
+owners. User memory remains available without a workspace; project commands capture
+its path. Client scope does not subscribe to file focus, avoiding unrelated focus
+changes retiring an uncertain Memory command. Workspace scope retains its required
+focus projection; public focus is optional for client scope, and Diff narrows it
+explicitly. Session/workspace target replacement retires old observations.
 
-The component declares installation scope and the admitted diagnostics material key.
-The existing navigation consumer keeps the material meaning and catalogue recovery;
-no Diagnostics branch remains in the generic component loader. The prebuilt ESM is
-3642 bytes and rebuilds exactly. Remaining HTML pages are Memory, Schedules and Skills.
+The 22766-byte Memory ESM and changed Diff narrowing rebuild exactly. Production Go,
+SDK/package/shared/Desktop types, changed lint, layer graph, 1035-key/eight-locale
+check, Vite and 107/107 API consumer coverage pass. Client-scope admission and removed
+view-kind refusal pass focused checks. Updated installed Memory/canonical projection,
+resource/private-data and dispatch regression source compiles; full process execution
+remains queued. No frontend UI/E2E tests were added or run; obsolete carrier cases
+are deleted and existing fixture contracts migrate.
 
-Production Go, SDK/package/shared/Desktop types, changed lint, eight-locale check,
-public boundaries, layer graph, production Vite and API consumer coverage pass.
-Two non-UI data-contract cases pass: detached/complete buffer reads and clearing,
-plus retired read/clear refusal preserving owner data. Old view kind refusal passes.
-Installed component/withdrawal/backend regression source compiles; full/vet/race and
-actual process acceptance remain final-phase work. No GUI/E2E execution or additions.
-
-Local main b5160b5f is already integrated. Owned frontend dist/test cache, temporary
-compile binaries and the empty retired views directory are removed; all handles
-are terminal. Original proposal/review/draft hashes are unchanged. Full P01-P48 and
-review scope remain active: remaining pages/renderers/actions, scoped dependency
-retention/status, canonical model decorators/streaming, author parity and final audit.
+Local main b5160b5f is already integrated. Owned dist/empty retired directory and
+TemporaryDirectory binaries are removed; all handles are terminal. Original design
+input hashes are unchanged. Full scope remains active: Schedules/Skills/renderers/actions,
+public-call invalidation across other read projections, cross-reload unknown-command
+recovery, scoped dependencies, canonical model decorators/streaming, author parity
+and requirement-level final acceptance. This slice is not full Memory platform acceptance.
 
 ## Completed
+
+- Stage 4a (bdf26566): ordinary Memory component with actual own installed typed
+  query/commands and human editing/review, immutable target capture and original
+  uncertain-command handle; delete its HTML/carrier/private controls/duplicate query.
+- Stage 4a: admitted client scope with optional Session/workspace targets, no file-
+  focus dependency; preserve strict workspace focus behavior and explicit Diff narrowing.
 
 - Stage 3z (a025360f): public client-local telemetry collaborator and one SDK row-type
   contract; actual Diagnostics ordinary ESM, owner-directed clear, detached reads and
@@ -264,7 +270,7 @@ retention/status, canonical model decorators/streaming, author parity and final 
 
 ## Next
 
-1. Continue Memory/Schedules/Skills and renderer/action migration to public components
+1. Continue Schedules/Skills and renderer/action migration to public components
    and installed operation contracts; remove each replaced carrier/API in its slice.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
@@ -275,6 +281,8 @@ retention/status, canonical model decorators/streaming, author parity and final 
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Memory components bind their own declared contribution and generated complete capability | Public UI must enter the same private business/receipt owner without a current-provider wrapper or fabricated host result | Private Desktop Memory controls, plugin readMemory envelope, copied item state, tools.invoke or UI-only backend routing |
+| 2026-10-13 | Add client scope with optional frozen targets and no file-focus dependency | User Memory must remain available without a workspace; irrelevant focus changes must not retire an uncertain command observer | Requiring a workspace for user scope, private author stores/currentSession, another workspace authority or focus-driven Memory remounts |
 | 2026-10-13 | Publish a uniform explicit client-telemetry collaborator and one SDK projection type owner | Ordinary Diagnostics needs local traces/logs/metrics without private state imports; the existing store remains their mutable owner | A Diagnostics branch in the loader, an ambient store/service lookup, duplicate SDK/store row DTOs, a copied observation ledger or a fake Runtime diagnostics query |
 | 2026-10-13 | Remove carrier-specific row/byte omission while retaining actual telemetry buffer capacity | Ordinary in-process components no longer use the bounded HTML channel; detached reads cannot reconstruct data already evicted by the owner | A retained omission epoch/reader, arbitrary new quotas, pretending snapshots are current mutable facts or clearing Runtime accounting |
 | 2026-10-13 | Project Session component targets from the existing navigation owner and call canonical trajectory directly | Session identity is captured interaction data; the old read wrapper/HTML carrier adds feature knowledge without owning history | Private Session stores in author code, an ambient currentSession lookup, a copied history store, a new RPC wrapper or a retained sessionTrajectory kind |
@@ -379,7 +387,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -410,6 +418,32 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4a development and bound Memory component contracts
+
+- Passed: production Runtime/CLI/Reviews Go build; SDK/package/shared Runtime TS and
+  Desktop typecheck; changed lint; production Vite build and active commit hooks.
+- Passed: public component build and exact reproducibility. Memory is 22766 bytes;
+  Diff changes only to require/narrow focus after the public optional-target addition.
+- Passed: focused Domain removed-view refusal (0.593s) and package client/Session/
+  workspace scope admission (0.577s); no full suite or process claim.
+- Passed: Bootstrap, Delivery dispatch and plugin Application test source compiles
+  through TemporaryDirectory. Actual installed Memory query regression compares its
+  backend DTO items/cursor with the selected private owner's canonical projection,
+  and preserves resource/withdrawal/private-data assertions. Final execution queued.
+- Passed: API consumers 107/107 (99 direct, seven materialized, one HTTP); layer graph
+  1189 modules/3888 edges; locale gate 1035 keys across eight catalogs; diff review.
+- Resolved: broad initial function removal accidentally removed adjacent Go plugin
+  lifecycle bindings; restore them exactly from HEAD, regenerate and rebuild. Final
+  Go API diff removes only ReadPluginMemory. Fixed typed ItemID/string comparison in
+  compiled regression source. Retired UI copy left 17 keys; delete them across all locales.
+- No new UI/E2E coverage or execution. Retired Memory UI/carrier cases are removed;
+  existing RPC/visual fixture shapes migrate for compilation, including deliberately
+  invalid protocol requests with explicit test-only type assertions.
+- Not run: full/vet/race/installed lifecycle execution (concentrated final phase), UI,
+  E2E/browser/native/screenshot checks (explicit exclusion). Unknown command recovery
+  across new UI generations and public mutation invalidation remain unaccepted.
+- Product bdf26566; local main already integrated. Original SHA-256 baselines unchanged.
 
 ### Stage 3z development and client telemetry contracts
 
@@ -863,6 +897,13 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 4a: product bdf26566 committed; local main already integrated. All owned
+  generation/build/typecheck/focused/test-source-compile/commit handles are terminal.
+  TemporaryDirectory removes compile binaries and exact-build probes clean output.
+  Owned frontend dist and empty Memory views directory are removed. Keep formal ESM,
+  regressions/contracts/docs and development dependencies. No UI/native/runtime test
+  process, shared configuration, external action, credential or user data changed.
+
 - Stage 3z: product a025360f committed; local main already integrated. All owned
   generation/build/typecheck/focused/data-contract/source-compile/commit handles are
   terminal. TemporaryDirectory removes Go binaries and exact-build probes clean their
@@ -965,6 +1006,15 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Public installed mutations currently bypass Memory/Schedules adapters' feature
+  invalidation publishing. Complete owner-originated change notices or the existing
+  consumer invalidation seam so other read projections refresh after public commands,
+  including unknown acknowledgement. Do not add a business branch to generic dispatch
+  or treat this compiled component as complete cross-entrance acceptance.
+- Verify restoration of the original Memory/Reviews mutation journal evidence after
+  component/Runtime/window replacement. A retained in-render retry handle is necessary
+  but does not prove recovery in a new UI generation.
+
 - Stage 3x closes the previously missing source consumers: point/requirements/provider
   manager operations and the actual HTTP resource query projection. The 109/109 static
   gate passes. Full installed semantics, lifecycle and final source must still be
@@ -995,6 +1045,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 4a advances Core to .14, removes Memory view/read wrappers and adds client
+  component scope. Public WorkspaceContext.focus is optional for client scope; actual
+  workspace focus consumers must narrow it. Rebuild SDK/Host/packages/Go/CLI/TS together.
+  Backend .4 and Memory data formats stay unchanged. Public mutation notice/recovery
+  integration and final installed/graphical acceptance remain open.
 
 - Stage 3z advances Core to .13, removes clientDiagnostics view metadata and requires
   the public ComponentContext.telemetry collaborator. Rebuild SDK clients/Host/packages
