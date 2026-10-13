@@ -2,6 +2,8 @@
 
 ## Current stage
 
+Stage 3k implementation committed in 93c40ffc: installed unary operations now have one public Go/Protocol/CLI entrance through the existing Delivery Endpoint. Runtime.CallPlugin/Client.CallPlugin, plugins.call and plugins call resolve admitted method semantics and retain exact installation/release/contribution/consumer-contract/business input. BindPluginMethod provides a typed public proxy. Shared TS plugins.call uses the existing query/mutation journal path, and concrete commands reuse the original Commands owner and private receipts; no host outcome cache was added. Changed binding with an original command identity conflicts before backend I/O. Runtime/CLI production builds, five owning test binaries and the shared TS client compile; generator and formatting checks pass. Execution/full/race validation remains deferred. Origin/parent/concrete target capture, installed dependency binding, all-entrance consumer migration, components and streaming remain open. Full-scope estimate remains approximately 25–30%; this unary slice does not close the entire platform.
+
 Stage 3j implementation committed in 4f91b20c: closed ServiceKind/ServiceOwner/Service and their wire service enum/projections are removed. Generic admitted contributions have independent IDs, complete consumer contracts and exact server/export bindings. Memory/Schedules publish named capabilities; actual query, command, Tool preparation and dispatch consumers use the contract/export path. Original command routing persists contribution ID, export and complete capability; recovery restores the originals. All bundled root namespaces and independent Reviews now reference one strict local declaration file; the former inline apiVersion parser is deleted. Runtime/CLI compile, affected test binaries compile without execution, generated TS data and builder syntax checks pass. Execution/full/race/portable-author final acceptance remains deferred under the development-first policy. Incoming main remains 78f9f08bbb26bba633bd32def0bef7cc8381a7fa, already up to date. Full point semantics/dependency graphs, public installed-operation entrances, components and the overall goal remain open.
 
 Stage 3i is retained in 0519d2ad/d057d00c: business-only durable Memory input and callback metadata are separated; the last fresh-admission guard is compiled and queued for final execution/race verification.
@@ -80,6 +82,11 @@ Read-only design inputs:
 - /Users/tangerg/Desktop/docs/Scope-Flame-Agent-Architecture-and-Upgrade-Report-2026-10-12.md
 
 ## Completed
+
+- Stage 3k adds one installed unary envelope to the ordinary operation catalog. Its extension registration resolves query versus owner-committed command policy before invoking the owner; caller kind relabeling cannot pass exact local/live contract admission. Go in-process/HTTP bindings, CLI and the shared TS RPC path consume it.
+- Stage 3k exposes BindPluginMethod over existing typed plugin.Method contracts and captured PluginBinding. Typed admission remains Go-owned; the public boundary carries raw JSON only inside the envelope. Definite owner refusals preserve code/message; failure/output are exclusive and transport/unknown acknowledgement stays an error.
+- Stage 3k extracts the original raw command invocation from the feature-typed wrapper. Both paths retain the same durable route, dispatch gate, exact export, receipt query and observation owner. The installed entrance checks the immutable installation/release/contribution/capability before recovery; changing a selection does not retarget an accepted command. No additional result ledger, compatibility reader or alternate transport was introduced.
+- Added regression source for shared-endpoint query/command admission and actual Memory cross-entrance receipt recovery/binding conflict. These tests compile and are queued for final execution; no runtime pass is claimed.
 
 - Stage 3j removes the closed service definitions/parser/wire enum and actual consumer routing. Release.Contributions and ContributionID admit generic contract/export bindings; shared servers may implement distinct declared contributions. Selection, distribution defaults and durable selection storage use these IDs rather than server names.
 - Stage 3j binds named Memory/Schedules capabilities and validates full contracts/live exports on fresh resolution. Original command storage and immutable SQL guards retain full capability, contribution ID and export; restoration neither discovers another provider nor uses a bare-method call. Feature-specific Tool policies remain with their real consumers, matching their required contracts.
@@ -190,6 +197,7 @@ Read-only design inputs:
 
 ## In progress
 
+- Stage 3k unary public calls compile and are committed. Concentrated execution must prove the actual installed public Go/Protocol/CLI/TS paths, definite refusal, response loss/restart and changed binding/input conflict. Complete origin/parent/concrete target capture, declared dependency rendezvous and migration of actual Tool/UI/automatic/cross-plugin consumers remain implementation work.
 - Stage 3j implements generic local contribution declarations, exact named exports, independent IDs and complete original route capture. Runtime/CLI and owning test binaries compile; final execution must validate declaration diagnostics, selected-provider changes, response loss/receipt recovery, real callbacks/dispatch and package construction on this final source. Compilation is not runtime acceptance.
 - Stage 3i has removed the durable Grant defect from the DTO/schema, actual metadata dispatch and both input stores together. Final concentrated verification must run the fresh missing-metadata refusal/same-ID first execution case, callback retirement and real response-loss recovery on the final source, plus relevant races. These are verification obligations, not a reason to stop further implementation.
 
@@ -213,7 +221,7 @@ Read-only design inputs:
 
 ## Next
 
-1. Implement installed operations and original receipt recovery through one public Go/Protocol/CLI entrance, including consumer-owned declarations, exact contribution/contract/target/origin/parent binding and declared dependencies. Extend the now-generic original Memory/Schedules bindings to public installed operation descriptors. The apiVersion:1 parser is deleted; remaining closed-view/carrier deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
+1. Extend the installed unary entrance with adapter-established origin/parent and concrete target, declared dependency binding, consumer-owned point semantics and actual Tool/automatic/cross-plugin consumers. Reuse the existing original command route and execution dependency owner. The apiVersion:1 parser is deleted; remaining closed-view/carrier deletion must accompany actual component migration. Prove cross-plugin calls and cancelable streaming decoration without a graphical relay; canonical model execution remains a separate required public contract.
 2. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 3. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
 4. Complete requirement-level audit and final clean delivery.
@@ -222,6 +230,7 @@ Read-only design inputs:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Admit installed unary query/command semantics inside the one Delivery Endpoint and reuse original command routing | One typed envelope must retain concrete consumer/provider evidence without creating another business result owner; query keys are rejected and changed captured binding conflicts | Separate feature routes, caller-authored kind flags, a host result cache or rediscovery during receipt recovery |
 | 2026-10-13 | Replace closed services with independent contribution IDs and complete consumer-owned contract/export bindings | Server identity is execution placement; it cannot identify a declaration or define a business role. Real Memory/Schedules and Reviews now use the generic representation | String-renamed ServiceKind branches, contribution=server aliases, same-named export fallback or schema-only declarations |
 | 2026-10-13 | Move Flame declarations to one referenced strict namespace file and remove the inline apiVersion parser | Root identity and launch configuration keep their portable owners; local contracts can be admitted before activation without executing code | Another package identity manifest, dual inline/file declaration readers, old-version interpretation or remote schema loading |
 | 2026-10-13 | Capture complete capability plus contribution/export in original command routes and refuse former host tables | Reconciliation must preserve the exact endpoint even when selection/export availability changes | Rediscovering a current method, recovering through a bare export-less call, transferring receipts to another contribution or converting old uncertain evidence |
@@ -297,14 +306,14 @@ Status is open until code and appropriate verification prove the requirement.
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Backend typed/Tool owner sharing verified; generic host/CLI/UI/other-plugin admission open | runtime/plugin; examples/plugins/reviews/backend/server.go; server_test.go |
+| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Open | shared call envelope and execution context |
 | Public React/TS components and shared module instances | Open | public SDK and installed component loader |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; complete installed points, composition and analyzer remain open | runtime/capability; runtime/plugin/capability.go; capability_test.go; public point consumers and Reviews analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
-| No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules boundary and original-export Reviews receipt lookup verified with real committed-response loss; generic/public installed operation application open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
+| No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
 | One executable contract generation source | Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; installed contribution/component binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
-| Typed business refusal versus transport uncertainty across entrances | Public Go/backend and Reviews typed/Tool semantics plus generated TS outcome vocabulary verified; generic host/CLI/TS call projections open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
+| Typed business refusal versus transport uncertainty across entrances | Public backend evidence retained; installed Go/Protocol/CLI/TS refusal and unknown-ack projections implemented/compiled; final execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Open | startup/plugin management and CLI |
 | Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method/capability/export contract verified; strict local declaration and real feature export binding implemented; complete dependency/activation lifecycle acceptance open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
 | Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; generic provider selection open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
@@ -330,6 +339,15 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3k development checks and deferred execution
+
+- Passed: production go build ./runtime/... ./cli/... on the final source; compilation-only go test -c for Runtime Delivery, pluginservices, the module-root Runtime, CLI command delivery and runtimebinding. TemporaryDirectory removed the binaries; no TestMain or test body executed.
+- Passed: existing Core generator go generate ./internal/delivery; generated API/Go API inventory/Schema/OpenRPC/TS/node validators include the public envelope and exclusive outcome. Core Protocol remains 2026-10-13.3; backend protocol remains .3.
+- Passed: shared Runtime TypeScript client tsc --noEmit, including its generated data/methods and compiled SDK fixtures; Prettier on the four changed client files, changed Go formatting and git diff --check.
+- Passed: original proposal/review/draft SHA-256 equality; source-only development introduced no native distribution, runtime test process, shared configuration change, data conversion/deletion or external action.
+- Corrected introduced compile failures: the first new endpoint fixture used Capabilities instead of ServerCapabilities; the constraint registration lacked its delivery import. One gofmt command initially used root-relative paths from the Runtime directory; it was rerun from the worktree root. All final compilation checks pass; no failure or assertion was suppressed.
+- Deferred: execute the new shared-endpoint and actual cross-entrance Memory receipt/conflict cases, public Go/HTTP/CLI/TS boundary/refusal/restart cases, full/race/vet/dependency checks and final all-proposal acceptance. No frontend UI/E2E/screenshot test was added or run.
 
 ### Stage 3j development checks and deferred execution
 
@@ -537,6 +555,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3k: product committed in 93c40ffc; all build/generation/TS/compilation/commit handles are terminal, temporary test binaries are removed and no test/native distribution was launched. Incoming main remains 78f9f08b. Preserve the active managed worktree, shared checkout changes and the canonical progress symlink. Complete execution verification is deferred under the user's development-first instruction.
+
 - Stage 3j: every owned compile/generation/commit handle is terminal; compilation binaries were removed by TemporaryDirectory. No native distribution or test process was launched this round. Product is committed in 4f91b20c and incoming main is already up to date at 78f9f08b. Preserve all concurrent shared-checkout changes and its progress symlink. Keep the managed checkout for continued development; execution/final validation is explicitly deferred.
 
 - Stage 3i: every owned verification/generation/commit handle is terminal. Test-owned private databases, HTTP endpoints, sessions/callbacks and native helpers were closed through their existing owners; no scratch script or persistent build output was added. Product source is committed in 0519d2ad; git merge main reports already up to date at 78f9f08b. Preserve the shared checkout's concurrent pending.go/publication.go edits and progress symlink. Keep the managed checkout for continued implementation; full/race final checks are explicitly deferred.
@@ -576,7 +596,7 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Remove Memory typed Search/Maintenance Grant from structural business input and private/host durable identity before full installed binding. The callback reference must be created for actual original-session dispatch, released on all outcomes and unnecessary for receipt lookup. Preserve exact original raw input, private pending fences and non-mutating old-data refusal; changing hashing alone is not a repair.
+- Execute final Memory business-only input/callback/receipt regressions and the missing-metadata fresh-admission guard. Stage 3i removed Grant from the DTO and both durable inputs; this is now a verification obligation, not unfinished removal.
 
 - Bind the verified callable capability/export owner into the installed declaration and activation lifecycle, migrate real Memory/Schedules required contracts and preserve contribution independently of server identity. Callback preparation/notifications are now outside generic source authority; bind that real feature boundary to the new declarations. Reuse existing durable Commands routing for captured contribution/export/target/origin/parent; no second route or receipt owner.
 
@@ -584,7 +604,7 @@ Stage 2a verification:
 
 - Extend the verified private maintenance admission/publication receipt and original host routing to public contribution bindings. Preserve the distinction between recovering a completed receipt and unknown/canceled original work; never restart its models from host routing alone.
 - Extend the verified immutable input to the complete generic binding: exact contract/contribution, captured target and adapter-established origin/parent, with current declaration and activation handshake. Existing raw JSON and old-format refusal do not prove the missing installed operation/proxy/component paths.
-- Extend the verified durable original-binding/retention owner to generic operation descriptors and public entrances before opening new plugin mutation. Current closed service binding is not the final contribution substrate.
+- Extend the installed unary original-binding/retention owner with concrete target, origin/parent and declared dependencies. Stage 3j removed closed service binding; Stage 3k implements the public unary entrance, while all-consumer integration remains open.
 - Finish generic call/error projections and public TypeScript client/component bindings through Reviews; current Go-owned generation supplies structural contracts and preserves typed outcome vocabulary.
 - Verify the selected MCP/SDK custom method and streaming primitives using real processes.
 - Select and implement actual module/resource loading for Web and Wails, including a management recovery entrance.
@@ -592,6 +612,8 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3k expands public Go/Protocol/CLI/TS APIs and the operation-kind vocabulary with a resolved unary extension. Rebuild generated consumers. The envelope and typed proxy compile, but origin/parent/concrete target, declared dependencies and streaming are not yet complete; do not label the full platform accepted. Independent published Runtime module metadata remains open. The actual final execution suite must validate the original route/private outcome boundaries and definite-failure projection.
 
 - Stage 3j is a breaking root Flame declaration, Go API, Runtime Protocol and host storage change. Rebuild consumers and packages, use fresh data directories and retain old data separately; no old inline declaration or route reader exists. Generic backend metadata is admitted without activation, but full dependency waiting/cycle diagnostics and client component lifecycle remain required. Core public Protocol is 2026-10-13.3; backend Protocol .3 is unchanged. Published independent Runtime module advancement remains outside the local source proof. Current-source execution acceptance is deliberately outstanding.
 
