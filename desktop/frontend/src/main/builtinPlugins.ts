@@ -130,7 +130,7 @@ export function createBuiltinPlugins(
     approvalsPane,
     personalization,
     connectionSettings,
-    createPluginsPane(runtimeClient, host.pluginCarrier),
+    createPluginsPane(runtimeClient),
     createProvidersPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     createHooksPlugin(runtimeClient),

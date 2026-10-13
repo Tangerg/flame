@@ -1,3 +1,4 @@
+import type { CapturedToolResult, RecordedFileChange } from "@flame/plugin-sdk";
 import type { RecoveryAction } from "@flame/runtime-contract/wire";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 
@@ -15,41 +16,16 @@ export interface AgentPlan {
   readonly steps: readonly PlanStep[];
 }
 
-export type ToolCallStatus = "running" | "ok" | "err" | "denied";
-export type AgentSafetyClass = "safe" | "write" | "exec" | "network";
+export type ToolCallStatus = CapturedToolResult["status"];
+export type AgentSafetyClass = NonNullable<CapturedToolResult["safetyClass"]>;
 
-interface ToolFileChange {
-  path: string;
-  status: "added" | "deleted" | "modified" | "moved";
-  from?: string;
-  added: number;
-  removed: number;
-}
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
-export interface ToolCall {
-  id: string;
-  runId: string;
-  name: string;
-  fn: string;
-  fnKind?: "path";
-  args: string;
-  status: ToolCallStatus;
-  added?: number;
-  removed?: number;
-  changes?: ToolFileChange[];
-  hits?: number;
-  files?: number;
-  lines?: number;
-  exitCode?: number;
-  result?: string;
-  command?: string;
-  error?: string;
-  operation?: string;
-  safetyClass?: AgentSafetyClass;
-  range?: { start: number; end: number };
-  durationMillis?: number;
-  approvalDecision?: "approve" | "deny";
-}
+// The reducer advances its current read model; components receive frozen captures.
+export type ToolCall = Mutable<Omit<CapturedToolResult, "changes" | "range">> & {
+  changes?: Mutable<RecordedFileChange>[];
+  range?: Mutable<NonNullable<CapturedToolResult["range"]>>;
+};
 
 export interface Message {
   id: string;

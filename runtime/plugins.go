@@ -43,10 +43,6 @@ func (r *binding) RenamePluginSession(ctx context.Context, request protocol.Rena
 	return r.invoke[protocol.RenamePluginSessionRequest, *protocol.Session](ctx, delivery.PluginsRenameSession, request, commandOptions(options))
 }
 
-func (r *binding) ReadPluginRenderer(ctx context.Context, request protocol.ReadPluginRendererRequest, options CallOptions) (*protocol.PluginViewResource, error) {
-	return r.invoke[protocol.ReadPluginRendererRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadRenderer, request, callOptions(options))
-}
-
 func (r *binding) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsInstall, request, commandOptions(options))
 }

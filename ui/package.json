@@ -21,10 +21,6 @@
       "import": "./src/tokens.stylex.ts"
     },
     "./styles.css": "./dist/styles.css",
-    "./theme-bootstrap": {
-      "types": "./dist/theme-bootstrap.d.ts",
-      "import": "./dist/theme-bootstrap.js"
-    },
     "./primitives": {
       "types": "./dist/primitives/index.d.ts",
       "import": "./dist/primitives/index.js"
@@ -77,10 +73,6 @@
       "types": "./dist/well-surface.d.ts",
       "import": "./dist/well-surface.js"
     },
-    "./theme": {
-      "types": "./dist/theme.d.ts",
-      "import": "./dist/theme.js"
-    },
     "./font-scale": {
       "types": "./dist/font-scale.d.ts",
       "import": "./dist/font-scale.js"
@@ -124,7 +116,6 @@
     "@babel/preset-typescript": "^8.0.7",
     "@babel/preset-react": "^8.0.1",
     "@stylexjs/babel-plugin": "^0.19.1",
-    "rolldown": "^1.2.13",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3",
     "happy-dom": "^21.0.1",

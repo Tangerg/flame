@@ -148,10 +148,6 @@ func (preparedPackages) ReadResource(context.Context, *plugin.Installation, stri
 	return nil, errors.New("unexpected component resource read")
 }
 
-func (preparedPackages) ReadPage(context.Context, *plugin.Installation, string) (string, error) {
-	return "", errors.New("unexpected view read")
-}
-
 func (preparedPackages) Materialize(context.Context, string) (plugins.Candidate, error) {
 	return nil, errors.New("unexpected materialization")
 }

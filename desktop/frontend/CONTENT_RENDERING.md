@@ -1883,12 +1883,13 @@ interface GrepResult {
 
 The Files dock owns both directory browsing and file content. Opening a directory entry, conversation reference, or search result selects a file in that same panel. Returning to the directory preserves its expanded folders. Directory and content queries distinguish unresolved Session workspace selection from the Runtime default workspace, and expose read failures with retry actions.
 
-Optional file renderers receive complete, captured Runtime reads through the isolated
-read-only carrier. A unique normalized extension selects presentation. The host retains
-file access, path selection, line navigation and source view; the page cannot initiate
-another file read. Partial, truncated or ambiguous content remains source. Plugin failure
-or withdrawal preserves the captured source, and refresh reauthorizes only the selected
-resource before repeating that snapshot.
+Optional file renderers receive complete, frozen accepted Runtime reads through the
+public component context and exact-release ESM loading. A unique normalized extension
+selects presentation. The existing owners retain file access, path selection, line
+navigation and source view. Partial, truncated or ambiguous content remains source.
+Loading, plugin failure or withdrawal preserves captured source; navigation cannot
+retarget it. Tool-result components likewise inspect frozen settled recorded data and
+retain the generic inspector, without replaying Tools or loading historical code.
 
 ### 9.5 Skills（G 区 Skill 视图）
 

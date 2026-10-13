@@ -32,6 +32,13 @@ existing navigation owner. They call public Session operations directly. A chang
 Session remounts the instance and cancels/joins its old reads; rendering never becomes
 an owner of Session or Run transitions. Trajectory is the concrete consumer.
 
+Tool-result components receive `context.toolResult`, a detached frozen
+`CapturedToolResult` with the original call/Run IDs, argument/result bytes and recorded
+status, bounds and error. It contains data, never historical module or replay authority.
+The current installed component may format it with ordinary Hooks and shared controls;
+generic inspection remains available when a renderer fails or is absent. Navigation
+never retargets the captured record. Tool results is the concrete consumer.
+
 Every component receives `context.telemetry`, the explicit client-local observation
 collaborator. Public row types describe traces, metrics and logs; `read()` returns
 a detached snapshot of the current buffer and `clear()` delegates to that buffer's

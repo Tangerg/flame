@@ -1,4 +1,3 @@
-import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import type { NotificationAuthorization } from "@/foundation/notificationAuthorization";
 
 interface RuntimeTarget {
@@ -20,7 +19,6 @@ interface ClientNotification {
 
 export interface ClientHost {
   readonly kind: "desktop" | "web";
-  readonly pluginCarrier: PluginCarrier;
   bootstrap(): Promise<ClientBootstrap>;
   chooseWorkingDirectory(): Promise<string | null>;
   saveImage(source: string): Promise<boolean>;

@@ -22,7 +22,6 @@ const (
 	PluginsConfigure           Name = "plugins.configure"
 	PluginsSetEnablement       Name = "plugins.setEnablement"
 	PluginsUninstall           Name = "plugins.uninstall"
-	PluginsReadRenderer        Name = "plugins.readRenderer"
 	PluginsRenameSession       Name = "plugins.renameSession"
 )
 
@@ -79,11 +78,6 @@ func registerPlugins(r *Registry) {
 		SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error)
 	}, ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
 		return s.SelectPluginProvider(ctx, in)
-	})
-	r.query(MethodMeta{Name: PluginsReadRenderer, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		ReadPluginRenderer(context.Context, protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error)
-	}, ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {
-		return s.ReadPluginRenderer(ctx, in)
 	})
 
 	r.command(MethodMeta{Name: PluginsRenameSession, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrSessionBusy.Error())}, func(s interface {

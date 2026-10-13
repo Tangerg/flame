@@ -758,7 +758,7 @@ func TestInvalidRendererDoesNotWithdrawIndependentContributions(t *testing.T) {
 		t.Run(renderer, func(t *testing.T) {
 			r := testReleases(t)
 			manifest := `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
-			declaration := flameDeclaration(`"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}],"renderers":[` + renderer + `]}`)
+			declaration := flameDeclaration(`"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}]},"components":[` + renderer + `]`)
 			source := writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": declaration, "io.github.tangerg.flame/ui/index.html": "<html></html>"})
 			release, err := publishPackage(t.Context(), r, source)
 			if err != nil || len(release.Declaration().Themes) != 1 || len(release.Declaration().Diagnostics) != 1 {

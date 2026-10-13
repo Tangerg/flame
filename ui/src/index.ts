@@ -6,7 +6,6 @@ export * from "./icon-button";
 export * from "./empty-state";
 export * from "./glyph-swap";
 export * from "./typography";
-export * from "./theme";
 export * from "./font-scale";
 export * from "./panel";
 export * from "./records";

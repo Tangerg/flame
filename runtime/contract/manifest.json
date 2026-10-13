@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.4",
+  "protocolVersion": "2026-10-14.5",
   "features": [
     "reasoning",
     "multimodal",
@@ -942,25 +942,6 @@
       ]
     },
     {
-      "name": "plugins.readRenderer",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins"
-      ]
-    },
-    {
       "name": "plugins.renameSession",
       "kind": "unary",
       "operation": "command",
@@ -1655,7 +1636,6 @@
           "plugins.listProviders",
           "plugins.notifyChange",
           "plugins.openResources",
-          "plugins.readRenderer",
           "plugins.readResource",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -1848,7 +1828,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readRenderer",
           "plugins.readResource",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -1871,7 +1850,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readRenderer",
           "plugins.readResource",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -1894,7 +1872,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readRenderer",
           "plugins.readResource",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -1917,7 +1894,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readRenderer",
           "plugins.readResource",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -1945,7 +1921,6 @@
           "plugins.list",
           "plugins.listProviders",
           "plugins.openResources",
-          "plugins.readRenderer",
           "plugins.readResource",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -2700,16 +2675,6 @@
     },
     {
       "method": "plugins.selectProvider",
-      "rules": [
-        {
-          "requires": [
-            "plugins"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "plugins.readRenderer",
       "rules": [
         {
           "requires": [
@@ -9068,7 +9033,7 @@
         },
         {
           "field": "scope",
-          "constraint": "pattern(\"^(installation|workspace|session|client|file)$\")"
+          "constraint": "pattern(\"^(installation|workspace|session|client|file|toolResult)$\")"
         }
       ]
     },
@@ -9291,32 +9256,6 @@
       ]
     },
     {
-      "type": "ReadPluginRendererRequest",
-      "rules": [
-        {
-          "field": "rendererId",
-          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        }
-      ]
-    },
-    {
-      "type": "PluginRenderer",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        },
-        {
-          "field": "title",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "title",
-          "constraint": "maxLength(128)"
-        }
-      ]
-    },
-    {
       "type": "PluginRendererSelector",
       "rules": [
         {
@@ -9352,15 +9291,6 @@
         {
           "field": "title",
           "constraint": "maxLength(128)"
-        }
-      ]
-    },
-    {
-      "type": "PluginViewResource",
-      "rules": [
-        {
-          "field": "html",
-          "constraint": "maxLength(524288)"
         }
       ]
     },

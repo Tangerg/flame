@@ -21,7 +21,6 @@ const (
 func desktopApplicationOptions(host *DesktopHost) application.Options {
 	return application.Options{
 		Name:        productName,
-		OnShutdown:  host.retirePluginPages,
 		Description: productDescription,
 		Services:    []application.Service{application.NewService(host)},
 		Assets: application.AssetOptions{

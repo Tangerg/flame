@@ -36,8 +36,42 @@ export interface CapturedFile {
   readonly truncated: boolean;
 }
 
+export interface RecordedFileChange {
+  readonly path: string;
+  readonly status: "added" | "deleted" | "modified" | "moved";
+  readonly from?: string;
+  readonly added: number;
+  readonly removed: number;
+}
+
+export interface CapturedToolResult {
+  readonly id: string;
+  readonly runId: string;
+  readonly name: string;
+  readonly fn: string;
+  readonly fnKind?: "path";
+  readonly args: string;
+  readonly status: "running" | "ok" | "err" | "denied";
+  readonly added?: number;
+  readonly removed?: number;
+  readonly changes?: readonly RecordedFileChange[];
+  readonly hits?: number;
+  readonly files?: number;
+  readonly lines?: number;
+  readonly exitCode?: number;
+  readonly result?: string;
+  readonly command?: string;
+  readonly error?: string;
+  readonly operation?: string;
+  readonly safetyClass?: "safe" | "write" | "exec" | "network";
+  readonly range?: Readonly<{ start: number; end: number }>;
+  readonly durationMillis?: number;
+  readonly approvalDecision?: "approve" | "deny";
+}
+
 export interface ComponentContext {
   readonly file?: Readonly<CapturedFile>;
+  readonly toolResult?: Readonly<CapturedToolResult>;
   readonly runtime: FlameClient;
   readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;

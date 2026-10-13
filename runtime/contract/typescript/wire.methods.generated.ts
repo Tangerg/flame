@@ -104,11 +104,9 @@ import type {
   PluginRequest,
   PluginResource,
   PluginResourceLease,
-  PluginViewResource,
   Provider,
   ProviderTestResult,
   ReadFileRequest,
-  ReadPluginRendererRequest,
   ReadPluginResourceRequest,
   RenamePluginSessionRequest,
   ResolvePluginPointRequest,
@@ -251,7 +249,6 @@ const METHOD_NAMES = [
   "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
-  "plugins.readRenderer",
   "plugins.renameSession",
   "plugins.list",
   "plugins.install",
@@ -373,7 +370,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
-  "plugins.readRenderer",
   "plugins.renameSession",
   "plugins.list",
   "plugins.install",
@@ -868,13 +864,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "plugins.readRenderer": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "plugins.renameSession": {
     operation: "command",
     response: "unary",
@@ -1363,9 +1352,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.selectProvider": [
     { requires: ["plugins"] },
   ],
-  "plugins.readRenderer": [
-    { requires: ["plugins"] },
-  ],
   "plugins.renameSession": [
     { requires: ["plugins"] },
   ],
@@ -1504,7 +1490,6 @@ export interface WireShapes {
   "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
-  "plugins.readRenderer": { params: ReadPluginRendererRequest; result: PluginViewResource };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };

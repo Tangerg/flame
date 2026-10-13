@@ -1,223 +1,293 @@
 {
   "protocol": "io.github.tangerg.flame/backend/2026-10-14.2",
-  "contributes": {
-    "renderers": [
-      {
-        "id": "shell",
-        "title": "Shell",
-        "selector": {
-          "type": "toolName",
-          "name": "shell"
-        },
-        "entry": "renderers/result.html"
+  "components": [
+    {
+      "id": "shell",
+      "title": "Shell",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "shell"
       },
-      {
-        "id": "read-shell-output",
-        "title": "Read Shell Output",
-        "selector": {
-          "type": "toolName",
-          "name": "read_shell_output"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "read-shell-output",
+      "title": "Read Shell Output",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "read_shell_output"
       },
-      {
-        "id": "stop-shell",
-        "title": "Stop Shell",
-        "selector": {
-          "type": "toolName",
-          "name": "stop_shell"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "stop-shell",
+      "title": "Stop Shell",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "stop_shell"
       },
-      {
-        "id": "read",
-        "title": "Read",
-        "selector": {
-          "type": "toolName",
-          "name": "read"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "read",
+      "title": "Read",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "read"
       },
-      {
-        "id": "grep",
-        "title": "Grep",
-        "selector": {
-          "type": "toolName",
-          "name": "grep"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "grep",
+      "title": "Grep",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "grep"
       },
-      {
-        "id": "glob",
-        "title": "Glob",
-        "selector": {
-          "type": "toolName",
-          "name": "glob"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "glob",
+      "title": "Glob",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "glob"
       },
-      {
-        "id": "lsp",
-        "title": "Lsp",
-        "selector": {
-          "type": "toolName",
-          "name": "lsp"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "lsp",
+      "title": "Lsp",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "lsp"
       },
-      {
-        "id": "list-skills",
-        "title": "List Skills",
-        "selector": {
-          "type": "toolName",
-          "name": "list_skills"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "list-skills",
+      "title": "List Skills",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "list_skills"
       },
-      {
-        "id": "load-skill",
-        "title": "Load Skill",
-        "selector": {
-          "type": "toolName",
-          "name": "load_skill"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "load-skill",
+      "title": "Load Skill",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "load_skill"
       },
-      {
-        "id": "read-skill-resource",
-        "title": "Read Skill Resource",
-        "selector": {
-          "type": "toolName",
-          "name": "read_skill_resource"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "read-skill-resource",
+      "title": "Read Skill Resource",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "read_skill_resource"
       },
-      {
-        "id": "propose-skill",
-        "title": "Propose Skill",
-        "selector": {
-          "type": "toolName",
-          "name": "propose_skill"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "propose-skill",
+      "title": "Propose Skill",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "propose_skill"
       },
-      {
-        "id": "delegate-task",
-        "title": "Delegate Task",
-        "selector": {
-          "type": "toolName",
-          "name": "delegate_task"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "delegate-task",
+      "title": "Delegate Task",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "delegate_task"
       },
-      {
-        "id": "ask-user",
-        "title": "Ask User",
-        "selector": {
-          "type": "toolName",
-          "name": "ask_user"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "ask-user",
+      "title": "Ask User",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "ask_user"
       },
-      {
-        "id": "web-search",
-        "title": "Web Search",
-        "selector": {
-          "type": "toolName",
-          "name": "web_search"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "web-search",
+      "title": "Web Search",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "web_search"
       },
-      {
-        "id": "http-request",
-        "title": "Http Request",
-        "selector": {
-          "type": "toolName",
-          "name": "http_request"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "http-request",
+      "title": "Http Request",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "http_request"
       },
-      {
-        "id": "web-fetch",
-        "title": "Web Fetch",
-        "selector": {
-          "type": "toolName",
-          "name": "web_fetch"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "web-fetch",
+      "title": "Web Fetch",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "web_fetch"
       },
-      {
-        "id": "search-memory",
-        "title": "Search Memory",
-        "selector": {
-          "type": "toolName",
-          "name": "search_memory"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "search-memory",
+      "title": "Search Memory",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "search_memory"
       },
-      {
-        "id": "read-tool-result",
-        "title": "Read Tool Result",
-        "selector": {
-          "type": "toolName",
-          "name": "read_tool_result"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "read-tool-result",
+      "title": "Read Tool Result",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "read_tool_result"
       },
-      {
-        "id": "search-tools",
-        "title": "Search Tools",
-        "selector": {
-          "type": "toolName",
-          "name": "search_tools"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "search-tools",
+      "title": "Search Tools",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "search_tools"
       },
-      {
-        "id": "apply-patch",
-        "title": "Apply Patch",
-        "selector": {
-          "type": "toolName",
-          "name": "apply_patch"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "apply-patch",
+      "title": "Apply Patch",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "apply_patch"
       },
-      {
-        "id": "shape-command",
-        "title": "command result",
-        "selector": {
-          "type": "resultShape",
-          "name": "command"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "shape-command",
+      "title": "command result",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "resultShape",
+        "name": "command"
       },
-      {
-        "id": "shape-search",
-        "title": "search result",
-        "selector": {
-          "type": "resultShape",
-          "name": "search"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "shape-search",
+      "title": "search result",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "resultShape",
+        "name": "search"
       },
-      {
-        "id": "shape-patch",
-        "title": "patch result",
-        "selector": {
-          "type": "resultShape",
-          "name": "patch"
-        },
-        "entry": "renderers/result.html"
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "shape-patch",
+      "title": "patch result",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "resultShape",
+        "name": "patch"
       },
-      {
-        "id": "shape-websearch",
-        "title": "webSearch result",
-        "selector": {
-          "type": "resultShape",
-          "name": "webSearch"
-        },
-        "entry": "renderers/result.html"
-      }
-    ]
-  }
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
+      "id": "shape-websearch",
+      "title": "webSearch result",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "resultShape",
+        "name": "webSearch"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    }
+  ]
 }

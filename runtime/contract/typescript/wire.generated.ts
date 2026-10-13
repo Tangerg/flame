@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.4";
+export const PROTOCOL_VERSION = "2026-10-14.5";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1350,7 +1350,6 @@ export interface PluginRelease {
   name: string;
   pointValues: PluginPointValue[];
   points: PluginPoint[];
-  renderers: PluginRenderer[];
   servers: PluginServerDeclaration[];
   skills: PluginSkill[];
   themes: PluginTheme[];
@@ -1360,12 +1359,6 @@ export interface PluginRelease {
 export interface PluginReleaseRequest {
   digest: string;
   installationId: string;
-}
-
-export interface PluginRenderer {
-  id: string;
-  selector: PluginRendererSelector;
-  title: string;
 }
 
 export interface PluginRendererSelector {
@@ -1429,10 +1422,6 @@ export type PluginValueChange =
   | { type: "clear" };
 
 export type PluginValueChangeType = "set" | "clear";
-
-export interface PluginViewResource {
-  html: string;
-}
 
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
@@ -1548,12 +1537,6 @@ export interface ReadFileRequest {
   path: string;
   startLine?: number;
   workspace: WorkspaceRef;
-}
-
-export interface ReadPluginRendererRequest {
-  digest: string;
-  installationId: string;
-  rendererId: string;
 }
 
 export interface ReadPluginResourceRequest {

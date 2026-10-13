@@ -144,7 +144,7 @@ and loads the declared component in its own React tree. Supported registrations,
 observation and owned calls retire through Dougong; ESM evaluation is not unload.
 A changed evaluated release or Runtime generation requires a window reload.
 The current slice declares the installation-scoped Reviews workspace board;
-remaining placements, static components and former HTML carriers still require
+remaining action placements and final component acceptance still require
 migration. Compilation and bundle mapping do not establish rendered acceptance.
 
 
@@ -308,25 +308,20 @@ partial/truncated reads, loading, failure and withdrawal retain the existing sou
 presentation; line navigation begins in source mode. Shared React/SDK/UI and exact
 release resource leases are the same as for other installed components.
 
-## Protocol 2026-10-11.2
+## Tool-result components
 
-The optional [Tool results package](../plugins/tool-results/plugin.json) replaces the
-compiled Desktop tool previews. Releases declare bounded `renderers`, each with an
-exact display-name or closed result-shape selector. `plugins.readRenderer` authorizes
-an enabled installation's exact release and returns its immutable HTML.
-It grants no Tool invocation or historical replay authority.
+The optional [Tool results package](../plugins/tool-results/plugin.json) supplies
+ordinary components with `toolResult` scope and `toolResultRenderer` placement.
+An exact display-name or known result-shape selector chooses presentation; it grants
+no Tool invocation or historical replay authority. Runtime admits ESM resources and
+immutable selector metadata without evaluating code. The generic HTML renderer
+vocabulary and read operation are removed.
 
-The trusted client captures one settled transcript result. An isolated page receives
-that snapshot and may refresh only the same read after renewed installation admission.
-A unique exact-name renderer precedes a unique shape renderer. Equally ranked candidates
-remain ambiguous and use the generic inspector. Running or absent results stay generic.
-The inspector remains available with a renderer and appears automatically during loading
-or failure. Revocation, replacement and connection withdrawal retire the page while
-preserving recorded results and the host's trusted actions.
-
-Rebuild Runtime and clients together. Install and enable the current Tool results package to enable
-rich previews. There is no compiled preview adapter or automatic package installation.
-Existing durable results and admitted releases need no data conversion.
+The client captures one frozen settled transcript projection. Exact-name matches
+precede shape matches; equally ranked candidates use generic inspection. Running or
+absent results stay generic. Inspection remains available during loading, failure,
+revocation and connection replacement. Current installed renderers may inspect old
+results, but opening history never downloads or evaluates historical producer code.
 
 ## Protocol 2026-10-11.1
 
@@ -417,14 +412,28 @@ reuses the selected query. Disablement/uninstall withdraws presentation and reso
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
 
+## Protocol 2026-10-14.5
+
+Core removes `plugins.readRenderer`, its Go/TS binding, HTML resource DTO and release
+renderer array. Renderers now declare ordinary components with file/toolResult scopes,
+technical placements and selectors, using the common exact-release resource lease.
+Rebuild all generated consumers and reinstall Tool results at the new digest. Former
+HTML declarations, resources, readers, builders and browser/native guest machinery
+are removed without aliases. The shared UI guest theme/bootstrap exports are removed;
+external UI authors must use ordinary shared provider context. Backend wire remains
+2026-10-14.2; private business formats and recorded results remain unchanged.
+
+Native component acceptance and final full/vet/race verification remain open. Optional
+renderer failure preserves recorded data inspection. Contextual action/Core facade
+migration remains separate work with the existing business/receipt owners.
+
 ## Protocol 2026-10-14.4
 
 Core adds optional component selector metadata and file scope. Rebuild generated
 Go/Protocol/TS consumers and reinstall the File renderers package at its new digest.
 The former file HTML declaration, resource, builder and graphical carrier are removed
 without an alias or old reader. Markdown is an ordinary ESM component using frozen
-public captured-file data. Tool-result HTML and contextual actions remain separate
-migration work. Backend wire remains 2026-10-14.2; private business formats do not change.
+public captured-file data. Contextual actions remain separate migration work. Backend wire remains 2026-10-14.2; private business formats do not change.
 Native loading/retirement acceptance and final full/vet/race verification remain open.
 
 ## Protocol 2026-10-14.3 and plugin backend 2026-10-14.2
@@ -502,7 +511,7 @@ The final Views declaration, Domain model, Protocol projection, readView/readSch
 operations, generated contracts and HTML build path are removed. The generic loader
 has no remaining business view cases or Schedule-domain import for templates. Rebuild
 Runtime/CLI/TS/SDK/Host/packages together; backend .4 and private data formats remain.
-Renderer HTML and human action migration remain separate ongoing work. The current
+Human action migration remains separate ongoing work. The current
 background role still requires its backend-owned lifecycle cutover and full native
 acceptance; component/build evidence does not close that requirement.
 
@@ -523,8 +532,7 @@ path before dispatch. Read failure keeps the accepted page/cursor; uncertain mut
 retain their original command and block new changes. Ledger/publication/private data
 ownership remains with the Memory backend. Full cross-reload recovery stays queued.
 
-The current HTML bridge and package rebuild requirements are described in Protocol 2026-10-10.5.
-Immutable older HTML is not rewritten and superseded handshakes have no aliases.
+Superseded HTML handshakes and resources are removed without aliases.
 
 Trajectory components call the canonical `sessions.trajectory` request, including
 `includeDescendants`, bounded page size and cursor scope. The existing query owns
@@ -555,7 +563,7 @@ Trusted clients accept the human's title and captured Session revision. Opening 
 restoring a form does not submit it. Runtime verifies release availability, then admits
 the action against the current enabled installation. Withdrawal refuses new
 commands; a previously accepted command retains its existing product owner, and replay
-returns its historical receipt. The read-only HTML bridge receives no write authority.
+returns its historical receipt. Optional renderers do not own this write authority.
 
 Rebuild Runtime, the shared client, CLI and Desktop together. Earlier protocol
 versions are refused. Previously admitted immutable declarations without actions retain
@@ -1099,12 +1107,12 @@ authority are checked before acceptance. The Session owner performs the edit onc
 its existing revision check; no action result store or second transition exists.
 
 The [first-party trajectory package](../plugins/trajectory/plugin.json) exercises a theme,
-a Skill, an isolated Session trajectory page and a trusted Session rename form. The public page API requires no code
-execution in Runtime. Desktop's [carrier acceptance](../desktop/README.md#plugin-carrier-acceptance)
+a Skill, an ordinary Session trajectory component and the current Session rename action. The public page API requires no code
+execution in Runtime. Desktop's [component lifecycle](../desktop/README.md#installed-component-rendering)
 owns rendering qualification; an unavailable renderer does not change installation state.
 Package limits are 128 MiB total copied bytes, 4096 entries, 256 Skills and
 128 installations. Skill documents and resources obey the existing 1 MiB Skill limits.
-HTML renderer resources are limited to 32 declarations per release and 512 KiB per entry.
+Component ESM resources obey the existing package bounds and immutable resource admission.
 
 This is a breaking protocol/storage change. Rebuild all clients and generated contracts
 together. Installation records reference immutable declarations by digest. Installation

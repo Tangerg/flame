@@ -95,9 +95,10 @@ enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
 
 ## Shared presentation
 
-The standalone resource is generated from `src/view.tsx`. It uses the same `@flame/ui` components and document stylesheet as Desktop. Theme selection remains with the trusted Host; the v3 carrier applies its initial projection and later updates without replacing the page or requesting memory again. Filters and pagination remain read-only, and trusted authoring stays outside the guest.
-
-Build `icons` and `ui`, run `npm ci --prefix plugins`, then `npm run check --prefix plugins`. Rebuild the tracked HTML after changing shared UI or this source. The resource check enforces the Runtime size bound and byte-for-byte build reproducibility.
+The resource is ordinary prebuilt ESM from `src/component.tsx`, using shared React,
+public SDK and UI provider context. Build `icons` and `ui`, install plugin dependencies,
+and use `node plugins/build-components.mjs` (or `--check` for exact reproduction).
+The former HTML guest/channel and separate static control build are removed.
 
 The ordinary Memory component consumes the generated CAPABILITY_JSON and typed
 method maps through the public SDK. Its exact own installation/contribution binds

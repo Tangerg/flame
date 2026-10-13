@@ -287,7 +287,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"OpenPluginResources":   {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Desktop owns a resource subscription for exact-release ESM loading"},
 		"ReadPluginResource":    {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Core projects the admitted resource query through the leased HTTP module/asset URL"},
 		"ListModelInvocations":  {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
-		"ReadPluginRenderer":    {Area: "plugin result resource", Mode: desktopDiagnostics, Entry: "Desktop renders captured results in approved isolated pages; CLI retains canonical terminal results"},
 		"ListSessionTrajectory": {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
 		"ExportTrajectory":      {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
 		"Discover":              lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),

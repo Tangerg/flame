@@ -22,7 +22,6 @@ type pluginUseCases interface {
 	Disable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
 	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, resourceid.InstallationID) error
-	ReadRenderer(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
 	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
 	Component(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
 	Resource(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID, string) ([]byte, error)
@@ -231,16 +230,4 @@ func (s *Handler) UninstallPlugin(ctx context.Context, in protocol.PluginRequest
 		return err
 	}
 	return wirePluginError(s.plugins.Uninstall(ctx, id))
-}
-
-func (s *Handler) ReadPluginRenderer(ctx context.Context, in protocol.ReadPluginRendererRequest) (*protocol.PluginViewResource, error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	html, err := s.plugins.ReadRenderer(ctx, id, digest, in.RendererID)
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return &protocol.PluginViewResource{HTML: html}, nil
 }

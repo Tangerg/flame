@@ -108,7 +108,6 @@ type PluginRelease struct {
 	Servers       []PluginServerDeclaration `json:"servers"`
 	Inputs        []PluginInput             `json:"inputs"`
 	Themes        []PluginTheme             `json:"themes"`
-	Renderers     []PluginRenderer          `json:"renderers"`
 	Actions       []PluginAction            `json:"actions"`
 	Skills        []PluginSkill             `json:"skills"`
 	Diagnostics   []PluginDiagnostic        `json:"diagnostics"`
@@ -133,10 +132,6 @@ type RenamePluginSessionRequest struct {
 	Update   SessionTitleEdit `json:"update"`
 }
 
-type PluginViewResource struct {
-	HTML string `json:"html"`
-}
-
 type PluginRendererSelectorType string
 
 const (
@@ -149,17 +144,6 @@ const (
 type PluginRendererSelector struct {
 	Type PluginRendererSelectorType `json:"type"`
 	Name string                     `json:"name"`
-}
-
-type PluginRenderer struct {
-	ID       string                 `json:"id"`
-	Title    string                 `json:"title"`
-	Selector PluginRendererSelector `json:"selector"`
-}
-
-type ReadPluginRendererRequest struct {
-	PluginReleaseRequest
-	RendererID string `json:"rendererId"`
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

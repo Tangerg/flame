@@ -1,5 +1,4 @@
 import { TOOL_RESULT_RENDERER, WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
-import { browserPluginCarrier } from "@/platform/browserPluginCarrier";
 import { cleanup } from "@testing-library/react";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import type { FlameClient } from "@flame/runtime-contract/client";
@@ -116,7 +115,7 @@ function installation(id: string, name: string): PluginInstallation {
       inputs: [],
       skills: [],
       diagnostics: [],
-      renderers: [],
+
       actions: [],
       themes: [{ id: "theme", title: name, scheme: "dark", colors: { background: "#181a1e" } }],
     },
@@ -130,7 +129,7 @@ it("keeps package realization owned by its generation when the query cache is ca
   onTestFinished(() => pending.resolve({ data: [row] }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(list), browserPluginCarrier),
+    createPluginsPane(() => client(list)),
   );
   await vi.waitFor(() => expect(list).toHaveBeenCalledOnce());
 
@@ -172,7 +171,7 @@ it("joins the retired Runtime before publishing the latest package generation", 
   });
   await loadPluginsForTest(
     runtime,
-    createPluginsPane(() => selected, browserPluginCarrier),
+    createPluginsPane(() => selected),
   );
   await vi.waitFor(() => expect(original).toHaveBeenCalledOnce());
   const retired = packageOperations.get();
@@ -211,7 +210,7 @@ it("keeps a failed realization local to this client and retries it on request", 
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(list, subscribe), browserPluginCarrier),
+    createPluginsPane(() => client(list, subscribe)),
   );
   await vi.waitFor(() =>
     expect(usePackageRealization.getState().failure?.reason).toBe("event stream refused"),
@@ -234,7 +233,7 @@ it("withdraws its realization failure when the owning generation retires", async
   const subscribe = vi.fn().mockRejectedValue(new Error("event stream refused"));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [] }), subscribe), browserPluginCarrier),
+    createPluginsPane(() => client(async () => ({ data: [] }), subscribe)),
   );
   await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
   await resetKernelForTest();
@@ -250,7 +249,7 @@ it("consumes a realization retry once and refuses it after retirement", async ()
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [] }), subscribe), browserPluginCarrier),
+    createPluginsPane(() => client(async () => ({ data: [] }), subscribe)),
   );
   await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
   const failed = usePackageRealization.getState().failure!;
@@ -294,18 +293,16 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   });
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(
-      () =>
-        client(
-          async () => ({
-            data: [
-              installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "first"),
-              installation("0c31c796-224c-40fa-a721-6696971bb697", "second"),
-            ],
-          }),
-          subscribe,
-        ),
-      browserPluginCarrier,
+    createPluginsPane(() =>
+      client(
+        async () => ({
+          data: [
+            installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "first"),
+            installation("0c31c796-224c-40fa-a721-6696971bb697", "second"),
+          ],
+        }),
+        subscribe,
+      ),
     ),
   );
   await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toHaveLength(2));
@@ -336,12 +333,10 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
   });
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(
-      () =>
-        client(async () => {
-          throw new Error("snapshot refused");
-        }, subscribe),
-      browserPluginCarrier,
+    createPluginsPane(() =>
+      client(async () => {
+        throw new Error("snapshot refused");
+      }, subscribe),
     ),
   );
   await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
@@ -382,7 +377,7 @@ it.each(["resolve", "reject"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      createPluginsPane(() => client(list, subscribe), browserPluginCarrier),
+      createPluginsPane(() => client(list, subscribe)),
     );
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
     let stopped = false;
@@ -448,7 +443,7 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      createPluginsPane(() => client(list, subscribe), browserPluginCarrier),
+      createPluginsPane(() => client(list, subscribe)),
     );
     ready.resolve();
     await vi.waitFor(() =>
@@ -515,17 +510,29 @@ it("presents and retains only the contributions Runtime admits", async () => {
     },
   ];
   withheld.selected.components = admitted.selected.components;
-  admitted.selected.renderers = [
-    { id: "search", title: "Search", selector: { type: "resultShape", name: "search" } },
-    { id: "markdown", title: "Markdown", selector: { type: "fileExtension", name: "md" } },
-  ];
-  withheld.selected.renderers = admitted.selected.renderers;
+  admitted.selected.components.push(
+    {
+      id: "search",
+      title: "Search",
+      scope: "toolResult",
+      placement: "toolResultRenderer",
+      selector: { type: "resultShape", name: "search" },
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Result",
+    },
+    {
+      id: "markdown",
+      title: "Markdown",
+      scope: "file",
+      placement: "fileRenderer",
+      selector: { type: "fileExtension", name: "md" },
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Markdown",
+    },
+  );
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(
-      () => client(async () => ({ data: [admitted, withheld] })),
-      browserPluginCarrier,
-    ),
+    createPluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
   );
   await vi.waitFor(() =>
     expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([

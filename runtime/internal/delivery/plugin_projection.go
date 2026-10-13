@@ -116,10 +116,6 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	}
 	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
 	result.Actions = make([]protocol.PluginAction, 0, len(v.Actions))
-	result.Renderers = make([]protocol.PluginRenderer, 0, len(v.Renderers))
-	for _, renderer := range v.Renderers {
-		result.Renderers = append(result.Renderers, protocol.PluginRenderer{ID: renderer.ID, Title: renderer.Title, Selector: protocol.PluginRendererSelector{Type: protocol.PluginRendererSelectorType(renderer.Selector.Kind), Name: renderer.Selector.Name}})
-	}
 	for _, action := range v.Actions {
 		result.Actions = append(result.Actions, protocol.PluginAction{ID: action.ID, Title: action.Title, Operation: protocol.PluginActionOperation(action.Operation)})
 	}

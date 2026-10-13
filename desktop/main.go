@@ -1,9 +1,6 @@
-//go:build !plugincarrierprobe
-
 package main
 
 import (
-	"encoding/json"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 	"log"
 
@@ -18,9 +15,6 @@ func main() {
 	app := application.New(desktopApplicationOptions(host))
 	window := app.Window.NewWithOptions(desktopWindowOptions())
 	host.useWindow(window)
-	host.pluginPagePublish = func(id string, message json.RawMessage) {
-		app.Event.Emit("desktop:plugin-page", map[string]any{"id": id, "message": message})
-	}
 	host.usePathRevealer(app.Env)
 	host.usePathOpener(app.Browser)
 	host.useNotifications(wailsNotifications{

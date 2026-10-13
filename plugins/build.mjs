@@ -46,18 +46,6 @@ export async function buildPlugins({ os, arch, output }) {
       if (error.code === "ENOENT") continue;
       throw error;
     }
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    const declaration = JSON.parse(
-      await readFile(
-        join(
-          source,
-          feature,
-          manifest.extensions["io.github.tangerg.flame"].declaration,
-        ),
-        "utf8",
-      ),
-    );
-    const contributes = declaration.contributes ?? {};
     const target = join(output, feature);
     await mkdir(target);
     await cp(manifestPath, join(target, "plugin.json"));
@@ -70,12 +58,6 @@ export async function buildPlugins({ os, arch, output }) {
       await cp(join(source, feature, "skills"), join(target, "skills"), {
         recursive: true,
       });
-    for (const resource of new Set(
-      (contributes.renderers ?? []).map((item) => item.entry),
-    )) {
-      await mkdir(dirname(join(target, resource)), { recursive: true });
-      await cp(join(source, feature, resource), join(target, resource));
-    }
     try {
       await access(join(source, feature, "mcp.json"));
     } catch (error) {

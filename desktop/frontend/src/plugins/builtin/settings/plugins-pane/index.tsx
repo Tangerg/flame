@@ -1,4 +1,3 @@
-import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { asyncDisposeSymbol } from "dougong";
 import { lazy } from "react";
 import type { FlameClient } from "@flame/runtime-contract/client";
@@ -14,7 +13,7 @@ const PluginsPane = lazy(() =>
   import("./ui/PluginsPane").then(({ PluginsPane }) => ({ default: PluginsPane })),
 );
 
-export function createPluginsPane(runtimeClient: () => FlameClient, carrier: PluginCarrier) {
+export function createPluginsPane(runtimeClient: () => FlameClient) {
   return definePlugin({
     name: "flame.builtin.plugins-pane",
     requires: { runtime: RUNTIME_STREAM },
@@ -43,7 +42,6 @@ export function createPluginsPane(runtimeClient: () => FlameClient, carrier: Plu
               registerPackageContributions(
                 owned,
                 runtimeClient(),
-                carrier,
                 modules,
                 ctx.runtime.connectionGeneration()!,
               );

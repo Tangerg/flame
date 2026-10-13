@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { stylexBabel } from "./stylex.vite.mjs";
-import { pluginCarrier } from "./pluginCarrier.vite.mjs";
 import { pluginModules } from "./pluginModules.vite.mjs";
 
 // The dev-server port is declared once, as VITE_PORT in the Taskfile, and handed to both
@@ -17,7 +16,7 @@ const webviewPort = process.env.WAILS_VITE_PORT;
 const host = "127.0.0.1";
 
 export default defineConfig({
-  plugins: [react(), stylexBabel(), pluginCarrier(), pluginModules()],
+  plugins: [react(), stylexBabel(), pluginModules()],
   // Wails serves the webview through its OWN dev server on a different port, so the page
   // origin is NOT Vite's. Without `hmr.clientPort` the Vite HMR client in the WebView
   // opens its WebSocket against the page origin instead of Vite — the handshake fails

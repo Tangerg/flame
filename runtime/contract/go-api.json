@@ -345,10 +345,6 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
             {
-              "name": "ReadPluginRenderer",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginRendererRequest, options CallOptions) (*protocol.PluginViewResource, error)"
-            },
-            {
               "name": "ReadPluginResource",
               "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options CallOptions) (*protocol.PluginResource, error)"
             },
@@ -981,10 +977,6 @@
             {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
-            },
-            {
-              "name": "ReadPluginRenderer",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginRendererRequest, options CallOptions) (*protocol.PluginViewResource, error)"
             },
             {
               "name": "ReadPluginResource",
@@ -3634,7 +3626,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.4\""
+          "value": "\"2026-10-14.5\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -9188,11 +9180,6 @@
               "tag": "json:\"themes\""
             },
             {
-              "name": "Renderers",
-              "type": "[]PluginRenderer",
-              "tag": "json:\"renderers\""
-            },
-            {
               "name": "Actions",
               "type": "[]PluginAction",
               "tag": "json:\"actions\""
@@ -9222,33 +9209,6 @@
               "name": "Digest",
               "type": "string",
               "tag": "json:\"digest\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "PluginRenderer",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Title",
-              "type": "string",
-              "tag": "json:\"title\""
-            },
-            {
-              "name": "Selector",
-              "type": "PluginRendererSelector",
-              "tag": "json:\"selector\""
             }
           ],
           "methods": [
@@ -9533,23 +9493,6 @@
           "name": "PluginValueChangeType",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "PluginViewResource",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "HTML",
-              "type": "string",
-              "tag": "json:\"html\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
         },
         {
           "name": "ProblemData",
@@ -9869,27 +9812,6 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ReadPluginRendererRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "PluginReleaseRequest",
-              "type": "PluginReleaseRequest"
-            },
-            {
-              "name": "RendererID",
-              "type": "string",
-              "tag": "json:\"rendererId\""
             }
           ],
           "methods": [

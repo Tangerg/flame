@@ -65,12 +65,6 @@ type wireAction struct {
 	Title     string                 `json:"title"`
 	Operation plugin.ActionOperation `json:"operation"`
 }
-type wireRenderer struct {
-	ID       string               `json:"id"`
-	Title    string               `json:"title"`
-	Selector wireRendererSelector `json:"selector"`
-	Entry    string               `json:"entry"`
-}
 type wireRendererSelector struct {
 	Type string `json:"type"`
 	Name string `json:"name"`
@@ -113,4 +107,4 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 }
 
 var declarationFields = []string{"protocol", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
-var presentationFields = []string{"renderers", "actions", "themes"}
+var presentationFields = []string{"actions", "themes"}

@@ -57,8 +57,7 @@ const pluginThemeSchemas = [
             servers: [],
             inputs: [],
             themes: [theme],
-            views: [],
-            renderers: [],
+
             actions: [],
             skills: [],
             diagnostics: [],

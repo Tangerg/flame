@@ -28,7 +28,6 @@ type Packages interface {
 	Reclaim(context.Context, []fingerprint.Digest) error
 	Prepare(context.Context, *plugin.Installation, plugin.Release) error
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
-	ReadPage(context.Context, *plugin.Installation, string) (string, error)
 	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
 }
 

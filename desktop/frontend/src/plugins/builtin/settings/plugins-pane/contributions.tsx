@@ -1,9 +1,9 @@
-import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { lazy, Suspense, type ReactNode } from "react";
 import { ComponentModules } from "./adapters/componentModules";
 import {
   InstalledComponent,
   InstalledFileComponent,
+  InstalledToolResultComponent,
   ComponentBoundary,
   ComponentLoading,
 } from "./ui/InstalledComponent";
@@ -18,10 +18,9 @@ import {
   TOOL_RESULT_RENDERER,
   WORKSPACE_FILE_RENDERER,
 } from "@/plugins/sdk/kernelPoints";
-import { ToolResultPackage } from "./ui/ToolResultPackage";
 import { RecordedFileComponent } from "./ui/RecordedFileComponent";
-import type { CapturedFile } from "@flame/plugin-sdk";
-import { createRecordedRendererReads, type ToolResultSnapshot } from "./adapters/rendererReads";
+import { RecordedToolComponent } from "./ui/RecordedToolComponent";
+import type { CapturedFile, CapturedToolResult } from "@flame/plugin-sdk";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -45,7 +44,6 @@ function packageThemeId(installation: string, theme: string): string {
 function createPackageReconciler(
   scope: ContributionLifetime,
   client: FlameClient,
-  carrier: PluginCarrier,
   modules: ComponentModules,
   generation: object,
   moduleScope: ContributionLifetime,
@@ -137,6 +135,57 @@ function createPackageReconciler(
           );
           continue;
         }
+        if (entry.placement === "toolResultRenderer") {
+          if (!entry.selector || entry.selector.type === "fileExtension")
+            throw new Error("Tool result component requires a result selector");
+          const Result = lazy(async () => {
+            const loaded = await modules.component(
+              moduleScope,
+              client,
+              currentRuntimeEndpoint(),
+              generation,
+              installation,
+              entry,
+            );
+            return {
+              default: ({
+                toolResult,
+                fallback,
+              }: {
+                toolResult: CapturedToolResult;
+                fallback: ReactNode;
+              }) => (
+                <InstalledToolResultComponent
+                  entry={loaded.component}
+                  resources={loaded.signal}
+                  runtime={client}
+                  binding={binding}
+                  lifetime={lifetime}
+                  toolResult={toolResult}
+                  fallback={fallback}
+                />
+              ),
+            };
+          });
+          const id = `package:${installation.id}:${entry.id}`;
+          lifetime.contribute(
+            TOOL_RESULT_RENDERER,
+            {
+              id,
+              title: `${release.name} · ${entry.title}`,
+              selector: { ...entry.selector },
+              component: (props) => (
+                <ComponentBoundary fallback={props.fallback}>
+                  <Suspense fallback={props.fallback}>
+                    <RecordedToolComponent {...props} entry={Result} />
+                  </Suspense>
+                </ComponentBoundary>
+              ),
+            },
+            { key: id },
+          );
+          continue;
+        }
         const View = lazy(async () => {
           const loaded = await modules.component(
             moduleScope,
@@ -178,39 +227,6 @@ function createPackageReconciler(
           { key: id },
         );
       }
-      for (const renderer of release.renderers) {
-        const binding = {
-          installationId: installation.id,
-          digest: release.digest,
-          rendererId: renderer.id,
-        };
-        const id = `package:${installation.id}:${renderer.id}`;
-        const title = `${release.name} · ${renderer.title}`;
-        const reads = (tool: ToolResultSnapshot["tool"]) =>
-          createRecordedRendererReads(client.plugins, binding, {
-            format: "flame.tool-result.v1",
-            tool,
-          });
-        lifetime.contribute(
-          TOOL_RESULT_RENDERER,
-          {
-            id,
-            title,
-            selector: { ...renderer.selector },
-            component: ({ tool, fallback }) => (
-              <ToolResultPackage
-                tool={tool}
-                fallback={fallback}
-                reads={reads}
-                title={title}
-                lifetime={lifetime}
-                carrier={carrier}
-              />
-            ),
-          },
-          { key: id },
-        );
-      }
       for (const theme of release.themes) {
         const { background, foreground, accent, muted, border } = theme.colors;
         contributePaletteTheme(lifetime, {
@@ -227,7 +243,6 @@ function createPackageReconciler(
 export function registerPackageContributions(
   scope: ContributionLifetime,
   client: FlameClient,
-  carrier: PluginCarrier,
   modules: ComponentModules,
   generation: object,
 ): void {
@@ -269,14 +284,7 @@ export function registerPackageContributions(
   const realize = () => {
     withdrawFailure();
     const contributions = scope.lifetime("package-realization");
-    const reconcile = createPackageReconciler(
-      contributions,
-      client,
-      carrier,
-      modules,
-      generation,
-      scope,
-    );
+    const reconcile = createPackageReconciler(contributions, client, modules, generation, scope);
     // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {
       const refresh = async () => {

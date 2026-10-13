@@ -4,36 +4,6 @@ includes:
   common: ../Taskfile.yml
 
 tasks:
-  check:plugin-carrier:
-    summary: Verifies third-party frame isolation in the shipping Wails carrier
-    cmds:
-      - node frontend/scripts/check-plugin-carrier-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}' wails
-    env: &carrierEnvironment
-      CGO_ENABLED: 1
-      CGO_CFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
-      CGO_LDFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
-      MACOSX_DEPLOYMENT_TARGET: "{{.MACOS_MIN_VERSION}}"
-
-  check:plugin-carrier:isolated:
-    summary: Verifies an independent WebKit carrier inside the shipping Wails window
-    cmds:
-      - node frontend/scripts/check-plugin-carrier-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}' isolated-webkit
-    env: *carrierEnvironment
-
-  check:plugin-view:
-    summary: Verifies the production native plugin surface and retirement
-    cmds:
-      - node frontend/scripts/check-plugin-view-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}'
-    env: *carrierEnvironment
-
-  check:plugin-workbench:
-    summary: Verifies all portable pages in the production workbench against an isolated Linux Runtime
-    deps:
-      - task: common:install:frontend:deps
-    cmds:
-      - node frontend/scripts/check-plugin-workbench-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}'
-    env: *carrierEnvironment
-
   build:
     summary: Builds the application
     cmds:

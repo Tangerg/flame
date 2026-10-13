@@ -1126,12 +1126,9 @@ func registerPluginValues(s *Shapes) {
 		{When: []delivery.FieldCondition{{Field: "failure", Operator: delivery.OperatorPresent}}, Forbidden: []string{"output"}},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginRendererRequest](), Constraints: []FieldConstraint{{Field: "rendererId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRenderer](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: plugin.MaxRendererSelectorNameBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RenamePluginSessionRequest](), Constraints: []FieldConstraint{{Field: "actionId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginAction](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxActionTitleBytes}}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginViewResource](), Constraints: []FieldConstraint{{Field: "html", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationBytes}}})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.PluginThemeColors](),
 		Constraints: []FieldConstraint{

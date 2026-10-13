@@ -221,8 +221,8 @@ The status, authorization attempt and connection test projections accept only th
 their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
-The remaining trajectory, Memory and Schedules HTML pages share the carrier lifecycle.
-Usage and Icon gallery use ordinary installed React components and owned ESM resources.
+Trajectory, Memory, Schedules, Skills, Diagnostics, Diff, Usage, Icon gallery and
+file/Tool-result renderers use ordinary installed React components and owned ESM resources.
 Build target-specific Memory and Schedules packages with
 `node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages`.
 Runtime distributions contain all first-party packages beside their executable.
@@ -230,20 +230,19 @@ A fresh database receives enabled defaults during Runtime initialization;
 Desktop renders those installations without its own installation policy. Restart
 preserves user disablement and uninstall. Settings → Plugins manages subsequent release
 selection and enablement.
-Memory captures project/user scope in trusted Host controls. Its guest renders canonical
-candidates and active items; trusted Host forms retain add, review, edit, pin and delete.
-The Memory backend alone owns these facts; Runtime routes admitted commands and supplies
-bounded model capabilities. Withdrawal retires the backend generation and retains its
-private data. Rebuild all clients for protocol 2026-10-13.1. Memory and Schedules use
-package resources built with the current bridge. Explicitly select current bytes
-for the `flame.view.ready.v3` / `flame.view.connect.v3` handshake.
+Memory captures optional public Session/workspace targets under client scope. Its
+ordinary component calls its own installed contribution for reads and mutations,
+retaining inspected revisions and original uncertain-command handles. The backend
+alone owns private facts and receipts. Runtime supplies admitted callbacks and
+retires withdrawn backend generations while retaining private data. Components
+share the current public module format; there is no HTML handshake or mutation bridge.
 Packages may also declare `renameSession` actions. An admitted package row displays a
 trusted host form with the operation and captured Session ID/revision. The human submits
 the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission
 and the existing Session mutation. Closing the form does not cancel an accepted command;
 connection replacement retires its local publication. Revision conflicts preserve the
-draft without silently adopting a new revision. HTML mutation bridges and general Runtime
-access remain unavailable. Runtime-owned MCP tools continue through
+draft without silently adopting a new revision. The existing contextual action remains
+until its ordinary public operation migration. Runtime-owned MCP tools continue through
 the existing execution and approval path. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
 
 Package themes declare a light/dark scheme. Their portable colors pass through the same
@@ -270,403 +269,31 @@ Explicit selection advances the locale preference immediately; lazy activation c
 replace a newer choice. Until activation succeeds, the existing English fallback remains
 available, and selection failures are displayed in the appearance pane.
 
-## Plugin carrier acceptance
+## Installed component rendering
 
-The carrier spike uses the same brokered HTML fixture in Chromium, WebKit and an isolated
-Wails window. It checks opaque origin, host DOM/storage separation, CSP network and navigation
-restrictions, source-bound channel bootstrap, and publication before and after channel
-retirement. Browser tests additionally seed and verify a host cookie canary. Native effects
-are counted in Go; an unreadable or rejected response is not evidence that dispatch was
-refused. The native asset handler counts plugin probe requests before serving them,
-including missing resources. The fixture opens no product Runtime and loads no product
-configuration.
+Installed pages and file/Tool-result renderers are ordinary trusted React components
+with prebuilt namespace-local ESM. The public SDK build externalizes React, React DOM,
+JSX runtimes, SDK and UI; the workbench maps them to its actual shared module instances.
+Runtime serves exact selected-release resources through subscription-owned leases.
+Logical disablement retires supported registrations and joins owned observation;
+module replacement may require a window reload and does not promise ESM unloading.
 
-MessageEvent owns sender identity; a frame's claimed origin stays inside its observation
-payload and cannot replace host metadata. Native reports keep carrier observations, the
-Go-owned baseline and current effects, and native WebKit configuration evidence in separate
-fields. `Probe.Begin` joins readiness and freezes one baseline before guest admission;
-the page cannot replace it. Channel retirement compares snapshots of one
-receive counter after the still-live frame witnesses an attempted send to the closed port.
-Browser fault injection verifies that an unclosed port fails this gate and that a child
-failure disposes its frames. One probe lifetime cancels pending waits and disposes frames,
-ports, listeners and its deadline before publishing one terminal result.
-A triggered wait owns both listener registration and its starting operation, so a synchronous
-port failure settles that wait instead of leaving an unhandled cancellation rejection.
-Every browser scenario owns its page and verifies host identity, frame disposal and the
-absence of orphaned waits; port start and send failures have separate regression cases.
-Network isolation requires a trusted browser CSP `connect-src` violation alongside the
-expected fetch rejection. An unexpected probe error is terminal failure. Browser cases
-also reject readable responses and synthetic CSP witnesses, so generic network failure
-cannot stand in for policy enforcement.
-Both network and navigation witnesses must report enforcement against the exact URL
-issued by the host. A violation for another resource cannot complete the pending attempt;
-browser fault cases exercise both mismatches and verify terminal cleanup.
-The terminal publisher owns JSON encoding and its failure result. Page output, native
-publication and the browser result all project that same encoded value. Cyclic frame
-evidence produces an explicit terminal failure after cleanup instead of an orphaned
-rejection or a missing report. Browser regression cases also verify that fields omitted
-by JSON cannot survive in an independent in-memory result.
+File and settled Tool-result renderers receive frozen accepted data. Current navigation
+cannot retarget it. Partial/truncated files and running/absent results stay generic;
+loading, failure and withdrawal retain source or recorded-result inspection. The
+existing selectors preserve ambiguity and exact-name-before-shape precedence.
+Historical data never installs old producer scripts or replays Tools.
 
-Run the browser gate from `frontend/`:
-
-```sh
-npm run check:plugin-carrier:browser
-```
-
-Run the independent native carrier gate from `desktop/` on macOS with a graphical session:
-
-```sh
-wails3 task darwin:check:plugin-carrier:isolated
-```
-
-The original Wails frame remains a separate, unqualified carrier:
-
-```sh
-wails3 task darwin:check:plugin-carrier
-```
-
-Each native task consumes the shipping deployment floor from `Taskfile.yml`, runs the
-fixture's Go tests and builds it into an owned temporary directory. It does not rebuild the
-application, generate bindings or alter user data. These gates are separate from the ordinary
-frontend check: the gate for each carrier must pass before enabling third-party HTML.
-
-The probe negotiates a WebRTC data channel with both an owned loopback STUN endpoint
-and an explicit remote ICE candidate targeting the same UDP receiver, in addition to
-fetch, image and navigation attempts. Packet counts belong to the receiver outside the
-frame. Every carrier requires that count to remain zero. Browser enforcement requires an
-enforcing `connection-allowlist` report; the independent native carrier requires WebKit's
-native lockdown configuration and the engine's withdrawal of the WebRTC API. The carrier
-profile is selected by the trusted runner, never by the frame's claims. Local ICE candidates
-are diagnostic
-data, not outgoing network effects. A missing candidate or ordinary connection failure
-alone does not establish isolation.
-
-`testdata/plugin-carrier/network-policy.txt` owns the connection-header policy. The browser and
-native response handlers project it into the `Connection-Allowlist` header on the
-unprivileged entry document. That document receives brokered HTML and creates its Blob
-URL inside the constrained context, preserving the inherited network policy. The main
-host has no guest connection policy. The host's frame CSP permits the exact entry URL
-and Blob documents; it does not permit arbitrary same-origin navigation.
-
-The full Chromium 156 carrier passes this gate. Its executing network service enforces
-the empty allowlist and blocks WebRTC while the frame remains usable. Browser negative
-controls prove that an absent or report-only policy sends packets and fails admission.
-Fault injection also rejects plain objects impersonating browser reports.
-The browser task selects full Chromium explicitly; the separate default headless-shell
-binary crashes under this policy and is not a qualified carrier. See the
-[Chrome announcement](https://developer.chrome.com/blog/connection-allowlist-announcement)
-and [policy specification](https://wicg.github.io/connection-allowlists/).
-
-WebKit 27.2 ignores this connection header and sends packets, so its gate fails.
-`connect-src 'none'` alone does not cover WebRTC, and the proposed CSP WebRTC directive
-is not enforced by either tested engine. The fixture no longer presents that directive
-as a security boundary. [WebKit's implementation issue](https://bugs.webkit.org/show_bug.cgi?id=255651)
-remains open. Overwriting JavaScript globals cannot replace executing-carrier enforcement.
-
-The current Wails macOS carrier also sends packets to the Go-owned receiver,
-so its network gate fails independently of native binding dispatch. An opaque-origin
-Blob frame with `sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
-`webkit.messageHandlers.external`, advancing native window readiness. The trusted event
-positive control records one event; the child raises the native owner's count to two,
-despite having no `window._wails` and no access to the parent DOM. The fixture's parent
-frame policy blocks self-navigation into the native Runtime route, but does
-not block this script-message path.
-
-The independent native spike passes on macOS 26.5 with the released Wails beta.28.
-It embeds a separate WKWebView through the Wails window's public native handle, without
-copying framework dispatch or replacing JavaScript globals. Apple's public
-[`WKWebpagePreferences.isLockdownModeEnabled`](https://developer.apple.com/documentation/webkit/wkwebpagepreferences/islockdownmodeenabled)
-configuration belongs only to that view. Its website data store is nonpersistent and its
-content controller has no Wails injection or handler. Native frame identity admits
-publication from the trusted coordinator and rejects guest messages before any effect.
-The Wails workbench uses its normal runtime and retains one binding call and one readiness
-event. The native control disables lockdown, sends packets, and fails admission; API
-absence alone cannot qualify a carrier. Closing the owned view removes its handler and
-navigation delegate, stops loading, detaches the view, and releases its callback handle.
-The DOM container owns geometry. Native pages retain their full document frame inside
-an independently clipped surface that intersects the viewport and all clipping ancestors.
-Position changes are projected in order, and detaching the container retires the native
-surface. Hiding or closing a focused surface restores workbench focus.
-
-The original Wails dispatch must enforce frame authority before processing framework
-control messages.
-The application's `RawMessageHandler` cannot supply that guarantee: Wails processes its
-control messages before that callback. Removing JavaScript globals or suppressing frame
-errors does not repair the native admission owner. That original frame carrier remains
-unavailable. Slice C uses the qualified Chromium entry document and independent native
-WebKit view; it does not qualify the original Wails frame. Independent themes, Skills and
-MCP declarations retain their existing admission and lifecycle.
-
-### Optional first-party pages
-
-Tool results is an optional package from `plugins/tool-results`. Runtime admits its
-renderer declarations and authorizes the exact selected, enabled release. The workbench
-selects a unique display-name match before a unique result-shape match; ambiguity retains
-the generic inspector. The isolated page receives one captured, settled ToolCall read
-projection. Refresh reauthorizes the release and returns the same record. It cannot execute
-a tool or advance an outcome. The generic recorded content remains available after page
-failure, disablement or uninstall. Rebuild Runtime and clients together for the generated
-renderer contract. Fresh Runtime databases include this package by default;
-existing installations use explicit release selection and enablement.
-
-File renderers is an optional package from `plugins/file-renderers`. Its normalized
-extension selectors consume complete file reads captured by the trusted Files dock.
-The isolated page receives workspace, path, content and read bounds. It cannot select
-another path, invoke a tool or edit a file. Refresh repeats that snapshot after renewed
-release admission. Partial, truncated and ambiguous content stays in source mode;
-line navigation starts there. The package builds a closed DOM from Markdown tokens;
-authored HTML, MDX expressions, images and URLs remain text. Source and trusted file
-controls remain available through absence, failure and withdrawal.
-
-The optional [Diagnostics package](../plugins/diagnostics/plugin.json) is an ordinary
-React component using the public SDK's explicit client-telemetry collaborator.
-Reads return detached current-buffer snapshots and clearing delegates to the existing
-telemetry owner. Retired contexts refuse both operations. The old HTML transport
-cutoffs and omission DTO are removed; buffer capacity remains at its existing owner.
-Runtime accounting and remote telemetry remain separate. Missing or competing
-`diagnostics` material contributions open the catalogue from Run recovery controls.
-
-The built-in package manager remains available independently of installed views.
-Provider choices come from Runtime's recorded selections and admitted package
-metadata. Users explicitly select an installation/contribution for a selection role;
-disabled or missing selections remain visible, with no automatic candidate fallback.
-A changed choice affects future activation while existing execution retains its
-captured bindings. Unknown confirmation preserves the original command identity and
-exposes its original retry instead of creating another selection command.
-
-Dependency inspection reads the current selected release/contribution through
-`plugins.resolveRequirements`. Declared required/optional roles remain visible when
-inspection fails; successful empty optional bindings stay explicit. Displayed binding
-results are identified as the last inspected snapshot, not a new source of current
-execution state. Reads and commands use the existing contribution cancellation/join
-owner. Graphical execution is not claimed by source/build verification.
-
-The optional [Icon gallery](../plugins/icon-gallery/plugin.json) is an ordinary React
-component built from `@flame/icons` public catalog and React drawings. It filters
-immutable local cards with Hooks and uses the workbench's shared React/UI modules.
-It requires no callable contribution or backend. The resource check rejects stale
-prebuilt ESM. Its former static HTML carrier is removed; current graphical execution
-has not been qualified in this refactor because UI/E2E checks are excluded.
-
-The optional [Trajectory package](../plugins/trajectory/plugin.json) is an ordinary
-Session-scoped React component. The existing navigation owner projects a frozen
-Session ID into the public SDK; target replacement retires the render instance.
-The component reads canonical `sessions.trajectory` directly, using public capability
-discovery for descendant scope. Runtime owns all recorded Run, model-call and Item
-facts and admits every cursor against its captured query scope.
-
-The Session dock registration is a projection of component scope. The package owns
-only filters, disclosure and cursor history. Failed reads retain the last accepted
-page and cursor. Zero usage remains distinct from missing evidence, unknown settlement
-does not imply execution duration, and redacted reasoning is excluded from display
-and search. Inline images load on expansion. Complete Session export and execution
-controls retain their existing workbench owners. The former HTML/read adapter is removed.
-
-The optional [Usage package](../plugins/usage/plugin.json) is an ordinary installed
-React component. It owns local period/group/filter controls and reads `usage.summary`
-through the explicit public SDK Runtime client. The component lifetime cancels and
-joins reads; a failed refresh retains the last accepted report with its period label.
-Zero reported usage, absent pricing and empty data remain distinct. Runtime alone
-folds recorded Run usage; disabling/uninstalling the component preserves accounting.
-The old HTML, usage carrier adapter and duplicate plugin read operation are removed.
-Current graphical execution is not claimed by the production build.
-
-The optional Schedules package supplies the schedule list and immutable authoring templates.
-The Context Dock offers its admitted view. Host controls retain create, edit, enable/disable,
-run-now and confirmed deletion; the guest receives canonical pages and cursor-only reads.
-Opening a package template creates a draft, and only Runtime receipts change the schedule
-projection. Uninstalling the package leaves the Runtime worker and saved schedules intact.
-
-The optional [Diff package](../plugins/diff/plugin.json) is an ordinary workspace
-component. Host supplies the captured workspace and file-focus revision; the public
-SDK contains only that data and an explicit Runtime client. The component reads
-`workspace.diff.get` and owns comparison/layout/filter/folding state. Switching the
-workspace or activating file focus retires the instance and cancels its reads. The
-working-tree comparison is the fresh default; failed comparison reads retain and
-label the prior accepted result. The existing navigation consumer selects by a
-public material key and opens the catalogue for absent/competing candidates. Old
-HTML/carrier/query wrappers and the Host baseline preference are removed. Canonical
-files, Git evidence and Runtime authority remain unchanged. Graphical execution of
-the migrated component is not claimed by its production build.
-
-The optional [Skills package](../plugins/skills/plugin.json) supplies discovery, document,
-user-library and proposal presentation. Host controls capture the workspace, section and
-selected document name; the guest can refresh only that captured read. Trusted archive,
-restore and proposal decisions use the existing Runtime commands. A confirmation retains
-the exact instructions and revision the user reviewed, and a conflict requires a fresh
-review. Installation Skill enablement remains installation configuration. The compiled
-Skills view and document cache are removed; uninstall preserves Skill and proposal data.
-
-The optional Memory package renders canonical project or user memory. Trusted controls
-capture the Runtime workspace and scope; changing either retires the previous page.
-Authoring stays in the existing Runtime command path, and uninstall preserves memory.
-
-The browser loads the fixed `/plugin-carrier.html` entry in an opaque frame. Runtime and
-Vite read its enforcing header from `frontend/public/plugin-carrier-policy.txt`. Before
-receiving any plugin HTML or data, the entry requires an actual enforcing engine report.
-Only that constrained document creates the guest Blob. Chromium 156 passes; the tested
-WebKit 27.2 browser refuses the renderer before receiving plugin bytes.
-
-On macOS, Desktop creates a separate nonpersistent WKWebView with per-view lockdown,
-its own content controller and a main-frame-only native message handler. The Wails
-workbench retains its normal bindings. Layout follows the dock's clipped bounds. A sibling native view cannot join HTML CSS
-stacking, so it yields while a workbench popup is rendered, including exit motion. Hiding
-or closing a focused page restores workbench focus. Other desktop targets report this renderer
-unavailable. The qualified target was macOS 26.5 with Wails v3 beta.28; other engine/OS
-versions require their own gate result.
-
-Native page admission declares its physical frame capacity. The native adapter splits
-complete JSON messages within that budget and serializes transfers per page. Both
-carriers use ordered fragments; the constrained entry reassembles one logical message
-before delivering boot data or a read reply. Large pages and individual records retain
-all their data. Retirement stops remaining frames and joins accepted publications.
-The native host and frontend share the current admission shape; no alternate decoder
-accepts the former unframed transport.
-
-Session and descendant-scope changes close the prior instance. Host appearance changes publish a read-only token projection on the existing channel without reloading resources or business data. Installation withdrawal or digest changes
-retire its contribution lifetime, and Runtime connection replacement joins predecessor
-cleanup before registering successor contributions. Native IDs identify physical pages;
-late allocation, reply or closure cannot advance another instance. Pending reads receive
-cancellation and retired pages refuse publication. Read failures preserve already displayed
-evidence and remain explicit; local carrier failure never disables the installation.
-The connection generation reads installation admission directly and reconciles local
-contributions before publishing the snapshot into the Settings query cache. Workspace
-cache cancellation cannot withdraw package resources or cancel that observer.
-The shared view bridge alone advances each page's initialization and terminal status;
-React renders that projection. Qualification precedes resource loading, and connection
-is accepted only after boot publication starts. Carrier qualification has its own budget;
-the guest handshake deadline starts after boot transfer settles. Resource and initial
-reads retain their actual failure stage and cancel their sibling read before retirement
-joins both. A read reply may reach the guest before native publication acknowledgement;
-one successor may wait behind that publication, and all reads remain serial. Read
-failures keep the displayed evidence and record a host diagnostic with source, stage,
-error category and request association, without recording raw integration messages.
-Trusted Retry controls replace a failed initial load only after its predecessor has
-retired; they do not retry commands. The contribution receives its cleanup
-handle immediately. Cleanup joins allocation, startup and pending reads even when physical
-closure fails; publication failure retires the channel instead of becoming a read error.
-The native
-transport preserves early messages in source order through initial positioning; the
-bridge owns their operation and handshake validation.
-
-Run the production page and transport gate from `desktop/frontend/`:
-
-```sh
-node --test scripts/plugin-views.browser.test.mjs
-```
-
-Run the native production carrier gate from `desktop/` in a macOS graphical session:
-
-```sh
-wails3 task darwin:check:plugin-view
-```
-
-The native gate builds through the shipping deployment floor, uses a temporary product
-home and owned TCP/UDP listeners, and checks positive workbench bindings, no guest network
-packets or resource requests, native sender rejection, viewport resize, focus restoration,
-retirement and successor isolation. It requires exactly one terminal report. The separate
-carrier controls above remain qualification evidence for the engine boundary.
-
-Run the first-party pages in the production React workbench:
-
-```sh
-wails3 task darwin:check:plugin-workbench
-```
-
-The gate requires a macOS graphical session, the installed Go and Node toolchains,
-Docker, and a cached `golang:1.27.0` image with Git. It builds the real Linux Runtime and an
-offline Anthropic HTTP/SSE fixture, then runs them in an owned container on its own
-network with fresh tmpfs data and one ephemeral loopback port. Its provider endpoint
-is the fixture's loopback listener. Installation admission,
-memory, schedules, workspace diffs, Skill proposals and finished Runs enter the public Runtime Protocol. No external
-provider service is contacted; the fixture reports synthetic zero, unpriced usage.
-
-The signed App Sandbox bundle has a unique identity. Before product bootstrap, the
-gate verifies its entitlement, private Foundation home and Library, permitted fixture
-reads and denial of a canary outside that root. Only the fixture root receives a
-read-only filesystem exception. A temporary `FLAME_HOME` alone cannot isolate native
-preferences, WebKit storage or mutation journals.
-
-Go overlay injects a test-only service and WebKit frame inspector while retaining
-the production `main.go`, DesktopHost, embedded assets and React entrypoint. The
-private index initializes the existing endpoint and locale preferences before startup;
-it cannot connect to a default user Runtime. Inspection uses the workbench's bundled
-Wails SDK so its event dispatcher retains one owner. Test hooks are absent from shipping builds.
-The gate focuses its owned window and waits for the catalogue popup to retire before
-checking page visibility. It selects each admitted contribution through the workbench, inspects the real
-opaque guest, refreshes recorded data, replaces memory scope, and
-checks withdrawal, re-enablement and physical page retirement. Skills covers discovery,
-document inspection, library archive/restore and trusted publication of a proposal
-created through a normal Run. The migrated Diff component has no current graphical acceptance claim. Uninstall must preserve
-canonical trajectory, memory, schedules, usage, workspace diffs and Skill curation.
-The Tool results check displays and refreshes a recorded Skill proposal in its isolated
-page, disables the renderer and verifies physical retirement, generic record visibility
-and unchanged canonical trajectory. The application exits and cleanup completes before
-the single terminal result. File renderers covers a captured remote Markdown file,
-read renewal, physical retirement and preserved canonical source after disablement.
-Migrated ESM Diagnostics, Trajectory, Diff, Usage and Icon gallery have no current
-graphical acceptance claim; their retired carrier cases were removed. The remaining
-carrier checks do not qualify ordinary component rendering.
-The runner removes its container, network,
-private data, canary and temporary files; macOS retains protected container metadata.
-
-The following validation records predate removal of installation approval. They do not
-qualify the current enablement contract; UI and E2E execution is excluded from that refactor.
-
-These historical native results cover the former Tool results, File renderers and
-Diagnostics carriers. They do not qualify the current ordinary component contract.
-
-Capacity cases preserve and compare complete initial and cursor-continuation pages above
-the native frame limit. The multi-record case uses separate text Items; the single-item
-case uses a 5 MiB reasoning Item. Both retain the normal native isolation and retirement
-assertions. A separate run with a 5 MiB conversation paragraph exceeded the 20-second
-workbench command deadline, including after the page data arrived. Revisit conversation
-rendering before qualifying that paragraph size as interactive; the capacity gate does
-not qualify conversation rendering.
-
-The qualified carrier and first-party page lifecycle were verified on macOS 26.5 with
-Wails v3 beta.28 at the shipping deployment floor. A run requires an unlocked graphical
-session; a hidden workbench fails before page acceptance.
-
-Manual acceptance of the full production React workbench also passed on this carrier
-at the shipping macOS 13.0 deployment floor. It retained the production entrypoint,
-DesktopHost, embedded workbench and shared SDK. A unique signed App Sandbox bundle
-isolated native preferences, WebKit storage and mutation journals. Before product
-bootstrap, added assertions verified the bundle identity, Foundation's private Library
-path, permitted fixture reads and denial of a private canary outside the fixture root.
-Only the owned fixture root received a read-only filesystem exception. A temporary
-`FLAME_HOME` alone does not isolate the production workbench's native storage.
-
-The workbench connected to an isolated Linux Runtime and created a Session whose
-workspace existed only on Linux. One installation supplied the review backend's two
-tools, the bounded theme, the read-only trajectory page and `renameSession`. The native
-page loaded and refreshed an empty canonical trajectory. Trusted action drafts left
-the Session unchanged; submission advanced its revision once, and CLI read the same
-title. A form captured before a CLI title edit received a revision conflict and could
-not overwrite the newer Session. CLI revocation retired the page, theme and backend;
-new actions were refused, and reapproval created a new page instance. A trusted popup
-hid the guest and restored the same instance afterward. Connection replacement cleared
-the old selection and contributions; reconnecting read the canonical Session and
-created a new page. Explicit page closure and application shutdown completed, and both
-the parent application and Runtime exited successfully. This lifecycle check called no
-model provider.
-
-A second full-workbench check used the same sandbox isolation and deployment floor,
-with the production Anthropic HTTP/SSE adapter connected to an owned offline provider
-fixture inside the isolated Linux Runtime's internal network. A normal Session-owned
-Run discovered the real review backend's deferred tools, read revision 1, updated it to
-revision 2 and read the committed result again. Each backend call passed through a
-one-time approval Interrupt in the trusted workbench. CLI read the same persisted
-results and completed Run. The native trajectory page refreshed 14 canonical records,
-including six completed model calls with recorded usage and no unknown call outcomes.
-Expanding records displayed model and Tool evidence; filtering changed only the loaded
-observations and preserved their counts. Application and Runtime shutdown both exited
-successfully. No external provider service was contacted; the fixture's responses and
-usage were synthetic, so this check does not qualify a live provider or its accounting.
+The browser/native isolated HTML guest, frame channel, appearance bootstrap, page IPC,
+carrier probes and their exclusive qualification tests/build tasks are removed. Their
+old isolation results do not qualify trusted component loading. Package integrity,
+source authority, business receipts and independently accepted Runs retain their owners.
+Supported native component/lifecycle acceptance remains an explicit final obligation.
+Frontend UI/E2E/screenshot execution is excluded by the current development task.
 
 ## Shared presentation package
 
-Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party pages are generated from each package's `src/view.tsx` by `npm run build --prefix plugins`. The frontend gate checks the tracked resources against that build. Portable pages use the v3 ready/connect handshake and receive a closed appearance projection. Explicitly select changed resources through the existing installation workflow. Durable plugin data formats are unchanged.
+Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party components are built from each package's `src/component.tsx` through the public SDK. The resource gate checks exact ESM reproduction. Components use shared React/UI provider context. Explicitly select changed resources through the existing installation workflow. Durable plugin data formats are unchanged.
 
 The optional Memory package uses its generated typed contracts and public installed
 operation binding for reads and human add/edit/pin/delete/review. Client scope projects

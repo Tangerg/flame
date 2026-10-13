@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.4` · 107 methods
+Protocol `2026-10-14.5` · 106 methods
 
 ## Methods
 
@@ -73,7 +73,6 @@ Protocol `2026-10-14.4` · 107 methods
 | `plugins.call` | extension | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.listProviders` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.selectProvider` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
-| `plugins.readRenderer` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.renameSession` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `session_not_found`, `revision_conflict`, `session_busy`, `capability_not_negotiated` |
 | `plugins.list` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.install` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -969,7 +968,7 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `PluginClientComponent` | `scope` | `pattern("^(installation|workspace|session|client|file)$")` |
+| `PluginClientComponent` | `scope` | `pattern("^(installation|workspace|session|client|file|toolResult)$")` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPoint` | `contract` | `nonEmpty` |
 | `PluginPoint` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
@@ -1007,17 +1006,12 @@ TypeScript validator from this single registry projection.
 | `PluginContribution` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `PluginContribution` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginContribution` | `export` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `ReadPluginRendererRequest` | `rendererId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `PluginRenderer` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `PluginRenderer` | `title` | `nonEmpty` |
-| `PluginRenderer` | `title` | `maxLength(128)` |
 | `PluginRendererSelector` | `name` | `nonEmpty` |
 | `PluginRendererSelector` | `name` | `maxLength(256)` |
 | `RenamePluginSessionRequest` | `actionId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginAction` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginAction` | `title` | `nonEmpty` |
 | `PluginAction` | `title` | `maxLength(128)` |
-| `PluginViewResource` | `html` | `maxLength(524288)` |
 | `PluginThemeColors` | `background` | `pattern("^#[0-9a-fA-F]{6}$")` |
 | `PluginThemeColors` | `foreground` | `pattern("^#[0-9a-fA-F]{6}$")` |
 | `PluginThemeColors` | `accent` | `pattern("^#[0-9a-fA-F]{6}$")` |
@@ -1305,7 +1299,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.call` | always | `plugins` |
 | `plugins.listProviders` | always | `plugins` |
 | `plugins.selectProvider` | always | `plugins` |
-| `plugins.readRenderer` | always | `plugins` |
 | `plugins.renameSession` | always | `plugins` |
 | `plugins.list` | always | `plugins` |
 | `plugins.install` | always | `plugins` |

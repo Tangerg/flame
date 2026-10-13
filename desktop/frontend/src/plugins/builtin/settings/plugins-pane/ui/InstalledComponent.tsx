@@ -9,7 +9,12 @@ import {
 } from "react";
 import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
-import type { CapturedFile, ComponentContext, WorkspaceContext } from "@flame/plugin-sdk";
+import type {
+  CapturedFile,
+  CapturedToolResult,
+  ComponentContext,
+  WorkspaceContext,
+} from "@flame/plugin-sdk";
 import {
   useActiveSessionId,
   useActiveSessionWorkspace,
@@ -67,6 +72,7 @@ class ComponentInstance {
     private workspace?: WorkspaceContext,
     private sessionId?: string,
     private file?: CapturedFile,
+    private toolResult?: CapturedToolResult,
   ) {
     this.context = this.capture();
   }
@@ -75,6 +81,7 @@ class ComponentInstance {
     return Object.freeze({
       runtime: this.runtime,
       sessionId: this.sessionId,
+      toolResult: this.toolResult,
       file: this.file
         ? Object.freeze({
             ...this.file,
@@ -120,11 +127,27 @@ function RenderingComponent({
   workspace,
   sessionId,
   file,
+  toolResult,
   fallback,
-}: ComponentProps & { workspace?: WorkspaceContext; sessionId?: string; file?: CapturedFile }) {
+}: ComponentProps & {
+  workspace?: WorkspaceContext;
+  sessionId?: string;
+  file?: CapturedFile;
+  toolResult?: CapturedToolResult;
+}) {
   const instance = useMemo(
-    () => new ComponentInstance(runtime, binding, lifetime, resources, workspace, sessionId, file),
-    [runtime, binding, lifetime, resources, workspace, sessionId, file],
+    () =>
+      new ComponentInstance(
+        runtime,
+        binding,
+        lifetime,
+        resources,
+        workspace,
+        sessionId,
+        file,
+        toolResult,
+      ),
+    [runtime, binding, lifetime, resources, workspace, sessionId, file, toolResult],
   );
   const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   const Entry = entry;
@@ -225,4 +248,12 @@ export function InstalledFileComponent({
   ...props
 }: ComponentProps & { file: CapturedFile }) {
   return <RenderingComponent {...props} file={file} />;
+}
+
+// Settled historical results are data; no producer code or navigation is captured.
+export function InstalledToolResultComponent({
+  toolResult,
+  ...props
+}: ComponentProps & { toolResult: CapturedToolResult }) {
+  return <RenderingComponent {...props} toolResult={toolResult} />;
 }

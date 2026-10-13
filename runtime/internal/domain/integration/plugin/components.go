@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
-const ComponentScopePattern = `^(installation|workspace|session|client|file)$`
+const ComponentScopePattern = `^(installation|workspace|session|client|file|toolResult)$`
 
 var componentScope = regexp.MustCompile(ComponentScopePattern)
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
@@ -43,12 +43,28 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	}
 	switch value.Placement {
 	case "workspaceView":
-		if value.Scope == "file" || value.Selector != nil {
+		if (value.Scope == "file" || value.Scope == "toolResult") || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
 		}
 	case "fileRenderer":
 		if value.Scope != "file" || value.Material != "" || value.Selector == nil || value.Selector.Kind != RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")
+		}
+	case "toolResultRenderer":
+		if value.Scope != "toolResult" || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
+			return refuse(DiagnosticInvalidDeclaration, "tool result component requires an exact selector")
+		}
+		switch value.Selector.Kind {
+		case RendererToolName:
+			if strings.ContainsAny(value.Selector.Name, " \t\r\n") {
+				return refuse(DiagnosticInvalidDeclaration, "invalid tool result name")
+			}
+		case RendererResultShape:
+			if !slices.Contains([]string{"command", "search", "patch", "webSearch"}, value.Selector.Name) {
+				return refuse(DiagnosticInvalidDeclaration, "invalid tool result shape")
+			}
+		default:
+			return refuse(DiagnosticInvalidDeclaration, "invalid tool result selector")
 		}
 	default:
 		return refuse(DiagnosticInvalidDeclaration, "unsupported component placement")

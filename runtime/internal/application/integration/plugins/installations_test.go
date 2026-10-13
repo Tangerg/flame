@@ -96,10 +96,6 @@ func (installationPackages) ReadResource(context.Context, *plugin.Installation, 
 	return nil, errors.New("unexpected component resource read")
 }
 
-func (installationPackages) ReadPage(context.Context, *plugin.Installation, string) (string, error) {
-	return "", errors.New("unexpected view read")
-}
-
 type candidateRelease struct{ release plugin.Release }
 
 func (c candidateRelease) Release() plugin.Release                         { return c.release }
