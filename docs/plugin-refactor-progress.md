@@ -2,55 +2,63 @@
 
 ## Current stage
 
-Stage 4f (7873332f, caller/format repair 51602f5d) supplies explicit background
-activation and the missing authenticated caller-restoration seam. A contribution
-may declare background work; setup receives its immutable installation target and
-an activation-owned Runtime callback through the existing connection supervisor.
-Setup must register a handler for background work and returns joined resources.
-Schedules now declares this role, checks retained Runtime namespace without writing
-private state, and closes its setup connection before its private database.
+Stage 4g (00ea6b5f) moves the actual Schedules clock/scan/captured recovery into the
+backend. Each enabled declared background entry operates its own installation,
+independently of selected-provider or graphical state. The existing connection
+supervisor owns activation; no second scheduler/enablement/result store is added.
+Setup provisions resources without business work. The public Activate handshake
+starts ActivationResource once after successful setup; failed/retired lifetimes
+cancel and join the loop and callback connection before the private DB closes.
 
-The callback connection captures Actor and named dependency authority. Its public
-client can project a retained invocation as transport context. The existing Commands
-owner checks exact invocation/installation/release/server and dispatched phase before
-restoring human/model origin and parent. Fresh automatic work must belong to this
-installation and cannot invent a retained parent. No new routing/result ledger is
-created; this projection cannot advance command state or replace the Actor.
+The backend's bounded scanner retains its fair pending-page traversal and private
+claim ownership. Every recovery reinstates the captured invocation/target and uses
+the existing canonical Runtime acceptance. Manual recovery reads the exact original
+private command/input without creating new admission, then commits private queue
+acceptance and the original runNow receipt together. Deleted/edited definitions do
+not replace captured work. Accepted Runs keep their independent Runtime lifetime.
 
-The required dependency gate exposed prior source debt. Remove Core Protocol from
-connection/setup transport boundaries using public SetupBinding and the existing
-pure identity validators. Move known business refusal to capability.Refusal, delete
-plugin.Failure and migrate all in-repository producers/classifiers. Move the source
-coverage tool from unclassified internal/cmd to the existing cmd location. The
-unchanged Runtime dependency-rule check now passes.
+Delete the former pluginservices Dispatcher, Bootstrap scheduling worker/join and
+separate delivery firing port. Human Core RunNow remains a direct consumer of the
+same bound complete operation. Remove public Schedules scan/dispatch methods,
+DTOs/handlers/generated capability artifacts in the same change; the contract has
+five business methods. Current backend wire is 2026-10-14.2; Core is 2026-10-14.3.
+Rebuild Go/Protocol/TS/SDK and installed packages; former frames/routes are not
+converted. Private business data format remains unchanged.
 
-Core is 2026-10-14.2; backend protocol and complete feature identities are
-io.github.tangerg.flame/backend/2026-10-14.1. Regenerate/rebuild all Go, Protocol,
-TS/SDK and installed packages together. External Go users of plugin.Failure must
-use capability.Refusal; SetupDependency.Bindings uses SetupBinding. Former frames
-and original bindings are not converted; retain former data separately.
+Generic plugins.notifyChange checks the managed Actor's own enabled installation,
+release/server/contribution and publishes the existing outcome-free resync through
+invalidation. It carries no business result or caller-selected installation. The
+actual public Go backend callback client consumes it. API coverage scans production
+Go backend fields as well as CLI ports, without method exemptions or test callsites.
 
-This is the complete activation/caller prerequisite, not the completed Schedules
-worker migration. The existing host scan driver remains the sole loop. Next move
-clock/claim/captured recovery into the backend, then delete that driver and old
-scan/dispatch exports in the same slice. Backend-owned notification and proper
-post-setup business-start publication also require their actual owning seam; do not
-start another provisional loop or claim background execution is accepted.
+Production Runtime/CLI/Reviews builds, Desktop Vite/TS and bundled TS/ESM resource
+checks pass. Short setup-before-start/single-start/retirement, actual private cron
+claim/acceptance and loop/resource join, original manual receipt recovery after
+withdrawal, exact contract/retired-export, notification authority and dependency-rule
+checks pass. Bootstrap/Runtime/CLI/Reviews and affected adapter test sources compile.
+Source gate is 102/102 required fact families (89 direct graphical, six Go headless,
+six materialized, one HTTP-projected), with three sidecars and 15 existing topics.
+The Schedules ESM is 22,879 bytes. Native restart/disable/non-selected installation
+and full process acceptance remain final-execution obligations, not proven by source
+compilation or these short private-owner tests. Full/vet/race stay concentrated at
+final verification; no UI/E2E/screenshot additions or execution.
 
-Production Runtime/CLI/Reviews builds, Desktop production build/TS checks, bundled
-TS/resource checks and unchanged source-consumer gate pass. Short actual HTTP caller
-validation, original-route restoration, setup resource/namespace and private refusal
-receipt checks pass. Changed native/CLI/Reviews test sources compile. Full suites,
-vet/race and native process acceptance stay in final consolidated verification;
-frontend UI/E2E/screenshot work remains excluded.
-
-Main 993eb865 remains integrated; this round's merge is up to date. Original inputs
-are unchanged. Owned Desktop dist and temporary compile/migration files are removed.
-The full goal remains active: renderer/action and Core-facade migration, scoped
-retention, canonical model decorators/streaming, cross-generation command recovery,
-independent author parity and P01-P48 acceptance are still required.
+Main 993eb865 remains integrated; merge is already up to date. Original proposal,
+review and draft hashes are unchanged. Temporary compile binaries and owned Desktop
+dist are removed. The full goal remains active. Next migrate remaining renderer/action
+carriers and actual CLI/Core business facades; complete scoped dependency retention,
+canonical model decorators/streaming, cross-generation command recovery, independent
+author parity and all P01-P48/final acceptance.
 
 ## Completed
+
+- Stage 4g (00ea6b5f): backend-owned minute scan, fair private capture/recovery and
+  original caller/target; cancel/join activation resources and independent accepted Runs.
+- Stage 4g: successful setup precedes explicit idempotent activation attempt; delete
+  host Dispatcher/Bootstrap scheduling join/firing port and scan/dispatch public exports.
+- Stage 4g: resume original private manual command/input and atomic runNow receipt;
+  actual public notification with managed contribution authority and existing resync.
+  Native full lifecycle/non-selected-entry acceptance remains outstanding.
 
 - Stage 4f (7873332f/51602f5d): explicit background declaration/setup target and
   activation-owned callback resources; Schedules read-only namespace admission and
@@ -326,10 +334,10 @@ independent author parity and P01-P48 acceptance are still required.
 
 ## Next
 
-1. Move Schedules background execution into its backend/integration role and delete
-   the host driver. Preserve original manual/cron captures for enabled non-selected
-   installations and independent accepted Runs; then retire remaining renderer/action
-   carriers and Core business facades through actual consumer migration.
+1. Retire remaining renderer/action carriers and Core business facades by migrating
+   their real consumers. Preserve original binding/receipt/Run ownership and delete
+   each replaced API/carrier in its owning slice. Retain Stage 4g native process
+   acceptance for the final consolidated phase.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
 3. Complete canonical model execution/remote streaming decorators, frozen order,
@@ -339,6 +347,9 @@ independent author parity and P01-P48 acceptance are still required.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Successful setup precedes explicit once-per-session ActivationResource start | Provisional registration must not advance business work; lost activation acknowledgement cannot duplicate the loop | Starting the loop inside setup, browser wake-ups, a second host timer or another scheduler |
+| 2026-10-14 | Schedules owns clock/scan/original private recovery, with host driver/export deletion | Enabled own installations must recover captures independently of provider selection or UI; manual receipt belongs to the original private command | Selected-only host scanning, public time/dispatch exports, rereading changed definitions, new identities or a competing receipt store |
+| 2026-10-14 | Managed plugin notices use authenticated contribution ownership and existing resync | Unknown plugin reads must reread their owner; notices carry no results or installation claims | Business switches in generic notification, arbitrary source/installation notices, another event bus or treating invalidation as success |
 | 2026-10-14 | Background activation uses the existing connection/setup lifetime and an immutable installation target | Passive role declaration needs an owned Runtime link, independent of UI/provider selection | Another activation scheduler, competing enablement state or a worker started merely to register a contribution |
 | 2026-10-14 | Restore retained caller context through original Commands evidence and authenticated Actor | A backend worker must not reclassify a human/model capture or invent its original parent after process loss | Trusting arbitrary header identity, current-provider replay, a second result ledger or adapting old routes to a new contract |
 | 2026-10-14 | Business refusal belongs to pure capability; setup transport owns its own DTO projection | Delivery and connection adapters cannot import outward MCP/Core wire owners; existing identity models remain the validators | Architecture exceptions, compatibility aliases or duplicated validation rules |
@@ -468,7 +479,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; public provider selection and actual manager implemented; final integrated acceptance open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
 | Reject old host encodings without data mutation | Installation/command-route host shapes, digest-only/private bare-result and Reviews former DTO format refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; managedmcp/receipts_test.go; Reviews schema_test.go; runtime/README.md |
 | Preserve Memory ledger, watermark, curation and receipts | Existing private maintenance admission/publication/receipt and failure boundaries verified; public capability migration open | managedmcp/prepared.go; memory/transport/maintenance.go; prepared_test.go; memory transport tests; bootstrap/plugin_memory_maintenance_receipt_test.go |
-| One Schedules wake/dispatch lifetime and retained Run acceptance | One minute wake owner and backend-owned captured dispatch/retired Core acceptance verified; generic public background role remains open | pluginservices/dispatcher.go; schedules/host.go; schedules/transport/dispatch.go; bootstrap/schedules_callback_loss_test.go; managed_services_test.go |
+| One Schedules wake/dispatch lifetime and retained Run acceptance | Stage 4g moves the sole loop into the backend after public setup/activation; private capture/receipt/authority/join subsets verified; full native non-selected/restart/withdrawal acceptance open | plugin/setup.go; mcpconnection/pool.go; schedules/transport/background.go; managedmcp/prepared.go; schedules/host.go; bootstrap/schedules_callback_loss_test.go; managed_services_test.go |
 | Preserve package integrity, credentials, source identity and core authority checks | Open; baseline required | existing admission and policy regression checks |
 | New acceptance coverage for unresolved mutation/update/provider replacement | Existing real commands verified, including database reopening and distinct installation replacement; generic/UI coverage open | bootstrap/managed_services_test.go; plugin_command_recovery_test.go; application/integration/plugins/commands_test.go |
 | Standalone bundled/non-bundled author parity | Open | independent public consumer builds |
@@ -488,6 +499,29 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4g backend scheduling and host-driver deletion
+
+- Passed: production Runtime/CLI/Reviews Go builds; Desktop Vite build and TypeScript;
+  bundled TypeScript/exact component ESM checks; Core/feature/Reviews regeneration;
+  formatting and git diff --check. Generated output was restored through its generator
+  after an accidental formatting-only expansion, preserving reproducible artifacts.
+- Passed: SDK activation-before-setup refusal, setup without business start, repeated
+  activation starting once and retired lifetime refusal (plugin 0.677s); real private
+  cron claim/acceptance, original caller, loop cancellation/join and original manual
+  recovery/receipt after deleted definition (transport 1.605s). Exact live/generated
+  five-method capability and retired scan/dispatch export assertions pass (0.755s).
+- Passed: managed notice authority (human/undeclared/withdrawn refused; own enabled
+  contribution publishes one outcome-free resync, 1.464s); unchanged Runtime dependency
+  rule (0.721s). Source gate 102/102, including actual Go backend notification consumer;
+  existing three sidecars/15 topics stay covered. No operation exemption was added.
+- Passed: Bootstrap, Runtime, CLI, delivery/adapter and Reviews test-source compilation
+  into temporary binaries. Existing native recovery source now follows the automatically
+  activated backend; source compilation does not establish full execution acceptance.
+- Repaired: migrated port fixtures and removed imports; the new activation fixture
+  lacked a required method description. No valid assertion or check was disabled.
+- Not run: full native restart/disabled/non-selected installation integration, full Go,
+  vet and race (final consolidated phase); UI/E2E/screenshot execution/additions excluded.
 
 ### Stage 4f background activation and retained caller prerequisite
 
@@ -1079,6 +1113,11 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 4g: product 00ea6b5f committed and main merge is up to date. All invoked handles
+  returned terminal results; temporary compile binaries and Desktop dist are removed.
+  Original input hashes remain unchanged. The active worktree/dependencies are needed
+  for the full goal. No external publication/shared product/user-data operation.
+
 - Stage 4f: product 7873332f and caller/format repair 51602f5d committed; main merge
   is already up to date. All known build/generation/check/compile handles have terminal
   results. Temporary source-migration script, compile binaries and Desktop dist are
@@ -1221,20 +1260,13 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Stage 4f supplies actual background activation resources and validated original
-  invocation projection. Complete post-setup start/publication, private worker
-  clock/scan/recovery, generic owner notifications and host-driver deletion together.
-  The present setup does not mutate private state or start a second scan loop.
-
-- Schedules' complete public manual operation is implemented, but its background
-  lifecycle still lives in the existing host role driver. Move that lifecycle to
-  the enabled backend/integration role and remove the former driver together. Prove
-  captured manual recovery for enabled non-selected installations and preservation
-  of accepted Runs after UI/entry withdrawal. Do not add another wake owner.
-- Schedules editing is now bound to its own generated capability/runNow operation,
-  and generic HTML/kind/template knowledge is removed. Retire the five remaining Core
-  business facades by migrating actual CLI/native consumers; their source coverage
-  is evidence of current consumers, not completion of that migration.
+- Stage 4g implements post-setup activation, private clock/scan/original recovery,
+  generic owner notices and host-driver deletion. Execute native acceptance for enabled
+  non-selected installations, lost Core acknowledgement, restart/disable/replacement
+  and independently accepted Runs on the final source. No second wake owner is permitted.
+- Retire the five remaining Schedule Core business facades through actual CLI/native
+  consumer migration. Their static product consumption is not proof of complete shared
+  installed entrance migration. Cross-generation command journal recovery remains open.
 
 - Stage 4b implements existing Memory/Schedules consumer invalidation for public
   commands, including original receipt recovery/uncertainty, with focused evidence.
@@ -1274,6 +1306,14 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 4g advances Core to .3/backend to 2026-10-14.2 and removes scan/dispatch from
+  the full Schedules contract. Rebuild SDK/clients/installed resources together; original
+  incompatible bindings are unavailable and never converted. Business storage format is
+  unchanged. Enabled background entries each own their own installation; provider selection
+  controls future human Core calls, not another installation's pending recovery. Generic
+  resync is intentionally coarse and carries no business result. Source/short tests do not
+  prove final native process, replacement, non-selected or window-generation behavior.
 
 - Stage 4f advances Core to .2 and backend to 2026-10-14.1, changing complete feature
   capability identities. Rebuild packages and Go/TS/SDK clients; old captured routes
