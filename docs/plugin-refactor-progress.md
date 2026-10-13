@@ -2,7 +2,7 @@
 
 ## Current stage
 
-Stage 3t migrates the bundled Icon gallery to an ordinary public React component.
+Stage 3t, committed in a3661279, migrates the bundled Icon gallery to an ordinary public React component.
 Its prebuilt ESM bundles the canonical icon owner's public catalog/drawings and
 imports the host's shared React/JSX/UI modules. Search is local rendering state.
 The namespace declaration has no callable contribution or backend; Domain/package/
@@ -24,13 +24,17 @@ admission regression passes in 0.626s. Domain/Delivery/Bootstrap test sources co
 Bootstrap TestMain was not executed. Final full/vet/race/integration checks remain
 queued. No graphical rendering, UI/E2E/screenshot or native window qualification.
 
-Main synchronization and final round cleanup are in progress. User design inputs
-remain read-only, with SHA-256 unchanged. Verification policy remains development
-first, with final execution concentrated at the final phase.
+Main ffaf30c9 is merged in 7ff60fa4. The one API inventory conflict adopts main's
+actual CLI Start/Resume receipt reconciliation while preserving current plugin
+methods. Merged production Core/CLI/Reviews builds and affected CLI test source
+compilation pass. Owned frontend dist and temporary compile outputs are removed;
+all command handles are terminal. User design inputs remain read-only, with SHA-256
+unchanged. Verification remains development first, with final execution concentrated
+at the final phase. The full goal remains active.
 
 ## Completed
 
-- Stage 3t: component-only declaration admission and optional callable SDK context;
+- Stage 3t (a3661279): component-only declaration admission and optional callable SDK context;
   ordinary Icon gallery ESM from canonical icon exports, local Hooks filtering,
   shared host imports and reproducible package-resource build.
 - Stage 3t: delete static HTML/source generation, static Domain/Protocol kind and
@@ -320,7 +324,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews declaration and actual ESM/resource loading are implemented; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -353,6 +357,10 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 ## Verification
 
 ### Stage 3t development and component-only admission
+
+- Passed after main ffaf30c9 integration: production Runtime/CLI/Reviews build and
+  CLI runtimebinding, Run Application, workbench and terminal test source compilation.
+  One API inventory conflict is resolved from the actual new reconciliation consumer.
 
 - Passed: production Runtime/CLI/Reviews build; Core generation; shared Runtime TS,
   public SDK, portable component, Reviews and Desktop type checks; changed component/
@@ -656,6 +664,14 @@ Stage 2a verification:
 - Resolved commit failure: the restored commit-msg hook prefixed an absolute linked-worktree message path with PWD. The corrected hook passed shell syntax validation, accepted a valid message and rejected an invalid message through both absolute and relative paths. Its temporary message fixtures were removed.
 
 ### Round cleanup
+
+- Stage 3t: product a3661279 and main merge 7ff60fa4 are committed. Formal icon ESM/
+  SDK/contract/source and necessary dependency artifacts are retained. Owned frontend
+  dist, temporary ESM reproducibility outputs and Go test binaries are removed. All
+  build/generation/typecheck/lint/focused/compile/commit handles are terminal. Keep the
+  managed worktree and canonical progress symlink. No graphical test, publication,
+  credentials, shared configuration or user-data mutation occurred.
+
 
 - Stage 3s: retain formal module/resource/SDK/Reviews source and needed ignored dependency artifacts. Remove the owned production frontend bundle after its graph inspection. Temporary compilation outputs are removed. All generation/build/typecheck/lint/focused/compile/commit handles are terminal after final build inspection. Product is 61180b25; main d9d0c452 is merged in 06cafa4c. Preserve the active managed worktree and canonical progress symlink. No browser/native/UI test process, external state change, credentials or user-data mutation was introduced.
 
