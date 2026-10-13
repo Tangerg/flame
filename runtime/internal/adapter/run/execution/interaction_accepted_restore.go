@@ -9,7 +9,7 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 )
 
-func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation, answers []runs.InterruptAnswer) (runs.ExecutorRef, error) {
+func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
 	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
@@ -18,12 +18,15 @@ func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, con
 		return runs.ExecutorRef{}, fmt.Errorf("%w: accepted continuation belongs to another build", runs.ErrExecutorStateLost)
 	}
 	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	if _, err := i.session(ref); err == nil {
-		return runs.ExecutorRef{}, runs.ErrExecutionClaimed
+	if session, err := i.session(ref); err == nil {
+		if err := session.stageAcceptedContinuation(continuation.Checkpoint); err != nil {
+			return runs.ExecutorRef{}, err
+		}
+		return ref, nil
 	} else if !errors.Is(err, runs.ErrExecutorNotLive) {
 		return runs.ExecutorRef{}, err
 	}
-	if err := i.restoreWaitingTree(ctx, ref, continuation, interactionBoundaryAcceptedPaused, answers); err != nil {
+	if err := i.restoreWaitingTree(ctx, ref, continuation, interactionBoundaryAcceptedPaused); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -76,6 +79,10 @@ func acceptedRetiredProcesses(cut interactionHandoff, head agent.TreeSnapshot, c
 		retiredRoots[id] = child.segmentProjected
 		child.mu.Unlock()
 	}
+	return retiredHandoffProcesses(cut, head, retiredRoots)
+}
+
+func retiredHandoffProcesses(cut interactionHandoff, head agent.TreeSnapshot, retiredRoots map[agent.ProcessID]bool) map[agent.ProcessID]bool {
 	parents := capturedParents(head)
 	for id, progress := range cut.progress {
 		if progress.ParentID != "" {

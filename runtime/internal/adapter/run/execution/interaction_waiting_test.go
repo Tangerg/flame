@@ -116,7 +116,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	if releaseErr := executor.Release(t.Context(), restoredWaiting); releaseErr != nil {
 		t.Fatal(releaseErr)
 	}
-	restored, err := executor.StageContinuation(t.Context(), continuation)
+	restored, err := executor.StageAcceptedContinuation(t.Context(), continuation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	// Reconnected sources may be enumerated in a different order. Their exact
 	// authority is unchanged, so a waiting execution must remain restorable.
 	catalog.manifest.Deferred[0], catalog.manifest.Deferred[1] = catalog.manifest.Deferred[1], catalog.manifest.Deferred[0]
-	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
+	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
@@ -318,7 +318,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
 
-	if _, stageContinuationErr := executor.StageContinuation(t.Context(), continuation); stageContinuationErr != nil {
+	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
 	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
@@ -384,7 +384,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
-	if _, stageContinuationErr := executor.StageContinuation(t.Context(), continuation); stageContinuationErr != nil {
+	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
 	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
@@ -463,7 +463,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
-	if _, stageContinuationErr := executor.StageContinuation(t.Context(), continuation); stageContinuationErr != nil {
+	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
 	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
@@ -555,7 +555,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	if releaseErr := executor.Release(t.Context(), ref); releaseErr != nil {
 		t.Fatal(releaseErr)
 	}
-	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
+	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
@@ -738,9 +738,9 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 			)
 			test.mutate(&continuation)
 
-			_, err := executor.StageContinuation(t.Context(), continuation)
+			_, err := executor.StageAcceptedContinuation(t.Context(), continuation)
 			if !errors.Is(err, runs.ErrExecutorStateLost) {
-				t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
+				t.Fatalf("StageAcceptedContinuation error = %v, want ErrExecutorStateLost", err)
 			}
 		})
 	}
@@ -755,14 +755,14 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
+		_, err = executor.StageAcceptedContinuation(t.Context(), rootInteractionWaitingContinuation(
 			checkpoint,
 			workspace,
 			"exec_restore",
 			run.Capabilities{},
 		))
 		if !errors.Is(err, runs.ErrExecutorStateLost) {
-			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
+			t.Fatalf("StageAcceptedContinuation error = %v, want ErrExecutorStateLost", err)
 		}
 	})
 }

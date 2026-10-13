@@ -121,6 +121,15 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 				}},
 			}
 			if test.response.Remember != nil {
+				stored, found, err := stores.Interrupts.Get(ctx, started.RunID)
+				if err != nil || !found {
+					t.Fatalf("waiting handoff=%t,%v", found, err)
+				}
+				member, _ := stored.RootContinuation()
+				head, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, session.ID, member.MemberID)
+				if err != nil || !found {
+					t.Fatalf("paused head=%t,%v", found, err)
+				}
 				before, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
 				if err != nil {
 					t.Fatal(err)
@@ -131,6 +140,10 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 				after, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
 				if err != nil || !reflect.DeepEqual(before, after) || calls.Load() != 1 {
 					t.Fatalf("invalid remember changed the prompt or executed work: %v", err)
+				}
+				current, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, session.ID, member.MemberID)
+				if err != nil || !found || !head.SameCommit(current) {
+					t.Fatalf("rejected preflight changed the writer or paused head: %t,%v", found, err)
 				}
 				request.Responses[0].Response.Remember = nil
 			}

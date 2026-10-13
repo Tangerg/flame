@@ -98,24 +98,19 @@ type WorkingContextInput struct {
 	Seed         []corechat.Message
 }
 
-// ExecutionContinuer stages an exact waiting or accepted-paused tree
-// without advancing it, then submits its already-validated semantic answers
-// only after the continuation Segment is durable. The opaque checkpoint is
-// supplied by the Application; implementations must never reread Conversation
-// or privately query application persistence.
+// ExecutionContinuer checks immutable waiting facts before acceptance. Only the
+// accepted Run lifecycle may acquire a writer, attach an observer, and deliver
+// answers. The supplied checkpoint carries the frozen handoff; the execution
+// tree store owns its latest acknowledged state. Implementations never reread
+// Conversation or query application-owned persistence privately.
 type ExecutionContinuer interface {
-	StageContinuation(ctx context.Context, continuation WaitingContinuation) (ExecutorRef, error)
-	StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation, answers []InterruptAnswer) (ExecutorRef, error)
-	// DeriveRememberedRules validates each candidate's confirmed arguments against
-	// its frozen tool invocation on the staged tree and derives the canonical rule
-	// subject. Invalid arguments reject the complete remembered Resume.
-	// Authority is validated and the rules are persisted by the acceptance owner,
-	// not here.
-	DeriveRememberedRules(
+	PrepareContinuation(
 		ctx context.Context,
-		ref ExecutorRef,
+		continuation WaitingContinuation,
+		answers []InterruptAnswer,
 		candidates []RememberedRuleCandidate,
 	) ([]approval.RememberRequest, error)
+	StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation) (ExecutorRef, error)
 	BeginContinuation(
 		ctx context.Context,
 		ref ExecutorRef,

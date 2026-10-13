@@ -30,6 +30,9 @@ func TestLiveChildCancellationReleasesClaimWhenExecutorTeardownFails(t *testing.
 	}
 	coordinator := mustNewCoordinator(Dependencies{RunningSubtreeCanceler: control})
 	live := testRunTreeOwner(t, nil)
+	if _, err := live.beginExecution(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := coordinator.cancelLiveChild(
 		CancelCommand{

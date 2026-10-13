@@ -90,29 +90,29 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	if err != nil {
 		return c.retireUnrestorableAccepted(ctx, accepted, err)
 	}
-	ref, err := c.continuation.StageAcceptedContinuation(ctx, waiting, answers)
+	_, err = c.continuation.PrepareContinuation(ctx, waiting, answers, nil)
 	if err != nil {
 		if errors.Is(err, ErrExecutorStateLost) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
 			return c.retireUnrestorableAccepted(ctx, accepted, err)
 		}
 		return err
 	}
-	staged := ownStagedExecution(c.releases, ref)
+	ref := ExecutorRef{SessionID: waiting.SessionID, ExecutorID: waiting.ExecutorID}
 	_, err = c.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: accepted.SessionID,
 		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID,
 		Continuation: continuation, AcceptedContinuation: &accepted, admission: &admission,
+		StageExecution: func(stageCtx context.Context) error {
+			_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
+			return err
+		},
 		BeginExecution: func(beginCtx context.Context) error {
-			if err := c.continuation.BeginContinuation(beginCtx, ref, answers, input); err != nil {
-				return err
-			}
-			return nil
+			return c.continuation.BeginContinuation(beginCtx, ref, answers, input)
 		},
 	})
 	if err != nil {
-		return staged.abandon(ctx, err, "accepted continuation")
+		return err
 	}
-	staged.transfer()
 	return nil
 }
 

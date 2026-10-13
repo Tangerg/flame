@@ -1,13 +1,17 @@
 package execution
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
+	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 // These immutable Scope projections identify the original handoff. They cannot
@@ -27,14 +31,16 @@ type interactionProgressWire struct {
 }
 
 type interactionInputTargetWire struct {
-	MemberID  string `json:"member_id"`
-	ProcessID string `json:"process_id"`
-	WaitID    string `json:"wait_id"`
+	MemberID            string         `json:"member_id"`
+	ProcessID           string         `json:"process_id"`
+	WaitID              string         `json:"wait_id"`
+	ApprovalInputSchema jsontext.Value `json:"approval_input_schema,omitempty"`
 }
 
 type interactionInputTarget struct {
-	memberID  agent.ProcessID
-	processID agent.ProcessID
+	memberID            agent.ProcessID
+	processID           agent.ProcessID
+	approvalInputSchema jsonschema.Schema
 }
 
 type interactionHandoff struct {
@@ -43,7 +49,7 @@ type interactionHandoff struct {
 	inputs   map[agent.WaitID]interactionInputTarget
 }
 
-func encodeInteractionHandoff(tree agent.TreeSnapshot) (*interactionHandoffWire, error) {
+func (i *interactionSession) encodeInteractionHandoff(tree agent.TreeSnapshot) (*interactionHandoffWire, error) {
 	wire := &interactionHandoffWire{RootID: tree.RootID().String()}
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
 	for _, snapshot := range tree.ProcessSnapshots() {
@@ -70,7 +76,21 @@ func encodeInteractionHandoff(tree agent.TreeSnapshot) (*interactionHandoffWire,
 		if target.Status() != agent.StatusPaused || snapshots[parent].Status() != agent.StatusPaused {
 			continue
 		}
-		wire.Inputs = append(wire.Inputs, interactionInputTargetWire{ProcessID: input.ProcessID().String(), MemberID: parent.String(), WaitID: input.WaitID().String()})
+		value := interactionInputTargetWire{ProcessID: input.ProcessID().String(), MemberID: parent.String(), WaitID: input.WaitID().String()}
+		prompt, err := runinput.DecodePrompt(input.Prompt())
+		if err != nil {
+			return nil, err
+		}
+		if prompt.Kind == interrupt.Approval {
+			i.state.mu.Lock()
+			contract, found := i.state.deployments.toolContracts[target.DeploymentRef()][prompt.Approval.Tool]
+			i.state.mu.Unlock()
+			if !found {
+				return nil, errors.New("execution: approval Tool contract is unavailable")
+			}
+			value.ApprovalInputSchema = contract.Definition().InputSchema
+		}
+		wire.Inputs = append(wire.Inputs, value)
 	}
 	slices.SortFunc(wire.Inputs, func(a, b interactionInputTargetWire) int { return strings.Compare(a.WaitID, b.WaitID) })
 	return wire, nil
@@ -138,7 +158,14 @@ func decodeInteractionHandoff(wire *interactionHandoffWire) (interactionHandoff,
 		if handoff.progress[member].Status != agent.StatusPaused || handoff.progress[process].Status != agent.StatusPaused || member == process {
 			return interactionHandoff{}, nil, errors.New("handoff input target is outside the paused members")
 		}
-		handoff.inputs[waitID] = interactionInputTarget{memberID: member, processID: process}
+		var schema jsonschema.Schema
+		if len(value.ApprovalInputSchema) > 0 {
+			schema, err = jsonschema.Parse(value.ApprovalInputSchema)
+			if err != nil {
+				return interactionHandoff{}, nil, err
+			}
+		}
+		handoff.inputs[waitID] = interactionInputTarget{memberID: member, processID: process, approvalInputSchema: schema}
 	}
 	return handoff, processes, nil
 }

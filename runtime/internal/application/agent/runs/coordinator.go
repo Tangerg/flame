@@ -296,16 +296,17 @@ func (c *Coordinator) openSegment(reqCtx context.Context, spec segmentSpec) (ite
 // registers the tree owner and launches the lifecycle task, that task owns
 // activation, pumping, executor cleanup and task release instead.
 type segmentStartup struct {
-	coordinator    *Coordinator
-	spec           segmentSpec
-	taskContext    context.Context
-	runContext     context.Context
-	cancelRun      context.CancelFunc
-	releaseTask    func()
-	executorEvents iter.Seq[ExecutorEvent]
-	journal        *journal
-	treeOwner      *runTreeOwner
-	routes         *executorRoutes
+	coordinator      *Coordinator
+	spec             segmentSpec
+	taskContext      context.Context
+	runContext       context.Context
+	cancelRun        context.CancelFunc
+	releaseTask      func()
+	executorEvents   iter.Seq[ExecutorEvent]
+	observationReady chan iter.Seq[ExecutorEvent]
+	journal          *journal
+	treeOwner        *runTreeOwner
+	routes           *executorRoutes
 }
 
 func (c *Coordinator) prepareSegmentStartup(
@@ -328,11 +329,22 @@ func (c *Coordinator) prepareSegmentStartup(
 		cancelRun:   cancelRun,
 		releaseTask: releaseTask,
 	}
-	executorEvents, err := c.observations.Observe(runContext, spec.executorRef())
-	if err != nil {
-		return nil, startup.abort(err)
+	var err error
+	if spec.StageExecution == nil {
+		startup.executorEvents, err = c.observations.Observe(runContext, spec.executorRef())
+		if err != nil {
+			return nil, startup.abort(err)
+		}
+	} else {
+		startup.observationReady = make(chan iter.Seq[ExecutorEvent], 1)
+		startup.executorEvents = func(yield func(ExecutorEvent) bool) {
+			select {
+			case events := <-startup.observationReady:
+				events(yield)
+			case <-runContext.Done():
+			}
+		}
 	}
-	startup.executorEvents = executorEvents
 	startup.journal, err = c.newJournal(spec.RunID, spec.SegmentID)
 	if err != nil {
 		return nil, startup.abort(err)
@@ -468,12 +480,9 @@ func (s *segmentStartup) markSegmentsStarted() {
 
 func (s *segmentStartup) beginExecution() {
 	canceled, _ := s.treeOwner.beginExecution(s.taskContext, func(ctx context.Context) error {
-		if s.spec.BeginExecution == nil {
-			return nil
-		}
-		err := s.spec.BeginExecution(ctx)
+		err := s.activateExecutor(ctx)
 		if err != nil {
-			cause := fmt.Errorf("runs: begin execution: %w", err)
+			cause := fmt.Errorf("runs: activate execution: %w", err)
 			trace.SpanFromContext(s.taskContext).RecordError(cause)
 			s.treeOwner.observation.Lock()
 			s.routes.abortUnfinished(cause)
@@ -485,6 +494,24 @@ func (s *segmentStartup) beginExecution() {
 	if canceled {
 		s.cancelRun()
 	}
+}
+
+func (s *segmentStartup) activateExecutor(ctx context.Context) error {
+	if s.spec.StageExecution != nil {
+		if err := s.spec.StageExecution(ctx); err != nil {
+			return err
+		}
+		events, err := s.coordinator.observations.Observe(s.runContext, s.spec.executorRef())
+		if err != nil {
+			return err
+		}
+		// The pump must consume while BeginExecution awaits durable fact receipts.
+		s.observationReady <- events
+	}
+	if s.spec.BeginExecution == nil {
+		return nil
+	}
+	return s.spec.BeginExecution(ctx)
 }
 
 type routeOpening struct {

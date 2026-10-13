@@ -134,6 +134,7 @@ func encodeInteractionCheckpointPayload(
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
 	mcpReferences []string,
+	handoff *interactionHandoffWire,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
@@ -143,14 +144,11 @@ func encodeInteractionCheckpointPayload(
 		ToolMetadata:  toolMetadata, Options: options.Clone(),
 		Instructions: cloneChatMessages(instructions),
 	}
-	handoff, err := encodeInteractionHandoff(tree)
-	if err != nil {
-		return nil, err
-	}
 	wire.Handoff = handoff
 	if _, err := interactionInstructionContext(wire.Instructions); err != nil {
 		return nil, err
 	}
+	var err error
 	accounted := make(map[agent.ProcessID]struct{}, len(usageByProcess))
 	for processID, byModel := range usageByProcess {
 		models, err := interactionCallCounts(byModel)

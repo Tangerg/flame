@@ -475,48 +475,6 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 	return nil
 }
 
-// StageContinuation claims the exact process-local waiting boundary without
-// advancing it. A missing live owner is rebuilt only from the supplied exact
-// TreeSnapshot; a mismatch is rejected instead of silently recapturing state.
-func (i *InteractionExecutor) StageContinuation(
-	ctx context.Context,
-	continuation runs.WaitingContinuation,
-) (runs.ExecutorRef, error) {
-	continuation = continuation.Clone()
-	if err := continuation.Validate(); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
-		return runs.ExecutorRef{}, fmt.Errorf(
-			"%w: checkpoint build %q does not match %q",
-			runs.ErrExecutorStateLost,
-			continuation.Checkpoint.BuildID,
-			i.buildID.String(),
-		)
-	}
-	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	session, err := i.session(ref)
-	if err == nil {
-		if stageContinuationErr := session.stageContinuation(continuation.Checkpoint); stageContinuationErr != nil {
-			return runs.ExecutorRef{}, stageContinuationErr
-		}
-		return ref, nil
-	}
-	if !errors.Is(err, runs.ErrExecutorNotLive) {
-		return runs.ExecutorRef{}, err
-	}
-	if err := i.restoreWaitingTree(
-		ctx,
-		ref,
-		continuation,
-		interactionBoundaryContinuationStaged,
-		nil,
-	); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	return ref, nil
-}
-
 // RestoreWaitingExecution reconstructs an exact committed waiting tree without
 // claiming it for continuation. An existing owner is rejected: recovery must
 // first prove that the obsolete execution was released.
@@ -547,7 +505,6 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 		ref,
 		continuation,
 		interactionBoundaryWaiting,
-		nil,
 	); err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -559,7 +516,6 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	ref runs.ExecutorRef,
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
-	acceptedAnswers []runs.InterruptAnswer,
 ) (err error) {
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
@@ -636,11 +592,6 @@ func (i *InteractionExecutor) restoreWaitingTree(
 			return fmt.Errorf("%w: inspect restored Interaction input: %w", runs.ErrExecutorStateLost, err)
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
-	}
-	if boundary == interactionBoundaryAcceptedPaused {
-		if _, err := session.prepareContinuationAnswers(ctx, acceptedAnswers); err != nil {
-			return err
-		}
 	}
 	if err := i.installations.publish(ctx, assembly, session.installationDependencies(), func() error {
 		return i.sessions.register(session)

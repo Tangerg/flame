@@ -282,7 +282,7 @@ func (r *runTreeOwner) requestCancel(
 		if activation.phase == activationResolved && activation.err != nil {
 			r.mu.Unlock()
 			return false, fmt.Errorf(
-				"%w: segment activation failed: %v",
+				"%w: segment activation failed: %w",
 				ErrRunFinished,
 				activation.err,
 			)
@@ -290,13 +290,17 @@ func (r *runTreeOwner) requestCancel(
 		r.rootCancel = &rootCancellation{reason: reason}
 		inflight := r.interrupt.active
 		r.mu.Unlock()
-		if requestExecutor == nil {
-			r.abortRootCancellation()
-			return false, errors.New("runs: root executor cancellation request is unavailable")
-		}
-		if err := requestExecutor(ctx); err != nil {
-			r.abortRootCancellation()
-			return false, err
+		// Before activation, the Run owner can suppress every executor side effect.
+		// There may be no restored writer to receive a cancellation request yet.
+		if activation.phase != activationPending {
+			if requestExecutor == nil {
+				r.abortRootCancellation()
+				return false, errors.New("runs: root executor cancellation request is unavailable")
+			}
+			if err := requestExecutor(ctx); err != nil {
+				r.abortRootCancellation()
+				return false, err
+			}
 		}
 		if inflight != nil {
 			inflight.cancel()

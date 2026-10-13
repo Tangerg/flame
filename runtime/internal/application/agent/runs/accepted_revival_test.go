@@ -29,7 +29,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			at := time.Date(2026, 10, 12, 1, 0, 0, 0, time.UTC)
 			pending := testApprovalPending("member_1", at)
 			sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}), pending: map[string]Pending{"run_1": pending}}
-			control := &fakeExecutionPorts{rehydrateErr: transient}
+			control := &fakeExecutionPorts{prepareErr: transient}
 			effects := &fakeEffects{}
 			coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 			parked := runForPending(pending)
@@ -62,7 +62,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			case "transient failure":
 				wantRetired = false
 			case "proven loss":
-				control.rehydrateErr = ErrExecutorStateLost
+				control.prepareErr = ErrExecutorStateLost
 			case "busy":
 				wantRetired = false
 				admission, ok, err := coordinator.admission.AcquireRun(t.Context(), "ses_1", "/work")

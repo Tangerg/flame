@@ -57,7 +57,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 					test.change(&invalid.Members[index])
 				}
 			}
-			ref, err := fixture.executor.StageContinuation(t.Context(), invalid)
+			ref, err := fixture.executor.StageAcceptedContinuation(t.Context(), invalid)
 			if err == nil {
 				_ = fixture.executor.Release(t.Context(), ref)
 			}
@@ -66,7 +66,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 			}
 		})
 	}
-	ref, err := fixture.executor.StageContinuation(t.Context(), continuation)
+	ref, err := fixture.executor.StageAcceptedContinuation(t.Context(), continuation)
 	if err != nil {
 		t.Fatal(err)
 	}

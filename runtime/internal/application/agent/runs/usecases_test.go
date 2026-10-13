@@ -7,7 +7,6 @@ import (
 	"iter"
 	"maps"
 	"runtime"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -156,40 +155,41 @@ func (f *fakeRunSessions) applyRunLost(runID string, finishedAt time.Time) error
 }
 
 type fakeExecutionPorts struct {
-	validated         RootExecutionStart
-	started           RootExecutionStart
-	startRef          ExecutorRef
-	stageErr          error
-	prepared          ExecutorRef
-	prepareErr        error
-	rehydrated        ExecutorRef
-	continuation      WaitingContinuation
-	rehydrateErr      error
-	resumeCheck       func()
-	resumeErr         error
-	resumeStarted     chan<- struct{}
-	resumeRelease     <-chan struct{}
-	activateCheck     func()
-	activateStarted   chan<- struct{}
-	activateRelease   <-chan struct{}
-	activated         bool
-	resumed           bool
-	continuationInput *CommittedUserInput
-	released          []ExecutorRef
-	canceledTrees     []ExecutorRef
-	steered           []ExecutorRef
-	steerInput        []transcript.ContentBlock
-	operations        *[]string
-	releaseErr        error
-	requestRootCancel func()
-	rootCancelReason  string
-	cancelTreeErr     error
-	cancelSubtree     func(ExecutorRef, string, string) error
-	prepareWaiting    func(WaitingSubtreeCancellationRequest) (PreparedWaitingSubtreeCancellation, error)
-	restoreWaiting    []WaitingContinuation
-	restoreErr        error
-	ruleCandidates    []RememberedRuleCandidate
-	deriveRulesErr    error
+	validated              RootExecutionStart
+	started                RootExecutionStart
+	startRef               ExecutorRef
+	stageErr               error
+	prepared               ExecutorRef
+	prepareErr             error
+	rehydrated             ExecutorRef
+	continuation           WaitingContinuation
+	rehydrateErr           error
+	stageContinuationCheck func()
+	resumeCheck            func()
+	resumeErr              error
+	resumeStarted          chan<- struct{}
+	resumeRelease          <-chan struct{}
+	activateCheck          func()
+	activateStarted        chan<- struct{}
+	activateRelease        <-chan struct{}
+	activated              bool
+	resumed                bool
+	continuationInput      *CommittedUserInput
+	released               []ExecutorRef
+	canceledTrees          []ExecutorRef
+	steered                []ExecutorRef
+	steerInput             []transcript.ContentBlock
+	operations             *[]string
+	releaseErr             error
+	requestRootCancel      func()
+	rootCancelReason       string
+	cancelTreeErr          error
+	cancelSubtree          func(ExecutorRef, string, string) error
+	prepareWaiting         func(WaitingSubtreeCancellationRequest) (PreparedWaitingSubtreeCancellation, error)
+	restoreWaiting         []WaitingContinuation
+	restoreErr             error
+	ruleCandidates         []RememberedRuleCandidate
+	deriveRulesErr         error
 }
 
 type blockingOpeningEffects struct {
@@ -238,8 +238,10 @@ func (f *fakeExecutionPorts) BeginRoot(context.Context, ExecutorRef) error {
 	return nil
 }
 
-func (f *fakeExecutionPorts) StageContinuation(_ context.Context, continuation WaitingContinuation) (ExecutorRef, error) {
-	f.continuation = continuation
+func (f *fakeExecutionPorts) StageAcceptedContinuation(_ context.Context, continuation WaitingContinuation) (ExecutorRef, error) {
+	if f.stageContinuationCheck != nil {
+		f.stageContinuationCheck()
+	}
 	if f.prepareErr != nil {
 		if !errors.Is(f.prepareErr, ErrExecutorNotLive) {
 			return ExecutorRef{}, f.prepareErr
@@ -260,15 +262,19 @@ func (f *fakeExecutionPorts) StageContinuation(_ context.Context, continuation W
 	return ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
 
-func (f *fakeExecutionPorts) StageAcceptedContinuation(ctx context.Context, continuation WaitingContinuation, _ []InterruptAnswer) (ExecutorRef, error) {
-	return f.StageContinuation(ctx, continuation)
-}
-
-func (f *fakeExecutionPorts) DeriveRememberedRules(
+func (f *fakeExecutionPorts) PrepareContinuation(
 	_ context.Context,
-	_ ExecutorRef,
+	continuation WaitingContinuation,
+	_ []InterruptAnswer,
 	candidates []RememberedRuleCandidate,
 ) ([]approval.RememberRequest, error) {
+	f.continuation = continuation
+	if f.prepareErr != nil && !errors.Is(f.prepareErr, ErrExecutorNotLive) {
+		return nil, f.prepareErr
+	}
+	if errors.Is(f.prepareErr, ErrExecutorNotLive) && continuation.Isolated {
+		return nil, fmt.Errorf("%w: isolated workspace is not restorable", ErrExecutorStateLost)
+	}
 	f.ruleCandidates = candidates
 	if f.deriveRulesErr != nil {
 		return nil, f.deriveRulesErr
@@ -1418,7 +1424,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	}
 }
 
-func TestResumeReportsLostExecutorStateAndKeepsRunRecoverable(t *testing.T) {
+func TestResumePreflightLossKeepsRunRecoverable(t *testing.T) {
 	var operations []string
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
@@ -1427,8 +1433,7 @@ func TestResumeReportsLostExecutorStateAndKeepsRunRecoverable(t *testing.T) {
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{
-		prepareErr:   ErrExecutorNotLive,
-		rehydrateErr: ErrExecutorStateLost,
+		prepareErr: ErrExecutorStateLost,
 	}
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, &fakeEffects{})
 
@@ -1445,13 +1450,13 @@ func TestResumeReportsLostExecutorStateAndKeepsRunRecoverable(t *testing.T) {
 	if !errors.Is(err, ErrExecutorStateLost) {
 		t.Fatalf("Resume error = %v, want executor state lost", err)
 	}
-	// Staging fails before the acceptance transaction, so nothing is accepted: the
+	// Preflight fails before the acceptance transaction, so nothing is accepted: the
 	// Run is not marked lost and its open hand-off survives for another attempt.
 	if sessions.lostRunID != "" || len(operations) != 0 {
-		t.Fatalf("staging failure marked the Run lost: %q ops=%v", sessions.lostRunID, operations)
+		t.Fatalf("preflight failure marked the Run lost: %q ops=%v", sessions.lostRunID, operations)
 	}
 	if _, open := sessions.pending["run_1"]; !open {
-		t.Fatal("staging failure consumed the open hand-off")
+		t.Fatal("preflight failure consumed the open hand-off")
 	}
 	if control.continuation.Workspace != "/work" {
 		t.Fatalf("continuation workspace = %q, want /work", control.continuation.Workspace)
@@ -1461,7 +1466,7 @@ func TestResumeReportsLostExecutorStateAndKeepsRunRecoverable(t *testing.T) {
 	}
 }
 
-func TestResumeOpeningFailureReleasesTreeAndKeepsRunRecoverable(t *testing.T) {
+func TestResumeOpeningFailureNeverClaimsTheWriter(t *testing.T) {
 	var operations []string
 	openingErr := errors.New("opening commit failed")
 	sessions := &fakeRunSessions{
@@ -1471,8 +1476,9 @@ func TestResumeOpeningFailureReleasesTreeAndKeepsRunRecoverable(t *testing.T) {
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{
-		prepared:   ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
-		operations: &operations,
+		prepared:               ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
+		operations:             &operations,
+		stageContinuationCheck: func() { t.Error("rejected opening acquired the waiting writer") },
 	}
 	coordinator := newUseCaseCoordinator(
 		&fakeExecutor{},
@@ -1491,20 +1497,15 @@ func TestResumeOpeningFailureReleasesTreeAndKeepsRunRecoverable(t *testing.T) {
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
-	// The acceptance opening did not commit, so nothing is accepted: the staged
-	// executor is released, the Run is not marked lost, and its open hand-off
-	// survives for another attempt.
+	// Rejected acceptance cannot claim or release the waiting writer.
 	if !errors.Is(err, openingErr) {
 		t.Fatalf("Resume error = %v, want opening failure", err)
 	}
 	if control.resumed {
 		t.Fatal("failed opening submitted the semantic answer")
 	}
-	if sessions.lostRunID != "" || len(control.released) != 1 {
-		t.Fatalf("lost Run/released tree = %q/%+v, want no lost Run and one release", sessions.lostRunID, control.released)
-	}
-	if !slices.Equal(operations, []string{"executor.release"}) {
-		t.Fatalf("cleanup operations = %v, want only the executor release", operations)
+	if sessions.lostRunID != "" || len(control.released) != 0 || len(operations) != 0 {
+		t.Fatalf("rejected acceptance changed execution ownership: lost=%q released=%v operations=%v", sessions.lostRunID, control.released, operations)
 	}
 	if _, open := sessions.pending["run_1"]; !open {
 		t.Fatal("failed opening consumed the open hand-off")

@@ -1499,13 +1499,30 @@ cancellation, and other unexpected probe errors propagate to recovery instead of
 being persisted as irreversible state loss. Malformed or incompatible checkpoints
 and missing execution trees still explicitly report that they cannot be resumed.
 
+Resume preflight reads the latest acknowledged paused tree, reconciles exact
+wait targets and answer receipts, and validates frozen response and approval input
+schemas. The input schemas are projections of the Scope Contracts bound to the
+waiting Tool deployment; preflight never resolves models or Tools, assembles
+resources, acquires a writer, attaches an observer, or delivers Signals. Remembered
+rule subjects and source authority are prepared without writes and commit only in
+the acceptance transaction.
+
+After acceptance, the existing Run owner stages the continuation, attaches its
+observer, and begins answer delivery under one activation gate. Restore and observe
+failures settle the accepted Run through that owner and preserve its command receipt.
+A cancellation that wins before activation suppresses the whole activation; steer
+and subtree cancellation wait for activation to resolve. Restart uses the same pure
+preflight and the same Run lifecycle, retaining inconclusive preflight read failures
+for startup retry. No accepted-command queue or second lifecycle owner is introduced.
+
 An accepted Resume can survive a crash while its recipients are still at the
 original paused handoff. The acceptance transaction retains the exact Run and
 Segment references, answer targets, and optional additional-input Item reference.
 Items own the accepted resolutions and input content. The retained execution
 context carries frozen instructions/options, accounting, calibration, metadata,
-pending input associations, and immutable Scope progress anchors; it contains no
-second recoverable tree. Restoration reads only the latest execution-tree head.
+pending input associations, frozen approval input schemas, and immutable Scope
+progress anchors; it contains no second recoverable tree. Restoration reads only
+the latest execution-tree head.
 
 Recovery requires the original member set and Step/Effect progress, paused
 recipients, and unconsumed exact answer receipts. It delivers only missing

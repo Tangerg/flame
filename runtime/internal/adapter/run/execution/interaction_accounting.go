@@ -232,6 +232,10 @@ func (i *interactionSession) interactionCheckpointPayload(
 	if err != nil {
 		return nil, err
 	}
+	handoff, err := i.encodeInteractionHandoff(tree)
+	if err != nil {
+		return nil, err
+	}
 	return encodeInteractionCheckpointPayload(
 		tree,
 		usageByProcess,
@@ -242,6 +246,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		metadata,
 		executionOptions(i.start.ModelSelection, i.start.Options),
 		references,
+		handoff,
 	)
 }
 

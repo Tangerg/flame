@@ -109,12 +109,15 @@ func (c *Coordinator) cancelLiveChild(
 	plan cancellationPlan,
 	owner *runTreeOwner,
 ) (CancelResult, error) {
+	cleanupCtx, cancel := owner.cleanupContext()
+	defer cancel()
+	if err := owner.awaitActivation(cleanupCtx); err != nil {
+		return CancelResult{}, err
+	}
 	attempt, err := owner.beginChildCancellation(plan, cmd.Reason)
 	if err != nil {
 		return CancelResult{}, err
 	}
-	cleanupCtx, cancel := owner.cleanupContext()
-	defer cancel()
 	if cancelRunningSubtreeErr := c.runningSubtreeCanceler.CancelRunningSubtree(
 		cleanupCtx,
 		plan.executor,
