@@ -17,11 +17,20 @@ import (
 // Resume validates one complete response set, then opens the continuation in one
 // acceptance transaction that consumes the waiting hand-off, settles its answered
 // Items, and resumes the tree together. The execution context checkpoint is
-// retained for that accepted continuation. Staging reconstructs the live/restored
-// tree before acceptance without any durable effect; semantic answer submission
+// retained for that accepted continuation. Staging may restore a fenced paused
+// writer before acceptance; semantic answer submission
 // continues behind the Run lifecycle supervisor after the opening commits.
 func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result StartResult, err error) {
 	cmd = cmd.clone()
+	if cmd.Acceptance != nil {
+		if err := cmd.Acceptance.Validate(); err != nil {
+			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidInterruptResponse, err)
+		}
+		accepted, found, err := c.lookupAcceptedCommand(ctx, *cmd.Acceptance, CommandResumeOpening)
+		if err != nil || found {
+			return accepted, err
+		}
+	}
 	addressed, found, err := c.runs.Run(ctx, cmd.RunID)
 	if err != nil {
 		return StartResult{}, err
@@ -52,7 +61,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, ErrInterruptNotOpen
 	}
 	// The Items an open interrupt names cannot change while it is open: only
-	// the claim below answers them.
+	// the opening transaction below answers them.
 	itemsByID, err := c.pendingItems(ctx, pending)
 	if err != nil {
 		return StartResult{}, err
@@ -110,9 +119,8 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
 	}
-	// Staging reconstructs in-memory executor state and commits nothing durable.
-	// The open interrupt set is consumed only by the acceptance opening below, so a
-	// failure before that commit leaves the Run recoverable as waiting.
+	// Staging retains the paused handoff even when restoration changes its writer.
+	// Only the opening below consumes its prompts or releases answered work.
 	ref, err := c.continuation.StageContinuation(ctx, waiting)
 	if err != nil {
 		return StartResult{}, err
@@ -171,17 +179,18 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	// resumes the tree, and opens the continuation Segment. Executor activation is
 	// detached and owned by the accepted Run lifecycle.
 	events, err := c.openSegment(ctx, segmentSpec{
-		RunID:            cmd.RunID,
-		SegmentID:        segmentID,
-		SessionID:        sessionID,
-		WorkspaceCWD:     sess.Workspace().Path(),
-		Isolated:         sess.Isolated(),
-		ExecutorID:       ref.ExecutorID,
-		Input:            cmd.Input,
-		Continuation:     continuation,
-		ResumeAcceptance: &acceptance,
-		admission:        &runAdmission,
-		DetachActivation: true,
+		RunID:             cmd.RunID,
+		SegmentID:         segmentID,
+		SessionID:         sessionID,
+		WorkspaceCWD:      sess.Workspace().Path(),
+		Isolated:          sess.Isolated(),
+		ExecutorID:        ref.ExecutorID,
+		Input:             cmd.Input,
+		Continuation:      continuation,
+		ResumeAcceptance:  &acceptance,
+		CommandAcceptance: cmd.Acceptance,
+		admission:         &runAdmission,
+		DetachActivation:  true,
 		BeginExecution: func(beginCtx context.Context) error {
 			if err := c.continuation.BeginContinuation(
 				beginCtx, ref, answers, committedInput,

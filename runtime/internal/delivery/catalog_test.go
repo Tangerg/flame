@@ -86,7 +86,7 @@ func TestReplayPolicyCoversEveryCommand(t *testing.T) {
 	if method, _ := Contract().Lookup(RunsStart); method.Idempotency != IdempotencyOwnerRunStream {
 		t.Errorf("runs.start must own its run-opening acceptance, got %v", method.Idempotency)
 	}
-	if method, _ := Contract().Lookup(RunsResume); method.Idempotency != IdempotencyReplayRunStream {
+	if method, _ := Contract().Lookup(RunsResume); method.Idempotency != IdempotencyOwnerRunStream {
 		t.Errorf("runs.resume must replay by re-attaching to its run, got %v", method.Idempotency)
 	}
 }

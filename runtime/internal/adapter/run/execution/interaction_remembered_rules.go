@@ -16,11 +16,9 @@ import (
 
 // DeriveRememberedRules validates each candidate's confirmed arguments against its
 // frozen tool invocation on the staged tree and derives the canonical rule
-// subject. A candidate whose arguments do not satisfy that invocation is omitted:
-// its approval still proceeds one-shot and the Tool fails at execution, so no rule
-// is remembered for an invocation that cannot run. Source authority is validated
-// by the approval owner, and the returned requests are persisted by the acceptance
-// transaction; nothing is written here.
+// subject. An invalid invocation rejects the requested remembered rule and the
+// complete Resume. Source authority is validated by the approval owner; the
+// acceptance transaction persists the returned write-set.
 func (i *InteractionExecutor) DeriveRememberedRules(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -39,12 +37,9 @@ func (i *InteractionExecutor) DeriveRememberedRules(
 		if !found {
 			return nil, fmt.Errorf("execution: remembered rule names unknown Tool %q", candidate.Request.Tool.ModelName())
 		}
-		subject, remembered, err := rememberedInvocationSubject(i.config.ToolInterpreter, executable, candidate)
+		subject, err := rememberedInvocationSubject(i.config.ToolInterpreter, executable, candidate)
 		if err != nil {
 			return nil, err
-		}
-		if !remembered {
-			continue
 		}
 		request := candidate.Request
 		request.Subject = approval.InvocationSubject(subject)
@@ -53,18 +48,16 @@ func (i *InteractionExecutor) DeriveRememberedRules(
 	return requests, nil
 }
 
-// rememberedInvocationSubject reports the canonical subject for a candidate whose
-// confirmed arguments satisfy the frozen invocation. It returns remembered=false
-// when the arguments are invalid, which is how an edited approval that cannot run
-// skips its rule without rejecting the Resume. Any other failure is a real error.
+// rememberedInvocationSubject admits the exact confirmed invocation before any
+// rule or answer can commit. It never downgrades a remember request to one-shot.
 func rememberedInvocationSubject(
 	interpreter InteractionToolInterpreter,
 	executable toolcontract.Tool,
 	candidate runs.RememberedRuleCandidate,
-) (string, bool, error) {
+) (string, error) {
 	binding, err := toolcontract.Bind(executable)
 	if err != nil {
-		return "", false, fmt.Errorf("execution: bind remembered Tool: %w", err)
+		return "", fmt.Errorf("execution: bind remembered Tool: %w", err)
 	}
 	call := corechat.ToolCall{
 		ID:        candidate.CallID,
@@ -72,16 +65,16 @@ func rememberedInvocationSubject(
 		Arguments: candidate.EffectiveArguments.Canonical(),
 	}
 	if _, err := binding.Contract().Prepare(call); err != nil {
-		return "", false, nil
+		return "", fmt.Errorf("%w: remembered invocation does not satisfy its Tool contract: %w", runs.ErrInvalidInterruptResponse, err)
 	}
 	subject, err := interpreter.ApprovalSubject(candidate.Request.Tool, candidate.EffectiveArguments)
 	if err != nil {
 		if errors.Is(err, tool.ErrInvalidArguments) {
-			return "", false, nil
+			return "", fmt.Errorf("%w: remembered invocation arguments: %w", runs.ErrInvalidInterruptResponse, err)
 		}
-		return "", false, fmt.Errorf("execution: derive remembered Tool approval subject: %w", err)
+		return "", fmt.Errorf("execution: derive remembered Tool approval subject: %w", err)
 	}
-	return subject, true, nil
+	return subject, nil
 }
 
 // toolExecutable finds the staged executable for one frozen Tool reference across

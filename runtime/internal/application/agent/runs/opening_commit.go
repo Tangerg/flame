@@ -48,13 +48,10 @@ func NewAdmissionOpeningCommit(
 }
 
 // WithCommandAcceptance binds an externally initiated command's immutable
-// acceptance to this fresh admission opening, so the acceptance record commits
+// acceptance to this opening, so the acceptance record commits
 // in the same transaction as the Run it names. It returns a new validated value
 // and never mutates the receiver.
 func (o OpeningCommit) WithCommandAcceptance(acceptance CommandAcceptance) (OpeningCommit, error) {
-	if o.admit == nil {
-		return OpeningCommit{}, errors.New("runs: command acceptance requires a fresh admission")
-	}
 	next := o
 	next.commandAcceptance = &acceptance
 	if err := next.Validate(); err != nil {
@@ -135,6 +132,9 @@ func (o OpeningCommit) Validate() error {
 			return err
 		}
 	}
+	if err := o.validateCommandAcceptance(); err != nil {
+		return err
+	}
 	return o.validateEvents()
 }
 
@@ -175,26 +175,26 @@ func (o OpeningCommit) validateAdmission() error {
 			return errors.New("runs: automation opening differs from admitted Run")
 		}
 	}
-	if o.commandAcceptance != nil {
-		if err := o.commandAcceptance.Validate(); err != nil {
-			return fmt.Errorf("runs: opening command acceptance: %w", err)
-		}
-		if o.commandAcceptance.SessionID != o.admit.SessionID ||
-			o.commandAcceptance.RunID != o.admit.RunID ||
-			o.commandAcceptance.SegmentID != o.admit.SegmentID {
-			return errors.New("runs: opening command acceptance differs from admitted Run")
-		}
+	return nil
+}
+
+func (o OpeningCommit) validateCommandAcceptance() error {
+	if o.commandAcceptance == nil {
+		return nil
+	}
+	expected, err := AcceptCommand(o.commandAcceptance.Key, o.commandAcceptance.Fingerprint, o)
+	if err != nil {
+		return err
+	}
+	if expected != *o.commandAcceptance {
+		return errors.New("runs: command acceptance differs from its opening")
 	}
 	return nil
 }
 
 // validateResumeAcceptance proves the answer write-set names the exact tree this
-// continuation resumes. A continuation command's acceptance binding is a separate
-// concern; this build does not record one yet.
+// continuation resumes.
 func (o OpeningCommit) validateResumeAcceptance() error {
-	if o.commandAcceptance != nil {
-		return errors.New("runs: resumed opening cannot bind a command acceptance")
-	}
 	if o.resumeAcceptance == nil {
 		return nil
 	}

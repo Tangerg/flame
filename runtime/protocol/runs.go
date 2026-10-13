@@ -293,39 +293,45 @@ type GetRunRequest struct {
 	RunID string `json:"runId"`
 }
 
-// GetRunAcceptanceRequest is the runs.getAcceptance body. Key is the idempotency
-// key a client sent with runs.start. The read answers whether that key opened a
-// run and whether the run still exists, so a client that lost the start ack learns
-// what to do without opening a second run.
+type RunCommandOperation string
+
+const (
+	RunCommandStart  RunCommandOperation = "start"
+	RunCommandResume RunCommandOperation = "resume"
+)
+
+// GetRunAcceptanceRequest addresses the original command, independently of the
+// query's call metadata. A missing record proves only what existed at this read.
 type GetRunAcceptanceRequest struct {
-	Key string `json:"key"`
+	Namespace string              `json:"namespace"`
+	Key       string              `json:"key"`
+	Operation RunCommandOperation `json:"operation"`
 }
 
 // RunAcceptanceType is the closed outcome of a command-acceptance lookup.
 type RunAcceptanceType string
 
 const (
-	// RunAcceptanceNotRecorded — no run-opening command used this key; a start is safe.
+	// RunAcceptanceNotRecorded carries no proof about an invocation still in flight.
 	RunAcceptanceNotRecorded RunAcceptanceType = "notRecorded"
-	// RunAcceptanceOpened — the key opened a run that still exists; attach by its identity.
-	RunAcceptanceOpened RunAcceptanceType = "opened"
+	// RunAcceptanceAccepted includes the original opening and current Run material.
+	RunAcceptanceAccepted RunAcceptanceType = "accepted"
 	// RunAcceptanceRetired — the key opened a run that has since been deleted or
 	// replaced. The command was accepted, but its run is gone, so there is no
-	// segment to attach to.
+	// original material to attach to. Its historical opening references remain.
 	RunAcceptanceRetired RunAcceptanceType = "retired"
-	// RunAcceptanceConflict — the key is bound to a different operation.
-	RunAcceptanceConflict RunAcceptanceType = "conflict"
 )
 
 // RunAcceptance is the closed result union for runs.getAcceptance. The run identity
-// is present for opened and retired; only an opened run still has an attachable
-// segment, so a retired result carries the historical run without one.
+// is present for accepted and retired. Run is the current owner projection and
+// is present only while the original material association survives.
 type RunAcceptance struct {
 	Type       RunAcceptanceType `json:"type"`
 	RunID      string            `json:"runId,omitempty"`
 	SegmentID  string            `json:"segmentId,omitempty"`
 	SessionID  string            `json:"sessionId,omitempty"`
 	UserItemID string            `json:"userItemId,omitempty"`
+	Run        *RunRef           `json:"run,omitzero"`
 }
 
 // ListInterruptsRequest is the interrupt.list body. Both filters are optional and

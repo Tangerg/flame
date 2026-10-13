@@ -155,6 +155,11 @@ func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit)
 			return err
 		}
 	}
+	if acceptance, present := opening.CommandAcceptance(); present {
+		if err := e.commandAcceptances.Save(ctx, acceptance); err != nil {
+			return fmt.Errorf("segment: record command acceptance: %w", err)
+		}
+	}
 	sessionID, runID, segmentID, err := openingCommitOwner(opening)
 	if err != nil {
 		return err
@@ -219,15 +224,6 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 			return fmt.Errorf("segment: record automated Run admission: %w", err)
 		}
 	}
-	// An externally initiated command binds its acceptance here, in the same
-	// transaction that admits the Run it names. The run_opening record's global
-	// key constraint commits atomically with the opening.
-	if acceptance, present := opening.CommandAcceptance(); present {
-		if err := e.commandAcceptances.Save(ctx, acceptance); err != nil {
-			return fmt.Errorf("segment: record command acceptance: %w", err)
-		}
-	}
-
 	return nil
 }
 

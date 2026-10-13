@@ -206,19 +206,6 @@ func (r *Registry) runSubscription[Capability, Params, Ack, Event any](
 	r.registerSubscription(meta, call)
 }
 
-// runStreamCommand registers one replay-protected Run mutation and its event
-// stream as a single operation.
-func (r *Registry) runStreamCommand[Capability, Params, Ack, Event any](
-	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
-) {
-	meta.Kind = KindStream
-	meta.Operation = OperationCommand
-	meta.Idempotency = IdempotencyReplayRunStream
-	meta.ReplayCursor = ReplayCursorRun
-	r.registerStream(meta, call)
-}
-
 // runStreamOwnerCommand registers a Run-opening command whose durable acceptance
 // the application commits in the opening transaction. Delivery keeps no competing
 // replay record; a same-key retry re-enters the handler, which returns the

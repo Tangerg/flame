@@ -2444,7 +2444,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-12.1\""
+          "value": "\"2026-10-13.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2597,9 +2597,9 @@
           "value": "\"history\""
         },
         {
-          "name": "RunAcceptanceConflict",
+          "name": "RunAcceptanceAccepted",
           "type": "RunAcceptanceType",
-          "value": "\"conflict\""
+          "value": "\"accepted\""
         },
         {
           "name": "RunAcceptanceNotRecorded",
@@ -2607,14 +2607,19 @@
           "value": "\"notRecorded\""
         },
         {
-          "name": "RunAcceptanceOpened",
-          "type": "RunAcceptanceType",
-          "value": "\"opened\""
-        },
-        {
           "name": "RunAcceptanceRetired",
           "type": "RunAcceptanceType",
           "value": "\"retired\""
+        },
+        {
+          "name": "RunCommandResume",
+          "type": "RunCommandOperation",
+          "value": "\"resume\""
+        },
+        {
+          "name": "RunCommandStart",
+          "type": "RunCommandOperation",
+          "value": "\"start\""
         },
         {
           "name": "RunProtocolFeatureSubagents",
@@ -5077,9 +5082,19 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "Namespace",
+              "type": "string",
+              "tag": "json:\"namespace\""
+            },
+            {
               "name": "Key",
               "type": "string",
               "tag": "json:\"key\""
+            },
+            {
+              "name": "Operation",
+              "type": "RunCommandOperation",
+              "tag": "json:\"operation\""
             }
           ],
           "methods": [
@@ -8681,6 +8696,11 @@
               "name": "UserItemID",
               "type": "string",
               "tag": "json:\"userItemId,omitempty\""
+            },
+            {
+              "name": "Run",
+              "type": "*RunRef",
+              "tag": "json:\"run,omitzero\""
             }
           ],
           "methods": [
@@ -8692,6 +8712,11 @@
         },
         {
           "name": "RunAcceptanceType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "RunCommandOperation",
           "kind": "defined",
           "underlying": "string"
         },

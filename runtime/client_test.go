@@ -75,6 +75,25 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	}
 }
 
+func TestAcceptanceLookupUsesOriginalQueryIdentityInBothBindings(t *testing.T) {
+	rt, server, discovery := remoteRuntime(t)
+	client := remoteTestClient(t, server.URL)
+	bindings := []interface {
+		GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest, CallOptions) (*protocol.RunAcceptance, error)
+	}{rt, client}
+	for _, binding := range bindings {
+		request := protocol.GetRunAcceptanceRequest{Namespace: discovery.Capabilities.Limits.Idempotency.Namespace, Key: "unrecorded-command", Operation: protocol.RunCommandResume}
+		result, err := binding.GetRunAcceptance(t.Context(), request, CallOptions{})
+		if err != nil || result.Type != protocol.RunAcceptanceNotRecorded {
+			t.Fatalf("read-only lookup=%+v,%v", result, err)
+		}
+		request.Namespace = testsupport.AlternateIdempotencyNamespace
+		if _, err := binding.GetRunAcceptance(t.Context(), request, CallOptions{}); !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) {
+			t.Fatalf("namespace fence=%v", err)
+		}
+	}
+}
+
 func TestClientPreservesAnAbsentGoal(t *testing.T) {
 	rt, server, _ := remoteRuntime(t)
 	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{Title: "without a goal"}, CommandOptions{})

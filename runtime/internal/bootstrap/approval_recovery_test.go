@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -112,13 +113,28 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 				t.Fatalf("approval boundary = %+v, %v", pending, err)
 			}
 			itemID := pending.Data[0].Interrupts[0].ItemID
-			_, events, err = api.ResumeRun(ctx, protocol.ResumeRunRequest{
+			request := protocol.ResumeRunRequest{
 				RunID: started.RunID,
 				Responses: []protocol.InterruptResponse{{
 					ItemID:   itemID,
 					Response: test.response,
 				}},
-			})
+			}
+			if test.response.Remember != nil {
+				before, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, _, err := api.ResumeRun(ctx, request); !errors.Is(err, protocol.ErrInvalidParams) {
+					t.Fatalf("invalid remember was accepted: %v", err)
+				}
+				after, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
+				if err != nil || !reflect.DeepEqual(before, after) || calls.Load() != 1 {
+					t.Fatalf("invalid remember changed the prompt or executed work: %v", err)
+				}
+				request.Responses[0].Response.Remember = nil
+			}
+			_, events, err = api.ResumeRun(ctx, request)
 			if err != nil {
 				t.Fatal(err)
 			}

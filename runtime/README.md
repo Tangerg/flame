@@ -62,6 +62,32 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-13.1
+
+Start and Resume use one Run-owned command acceptance. A keyed Resume commits
+its request fingerprint and original Run, Segment, and optional input Item
+references with the complete answer set, resumed tree, and requested standing
+rules. Redelivery reads that immutable acceptance before current prompts or
+execution preparation; it never allocates a replacement opening. Delivery no
+longer reserves or caches a separate Run-stream response.
+
+`runs.getAcceptance` requires the original `namespace`, `key`, and `operation`
+(`start` or `resume`) as query parameters. It only reads. `accepted` includes
+the original opening references and a consistent current Run projection;
+`retired` retains those references without material. Deleted material cannot
+be relinked by importing the same Run ID. `notRecorded` describes this read
+and says nothing about an invocation still in flight. Namespace mismatches,
+operation conflicts, and inconclusive reads remain errors.
+
+Only the original material and Segment may supply a redelivery stream. A later
+Segment, waiting or terminal Run, retired material, or unavailable replay cursor
+returns the original acknowledgement with no replacement stream. A client uses
+existing snapshot and subscription reads for the current lifecycle. Observation
+defects remain errors and never overwrite acceptance.
+
+Rebuild Runtime and its clients together. The former cached Resume response
+policy and acceptance query shapes are removed without compatibility readers.
+
 ## Protocol 2026-10-12.1
 
 Memory and Schedules are optional, complete managed plugin backends. Their
@@ -1599,7 +1625,8 @@ Only an explicitly authored `glob` uses Go `path.Match` (`*` does not cross `/`)
 Exact subjects outrank globs within the same scope. An
 edited command or path cannot grant permission to the original command or path.
 The frozen Scope input contract validates approved arguments before a rule is
-saved; invalid edits produce a failed Tool result without saving a grant. Denials
+saved. An invalid edit with a requested remembered rule rejects the complete
+Resume; a one-shot invalid edit produces a failed Tool result. Denials
 remain bound to the original invocation. Standing rules never replay argument edits.
 If the source changes while approval is pending, requesting a remembered rule
 rejects the complete Resume. A one-shot choice requires an explicit command.

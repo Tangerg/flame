@@ -67,7 +67,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lookup after reopen: %v", err)
 	}
-	if !record.Found || !record.MaterialAvailable || record.Acceptance != acceptance {
+	if !record.Found || record.CurrentRun == nil || record.Acceptance != acceptance {
 		t.Fatalf("reopened record = %+v, want the original opening with live material", record)
 	}
 
@@ -78,7 +78,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lookup after retirement: %v", err)
 	}
-	if !retired.Found || retired.MaterialAvailable {
+	if !retired.Found || retired.CurrentRun != nil {
 		t.Fatalf("retired record = %+v, want the identity without live material", retired)
 	}
 	if retired.Acceptance != acceptance {
@@ -93,7 +93,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lookup after re-admit: %v", err)
 	}
-	if refilled.MaterialAvailable {
+	if refilled.CurrentRun != nil {
 		t.Fatal("re-admitting the same RunID refilled a retired acceptance")
 	}
 }

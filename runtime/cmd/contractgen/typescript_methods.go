@@ -60,7 +60,7 @@ func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
 func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 	m.line("export type WireOperationKind = \"query\" | \"command\" | \"subscription\";")
 	m.line("export type WireResponseKind = \"unary\" | \"stream\";")
-	m.line("export type WireIdempotencyPolicy = \"none\" | \"replayResponse\" | \"ownerResponse\" | \"replayRunStream\";")
+	m.line("export type WireIdempotencyPolicy = \"none\" | \"replayResponse\" | \"ownerResponse\" | \"ownerRunStream\";")
 	m.line("export type WireReplayCursorPolicy = \"none\" | \"run\";")
 	m.line("export type WirePaginationKind = \"none\" | \"cursor\";")
 	m.line("")

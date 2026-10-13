@@ -35,39 +35,36 @@ func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*proto
 	return &ref, nil
 }
 
-// GetRunAcceptance resolves what Runtime recorded for one runs.start idempotency
-// key. Every outcome — never seen, opened, retired, or bound elsewhere — is a
-// normal read, so the result is a closed union rather than a not-found refusal.
+// GetRunAcceptance reads the original opening and its current material in one
+// snapshot. It never redelivers a command or fills a retired material reference.
 func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error) {
+	if in.Namespace != s.idempotency.Namespace {
+		return nil, protocol.ErrIdempotencyStoreMismatch
+	}
 	record, err := s.runs.LookupCommandAcceptance(ctx, in.Key)
 	if err != nil {
 		return nil, err
+	}
+	if record.OtherOperation || (record.Found && string(record.Acceptance.Operation) != string(in.Operation)) {
+		return nil, protocol.ErrIdempotencyConflict
 	}
 	return presentRunAcceptance(record), nil
 }
 
 func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcceptance {
-	switch {
-	case record.OtherOperation:
-		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceConflict}
-	case !record.Found:
+	if !record.Found {
 		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}
-	case record.MaterialAvailable:
-		return &protocol.RunAcceptance{
-			Type:       protocol.RunAcceptanceOpened,
-			RunID:      record.Acceptance.RunID,
-			SegmentID:  record.Acceptance.SegmentID,
-			SessionID:  record.Acceptance.SessionID,
-			UserItemID: record.Acceptance.UserItemID,
-		}
-	default:
-		return &protocol.RunAcceptance{
-			Type:       protocol.RunAcceptanceRetired,
-			RunID:      record.Acceptance.RunID,
-			SessionID:  record.Acceptance.SessionID,
-			UserItemID: record.Acceptance.UserItemID,
-		}
 	}
+	response := &protocol.RunAcceptance{
+		Type: protocol.RunAcceptanceRetired, RunID: record.Acceptance.RunID,
+		SegmentID: record.Acceptance.SegmentID, SessionID: record.Acceptance.SessionID,
+		UserItemID: record.Acceptance.UserItemID,
+	}
+	if record.CurrentRun != nil {
+		current := presentRun(*record.CurrentRun)
+		response.Type, response.Run = protocol.RunAcceptanceAccepted, &current
+	}
+	return response
 }
 
 // ListRuns pages the durable run history as a cursor Page. The set and the scope

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-12.1` · 111 methods
+Protocol `2026-10-13.1` · 111 methods
 
 ## Methods
 
@@ -26,7 +26,7 @@ Protocol `2026-10-12.1` · 111 methods
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
 | `runs.start` | command | stream | ownerRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
-| `runs.resume` | command | stream | replayRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.resume` | command | stream | ownerRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
 | `runs.steer` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment` |
@@ -238,9 +238,8 @@ publish one namespaced pattern branch without weakening first-party tags.
 | tag | required | optional |
 | --- | --- | --- |
 | `notRecorded` | — | — |
-| `opened` | `runId`, `segmentId`, `sessionId`, `userItemId` | — |
-| `retired` | `runId`, `sessionId`, `userItemId` | — |
-| `conflict` | — | — |
+| `accepted` | `runId`, `segmentId`, `sessionId`, `run` | `userItemId` |
+| `retired` | `runId`, `segmentId`, `sessionId` | `userItemId` |
 
 ### `RunOutcome`
 
@@ -781,6 +780,8 @@ TypeScript validator from this single registry projection.
 | `GetRunRequest` | `runId` | `nonEmpty` |
 | `GetRunRequest` | `runId` | `identity` |
 | `GetRunRequest` | `runId` | `maxLength(256)` |
+| `GetRunAcceptanceRequest` | `namespace` | `nonEmpty` |
+| `GetRunAcceptanceRequest` | `namespace` | `pattern("^idp_[0-9a-f]{32}$")` |
 | `GetRunAcceptanceRequest` | `key` | `nonEmpty` |
 | `GetRunAcceptanceRequest` | `key` | `maxLength(255)` |
 | `RunAcceptance` | `runId` | `identity` |

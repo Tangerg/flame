@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
@@ -19,12 +21,13 @@ var ErrCommandKeyConflict = errors.New("runs: idempotency key is already bound t
 type CommandOperation string
 
 const (
-	// CommandStartOpening is a fresh root/child admission accepted by runs.start.
-	CommandStartOpening CommandOperation = "start"
+	// CommandStartOpening is a fresh root admission accepted by runs.start.
+	CommandStartOpening  CommandOperation = "start"
+	CommandResumeOpening CommandOperation = "resume"
 )
 
 // Valid reports whether o is an operation whose acceptance this build records.
-func (o CommandOperation) Valid() bool { return o == CommandStartOpening }
+func (o CommandOperation) Valid() bool { return o == CommandStartOpening || o == CommandResumeOpening }
 
 // CommandAcceptance is the immutable fact that Runtime accepted one externally
 // initiated Run command and bound it to the exact opening it produced. It is the
@@ -70,7 +73,10 @@ func (a CommandAcceptance) Validate() error {
 	if err := resourceid.ValidateSegment(a.SegmentID); err != nil {
 		return err
 	}
-	return resourceid.ValidateItem(a.UserItemID)
+	if a.UserItemID != "" || a.Operation == CommandStartOpening {
+		return resourceid.ValidateItem(a.UserItemID)
+	}
+	return nil
 }
 
 // CommandIdentity is the external command reference the delivery boundary binds
@@ -95,13 +101,13 @@ func (c CommandIdentity) Validate() error {
 
 // CommandAcceptanceRecord is the read-only projection of a command-record lookup
 // by key. At most one of Found or OtherOperation is true; neither means the key
-// is unused. MaterialAvailable reports whether the original Run material is still
-// referenced by the acceptance.
+// is unused. CurrentRun is read consistently through the original material
+// reference; deleting and importing the same Run ID cannot restore that reference.
 type CommandAcceptanceRecord struct {
-	Acceptance        CommandAcceptance
-	Found             bool
-	MaterialAvailable bool
-	OtherOperation    bool
+	Acceptance     CommandAcceptance
+	Found          bool
+	CurrentRun     *run.Run
+	OtherOperation bool
 }
 
 // CommandAcceptanceReader resolves a previously accepted command by its key so a
@@ -124,22 +130,55 @@ func (c *Coordinator) LookupCommandAcceptance(ctx context.Context, key string) (
 
 // AcceptCommand derives the acceptance for key and fingerprint from the opening
 // that an admission produced, so the two cannot describe different Runs.
-func AcceptCommand(key, requestFingerprint string, opening OpeningCommit, userItemID string) (CommandAcceptance, error) {
-	admission, present := opening.Admission()
-	if !present {
-		return CommandAcceptance{}, errors.New("runs: command acceptance has no Run admission")
-	}
+func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (CommandAcceptance, error) {
 	acceptance := CommandAcceptance{
 		Key:         key,
 		Fingerprint: requestFingerprint,
-		Operation:   CommandStartOpening,
-		SessionID:   admission.SessionID,
-		RunID:       admission.RunID,
-		SegmentID:   admission.SegmentID,
-		UserItemID:  userItemID,
+	}
+	if admission, present := opening.Admission(); present {
+		acceptance.Operation = CommandStartOpening
+		acceptance.SessionID, acceptance.RunID, acceptance.SegmentID = admission.SessionID, admission.RunID, admission.SegmentID
+	} else if resume, present := opening.Resume(); present {
+		root := resume.Runs[len(resume.Runs)-1].State()
+		acceptance.Operation = CommandResumeOpening
+		acceptance.SessionID, acceptance.RunID, acceptance.SegmentID = root.SessionID(), root.ID(), root.ActiveSegmentID()
+	} else {
+		return CommandAcceptance{}, errors.New("runs: command acceptance has no opening")
+	}
+	for _, event := range opening.events {
+		for _, item := range event.Items {
+			if item.Kind() != transcript.UserMessage || item.RunID() != acceptance.RunID {
+				continue
+			}
+			if acceptance.UserItemID != "" {
+				return CommandAcceptance{}, errors.New("runs: command opening repeats its user input")
+			}
+			acceptance.UserItemID = item.ID()
+		}
 	}
 	if err := acceptance.Validate(); err != nil {
 		return CommandAcceptance{}, err
 	}
 	return acceptance, nil
+}
+
+func (c *Coordinator) lookupAcceptedCommand(ctx context.Context, identity CommandIdentity, operation CommandOperation) (StartResult, bool, error) {
+	record, err := c.commandAcceptances.Lookup(ctx, identity.Key)
+	if err != nil {
+		return StartResult{}, false, err
+	}
+	if record.OtherOperation {
+		return StartResult{}, false, ErrCommandKeyConflict
+	}
+	if !record.Found {
+		return StartResult{}, false, nil
+	}
+	accepted := record.Acceptance
+	if accepted.Fingerprint != identity.Fingerprint || accepted.Operation != operation {
+		return StartResult{}, false, ErrCommandKeyConflict
+	}
+	return StartResult{
+		RunID: accepted.RunID, SegmentID: accepted.SegmentID, SessionID: accepted.SessionID,
+		UserItemID: accepted.UserItemID, Reopened: true, MaterialRetired: record.CurrentRun == nil,
+	}, true, nil
 }

@@ -565,13 +565,9 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 		}
 	}
 	if spec.CommandAcceptance != nil {
-		admission, ok := opening.Admission()
-		if !ok {
-			return nil, errors.New("runs: command acceptance requires a fresh admission")
-		}
 		acceptance, acceptErr := AcceptCommand(
 			spec.CommandAcceptance.Key, spec.CommandAcceptance.Fingerprint,
-			opening, userMessageItemID(admission.SegmentID),
+			opening,
 		)
 		if acceptErr != nil {
 			return nil, acceptErr
