@@ -2,52 +2,57 @@
 
 ## Current stage
 
-Stage 4v (d3551b81a, retired sample cleanup c69a76031) removes the Core Memory
-read record and scope/origin/status enums. No remaining Core operation consumes
-these plugin-owned records. CLI presentation owns its compact memory.Item projection
-and frozen MemoryTarget; Desktop workspace queries own their visible vocabulary.
-Both consume the generated publisher snapshots, retaining original binding/input/
-command recovery and decoded acknowledgement ordering. Visible-state/time checks
-reject missing values, hidden states and invalid user-authored pending records.
-These read projections never originate business transitions.
+Stage 4w (108e8806b) removes the public Core Memory capacity export and its private
+business-domain import. Memory's published page now projects Capacity from the
+existing MaxVisiblePerTarget owner, with a generated schema const. The same private
+Go owner defines MaxManagementPageItems; application page admission, public Limit
+bounds and output Rows maxItems derive from it. No competing client capacity or
+page-width numeric constant remains. Private storage/receipt capacity is unchanged.
 
-Move identity/content admission into the publisher's actual Go-owned snapshot
-schema. ItemID publishes its existing pattern rather than a string alias that
-bypasses pattern reflection. Scope/origin/status vocabularies derive from existing
-Go constants; content uses its existing Unicode ceiling/nonblank rule. Regenerate
-canonical JSON, Go/TS contracts and the ordinary Memory ESM together. No private
-backend imports or Core shape alias is added to clients. The existing invopop
-reflection library becomes a direct dependency solely for the publisher's schema
-extension; go mod tidy changes only that classification, with no version changes.
+CLI and Desktop complete collectors capture one concrete installed binding, adopt
+the first admitted capacity and retain it across continuation. Invalid/changed
+capacity, cumulative overflow, empty continuation, repeated identities/cursors and
+continuation failure produce no partial success. CLI's existing cursor traversal
+bounds requests by the publisher capacity. Workspace and ordinary Memory component
+reads omit Limit and use the backend default. The generated schema enforces page
+width; clients do not reconstruct another default. Existing graphical fixture source
+adds the current required Capacity field; no UI/E2E/screenshot test runs or additions.
 
-Delete Core type/enum registrations, constraints, schema/sample and Go/TS exports
-in the same slice. Existing native fixtures compare complete owner snapshots,
-including vectors; they no longer translate into a retired Core record. Existing
-terminal/graphical source fixtures use the current consumer types. No frontend
-UI/E2E/screenshot cases are added or executed. Core is 2026-10-14.17; backend
-remains 2026-10-14.2 and private business/storage/receipt formats are unchanged.
-The root capacity export and business-specific invalidation topics still have real
-consumers; their ownership and complete pagination/notification contract remain open.
+Regenerate publisher canonical JSON/Go/TS and ordinary Memory ESM together; remove
+Core constant and generated API inventory. Core is 2026-10-14.18, backend stays
+2026-10-14.2, and private data/receipt formats are unchanged. Business-specific
+notification topics and routing still have actual consumers and remain the next
+ownership migration. This slice does not close model streaming, dependencies or
+all-workflow recovery/author parity by making pagination compile.
 
-Passed: Runtime/CLI production builds; shared/Desktop types and Vite; publisher
-Unicode/content/identity and generation contract checks (1.449s), consumer target/
-visible-state/timestamp checks (0.623s), CLI broken-projection/unidentified-add and
-original-binding/restart/malformed-output regressions (7.846s); Bootstrap/terminal/
-protocol/delivery source compilation into automatically removed temporary outputs;
-source coverage (90/90 operation families, 107 typed calls, three sidecars/15 topics),
-layer gate and exact plugin resource reproduction; gofmt/diff checks. Initial
-publisher pattern and fixture compile/type failures are repaired; no active executed
-failure remains. Native source compilation is not runtime acceptance. Full/vet/race/
-native and actual process-loss qualification remain in the final consolidated phase.
+Passed: publisher capacity/request-bound/generated contract checks (0.550s), actual
+backend contract/default-page checks (1.312s), private management pagination checks
+(0.760s), CLI complete/failure/original-binding recovery (7.256s) and dedicated
+capacity-drift/no-partial/default-width regression (8.525s); Runtime/CLI builds.
+Shared/Desktop/plugin types, Vite, source coverage (90/90 operation families,
+107 typed calls, three sidecars/15 topics), layer gate (1145 modules/3702 edges),
+exact ESM reproduction, native/terminal source compilation into removed temporary
+outputs and gofmt/diff checks pass. An existing fixture initially missed Capacity;
+its source is migrated. Resource checks caught ESM stale after the final schema
+regeneration; rebuilding and exact reproduction pass. No active executed failure
+remains. Native source compilation is not runtime acceptance; full/vet/race/native
+qualification remains in the final consolidated phase.
 
 Main 993eb865 is integrated; merge reports already up to date. Original proposal,
-review and draft hashes remain unchanged. Owned dist/temporary outputs are removed;
-user-owned stash is preserved. Next remove Core capacity/topic business knowledge
-through actual consumers, then complete scoped dependencies, Tool/automatic/cross-plugin
+review and draft hashes remain unchanged. Owned dist/temporary outputs are removed
+and user-owned stash is preserved. Next migrate business notification topics through
+actual consumers, then complete scoped dependencies, Tool/automatic/cross-plugin
 consumers, canonical model streaming, all-workflow generation recovery, independent
 author parity and P01-P48/final acceptance. The full goal remains active.
 
 ## Completed
+
+- Stage 4w (108e8806b): remove Core Memory capacity export/import; publish Capacity
+  from the private owner and derive input/page-row width bounds from one constant.
+- Stage 4w: complete CLI/Desktop traversal uses captured publisher capacity/default
+  width, rejects drift/overflow/continuation failure without partial success.
+- Stage 4w: regenerated canonical/Go/TS/ordinary ESM, actual backend/default-width
+  contract checks and migrated existing fixture source; notifications remain open.
 
 - Stage 4v (d3551b81a/c69a76031): remove Core Memory records/enums/constraints/
   schema/sample/exports; actual CLI/Desktop presentation owns its read vocabulary.
@@ -426,7 +431,7 @@ author parity and P01-P48/final acceptance. The full goal remains active.
 
 - All actual CLI/workspace Memory reads and human mutations now use the public
   installed publisher contract. Core business methods/DTOs and the Memory feature
-  are removed, including Core records/enums. Relocate remaining capacity/topic knowledge and audit every
+  are removed, including Core records/enums. Relocate remaining business notification knowledge and audit every
   component, Tool and automatic workflow for original-route recovery.
 - Schedule Core business facade migration is complete. Full native lost-response,
   restart, replacement/disablement/uninstall/retirement execution for every migrated
@@ -443,7 +448,7 @@ author parity and P01-P48/final acceptance. The full goal remains active.
 
 ## Next
 
-1. Relocate remaining Core Memory capacity/topic business knowledge through
+1. Relocate remaining Core business notification knowledge through
    actual consumers. Preserve original binding/receipt/Run ownership, delete replaced
    contracts in the owning slice and retain native acceptance for the final phase.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
@@ -455,6 +460,9 @@ author parity and P01-P48/final acceptance. The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Memory page Capacity is a schema-bound projection of the private target owner | Complete readers need finite traversal bounds without a Core business constant or copied client capacity | Retained Core capacity export/private import, hardcoded client 512, unbounded complete traversal or a separate limits query/facade |
+| 2026-10-14 | Backend management page width has one Go owner, projected into request/output schemas | Application, publisher and clients must not independently choose the business page ceiling | Copied client 100, independent DTO tag constants, widening Rows without changing owner admission or silent partial collection |
+| 2026-10-14 | Captured capacity remains stable across the original paged binding | Replacement or malformed owner data cannot justify merging target facts or accepting partial results | Refreshing provider per page, changed capacity arbitration, dropping repeated/empty pages or claiming compilation proves process recovery |
 | 2026-10-14 | Plugin records/enums live in their publisher and client read projections, not the Core Protocol | All actual consumers use installed operations; the remaining Core record creates business-specific substrate knowledge | Retained Core record/schema/sample, backend-private client imports, a Core alias or a new read-facade operation |
 | 2026-10-14 | Publish actual ItemID pattern and existing content boundary from the Go owner | String-alias reflection discards identity pattern, and deleting Core constraints must not weaken public admission | Copying numeric/pattern constants into clients, trusting schema shape alone, weakening the invalid-ID regression or keeping retired Core constraints |
 | 2026-10-14 | Native fixtures compare complete publisher snapshots | Vectors make snapshots noncomparable; the full private owner state must remain observed across restart | Comparing a truncated Core projection, dropping fields, weakening assertions or treating source compilation as process acceptance |
@@ -613,8 +621,8 @@ Status is open until code and appropriate verification prove the requirement.
 | --- | --- | --- |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory capacity/topic knowledge and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; all CLI Schedules and CLI/workspace Memory reads/human mutations use public contracts with original binding/input; all Core Memory business methods/DTOs/feature removed; Core records/enums removed and client projections relocated; Core capacity/topics, Tool/all-consumer migration and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; CLI runtimebinding/agentmemory.go and terminal/agent_memory_management.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
+| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory capacity removed with publisher bounds; business notification knowledge and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
+| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; all CLI Schedules and CLI/workspace Memory reads/human mutations use public contracts with original binding/input; all Core Memory business methods/DTOs/feature removed; Core records/enums removed and client projections relocated; Core capacity removed with published pagination bounds; business topics, Tool/all-consumer migration and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; CLI runtimebinding/agentmemory.go and terminal/agent_memory_management.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
@@ -647,6 +655,22 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4w publisher-owned Memory pagination bounds
+
+- Passed: publisher bound/generated contract checks (0.550s), actual backend method/
+  default-page checks (1.312s), management pagination (0.760s), CLI traversal and
+  original recovery (7.256s), capacity drift/no-partial/default-width regression
+  (8.525s); Runtime/CLI production builds.
+- Passed: shared/Desktop/plugin typechecks, Vite, source 90/90 with 107 calls and
+  three sidecars/15 topics, layer 1145/3702, rebuilt exact ESM resource reproduction.
+- Passed: affected native/terminal source compilation, gofmt/diff checks, unchanged
+  design input hashes, main integration and owned output cleanup. Fixture required
+  Capacity and stale regenerated-resource failures are repaired, not suppressed.
+- Not run: frontend UI/E2E/screenshot tests by user instruction; full/vet/race/native
+  acceptance remains final-phase work. Notifications and all remaining goal work
+  remain active; schema const is not a second mutable capacity owner.
+
 
 ### Stage 4v Core Memory read record retirement
 
@@ -1717,6 +1741,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Core .18 removes MaximumAgentMemoryItemsPerTarget. Published Memory pages require
+  Capacity and current request/row bounds. External clients/packages must rebuild
+  against current contracts; old frames have no alias or conversion. Private storage
+  and receipt formats remain unchanged. Business notification migration and final
+  process acceptance remain open; no externally published module is changed here.
 
 - Core .17 removes public Memory records/enums and their wire sample/schema. External
   clients must consume the publisher contract and own their visible projections.
