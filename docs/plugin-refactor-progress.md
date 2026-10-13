@@ -2,7 +2,7 @@
 
 ## Current stage
 
-Stage 3d verified cutover: actual Schedules backend dispatch now uses the public Runtime Client and canonical RPC/SSE callback. Captured new Session/Run opening shares runs.start and its durable command acceptance. StartAutomation, its receipt store/table and the host's direct opening/remote Accept path are removed. Real Core opening-response loss, private dispatch-message loss, restart, source withdrawal and retired material reconciliation pass focused races. Runtime/CLI full module checks, final changed-owner races, shared client contracts and independent SDK/Reviews checks pass. Commit and incoming local main synchronization are next. Generic declarations, installed dependency rendezvous, components, model execution/decorators and full author parity remain open.
+Stage 3d complete: actual Schedules backend dispatch now uses the public Runtime Client and canonical RPC/SSE callback. Captured new Session/Run opening shares runs.start and its durable command acceptance. StartAutomation, its receipt store/table and the host's direct opening/remote Accept path are removed. Real Core opening-response loss, private dispatch-message loss, restart, source withdrawal and retired material reconciliation pass focused races. Runtime/CLI full module checks, final changed-owner races, shared client contracts and independent SDK/Reviews checks pass. Committed as 875375fa and merged local main 78f9f08b in b13f7527. Final integrated Runtime/CLI test/vet/build and affected acceptance/approval/SQLite/bootstrap races pass. Generic declarations, installed dependency rendezvous, components, model execution/decorators and full author parity remain open.
 
 Stage 3c complete: canonical Runtime RPC/SSE callbacks share the ordinary Router/Endpoint and typed Client; the one callback owner gates and joins each call.
 
@@ -22,7 +22,7 @@ Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
 Branch: codex/unified-plugins.
 Starting commit: 5262aadc002d40d415212ead3b311005c1c6a62f.
 Stage 1 commit: 869d4304.
-Incoming local main: 61645c2561b174042aa157aef21cc00cfba67a86.
+Incoming local main: 78f9f08bbb26bba633bd32def0bef7cc8381a7fa.
 Integration commit: f5e4bdbc140ad4d24b6b723ffdfd908cdff515a3.
 Stage 2a commit: c4706b6b.
 Stage 2c commit: da20c0848b3ccb3351587c30d3cb5d622e600230.
@@ -34,6 +34,9 @@ Stage 2h commit: a3b82f77e7a2ffa792ba3926d94f746fd9c84835.
 Stage 3a commit: 859c840bf6593db20f3ea2a4c9613374722389a4.
 Stage 3b commit: e392b751117a8b67f8c04ef8e4984ab594ebbf58.
 Stage 3c commit: de2e91c70ba4fc5751a83e0220e673f21957d0b3.
+Stage 3d commit: 875375fa.
+Stage 3d integration commit: b13f7527b45c655021c900ae754b238c7f5372e2.
+Stage 3d main synchronization: merged local main 78f9f08bbb26bba633bd32def0bef7cc8381a7fa without conflict in b13f7527. Final integrated Runtime/CLI full test/vet/build and affected acceptance/approval/SQLite/bootstrap races passed; final main recheck remains at that same commit.
 Stage 3c main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86; the managed checkout is clean after recording this milestone.
 Memory external-effect identity correction commit: 597321f6.
 Stage 3b main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
@@ -61,7 +64,7 @@ Read-only design inputs:
 - Stage 3d moves captured pending → canonical Run acceptance → private acknowledgement into Schedules. The executable main package translates its pure admission port through ConnectCallback and the ordinary Runtime Client. Runtime commits captured Session/Run/Segment and its existing command acceptance atomically; the former automation API, reader/store/table and segment receipt branch are deleted.
 - Actual managed session/release/source authority supplies a closed installed actor. Opening rechecks that authority in its transaction; known withdrawal remains plugin_changed, unknown storage failure retains uncertainty. Caller keys are installation-scoped and retain original identity across activation/release/configuration replacement.
 - Schedules reads runs.getAcceptance with the exact original StartRunRequest before submission. Opened/retired evidence confirms the same captured identity and changed input conflicts. A pending private dispatch can reconcile its original Core acceptance; private acknowledgement and final reply commit together. Memory still refuses pending model reentry through NewlyAdmitted.
-- Callback refs are ephemeral MCP metadata outside admitted business input, fingerprints and persisted pending work. Private Schedules capture binds to one Runtime store namespace and refuses a replacement store. Former host/private schemas are refused without converting or deleting retained data.
+- Schedules callback refs are ephemeral MCP metadata outside admitted business input, fingerprints and persisted pending work. Private Schedules capture binds to one Runtime store namespace and refuses a replacement store. Former host/private schemas are refused without converting or deleting retained data.
 - Real backend Core acknowledgement loss exposed an existing Interaction channel-close/send race. The lifetime now withdraws and joins every publication sender before closing events, including executor requests. A deterministic full-buffer regression proves blocked sender cancellation, late refusal and retained buffered events; no retry or suppressed race was added.
 - Building the actual Schedules executable with the public Core Client produced 70,358,850 package bytes. Removed the former 16 MiB single-file limit while preserving the 128 MiB aggregate limit, manifest limits, entry limits and feature-resource bounds. No publisher-specific exception was added.
 
@@ -253,6 +256,7 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 
 Stage 3d verification:
 
+- Passed after incoming main integration: complete Runtime and CLI go test ./..., go vet ./... and go build ./.... Complete runs/segment/approval/transcript/SQLite race suites passed, plus real Core loss/private Dispatch loss and approval/accepted-answer bootstrap races (34.157s). Incoming main's full accepted approval Resolution remains owned by its transcript Item. No merge conflict or unrelated shared-checkout edit occurred.
 - Passed: complete Runtime go test ./... (119 packages), go vet ./... and go build ./...; complete CLI test/vet/build. Desktop consumer compilation passed after the existing icons/UI/frontend build prerequisites, with no UI/E2E tests. Direct Desktop build initially lacked embedded dist files; the normal build workflow supplied them. Native linker target-version warnings were emitted; this is consumer compilation, not a validated shipping Wails package.
 - Passed: focused real-bootstrap -race covering Core opening response loss before private acknowledgement; retained pending; restart; deleted accepted Session; exact original reconciliation; private dispatch request/reply loss; manual replay and startup recovery; actual Memory maintenance reply loss without another model call. The old remote-Accept request-loss test was migrated to the actual Dispatch boundary: loss before submission proves no Run, loss after acceptance still proves Run survival and retired-material reconciliation.
 - Passed: public target-union constraints and original-request/actor-scoped acceptance lookup after retirement; metadata changes preserve admitted business input and invalid refs are refused before execution; actor withdrawal differs from unknown storage read failures; old Schedules schema refusal preserves pending evidence.
@@ -386,7 +390,7 @@ Stage 2a verification:
 
 ### Round cleanup
 
-- Stage 3d: public SDK/Reviews temporary source snapshots, file proxies, module caches and author copies have been removed by TemporaryDirectory. Tests own every helper process, callback listener and database. Owned icons/UI/frontend dist outputs created for Desktop consumer compilation have been removed; no frontend test or tracked source edit was introduced. All verification handles are terminal. Incoming local main synchronization and commit remain; retain the active managed worktree for the full goal.
+- Stage 3d: public SDK/Reviews temporary source snapshots, file proxies, module caches and author copies have been removed by TemporaryDirectory. Tests own every helper process, callback listener and database. Owned icons/UI/frontend dist outputs created for Desktop consumer compilation have been removed; no frontend test or tracked source edit was introduced. All verification/integration/commit handles are terminal. Product commit 875375fa and incoming-main merge b13f7527 retain the completed slice; this milestone record is the only remaining change before the final clean-worktree check. Retain the active managed worktree for the full goal.
 
 - Stage 3b: every module/race/real-process/isolated-author handle returned a terminal result. Test cleanup closes callback endpoints, connections, helper executables and databases. TemporaryDirectory removed both independent-author attempts, archives, file proxies and module caches. No scratch script, shared configuration edit, frontend artifact or background verification remains. The managed checkout is committed and clean; preserve it and its dependencies for the full goal. Original input hashes remain unchanged.
 
