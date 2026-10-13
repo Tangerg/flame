@@ -2,45 +2,55 @@
 
 ## Current stage
 
-Stage 4d (ca770e48) supplies the missing complete public Schedules manual operation
-needed by its bound component. flame.schedules/runNow.v1 replaces prepareManual.
-The private backend admits the command and captures execution in one transaction,
-then calls the existing Runtime Run admission outside that transaction. Private queue
-acceptance and the original reply commit together through the existing dispatch owner.
-Known business refusal also retains its private reply; unknown outcomes remain pending.
+Stage 4e (6e0623fb) migrates the actual Schedules editing page to an ordinary
+public component bound to its own admitted installation/contribution and complete
+generated capability. It lists accepted pages, creates/edits/enables/disables/deletes
+schedules and invokes the complete runNow operation. Editing captures the original
+revision; unknown commands retain the original MutationPromise/key/retry handle.
+The component consumes canonical public model choices and existing Runtime notices.
+Templates are authoring content in the Schedules component source, copied into drafts.
 
-Manual Session/Run identities derive from the exact installation target and original
-command identity using framed JSON and SHA-256. This locates the immutable queued
-capture after process loss without another routing/mapping/result store. Definition
-edits/deletion do not replace that capture. The invoking command and caller identity
-must agree; pending recovery verifies original origin/parent/target. Finished replay
-requires no new callback collaborators. Human Core commands and pending-manual worker
-recovery invoke this same operation and original identity. Cron dispatch stays with
-its existing captured occurrence contract.
+Delete the final business Views declaration, kind, template model, loader branch,
+Protocol projection, plugins.readView/readSchedules operations, generated contracts,
+HTML page/build and private Desktop Schedule form/control/gateway/read projections.
+File/Tool HTML renderers remain for their own migration. Core is 2026-10-14.1;
+backend envelope .4 and private business data formats stay unchanged. Rebuild clients
+and installed packages together; there is no retired View reader or adapter.
 
-The former host prepare-then-dispatch workflow and prepareManual export disappear.
-Actual typed/live/generated Schedules capability and package artifacts migrate together.
-Its full capability identity changes; rebuild the backend and installed namespace
-contracts together. Core .15, backend envelope .4 and private storage formats remain.
-Old original routes are not rewritten or retargeted to this changed contract.
+The five Core Schedules facades still have real CLI consumers. The coverage gate
+now parses actual production Go binding/Connection-port calls and reports these
+separately from graphical calls. It does not count tests, declaration-only stubs,
+manual inventory entries or dummy UI calls. This proves source consumption, not
+migration of those facades or full installed execution. Their retirement remains
+part of the all-consumer operation cutover.
 
-Production Runtime/CLI/Reviews Go builds and bundled TS types pass. A real in-memory
-SDK/backend/private-DB regression verifies original capture, missing acknowledgement,
-private receipt rollback, retained deleted-definition work, exact receipt/replay,
-input conflict and classified refusal (1.119s); generated/live contract identity
-passes (0.651s). Bootstrap and adapter test sources compile. Native message-loss
-fixtures preserve post-acceptance restart/withdrawal/Session deletion and explicit
-missing-receipt uncertainty; full process execution remains queued. No frontend UI/
-E2E work was added or run. Main 993eb865 is already integrated; original inputs unchanged.
+Production Runtime/CLI/Reviews Go builds, Desktop production build and TypeScript
+checks pass. Short backend admission/resource/refusal/pagination/source-coverage
+checks pass; Bootstrap/Runtime/CLI test sources compile. The component ESM is
+26,271 bytes and exactly reproducible. Source coverage is 101/101 required operation
+fact families, including five CLI-only operations, plus 3/3 HTTP sidecars and 15/15
+Runtime event topics. There are 990 complete locale keys across eight locales.
+No frontend UI/E2E/screenshot tests were added or executed. Full native lifecycle,
+full suites, vet and race remain concentrated in final verification.
 
-Next is the actual Schedules bound component and deletion of its HTML/kind/template
-coupling. Backend-owned background-role migration, including recovery for enabled
-non-selected installations, remains required; this operation alone does not close
-that lifecycle. Full renderers/actions, scoped dependency retention, all-consumer
-migration, canonical model decorators/streaming, cross-generation mutation recovery,
-independent author parity and final P01-P48 acceptance remain active.
+Main 993eb865 is already integrated; this round's merge is up to date. Original
+proposal/review/draft hashes are unchanged. Task-owned Desktop dist and temporary
+compile binaries are removed. The active worktree remains required for the full goal.
+Next is backend-owned background-role lifecycle and retirement of the host driver,
+then remaining renderer/action and all-consumer migration. Scoped dependency retention,
+canonical model decorators/streaming, cross-generation command recovery, independent
+author parity and all P01-P48 acceptance remain active.
 
 ## Completed
+
+- Stage 4e (6e0623fb): bound editable Schedules component using generated installed
+  operations, complete manual Run operation, captured revision/model/workspace and
+  accepted pagination; original uncertain command handle and owner-notice reads.
+- Stage 4e: remove the last business Views/HTML/template declaration path and private
+  Desktop Schedule controls; migrate real component/resource and native fixture source.
+- Stage 4e: source coverage includes actual CLI Go calls without operation exemptions;
+  backend negative coverage rejects retired View declarations/APIs and invalid resources.
+  This does not close the remaining Core-facade or background-role migration.
 
 - Stage 4d (ca770e48): complete backend-owned manual Run operation over the existing
   private command/capture/acknowledgement and canonical Runtime Run acceptance owners;
@@ -289,7 +299,7 @@ independent author parity and final P01-P48 acceptance remain active.
 - Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
-- Replace the closed view/guest carrier with public components and shared module loading; implement the real Reviews board/analyzer/operation slice, then migrate remaining bundled consumers. No frontend UI/E2E execution is authorized.
+- The last business View carrier is removed. Replace remaining renderer/action carriers through ordinary public components and operations; complete their real owning lifecycle. No frontend UI/E2E execution is authorized.
 - Complete the canonical model execution contract, installed streaming decorators/remote next, frozen order, cancellation/backpressure and preservation of inner model evidence.
 - Retain and execute final acceptance for Stage 3i business-only Memory input and missing-callback admission; Stage 3k installed public calls/refusal/recovery; Stage 3l original target/caller metadata; Stage 3m durable Schedules trigger propagation; Stage 3n dependency resolution/cycles; Stage 3o activation publication/retirement; Stage 3p provider waiting, setup/callback/authority/lifetime integration. Compilation is not runtime acceptance. Stage 3m has implemented the earlier durable handoff gap.
 - Complete public independent-author/module packaging, final declaration/activation/package integrity audit, deletion audit and all requirement-level verification. Current-source author builds do not establish availability of a published Runtime module.
@@ -297,9 +307,10 @@ independent author parity and final P01-P48 acceptance remain active.
 
 ## Next
 
-1. Bind Schedules to its complete public operation, delete its remaining carrier,
-   then continue renderer/action migration to public components
-   and installed operation contracts; remove each replaced carrier/API in its slice.
+1. Move Schedules background execution into its backend/integration role and delete
+   the host driver. Preserve original manual/cron captures for enabled non-selected
+   installations and independent accepted Runs; then retire remaining renderer/action
+   carriers and Core business facades through actual consumer migration.
 2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
 3. Complete canonical model execution/remote streaming decorators, frozen order,
@@ -309,6 +320,8 @@ independent author parity and final P01-P48 acceptance remain active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Schedules owns component templates and binds its own installation operations; remove the final business Views vocabulary | UI editing and template authoring are feature responsibilities; the loader only admits technical resources/contracts | Generic Schedule template validation, a closed business kind, private Desktop controls or retained HTML readers |
+| 2026-10-14 | Source coverage distinguishes actual CLI consumers from graphical consumers | The page uses installed plugins.call while existing Core facades remain real terminal calls; source evidence must name the correct surface | Hand-listed Schedule exemptions, declaration-only inventories, dummy graphical calls or treating green coverage as complete migration |
 | 2026-10-14 | Schedules owns complete manual Run capture/reconciliation in one typed runNow operation | A component must invoke its exact installation without rebuilding the host prepare/dispatch workflow or changing the captured caller between commands | Keeping prepareManual as a UI prerequisite, a feature-specific public wrapper, a second route/result ledger or new identity after lost acknowledgement |
 | 2026-10-14 | Derive manual resource identities from framed target/command identity and keep execution in the existing private queue | Original capture must be locatable on private-owner recovery without mutable mappings or rereading an edited definition | Ambiguous delimiter framing, random replacement identities, a new mapping store or adapting old uncertain routes to a different contract |
 | 2026-10-13 | Skills consumes canonical Core operations directly from a public client-scoped component | The existing owners already admit discovery, library and revision-based proposal decisions; personal library inspection does not require a project | Another backend/store, four read wrappers, private Host forms, a curation generation or copied DataQuery catalogs |
@@ -419,10 +432,10 @@ Status is open until code and appropriate verification prove the requirement.
 | --- | --- | --- |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
+| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e; renderer/action and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -453,6 +466,28 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4e Schedules component and final business Views deletion
+
+- Passed: production Runtime/CLI/Reviews Go build; Desktop Vite production build;
+  Desktop and bundled plugin TypeScript checks; plugin/changed Desktop lint; exact
+  component ESM check; changed Go formatting and git diff --check.
+- Passed: retired View declaration refusal and renderer sibling admission/content
+  integrity/filesystem-escape checks (0.757s); retired readView/readSchedules method
+  refusal (0.571s); pagination projection (1.021s); actual-call source coverage
+  including negative test/declaration/unrelated-receiver cases (0.180s).
+- Passed: Bootstrap, Runtime and CLI test-source compilation into temporary binaries;
+  source gate 101/101 (89 direct graphical, five CLI-only, six materialized and one
+  HTTP-projected), three sidecars, 15 topics; layers 1,160 modules/3,754 edges;
+  locale completeness 990 keys in eight locales.
+- Repaired failures: renderer fixture used an invalid selector and a retired unknown
+  member for a sibling-admission scenario; migrate it to current renderer shape and
+  retain a separate strict retired-declaration refusal. A new dispatch assertion
+  required the transport.Error projection. Early generation references were removed
+  before successful regeneration. No valid assertion or check was disabled.
+- Not run: frontend UI/E2E/screenshot execution (excluded); full native process
+  acceptance, full Go suites, vet and race (reserved for the final consolidated phase).
+  Test-source compilation does not prove native restart/withdrawal behavior.
 
 ### Stage 4d complete public Schedules manual operation
 
@@ -998,6 +1033,13 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 4e: product 6e0623fb committed; main merge reports already up to date.
+  All invoked build/check/compile handles returned terminal results, including the
+  previously failed generator handle; the repaired generation is current. Temporary
+  binaries and owned Desktop dist are removed. Hooks cleaned their temporary backup.
+  Original input hashes are unchanged; no shared product source, external state or
+  user data was changed. Keep the active worktree and development dependencies.
+
 - Stage 4d: product ca770e48 committed and main already integrated. All owned
   generation/build/type/focused/source-compile/commit handles are terminal. Temporary
   binaries, backend sessions and private fixture databases are removed by their
@@ -1132,8 +1174,10 @@ Stage 2a verification:
   the enabled backend/integration role and remove the former driver together. Prove
   captured manual recovery for enabled non-selected installations and preservation
   of accepted Runs after UI/entry withdrawal. Do not add another wake owner.
-- Bind the Schedules editing component to its own generated capability/runNow operation
-  and remove HTML/kind/template knowledge from the generic loader/domain/Protocol.
+- Schedules editing is now bound to its own generated capability/runNow operation,
+  and generic HTML/kind/template knowledge is removed. Retire the five remaining Core
+  business facades by migrating actual CLI/native consumers; their source coverage
+  is evidence of current consumers, not completion of that migration.
 
 - Stage 4b implements existing Memory/Schedules consumer invalidation for public
   commands, including original receipt recovery/uncertainty, with focused evidence.
@@ -1173,6 +1217,14 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 4e advances Core to 2026-10-14.1 and removes the final business Views and two
+  read operations; rebuild Runtime/CLI/TS/Host and installed package resources together.
+  Renderer HTML, five CLI-consumed Schedule Core facades and the host background driver
+  remain explicit migration work. The new gate credits actual CLI source calls and
+  reports them separately; it does not prove installed equivalence or graphical behavior.
+  Component retry handles do not by themselves prove a new-window/Runtime-generation
+  recovery. Backend protocol .4 and business data formats stay unchanged.
 
 - Stage 4d replaces prepareManual with complete runNow, changing the Schedules
   capability identity. Rebuild and select matching backend/namespace resources;
