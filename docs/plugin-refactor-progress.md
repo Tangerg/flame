@@ -2,43 +2,61 @@
 
 ## Current stage
 
-Stage 3r committed in fd9b754b implements the public TypeScript component authoring boundary and the
-ordinary Reviews Board. The SDK captures an installed binding, consumer contract,
-concrete target and input before dispatch; queries and typed commands share the
-existing public operation entrance. Mapped command replies preserve the original
-mutation key/retry closure and shared Runtime uncertainty classifier. Reviews
-reads current owner data, submits inspected revision/status, rereads after a known
-outcome, displays conflicts/unknown acknowledgement, preserves prior reads on
-refresh failure and invokes the installed analyzer query. It owns no review store.
+Stage 3s committed in 61180b25 implements the installed Reviews Board loading entrance. The strict
+namespace declaration publishes installation-scoped workspace components bound
+to a same-release callable contribution. Generic admission does not import Reviews
+business types. Core resource subscriptions hold ephemeral URL authority; module
+and asset GETs enter the same public resource query with the captured caller,
+recheck exact enabled release/component and verify package integrity. Scope
+cancellation/shutdown revokes access without another durable store or retained
+execution dependency. Persistent Runtime bearer credentials are absent from URLs.
 
-The existing Rolldown toolchain produces a 9,893-byte prebuilt ESM component with
-React/JSX/SDK/UI imports externalized. Private dependencies and relative assets
-use the ordinary bundle format. Public SDK and Board type checks, shared UI/icons
-builds, Core/feature generation, production Runtime/CLI/Reviews builds and six
-owning Go test binaries compile. The source is not yet registered/reachable in the
-shipping workbench. Shared module mapping, exact-release asset loading, public
-placement, generation retirement, full lifetime joining, durable UI recovery on
-reload, browser/Wails integration and legacy carrier deletion remain open.
+The workbench builds 27 public module mappings from host React/DOM/JSX/SDK/UI
+exports through the existing Vite/Rolldown graph. Installed prebuilt ESM loads
+through relative resource URLs and renders in the ordinary React tree. Per-window
+module identity stays fixed; changed evaluated releases or Runtime generations
+require reload. No module unload or sandboxing is claimed. Existing Dougong scope
+joins import completion, resource subscriptions and SDK I/O. Resource loss retires
+its module scope and exposes unavailable presentation; rendering instances derive
+availability from their owner signals and cancel observation on unmount.
 
-Actual authoring exposed a cross-language contract bug: JavaScript numbers round
-Go Schema integer bounds and alter exact capability identity. `plugins.call`
-now transports the complete canonical contract as an immutable JSON string.
-Go binding, CLI, shared TS request policy and SDK migrate together without an
-object-reader fallback. Existing feature generation emits `CAPABILITY_JSON` from
-the pure owner's identity bytes, preserving number lexemes. Core advances to
-2026-10-13.6; backend callable protocol remains 2026-10-13.4. Full Schema identity
-remains admitted by the same pure Go capability owner before execution.
+Production Core/CLI/Reviews build, shared TS/SDK/Board/Desktop type checks, changed
+frontend lint and production Vite build pass. A backend test exercises real Endpoint
+subscription ownership, original caller preservation, withdrawal and cancellation
+(1.253s). The leased HTTP path refuses unknown authority without exposing a bearer
+credential; other methods retain the bearer gate (0.873s). The built import map
+points at actual emitted ESM files. No graphical rendering, UI/E2E/screenshot or
+native window qualification was run. Compiled graph evidence does not close the
+actual shared Hooks/provider or complete graphical lifecycle acceptance.
 
-Previous Stage 3q is committed in af081e07; main 7957a603 is synchronized in
-765ccacd. Main has no later incoming commit at this checkpoint. Full proposal/
-review scope remains active, approximately 30% overall. The compiled Board does
-not prove installed shared-renderer/component acceptance or close the full UI gate.
+Core protocol advances to 2026-10-13.7; backend identity remains .4. The full goal
+remains active. Remaining HTML carriers/business view branches, static/other
+placements, complete dependency semantics, durable UI reconciliation across reload,
+models, streaming and all-consumer migration remain open. Current components use
+one own callable contribution; its generalization must follow actual remaining
+static/multi-contract consumers rather than an ambient service locator.
 
-Verification policy: development first. Compile complete slices and run only a
-necessary focused check resolving a concrete uncertainty. Full/race/cross-module
-execution is concentrated at the final stage. No frontend UI/E2E/screenshot tests.
+Main d9d0c452 is merged in 06cafa4c. One executor conflict preserves main's
+pure Resume preflight/accepted activation separation and the public installation
+publication owner. Plugin actor/original command state remains intact. Merged
+Core/CLI/Reviews build and execution/Runs/Bootstrap test source compilation pass.
+RPC client closure now has one authoritative cancellation signal; resource
+subscriptions settle on that closure, fixing an otherwise unjoined cleanup. Its
+non-UI shared client contract regression passes in 86ms. User inputs remain read-only.
+
+Verification policy: development first. Full/race/vet/cross-module execution is
+concentrated at the final phase; no frontend UI/E2E/screenshot testing.
 
 ## Completed
+
+- Stage 3s (61180b25): declared ordinary components, public resource query/subscription,
+  subscription-owned URL authority, current enabled exact-release/package integrity
+  checks, HTTP module/asset projection and preserved original caller context.
+- Stage 3s: real Reviews workspace component registration, host shared ESM import
+  map, captured installed binding, module evaluation/generation reload policy,
+  rendering error boundary, observer cancellation and Dougong joining of I/O.
+  Production source/build evidence only; graphical execution remains unproven.
+
 
 - Stage 3r (fd9b754b): public `plugin-sdk`, typed bound query/command authoring, same-key retry
   projection, ordinary Reviews Board and prebuilt ESM artifact. Compilation/build
@@ -221,6 +239,9 @@ execution is concentrated at the final stage. No frontend UI/E2E/screenshot test
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Expose the RPC owner cancellation signal to technical resource subscriptions and use it as the sole client closed fact | Clearing stream handlers during client shutdown otherwise strands lease joining; the resource observer must learn the original connection outcome | A second closed boolean, idle lease timers, suppressing cleanup errors or a separate client lifecycle root |
+| 2026-10-13 | Keep resource URL authority inside an existing Core subscription and route each asset read through the public resource query | Native/browser ESM and relative assets need ordinary URLs without persistent bearer credentials; subscription cancellation supplies an existing stop/join owner | Tokens in durable data, permanent unsigned package URLs, timers/heartbeat leases, bypassing exact source/integrity checks, Blob source rewriting or a second asset/installation database |
+| 2026-10-13 | Build host-provided module exports in the actual workbench graph; require reload after evaluated release/Runtime replacement | React Hooks and provider identities must refer to the actual renderer; ESM disposal cannot unload code or top-level effects | A duplicate React bundle, ambient global module lookup, runtime TSX/new Function, unbounded unique hot-reload URLs or a sandbox claim |
 | 2026-10-13 | Transport canonical callable contract JSON as a string; emit its identity bytes from the existing generator | JavaScript object serialization rounds integer Schema limits and breaks exact identity. Metadata interpretation may parse a projection, but the dispatched contract retains its original bytes | Relaxed capability identity, unsafe integer rewriting, object/string compatibility readers, another schema compiler or a hand-authored TS descriptor |
 | 2026-10-13 | Publish a narrow explicit component context and use existing Rolldown ESM with host React/DOM/JSX/SDK/UI externals | Reviews Board is the demonstrated author; current HTML carrier cannot supply ordinary shared Hooks or command interaction | Runtime TSX evaluation, global service lookup, copied private aliases/state, another bundler or claiming module unload from component disposal |
 | 2026-10-13 | Integrate main Resume acceptance and advance Core to .5 while keeping backend .4; original-start verification uses the same capability-aware fingerprint and plugin-scoped key | Main changes the shared command acceptance projection without replacing plugin caller authority or Schedules original captured dispatch; generated clients must agree with the merged current shape | Restoring retired automation owners, dropping actor isolation/captured request checks, hand-merging generated schemas, or dual protocol readers |
@@ -310,7 +331,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | SDK/ordinary Reviews Board/ESM author build implemented and compiled; installed resource/module mapping, actual shared-instance proof and carrier replacement remain open | plugin-sdk; examples/plugins/reviews/client/board.tsx; public installed component loader |
+| Public React/TS components and shared module instances | Reviews declaration and actual ESM/resource loading are implemented; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -341,6 +362,18 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3s development and necessary resource contract evidence
+
+- Passed after main integration: production Core/CLI/Reviews build and execution/Runs/Bootstrap test source compilation. One preflight/publication conflict was resolved without restoring retired automation or claim owners. Resource client-close contract regression passes (86ms) after replacing duplicate closed state with the RPC owner's cancellation signal.
+
+- Passed: production Runtime/CLI/Reviews builds, Core generation, shared Runtime TS plus public SDK/Reviews Board/Desktop type checks; changed component host lint and production Vite build. The emitted import map has 27 actual public module files, including React, DOM client, JSX, SDK and UI. No rendering occurred.
+- Passed focused backend execution: resource lease through the real Endpoint subscription retains original caller, exact owner response, withdrawal refusal and cancellation/no-read (1.253s); HTTP missing capability gets Gone/no-store/nosniff while another method retains Unauthorized (0.873s).
+- Passed compilation: plugin Domain/Application, package adapter, HTTP delivery and other owning test sources. The Packages fixture initially lacked the new resource port; it was migrated with an explicit unexpected-call error. Root Runtime/Delivery/CLI Runtime adapter test binaries compile. After main merge: execution, Runs and Bootstrap compile. Bootstrap TestMain is not run. Temporary test binaries are removed.
+- Existing frontend test/visual fixture source types still used deleted services/inline declarations; only their DTO/manifest projections were migrated for type compilation. Assertions were not weakened; no UI tests were added or executed. Npm offline lock generation initially changed unrelated optional peers; the retained lock diff contains only the new local public SDK dependency/link.
+- Fixed frontend lifecycle implementation before commit: render cancellation comes from a subscribed instance owner with Strict Mode reattachment; I/O joining remains with the contribution owner. Resource close/import failure retires the module lifetime; import/render failures are inside a shared error boundary. No duplicate mutable business owner was introduced.
+- Full/race/vet, real installed callback/Board mutation/analyzer and graphical browser/Wails qualification remain deferred. Backend protocol/storage are unchanged; Core .7 requires regenerated clients. Original proposal/review/v0.2 hashes match the read-only baseline.
+
 
 ### Stage 3r development and canonical contract checks
 
@@ -618,6 +651,8 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3s: retain formal module/resource/SDK/Reviews source and needed ignored dependency artifacts. Remove the owned production frontend bundle after its graph inspection. Temporary compilation outputs are removed. All generation/build/typecheck/lint/focused/compile/commit handles are terminal after final build inspection. Product is 61180b25; main d9d0c452 is merged in 06cafa4c. Preserve the active managed worktree and canonical progress symlink. No browser/native/UI test process, external state change, credentials or user-data mutation was introduced.
+
 - Stage 3r: retain formal SDK/Board/generated ESM source and needed ignored dependency artifacts. Temporary compile outputs are removed; all owned generation/build/typecheck/focused/compile/commit handles are terminal. Product is committed in fd9b754b; main merge reports already up to date at 7957a603. Original proposal/review/v0.2 hashes remain unchanged. No browser/native/test fixture process, external state change or user-data mutation was introduced. Preserve the active worktree and progress symlink.
 
 - Stage 3q: product committed in af081e07, incoming main 7957a603 synchronized in 765ccacd. All owned generation/build/typecheck/focused/compile/commit handles are terminal; TemporaryDirectory removes compile outputs. Empty directories from the replaced uncommitted checklist-only example are removed. No native distribution, UI test, external action, credential, shared configuration or user-data mutation was introduced. Preserve the active managed checkout and canonical progress symlink. Original input SHA-256 values match the read-only baseline.
@@ -691,6 +726,9 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3s adds required components projection and resource query/subscription, advancing Core to .7. Rebuild all generated clients; backend protocol/private business formats stay unchanged. Current workspace component scope binds one own callable contribution; static/multi-contract components and remaining placements still need their real owner migration. Existing HTML carriers remain implementation debt. ESM evaluation cannot be canceled/unloaded; disablement retires supported resources and a changed evaluated generation requires window reload. Actual graphical qualification is not claimed.
+
 
 - Stage 3r changes the Core call contract field to canonical JSON string and advances Core to .6. Rebuild generated Go/Protocol/CLI/TS consumers and use generated CAPABILITY_JSON; no object reader remains. Backend protocol and private business storage are unchanged. Public component SDK/Board are authoring code and a built artifact; module import mapping, graphical admission/placement, exact-release assets, retirement and full lifecycle proof remain required before claiming component delivery. Independent published dependencies remain open.
 
