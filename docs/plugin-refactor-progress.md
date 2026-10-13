@@ -2,56 +2,51 @@
 
 ## Current stage
 
-Stage 4g (00ea6b5f) moves the actual Schedules clock/scan/captured recovery into the
-backend. Each enabled declared background entry operates its own installation,
-independently of selected-provider or graphical state. The existing connection
-supervisor owns activation; no second scheduler/enablement/result store is added.
-Setup provisions resources without business work. The public Activate handshake
-starts ActivationResource once after successful setup; failed/retired lifetimes
-cancel and join the loop and callback connection before the private DB closes.
+Stage 4h (d7ae9dee) migrates the optional Markdown file renderer to ordinary public
+ESM components. The three extension declarations share one module/export, using
+file scope and fileRenderer placement. Runtime admits normalized selectors and
+namespace resources without evaluating code, clones selector projections, and
+refuses the former file HTML declaration. Core is 2026-10-14.4; backend wire stays
+2026-10-14.2 and private business formats do not change.
 
-The backend's bounded scanner retains its fair pending-page traversal and private
-claim ownership. Every recovery reinstates the captured invocation/target and uses
-the existing canonical Runtime acceptance. Manual recovery reads the exact original
-private command/input without creating new admission, then commits private queue
-acceptance and the original runNow receipt together. Deleted/edited definitions do
-not replace captured work. Accepted Runs keep their independent Runtime lifetime.
+The public SDK supplies frozen CapturedFile data from one accepted Runtime read.
+Navigation never retargets it. The existing Workspace file-renderer point preserves
+matching/ambiguity and source inspection. Partial/truncated reads bypass module
+loading. Loading, render failure and retired context retain the recorded source.
+The same exact-release resources, component lifetime and shared React/SDK/UI module
+graph serve this component. Marked is a declared bundled private dependency, with
+its license retained in namespace resources. Authored HTML/MDX, URLs and images
+render as text, without executing file content.
 
-Delete the former pluginservices Dispatcher, Bootstrap scheduling worker/join and
-separate delivery firing port. Human Core RunNow remains a direct consumer of the
-same bound complete operation. Remove public Schedules scan/dispatch methods,
-DTOs/handlers/generated capability artifacts in the same change; the contract has
-five business methods. Current backend wire is 2026-10-14.2; Core is 2026-10-14.3.
-Rebuild Go/Protocol/TS/SDK and installed packages; former frames/routes are not
-converted. Private business data format remains unchanged.
+Delete the file HTML source/resource/builder, FilePackageRenderer and file carrier
+read adapter/cases. Tool-result HTML remains only for its next owning migration;
+no compatibility reader or file HTML branch remains. Update public/module docs and
+build entrypoints with the new declarations. External component/protocol consumers
+must rebuild and reinstall changed packages at the new digest.
 
-Generic plugins.notifyChange checks the managed Actor's own enabled installation,
-release/server/contribution and publishes the existing outcome-free resync through
-invalidation. It carries no business result or caller-selected installation. The
-actual public Go backend callback client consumes it. API coverage scans production
-Go backend fields as well as CLI ports, without method exemptions or test callsites.
-
-Production Runtime/CLI/Reviews builds, Desktop Vite/TS and bundled TS/ESM resource
-checks pass. Short setup-before-start/single-start/retirement, actual private cron
-claim/acceptance and loop/resource join, original manual receipt recovery after
-withdrawal, exact contract/retired-export, notification authority and dependency-rule
-checks pass. Bootstrap/Runtime/CLI/Reviews and affected adapter test sources compile.
-Source gate is 102/102 required fact families (89 direct graphical, six Go headless,
-six materialized, one HTTP-projected), with three sidecars and 15 existing topics.
-The Schedules ESM is 22,879 bytes. Native restart/disable/non-selected installation
-and full process acceptance remain final-execution obligations, not proven by source
-compilation or these short private-owner tests. Full/vet/race stay concentrated at
-final verification; no UI/E2E/screenshot additions or execution.
+Production Runtime/CLI/Reviews Go builds, SDK/bundled/Desktop TypeScript, targeted
+lint, exact component ESM reproduction, Desktop Vite and layer checks pass. File
+selector admission/code-nonexecution and immutable projection/retired HTML refusal
+checks pass (0.632s/0.456s). Bootstrap test source compiles into a temporary binary;
+its full native execution is deferred. API source gate remains 102/102. Markdown
+ESM is 47,527 bytes. No frontend UI/E2E/screenshot tests were added or run; full,
+vet, race and native process verification stay in the final consolidated phase.
 
 Main 993eb865 remains integrated; merge is already up to date. Original proposal,
-review and draft hashes are unchanged. Temporary compile binaries and owned Desktop
-dist are removed. The full goal remains active. Next migrate remaining renderer/action
-carriers and actual CLI/Core business facades; complete scoped dependency retention,
-canonical model decorators/streaming, cross-generation command recovery, independent
-author parity and all P01-P48/final acceptance.
+review and draft hashes remain unchanged. Temporary binaries, failed-install log
+and owned Desktop dist are removed. The full goal remains active. Next replace
+Tool-result/action carriers and actual CLI/Core facades; finish scoped dependencies,
+canonical model decorators/streaming, cross-generation recovery, independent author
+parity and all P01-P48/final acceptance.
 
 ## Completed
 
+- Stage 4h (d7ae9dee): public file-scoped Markdown ESM component, frozen accepted-read
+  context and normalized selector admission; preserve source, ambiguity and bounds.
+- Stage 4h: delete file HTML source/resource/builder and graphical carrier/read cases;
+  use common exact-release modules, shared React/UI/SDK and bundled declared Marked.
+- Stage 4h: Core .4 and generated consumers/docs/build migration; focused backend,
+  production build/type/resource/source checks pass; full/native execution remains open.
 - Stage 4g (00ea6b5f): backend-owned minute scan, fair private capture/recovery and
   original caller/target; cancel/join activation resources and independent accepted Runs.
 - Stage 4g: successful setup precedes explicit idempotent activation attempt; delete
@@ -347,6 +342,7 @@ author parity and all P01-P48/final acceptance.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | File renderers use ordinary components over frozen accepted reads | The read is already owned by Runtime; a carrier refresh is not another file access owner, and a component needs the same public module/lifetime contract as other placements | File HTML compatibility, live navigation retargeting, backend activation for static data or a second file store |
 | 2026-10-14 | Successful setup precedes explicit once-per-session ActivationResource start | Provisional registration must not advance business work; lost activation acknowledgement cannot duplicate the loop | Starting the loop inside setup, browser wake-ups, a second host timer or another scheduler |
 | 2026-10-14 | Schedules owns clock/scan/original private recovery, with host driver/export deletion | Enabled own installations must recover captures independently of provider selection or UI; manual receipt belongs to the original private command | Selected-only host scanning, public time/dispatch exports, rereading changed definitions, new identities or a competing receipt store |
 | 2026-10-14 | Managed plugin notices use authenticated contribution ownership and existing resync | Unknown plugin reads must reread their owner; notices carry no results or installation claims | Business switches in generic notification, arbitrary source/installation notices, another event bus or treating invalidation as success |
@@ -465,10 +461,10 @@ Status is open until code and appropriate verification prove the requirement.
 | --- | --- | --- |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e; renderer/action and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
+| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and file HTML in Stage 4h; Tool renderer/action and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; actual Memory cross-entrance receipt/conflict/notice evidence passes; all-consumer migration and final execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | File-scoped Markdown, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -499,6 +495,24 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4h public file components and retired carrier deletion
+
+- Passed: production Runtime/CLI/Reviews Go builds, SDK/bundled/Desktop TypeScript,
+  targeted lint, exact bundled component ESM reproduction, Desktop Vite and layer
+  gate; Core regeneration, formatting and diff check. API source gate remains 102/102.
+- Passed: file component scope/selector admission and metadata code-nonexecution
+  (pluginpackage 0.632s); detached selector projections and retired HTML refusal
+  (Domain 0.456s). Existing selected-resource native test source now uses public
+  component resources and compiles with Bootstrap into a removed temporary binary.
+- Deleted: retired file-carrier-only frontend cases; no new UI tests or execution.
+  The earlier typecheck failure was an obsolete FileSnapshot fixture and is resolved
+  by deleting that retired case, not weakening a current contract assertion.
+- Preserved: captured read, source fallback, matching ambiguity, shared-module/lifetime
+  owners, package integrity and current admitted immutable resources. These source
+  checks do not establish rendered Hooks or supported native acceptance.
+- Not run: full Go/vet/race and native resource/retirement/restart execution, reserved
+  for the final consolidated phase. Frontend UI/E2E/screenshot tests remain excluded.
 
 ### Stage 4g backend scheduling and host-driver deletion
 
@@ -1307,6 +1321,11 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Stage 4h advances Core to 2026-10-14.4 and adds component file scope/selector;
+  rebuild all generated consumers and reinstall changed packages. Former file HTML
+  metadata is refused without an alias or compatibility reader. Backend wire and
+  private business data are unchanged. Tool-result carrier migration and native
+  acceptance remain open; safe source inspection is a current data presentation.
 - Stage 4g advances Core to .3/backend to 2026-10-14.2 and removes scan/dispatch from
   the full Schedules contract. Rebuild SDK/clients/installed resources together; original
   incompatible bindings are unavailable and never converted. Business storage format is
