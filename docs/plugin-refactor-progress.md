@@ -11,6 +11,7 @@ Stage 2e complete: one immutable admitted JSON representation now supplies reque
 Stage 2f complete: backend exports now share one public invocation/discovery transport with strict current protocol, typed structural admission and immutable publication. Memory, Schedules and Reviews use it; business-specific client registration is removed. The verified slice is committed and synchronized with local main. This is the backend binding slice, not the installed contribution resolver or public Go/Protocol/CLI entrance; the full proposal remains open.
 Stage 2g complete: Memory maintenance now privately fences original command admission before model I/O and commits publication plus its original receipt in one short transaction. Real committed-response loss recovers after backend restart without another model call. Pending/canceled work remains unknown, preserves ledger facts and cannot re-enter under its original identity. The verified slice is committed and synchronized with local main; the full proposal remains open.
 Stage 2h complete: public operation bindings freeze and check the exact method/kind/target/schema contract before invocation. Existing Memory/Schedules command routes now persist that complete contract and validate original receipt output against it after restart. The verified slice is committed and synchronized with local main. Generic installed contributions, selection, captured target/origin/parent and the full proposal remain open.
+Stage 3b complete: the public SDK now owns one lazy unary loopback callback endpoint and immutable per-call method bindings. Actual Memory search/maintenance use it, with budget and model DTOs moved back to Memory. Real headless process reentrancy, context/credential separation, retirement, capacity and incomplete-body cancellation are verified. Installed rendezvous, Runtime Delivery catalog callbacks and streaming/next remain open. The verified slice is committed and synchronized with local main; the full proposal remains open.
 Stage 3a complete: provider selection now has its own durable composition value/store and Go/Protocol/CLI entrances. Current Memory/Schedules resolution reads only the explicitly selected installation/contribution; enablement no longer selects or excludes another candidate. Default choices are explicit package/contribution configuration inside the one-time catalog transaction. The verified slice is committed and synchronized with local main. Current role candidacy still uses the existing Services declaration and is not the final consumer-owned point/contract substrate.
 
 Working checkout: /Users/tangerg/.codex/worktrees/unified-plugins/flame.
@@ -27,6 +28,8 @@ Stage 2f commit: c7061dee16e1e84fba1667ff0433c7193c64159e.
 Stage 2g commit: 0a696aa5de5e7c694e01f09d3d840d28da1e0181.
 Stage 2h commit: a3b82f77e7a2ffa792ba3926d94f746fd9c84835.
 Stage 3a commit: 859c840bf6593db20f3ea2a4c9613374722389a4.
+Stage 3b commit: e392b751117a8b67f8c04ef8e4984ab594ebbf58.
+Stage 3b main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 3a main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2h main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
 Stage 2g main synchronization: git merge main reported already up to date at 61645c2561b174042aa157aef21cc00cfba67a86.
@@ -47,6 +50,10 @@ Read-only design inputs:
 - /Users/tangerg/Desktop/docs/Scope-Flame-Agent-Architecture-and-Upgrade-Report-2026-10-12.md
 
 ## Completed
+
+- Stage 3b replaces per-grant Memory HTTP listeners with one public SDK callback transport used by actual Memory search and maintenance. The generic MCP connection owner admits/revokes callback generations without Memory model imports. Memory owns its two-call budget and model/scope DTOs in its RPC adapter. Old Models, private HTTP codec and BindModels entry are deleted.
+- Callback operations reuse immutable Go-owned Method contracts, raw structural admission and the same value/refusal envelope. Captured owner context remains authoritative; network input cannot replace target/origin/parent values. Unknown failures retain uncertainty and no retry is introduced.
+- Withdrawal retains releasing calls until their handlers settle, cancels every sibling before joining and interrupts incomplete authorized request bodies. Released/foreign references are explicitly stale. A real SDK-only executable proves MCP → host callback → nested same-backend MCP without a Desktop relay.
 
 - Read current repository instructions, design rationale, development and refactoring rules.
 - Created an isolated managed checkout at the current committed main baseline; no product source changes in the shared checkout.
@@ -110,19 +117,22 @@ Read-only design inputs:
 
 ## In progress
 
+- Previous goal turn classification: no implementation progress; it verified read-only input preservation in response to the user. This turn resumed concrete implementation and completed the unary callback transport slice.
+- Stage 3b does not close the complete callback requirement. The installed declaration/activation rendezvous, public Runtime Delivery catalog linkage, cross-plugin dependency binding and streaming/remote next remain required; no narrower completion criterion is adopted.
+
 - Provider composition now advances independently of enablement. Existing business role candidacy still comes from Services and uses its server name as the contribution key. Replacing that declaration/identity with consumer-owned exact point contracts, real contribution IDs and scoped/frozen composition remains required; the new store must not be mistaken for completion of the entire generic point substrate.
 
 - Generic installed-operation admission, contribution declarations, plugin-defined points, target/origin/parent capture and provider selection still need the verified method/routing owners. Generated backend metadata is not an installed capability or an alternate registration authority.
 - The verified request representation now fixes object-order and typed numeric rehashing at the backend boundary. Existing routes also capture the complete exact method contract and the backend checks its fingerprint. Generic operation binding still must capture contribution, actual target and adapter-established origin/parent alongside that input, with declaration/activation matching before publication. This slice has not removed ServiceOwner/ServiceKind, apiVersion:1 or the old graphical carrier.
 - The backend's current protocol and immutable exports are verified, but package declaration/token/contract matching and activation binding are still missing. Public installed operations cannot be claimed ready from Backend.Describe alone.
 - Memory publication-owner receipts and the private admission fence are now verified. A canceled/unknown original remains pending rather than being automatically re-executed or fabricated as success. Generic contribution/protocol/target/origin bindings still need these owners.
-- Public TypeScript installed-call/component bindings, callbacks and decorators remain open. The generated TypeScript artifacts supply concrete data maps, not a completed host client SDK.
+- Public TypeScript installed-call/component bindings, complete installed/canonical-Delivery callbacks and decorators remain open. The public unary callback transport alone is verified. The generated TypeScript artifacts supply concrete data maps, not a completed host client SDK.
 - The confirmed pre-existing runs.getAcceptance frontend consumer-gate failure remains tracked for a real reconciliation caller; no dummy call or weaker source coverage was added.
 
 ## Next
 
 1. Implement installed unary operations and original receipt recovery through one public Go/Protocol/CLI entrance. Include consumer-owned declarations, explicit provider selection, exact contract/contribution/target/origin/parent binding and one admitted raw fingerprint; migrate actual Memory/Schedules routing and remove ServiceOwner/ServiceKind and special client registration with their consumers. Reviews' typed receipt prerequisite is verified. Full apiVersion:1/closed-view deletion must accompany real component-consumer migration, not a legacy value hidden inside the new declaration. Re-read proposal sections 6-12 and 17-18 plus the review's remaining API-freeze gaps before the next slice.
-2. Prove real managed callbacks and cancelable streaming decoration without a graphical relay.
+2. Bind the verified unary callback transport to declared installed dependencies and the canonical Runtime Delivery catalog, then prove cross-plugin calls and cancelable streaming decoration without a graphical relay.
 3. Replace the installed guest carrier with public component loading and establish the Reviews operation/board/analyzer slice.
 4. Migrate Memory, Schedules and remaining contributions through the same public contracts, remove superseded paths, and prove independent author parity.
 5. Complete requirement-level audit and final clean delivery.
@@ -131,6 +141,9 @@ Read-only design inputs:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Use one lazily opened Runtime-owned loopback endpoint for unary callbacks, with one activation credential and immutable call-scoped method bindings | Proposal 10.1 explicitly selects two physical transport directions; stdio is not an arbitrary reverse RPC channel and per-invocation listeners are unnecessary | Smuggling reverse calls into stdio, a listener per invocation, browser relays or a second business store |
+| 2026-10-13 | Keep releasing callbacks in the lifecycle owner until joined; cancel all siblings before joining any sibling and close incomplete body reads on cancellation | Early removal loses pending work; sequential cancellation can deadlock reentrant calls and request parsing can otherwise delay retirement | Deleting the call before settlement, cancel-and-join one sibling at a time, or relying on the remote writer to finish |
+| 2026-10-13 | Keep Memory budget/model/scope contracts with Memory while sharing typed callback transport publicly | The generic endpoint must not impose Memory’s two-call policy or know Memory business operations | Moving Memory policy into the public SDK or retaining the private richer HTTP path |
 | 2026-10-13 | Keep external proposal and review read-only; record corrections in owning repository design documentation and this ledger | The task explicitly identifies read-only inputs; corrections must not rewrite review evidence | Editing the external inputs |
 | 2026-10-13 | Give provider choice one durable composition owner, independent of enablement; preserve the selected reference when its provider becomes unavailable or is removed | An enabled candidate must not implicitly win, and absence must not silently choose another owner or transfer private data | Scanning enabled installations, exclusive enablement, publisher/load-order selection or automatic replacement |
 | 2026-10-13 | Configure initial provider choices by exact distribution package/contribution and commit them with initial catalog admission | Default selection happens once without giving first-party code lasting priority; ambiguous defaults fail instead of taking the first match | Filesystem order and reselecting defaults on restart |
@@ -180,7 +193,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Preserve origin, parent identity and concrete target | Open | shared call envelope and execution context |
 | Public React/TS components and shared module instances | Open | public SDK and installed component loader |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Open | public point contracts and Reviews analyzer |
-| Real callback, remote next, backpressure, cancellation and inner evidence | Open | managed link and real-process backend tests |
+| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport, real headless same-backend reentrancy, owner context, retirement/capacity and incomplete-body cancellation verified; installed Delivery/dependency linkage and streaming/next open | runtime/plugin/callbacks.go; callbacks_test.go; Memory rpc/models.go; bootstrap/plugin_memory_maintenance_receipt_test.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules boundary and Reviews typed read-only receipt lookup verified; generic/public operation application open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
 | One executable contract generation source | Go/Scope Schema/TypeScript data and method-doc generation verified with real Reviews; contribution/component binding generation still open | runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Public Go/backend and Reviews typed/Tool semantics plus generated TS outcome vocabulary verified; generic host/CLI/TS call projections open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
@@ -202,13 +215,22 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | Cases | Required evidence | Status |
 | --- | --- | --- |
 | P01-P09 | Author parity, selected roles, plugin-defined points, declaration failure, provisional resources and available management | Open |
-| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Open |
+| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy and retirement subset verified; complete installed link, decorators and streaming still open |
 | P21-P28 | Shared operation entrances, receipts/conflicts, scheduling acceptance/capture, independent Run lifetime and Memory owner invariants | Open |
 | P29-P35 | Shared React binding, recoverable UI failure, target capture, shared resource owner, applicability, capacity and appearance owner | Open; UI/E2E execution excluded by user |
 | P36-P41 | Generation safety, waiting dependencies, retained data, generic history, remote environment and headless host calls | Open |
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+Stage 3b verification:
+
+- Passed: complete Runtime and CLI go test ./..., go vet ./... and go build ./..., including architecture, dependency direction and consumer gates. Final Runtime generation/vet/build also passed after callback cancellation changes; go-api.json includes the public callback API.
+- Passed: full SDK, Memory RPC/transport, generic MCP and MCP connection-adapter -race suites. They cover five generic callbacks without a Memory budget, exact contract mismatch refusal, foreign activation/call refusal, original integer/JSON and owner-context preservation, typed business refusal versus uncertainty, request/result capacities, cancellation causes/credential privacy, releasing-call retention, sibling cancellation and incomplete authorized request interruption.
+- Passed: real SDK-only stdio executable performs an outer MCP request, host callback and nested same-backend MCP request without deadlock or a Desktop relay. Real bootstrap -race covers Memory maintenance committed-response loss/restart with exactly two model calls, explicit provider choice/availability and existing Schedule manual acceptance recovery.
+- Passed: complete independent Reviews author tidy/test-race/vet/build with GOWORK=off, no replace, isolated cache and offline temporary file proxy containing only public plugin/jsoninput SDK source and module metadata. That same public-only SDK archive passed its full -race suite including the real callback executable. All fixture directories/proxy/archive/cache were removed; this is not a published version.
+- Resolved: a new retirement test initially reassigned/closed its finish channel while handlers read it; it now owns one immutable channel and sync.Once close, and the full race suites pass. The first isolated-author attempt targeted the parent directory rather than backend/go.mod; it exited before checks, removed its temporary files and was rerun against the actual module with the whole example’s generated artifacts. No assertions or required checks were weakened.
+- Not run: frontend UI/E2E/screenshot/composite frontend checks, explicitly excluded; no frontend edits. No external publication, credentialed services, production operations or user-data conversion/deletion occurred. Original external proposal/review hashes remain unchanged.
 
 Stage 3a verification:
 
@@ -334,6 +356,8 @@ Stage 2a verification:
 - No remote push, publication, main-history mutation, production operation or credentialed action was performed.
 
 ## Unresolved questions
+
+- Unary callbacks now have a public transport and real Memory consumer. Installed activation/dependency rendezvous and canonical Runtime Delivery method binding must still replace the remaining private feature integration; streaming and remote next cannot be inferred from unary proof.
 
 - Extend the verified private maintenance admission/publication receipt and original host routing to public contribution bindings. Preserve the distinction between recovering a completed receipt and unknown/canceled original work; never restart its models from host routing alone.
 - Extend the verified immutable input to the complete generic binding: exact contract/contribution, captured target and adapter-established origin/parent, with current declaration and activation handshake. Existing raw JSON and old-format refusal do not prove the missing installed operation/proxy/component paths.
