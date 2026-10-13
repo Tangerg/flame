@@ -31,7 +31,6 @@ func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 			ref,
 			continuation,
 			interactionBoundaryWaiting,
-			nil,
 		); restoreErr != nil {
 			return runs.PreparedWaitingSubtreeCancellation{}, restoreErr
 		}

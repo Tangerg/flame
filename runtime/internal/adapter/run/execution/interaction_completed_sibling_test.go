@@ -200,7 +200,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err := executor.Release(t.Context(), runs.ExecutorRef{SessionID: barrier.SessionID(), ExecutorID: pending.ExecutorID}); err != nil {
 		t.Fatal(err)
 	}
-	ref, err := executor.StageContinuation(t.Context(), waitingDelegateContinuation(barrier, workspace))
+	ref, err := executor.StageAcceptedContinuation(t.Context(), waitingDelegateContinuation(barrier, workspace))
 	if err != nil {
 		t.Fatalf("restore completed sibling beside a waiting member: %v", err)
 	}

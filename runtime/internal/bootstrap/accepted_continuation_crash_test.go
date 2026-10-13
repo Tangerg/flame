@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -66,39 +68,49 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tx := stores.Transactor
-	stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
-		rollback := errors.New("test acceptance rollback")
-		err := tx(ctx, func(txCtx context.Context) error {
-			if err := apply(txCtx); err != nil {
-				return err
-			}
-			if phase == "rollback" {
-				bindings, err := stores.AcceptedContinuations.List(txCtx)
-				if err != nil {
+	var waitingHead runapp.ExecutionTreeHead
+	installCrash := func() {
+		tx := stores.Transactor
+		stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
+			rollback := errors.New("test acceptance rollback")
+			err := tx(ctx, func(txCtx context.Context) error {
+				if err := apply(txCtx); err != nil {
 					return err
 				}
-				if len(bindings) > 0 {
-					return rollback
+				if phase == "rollback" {
+					bindings, err := stores.AcceptedContinuations.List(txCtx)
+					if err != nil {
+						return err
+					}
+					if len(bindings) > 0 {
+						return rollback
+					}
 				}
+				return nil
+			})
+			if errors.Is(err, rollback) {
+				os.Exit(commandCrashExit)
+			}
+			if err != nil {
+				return err
+			}
+			bindings, err := stores.AcceptedContinuations.List(ctx)
+			if err != nil {
+				return err
+			}
+			if len(bindings) > 0 && (phase == "acceptance" || phase == "cold_acceptance") {
+				if phase == "cold_acceptance" {
+					current, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, waitingHead.SessionID, waitingHead.RootID)
+					if err != nil || !found || !waitingHead.SameCommit(current) {
+						return fmt.Errorf("writer changed before acceptance: found=%t, error=%v", found, err)
+					}
+				}
+				os.Exit(commandCrashExit)
 			}
 			return nil
-		})
-		if errors.Is(err, rollback) {
-			os.Exit(commandCrashExit)
 		}
-		if err != nil {
-			return err
-		}
-		bindings, err := stores.AcceptedContinuations.List(ctx)
-		if err != nil {
-			return err
-		}
-		if len(bindings) > 0 && phase == "acceptance" {
-			os.Exit(commandCrashExit)
-		}
-		return nil
 	}
+	installCrash()
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
 	cfg.ApprovalMode = approval.ModeSafe
 	host, api := buildProtocolRuntime(t, cfg, home)
@@ -124,6 +136,30 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	pending, err := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
 	if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
 		t.Fatalf("pending=%+v, %v", pending, err)
+	}
+	if phase == "cold_acceptance" {
+		if err := host.Close(); err != nil {
+			t.Fatal(err)
+		}
+		stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+		if err != nil {
+			t.Fatal(err)
+		}
+		installCrash()
+		cfg = protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
+		cfg.ApprovalMode = approval.ModeSafe
+		host, api = buildProtocolRuntime(t, cfg, home)
+		defer host.Close()
+		endpoint = acceptedCommandEndpoint(t, api, stores)
+		stored, found, err := stores.Interrupts.Get(ctx, started.RunID)
+		if err != nil || !found {
+			t.Fatalf("cold waiting handoff=%t,%v", found, err)
+		}
+		member, _ := stored.RootContinuation()
+		waitingHead, found, err = stores.ExecutorCheckpoints.LoadExecutionTree(ctx, session.ID, member.MemberID)
+		if err != nil || !found {
+			t.Fatalf("cold waiting head=%t,%v", found, err)
+		}
 	}
 	if phase == "release" {
 		directory, err := localruntime.DataDirectoryAt(home)
@@ -176,7 +212,7 @@ func acceptedCrashContext(t *testing.T) context.Context {
 }
 
 func TestAcceptedContinuationSurvivesAbruptRestart(t *testing.T) {
-	for _, phase := range []string{"acceptance", "release"} {
+	for _, phase := range []string{"acceptance", "cold_acceptance", "release"} {
 		t.Run(phase, func(t *testing.T) { testAcceptedContinuationSurvivesRestart(t, phase) })
 	}
 }
@@ -413,5 +449,65 @@ func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, "effect.txt")); !os.IsNotExist(err) {
 		t.Fatalf("rollback executed Tool: %v", err)
+	}
+}
+
+func TestColdResumeWriterFailurePreservesCommandAcceptance(t *testing.T) {
+	home, stores := acceptedCrashStores(t, "rollback")
+	pending, err := stores.Interrupts.List(t.Context(), "")
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("waiting fixture=%v,%v", pending, err)
+	}
+	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
+	cfg.ApprovalMode = approval.ModeSafe
+	host, api := buildProtocolRuntime(t, cfg, home)
+	t.Cleanup(func() { _ = host.Close() })
+	directory, err := localruntime.DataDirectoryAt(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", directory.DatabasePath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.ExecContext(t.Context(), `CREATE TRIGGER reject_resume_writer BEFORE UPDATE ON execution_trees WHEN NEW.writer <> OLD.writer BEGIN SELECT RAISE(ABORT, 'test writer restoration failed'); END`)
+	if err := errors.Join(err, db.Close()); err != nil {
+		t.Fatal(err)
+	}
+	endpoint := acceptedCommandEndpoint(t, api, stores)
+	request := acceptedResumeRequest(pending[0].RootRunID, pending[0].Bindings[0].InterruptItemID)
+	accepted := endpoint.Invoke(t.Context(), delivery.RunsResume, request, acceptedCommandOptions())
+	if accepted.Failure != nil {
+		t.Fatalf("post-acceptance writer failure rejected the command: %v", accepted.Failure)
+	}
+	response := accepted.Value.(*protocol.ResumeRunResponse)
+	if response.UserItemID == nil {
+		t.Fatal("accepted Resume lost its additional input reference")
+	}
+	for _, err := range accepted.Events {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: response.RunID})
+	if err != nil || value.Outcome == nil || value.Outcome.Type != protocol.OutcomeFailed {
+		t.Fatalf("writer failure did not terminalize the accepted Run: %+v,%v", value, err)
+	}
+	record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey)
+	if err != nil || !record.Found || record.Acceptance.SegmentID != response.SegmentID || record.Acceptance.UserItemID != *response.UserItemID {
+		t.Fatalf("writer failure lost command acceptance: %+v,%v", record, err)
+	}
+	replayed := endpoint.Invoke(t.Context(), delivery.RunsResume, request, acceptedCommandOptions())
+	if replayed.Failure != nil || !reflect.DeepEqual(response, replayed.Value) {
+		t.Fatalf("same-key retry changed acceptance: %+v,%v", replayed.Value, replayed.Failure)
+	}
+	for event, err := range replayed.Events {
+		t.Fatalf("failed accepted command restarted work: %+v,%v", event, err)
+	}
+	if _, err := os.Stat(filepath.Join(home, "effect.txt")); !os.IsNotExist(err) {
+		t.Fatalf("writer failure executed the Tool: %v", err)
+	}
+	if values, err := stores.AcceptedContinuations.List(t.Context()); err != nil || len(values) != 0 {
+		t.Fatalf("terminal retained an activation handoff: %+v,%v", values, err)
 	}
 }

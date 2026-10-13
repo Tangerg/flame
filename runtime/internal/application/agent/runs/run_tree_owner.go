@@ -130,7 +130,7 @@ func (r *runTreeOwner) awaitActivation(ctx context.Context) error {
 	activationErr := r.activation.err
 	r.mu.Unlock()
 	if activationErr != nil {
-		return fmt.Errorf("%w: segment activation failed: %v", ErrRunFinished, activationErr)
+		return fmt.Errorf("%w: segment activation failed: %w", ErrRunFinished, activationErr)
 	}
 	return nil
 }

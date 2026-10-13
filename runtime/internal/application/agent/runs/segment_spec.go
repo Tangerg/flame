@@ -62,6 +62,9 @@ type segmentSpec struct {
 	// admission transfers the pre-commit reservation to the live Run only after
 	// its opening write-set commits.
 	admission *ownership.RunAdmission
+	// StageExecution acquires the accepted continuation's executor resources. It
+	// runs inside the same activation gate as observation and BeginExecution.
+	StageExecution func(context.Context) error
 	// BeginExecution crosses the executor side-effect boundary after opening commits.
 	BeginExecution func(context.Context) error
 	// DetachActivation is true for root Start/Resume commands whose durable

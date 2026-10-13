@@ -17,6 +17,9 @@ func TestRunTreeOwnerCancelLinearizesAfterInterruptCommit(t *testing.T) {
 	releaseCommit := make(chan struct{})
 	requested := make(chan struct{})
 	treeOwner := testRunTreeOwner(t, nil)
+	if _, err := treeOwner.beginExecution(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	}
 
 	commitDone := make(chan struct{})
 	go func() {
@@ -163,7 +166,10 @@ func TestRunTreeOwnerCancelWaitsForSegmentActivation(t *testing.T) {
 
 func TestRunTreeOwnerCancelBeforeActivationSuppressesExecutorBegin(t *testing.T) {
 	treeOwner := testRunTreeOwner(t, nil)
-	if _, err := treeOwner.requestCancel(t.Context(), "stop", acceptRootCancel); err != nil {
+	if _, err := treeOwner.requestCancel(t.Context(), "stop", func(context.Context) error {
+		t.Fatal("cancellation reached the executor before activation")
+		return ErrExecutorNotLive
+	}); err != nil {
 		t.Fatalf("request cancel: %v", err)
 	}
 
@@ -184,12 +190,13 @@ func TestRunTreeOwnerCancelBeforeActivationSuppressesExecutorBegin(t *testing.T)
 
 func TestRunTreeOwnerCancelClassifiesActivationFailureAsFinished(t *testing.T) {
 	treeOwner := testRunTreeOwner(t, nil)
+	failure := errors.New("activation failed")
 	if _, err := treeOwner.beginExecution(t.Context(), func(context.Context) error {
-		return errors.New("activation failed")
+		return failure
 	}); err == nil {
 		t.Fatal("segment activation unexpectedly succeeded")
 	}
-	if _, err := treeOwner.requestCancel(t.Context(), "stop", acceptRootCancel); !errors.Is(err, ErrRunFinished) {
+	if _, err := treeOwner.requestCancel(t.Context(), "stop", acceptRootCancel); !errors.Is(err, ErrRunFinished) || !errors.Is(err, failure) {
 		t.Fatalf("cancel after activation failure = %v, want ErrRunFinished", err)
 	}
 }
@@ -228,12 +235,13 @@ func TestRunTreeOwnerAwaitActivationWaitsForInFlightActivation(t *testing.T) {
 
 func TestRunTreeOwnerAwaitActivationClassifiesFailureAsFinished(t *testing.T) {
 	treeOwner := testRunTreeOwner(t, nil)
+	failure := errors.New("activation failed")
 	if _, err := treeOwner.beginExecution(t.Context(), func(context.Context) error {
-		return errors.New("activation failed")
+		return failure
 	}); err == nil {
 		t.Fatal("segment activation unexpectedly succeeded")
 	}
-	if err := treeOwner.awaitActivation(t.Context()); !errors.Is(err, ErrRunFinished) {
+	if err := treeOwner.awaitActivation(t.Context()); !errors.Is(err, ErrRunFinished) || !errors.Is(err, failure) {
 		t.Fatalf("await after activation failure = %v, want ErrRunFinished", err)
 	}
 }

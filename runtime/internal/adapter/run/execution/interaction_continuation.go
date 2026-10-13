@@ -94,8 +94,32 @@ func (i *interactionSession) prepareContinuationAnswers(
 	if err := validateAcceptedPausedTree(checkpointState.handoff, head, retired); err != nil {
 		return nil, err
 	}
+	plans, err := continuationAnswerPlans(checkpointState.handoff, head, retired, answers)
+	if err != nil {
+		return nil, err
+	}
+	prepared := make([]preparedInteractionAnswer, 0, len(plans))
+	for _, plan := range plans {
+		process, found := i.engine.Process(plan.processID)
+		if !found {
+			return nil, fmt.Errorf("%w: answered Interaction input is unavailable", runs.ErrExecutorStateLost)
+		}
+		prepared = append(prepared, preparedInteractionAnswer{process: process, signal: plan.signal, admitted: plan.admitted})
+	}
+	return prepared, nil
+}
+
+type interactionAnswerPlan struct {
+	processID agent.ProcessID
+	signal    agent.SignalRequest
+	admitted  bool
+}
+
+// Plans are derived only from acknowledged facts. Constructing Signals here
+// validates responses but grants no delivery or writer authority.
+func continuationAnswerPlans(cut interactionHandoff, head agent.TreeSnapshot, retired map[agent.ProcessID]bool, answers []runs.InterruptAnswer) ([]interactionAnswerPlan, error) {
 	targets := make(map[agent.WaitID]interactionInputTarget)
-	for wait, target := range checkpointState.handoff.inputs {
+	for wait, target := range cut.inputs {
 		if !retired[target.processID] {
 			targets[wait] = target
 		}
@@ -129,7 +153,7 @@ func (i *interactionSession) prepareContinuationAnswers(
 	for _, snapshot := range head.ProcessSnapshots() {
 		snapshots[snapshot.Relation().ProcessID()] = snapshot
 	}
-	prepared := make([]preparedInteractionAnswer, 0, len(orderedAnswers))
+	prepared := make([]interactionAnswerPlan, 0, len(orderedAnswers))
 	seenWaits := make(map[agent.WaitID]bool, len(orderedAnswers))
 	for _, answer := range orderedAnswers {
 		waitID, err := agent.ParseWaitID(answer.RequestID)
@@ -149,10 +173,6 @@ func (i *interactionSession) prepareContinuationAnswers(
 		parent, child := snapshots[pending.processID].Relation().ParentID()
 		if !child || parent != pending.memberID {
 			return nil, fmt.Errorf("%w: accepted input recipient changed its member", runs.ErrExecutorStateLost)
-		}
-		process, found := i.engine.Process(pending.processID)
-		if !found {
-			return nil, fmt.Errorf("%w: answered Interaction input is unavailable", runs.ErrExecutorStateLost)
 		}
 		response, err := runinput.EncodeResolution(answer.Resolution)
 		if err != nil {
@@ -180,7 +200,7 @@ func (i *interactionSession) prepareContinuationAnswers(
 				return nil, err
 			}
 		}
-		prepared = append(prepared, preparedInteractionAnswer{process: process, signal: signal, admitted: admitted})
+		prepared = append(prepared, interactionAnswerPlan{processID: pending.processID, signal: signal, admitted: admitted})
 	}
 	return prepared, nil
 }

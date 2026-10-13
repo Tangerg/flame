@@ -49,7 +49,7 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			}
 			barrier := captureAcceptedTestBarrier(t, executor, ref, 2)
 			waiting := rootInteractionWaitingContinuation(barrier.Checkpoint(), start.CWD, ref.ExecutorID, run.Capabilities{InterruptKinds: start.InterruptKinds})
-			if _, err := executor.StageContinuation(t.Context(), waiting); err != nil {
+			if _, err := executor.StageAcceptedContinuation(t.Context(), waiting); err != nil {
 				t.Fatal(err)
 			}
 			session, err := executor.session(ref)
@@ -105,12 +105,12 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := executor.StageAcceptedContinuation(t.Context(), advanced, answers); !errors.Is(err, runs.ErrExecutorStateLost) {
+			if _, err := executor.StageAcceptedContinuation(t.Context(), advanced); !errors.Is(err, runs.ErrExecutorStateLost) {
 				t.Fatalf("changed progress was restorable: %v", err)
 			}
 			unavailable := errors.New("head read unavailable")
 			executor.config.ExecutionTrees = &answerReadFailure{ExecutionTreeStore: testTrees(t), cause: unavailable}
-			if _, err := executor.StageAcceptedContinuation(t.Context(), waiting, answers); !errors.Is(err, unavailable) || errors.Is(err, runs.ErrExecutorStateLost) {
+			if _, err := executor.StageAcceptedContinuation(t.Context(), waiting); !errors.Is(err, unavailable) || errors.Is(err, runs.ErrExecutorStateLost) {
 				t.Fatalf("inconclusive read became state loss: %v", err)
 			}
 			executor.config.ExecutionTrees = testTrees(t)
@@ -118,11 +118,11 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			for index := range conflicting {
 				conflicting[index].Resolution.Answers = [][]string{{"different"}}
 			}
-			if _, err := executor.StageAcceptedContinuation(t.Context(), waiting, conflicting); !errors.Is(err, runs.ErrExecutorStateLost) {
-				t.Fatalf("changed accepted payload was restorable: %v", err)
+			if _, err := executor.PrepareContinuation(t.Context(), waiting, conflicting, nil); !errors.Is(err, runs.ErrExecutorStateLost) {
+				t.Fatalf("changed accepted payload passed preflight: %v", err)
 			}
 			// The original context survives, but restoration must use the answer head.
-			if _, err := executor.StageAcceptedContinuation(context.Background(), waiting, answers); err != nil {
+			if _, err := executor.StageAcceptedContinuation(context.Background(), waiting); err != nil {
 				t.Fatal(err)
 			}
 			restored, err := executor.session(ref)

@@ -57,7 +57,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	checkpoint interactionCheckpointState,
 	boundary interactionBoundary,
 ) error {
-	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryContinuationStaged && boundary != interactionBoundaryAcceptedPaused {
+	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryAcceptedPaused {
 		return errors.New("invalid restored Interaction boundary")
 	}
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot, len(checkpoint.tree.ProcessSnapshots()))

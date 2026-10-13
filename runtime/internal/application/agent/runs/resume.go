@@ -14,13 +14,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// Resume validates one complete response set, then opens the continuation in one
-// acceptance transaction that consumes the waiting hand-off, settles its answered
-// Items, and resumes the tree together. The execution context checkpoint is
-// retained for that accepted continuation. Staging may restore a fenced paused
-// writer before acceptance; semantic answer submission
-// continues behind the Run lifecycle supervisor after the opening commits.
-func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result StartResult, err error) {
+// Resume prepares one complete response set without acquiring an executor. Its
+// acceptance transaction consumes the waiting handoff, settles answered Items,
+// and resumes the tree. Writer restoration and activation belong to the accepted
+// Run's lifecycle, which retains the exact committed Segment identities.
+func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResult, error) {
 	cmd = cmd.clone()
 	if cmd.Acceptance != nil {
 		if err := cmd.Acceptance.Validate(); err != nil {
@@ -119,28 +117,11 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
 	}
-	// Staging retains the paused handoff even when restoration changes its writer.
-	// Only the opening below consumes its prompts or releases answered work.
-	ref, err := c.continuation.StageContinuation(ctx, waiting)
+	requests, err := c.continuation.PrepareContinuation(ctx, waiting, answers, ruleCandidates)
 	if err != nil {
 		return StartResult{}, err
 	}
-	staged := ownStagedExecution(c.releases, ref)
-	defer func() {
-		if err != nil {
-			err = staged.abandon(ctx, err, "unaccepted continuation")
-			result = StartResult{}
-		}
-	}()
-	// The staged tree validates each confirmed invocation and derives its rule
-	// subject; the approval owner validates the frozen source authority. Both run
-	// before the acceptance opening, so a changed authority or an unpreparable rule
-	// rejects the whole Resume and the staged tree abandons recoverable as waiting.
-	if len(ruleCandidates) > 0 {
-		requests, deriveErr := c.continuation.DeriveRememberedRules(ctx, ref, ruleCandidates)
-		if deriveErr != nil {
-			return StartResult{}, deriveErr
-		}
+	if len(requests) > 0 {
 		rememberedRules := make([]approval.Rule, 0, len(requests))
 		for _, request := range requests {
 			rule, prepareErr := c.approvalRules.PrepareRule(ctx, request)
@@ -184,28 +165,26 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		SessionID:         sessionID,
 		WorkspaceCWD:      sess.Workspace().Path(),
 		Isolated:          sess.Isolated(),
-		ExecutorID:        ref.ExecutorID,
+		ExecutorID:        waiting.ExecutorID,
 		Input:             cmd.Input,
 		Continuation:      continuation,
 		ResumeAcceptance:  &acceptance,
 		CommandAcceptance: cmd.Acceptance,
 		admission:         &runAdmission,
 		DetachActivation:  true,
+		StageExecution: func(stageCtx context.Context) error {
+			_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
+			return err
+		},
 		BeginExecution: func(beginCtx context.Context) error {
-			if err := c.continuation.BeginContinuation(
-				beginCtx, ref, answers, committedInput,
-			); err != nil {
-				return err
-			}
-			return nil
+			return c.continuation.BeginContinuation(
+				beginCtx, ExecutorRef{SessionID: sessionID, ExecutorID: waiting.ExecutorID}, answers, committedInput,
+			)
 		},
 	})
 	if err != nil {
 		return StartResult{}, err
 	}
-	// The opening committed the acceptance and transferred the staged tree to the
-	// Segment lifecycle.
-	staged.transfer()
 	// The standing rules committed inside the acceptance; their read model is
 	// invalidated only now that the transaction is durable.
 	if len(acceptance.RememberedRules()) > 0 {
@@ -220,7 +199,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		c.publications.publishRunMoved(sessionID, continuation.RunID)
 	}
 	c.publications.publishWaitingMoved(sessionID, pending.RootRunID)
-	result = StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
+	result := StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
 	if committedInput != nil {
 		// Named only when there is an item to name: the id is derived from the segment
 		// the same way a fresh run derives it, so the client reconciles its optimistic

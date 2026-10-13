@@ -144,6 +144,10 @@ func (c releaseCatalog) Get(_ context.Context, digest fingerprint.Digest) (plugi
 
 type preparedPackages struct{}
 
+func (preparedPackages) ReadResource(context.Context, *plugin.Installation, string) ([]byte, error) {
+	return nil, errors.New("unexpected component resource read")
+}
+
 func (preparedPackages) ReadPage(context.Context, *plugin.Installation, string) (string, error) {
 	return "", errors.New("unexpected view read")
 }

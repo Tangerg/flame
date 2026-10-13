@@ -11,7 +11,7 @@ export interface ResourceSubscription<T> {
 }
 
 export async function openResourceLease(
-  client: RpcClient,
+  client: Pick<RpcClient, "closedSignal" | "onStreamEnd">,
   call: WireCall,
   request: OpenPluginResourcesRequest,
   signal?: AbortSignal,
@@ -20,15 +20,24 @@ export async function openResourceLease(
   const owned = signal ? AbortSignal.any([lifetime.signal, signal]) : lifetime.signal;
   const closed = Promise.withResolvers<void>();
   let id: RpcId | undefined;
+  let admitted = false;
+  let ended: Error | undefined;
+  const connectionClosed = () => {
+    unsubscribe();
+    if (owned.aborted || !admitted) closed.resolve();
+    else closed.reject(client.closedSignal.reason);
+  };
   const unsubscribe = client.onStreamEnd((event) => {
     if (event.method !== "plugins.openResources" || event.requestRpcId !== id) return;
     unsubscribe();
-    if (owned.aborted) closed.resolve();
-    else
-      closed.reject(
-        event.error ?? new RpcConnectionError("plugin resource subscription ended unexpectedly"),
-      );
+    client.closedSignal.removeEventListener("abort", connectionClosed);
+    if (!owned.aborted)
+      ended =
+        event.error ?? new RpcConnectionError("plugin resource subscription ended unexpectedly");
+    if (owned.aborted || !admitted) closed.resolve();
+    else closed.reject(ended);
   });
+  client.closedSignal.addEventListener("abort", connectionClosed, { once: true });
   try {
     const result = await call("plugins.openResources", request, {
       signal: owned,
@@ -36,6 +45,9 @@ export async function openResourceLease(
         id = value;
       },
     });
+    client.closedSignal.throwIfAborted();
+    if (ended) throw ended;
+    admitted = true;
     return {
       result,
       closed: closed.promise,
@@ -47,6 +59,7 @@ export async function openResourceLease(
   } catch (error) {
     lifetime.abort();
     unsubscribe();
+    client.closedSignal.removeEventListener("abort", connectionClosed);
     throw error;
   }
 }

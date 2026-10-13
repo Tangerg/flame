@@ -565,15 +565,16 @@ func wrapInteractionTools(
 	config InteractionExecutorConfig,
 	offloadPolicy toolResultOffloadPolicy,
 	start runs.RootExecutionStart,
-) (visible []toolcontract.Tool, deferred []toolcontract.Tool, err error) {
+) (visible []toolcontract.Tool, deferred []toolcontract.Tool, contracts map[tool.Ref]toolcontract.Contract, err error) {
 	if len(manifest.Visible)+len(manifest.Deferred) > 0 {
 		if dependency.Missing(config.ToolInterpreter) {
-			return nil, nil, errors.New("execution: Interaction Tools require a Tool interpreter")
+			return nil, nil, nil, errors.New("execution: Interaction Tools require a Tool interpreter")
 		}
 		if dependency.Missing(config.ToolAuthorizer) {
-			return nil, nil, errors.New("execution: Interaction Tools require a Tool authorizer")
+			return nil, nil, nil, errors.New("execution: Interaction Tools require a Tool authorizer")
 		}
 	}
+	contracts = make(map[tool.Ref]toolcontract.Contract)
 	wrap := func(values []toolcontract.Tool) ([]toolcontract.Tool, error) {
 		wrapped := make([]toolcontract.Tool, len(values))
 		for index, executable := range values {
@@ -608,14 +609,15 @@ func wrapInteractionTools(
 				}
 				observed.concurrent = concurrent
 			}
+			contracts[ref] = binding.Contract()
 			wrapped[index] = observed
 		}
 		return wrapped, nil
 	}
 	visible, err = wrap(manifest.Visible)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	deferred, err = wrap(manifest.Deferred)
-	return visible, deferred, err
+	return visible, deferred, contracts, err
 }

@@ -107,7 +107,6 @@ type interactionBoundary uint8
 const (
 	interactionBoundaryInactive interactionBoundary = iota
 	interactionBoundaryWaiting
-	interactionBoundaryContinuationStaged
 	interactionBoundaryAcceptedPaused
 	interactionBoundarySubtreePreparing
 	interactionBoundarySubtreePrepared
@@ -166,7 +165,7 @@ func (i *interactionState) attachObserver() bool {
 	if i.observerWasAttached || i.phase == interactionFinished {
 		return false
 	}
-	if i.phase == interactionBegun && i.boundary != interactionBoundaryContinuationStaged && i.boundary != interactionBoundaryAcceptedPaused &&
+	if i.phase == interactionBegun && i.boundary != interactionBoundaryAcceptedPaused &&
 		i.boundary != interactionBoundarySubtreePrepared {
 		return false
 	}
@@ -517,7 +516,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	return published
 }
 
-func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoint) error {
+func (i *interactionSession) stageAcceptedContinuation(checkpoint runs.ExecutorCheckpoint) error {
 	if err := checkpoint.Validate(); err != nil {
 		return err
 	}
@@ -532,7 +531,7 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
 		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", runs.ErrInvalidExecutorCheckpoint)
 	}
-	i.state.boundary = interactionBoundaryContinuationStaged
+	i.state.boundary = interactionBoundaryAcceptedPaused
 	return nil
 }
 
@@ -542,7 +541,7 @@ func (i *interactionSession) beginContinuation() error {
 	if i.state.phase == interactionFinished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if (i.state.boundary != interactionBoundaryContinuationStaged && i.state.boundary != interactionBoundaryAcceptedPaused) || !i.state.observerWasAttached {
+	if i.state.boundary != interactionBoundaryAcceptedPaused || !i.state.observerWasAttached {
 		return errors.New("execution: Interaction continuation was not staged and observed")
 	}
 	return nil

@@ -61,6 +61,7 @@ export interface RpcCallOptions {
 }
 
 export interface RpcClient {
+  readonly closedSignal: AbortSignal;
   call<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
@@ -85,7 +86,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   const pending = new Map<RpcId, Pending>();
   const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
   const streamEndHandlers = new Set<StreamEndHandler>();
-  let closed = false;
+  const connection = new AbortController();
   let closePromise: Promise<void> | undefined;
 
   function failAllPending(failure: RpcTransportError): void {
@@ -94,7 +95,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   }
 
   function failConnection(failure: RpcTransportError): void {
-    closed = true;
+    connection.abort(failure);
     failAllPending(failure);
     for (const observers of subscribers.values()) {
       for (const observer of observers) observer.error(failure);
@@ -241,7 +242,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     params: WireParams<M>,
     callOptions: RpcCallOptions = {},
   ): Promise<WireResult<M>> {
-    if (closed) throw new RpcTransportError("client closed");
+    if (connection.signal.aborted) throw new RpcTransportError("client closed");
     const requiresIdempotency = requestRequiresIdempotency(method, params);
     if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
       throw new TypeError(`${method} does not accept an idempotency key`);
@@ -351,7 +352,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
 
   function close(): Promise<void> {
     closePromise ??= (async () => {
-      if (!closed) failConnection(new RpcTransportError("client closed"));
+      if (!connection.signal.aborted) failConnection(new RpcTransportError("client closed"));
       let closeFailure: unknown;
       try {
         await transport.close();
@@ -364,5 +365,5 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     return closePromise;
   }
 
-  return { call, subscribe, onStreamEnd, close };
+  return { call, subscribe, onStreamEnd, close, closedSignal: connection.signal };
 }

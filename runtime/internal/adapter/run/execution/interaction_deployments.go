@@ -13,6 +13,7 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type interactionDeploymentSet struct {
@@ -21,7 +22,10 @@ type interactionDeploymentSet struct {
 	delegatesByParent map[agent.DeploymentRef]map[string]agent.Deployment
 	managedChildren   map[agent.DeploymentRef]struct{}
 	toolChildren      map[agent.DeploymentRef]struct{}
-	treeLimits        agent.TreeLimits
+	// Immutable Scope Contracts are indexed by the exact Tool deployment so a
+	// checkpoint cannot borrow another layer's input schema.
+	toolContracts map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract
+	treeLimits    agent.TreeLimits
 }
 
 func (i *interactionDeploymentSet) close() error {
@@ -110,6 +114,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		deployments: &interactionDeploymentSet{
 			manifests:         []toolset.Manifest{rootManifest},
 			toolChildren:      make(map[agent.DeploymentRef]struct{}),
+			toolContracts:     make(map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract),
 			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.Deployment),
 			managedChildren:   make(map[agent.DeploymentRef]struct{}),
 			treeLimits:        agent.TreeLimits{MaxDepth: 2, MaxActiveChildren: uint32(i.policy.maxConcurrentToolCalls)},
@@ -162,7 +167,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, err
 	}
-	visible, deferred, err := wrapInteractionTools(
+	visible, deferred, contracts, err := wrapInteractionTools(
 		manifest,
 		i.session,
 		i.executor.config,
@@ -206,6 +211,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		toolDeployment := tools.Deployment()
 		i.deployments.managedChildren[toolDeployment.DeploymentRef()] = struct{}{}
 		i.deployments.toolChildren[toolDeployment.DeploymentRef()] = struct{}{}
+		i.deployments.toolContracts[toolDeployment.DeploymentRef()] = contracts
 	}
 	definition, err := interaction.NewDefinition(definitionConfig)
 	if err != nil {
