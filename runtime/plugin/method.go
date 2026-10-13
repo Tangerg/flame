@@ -168,8 +168,9 @@ func RegisterClient(client *sdk.Client) error {
 	}
 	return errors.Join(
 		sdk.AddSendingCustomMethod[*setupParams, *Result[bool]](client, setupMethod),
+		sdk.AddSendingCustomMethod[*protocolParams, *Result[bool]](client, activateMethod),
 		sdk.AddSendingCustomMethod[*invokeParams, *Result[jsontext.Value]](client, invokeMethod),
-		sdk.AddSendingCustomMethod[*describeParams, *Result[Description]](client, describeMethod),
+		sdk.AddSendingCustomMethod[*protocolParams, *Result[Description]](client, describeMethod),
 	)
 }
 func RegisterServer[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {

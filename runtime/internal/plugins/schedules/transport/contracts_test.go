@@ -60,6 +60,12 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, published := range description.Methods {
+		if published.Name == "flame.schedules/scan.v1" || published.Name == "flame.schedules/dispatch.v1" {
+			t.Fatalf("retired host-driven method still published: %s", published.Name)
+		}
+	}
+
 	for _, method := range required.Descriptor().Methods {
 		matched := false
 		for _, published := range description.Methods {

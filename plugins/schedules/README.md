@@ -8,12 +8,12 @@ any scheduling fact.
 
 The installed stdio process holds an exclusive lease and opens only
 `PLUGIN_DATA/schedules.db`. Its local declaration binds `schedules-provider` to
-the `schedules` server/export and the exact generated consumer contract. Product composition explicitly selects an installation
-and contribution for human commands and background scans; enabling another
-candidate does not replace it. Source-qualified MCP Tools retain their concrete
-installation identity. Runtime
-owns the minute wake-up and dispatch lifecycle; the backend's bounded scanner
-claims due work and rotates pending pages fairly. Failed pending work cannot
+the `schedules` server/export and exact generated consumer contract. Product
+composition selects a provider for human Core commands; each enabled background
+entry runs its own captured installation independently of that selection and UI.
+Source-qualified MCP Tools retain their concrete installation identity. The backend
+owns the minute wake-up, bounded scanner and original captured dispatch lifecycle.
+It claims due work and rotates pending pages fairly. Failed pending work cannot
 starve new due definitions.
 
 The actual Schedules tool adapter invalidates owner reads after an admitted Tool
@@ -45,8 +45,9 @@ original definition does not rewrite that captured work. Manual dispatch enters
 this durable queue before Runtime is called, so a lost reply or canceled caller
 can be reconciled by the next dispatch. Pending scans return this original
 evidence; a scanner cannot replace a human or model trigger with a new automatic
-origin. Runtime restores it before opening the callback, and the backend refuses
-dispatch metadata that differs from the stored trigger.
+origin. The backend restores each captured invocation in its activation callback;
+Runtime validates original human/model evidence against already dispatched routing
+and the authenticated Actor. A new automatic trigger belongs only to this installation.
 
 Cron occurrences retain `invocation_json`; manual work retains the complete
 `captured_request_json`. Their immutable SQL guards prevent rewriting captured
@@ -60,7 +61,8 @@ it is retained even after that Session or Run is deleted. Backend acceptance the
 settles the private pending entry and updates a surviving definition once. A lost
 acknowledgement redelivers the same identity and receives the existing acceptance,
 including after terminal execution or Runtime restart. Selecting a new release
-can reconcile old captured work from the same installation without changing it.
+can reconcile captured work only through its original available current contract;
+former incompatible routes are not converted or retargeted.
 
 `runtime/internal/plugins/schedules/rpc/contracts.go` is the typed method
 source used by actual server registration and query consumers. Its generated
@@ -70,7 +72,7 @@ with `go generate ./internal/plugins/schedules/rpc`; the existing contractgen
 projects the same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 The backend publishes the named `schedules` capability. Runtime validates the
-complete contract and declared export, including dispatch, and captures the
+complete contract and declared export, including runNow, and captures the
 contribution/export and complete capability for original command recovery. Public
 installed operation entrances, components and point dependency graphs remain open.
 
@@ -148,8 +150,17 @@ provider selection or an open component. Its setup uses the public activation ca
 and verifies the attached Runtime against retained namespace evidence without writing
 private state. Backend teardown joins that connection before closing SQLite.
 
-The host scan driver remains the sole scheduling loop in this slice. Moving the clock,
-claim/recovery pass and original private dispatch into the backend, and deleting the
-host driver/scan/dispatch exports, is the next ownership cutover. There is no second
-loop or compatibility reader. Background identity recovery uses validated retained
-host routing; it cannot reclassify a human command as a new automatic trigger.
+Setup returns a provisional ActivationResource without scanning or changing business
+facts. Runtime calls the public Activate handshake after setup succeeds; repeated
+activation cannot start another loop. Disable/replacement/shutdown cancel and join the
+backend's loop and callback connection; accepted Runs remain owned by Runtime.
+
+The former host scan driver, Bootstrap worker/join and public scan/dispatch exports
+are deleted. A pending manual entry resumes its existing private command and exact
+original JSON, then commits private acceptance and the original runNow receipt in
+one transaction. Recovery never rereads an edited/deleted definition or creates a
+new command. Cron acceptance uses the existing private occurrence owner. The backend
+publishes an authenticated contribution notice through plugins.notifyChange; current
+readers receive the existing resync notice and reread rather than infer success.
+No second scheduler, receipt store or compatibility reader exists. Native restart,
+withdrawal and non-selected-entry acceptance remain final verification requirements.

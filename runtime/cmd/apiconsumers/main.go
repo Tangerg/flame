@@ -1,4 +1,4 @@
-// apiconsumers reports actual CLI binding callsites for the Desktop coverage gate.
+// apiconsumers reports actual Go product callsites for the API coverage gate.
 package main
 
 import (
@@ -203,6 +203,112 @@ func collect(root string) map[string][]string {
 			})
 		}
 	}
+	for _, entry := range []string{"runtime/internal/plugins/schedules", "runtime/internal/plugins/memory"} {
+		directory := filepath.Join(root, entry)
+		if _, err := os.Stat(directory); os.IsNotExist(err) {
+			continue
+		}
+		sources := parse(directory)
+		receivers := map[string]map[string]bool{}
+		for _, file := range sources {
+			imports := map[string]bool{}
+			for _, value := range file.Imports {
+				path, err := strconv.Unquote(value.Path.Value)
+				if err != nil {
+					fail(err)
+				}
+				if path != "github.com/Tangerg/flame/runtime" {
+					continue
+				}
+				alias := "runtime"
+				if value.Name != nil {
+					alias = value.Name.Name
+				}
+				imports[alias] = true
+			}
+			ast.Inspect(file, func(node ast.Node) bool {
+				spec, ok := node.(*ast.TypeSpec)
+				if !ok {
+					return true
+				}
+				value, ok := spec.Type.(*ast.StructType)
+				if !ok {
+					return true
+				}
+				fields := map[string]bool{}
+				for _, field := range value.Fields.List {
+					pointer, ok := field.Type.(*ast.StarExpr)
+					if !ok {
+						continue
+					}
+					name, ok := pointer.X.(*ast.SelectorExpr)
+					if !ok {
+						continue
+					}
+					owner, ok := name.X.(*ast.Ident)
+					if !ok || !imports[owner.Name] || (name.Sel.Name != "Client" && name.Sel.Name != "Runtime") {
+						continue
+					}
+					for _, fieldName := range field.Names {
+						fields[fieldName.Name] = true
+					}
+				}
+				receivers[spec.Name.Name] = fields
+				return true
+			})
+		}
+		for _, file := range sources {
+			for _, declaration := range file.Decls {
+				method, ok := declaration.(*ast.FuncDecl)
+				if !ok || method.Recv == nil || method.Body == nil {
+					continue
+				}
+				receiver := method.Recv.List[0]
+				kind := receiver.Type
+				if pointer, ok := kind.(*ast.StarExpr); ok {
+					kind = pointer.X
+				}
+				owner, ok := kind.(*ast.Ident)
+				if !ok {
+					continue
+				}
+				fields := receivers[owner.Name]
+				if len(fields) == 0 {
+					continue
+				}
+				ast.Inspect(method.Body, func(node ast.Node) bool {
+					call, ok := node.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					operation, ok := call.Fun.(*ast.SelectorExpr)
+					if !ok {
+						return true
+					}
+					field, ok := operation.X.(*ast.SelectorExpr)
+					if !ok || !fields[field.Sel.Name] {
+						return true
+					}
+					target, ok := field.X.(*ast.Ident)
+					if !ok || target.Name != receiver.Names[0].Name {
+						return true
+					}
+					name, ok := methods[operation.Sel.Name]
+					if !ok {
+						return true
+					}
+					position := files.Position(call.Pos())
+					path, err := filepath.Rel(root, position.Filename)
+					if err != nil {
+						fail(err)
+					}
+					consumers[name] = append(consumers[name], fmt.Sprintf("%s:%d", filepath.ToSlash(path), position.Line))
+					return true
+				})
+			}
+		}
+	}
+
 	return consumers
 }
 

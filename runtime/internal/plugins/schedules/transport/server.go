@@ -88,26 +88,6 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		contracts.RunNow.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (app.RunReference, error) {
 			return runNow(ctx, db, store, connect, command)
 		}),
-		contracts.Scan.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ScanInput]) ([]schedule.RunRequestSnapshot, error) {
-			return captureCommand(ctx, db, connect, rpc.Scan, command, func(ctx context.Context, input rpc.ScanInput) ([]schedule.RunRequestSnapshot, error) {
-				if input.Now.IsZero() {
-					return nil, errors.New("schedule: scan time is required")
-				}
-				invocation, err := pluginsdk.InvocationFromContext(ctx)
-				if err != nil {
-					return nil, err
-				}
-				requests, err := scanner.Scan(ctx, input.Now, invocation)
-				values := make([]schedule.RunRequestSnapshot, len(requests))
-				for i, value := range requests {
-					values[i] = value.Snapshot()
-				}
-				return values, err
-			})
-		}),
-		contracts.Dispatch.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.DispatchInput]) (app.RunReference, error) {
-			return dispatchRun(ctx, db, store, connect, command)
-		}),
 	); err != nil {
 		return nil, err
 	}
@@ -138,7 +118,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			if err != nil {
 				return nil, errors.Join(err, close())
 			}
-			return runtimeLink{close: close}, nil
+			return newBackground(ctx, db, store, scanner, host, value.ID, *value.Background, close), nil
 		}
 		return nil, nil
 	}); err != nil {
@@ -190,11 +170,6 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 	})
 	return rpc.DecodeError(err)
 }
-
-// The backend joins the activation's callback connection before its private DB closes.
-type runtimeLink struct{ close func() error }
-
-func (l runtimeLink) Close() error { return l.close() }
 
 func checkRuntime(ctx context.Context, db *sql.DB, namespace string) error {
 	if namespace == "" {

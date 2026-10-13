@@ -406,3 +406,8 @@ type PluginResource struct {
 	Body      string `json:"body"`
 	MediaType string `json:"mediaType"`
 }
+
+// PluginChangeNotice carries no business outcome; readers must reread the owner.
+type PluginChangeNotice struct {
+	Contribution string `json:"contribution"`
+}

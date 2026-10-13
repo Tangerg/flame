@@ -16,8 +16,6 @@ type Contracts struct {
 	Update     *pluginsdk.Method[UpdateInput, schedule.Snapshot]
 	Delete     *pluginsdk.Method[ItemInput, Ack]
 	RunNow     *pluginsdk.Method[ItemInput, app.RunReference]
-	Scan       *pluginsdk.Method[ScanInput, []schedule.RunRequestSnapshot]
-	Dispatch   *pluginsdk.Method[DispatchInput, app.RunReference]
 }
 
 func NewContracts() (Contracts, error) {
@@ -43,15 +41,7 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Scan, err = pluginsdk.NewMethod[ScanInput, []schedule.RunRequestSnapshot](pluginsdk.MethodConfig{Name: Scan, Kind: capability.Mutation, Target: "installation", Description: "Capture due occurrences at the supplied time and return pending dispatch."})
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Dispatch, err = pluginsdk.NewMethod[DispatchInput, app.RunReference](pluginsdk.MethodConfig{Name: Dispatch, Kind: capability.Mutation, Target: "installation", Description: "Reconcile captured work through the original Runtime Run acceptance."})
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Capability, err = capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.RunNow.Descriptor(), contracts.Scan.Descriptor(), contracts.Dispatch.Descriptor())
+	contracts.Capability, err = capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.RunNow.Descriptor())
 	if err != nil {
 		return Contracts{}, err
 	}

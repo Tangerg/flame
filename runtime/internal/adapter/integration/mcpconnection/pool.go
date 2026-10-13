@@ -213,7 +213,10 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.La
 					return err
 				}
 			}
-			return pluginsdk.SetUp(ctx, session, values, metadata)
+			if err := pluginsdk.SetUp(ctx, session, values, metadata); err != nil {
+				return err
+			}
+			return pluginsdk.Activate(ctx, session)
 		}
 	}
 	return mcp.NewLaunch(mcp.ServerConfig{Server: connection.Server}, stdio, retire, mcp.Admission{Run: admit, Bindings: connection.Requirements})

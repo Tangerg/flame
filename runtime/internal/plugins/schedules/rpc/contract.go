@@ -3,7 +3,6 @@ package rpc
 import (
 	"errors"
 	"github.com/Tangerg/flame/runtime/capability"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -13,13 +12,11 @@ import (
 )
 
 const (
-	List     = "flame.schedules/list.v1"
-	Create   = "flame.schedules/create.v1"
-	Update   = "flame.schedules/update.v1"
-	Delete   = "flame.schedules/delete.v1"
-	RunNow   = "flame.schedules/runNow.v1"
-	Scan     = "flame.schedules/scan.v1"
-	Dispatch = "flame.schedules/dispatch.v1"
+	List   = "flame.schedules/list.v1"
+	Create = "flame.schedules/create.v1"
+	Update = "flame.schedules/update.v1"
+	Delete = "flame.schedules/delete.v1"
+	RunNow = "flame.schedules/runNow.v1"
 )
 
 type UpdateInput struct {
@@ -41,8 +38,6 @@ type Page struct {
 	NextCursor string
 }
 type ItemInput struct{ ID string }
-type ScanInput struct{ Now time.Time }
-type DispatchInput struct{ RunID string }
 type Ack struct{}
 
 var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelref.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}

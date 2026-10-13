@@ -80,7 +80,7 @@ func TestBackendRejectsOldOrMalformedTransportBeforeInvocation(t *testing.T) {
 		}
 	}
 	for _, data := range []string{`{}`, `{"protocol":"old"}`, `{"protocol":"` + contractsdk.Protocol + `","extra":true}`} {
-		var request describeParams
+		var request protocolParams
 		if err := json.Unmarshal([]byte(data), &request); err == nil {
 			t.Fatalf("malformed handshake admitted: %s", data)
 		}

@@ -67,8 +67,7 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	if err != nil {
 		t.Fatalf("construct Schedule coordinator: %v", err)
 	}
-	s.schedules = coordinator
-	s.scheduleFiring = unexpectedScheduleFiring{test: t, store: reg}
+	s.schedules = testScheduleCommands{Coordinator: coordinator, unexpectedScheduleFiring: unexpectedScheduleFiring{test: t, store: reg}}
 	return s
 }
 
@@ -278,6 +277,11 @@ func TestScheduleStorageFailurePreservesCause(t *testing.T) {
 	if !errors.Is(err, cause) {
 		t.Fatalf("list error = %v, want storage cause", err)
 	}
+}
+
+type testScheduleCommands struct {
+	*schedules.Coordinator
+	unexpectedScheduleFiring
 }
 
 type unexpectedScheduleFiring struct {

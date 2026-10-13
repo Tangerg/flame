@@ -113,7 +113,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls, err := NewCommandCalls(store, selections, pool, routing, commandInvalidations)
+	calls, err := NewCommandCalls(store, selections, pool, routing, commandInvalidations, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

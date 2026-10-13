@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -19,6 +20,7 @@ import (
 )
 
 type CommandCalls struct {
+	publish       invalidation.Publish
 	installations plugins.Store
 	selections    plugins.SelectionStore
 	pool          *mcpconnection.Pool
@@ -26,11 +28,11 @@ type CommandCalls struct {
 	changed       func(plugin.CommandBinding)
 }
 
-func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands, changed func(plugin.CommandBinding)) (*CommandCalls, error) {
+func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands, changed func(plugin.CommandBinding), publish invalidation.Publish) (*CommandCalls, error) {
 	if dependency.Missing(store) || dependency.Missing(selections) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
-	return &CommandCalls{installations: store, selections: selections, pool: pool, routing: routing, changed: changed}, nil
+	return &CommandCalls{publish: publish, installations: store, selections: selections, pool: pool, routing: routing, changed: changed}, nil
 }
 
 type commandReply[T any] struct {
@@ -235,4 +237,25 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, observeErr)
 	}
 	return commandReply[jsoninput.Input]{value: result, binding: binding, session: session}, err
+}
+
+// NotifyChange carries no result and cannot advance another owner's data.
+func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.ContributionID) error {
+	actor, found := operation.ActorFrom(ctx)
+	if !found {
+		return plugin.ErrUnavailable
+	}
+	snapshot, found, err := c.installations.Get(ctx, actor.InstallationID())
+	if err != nil {
+		return err
+	}
+	if !found || snapshot.Selected.Digest() != actor.Release() || !snapshot.Installation.ServerEnabled(actor.Server()) {
+		return plugin.ErrUnavailable
+	}
+	owner, found := snapshot.Selected.Contribution(contribution)
+	if !found || owner.Server != actor.Server() {
+		return plugin.ErrUnavailable
+	}
+	c.publish.Notify(invalidation.Notice{Resource: invalidation.Resync})
+	return nil
 }

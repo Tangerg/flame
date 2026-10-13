@@ -291,6 +291,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"ListSessionTrajectory": {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
 		"ExportTrajectory":      {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
 		"Discover":              lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
+		"NotifyPluginChange":    {Area: "plugin data", Mode: externalReconciliation, Entry: "managed backend background work invalidates canonical readers through its callback"},
 		"Close":                 lifecycle("lifecycle", "process-owned connection shutdown"),
 
 		"CreateSession": flow("sessions", "interactive and one-shot session opening"),

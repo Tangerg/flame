@@ -478,7 +478,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	r.poMCPTools(&server, ready)
 	workerCtx, cancelWorkers := context.WithCancel(t.Context())
 	joins := r.host.application.startWorkers(workerCtx)
-	t.Cleanup(func() { cancelWorkers(); <-joins.scheduler; <-joins.recovery })
+	t.Cleanup(func() { cancelWorkers(); <-joins.recovery })
 	deadline := time.Now().Add(lifecycleWaitBudget(t))
 	for {
 		result := r.endpoint.Invoke(t.Context(), delivery.RunsGet, protocol.GetRunRequest{RunID: pending.RunID}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})

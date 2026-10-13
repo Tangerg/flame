@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.2",
+  "protocolVersion": "2026-10-14.3",
   "features": [
     "reasoning",
     "multimodal",
@@ -792,6 +792,20 @@
       ],
       "features": [
         "mcp"
+      ]
+    },
+    {
+      "name": "plugins.notifyChange",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
       ]
     },
     {
@@ -1639,6 +1653,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.listProviders",
+          "plugins.notifyChange",
           "plugins.openResources",
           "plugins.readRenderer",
           "plugins.readResource",
@@ -2609,6 +2624,16 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.notifyChange",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -9149,6 +9174,15 @@
           "field": "digest",
           "constraint": "pattern(\"^[0-9a-f]{64}$\")"
         },
+        {
+          "field": "contribution",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "PluginChangeNotice",
+      "rules": [
         {
           "field": "contribution",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"

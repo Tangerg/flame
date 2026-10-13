@@ -318,6 +318,12 @@ func (m MCPAuthorizationAttemptRequest) ValidateWire() error {
 	)
 }
 
+func (p PluginChangeNotice) ValidateWire() error {
+	return collectWireViolations("PluginChangeNotice",
+		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+	)
+}
+
 func (o OpenPluginResourcesRequest) ValidateWire() error {
 	return collectWireViolations("OpenPluginResourcesRequest",
 		requiredTextPattern("componentId", o.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),

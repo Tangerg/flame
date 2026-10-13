@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	PluginsNotifyChange        Name = "plugins.notifyChange"
 	PluginsList                Name = "plugins.list"
 	PluginsCall                Name = "plugins.call"
 	PluginsResolveRequirements Name = "plugins.resolveRequirements"
@@ -38,6 +39,12 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.commandAck(MethodMeta{Name: PluginsNotifyChange, CapabilityRules: requires(protocol.FeaturePlugins)}, func(service interface {
+		NotifyPluginChange(context.Context, protocol.PluginChangeNotice) error
+	}, ctx context.Context, request protocol.PluginChangeNotice) error {
+		return service.NotifyPluginChange(ctx, request)
+	})
+
 	r.subscription(MethodMeta{Name: PluginsOpenResources, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		OpenPluginResources(context.Context, protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)
 	}, ctx context.Context, in protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {

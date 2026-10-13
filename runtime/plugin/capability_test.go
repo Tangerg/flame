@@ -233,7 +233,7 @@ func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T
 			description := Description{Protocol: contractsdk.Protocol, Methods: []contractsdk.MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
 			change.change(&description)
 			server := sdk.NewServer(&sdk.Implementation{Name: "invalid-publication"}, nil)
-			if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *describeParams) (*Result[Description], error) {
+			if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*Result[Description], error) {
 				return Reply(description, nil, nil)
 			}); err != nil {
 				t.Fatal(err)

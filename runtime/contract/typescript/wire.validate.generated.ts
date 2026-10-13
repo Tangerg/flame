@@ -228,6 +228,7 @@ export type WireTypeName =
   | "PluginAction"
   | "PluginActionOperation"
   | "PluginCallFailure"
+  | "PluginChangeNotice"
   | "PluginClientComponent"
   | "PluginCollaborator"
   | "PluginComponent"
@@ -2449,6 +2450,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     code: allOf([text(), minLength(1), maxLength(256)]),
     message: allOf([text(), minLength(1)]),
   }, ["code", "message"]),
+  PluginChangeNotice: object({
+    contribution: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
+  }, ["contribution"]),
   PluginClientComponent: object({
     contribution: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     entry: text(),
@@ -4550,6 +4554,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.CreateMCPAuthorizationAttemptRequest),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
+  "plugins.notifyChange": ref(() => CHECKS.PluginChangeNotice),
   "plugins.openResources": ref(() => CHECKS.OpenPluginResourcesRequest),
   "plugins.readResource": ref(() => CHECKS.ReadPluginResourceRequest),
   "plugins.resolvePoint": ref(() => CHECKS.ResolvePluginPointRequest),
@@ -4666,6 +4671,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": object({}, []),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttempt),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
+  "plugins.notifyChange": object({}, []),
   "plugins.openResources": ref(() => CHECKS.PluginResourceLease),
   "plugins.readResource": ref(() => CHECKS.PluginResource),
   "plugins.resolvePoint": ref(() => CHECKS.PageOfPluginPointBinding),

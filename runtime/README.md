@@ -413,6 +413,32 @@ reuses the selected query. Disablement/uninstall withdraws presentation and reso
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
 
+## Protocol 2026-10-14.3 and plugin backend 2026-10-14.2
+
+Background setup resources implement the public ActivationResource. The connection
+supervisor completes setup before calling Activate; an activation attempt starts
+at most once and failed/withdrawn lifetimes cancel and join their resources. Setup
+itself does not advance business work. Current compiled packages must implement the
+new activation frame and exact five-method Schedules contract.
+
+Schedules owns its minute wake-up, bounded private claim/recovery pass and original
+Run acceptance reconciliation. Every enabled declared background entry operates its
+own installation independently of provider selection and graphical entries. The
+host scan driver and Bootstrap worker/join are removed, with the former public
+scan/dispatch methods. Manual recovery reads the original private command input and
+commits acceptance plus original runNow reply through the existing private owner.
+Edits/deletion do not rewrite captures; independent accepted Runs stay in Runtime.
+
+plugins.notifyChange accepts no business value or installation identity. A managed
+callback's authenticated Actor must own that enabled release/server/contribution.
+It publishes the existing outcome-free resync invalidation, allowing readers to
+reread unknown plugin-owned dependencies without a new event bus or result store.
+The public Go callback client is the real production consumer; source coverage scans
+actual backend/CLI bindings without operation exemptions. Native lifecycle, enabled
+non-selected installation and cross-generation acceptance remain final verification.
+Rebuild Core/Go/TS/SDK/installed packages together; old frames and original routes are
+refused rather than converted. Business data formats remain unchanged.
+
 ## Protocol 2026-10-14.2 and plugin backend 2026-10-14.1
 
 Callable contributions may explicitly declare background activation. Setup receives

@@ -65,3 +65,7 @@ func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
 	}
 	return nil
 }
+
+func (h runHost) Notify(ctx context.Context, contribution string) error {
+	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, flameruntime.CommandOptions{})
+}

@@ -97,6 +97,7 @@ import type {
   PageOfWorkspaceSummary,
   PageQuery,
   Plan,
+  PluginChangeNotice,
   PluginInstallation,
   PluginProviderSelection,
   PluginReleaseRequest,
@@ -242,6 +243,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.notifyChange",
   "plugins.openResources",
   "plugins.readResource",
   "plugins.resolvePoint",
@@ -810,6 +812,13 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "plugins.notifyChange": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
   "plugins.openResources": {
     operation: "subscription",
     response: "stream",
@@ -1330,6 +1339,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.notifyChange": [
+    { requires: ["plugins"] },
+  ],
   "plugins.openResources": [
     { requires: ["plugins"] },
   ],
@@ -1484,6 +1496,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.notifyChange": { params: PluginChangeNotice };
   "plugins.openResources": { params: OpenPluginResourcesRequest; result: PluginResourceLease };
   "plugins.readResource": { params: ReadPluginResourceRequest; result: PluginResource };
   "plugins.resolvePoint": { params: ResolvePluginPointRequest; result: PageOfPluginPointBinding };

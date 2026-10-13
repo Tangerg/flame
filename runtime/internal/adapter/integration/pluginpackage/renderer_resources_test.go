@@ -14,7 +14,7 @@ import (
 func TestRendererAdmissionIsBoundedAndIsolatesInvalidSiblings(t *testing.T) {
 	releases := testReleases(t)
 	manifest := `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.renderers","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
-	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-14.1","contributes":{"renderers":[{"id":"good","title":"Good","selector":{"type":"toolName","name":"read_file"},"entry":"good.html"},{"id":"escape","title":"Escape","selector":{"type":"toolName","name":"read_file"},"entry":"../escape.html"},{"id":"wrong","title":"Wrong MIME","selector":{"type":"toolName","name":"read_file"},"entry":"wrong.html"},{"id":"large","title":"Large","selector":{"type":"toolName","name":"read_file"},"entry":"large.html"},{"id":"missing","title":"Missing","selector":{"type":"toolName","name":"read_file"},"entry":"missing.html"},{"id":"write","title":"Write","selector":{"type":"invalid","name":"read_file"},"entry":"good.html"}]}}`, "good.html": "<!doctype html><p>Good</p>", "wrong.html": "plain text", "large.html": "<!doctype html>" + strings.Repeat("x", plugin.MaxPresentationBytes)}))
+	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-14.2","contributes":{"renderers":[{"id":"good","title":"Good","selector":{"type":"toolName","name":"read_file"},"entry":"good.html"},{"id":"escape","title":"Escape","selector":{"type":"toolName","name":"read_file"},"entry":"../escape.html"},{"id":"wrong","title":"Wrong MIME","selector":{"type":"toolName","name":"read_file"},"entry":"wrong.html"},{"id":"large","title":"Large","selector":{"type":"toolName","name":"read_file"},"entry":"large.html"},{"id":"missing","title":"Missing","selector":{"type":"toolName","name":"read_file"},"entry":"missing.html"},{"id":"write","title":"Write","selector":{"type":"invalid","name":"read_file"},"entry":"good.html"}]}}`, "good.html": "<!doctype html><p>Good</p>", "wrong.html": "plain text", "large.html": "<!doctype html>" + strings.Repeat("x", plugin.MaxPresentationBytes)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestRendererReadRejectsChangedBytesAndFilesystemEscape(t *testing.T) {
 			r := testReleases(t)
 			release, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{
 				"plugin.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.renderers","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-				"io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-14.1","contributes":{"renderers":[{"id":"view","title":"View","selector":{"type":"toolName","name":"read_file"},"entry":"view.html"}]}}`,
+				"io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-14.2","contributes":{"renderers":[{"id":"view","title":"View","selector":{"type":"toolName","name":"read_file"},"entry":"view.html"}]}}`,
 				"view.html": "<!doctype html><p>Original</p>",
 			}))
 			if err != nil {

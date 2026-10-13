@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-10-14.2",
+    "version": "2026-10-14.3",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -4281,6 +4281,67 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/MCPAuthorizationAttemptRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "plugins.notifyChange",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "contribution",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "errors": [
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "plugins"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "contribution": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/PluginChangeNotice"
           }
         ]
       }

@@ -241,10 +241,18 @@ context. The host verifies the original dispatched route for human/model callers
 admits fresh automatic triggers only for that installation without an invented parent.
 Origin, parent and target are ephemeral transport context, not business input or
 credentials. Closing the callback observation leaves independently accepted Runs with
-their canonical Runtime owner. Rebuild against backend protocol 2026-10-14.1.
+their canonical Runtime owner. Rebuild against backend protocol 2026-10-14.2.
 
 Known business refusals use capability.Refusal. The former plugin.Failure type is
 removed; migrate external Go classifiers and errors.AsType calls to the pure
 contract package. JSON refusal fields stay code/message. SetupDependency.Bindings
 now uses SetupBinding, a setup transport projection validated by the existing
 identity owners; the connection adapter no longer imports Core Protocol DTOs.
+
+A background setup handler returns ActivationResource. Setup provisions resources;
+Activate starts owned business work once per session only after successful setup.
+The connection supervisor joins resources after failed setup/start or withdrawal.
+A lost activation acknowledgement cannot issue Start twice in the same lifetime.
+Managed background owners can call NotifyPluginChange for their own declared
+contribution. It publishes an outcome-free resync through the existing invalidation
+owner; no new event bus or plugin business store is created.

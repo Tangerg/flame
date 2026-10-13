@@ -44,13 +44,13 @@ func (p *invokeParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type describeParams struct {
+type protocolParams struct {
 	sdk.ParamsBase
 	Protocol string `json:"protocol"`
 }
 
-func (p *describeParams) UnmarshalJSON(data []byte) error {
-	type wire describeParams
+func (p *protocolParams) UnmarshalJSON(data []byte) error {
+	type wire protocolParams
 	var decoded wire
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
@@ -58,7 +58,7 @@ func (p *describeParams) UnmarshalJSON(data []byte) error {
 	if decoded.Protocol != capability.Protocol {
 		return errors.New("plugin: current backend protocol is required")
 	}
-	*p = describeParams(decoded)
+	*p = protocolParams(decoded)
 	return nil
 }
 
@@ -119,7 +119,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(_ context.Context, _ *sdk.ServerSession, params *describeParams) (*Result[Description], error) {
+	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(_ context.Context, _ *sdk.ServerSession, params *protocolParams) (*Result[Description], error) {
 		if params == nil || params.Protocol != capability.Protocol {
 			return nil, errors.New("plugin: current backend protocol is required")
 		}
@@ -182,7 +182,7 @@ func Describe(ctx context.Context, session *sdk.ClientSession) (Description, err
 	if session == nil {
 		return zero, errors.New("plugin: client session is required")
 	}
-	result, err := sdk.CallCustomMethod[*describeParams, *Result[Description]](ctx, session, describeMethod, &describeParams{Protocol: capability.Protocol})
+	result, err := sdk.CallCustomMethod[*protocolParams, *Result[Description]](ctx, session, describeMethod, &protocolParams{Protocol: capability.Protocol})
 	if err != nil {
 		return zero, err
 	}

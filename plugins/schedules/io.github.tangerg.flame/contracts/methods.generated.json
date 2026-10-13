@@ -16,14 +16,6 @@
     "output": "schema.json#/$defs/Method_flame_2eschedules_2fdelete_2ev1Output"
   },
   {
-    "name": "flame.schedules/dispatch.v1",
-    "kind": "command",
-    "target": "installation",
-    "description": "Reconcile captured work through the original Runtime Run acceptance.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2fdispatch_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2fdispatch_2ev1Output"
-  },
-  {
     "name": "flame.schedules/list.v1",
     "kind": "query",
     "target": "installation",
@@ -38,14 +30,6 @@
     "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
     "input": "schema.json#/$defs/Method_flame_2eschedules_2frunNow_2ev1Input",
     "output": "schema.json#/$defs/Method_flame_2eschedules_2frunNow_2ev1Output"
-  },
-  {
-    "name": "flame.schedules/scan.v1",
-    "kind": "command",
-    "target": "installation",
-    "description": "Capture due occurrences at the supplied time and return pending dispatch.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2fscan_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2fscan_2ev1Output"
   },
   {
     "name": "flame.schedules/update.v1",

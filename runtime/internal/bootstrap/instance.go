@@ -160,7 +160,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 
 	host.serverInfo = serverInfo
 	host.stores = stores
-	host.lifetime.schedulerDone = workerJoins.scheduler
 	host.lifetime.databaseChangesDone = databaseChangesDone
 	host.lifetime.recoveryDone = workerJoins.recovery
 

@@ -65,3 +65,8 @@ func (r *binding) SetPluginEnablement(ctx context.Context, request protocol.SetP
 func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.PluginsUninstall, request, commandOptions(options))
 }
+
+// NotifyPluginChange invalidates reads after work owned by a managed entry.
+func (r *binding) NotifyPluginChange(ctx context.Context, request protocol.PluginChangeNotice, options CommandOptions) error {
+	return r.invokeAck(ctx, delivery.PluginsNotifyChange, request, commandOptions(options))
+}

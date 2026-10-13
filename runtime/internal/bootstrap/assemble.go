@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
-
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
@@ -268,11 +266,6 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
-	scheduleFiring, err := pluginservices.NewDispatcher(execution.tools.schedules, execution.models.callbacks, policy.invalidations.Publish)
-	if err != nil {
-		return nil, err
-	}
-
 	approvalCoordinator, err := approvals.New(policy.approvals, sessionCoordinator)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct approval coordinator: %w", err)
@@ -466,7 +459,6 @@ func buildAssemblyCore(
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
 				Schedules:              execution.tools.schedules,
-				ScheduleFiring:         scheduleFiring,
 				Goals:                  goalDriver,
 				AgentMemory:            execution.tools.memory,
 				GitAvailable:           git.Available(),
@@ -474,7 +466,6 @@ func buildAssemblyCore(
 			},
 			sessions: sessionCoordinator,
 			workers: runtimeWorkers{
-				scheduler:     scheduleFiring,
 				recovery:      ownershipRecovery,
 				invalidations: policy.invalidations.Publish,
 			},

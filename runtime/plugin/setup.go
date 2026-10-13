@@ -17,6 +17,7 @@ import (
 )
 
 const setupMethod = "io.github.tangerg.flame/operations.setup"
+const activateMethod = "io.github.tangerg.flame/operations.activate"
 
 type SetupContribution struct {
 	Background *capability.Target `json:"background,omitzero"`
@@ -75,19 +76,34 @@ func (p *setupParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ActivationResource starts business work only after successful setup.
+type ActivationResource interface {
+	io.Closer
+	Start() error
+}
+
 type setupActivation struct {
-	cancel   context.CancelFunc
-	ready    chan struct{}
-	done     chan struct{}
-	resource io.Closer
-	err      error
-	once     sync.Once
+	mu             sync.Mutex
+	lifetime       context.Context
+	startAttempted bool
+	startErr       error
+	closed         bool
+	setupErr       error
+	cancel         context.CancelFunc
+	ready          chan struct{}
+	done           chan struct{}
+	resource       io.Closer
+	err            error
+	once           sync.Once
 }
 
 func (a *setupActivation) close() error {
 	a.cancel()
 	<-a.ready
 	a.once.Do(func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		a.closed = true
 		defer close(a.done)
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -141,6 +157,9 @@ func (b *Backend) OnSetup(handler func(context.Context, Setup) (io.Closer, error
 }
 
 func (b *Backend) registerSetup() error {
+	if err := b.registerActivation(); err != nil {
+		return err
+	}
 	return sdk.AddReceivingCustomMethod(b.server, setupMethod, func(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*Result[bool], error) {
 		var err error
 		if err := validateSetup(params.Contributions); err != nil {
@@ -170,7 +189,7 @@ func (b *Backend) registerSetup() error {
 			}
 		}
 		lifetime, cancel := context.WithCancel(context.WithoutCancel(ctx))
-		activation := &setupActivation{cancel: cancel, ready: make(chan struct{}), done: make(chan struct{})}
+		activation := &setupActivation{lifetime: lifetime, cancel: cancel, ready: make(chan struct{}), done: make(chan struct{})}
 		b.activations[session] = activation
 		b.setupJoins.Add(1)
 		handler := b.setup
@@ -188,6 +207,16 @@ func (b *Backend) registerSetup() error {
 		if handler != nil {
 			activation.resource, err = invokeSetup(handler, lifetime, Setup{contributions: params.Contributions})
 		}
+		if err == nil {
+			for _, value := range params.Contributions {
+				if value.Background != nil {
+					if _, ok := activation.resource.(ActivationResource); !ok {
+						err = errors.New("plugin: background setup requires an activation resource")
+					}
+				}
+			}
+		}
+		activation.setupErr = err
 		close(activation.ready)
 		stop()
 		if err == nil {
@@ -302,4 +331,58 @@ func validateSetupBindings(id string, bindings []SetupBinding) error {
 		}
 	}
 	return nil
+}
+
+func (b *Backend) registerActivation() error {
+	return sdk.AddReceivingCustomMethod(b.server, activateMethod, func(ctx context.Context, session *sdk.ServerSession, params *protocolParams) (*Result[bool], error) {
+		if params == nil || params.Protocol != capability.Protocol {
+			return nil, errors.New("plugin: current activation protocol is required")
+		}
+		b.mu.RLock()
+		activation := b.activations[session]
+		available := b.published && !b.closed
+		b.mu.RUnlock()
+		if !available || activation == nil {
+			return nil, errors.New("plugin: setup is required before activation")
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-activation.ready:
+		}
+		activation.mu.Lock()
+		defer activation.mu.Unlock()
+		if activation.closed || activation.lifetime.Err() != nil || activation.setupErr != nil {
+			return nil, errors.New("plugin: setup lifetime is unavailable")
+		}
+		if !activation.startAttempted {
+			activation.startAttempted = true
+			if resource, ok := activation.resource.(ActivationResource); ok {
+				activation.startErr = startActivation(resource)
+			}
+		}
+		if activation.startErr != nil {
+			return nil, activation.startErr
+		}
+		return Reply(true, nil, nil)
+	})
+}
+func startActivation(resource ActivationResource) (err error) {
+	defer func() {
+		if value := recover(); value != nil {
+			err = fmt.Errorf("plugin: activation start panicked: %v", value)
+		}
+	}()
+	return resource.Start()
+}
+func Activate(ctx context.Context, session *sdk.ClientSession) error {
+	result, err := sdk.CallCustomMethod[*protocolParams, *Result[bool]](ctx, session, activateMethod, &protocolParams{Protocol: capability.Protocol})
+	if err != nil {
+		return err
+	}
+	accepted, err := result.value(activateMethod)
+	if err == nil && !accepted {
+		return errors.New("plugin: backend activation was not accepted")
+	}
+	return err
 }

@@ -130,9 +130,8 @@ func TestInstanceCloseIsIdempotent(t *testing.T) {
 	close(done)
 	instance := &Instance{lifetime: &runtimeLifetime{
 		context: t.Context(), delivery: testEndpoint(t),
-		shutdownWait:  defaultShutdownWaitPolicy(),
-		stopRuntime:   func() {},
-		schedulerDone: done,
+		shutdownWait: defaultShutdownWaitPolicy(),
+		stopRuntime:  func() {},
 	}}
 	if err := instance.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
@@ -202,8 +201,6 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	schedulerDone := make(chan struct{})
-	close(schedulerDone)
 	resourceClosed := make(chan struct{})
 	instance := &Instance{lifetime: &runtimeLifetime{
 		context:      t.Context(),
@@ -213,8 +210,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 			close(resourceClosed)
 			return nil
 		}}),
-		stopRuntime:   stopRuntime,
-		schedulerDone: schedulerDone,
+		stopRuntime: stopRuntime,
 	}}
 
 	callDone := make(chan struct{})
@@ -298,8 +294,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 			close(resourceClosed)
 			return nil
 		}}),
-		stopRuntime:   stopRuntime,
-		schedulerDone: workersDone,
+		stopRuntime: stopRuntime,
 	}}
 
 	callDone := make(chan struct{})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
@@ -27,14 +26,12 @@ type runtimeApplication struct {
 }
 
 type runtimeWorkers struct {
-	scheduler     *pluginservices.Dispatcher
 	recovery      *ownership.RecoveryCoordinator
 	invalidations invalidation.Publish
 }
 
 type workerJoins struct {
-	scheduler <-chan struct{}
-	recovery  <-chan struct{}
+	recovery <-chan struct{}
 }
 
 func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
@@ -97,15 +94,10 @@ func (h *runtimeApplication) notifyExternalChange() {
 }
 
 func (h *runtimeApplication) startWorkers(ctx context.Context) workerJoins {
-	schedulerDone := make(chan struct{})
-	go func() {
-		defer close(schedulerDone)
-		h.workers.scheduler.RunWorker(ctx)
-	}()
 	recoveryDone := make(chan struct{})
 	go func() {
 		defer close(recoveryDone)
 		h.workers.recovery.RunWorker(ctx)
 	}()
-	return workerJoins{scheduler: schedulerDone, recovery: recoveryDone}
+	return workerJoins{recovery: recoveryDone}
 }

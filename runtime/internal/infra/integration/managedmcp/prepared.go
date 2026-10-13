@@ -67,6 +67,29 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 	return &PreparedCommand{db: db, id: id, method: method, input: input, fresh: started}, nil, nil
 }
 
+// ResumeCommand reads original private input and admission without creating work.
+func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, jsoninput.Input, []byte, error) {
+	var storedMethod, raw string
+	var reply []byte
+	if err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
+		return nil, jsoninput.Input{}, nil, err
+	}
+	if storedMethod != method {
+		return nil, jsoninput.Input{}, nil, idempotency.ErrKeyConflict
+	}
+	input, err := jsoninput.Parse([]byte(raw))
+	if err != nil {
+		return nil, jsoninput.Input{}, nil, err
+	}
+	if input.String() != raw {
+		return nil, jsoninput.Input{}, nil, errors.New("managed plugin: retained input is not canonical")
+	}
+	if len(reply) != 0 {
+		return nil, input, reply, nil
+	}
+	return &PreparedCommand{db: db, id: id, method: method, input: input}, input, nil, nil
+}
+
 // NewlyAdmitted authorizes the first effect attempt. A pending admission requires
 // owner-provided reconciliation evidence before its caller can proceed.
 func (c *PreparedCommand) NewlyAdmitted() bool { return c != nil && c.fresh }

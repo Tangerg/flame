@@ -123,9 +123,18 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `DROP TRIGGER refuse_manual_reply`); err != nil {
 		t.Fatal(err)
 	}
+	recovered, err := resumeCaptured(ctx, db, store, host, captured)
+	if err != nil || recovered.RunID != captured.RunID() || recovered.SessionID != captured.SessionID() {
+		t.Fatalf("background recovery changed original result: %+v, %v", recovered, err)
+	}
+	callsAfterRecovery := host.calls.Load()
+
 	value, err := method.InvokeWithMetadata(ctx, invocation.ID, input, metadata)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if host.calls.Load() != callsAfterRecovery {
+		t.Fatal("public replay repeated a recovered Run admission")
 	}
 	calls := host.calls.Load()
 	if receipt, found, err := method.ReadReceipt(ctx, invocation.ID, input); err != nil || !found || receipt != value {

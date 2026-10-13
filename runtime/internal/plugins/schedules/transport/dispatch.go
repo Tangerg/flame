@@ -9,32 +9,16 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
-	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 type RunHost interface {
 	app.RunAdmission
 	Namespace(context.Context) (string, error)
+	Notify(context.Context, string) error
 }
 
 type RunConnector func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error)
-
-func captureCommand[P, R any](ctx context.Context, db *sql.DB, connect RunConnector, method string, command pluginsdk.Command[P], handler func(context.Context, P) (R, error)) (result R, err error) {
-	if _, err := pluginsdk.InvocationFromContext(ctx); err != nil {
-		return result, err
-	}
-	_, close, err := connectRuntime(ctx, db, connect)
-	if err != nil {
-		return result, err
-	}
-	defer func() { err = errors.Join(err, close()) }()
-	input, err := command.RequestInput()
-	if err != nil {
-		return result, err
-	}
-	return managedmcp.Command(ctx, db, method, command.ID, command.Input, input, rpc.Classify, handler)
-}
 
 func connectRuntime(ctx context.Context, db *sql.DB, connect RunConnector) (RunHost, func() error, error) {
 	ref, err := pluginsdk.CallbackFromContext(ctx)
@@ -101,47 +85,4 @@ func (s dispatchCommit) AcceptRun(ctx context.Context, id string) error {
 		}
 		return s.command.Complete(ctx, reply)
 	})
-}
-
-func dispatchRun(ctx context.Context, db *sql.DB, store app.DispatchStore, connect RunConnector, command pluginsdk.Command[rpc.DispatchInput]) (result app.RunReference, err error) {
-	input, err := command.RequestInput()
-	if err != nil {
-		return result, err
-	}
-	validateOriginal := func(ctx context.Context) error {
-		request, err := store.CapturedRun(ctx, command.Input.RunID)
-		if err != nil {
-			return err
-		}
-		invocation, err := pluginsdk.InvocationFromContext(ctx)
-		if err != nil {
-			return err
-		}
-		if invocation != request.Invocation() {
-			return errors.New("schedules: dispatch caller differs from captured trigger")
-		}
-		return nil
-	}
-	prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Dispatch, command.ID, input, validateOriginal)
-	if err != nil {
-		return result, err
-	}
-	if !prepared.NewlyAdmitted() {
-		if err := validateOriginal(ctx); err != nil {
-			return result, err
-		}
-	}
-	if prepared == nil {
-		return pluginsdk.DecodeReply[app.RunReference](original)
-	}
-	runs, close, err := connectRuntime(ctx, db, connect)
-	if err != nil {
-		return result, err
-	}
-	defer func() { err = errors.Join(err, close()) }()
-	dispatcher, err := app.NewDispatcher(dispatchCommit{DispatchStore: store, db: db, command: prepared}, runs)
-	if err != nil {
-		return result, err
-	}
-	return dispatcher.Dispatch(ctx, command.Input.RunID)
 }

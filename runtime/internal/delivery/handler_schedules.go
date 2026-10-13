@@ -14,7 +14,7 @@ import (
 )
 
 // Schedule operations manage the cron-triggered headless runs the
-// application scheduler fires. A schedule stores the final instructions
+// backend worker fires. A schedule stores the final instructions
 // text, so the runtime fires it without resolving a template.
 
 // ListSchedules returns every schedule, newest-created first (schedules.list).
@@ -89,7 +89,7 @@ func (s *Handler) DeleteSchedule(ctx context.Context, in protocol.DeleteSchedule
 // extra run that records the firing without shifting the schedule's next due
 // time.
 func (s *Handler) RunScheduleNow(ctx context.Context, in protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {
-	handle, err := s.scheduleFiring.RunNow(ctx, in.ID)
+	handle, err := s.schedules.RunNow(ctx, in.ID)
 	if err != nil {
 		return nil, mapScheduleErr(err, in.ID)
 	}

@@ -14,7 +14,6 @@ import (
 type runtimeLifetime struct {
 	delivery            *delivery.Endpoint
 	stopRuntime         context.CancelFunc
-	schedulerDone       <-chan struct{}
 	databaseChangesDone <-chan struct{}
 	recoveryDone        <-chan struct{}
 
@@ -171,7 +170,7 @@ func runShutdown(
 			return
 		}
 	}
-	for _, done := range []<-chan struct{}{lifetime.schedulerDone, lifetime.databaseChangesDone, lifetime.recoveryDone} {
+	for _, done := range []<-chan struct{}{lifetime.databaseChangesDone, lifetime.recoveryDone} {
 		if err := completion.Wait(ownerCtx, done); err != nil {
 			finishShutdown(lifetime, attempt, false, err)
 			return

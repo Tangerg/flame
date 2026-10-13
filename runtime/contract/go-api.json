@@ -337,6 +337,10 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
             },
             {
+              "name": "NotifyPluginChange",
+              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options CommandOptions) error"
+            },
+            {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
@@ -971,6 +975,10 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
             },
             {
+              "name": "NotifyPluginChange",
+              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options CommandOptions) error"
+            },
+            {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
@@ -1216,7 +1224,7 @@
         {
           "name": "Protocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-14.1\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-14.2\""
         },
         {
           "name": "Query",
@@ -1642,6 +1650,10 @@
       ],
       "functions": [
         {
+          "name": "Activate",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession) error"
+        },
+        {
           "name": "Call",
           "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, name string, input P) (R, error)"
         },
@@ -1755,6 +1767,20 @@
         }
       ],
       "types": [
+        {
+          "name": "ActivationResource",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "Start",
+              "signature": "func() error"
+            }
+          ]
+        },
         {
           "name": "Backend",
           "kind": "struct",
@@ -3608,7 +3634,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.2\""
+          "value": "\"2026-10-14.3\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8566,6 +8592,23 @@
               "name": "Message",
               "type": "string",
               "tag": "json:\"message\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginChangeNotice",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
             }
           ],
           "methods": [

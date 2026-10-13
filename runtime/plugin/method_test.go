@@ -244,7 +244,7 @@ func replySession(t *testing.T, result *Result[string]) *sdk.ClientSession {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *describeParams) (*Result[Description], error) {
+	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*Result[Description], error) {
 		return Reply(Description{Protocol: contractsdk.Protocol, Methods: []contractsdk.MethodDescriptor{method.Descriptor()}}, nil, nil)
 	}); err != nil {
 		t.Fatal(err)

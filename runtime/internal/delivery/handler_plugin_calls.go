@@ -15,6 +15,7 @@ import (
 )
 
 type pluginCallUseCases interface {
+	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	Resolve(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
 	ResolvePoint(context.Context, *point.Contract, point.Context, []plugins.PointReference) ([]plugins.PointBinding, error)
@@ -135,4 +136,15 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 		}
 		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
 	}, nil
+}
+
+func (s *Handler) NotifyPluginChange(ctx context.Context, notice protocol.PluginChangeNotice) error {
+	if s.pluginCalls == nil {
+		return NewFailure(protocol.ErrPluginUnavailable, "plugin changes are unavailable")
+	}
+	contribution, err := plugin.ParseContributionID(notice.Contribution)
+	if err != nil {
+		return InvalidParameters(err)
+	}
+	return wirePluginError(s.pluginCalls.NotifyChange(ctx, contribution))
 }

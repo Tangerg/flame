@@ -13,12 +13,6 @@
     "Method_flame_2eschedules_2fdelete_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fAck"
     },
-    "Method_flame_2eschedules_2fdispatch_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fDispatchInput"
-    },
-    "Method_flame_2eschedules_2fdispatch_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference"
-    },
     "Method_flame_2eschedules_2flist_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fListInput"
     },
@@ -31,59 +25,11 @@
     "Method_flame_2eschedules_2frunNow_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference"
     },
-    "Method_flame_2eschedules_2fscan_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fScanInput"
-    },
-    "Method_flame_2eschedules_2fscan_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fRunRequestSnapshot"
-      },
-      "type": "array"
-    },
     "Method_flame_2eschedules_2fupdate_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fUpdateInput"
     },
     "Method_flame_2eschedules_2fupdate_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fSnapshot"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "origin": {
-          "type": "string"
-        },
-        "parent": {
-          "type": "string"
-        },
-        "target": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget"
-        }
-      },
-      "required": [
-        "id",
-        "origin",
-        "target"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget": {
-      "additionalProperties": false,
-      "properties": {
-        "reference": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "scope",
-        "reference"
-      ],
-      "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference": {
       "additionalProperties": false,
@@ -95,10 +41,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "SessionID",
-        "RunID"
-      ],
+      "required": ["SessionID", "RunID"],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fDraft": {
@@ -133,70 +76,6 @@
         "ModelSelection",
         "Cron",
         "Enabled"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fExecutionSnapshot": {
-      "additionalProperties": false,
-      "properties": {
-        "CWD": {
-          "type": "string"
-        },
-        "Instructions": {
-          "type": "string"
-        },
-        "ModelSelection": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "type": "object"
-        },
-        "Title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "Title",
-        "Instructions",
-        "CWD",
-        "ModelSelection"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fRunRequestSnapshot": {
-      "additionalProperties": false,
-      "properties": {
-        "Execution": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fExecutionSnapshot"
-        },
-        "Invocation": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation"
-        },
-        "ManualRanAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "OccurrenceID": {
-          "type": "string"
-        },
-        "RunID": {
-          "type": "string"
-        },
-        "ScheduleID": {
-          "type": "string"
-        },
-        "SessionID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ScheduleID",
-        "Execution",
-        "OccurrenceID",
-        "SessionID",
-        "RunID",
-        "ManualRanAt",
-        "Invocation"
       ],
       "type": "object"
     },
@@ -265,18 +144,6 @@
       "properties": {},
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fDispatchInput": {
-      "additionalProperties": false,
-      "properties": {
-        "RunID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "RunID"
-      ],
-      "type": "object"
-    },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fItemInput": {
       "additionalProperties": false,
       "properties": {
@@ -284,9 +151,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "ID"
-      ],
+      "required": ["ID"],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fListInput": {
@@ -305,9 +170,7 @@
           "type": "integer"
         }
       },
-      "required": [
-        "Cursor"
-      ],
+      "required": ["Cursor"],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fModelPatch": {
@@ -338,23 +201,7 @@
           "type": "array"
         }
       },
-      "required": [
-        "Rows",
-        "NextCursor"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fScanInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Now": {
-          "format": "date-time",
-          "type": "string"
-        }
-      },
-      "required": [
-        "Now"
-      ],
+      "required": ["Rows", "NextCursor"],
       "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvcnBj_5fUpdateInput": {
@@ -391,11 +238,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "ID",
-        "ExpectedRevision",
-        "ModelSelection"
-      ],
+      "required": ["ID", "ExpectedRevision", "ModelSelection"],
       "type": "object"
     }
   }

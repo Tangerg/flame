@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
@@ -170,4 +171,19 @@ func (s *Schedules) Update(ctx context.Context, input app.UpdateCommand) (schedu
 func (s *Schedules) Delete(ctx context.Context, id string) error {
 	_, err := invokeCommand[rpc.ItemInput, rpc.Ack](ctx, s.commands, s.contracts.Capability, rpc.Delete, rpc.ItemInput{ID: id}, nil)
 	return rpc.DecodeError(err)
+}
+
+func (s *Schedules) RunNow(ctx context.Context, id string) (app.RunReference, error) {
+	reply, err := invokeResolvedCommand[rpc.ItemInput, app.RunReference](ctx, s.commands, rpc.RunNow, rpc.ItemInput{ID: id}, func(value app.RunReference) error {
+		return errors.Join(resourceid.ValidateSession(value.SessionID), resourceid.ValidateRun(value.RunID))
+	}, func(ctx context.Context) (plugins.ContributionBinding, error) {
+		binding, found, err := plugins.SelectedContribution(ctx, s.installations, s.commands.selections, s.contracts.Capability)
+		if err == nil && !found {
+			err = plugin.ErrUnavailable
+		}
+		return binding, err
+	}, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+		return s.pool.OpenRPC(ctx, binding.ServerID, session)
+	})
+	return reply.value, rpc.DecodeError(err)
 }
