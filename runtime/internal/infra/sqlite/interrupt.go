@@ -50,10 +50,12 @@ type ContinuationRecord struct {
 
 // InterruptBindingRecord is the stored item-to-input-request correspondence.
 type InterruptBindingRecord struct {
-	InterruptItemID string
-	MemberID        string
-	RequestID       string
-	ToolCallID      string
+	InterruptItemID   string
+	MemberID          string
+	RequestID         string
+	ToolCallID        string
+	ToolRef           string
+	SourceFingerprint string
 }
 
 // OpenInterruptRecord is the stored open interrupt: the Item it names and, for
@@ -140,10 +142,12 @@ type continuationRow struct {
 }
 
 type interruptBindingRow struct {
-	InterruptItemID string `json:"interruptItemId"`
-	MemberID        string `json:"memberId"`
-	RequestID       string `json:"requestId"`
-	ToolCallID      string `json:"toolCallId,omitempty"`
+	InterruptItemID   string `json:"interruptItemId"`
+	MemberID          string `json:"memberId"`
+	RequestID         string `json:"requestId"`
+	ToolCallID        string `json:"toolCallId,omitempty"`
+	ToolRef           string `json:"toolRef,omitempty"`
+	SourceFingerprint string `json:"sourceFingerprint,omitempty"`
 }
 
 // NewInterruptStore binds the SQLite interrupt registry to a database opened via
