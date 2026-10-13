@@ -2,7 +2,7 @@
 
 ## Current stage
 
-Stage 3u migrates Usage to an ordinary installed public React component. Its SDK
+Stage 3u, committed in 9376b997, migrates Usage to an ordinary installed public React component. Its SDK
 context enters the canonical `usage.summary` query; the existing Runtime accounting
 owner and recorded facts are unchanged. The component owns all-time/30-day/7-day
 selection, grouping, filtering and refresh. An owned request is canceled when its
@@ -22,14 +22,16 @@ of plugin presentation and the retired endpoint is method-not-found (0.865s).
 Root/Domain/package/Delivery/Bootstrap test sources compile; TestMain is not run.
 Full/vet/race/integration execution remains queued; graphical execution is excluded.
 
-Main synchronization and round cleanup are in progress. User design input hashes
-remain unchanged. Full proposal/review/P01-P48 completion remains open, including
+Main synchronization reports already up to date at ffaf30c9. Product/source changes
+are committed; all generation/build/typecheck/lint/focused/compile/commit handles
+are terminal. Owned frontend dist, temporary exact-build outputs and test binaries
+are removed. User design input hashes remain unchanged. Full proposal/review/P01-P48 completion remains open, including
 remaining page/renderer carriers, dependency status/retention, all-consumer migration
 and canonical models/stream decorators. Verification remains development first.
 
 ## Completed
 
-- Stage 3u: ordinary Usage ESM and direct canonical public query, local period/group/
+- Stage 3u (9376b997): ordinary Usage ESM and direct canonical public query, local period/group/
   filter/refresh state, cancellation and joined I/O, preserved accepted read on failure.
 - Stage 3u: remove the duplicate usage read operation/request/client binding and closed
   kind, generated contracts, HTML source/resource and Desktop carrier adapter. Preserve
@@ -685,6 +687,14 @@ Stage 2a verification:
 - Resolved commit failure: the restored commit-msg hook prefixed an absolute linked-worktree message path with PWD. The corrected hook passed shell syntax validation, accepted a valid message and rejected an invalid message through both absolute and relative paths. Its temporary message fixtures were removed.
 
 ### Round cleanup
+
+- Stage 3u: product/source 9376b997 is committed, main ffaf30c9 already included.
+  Formal Usage ESM/source/generated contracts and necessary dependency artifacts
+  remain. Owned dist, reproducibility directories and temporary Go binaries are
+  removed; all command handles are terminal. Retired empty view folders are removed.
+  No UI/E2E/native execution, publication, credentials or user-data mutation occurred.
+  Preserve the active managed worktree and canonical progress symlink.
+
 
 - Stage 3t: product a3661279 and main merge 7ff60fa4 are committed. Formal icon ESM/
   SDK/contract/source and necessary dependency artifacts are retained. Owned frontend
