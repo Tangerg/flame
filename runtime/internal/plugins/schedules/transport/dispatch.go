@@ -108,20 +108,28 @@ func dispatchRun(ctx context.Context, db *sql.DB, store app.DispatchStore, conne
 	if err != nil {
 		return result, err
 	}
-	request, err := store.CapturedRun(ctx, command.Input.RunID)
+	validateOriginal := func(ctx context.Context) error {
+		request, err := store.CapturedRun(ctx, command.Input.RunID)
+		if err != nil {
+			return err
+		}
+		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		if err != nil {
+			return err
+		}
+		if invocation != request.Invocation() {
+			return errors.New("schedules: dispatch caller differs from captured trigger")
+		}
+		return nil
+	}
+	prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Dispatch, command.ID, input, validateOriginal)
 	if err != nil {
 		return result, err
 	}
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
-	if err != nil {
-		return result, err
-	}
-	if invocation != request.Invocation() {
-		return result, errors.New("schedules: dispatch caller differs from captured trigger")
-	}
-	prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Dispatch, command.ID, input, nil)
-	if err != nil {
-		return result, err
+	if !prepared.NewlyAdmitted() {
+		if err := validateOriginal(ctx); err != nil {
+			return result, err
+		}
 	}
 	if prepared == nil {
 		return pluginsdk.DecodeReply[app.RunReference](original)
