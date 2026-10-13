@@ -2,67 +2,63 @@
 
 ## Current stage
 
-Stage 4r (00f2a5af) completes the remaining Desktop workspace deletion consumer
-and removes Core DeleteAgentMemory/agentMemory.delete, its DTO, delivery port,
-selected-provider forwarder and generated Go/Protocol/TS artifacts. The CLI already
-uses the generated public operation. Actual desktop deletion and existing HTTP
-fixture call expressions now use that same operation; no alias or translation
-of retired Core commands remains. Core is 2026-10-14.13; backend protocol remains
-2026-10-14.2 and private Memory business/ledger/watermark/curation/receipt owners
-and their storage remain unchanged.
+Stage 4s (59e723b11) migrates actual CLI and workspace Memory review to the
+publisher's generated public operation. Approve and reject share one logical
+intent per item. An uncertain original decision cannot become an opposite command.
+The CLI reads pending full/prefix identity before current workspace/catalog reads,
+validates the stored original decision and retains its raw input, original binding,
+command identity and replay guard in the existing workbench. An exact ID wins;
+ambiguous prefixes refuse selection. The dispatch boundary rechecks pending choice,
+retry guidance names the original decision, and resumed acknowledgement has no
+invented display target. Workspace review uses the existing named installed journal
+and validates the shared empty acknowledgement before settlement, then rereads its
+current cache owner. No new business result store or state transition is introduced.
 
-The existing TS mutation journal now captures a stable logical installed intent.
-It stores original route/contract/target, command identity, retention guard and
-salted fingerprints in one atomic record. It does not store authored input or
-business results. A successor client restores that route before provider
-preparation and requires original contract and serialized input, including input
-property order. Changed input/contract, replaced store, expired retention, active
-ownership, malformed storage or persistence failure cannot dispatch a replacement
-command. Capture clones input before asynchronous preparation and always releases
-preparation ownership on failure.
+The CLI review choices and workspace ReviewDecision are consumer presentation
+values; the private backend remains the business review/receipt authority. Remove
+Core ReviewAgentMemory/agentMemory.review, its DTO/global decision enum, delivery
+mapping/port, selected-role forwarder and generated artifacts. Remove superseded
+review-only wire assertions/mapper checks and dormant list/delete/review fixture
+members, preserving other tests. Existing graphical fixture call expressions now
+use the public operation and expect the actual not_pending owner refusal instead
+of the retired Core invalid_params translation. No UI/E2E/screenshot case is added
+or run. Core is 2026-10-14.14; backend protocol remains 2026-10-14.2 and private
+business/storage/ledger/watermark/curation/receipt ownership is unchanged.
 
-The named command path enters the existing plugins.call/openMutation transport;
-it validates the publisher acknowledgement before settlement. Only a witnessed
-owner refusal is a definite business failure. Host delivery refusal, unavailable
-original provider, failed lookup and decoder errors preserve uncertainty. The
-journal begins tracking before creating any delivery promise; retirement fences
-creation rather than leaving an untracked request. All reservation.track consumers
-use the factory contract. OperationFailure has one shared Runtime-client class
-which the public SDK also exports. Custom journal implementations must implement
-capturePluginCommand and use factory tracking; no compatibility overload exists.
+Two real CLI Memory mutations share exact public command preparation and pending
+identity lookup; deletion retains its previous behavior. Actual response-loss,
+client restart, provider replacement, malformed acknowledgement and original-request
+confirmation coverage now exercises both deletion and review. A pure terminal
+recovery test exercises opposite choice, unchanged original identity/input, prefix
+ambiguity and exact-ID precedence without rendering or interaction. This is a
+backend client-policy test, not UI acceptance.
 
-Memory public reads/deletion share concrete binding selection in the existing
-public memory module; its prior public application exports are preserved and the
-superseded memoryReader module disappears. Project resolution uses the same
-captured client as the Memory read. Deletion rereads its current cache owner;
-a recovered original-provider receipt cannot remove a row in another provider's
-projection. Remaining review/update/add, other actual command/Tool/cross-plugin
-consumers, model streaming, scoped dependency lifecycle, all-workflow generation
-recovery, independent author parity and P01-P48/final acceptance remain open.
-
-Passed: Runtime/CLI/Reviews production builds; shared TS/Desktop/SDK types and Vite;
-shared-client contracts (86 cases in six files, 692ms) with the final journal-only
-rerun (25 cases, 276ms); shared-client lint; focused Go protocol/delivery/plugin
-command checks (0.837s/0.905s/1.987s); Bootstrap/terminal test source compilation
-into automatically removed temporary outputs; source coverage (93/93 operation
-families, 110 typed calls, three sidecars and 15 topics); layer gate (1145 modules,
-3700 edges); gofmt/diff checks. The six new command contracts cover persisted
-replacement, original route/key, unavailable owner, changed/ordered input,
-store/expiry guards, decoder versus owner refusal, write/clone failure, command
-kind, input privacy and retirement/concurrent preparation. Initial custom journal
-stub type failures, consumer mapping/result discard and lint diagnostics are
-corrected; no active executed failure remains. No frontend UI/E2E/screenshot case
-is added or run. Full/vet/race/native and actual process-loss acceptance remain
-for the final consolidated phase; source compilation is not native acceptance.
+Passed: Runtime/CLI/Reviews production builds; Desktop/shared types and Vite; CLI
+binding regressions (7.703s) and pure terminal review recovery (7.490s, including
+first-party fixture preparation); Go protocol/delivery focused checks
+(0.648s/0.852s); Bootstrap/terminal test source compilation into automatically
+removed temporary outputs; source coverage (92/92 operation families, 110 typed
+calls, three sidecars and 15 topics); layer gate (1145 modules, 3701 edges);
+gofmt/diff checks. Initial source fixture symbols are migrated before verification;
+no active executed failure remains. Full/vet/race/native and actual process-loss
+acceptance remain for the final consolidated phase. No frontend tests run.
 
 Main 993eb865 is integrated; merge reports already up to date. Original proposal,
-review and draft hashes remain unchanged. The canonical progress symlink remains
-valid. Owned dist and temporary outputs are removed; no live tool process remains.
-Next migrate review/update/add and finish all remaining requirement-level work.
-The full goal remains active.
+review and draft hashes remain unchanged. Owned dist and temporary outputs are
+removed and no live tool process remains. Next migrate Memory update/add and finish
+remaining Tool/cross-plugin consumers, model streaming, scoped dependencies,
+all-workflow generation recovery, independent author parity and P01-P48/final
+acceptance. The full goal remains active.
 
 ## Completed
 
+- Stage 4s (59e723b11): CLI/workspace public Memory review with original request,
+  decision, binding and receipt identity; approve/reject share one intent per item.
+- Stage 4s: resolve pending before new target/catalog reads; exact/prefix recovery
+  refuses ambiguity and changed decision. Actual CLI original-route/restart and
+  pure recovery-policy regressions pass without UI execution.
+- Stage 4s: remove Core review/DTO/global enum/Go/TS/port/forwarder and generated
+  artifacts; retain private business ownership and expose actual publisher refusal.
 - Stage 4r (00f2a5af): Desktop workspace Memory deletion through the generated public
   operation, stable journal-owned original intent/binding and typed acknowledgement.
 - Stage 4r: remove Core deletion/DTO/Go/TS/port/forwarder and generated artifacts;
@@ -411,8 +407,8 @@ The full goal remains active.
 
 ## In progress
 
-- Remaining CLI/desktop Memory review, update and add need public operations and
-  original binding/intent recovery. The named journal primitive and migrated deletion
+- Remaining CLI/desktop Memory update and add need public operations and
+  original binding/intent recovery. The named journal primitive and migrated deletion/review
   do not prove recovery of every existing component or Tool workflow.
 - Actual Memory reads are public installed operations in CLI and the workspace
   client. Four Core mutations and their CLI/workspace consumers still need original
@@ -421,17 +417,10 @@ The full goal remains active.
 - Schedule Core business facade migration is complete for actual CLI reads and
   all mutations. Final native response-loss/restart/withdrawal/retirement execution
   and the wider notification/cross-language number/author parity audits remain open.
-- CLI Schedule creation/deletion/manual execution now use public installed calls
-  and original intent recovery. Update remains the last Schedule Core consumer;
-  its migration must remove the remaining Schedule facade DTOs and feature gate.
-- CLI Schedule deletion and manual execution now share original intent recovery.
-  Create/update and Memory entrances remain under migration; final native acceptance
-  must exercise the migrated public requests across actual Runtime process loss,
-  disablement/replacement/uninstall and missing original receipts.
-- CLI Schedule deletion now retains client intent and reconciles its original
-  installed command. Remaining Schedule and Memory mutations need the same actual
-  consumer migration. Final process acceptance must combine client/Runtime restart,
-  response loss and installation replacement/disablement/uninstall.
+- Final native acceptance must exercise all migrated Schedule operations and Memory
+  reads/deletion/review across client/Runtime restart, response loss and installation
+  replacement/disablement/uninstall, including missing original receipts. Memory
+  update/add remain actual migrations; Schedule Core facades have been removed.
 - Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
@@ -456,6 +445,8 @@ The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Approve and reject share one stable item review intent in each actual client | Unknown approval may already have changed or removed the pending item; opposite submission cannot replace its original outcome | Decision-specific parallel intents, fresh catalog prerequisite, another command ID or reporting a new desired choice as the old command's result |
+| 2026-10-14 | Review choices belong to client presentation and the published operation, while private backend owns valid transitions | A plugin business verdict is not a universal Core enum or forwarding method | Retaining Core review/DTO/enum, private backend imports or another host-side review state machine |
 | 2026-10-14 | Stable installed command intent and original routing belong to the existing TS journal | Reconstructed current-provider input fingerprints cannot recover an original binding after client replacement | Another journal/result store, current-provider retry, storing authored input, silently dropping expired uncertainty or a business Core alias |
 | 2026-10-14 | Begin journal tracking before creating delivery promises and decode before settlement | Retired generations must not create orphan requests; only an observed owner refusal proves a business failure | Tracking after delivery creation, retiring on unavailable-provider/host error or treating a decoder refusal as owner evidence |
 | 2026-10-14 | Require identical serialized installed input and restore routing before preparation | Private receipts bind original bytes; semantic JSON equality or edited drafts cannot authorize changed replay input | Reordered input, current contract reconstruction or new command identity after uncertain acknowledgement |
@@ -605,7 +596,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; remaining Core facade migration and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; CLI Schedules, CLI/workspace Memory reads and deletion use public contracts with original binding; Core Memory list/deletion removed; remaining mutations, Tool/all-consumer migration and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; cli/internal/application/installedcommand/command.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
+| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; CLI Schedules and CLI/workspace Memory reads/deletion/review use public contracts with original binding/decision; Core Memory list/deletion/review removed; update/add, Tool/all-consumer migration and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; CLI runtimebinding/agentmemory.go and terminal/agent_memory_management.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
