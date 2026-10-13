@@ -2,40 +2,49 @@
 
 ## Current stage
 
-Stage 3y, committed in 0643197b, migrates the actual Trajectory page to ordinary
-prebuilt React/ESM. Core protocol is 2026-10-13.12; backend protocol stays .4.
-The old sessionTrajectory view kind, HTML/source, Desktop carrier adapter, public
-plugins.readTrajectory Go/Protocol/TS method and generated artifacts are removed.
+Stage 3z, committed in a025360f, migrates Diagnostics to an ordinary public SDK
+component. Core protocol is 2026-10-13.13; backend protocol remains .4.
+The old clientDiagnostics view kind, HTML/source, private Desktop wrapper/read
+adapter, omission DTO and retired carrier cases are removed in the same change.
 
-Public component scope now admits Session targets. The existing navigation owner
-projects an immutable Session ID through ComponentContext, and a changed Session
-remounts the rendering instance and cancels/joins old observation. Session dock
-placement derives from the admitted scope without a Trajectory/package-name branch.
-Workspace and installation scopes retain their existing contracts.
+Every component receives the same explicit, lifetime-bound ClientTelemetry
+collaborator. Public SDK row types now own the trace/metric/log projection contract;
+the actual store and OTel sink consume them without private aliases or duplicate
+DTOs. The existing telemetry store still advances ingestion and clearing. The
+collaborator only checks lifetime, returns a detached snapshot and delegates clear.
+Retired contexts refuse both operations before accessing the owner.
 
-Trajectory reads canonical sessions.trajectory through its explicit SDK Runtime
-client. Public discovery supplies descendant capability, captured for a pagination
-chain. The component owns only filters, disclosures and accepted page/cursor state;
-failed reads retain the last accepted page. Recorded usage/absence, unknown outcome
-without invented duration, redacted reasoning, deferred image expansion and page-
-local counts remain explicit. Session export/execution controls retain their owners.
+Diagnostics owns local signal selection and last-read display. Refresh reads the
+current client buffer; a failed read retains accepted observations. Successful clear
+invalidates the display before rereading. Runtime accounting/remote telemetry remain
+separate facts. The former 256-row/128-KiB HTML transport cutoffs disappear; existing
+buffer capacities stay with the telemetry owner, and prior eviction is not invented.
 
-The 8485-byte ESM rebuilds exactly using the existing public build path. Production
-Go, shared SDK/package/Desktop types, changed lint, eight locales and Vite build pass.
-Focused Session-scope admission, old-kind refusal and canonical trajectory boundary
-checks pass. Bootstrap/installed history/resource regression source compiles only;
-actual process execution and full/vet/race remain final-phase work. No UI/E2E checks
-were added or executed; retired carrier cases are removed and existing fixtures are
-migrated for source compilation. Static API coverage passes 108/108 after retiring
-one duplicate operation; it does not prove complete platform acceptance.
+The component declares installation scope and the admitted diagnostics material key.
+The existing navigation consumer keeps the material meaning and catalogue recovery;
+no Diagnostics branch remains in the generic component loader. The prebuilt ESM is
+3642 bytes and rebuilds exactly. Remaining HTML pages are Memory, Schedules and Skills.
 
-Local main b5160b5f is already integrated. Owned build outputs/temporary binaries
-are removed, and all owned handles are terminal. Original proposal/review/draft
-hashes remain unchanged. Full proposal/review/P01-P48 scope stays active, including
-Diagnostics/Memory/Schedules/Skills/renderers/actions, observed scoped dependencies,
-canonical model decorators/streaming, independent author parity and final audit.
+Production Go, SDK/package/shared/Desktop types, changed lint, eight-locale check,
+public boundaries, layer graph, production Vite and API consumer coverage pass.
+Two non-UI data-contract cases pass: detached/complete buffer reads and clearing,
+plus retired read/clear refusal preserving owner data. Old view kind refusal passes.
+Installed component/withdrawal/backend regression source compiles; full/vet/race and
+actual process acceptance remain final-phase work. No GUI/E2E execution or additions.
+
+Local main b5160b5f is already integrated. Owned frontend dist/test cache, temporary
+compile binaries and the empty retired views directory are removed; all handles
+are terminal. Original proposal/review/draft hashes are unchanged. Full P01-P48 and
+review scope remain active: remaining pages/renderers/actions, scoped dependency
+retention/status, canonical model decorators/streaming, author parity and final audit.
 
 ## Completed
+
+- Stage 3z (a025360f): public client-local telemetry collaborator and one SDK row-type
+  contract; actual Diagnostics ordinary ESM, owner-directed clear, detached reads and
+  retired-context refusal. Generic navigation consumes the admitted diagnostics key.
+- Stage 3z: delete Diagnostics view/HTML/carrier/omission format and transport-specific
+  read cutoffs; preserve current telemetry owner/capacity and Runtime accounting.
 
 - Stage 3y (0643197b): actual ordinary Trajectory component, public immutable Session
   target/dock projection and direct canonical history reads; delete its closed view,
@@ -255,10 +264,9 @@ canonical model decorators/streaming, independent author parity and final audit.
 
 ## Next
 
-1. Migrate Diagnostics through an explicit public client-observation collaborator, then
-   continue Memory/Schedules/Skills/renderer/action migration and delete closed paths. Keep capture,
-   ordinary shared modules and supported resource ownership with their current owners.
-2. Complete scoped point lifecycle, observed dependency status/retention, and actual
+1. Continue Memory/Schedules/Skills and renderer/action migration to public components
+   and installed operation contracts; remove each replaced carrier/API in its slice.
+2. Complete scoped point lifecycle, observed dependency status/retention and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
 3. Complete canonical model execution/remote streaming decorators, frozen order,
    cancellation/backpressure/inner evidence, independent author parity and final audit.
@@ -267,6 +275,8 @@ canonical model decorators/streaming, independent author parity and final audit.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Publish a uniform explicit client-telemetry collaborator and one SDK projection type owner | Ordinary Diagnostics needs local traces/logs/metrics without private state imports; the existing store remains their mutable owner | A Diagnostics branch in the loader, an ambient store/service lookup, duplicate SDK/store row DTOs, a copied observation ledger or a fake Runtime diagnostics query |
+| 2026-10-13 | Remove carrier-specific row/byte omission while retaining actual telemetry buffer capacity | Ordinary in-process components no longer use the bounded HTML channel; detached reads cannot reconstruct data already evicted by the owner | A retained omission epoch/reader, arbitrary new quotas, pretending snapshots are current mutable facts or clearing Runtime accounting |
 | 2026-10-13 | Project Session component targets from the existing navigation owner and call canonical trajectory directly | Session identity is captured interaction data; the old read wrapper/HTML carrier adds feature knowledge without owning history | Private Session stores in author code, an ambient currentSession lookup, a copied history store, a new RPC wrapper or a retained sessionTrajectory kind |
 | 2026-10-13 | Capture descendant scope with an accepted cursor chain; retain accepted pages on failed reads | Runtime owns capability/cursor admission and durable evidence; rendering owns its local page and filters | Changing cursor scope mid-chain, advancing a failed cursor, fabricated duration/usage or component disablement deleting history |
 | 2026-10-13 | Transport admitted point contracts as canonical JSON strings and parse metadata only for display | The same JavaScript numeric rounding risk as callable contracts would change exact schema identity; the Runtime point owner remains authoritative | Object/string compatibility readers, re-encoding parsed schemas, relaxed identity or another schema compiler |
@@ -369,7 +379,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -400,6 +410,30 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3z development and client telemetry contracts
+
+- Passed: production Runtime/CLI/Reviews Go build; SDK, portable package, shared Runtime
+  TS and Desktop typecheck; changed lint; production Vite build; active commit hooks.
+- Passed: public SDK component build/exact rebuild. Diagnostics ESM is 3642 bytes;
+  other ordinary component artifacts remain unchanged.
+- Passed: two non-UI telemetry data-contract regressions (4.80s total process, including
+  transformation/setup) for 301 retained logs including a 128-KiB record, deep-copy
+  isolation, current-owner clear and post-retirement read/clear refusal. No DOM rendering.
+- Passed: focused Domain refusal of removed clientDiagnostics/sessionTrajectory kinds
+  (0.410s). Bootstrap, plugin Application and package admission test source compiles
+  through TemporaryDirectory; TestMain and native/process acceptance are not executed.
+- Passed: locale gate, 1052 keys across eight catalogs; public boundary gate, 1193 files;
+  layer gate, 1193 modules/3909 edges; API consumers, 108/108 fact families.
+- Resolved: removed native Diagnostics case left an unused helper; delete that retired
+  helper and rerun lint successfully. Admitted material grammar rejects the former
+  camel-case key, so declaration/navigation/fixtures use one current diagnostics key.
+- No new GUI/E2E assertions or execution. Existing visual/index/navigation fixture
+  metadata migrates; retired Diagnostics carrier tests/cases are deleted.
+- Not run: full/vet/race/installed execution (concentrated final phase), UI, E2E,
+  browser/native and screenshot checks (explicit exclusion). Shared renderer and full
+  cross-generation Diagnostics execution remain unverified.
+- Product a025360f; local main already integrated. Original input SHA-256 values unchanged.
 
 ### Stage 3y development and Session trajectory contracts
 
@@ -829,6 +863,13 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3z: product a025360f committed; local main already integrated. All owned
+  generation/build/typecheck/focused/data-contract/source-compile/commit handles are
+  terminal. TemporaryDirectory removes Go binaries and exact-build probes clean their
+  output. Owned frontend dist/Vitest cache and empty Diagnostics views directory are
+  removed. Retain formal ESM, source/contracts/regressions and dependencies. No native
+  or UI process, external state, credentials, user data or shared configuration changed.
+
 - Stage 3y: product 0643197b committed; local main already integrated. Every owned
   generation/build/typecheck/focused/source-compile/commit handle is terminal.
   TemporaryDirectory removes Go test binaries; exact ESM checks clean their temporary
@@ -954,6 +995,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3z advances Core to .13, removes clientDiagnostics view metadata and requires
+  the public ComponentContext.telemetry collaborator. Rebuild SDK clients/Host/packages
+  together; no former DTO/HTML/type alias remains. Diagnostics navigation now consumes
+  the valid diagnostics material key. Buffer policy and Runtime storage/accounting stay
+  unchanged. Complete installed/graphical lifetime acceptance remains outstanding.
 
 - Stage 3y advances Core to .12, removes plugins.readTrajectory and sessionTrajectory
   view metadata, and adds public Session component context/scope. Rebuild clients and
