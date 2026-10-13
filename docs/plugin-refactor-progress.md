@@ -2,55 +2,64 @@
 
 ## Current stage
 
-Stage 4n (15f8135e) migrates actual CLI Schedule creation to the public installed
-operation. The form and binding adapter share the same generated publisher Go
-input in cli/internal/domain/schedule. The old adapter-local projection is removed;
-contractgen emits exported metadata and package-scoped names without a redundant
-prefix. Publisher callable contract bytes remain identical. No private backend
-package or handwritten replacement create DTO is imported by the CLI.
+Stage 4o (5d928073) migrates the final CLI Schedule update/edit/enablement entrance
+to the installed public method. Prepared input retains the inspected revision,
+original installation/release/contribution/contract, nullable patch members and
+exact bytes. Empty CWD resets the workspace; omission preserves it. Pending edit
+and enablement intent is reconciled before another catalog/revision read. The
+existing installed-command workflow retains its original identity and only retires
+it after decoded owner acknowledgement or witnessed owner refusal. A reply for a
+different Schedule cannot acknowledge the captured edit.
 
-Initial preparation resolves the authored workspace, serializes the typed draft,
-captures the concrete installed provider and persists original intent before I/O.
-Caller draft/map reuse cannot change captured bytes. An unresolved schedule-create
-intent is resumed before opening another form or discovering a current provider.
-The existing workflow decodes the original acknowledgement before retirement and
-preserves unknown outcomes, replay-store/deadline fences and owner-only refusal
-evidence. A settled creation permits a new intent. Backend validation, business
-transition, private receipt and change notification retain their existing owners.
+Every CLI Schedule read/mutation now consumes generated publisher inputs/outputs.
+Remove the former Core Schedule read projection and separate Enabled state; views
+use the publisher's CWD/model selection/value timestamps and derive scheduling
+status from NextRunAt. The complete uint64 revision remains intact, including
+values beyond the retired Core exact-JSON bound. This is a Go consumer guarantee;
+portable wide-number behavior across other clients still needs final contract audit.
 
-Delete CreateSchedule/schedules.create, its request DTO, Go/TS method, handler,
-port, selected-role forwarder, generated schemas and exclusive facade tests in
-one change. The model Tool still enters the existing backend operation owner;
-its original source/receipt recovery is unchanged. Core is 2026-10-14.10, backend
-protocol and business/storage formats unchanged. Update is the sole remaining
-Schedule Core entrance, an actual consumer awaiting migration.
+Delete UpdateSchedule/schedules.update, Schedule/UpdateScheduleRequest/workspace
+enum, Go/TS binding, handler/port/selected-role forwarder, Core feature gate and
+schedule_not_found translation/code/copy/schema/examples. CLI composition and
+command/change observation negotiate the generic plugins entrance. Backend
+business invariants, private receipts, notification and Core Run ownership remain.
+The retained Schedules adapter only owns real model Tool source/receipt evidence;
+its unused command dependency is removed. Existing Schedule event vocabulary is
+retained pending the full notification/platform audit, not claimed as complete.
+Core is 2026-10-14.11; backend protocol and private storage are unchanged.
 
-Native lost-create/revocation/restart and other existing Schedule fixture sources
-now capture and reuse public installed requests. Their existing read projection
-serves the remaining update consumer, without a retired wire reader or business
-result store. The credentialed live fixture is migrated and compiled only. Terminal
-fixtures use the same publisher projection/contract and preserve foreign workspace
-references. No frontend UI/E2E/screenshot source was added or changed, and none ran.
+Native fixtures now use publisher snapshots directly and invoke public update with
+one captured request. Exclusive Core-facade cases are removed; unrelated Session/
+Plan/model/workspace contracts remain. A shared test helper formerly located in
+the retired Schedule file moves to existing common fixtures. Terminal fixtures
+migrate and compile only. No frontend UI/E2E/screenshot checks are added or run;
+one obsolete frontend wire assertion and one shared-client facade case are removed.
 
-Production Runtime/CLI/Reviews builds, Desktop types/Vite and source/layer checks
-pass. CLI actual operations/pagination pass (7.977s), capture/borrowed-state check
-passes (5.908s), and Go projection generation passes (0.471s). Bootstrap, delivery,
-Runtime and terminal test sources compile into removed temporary binaries. Two
-stale terminal assertions referenced Workspace rather than published CWD; corrected
-without changing their intended workspace guarantee. No active executed failure
-remains. Source gate is 96/96 (87 graphical, two Go headless, six materialized, one
-HTTP), three sidecars and 15 topics. Owned-source gofmt and diff checks pass.
+Production Runtime/CLI/Reviews builds, Desktop/shared types/Vite, layer/source and
+locale checks pass. CLI Schedule checks pass (7.430s), original revision/patch/wide
+output check passes (6.696s), remaining Core revision/model contracts pass (0.613s),
+workspace/problem translation checks pass (0.851s). Bootstrap, delivery, protocol,
+Runtime and terminal test sources compile into removed temporary outputs. Initial
+retired-symbol, fixture and stale-copy failures are fixed; no active executed
+failure remains. Source gate is 95/95 (87 graphical, one Go headless, six materialized,
+one HTTP), three sidecars and 15 topics; 982 locale keys across eight languages.
 
 Main 993eb865 remains integrated; merge is up to date. Original proposal/review/draft
-hashes remain unchanged. Owned dist and temporary outputs are removed. Full/vet/race,
-native process and credentialed live execution remain final-phase work. Next migrate
-Schedule update and retire the last Schedule Core facade/types/feature negotiation,
-then complete Memory/Tool/cross-plugin consumers, scoped dependencies, canonical
-model streaming decorators, cross-generation recovery, independent author parity
-and every P01-P48/final acceptance. The full goal remains active.
+hashes remain unchanged. Owned dist/temp outputs are removed. Full/vet/race/native
+process and credentialed live execution remain final-phase work. Next migrate
+Memory Core consumers/facades, then complete Tool/cross-plugin consumers, scoped
+dependencies, canonical model streaming decorators, cross-generation recovery,
+independent author parity and all P01-P48/final acceptance. The full goal remains active.
 
 ## Completed
 
+- Stage 4o (5d928073): public CLI update/edit/enablement with original captured
+  revision/patch/binding and pending-intent recovery before new catalog reads.
+- Stage 4o: direct generated publisher snapshots; no Core read DTO/Enabled copy;
+  workspace reset/omission and complete Go uint64 revision retain their semantics.
+- Stage 4o: remove all remaining Schedule Core API/DTO/feature/error/projection
+  artifacts and unused routing dependency; migrate native/terminal sources/docs.
+  Focused owner/contract/type/build/source/locale checks pass; final execution open.
 - Stage 4n (15f8135e): actual CLI public creation with typed publisher input,
   workspace/caller-state capture and durable original-intent reconciliation.
 - Stage 4n: shared generated CLI contract projection with exported metadata and
@@ -372,6 +381,9 @@ and every P01-P48/final acceptance. The full goal remains active.
 
 ## In progress
 
+- Schedule Core business facade migration is complete for actual CLI reads and
+  all mutations. Final native response-loss/restart/withdrawal/retirement execution
+  and the wider notification/cross-language number/author parity audits remain open.
 - CLI Schedule creation/deletion/manual execution now use public installed calls
   and original intent recovery. Update remains the last Schedule Core consumer;
   its migration must remove the remaining Schedule facade DTOs and feature gate.
@@ -407,6 +419,9 @@ and every P01-P48/final acceptance. The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Every Schedule entrance uses its public installed owner, with original revision and nullable patch captured once | Final Core update retained a competing entrance and enabled refresh to replace a submitted edit basis | Keeping schedules.update/DTO/feature gate, reading a new revision on retry or merging current draft values into pending input |
+| 2026-10-14 | Consume the publisher snapshot directly instead of maintaining a Core Schedule read projection | The publisher already owns fields/revision/timestamps; NextRunAt owns enabled status, and a Core numeric envelope must not narrow it | Duplicate Enabled state, a replacement handwritten facade DTO or silently narrowing uint64 revisions |
+| 2026-10-14 | CLI capability negotiation uses plugins and resolves the concrete Schedule contract | A plugin-owned business feature does not need a second Core feature/method namespace | Schedule-specific capability preference, unavailable-port fallback or selecting another provider for an unresolved edit |
 | 2026-10-14 | Forms and adapters consume one generated publisher Go projection from the CLI contract package | Removing Core creation must not introduce a handwritten second request schema or private backend import | Retaining CreateScheduleRequest, duplicate draft structs, adapter-only aliases or generating independent metadata owners |
 | 2026-10-14 | Expose generated method/contract metadata with optional package-scoped naming | A real second CLI consumer needs the same projection; package qualification already names the owner | Forwarding metadata wrappers, copying constants or requiring redundant exported prefixes |
 | 2026-10-14 | One unresolved creation intent resumes its original draft before another form or provider lookup | No Schedule ID exists before creation acknowledgement; a new form must not allocate a replacement mutation after response loss | New IDs on retry, selected-role replay, empty-draft resubmission or a second success/result cache |
@@ -548,7 +563,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
-| No-Run unresolved human command pins original binding and recovery evidence | Stage 4l/4m/4n actual CLI creation/deletion/manual execution retain original requests before I/O; caller-state, input-byte, store/owner/persistence and decode-before-retirement checks pass. Pending creation precedes new-form/provider discovery. Consumer decoding cannot originate business refusal. Native restart/replacement acceptance and remaining entrances open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
+| No-Run unresolved human command pins original binding and recovery evidence | Stage 4l-4o all actual CLI Schedule mutations retain original request/owner/revision before I/O; pending creation/edit/enablement precede new form/provider/revision reads. Capture/byte/store/owner/persistence/decoder checks pass. Native process replacement acceptance, remaining Memory/other entrances and cross-generation recovery open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
 | One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
 | Recovery entrance independent of failed optional UI | Built-in manager provider/dependency/point inspection and localized optional-module recovery implemented; final lifecycle acceptance open | PackageManager.tsx; ProviderSelections.tsx; ContributionRequirements.tsx; PointInspection.tsx; InstalledComponent.tsx; CLI |
@@ -576,6 +591,34 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4o final Schedule Core facade removal
+
+- Passed: CLI Schedule adapter checks (7.430s), including public operations/pages,
+  workspace reset and refusal of an acknowledgement for another Schedule.
+- Passed: captured revision/nullable patch/caller-pointer reuse and complete Go
+  uint64 output check (6.696s). No current-provider or updated-revision lookup is
+  used to construct an unresolved edit; existing intent admission remains shared.
+- Passed: remaining Core Session/Plan exact revision/model contracts (0.613s) and
+  workspace/problem translation checks (0.851s). Obsolete Schedule cases disappear,
+  while unrelated assertions and causes remain unchanged.
+- Passed: production Runtime/CLI/Reviews Go build, Desktop/shared TypeScript types,
+  Vite, API coverage 95/95, layer closure and 982-key/eight-locale closure; gofmt
+  and git diff --check. Bootstrap/delivery/protocol/Runtime/terminal sources compile
+  only; all owned temporary binaries/directories and Desktop dist are removed.
+- Fixed: retired catalogue/fixture types, a shared helper lost with its former
+  Schedule test container, obsolete error copy, a misplaced error block and stale
+  field assertions. All relevant failing checks are rerun to terminal success;
+  no failing executed check is left active.
+- Passed: proposal/review/draft hashes unchanged; main merge up to date; product
+  committed. Tracked current sources have no retired update DTO/API/feature/error.
+- Not run: frontend UI/E2E/screenshot checks (explicit exclusion). Retired wire/facade
+  assertions are removed; remaining UI/terminal fixtures only compile. Full/vet/race,
+  native process and credentialed live probes remain final concentrated obligations.
+- Breaking: Core .11 removes UpdateSchedule and all Schedule Core DTO/feature/error
+  projections; external consumers use plugins.call and publisher refusals. Backend
+  business/private receipt/storage contracts are unchanged. No compatibility reader,
+  alias, result cache or second state transition is retained.
 
 ### Stage 4n CLI public creation and shared publisher Go projection
 
@@ -1498,6 +1541,10 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- All CLI Schedule Core entrances are now migrated. Native public-call process
+  loss/replacement/disablement/uninstall execution, generic notification ownership,
+  portable wide-number consumer behavior and independent author packaging remain
+  part of the full goal; this slice does not establish them by compilation alone.
 - Stage 4n completes actual public creation/capture and source migration, not the
   whole native lost-create/revocation/restart matrix. Update still consumes Core
   Schedule transport types; retire it and those types in the next owning slice.
@@ -1554,6 +1601,10 @@ Stage 2a verification:
 
 ## Spillover risks
 
+- Core .11 removes the final Schedule method plus all public Schedule transport
+  types, capability and Core error translation. All in-repository consumers migrate;
+  external consumers must adopt publisher contracts/refusals. Existing pending
+  installed intent retains original input and owner; no old-method translation exists.
 - Core .10 removes a public Schedule creation API and its request type; external
   consumers cannot be enumerated from this checkout and need the documented
   installed call. Pending creation retains its exact draft when the original owner
