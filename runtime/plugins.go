@@ -39,10 +39,6 @@ func (r *binding) SelectPluginProvider(ctx context.Context, request protocol.Sel
 	return r.invoke[protocol.SelectPluginProviderRequest, *protocol.PluginProviderSelection](ctx, delivery.PluginsSelectProvider, request, commandOptions(options))
 }
 
-func (r *binding) RenamePluginSession(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error) {
-	return r.invoke[protocol.RenamePluginSessionRequest, *protocol.Session](ctx, delivery.PluginsRenameSession, request, commandOptions(options))
-}
-
 func (r *binding) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsInstall, request, commandOptions(options))
 }

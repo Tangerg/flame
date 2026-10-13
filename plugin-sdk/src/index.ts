@@ -7,6 +7,7 @@ import type {
 import type {
   CallPluginResponse,
   Descriptor,
+  Session,
   PluginOperationBinding,
   Target,
   WorkspaceRef,
@@ -69,6 +70,10 @@ export interface CapturedToolResult {
   readonly approvalDecision?: "approve" | "deny";
 }
 
+export type CapturedSession = Readonly<
+  Pick<Session, "id" | "revision" | "title">
+>;
+
 export interface ComponentContext {
   readonly file?: Readonly<CapturedFile>;
   readonly toolResult?: Readonly<CapturedToolResult>;
@@ -76,6 +81,7 @@ export interface ComponentContext {
   readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;
   readonly sessionId?: string;
+  readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly signal: AbortSignal;
   track<T>(operation: Promise<T>): Promise<T>;

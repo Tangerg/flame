@@ -1,15 +1,37 @@
 package pluginpackage
 
-import "testing"
+import (
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"testing"
+)
 
-func TestActionAdmissionIsolatesUnsupportedAndMalformedSiblings(t *testing.T) {
-	manifest := `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.actions","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
-	release, err := publishPackage(t.Context(), testReleases(t), writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": `{"protocol":"io.github.tangerg.flame/backend/2026-10-14.2","contributes":{"actions":[{"id":"rename","title":"Rename","operation":"renameSession"},{"id":"rpc","title":"RPC","operation":"tools.invoke"},{"id":"schema","title":"Schema","operation":"renameSession","schema":{}},{"id":"rename","title":"Duplicate","operation":"renameSession"},null]}}`}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	declaration := release.Declaration()
-	if len(declaration.Actions) != 1 || declaration.Actions[0].ID != "rename" || len(declaration.Diagnostics) != 4 {
-		t.Fatalf("admission: %+v", declaration)
+func TestSessionActionComponentAndRetiredActionAdmission(t *testing.T) {
+	manifest := `{"$schema":"` + ManifestSchema + `","name":"test.actions","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
+	for _, test := range []struct {
+		name, declaration string
+		count             int
+	}{
+		{"component", `"components":[{"id":"rename","title":"Rename","scope":"session","placement":"sessionAction","entry":"io.github.tangerg.flame/components/component.js","export":"Rename"}]`, 1},
+		{"retired", `"contributes":{"actions":[{"id":"rename","title":"Rename","operation":"renameSession"}]}`, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			release, err := publishPackage(t.Context(), testReleases(t), writePackage(t, map[string]string{
+				"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": flameDeclaration(test.declaration),
+				"io.github.tangerg.flame/components/component.js": `throw new Error("admission must not evaluate action code");`,
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			declaration := release.Declaration()
+			if len(declaration.Components) != test.count || len(declaration.Servers) != 0 {
+				t.Fatalf("admission: %+v", declaration)
+			}
+			if test.count == 1 && len(declaration.Diagnostics) != 0 {
+				t.Fatalf("component refused: %+v", declaration)
+			}
+			if test.count == 0 && (len(declaration.Diagnostics) != 1 || declaration.Diagnostics[0].Code != plugin.DiagnosticInvalidDeclaration) {
+				t.Fatalf("retired action admitted: %+v", declaration)
+			}
+		})
 	}
 }

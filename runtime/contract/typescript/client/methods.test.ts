@@ -76,7 +76,7 @@ function agentMessageItem(
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
-  it("replays an action with its exact release, Session revision and command key", async () => {
+  it("replays a Session edit with its captured revision and command key", async () => {
     const attempts: { params: unknown; key: string | undefined }[] = [];
     const call = vi.fn(async (_method: string, params: unknown, options?: RpcCallOptions) => {
       attempts.push({ params: structuredClone(params), key: options?.idempotencyKey });
@@ -85,16 +85,14 @@ describe("methods factory", () => {
     });
     const methods = createMethods({ call } as unknown as RpcClient);
     const params = {
-      installationId: "940ac827-b431-455b-af4b-e3a170bcfda0",
-      digest: "1".repeat(64),
-      actionId: "rename",
-      update: { sessionId: "ses_1", expectedRevision: 7, title: "Original intent" },
+      sessionId: "ses_1",
+      expectedRevision: 7,
+      title: "Original intent",
     };
     const reviewed = structuredClone(params);
-    const mutation = methods.plugins.renameSession(params);
-    params.digest = "2".repeat(64);
-    params.update.expectedRevision = 8;
-    params.update.title = "Other intent";
+    const mutation = methods.sessions.update(params);
+    params.expectedRevision = 8;
+    params.title = "Other intent";
     await expect(mutation).rejects.toBeInstanceOf(RpcTransportError);
     await expect(mutation.retry()).resolves.toEqual(session);
     expect(attempts).toEqual([

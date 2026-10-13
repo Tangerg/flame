@@ -216,7 +216,6 @@ export const ja: Record<string, string> = {
   "project.row.newSession": "{{name}} で新規セッション",
   "toolInspector.arguments": "引数",
   "toolInspector.result": "結果",
-  "toolInspector.recordedResult": "記録された引数と結果",
   "toolInspector.noResult": "(結果の本文なし — ツールは空を返しました)",
   "runtime.unsupported.title": "このランタイムでは利用できません",
   "runtime.unsupported.sub": "接続中のランタイムはこの機能にまだ対応していません。",
@@ -1035,14 +1034,7 @@ export const ja: Record<string, string> = {
   "file.change.renamed": "{{path}} から名前を変更",
   "file.change.below": "作業ツリーの変更を含む",
 
-  "packages.action.renamed": "{{sessionId}} の名前を「{{title}}」に変更しました。",
-  "packages.action.selectSession": "この操作を使うセッションを選択してください。",
-  "packages.action.target": "セッション {{sessionId}} の名前を変更 · リビジョン {{revision}}",
-
   "packages.module.selectSession": "このページを表示するセッションを選択してください。",
-  "packages.view.retirementFailed": "前のプラグインページを終了できませんでした。",
-  "packages.view.loading": "プラグインページを開いています…",
-  "packages.view.identity": "{{title}} · 読み取り専用プラグイン",
 
   "packages.loading": "読み込み中…",
 

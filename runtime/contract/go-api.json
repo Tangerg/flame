@@ -361,10 +361,6 @@
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
             },
             {
-              "name": "RenamePluginSession",
-              "signature": "func(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error)"
-            },
-            {
               "name": "ResolvePluginPoint",
               "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
             },
@@ -993,10 +989,6 @@
             {
               "name": "RejectSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
-            },
-            {
-              "name": "RenamePluginSession",
-              "signature": "func(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error)"
             },
             {
               "name": "ResolvePluginPoint",
@@ -3389,11 +3381,6 @@
           "value": "\"pending\""
         },
         {
-          "name": "PluginActionRenameSession",
-          "type": "PluginActionOperation",
-          "value": "\"renameSession\""
-        },
-        {
           "name": "PluginComponentContribution",
           "type": "PluginComponentType",
           "value": "\"contribution\""
@@ -3626,7 +3613,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.5\""
+          "value": "\"2026-10-14.6\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8540,38 +8527,6 @@
           ]
         },
         {
-          "name": "PluginAction",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Title",
-              "type": "string",
-              "tag": "json:\"title\""
-            },
-            {
-              "name": "Operation",
-              "type": "PluginActionOperation",
-              "tag": "json:\"operation\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "PluginActionOperation",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
           "name": "PluginCallFailure",
           "kind": "struct",
           "fields": [
@@ -9178,11 +9133,6 @@
               "name": "Themes",
               "type": "[]PluginTheme",
               "tag": "json:\"themes\""
-            },
-            {
-              "name": "Actions",
-              "type": "[]PluginAction",
-              "tag": "json:\"actions\""
             },
             {
               "name": "Skills",
@@ -9874,32 +9824,6 @@
           "name": "RememberScopeKind",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "RenamePluginSessionRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "PluginReleaseRequest",
-              "type": "PluginReleaseRequest"
-            },
-            {
-              "name": "ActionID",
-              "type": "string",
-              "tag": "json:\"actionId\""
-            },
-            {
-              "name": "Update",
-              "type": "SessionTitleEdit",
-              "tag": "json:\"update\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
         },
         {
           "name": "RequestMeta",
@@ -11025,33 +10949,6 @@
           "name": "SessionStatus",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "SessionTitleEdit",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"sessionId\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"expectedRevision\""
-            },
-            {
-              "name": "Title",
-              "type": "string",
-              "tag": "json:\"title\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
         },
         {
           "name": "SessionTrajectory",

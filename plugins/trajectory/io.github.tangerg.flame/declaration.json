@@ -1,13 +1,6 @@
 {
   "protocol": "io.github.tangerg.flame/backend/2026-10-14.2",
   "contributes": {
-    "actions": [
-      {
-        "id": "rename-session",
-        "title": "Name this investigation",
-        "operation": "renameSession"
-      }
-    ],
     "themes": [
       {
         "id": "graphite",
@@ -31,6 +24,14 @@
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "Trajectory"
+    },
+    {
+      "id": "rename-session",
+      "title": "Name this investigation",
+      "scope": "session",
+      "placement": "sessionAction",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RenameSession"
     }
   ]
 }

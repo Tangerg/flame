@@ -215,7 +215,6 @@ export const ko: Record<string, string> = {
   "project.row.newSession": "{{name}}에서 새 세션",
   "toolInspector.arguments": "인수",
   "toolInspector.result": "결과",
-  "toolInspector.recordedResult": "기록된 인수 및 결과",
   "toolInspector.noResult": "(결과 본문 없음 — 도구가 빈 값을 반환함)",
   "runtime.unsupported.title": "이 런타임에서 지원되지 않음",
   "runtime.unsupported.sub": "연결된 런타임이 아직 이 기능을 제공하지 않습니다.",
@@ -1018,14 +1017,7 @@ export const ko: Record<string, string> = {
   "file.change.renamed": "{{path}}에서 이름 변경됨",
   "file.change.below": "작업 트리 변경 사항 포함",
 
-  "packages.action.renamed": "{{sessionId}} 이름을 “{{title}}”(으)로 변경했습니다.",
-  "packages.action.selectSession": "이 작업을 사용할 세션을 선택하세요.",
-  "packages.action.target": "세션 {{sessionId}} 이름 변경 · 리비전 {{revision}}",
-
   "packages.module.selectSession": "이 페이지를 볼 세션을 선택하세요.",
-  "packages.view.retirementFailed": "이전 플러그인 페이지를 종료하지 못했습니다.",
-  "packages.view.loading": "플러그인 페이지를 여는 중…",
-  "packages.view.identity": "{{title}} · 읽기 전용 플러그인",
 
   "packages.loading": "불러오는 중…",
 

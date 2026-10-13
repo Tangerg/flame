@@ -39,6 +39,14 @@ The current installed component may format it with ordinary Hooks and shared con
 generic inspection remains available when a renderer fails or is absent. Navigation
 never retargets the captured record. Tool results is the concrete consumer.
 
+Contextual Session actions receive `context.sessionTarget`, a frozen `CapturedSession`
+projection of the accepted row's ID, title and revision at interaction time. The action
+placement is local metadata; offering a menu does not activate code or query a backend.
+An opened component submits public Core/installed operations with this inspected target
+and retains original mutation handles on unknown acknowledgement. The Trajectory
+package's naming form calls canonical `sessions.update`; it owns no special Core action
+or private Host form. Later navigation never replaces an open action target.
+
 Every component receives `context.telemetry`, the explicit client-local observation
 collaborator. Public row types describe traces, metrics and logs; `read()` returns
 a detached snapshot of the current buffer and `clear()` delegates to that buffer's

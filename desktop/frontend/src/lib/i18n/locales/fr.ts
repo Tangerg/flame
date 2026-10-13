@@ -225,7 +225,6 @@ export const fr: Record<string, string> = {
   "project.row.newSession": "Nouvelle session dans {{name}}",
   "toolInspector.arguments": "Arguments",
   "toolInspector.result": "Résultat",
-  "toolInspector.recordedResult": "Arguments et résultat enregistrés",
   "toolInspector.noResult": "(pas de corps de résultat — l'outil n'a rien renvoyé)",
   "runtime.unsupported.title": "Non pris en charge par ce runtime",
   "runtime.unsupported.sub": "Le runtime connecté n’expose pas encore cette fonctionnalité.",
@@ -1091,14 +1090,7 @@ export const fr: Record<string, string> = {
   "file.change.renamed": "Renommé depuis {{path}}",
   "file.change.below": "Contient des modifications de l'arbre de travail",
 
-  "packages.action.renamed": "{{sessionId}} a été renommée « {{title}} ».",
-  "packages.action.selectSession": "Sélectionnez une session pour utiliser cette action.",
-  "packages.action.target": "Renommer la session {{sessionId}} · révision {{revision}}",
-
   "packages.module.selectSession": "Sélectionnez une session pour afficher cette page.",
-  "packages.view.retirementFailed": "La page précédente du plugin n’a pas pu être fermée.",
-  "packages.view.loading": "Ouverture de la page du plugin…",
-  "packages.view.identity": "{{title}} · Plugin en lecture seule",
 
   "packages.loading": "Chargement…",
 

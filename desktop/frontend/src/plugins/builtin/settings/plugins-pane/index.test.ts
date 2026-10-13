@@ -116,7 +116,6 @@ function installation(id: string, name: string): PluginInstallation {
       skills: [],
       diagnostics: [],
 
-      actions: [],
       themes: [{ id: "theme", title: name, scheme: "dark", colors: { background: "#181a1e" } }],
     },
   };

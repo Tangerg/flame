@@ -259,12 +259,6 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
-		if component == "actions" {
-			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireAction) error {
-				return release.AdmitAction(plugin.Action{ID: w.ID, Title: w.Title, Operation: w.Operation})
-			})
-			continue
-		}
 		if component != "themes" {
 			report(release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, plugin.DiagnosticUnsupportedContribution)
 			continue

@@ -22,7 +22,6 @@ type pluginUseCases interface {
 	Disable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
 	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, resourceid.InstallationID) error
-	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
 	Component(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
 	Resource(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID, string) ([]byte, error)
 }
@@ -69,17 +68,6 @@ func (s *Handler) SelectPluginProvider(ctx context.Context, in protocol.SelectPl
 		return nil, wirePluginError(err)
 	}
 	return presentProviderSelection(value), nil
-}
-
-func (s *Handler) RenamePluginSession(ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.plugins.AuthorizeAction(ctx, id, digest, in.ActionID, plugin.RenameSession); err != nil {
-		return nil, wirePluginError(err)
-	}
-	return s.UpdateSession(ctx, protocol.UpdateSessionRequest{SessionID: in.Update.SessionID, ExpectedRevision: in.Update.ExpectedRevision, Title: &in.Update.Title})
 }
 
 func parseInstallationID(text string) (resourceid.InstallationID, error) {

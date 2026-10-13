@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestPluginRenameUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) {
+func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source, err := filepath.Abs("../../../plugins/trajectory")
@@ -18,32 +18,35 @@ func TestPluginRenameUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) 
 		t.Fatal(err)
 	}
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	if len(installed.Selected.Actions) != 1 || len(installed.Selected.Diagnostics) != 0 {
+	if len(installed.Selected.Components) != 2 || len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("action admission: %+v", installed.Selected)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Original"}, "session").(*protocol.Session)
 	title := "Renamed"
-	request := protocol.RenamePluginSessionRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ActionID: "rename-session", Update: protocol.SessionTitleEdit{SessionID: session.ID, ExpectedRevision: session.Revision, Title: title}}
-	refused := func(in protocol.RenamePluginSessionRequest, key string, want error) {
+	request := protocol.UpdateSessionRequest{SessionID: session.ID, ExpectedRevision: session.Revision, Title: &title}
+	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "rename-session"}, Path: "io.github.tangerg.flame/components/component.js"}
+	resourceRefused := func() {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.PluginsRenameSession, in, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}, IdempotencyKey: key})
+		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		if !errors.Is(result.Failure, protocol.ErrPluginDisabled) {
+			t.Fatalf("action resource after withdrawal: %v", result.Failure)
+		}
+	}
+	resourceRefused()
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
+	r.must(delivery.PluginsReadResource, resource, "")
+	refused := func(in protocol.UpdateSessionRequest, key string, want error) {
+		t.Helper()
+		result := r.endpoint.Invoke(t.Context(), delivery.SessionsUpdate, in, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}, IdempotencyKey: key})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("refusal: %v, want %v", result.Failure, want)
 		}
 	}
-	refused(request, "disabled", protocol.ErrPluginDisabled)
-	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
-	missing := request
-	missing.ActionID = "missing"
-	refused(missing, "missing", protocol.ErrPluginNotFound)
-	stale := request
-	stale.Digest = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-	refused(stale, "stale", protocol.ErrPluginStale)
-	saved := r.must(delivery.PluginsRenameSession, request, "rename").(*protocol.Session)
+	saved := r.must(delivery.SessionsUpdate, request, "rename").(*protocol.Session)
 	if saved.Title != title || saved.Revision != session.Revision+1 {
 		t.Fatalf("canonical edit: %+v", saved)
 	}
-	replay := r.must(delivery.PluginsRenameSession, request, "rename").(*protocol.Session)
+	replay := r.must(delivery.SessionsUpdate, request, "rename").(*protocol.Session)
 	if !reflect.DeepEqual(saved, replay) {
 		t.Fatal("replay advanced the Session again")
 	}
@@ -57,17 +60,15 @@ func TestPluginRenameUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) 
 	}
 	check()
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-	fresh := request
-	fresh.Update.ExpectedRevision = saved.Revision
-	refused(fresh, "withdrawn", protocol.ErrPluginDisabled)
-	if got := r.must(delivery.PluginsRenameSession, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
+	resourceRefused()
+	if got := r.must(delivery.SessionsUpdate, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
 		t.Fatal("withdrawal changed the historical receipt")
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
-	if got := r.must(delivery.PluginsRenameSession, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
+	if got := r.must(delivery.SessionsUpdate, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
 		t.Fatal("restart did not retain the exact receipt")
 	}
-	refused(fresh, "withdrawn-restart", protocol.ErrPluginDisabled)
+	resourceRefused()
 	check()
 }

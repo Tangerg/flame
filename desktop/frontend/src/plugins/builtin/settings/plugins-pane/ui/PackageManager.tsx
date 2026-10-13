@@ -21,7 +21,6 @@ import { ProviderSelections } from "./ProviderSelections";
 import { ContributionRequirements } from "./ContributionRequirements";
 import { PointInspection } from "./PointInspection";
 import { pointMetadata } from "../adapters/pointContracts";
-import { PackageActions } from "./PackageActions";
 
 const styles = stylex.create({
   row: { padding: space.s4, display: "flex", flexDirection: "column", gap: space.s3 },
@@ -199,13 +198,6 @@ function PackageRow({
       <div {...stylex.props(vocab.muted)}>
         {t(enabled ? "packages.enabled" : "packages.disabled")}
       </div>
-      {installation.presentation === "admitted" && installation.selected.actions.length > 0 && (
-        <PackageActions
-          key={installation.selected.digest}
-          installation={installation}
-          operations={operations}
-        />
-      )}
       <div {...stylex.props(ss.lineWrap)}>
         <PillButton
           size="sm"

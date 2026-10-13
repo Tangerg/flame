@@ -4,6 +4,7 @@ import {
   InstalledComponent,
   InstalledFileComponent,
   InstalledToolResultComponent,
+  InstalledSessionActionComponent,
   ComponentBoundary,
   ComponentLoading,
 } from "./ui/InstalledComponent";
@@ -16,11 +17,12 @@ import {
   DATA_PROVIDER,
   WORKSPACE_VIEW,
   TOOL_RESULT_RENDERER,
+  SESSION_ACTION,
   WORKSPACE_FILE_RENDERER,
 } from "@/plugins/sdk/kernelPoints";
 import { RecordedFileComponent } from "./ui/RecordedFileComponent";
 import { RecordedToolComponent } from "./ui/RecordedToolComponent";
-import type { CapturedFile, CapturedToolResult } from "@flame/plugin-sdk";
+import type { CapturedFile, CapturedSession, CapturedToolResult } from "@flame/plugin-sdk";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -181,6 +183,41 @@ function createPackageReconciler(
                   </Suspense>
                 </ComponentBoundary>
               ),
+            },
+            { key: id },
+          );
+          continue;
+        }
+        if (entry.placement === "sessionAction") {
+          const Action = lazy(async () => {
+            const loaded = await modules.component(
+              moduleScope,
+              client,
+              currentRuntimeEndpoint(),
+              generation,
+              installation,
+              entry,
+            );
+            return {
+              default: ({ session }: { session: CapturedSession }) => (
+                <InstalledSessionActionComponent
+                  entry={loaded.component}
+                  resources={loaded.signal}
+                  runtime={client}
+                  binding={binding}
+                  lifetime={lifetime}
+                  session={session}
+                />
+              ),
+            };
+          });
+          const id = `package:${installation.id}:${entry.id}`;
+          lifetime.contribute(
+            SESSION_ACTION,
+            {
+              id,
+              title: `${release.name} · ${entry.title}`,
+              component: Action,
             },
             { key: id },
           );

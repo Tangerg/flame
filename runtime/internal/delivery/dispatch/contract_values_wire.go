@@ -186,17 +186,14 @@ func registerSessionValues(s *Shapes) {
 		Constraints: append(requiredResourceIdentity("sessionId"), resourceIdentity("toRunId")...),
 	})
 
-	for _, request := range []reflect.Type{typeOf[protocol.UpdateSessionRequest](), typeOf[protocol.SessionTitleEdit]()} {
-		constraints := append(requiredResourceIdentity("sessionId"), []FieldConstraint{
-			{Field: "expectedRevision", Kind: ConstraintPositive},
-			{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
-		}...)
-		if request == typeOf[protocol.UpdateSessionRequest]() {
-			constraints = append(constraints, FieldConstraint{Field: "provider", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "model", Kind: ConstraintNonEmpty})
-			constraints = append(constraints, modelSelectionIdentities()...)
-		}
-		s.valueConstraint(FieldConstraintSpec{GoType: request, Constraints: constraints})
-	}
+	constraints := append(requiredResourceIdentity("sessionId"), []FieldConstraint{
+		{Field: "expectedRevision", Kind: ConstraintPositive},
+		{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
+		{Field: "provider", Kind: ConstraintNonEmpty},
+		{Field: "model", Kind: ConstraintNonEmpty},
+	}...)
+	constraints = append(constraints, modelSelectionIdentities()...)
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.UpdateSessionRequest](), Constraints: constraints})
 }
 
 func registerArtifactValues(s *Shapes) {
@@ -1127,8 +1124,6 @@ func registerPluginValues(s *Shapes) {
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: plugin.MaxRendererSelectorNameBytes}}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RenamePluginSessionRequest](), Constraints: []FieldConstraint{{Field: "actionId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginAction](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxActionTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.PluginThemeColors](),
 		Constraints: []FieldConstraint{

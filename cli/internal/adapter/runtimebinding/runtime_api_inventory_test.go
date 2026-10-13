@@ -348,7 +348,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"CallPlugin":                    command("plugins", "plugins call"),
 		"ResolvePluginPoint":            command("plugins", "plugins point"),
 		"ResolvePluginRequirements":     command("plugins", "plugins requirements"),
-		"RenamePluginSession":           command("plugins", "plugins rename-session"),
 		"StagePlugin":                   command("plugins", "plugins stage"),
 		"SelectPlugin":                  command("plugins", "plugins select"),
 		"ConfigurePlugin":               command("plugins", "plugins configure"),

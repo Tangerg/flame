@@ -115,10 +115,6 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		result.Themes = append(result.Themes, presentPluginTheme(item))
 	}
 	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
-	result.Actions = make([]protocol.PluginAction, 0, len(v.Actions))
-	for _, action := range v.Actions {
-		result.Actions = append(result.Actions, protocol.PluginAction{ID: action.ID, Title: action.Title, Operation: protocol.PluginActionOperation(action.Operation)})
-	}
 
 	for _, item := range v.Skills {
 		result.Skills = append(result.Skills, presentPluginSkill(item))

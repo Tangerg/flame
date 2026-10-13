@@ -26,7 +26,6 @@ type pluginRuntime interface {
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, replay.CommandID) error
-	RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, replay.CommandID) (*protocol.Session, error)
 }
 
 func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginRuntime, error) {
@@ -79,7 +78,6 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	}})
 	root.AddCommand(
 		pluginMutationCommand(provider, "select-provider", "Select a declared provider without changing its enablement or private data", pluginRuntime.SelectPluginProvider),
-		pluginMutationCommand(provider, "rename-session", "Submit a declared action to rename an exact Session revision", pluginRuntime.RenamePluginSession),
 		pluginMutationCommand(provider, "install", "Install an immutable directory or ZIP on the Runtime", pluginRuntime.InstallPlugin),
 		pluginMutationCommand(provider, "stage", "Stage a release without changing active code", pluginRuntime.StagePlugin),
 		pluginMutationCommand(provider, "select", "Select a staged release when dependencies are quiescent", pluginRuntime.SelectPlugin),

@@ -22,7 +22,6 @@ const (
 	PluginsConfigure           Name = "plugins.configure"
 	PluginsSetEnablement       Name = "plugins.setEnablement"
 	PluginsUninstall           Name = "plugins.uninstall"
-	PluginsRenameSession       Name = "plugins.renameSession"
 )
 
 // pluginErrors is every problem wirePluginError can raise. Each plugins method
@@ -80,11 +79,6 @@ func registerPlugins(r *Registry) {
 		return s.SelectPluginProvider(ctx, in)
 	})
 
-	r.command(MethodMeta{Name: PluginsRenameSession, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrSessionBusy.Error())}, func(s interface {
-		RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest) (*protocol.Session, error)
-	}, ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {
-		return s.RenamePluginSession(ctx, in)
-	})
 	r.query(MethodMeta{Name: PluginsList, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPlugins(context.Context) (*protocol.Page[protocol.PluginInstallation], error)
 	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginInstallation], error) {

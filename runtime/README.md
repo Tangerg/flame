@@ -412,6 +412,21 @@ reuses the selected query. Disablement/uninstall withdraws presentation and reso
 without changing accounting. There is no view-specific usage query or HTML guest.
 Rebuild the prebuilt ESM and explicitly select the changed package release.
 
+## Protocol 2026-10-14.6
+
+Core removes `plugins.renameSession`, the special Go/TS/CLI wrapper, release action
+array and title-only DTO/operation enum. Rebuild generated consumers and reinstall
+Trajectory with its `sessionAction` component export. Old closed action declarations
+are refused without aliases or a compatibility reader. The ordinary component and
+existing CLI Session rename enter canonical `sessions.update` with the inspected
+revision and original command identity. Unknown acknowledgement never becomes another
+method, target or successful receipt. Former uncertain wrapper requests are retained
+as their original evidence; they are not translated into new Core commands.
+
+Backend wire remains 2026-10-14.2. Private business/storage formats are unchanged.
+Final canonical receipt/restart execution, supported native component acceptance and
+full/vet/race verification remain open. UI/E2E execution is excluded by the task.
+
 ## Protocol 2026-10-14.5
 
 Core removes `plugins.readRenderer`, its Go/TS binding, HTML resource DTO and release
@@ -550,24 +565,6 @@ are refused. Install the new package bytes from `plugins/trajectory` and explici
 previously admitted immutable releases do not change when their source directory moves.
 There is no Timeline alias, fallback renderer or second trajectory query model.
 
-## Protocol 2026-10-10.1
-
-Portable releases publish a required `actions` array. The first admitted operation is
-`renameSession`: an action declares only `id`, `title` and `operation`, with no executable
-or parameter schema. `plugins.renameSession` binds installation, selected digest, action
-and an explicit `sessions.update` title edit. Other Session fields are forbidden by the
-generated contract. The existing Session use case owns revision checks, persistence and
-events; the delivery endpoint owns command identity and durable replay.
-
-Trusted clients accept the human's title and captured Session revision. Opening or
-restoring a form does not submit it. Runtime verifies release availability, then admits
-the action against the current enabled installation. Withdrawal refuses new
-commands; a previously accepted command retains its existing product owner, and replay
-returns its historical receipt. Optional renderers do not own this write authority.
-
-Rebuild Runtime, the shared client, CLI and Desktop together. Earlier protocol
-versions are refused. Previously admitted immutable declarations without actions retain
-an empty action set; adding an action requires admitting new package bytes.
 
 ## Protocol 2026-10-09.1
 
@@ -1096,15 +1093,12 @@ through their captured SDK context. The former contributes.views vocabulary is
 unsupported; portable Skills/MCP and unrelated admitted contributions keep their own
 failure boundaries. Package integrity and confined resource admission remain in force.
 
-`contributes.actions` accepts at most 16 declarations with `id`, a nonempty UTF-8 `title`
-of at most 128 bytes, and `operation: "renameSession"`. Unsupported operations, unknown
-members and invalid siblings receive independent diagnostics. No package-owned schema,
-script or arbitrary RPC method is admitted. The trusted clients submit
-`plugins.renameSession` with `installationId`, `digest`, `actionId` and `update` containing
-the captured `sessionId`, `expectedRevision` and explicit `title`. Empty titles retain
-the existing Session update meaning. Release availability and current installation
-authority are checked before acceptance. The Session owner performs the edit once under
-its existing revision check; no action result store or second transition exists.
+Session-scoped components may declare `sessionAction` placement. It admits ordinary
+ESM and an optional callable contribution without a business operation enum. Clients
+offer the local menu metadata and capture the accepted Session ID/revision/title when
+opened. Trajectory owns its naming form and calls canonical `sessions.update`, using
+existing Session revisions, durable command identity and recovery. The Core operation
+continues independently of optional component availability after acceptance.
 
 The [first-party trajectory package](../plugins/trajectory/plugin.json) exercises a theme,
 a Skill, an ordinary Session trajectory component and the current Session rename action. The public page API requires no code

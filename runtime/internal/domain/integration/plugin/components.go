@@ -46,6 +46,10 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		if (value.Scope == "file" || value.Scope == "toolResult") || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
 		}
+	case "sessionAction":
+		if value.Scope != "session" || value.Material != "" || value.Selector != nil {
+			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")
+		}
 	case "fileRenderer":
 		if value.Scope != "file" || value.Material != "" || value.Selector == nil || value.Selector.Kind != RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")

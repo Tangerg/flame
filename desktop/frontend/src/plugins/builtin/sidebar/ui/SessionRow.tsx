@@ -1,3 +1,8 @@
+import type { CapturedSession } from "@flame/plugin-sdk";
+import { useExtensionPoint } from "@/plugins/sdk";
+import { SESSION_ACTION } from "@/plugins/sdk/kernelPoints";
+import type { SessionActionSpec } from "@/plugins/sdk/types";
+import { SessionActionDialog } from "./SessionActionDialog";
 import { iconGlyph } from "@/ui/icons";
 import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
@@ -95,6 +100,8 @@ export function SessionRow({
 }: Props) {
   const rowRef = useRef<HTMLButtonElement>(null);
   const [renaming, setRenaming] = useState(false);
+  const contributedActions = useExtensionPoint(SESSION_ACTION);
+  const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const t = useT();
   const attentionLabel =
@@ -144,6 +151,20 @@ export function SessionRow({
           },
         ]
       : []),
+    ...contributedActions.map((entry) => ({
+      id: entry.id,
+      icon: "blocks" as const,
+      label: entry.title,
+      run: () =>
+        setAction({
+          entry,
+          session: Object.freeze({
+            id: session.id,
+            revision: session.revision,
+            title: session.title,
+          }),
+        }),
+    })),
     ...(onDelete
       ? [
           {
@@ -255,6 +276,16 @@ export function SessionRow({
           ))}
         </ContextMenu.Content>
       </ContextMenu.Root>
+      {action && (
+        <SessionActionDialog
+          action={action.entry}
+          session={action.session}
+          close={() => {
+            setAction(undefined);
+            requestAnimationFrame(() => rowRef.current?.focus());
+          }}
+        />
+      )}
       {onDelete && (
         <ConfirmDialog
           open={confirmingDelete}

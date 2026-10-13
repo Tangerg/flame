@@ -224,7 +224,6 @@ export const es: Record<string, string> = {
   "project.row.newSession": "Nueva sesión en {{name}}",
   "toolInspector.arguments": "Argumentos",
   "toolInspector.result": "Resultado",
-  "toolInspector.recordedResult": "Argumentos y resultado registrados",
   "toolInspector.noResult": "(sin cuerpo de resultado — la herramienta no devolvió nada)",
   "runtime.unsupported.title": "No compatible con este runtime",
   "runtime.unsupported.sub": "El runtime conectado aún no expone esta función.",
@@ -1084,14 +1083,7 @@ export const es: Record<string, string> = {
   "file.change.renamed": "Renombrado desde {{path}}",
   "file.change.below": "Contiene cambios del árbol de trabajo",
 
-  "packages.action.renamed": "Se ha renombrado {{sessionId}} como «{{title}}».",
-  "packages.action.selectSession": "Selecciona una sesión para usar esta acción.",
-  "packages.action.target": "Renombrar sesión {{sessionId}} · revisión {{revision}}",
-
   "packages.module.selectSession": "Selecciona una sesión para ver esta página.",
-  "packages.view.retirementFailed": "No se pudo cerrar la página anterior del complemento.",
-  "packages.view.loading": "Abriendo la página del complemento…",
-  "packages.view.identity": "{{title}} · Complemento de solo lectura",
 
   "packages.loading": "Cargando…",
 

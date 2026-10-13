@@ -236,14 +236,13 @@ retaining inspected revisions and original uncertain-command handles. The backen
 alone owns private facts and receipts. Runtime supplies admitted callbacks and
 retires withdrawn backend generations while retaining private data. Components
 share the current public module format; there is no HTML handshake or mutation bridge.
-Packages may also declare `renameSession` actions. An admitted package row displays a
-trusted host form with the operation and captured Session ID/revision. The human submits
-the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission
-and the existing Session mutation. Closing the form does not cancel an accepted command;
-connection replacement retires its local publication. Revision conflicts preserve the
-draft without silently adopting a new revision. The existing contextual action remains
-until its ordinary public operation migration. Runtime-owned MCP tools continue through
-the existing execution and approval path. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
+Packages may declare Session-scoped `sessionAction` components. The Session row's
+existing menus display their local metadata; opening one captures that row's ID,
+revision and title. The shared modal container owns focus/closing, and the ordinary
+component owns its form and public calls. Trajectory's naming form enters canonical
+`sessions.update`, retaining original mutation identity during unknown acknowledgement.
+There is no closed operation enum, special plugin rename API or private settings form.
+MCP Tools retain their existing execution and approval owner. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
 
 Package themes declare a light/dark scheme. Their portable colors pass through the same
 palette derivation as the custom theme, so every package theme publishes a complete token

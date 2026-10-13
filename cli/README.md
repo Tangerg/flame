@@ -215,12 +215,11 @@ and are deltas: `valueChanges` sets or clears named inputs, and `serverChanges` 
 `skillChanges` map component names to `enable` or `disable`. Unnamed inputs and components
 keep their current value or enablement.
 
-`plugins rename-session` submits a declared human action and prints the canonical Session.
-Its `--request` contains `installationId`, the selected `digest`, `actionId`, and
-`update: {"sessionId":"ses_…","expectedRevision":7,"title":"Reviewed title"}`.
-Inspect the release and Session first. Runtime refuses another operation, undeclared action,
-withdrawn installation, stale digest or stale Session revision. Retain `--command-id` and
-the exact request to recover an uncertain acknowledgement; replay never retargets it.
+Session naming uses the existing `flame session rename <session-id> <title>` command,
+with the same inspected revision and original command identity as canonical Session
+editing. Public plugin components call that same `sessions.update` owner. The former
+`plugins rename-session` wrapper is removed without an alias; do not translate an
+unresolved old request into another method or identity.
 Runtime rejects a stale digest without applying inputs or component enablement changes;
 do not replace the digest in an unresolved request with a newly selected release.
 Authored JSON uses Runtime's strict request decoder. Explicit typed nulls cannot become
@@ -228,7 +227,7 @@ false enablement or empty change maps; use the declared clear variant. Include r
 fields explicitly, including `enabled: false` and empty `serverChanges: {}`.
 Invalid requests and replay identities are rejected before the CLI opens Runtime.
 
-Installed MCP tools use Runtime's existing Run/Interrupt path. Declared human
-actions use their closed Runtime command, as `plugins rename-session` does.
-The CLI does not host HTML pages or provide a plugin action entrance to MCP tools;
-approval and execution effects retain their Runtime owners.
+Installed MCP Tools use Runtime's existing Run/Interrupt path. Human plugin business
+operations use the public installed call entrance; Core operations use their canonical
+commands. The CLI owns terminal interaction, while approval, execution and receipts
+retain their Runtime owners.

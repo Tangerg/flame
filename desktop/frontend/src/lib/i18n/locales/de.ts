@@ -221,7 +221,6 @@ export const de: Record<string, string> = {
   "project.row.newSession": "Neue Sitzung in {{name}}",
   "toolInspector.arguments": "Argumente",
   "toolInspector.result": "Ergebnis",
-  "toolInspector.recordedResult": "Aufgezeichnete Argumente und Ergebnis",
   "toolInspector.noResult": "(kein Ergebnistext — Tool lieferte nichts zurück)",
   "runtime.unsupported.title": "Von dieser Runtime nicht unterstützt",
   "runtime.unsupported.sub": "Die verbundene Runtime stellt diese Funktion noch nicht bereit.",
@@ -1075,14 +1074,7 @@ export const de: Record<string, string> = {
   "file.change.renamed": "Umbenannt von {{path}}",
   "file.change.below": "Enthält Änderungen im Arbeitsbaum",
 
-  "packages.action.renamed": "{{sessionId}} wurde in „{{title}}“ umbenannt.",
-  "packages.action.selectSession": "Wählen Sie eine Sitzung für diese Aktion.",
-  "packages.action.target": "Sitzung {{sessionId}} umbenennen · Revision {{revision}}",
-
   "packages.module.selectSession": "Wählen Sie eine Sitzung, um diese Seite anzuzeigen.",
-  "packages.view.retirementFailed": "Die vorherige Plugin-Seite konnte nicht geschlossen werden.",
-  "packages.view.loading": "Plugin-Seite wird geöffnet…",
-  "packages.view.identity": "{{title}} · Schreibgeschütztes Plugin",
 
   "packages.loading": "Laden…",
 

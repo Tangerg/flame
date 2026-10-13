@@ -97,3 +97,11 @@ reproducibility. The graphical loader supplies the actual shared host modules.
 
 The retired HTML view and renderer sources, resources, channels and build paths are removed. Reinstall changed packages and
 explicitly select their new digests.
+
+## Contextual Session actions
+
+A public component may declare Session scope and `sessionAction` placement. It is
+registered in the existing Session row menu from local admitted metadata; the module
+loads when opened. The SDK captures the accepted ID/revision/title. Trajectory owns
+its naming form and calls canonical `sessions.update`, preserving unknown-command
+reconciliation. No closed contributes.actions or plugins.renameSession wrapper remains.

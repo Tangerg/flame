@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.5",
+  "protocolVersion": "2026-10-14.6",
   "features": [
     "reasoning",
     "multimodal",
@@ -942,28 +942,6 @@
       ]
     },
     {
-      "name": "plugins.renameSession",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "replayResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
-        "session_not_found",
-        "revision_conflict",
-        "session_busy",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins"
-      ]
-    },
-    {
       "name": "plugins.list",
       "kind": "unary",
       "operation": "query",
@@ -1637,7 +1615,6 @@
           "plugins.notifyChange",
           "plugins.openResources",
           "plugins.readResource",
-          "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
           "plugins.select",
@@ -1829,7 +1806,6 @@
           "plugins.listProviders",
           "plugins.openResources",
           "plugins.readResource",
-          "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
           "plugins.select",
@@ -1851,7 +1827,6 @@
           "plugins.listProviders",
           "plugins.openResources",
           "plugins.readResource",
-          "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
           "plugins.select",
@@ -1873,7 +1848,6 @@
           "plugins.listProviders",
           "plugins.openResources",
           "plugins.readResource",
-          "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
           "plugins.select",
@@ -1895,7 +1869,6 @@
           "plugins.listProviders",
           "plugins.openResources",
           "plugins.readResource",
-          "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
           "plugins.select",
@@ -1922,7 +1895,6 @@
           "plugins.listProviders",
           "plugins.openResources",
           "plugins.readResource",
-          "plugins.renameSession",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
           "plugins.select",
@@ -1976,7 +1948,6 @@
         "code": -32019,
         "recoveryAction": "refetch",
         "methods": [
-          "plugins.renameSession",
           "schedules.update",
           "sessions.update",
           "skills.proposals.approve",
@@ -2042,7 +2013,6 @@
         "code": -32018,
         "recoveryAction": "refetch",
         "methods": [
-          "plugins.renameSession",
           "runs.cancel",
           "runs.start",
           "sessions.exportTrajectory",
@@ -2070,7 +2040,6 @@
           "goals.update",
           "items.list",
           "plan.get",
-          "plugins.renameSession",
           "runs.start",
           "sessions.delete",
           "sessions.export",
@@ -2675,16 +2644,6 @@
     },
     {
       "method": "plugins.selectProvider",
-      "rules": [
-        {
-          "requires": [
-            "plugins"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "plugins.renameSession",
       "rules": [
         {
           "requires": [
@@ -6997,31 +6956,6 @@
       ]
     },
     {
-      "type": "SessionTitleEdit",
-      "rules": [
-        {
-          "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "identity"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "maxLength(256)"
-        },
-        {
-          "field": "expectedRevision",
-          "constraint": "positive"
-        },
-        {
-          "field": "expectedRevision",
-          "constraint": "maximum(9007199254740991)"
-        }
-      ]
-    },
-    {
       "type": "SessionTrajectory",
       "rules": [
         {
@@ -9265,32 +9199,6 @@
         {
           "field": "name",
           "constraint": "maxLength(256)"
-        }
-      ]
-    },
-    {
-      "type": "RenamePluginSessionRequest",
-      "rules": [
-        {
-          "field": "actionId",
-          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        }
-      ]
-    },
-    {
-      "type": "PluginAction",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        },
-        {
-          "field": "title",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "title",
-          "constraint": "maxLength(128)"
         }
       ]
     },

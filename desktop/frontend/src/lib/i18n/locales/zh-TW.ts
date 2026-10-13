@@ -214,7 +214,6 @@ export const zhTW: Record<string, string> = {
   "project.row.newSession": "在 {{name}} 中新建會話",
   "toolInspector.arguments": "參數",
   "toolInspector.result": "結果",
-  "toolInspector.recordedResult": "已記錄的參數與結果",
   "toolInspector.noResult": "(無結果內容 —— 工具回傳為空)",
   "runtime.unsupported.title": "目前的執行環境不支援",
   "runtime.unsupported.sub": "已連線的執行環境尚未提供此功能。",
@@ -984,14 +983,7 @@ export const zhTW: Record<string, string> = {
   "file.change.renamed": "重新命名自 {{path}}",
   "file.change.below": "包含工作樹變更",
 
-  "packages.action.renamed": "已將 {{sessionId}} 重新命名為「{{title}}」。",
-  "packages.action.selectSession": "選擇一個工作階段以使用此操作。",
-  "packages.action.target": "重新命名工作階段 {{sessionId}} · 修訂 {{revision}}",
-
   "packages.module.selectSession": "選擇一個工作階段來查看此頁面。",
-  "packages.view.retirementFailed": "上一個外掛頁面未能完成退出。",
-  "packages.view.loading": "正在開啟外掛程式頁面…",
-  "packages.view.identity": "{{title}} · 唯讀外掛程式",
 
   "packages.loading": "正在載入…",
 

@@ -11,6 +11,7 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
 import type {
   CapturedFile,
+  CapturedSession,
   CapturedToolResult,
   ComponentContext,
   WorkspaceContext,
@@ -64,41 +65,43 @@ class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
   private context: ComponentContext;
-  constructor(
-    private runtime: FlameClient,
-    private binding: PluginOperationBinding | undefined,
-    private lifetime: ContributionLifetime,
-    private resources: AbortSignal,
-    private workspace?: WorkspaceContext,
-    private sessionId?: string,
-    private file?: CapturedFile,
-    private toolResult?: CapturedToolResult,
-  ) {
+  constructor(private readonly sources: ComponentSources) {
     this.context = this.capture();
   }
   private capture(): ComponentContext {
-    const signal = AbortSignal.any([this.controller.signal, this.lifetime.signal, this.resources]);
+    const signal = AbortSignal.any([
+      this.controller.signal,
+      this.sources.lifetime.signal,
+      this.sources.resources,
+    ]);
     return Object.freeze({
-      runtime: this.runtime,
-      sessionId: this.sessionId,
-      toolResult: this.toolResult,
-      file: this.file
+      runtime: this.sources.runtime,
+      sessionId: this.sources.sessionTarget?.id ?? this.sources.sessionId,
+      sessionTarget: this.sources.sessionTarget
+        ? Object.freeze({ ...this.sources.sessionTarget })
+        : undefined,
+      toolResult: this.sources.toolResult,
+      file: this.sources.file
         ? Object.freeze({
-            ...this.file,
-            workspace: this.file.workspace ? Object.freeze({ ...this.file.workspace }) : undefined,
+            ...this.sources.file,
+            workspace: this.sources.file.workspace
+              ? Object.freeze({ ...this.sources.file.workspace })
+              : undefined,
           })
         : undefined,
-      workspace: this.workspace
+      workspace: this.sources.workspace
         ? Object.freeze({
-            ref: Object.freeze({ ...this.workspace.ref }),
-            focus: this.workspace.focus ? Object.freeze({ ...this.workspace.focus }) : undefined,
+            ref: Object.freeze({ ...this.sources.workspace.ref }),
+            focus: this.sources.workspace.focus
+              ? Object.freeze({ ...this.sources.workspace.focus })
+              : undefined,
           })
         : undefined,
-      binding: this.binding ? structuredClone(this.binding) : undefined,
+      binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
       signal,
       telemetry: captureClientTelemetry(signal),
       track: <T,>(operation: Promise<T>): Promise<T> =>
-        trackContributionIO(this.lifetime, operation),
+        trackContributionIO(this.sources.lifetime, operation),
     });
   }
   getSnapshot = () => (this.context.signal.aborted ? null : this.context);
@@ -128,16 +131,12 @@ function RenderingComponent({
   sessionId,
   file,
   toolResult,
+  sessionTarget,
   fallback,
-}: ComponentProps & {
-  workspace?: WorkspaceContext;
-  sessionId?: string;
-  file?: CapturedFile;
-  toolResult?: CapturedToolResult;
-}) {
+}: ComponentProps & ComponentSources) {
   const instance = useMemo(
     () =>
-      new ComponentInstance(
+      new ComponentInstance({
         runtime,
         binding,
         lifetime,
@@ -146,8 +145,9 @@ function RenderingComponent({
         sessionId,
         file,
         toolResult,
-      ),
-    [runtime, binding, lifetime, resources, workspace, sessionId, file, toolResult],
+        sessionTarget,
+      }),
+    [runtime, binding, lifetime, resources, workspace, sessionId, file, toolResult, sessionTarget],
   );
   const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   const Entry = entry;
@@ -174,6 +174,14 @@ type ComponentProps = {
   binding: PluginOperationBinding | undefined;
   lifetime: ContributionLifetime;
   resources: AbortSignal;
+};
+
+type ComponentSources = Pick<ComponentProps, "runtime" | "binding" | "lifetime" | "resources"> & {
+  workspace?: WorkspaceContext;
+  sessionId?: string;
+  file?: CapturedFile;
+  toolResult?: CapturedToolResult;
+  sessionTarget?: CapturedSession;
 };
 
 function WorkspaceComponent(props: ComponentProps) {
@@ -256,4 +264,11 @@ export function InstalledToolResultComponent({
   ...props
 }: ComponentProps & { toolResult: CapturedToolResult }) {
   return <RenderingComponent {...props} toolResult={toolResult} />;
+}
+
+export function InstalledSessionActionComponent({
+  session,
+  ...props
+}: ComponentProps & { session: CapturedSession }) {
+  return <RenderingComponent {...props} sessionTarget={session} />;
 }

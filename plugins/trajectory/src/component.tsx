@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ComponentContext } from "@flame/plugin-sdk";
+import {
+  mutationSettlementIsUnknown,
+  type ComponentContext,
+} from "@flame/plugin-sdk";
+import type { MutationPromise } from "@flame/runtime-contract/client";
 import type { ReactNode } from "react";
 import { Activity } from "@flame/icons/react";
-import type { Page, TrajectoryEntry } from "@flame/runtime-contract/wire";
+import type {
+  Page,
+  Session,
+  TrajectoryEntry,
+} from "@flame/runtime-contract/wire";
 import {
   Button,
   Panel,
@@ -18,6 +26,7 @@ import {
   Select,
   Stats,
   Toolbar,
+  TextField,
   type Fact,
 } from "@flame/ui";
 
@@ -377,5 +386,99 @@ export function Trajectory({ context }: { context: ComponentContext }) {
         </>
       )}
     </Panel>
+  );
+}
+
+export function RenameSession({ context }: { context: ComponentContext }) {
+  const session = context.sessionTarget;
+  if (!session) throw new Error("A captured Session action target is required");
+  const [title, setTitle] = useState(session.title);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string>();
+  const [unknown, setUnknown] = useState<MutationPromise<Session>>();
+  const [saved, setSaved] = useState<Session>();
+  const pending = useRef(false);
+  const observe = async (command: MutationPromise<Session>) => {
+    pending.current = true;
+    setBusy(true);
+    setFailure(undefined);
+    try {
+      const result = await context.track(command);
+      if (context.signal.aborted) return;
+      setSaved(result);
+      setUnknown(undefined);
+    } catch (error) {
+      if (context.signal.aborted) return;
+      setFailure(error instanceof Error ? error.message : String(error));
+      setUnknown(mutationSettlementIsUnknown(error) ? command : undefined);
+    } finally {
+      pending.current = false;
+      if (!context.signal.aborted) setBusy(false);
+    }
+  };
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (pending.current || unknown || saved || context.signal.aborted)
+          return;
+        context.signal.throwIfAborted();
+        void observe(
+          context.runtime.sessions.update({
+            sessionId: session.id,
+            expectedRevision: session.revision,
+            title,
+          }),
+        );
+      }}
+    >
+      <Metadata>
+        Session {session.id} · Captured revision {session.revision}
+      </Metadata>
+      <TextField
+        aria-label="Session title"
+        value={title}
+        disabled={busy || Boolean(unknown) || Boolean(saved)}
+        onChange={(event) => setTitle(event.target.value)}
+      />
+      {failure && (
+        <p role="alert">
+          {failure} The captured revision remains unchanged; reopen this action
+          to inspect the current Session.
+        </p>
+      )}
+      {unknown && (
+        <>
+          <p role="status">
+            The change is unconfirmed. Reconcile the original command before
+            submitting another edit.
+          </p>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (pending.current || context.signal.aborted) return;
+              void observe(unknown.retry());
+            }}
+          >
+            Reconcile original command
+          </Button>
+        </>
+      )}
+      {saved && (
+        <p role="status">
+          Saved {saved.id} · Revision {saved.revision} ·{" "}
+          {saved.title || "Untitled"}. Close and reopen to make another edit.
+        </p>
+      )}
+      <Button
+        type="submit"
+        disabled={
+          busy || Boolean(unknown) || Boolean(saved) || context.signal.aborted
+        }
+      >
+        Save title
+      </Button>
+    </form>
   );
 }

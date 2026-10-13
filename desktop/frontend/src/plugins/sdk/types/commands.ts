@@ -1,3 +1,6 @@
+import type { ComponentType } from "react";
+import type { CapturedSession } from "@flame/plugin-sdk";
+
 export interface CommandSpec {
   id: string;
   label: string;
@@ -12,4 +15,10 @@ export interface ShortcutSpec {
   handler: ShortcutHandler;
   description?: string;
   allowInInputs?: boolean;
+}
+
+export interface SessionActionSpec {
+  id: string;
+  title: string;
+  component: ComponentType<{ session: CapturedSession }>;
 }

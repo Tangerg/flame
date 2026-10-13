@@ -2,6 +2,7 @@ import type {
   AgentRunOptionsProviderSpec,
   AgentSourceSpec,
   CommandSpec,
+  SessionActionSpec,
   ComposerKeyBindingSpec,
   ComposerSubmitModeSpec,
   DataProviderSpec,
@@ -83,6 +84,11 @@ export const SHORTCUT = defineExtensionPoint<ShortcutSpec>({
   keying: "single",
   keyOf: (s) => s.key,
   normalizeKey: normalizeCombo,
+});
+
+export const SESSION_ACTION = defineExtensionPoint<SessionActionSpec>({
+  id: "flame.session.action",
+  keying: "single",
 });
 
 export const COMMAND = defineExtensionPoint<CommandSpec>({
