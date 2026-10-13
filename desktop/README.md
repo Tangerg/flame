@@ -221,7 +221,8 @@ The status, authorization attempt and connection test projections accept only th
 their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
-Optional trajectory, Memory, Schedules and Usage pages use one qualified carrier lifecycle.
+The remaining trajectory, Memory and Schedules HTML pages share the carrier lifecycle.
+Usage and Icon gallery use ordinary installed React components and owned ESM resources.
 Build target-specific Memory and Schedules packages with
 `node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages`.
 Runtime distributions contain all first-party packages beside their executable.
@@ -455,14 +456,14 @@ the carrier grants no external image origins.
 Complete Session trajectory export is a trusted command-menu operation against Runtime,
 independent of visible filters and pages. Execution and approval controls stay in the workbench.
 
-The optional [Usage package](../plugins/usage/plugin.json) supplies the accounting report.
-The Host captures the selected period; the guest renders canonical totals and provider,
-model and UTC-day buckets and can only refresh that captured query. Local filters leave
-totals intact. Zero reported usage, unpriced usage, an empty report and read failure remain
-separate states. Runtime alone folds recorded Run usage; uninstall preserves accounting.
-The shared bridge now uses `flame.view.ready.v3` / `flame.view.connect.v3` and data replies
-for both reports and pages. Rebuild clients and select the updated 2.0.0 trajectory, memory
-and schedules packages; the former handshake and compiled Usage pane have no fallback.
+The optional [Usage package](../plugins/usage/plugin.json) is an ordinary installed
+React component. It owns local period/group/filter controls and reads `usage.summary`
+through the explicit public SDK Runtime client. The component lifetime cancels and
+joins reads; a failed refresh retains the last accepted report with its period label.
+Zero reported usage, absent pricing and empty data remain distinct. Runtime alone
+folds recorded Run usage; disabling/uninstalling the component preserves accounting.
+The old HTML, usage carrier adapter and duplicate plugin read operation are removed.
+Current graphical execution is not claimed by the production build.
 
 The optional Schedules package supplies the schedule list and immutable authoring templates.
 The Context Dock offers its admitted view. Host controls retain create, edit, enable/disable,
@@ -583,7 +584,7 @@ it cannot connect to a default user Runtime. Inspection uses the workbench's bun
 Wails SDK so its event dispatcher retains one owner. Test hooks are absent from shipping builds.
 The gate focuses its owned window and waits for the catalogue popup to retire before
 checking page visibility. It selects each admitted contribution through the workbench, inspects the real
-opaque guest, refreshes recorded data, replaces memory scope and usage period, and
+opaque guest, refreshes recorded data, replaces memory scope, and
 checks withdrawal, re-enablement and physical page retirement. Skills covers discovery,
 document inspection, library archive/restore and trusted publication of a proposal
 created through a normal Run. Diff covers remote Git evidence and trusted baseline
@@ -595,8 +596,8 @@ and unchanged canonical trajectory. The application exits and cleanup completes 
 the single terminal result. File renderers covers a captured remote Markdown file,
 read renewal, physical retirement and preserved canonical source after disablement.
 Diagnostics covers local reads and trusted buffer clearing without changing canonical
-Runtime usage. The migrated ESM icon gallery has no current graphical acceptance
-claim; the retired static-carrier cases were removed.
+Runtime usage. The migrated ESM Usage and Icon gallery have no current graphical acceptance
+claim; their retired carrier cases were removed.
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 

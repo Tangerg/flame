@@ -74,7 +74,10 @@ admitted read projection, pending request and pagination history; individual pag
 own only filters, disclosures and the rendering of their canonical data. Errors
 retain the last accepted snapshot and cursor. Appearance preferences remain with
 the Host, and its shared v3 bootstrap updates the existing page without rereading
-business data. The icon gallery is an ordinary React component built from the icon owner's public exports. It has no callable contribution or backend process.
+business data for the remaining HTML pages. Usage and Icon gallery are ordinary
+React components built through the public SDK. Usage reads the existing public
+Runtime accounting query; Icon gallery bundles the icon owner's canonical exports.
+Neither package requires its own callable contribution or backend process.
 
 Build `icons` and `ui` first, then run:
 

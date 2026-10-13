@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.8",
+  "protocolVersion": "2026-10-13.9",
   "features": [
     "reasoning",
     "multimodal",
@@ -1070,28 +1070,6 @@
       ]
     },
     {
-      "name": "plugins.readUsage",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "plugin_not_found",
-        "plugin_in_use",
-        "plugin_disabled",
-        "plugin_stale",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "plugins"
-      ],
-      "materializes": [
-        "usage.summary"
-      ]
-    },
-    {
       "name": "plugins.readSchedules",
       "kind": "unary",
       "operation": "query",
@@ -1882,7 +1860,6 @@
           "plugins.readSkillProposals",
           "plugins.readSkills",
           "plugins.readTrajectory",
-          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -2086,7 +2063,6 @@
           "plugins.readSkillProposals",
           "plugins.readSkills",
           "plugins.readTrajectory",
-          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -2119,7 +2095,6 @@
           "plugins.readSkillProposals",
           "plugins.readSkills",
           "plugins.readTrajectory",
-          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -2152,7 +2127,6 @@
           "plugins.readSkillProposals",
           "plugins.readSkills",
           "plugins.readTrajectory",
-          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -2185,7 +2159,6 @@
           "plugins.readSkillProposals",
           "plugins.readSkills",
           "plugins.readTrajectory",
-          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -2223,7 +2196,6 @@
           "plugins.readSkillProposals",
           "plugins.readSkills",
           "plugins.readTrajectory",
-          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.resolvePoint",
@@ -3045,16 +3017,6 @@
           "requires": [
             "plugins",
             "skills"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "plugins.readUsage",
-      "rules": [
-        {
-          "requires": [
-            "plugins"
           ]
         }
       ]

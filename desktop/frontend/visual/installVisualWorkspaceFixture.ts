@@ -15,8 +15,7 @@ import type {
   SkillViewTarget,
   SkillViewSnapshot,
 } from "@/plugins/builtin/settings/plugins-pane/application/pluginView";
-import usageHTML from "../../../plugins/usage/views/usage.html?raw";
-import { UsagePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/UsagePackageView";
+import { UsageReport } from "../../../plugins/usage/src/component";
 import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
 import scheduleDeclaration from "../../../plugins/schedules/io.github.tangerg.flame/declaration.json";
 import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
@@ -530,24 +529,12 @@ function workspaceDataPlugin(
           }),
       });
       const usageLifetime = ctx.lifetime("visual-usage");
-      const usageReads = () => ({
-        binding: { installationId: "fixture", digest: "release", viewId: "view" },
-        resource: async () => usageHTML,
-        initial: async () => VISUAL_USAGE,
-        read: async () => VISUAL_USAGE,
-      });
       usageLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:usage",
         title: "Usage",
         icon: "chart",
         dock: "workspace",
-        component: () =>
-          createElement(UsagePackageView, {
-            reads: usageReads,
-            title: "Usage",
-            lifetime: usageLifetime,
-            carrier: createBrowserHost().pluginCarrier,
-          }),
+        component: () => createElement(UsageReport, { report: VISUAL_USAGE }),
       });
       const scheduleLifetime = ctx.lifetime("visual-schedules");
       const scheduleReads = () => ({

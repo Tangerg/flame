@@ -381,10 +381,6 @@
               "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
             {
-              "name": "ReadPluginUsage",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginUsageRequest, options CallOptions) (*protocol.UsageSummary, error)"
-            },
-            {
               "name": "ReadPluginView",
               "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error)"
             },
@@ -1053,10 +1049,6 @@
             {
               "name": "ReadPluginTrajectory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
-            },
-            {
-              "name": "ReadPluginUsage",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginUsageRequest, options CallOptions) (*protocol.UsageSummary, error)"
             },
             {
               "name": "ReadPluginView",
@@ -3608,11 +3600,6 @@
           "value": "\"skills\""
         },
         {
-          "name": "PluginViewUsageSummary",
-          "type": "PluginViewType",
-          "value": "\"usageSummary\""
-        },
-        {
           "name": "PluginViewWorkspaceDiff",
           "type": "PluginViewType",
           "value": "\"workspaceDiff\""
@@ -3685,7 +3672,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-13.8\""
+          "value": "\"2026-10-13.9\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -10118,26 +10105,6 @@
             {
               "name": "ListSessionTrajectoryRequest",
               "type": "ListSessionTrajectoryRequest"
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ReadPluginUsageRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ReadPluginViewRequest",
-              "type": "ReadPluginViewRequest"
-            },
-            {
-              "name": "UsageSummaryRequest",
-              "type": "UsageSummaryRequest"
             }
           ],
           "methods": [

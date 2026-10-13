@@ -485,7 +485,6 @@ it("presents and retains only the contributions Runtime admits", async () => {
   };
   admitted.selected.views = [
     { id: "trajectory", title: "Trajectory", type: "sessionTrajectory" },
-    { id: "usage", title: "Usage", type: "usageSummary" },
     { id: "diagnostics", title: "Diagnostics", type: "clientDiagnostics" },
   ];
   admitted.selected.components = [
@@ -496,6 +495,14 @@ it("presents and retains only the contributions Runtime admits", async () => {
       placement: "workspaceView",
       entry: "io.github.tangerg.flame/components/component.js",
       export: "Gallery",
+    },
+    {
+      id: "usage",
+      title: "Usage",
+      scope: "installation",
+      placement: "workspaceView",
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Usage",
     },
   ];
   withheld.selected.components = admitted.selected.components;
@@ -524,11 +531,11 @@ it("presents and retains only the contributions Runtime admits", async () => {
     })),
   ).toEqual([
     { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:icons", title: "admitted · Icons" },
+    { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:usage", title: "admitted · Usage" },
     {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:trajectory",
       title: "admitted · Trajectory",
     },
-    { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:usage", title: "admitted · Usage" },
     {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:diagnostics",
       title: "admitted · Diagnostics",

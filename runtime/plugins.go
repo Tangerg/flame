@@ -81,10 +81,6 @@ func (r *binding) ReadPluginSchedules(ctx context.Context, request protocol.Read
 	return r.invoke[protocol.ReadPluginSchedulesRequest, *protocol.Page[protocol.Schedule]](ctx, delivery.PluginsReadSchedules, request, callOptions(options))
 }
 
-func (r *binding) ReadPluginUsage(ctx context.Context, request protocol.ReadPluginUsageRequest, options CallOptions) (*protocol.UsageSummary, error) {
-	return r.invoke[protocol.ReadPluginUsageRequest, *protocol.UsageSummary](ctx, delivery.PluginsReadUsage, request, callOptions(options))
-}
-
 func (r *binding) ReadPluginSkills(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.SkillDiscovery, error) {
 	return r.invoke[protocol.ReadPluginSkillsRequest, *protocol.SkillDiscovery](ctx, delivery.PluginsReadSkills, request, callOptions(options))
 }

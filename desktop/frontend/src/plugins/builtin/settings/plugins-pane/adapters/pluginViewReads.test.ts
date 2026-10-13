@@ -2,7 +2,6 @@ import { expect, it, vi } from "vitest";
 import {
   createMemoryViewReads,
   createScheduleViewReads,
-  createUsageViewReads,
   createSkillViewReads,
   createDiffViewReads,
 } from "./pluginViewReads";
@@ -100,28 +99,6 @@ it("binds schedule continuation to the captured release without guest-selected t
     { installationId: "installation", digest: "digest", viewId: "schedules", cursor: "next" },
     signal,
   );
-});
-
-it("captures the usage period and passes through the canonical report without pagination", async () => {
-  const binding = { installationId: "installation", digest: "digest", viewId: "usage" };
-  const period = { sinceDays: 7 };
-  const report = { total: {}, sessions: 1, runs: 1, byProvider: [{ key: "provider", runs: 1 }] };
-  const plugins = {
-    readView: vi.fn(async () => ({ html: "<!doctype html>" })),
-    readUsage: vi.fn(async () => report),
-  };
-  const reads = createUsageViewReads(plugins, binding, period);
-  binding.digest = "successor";
-  period.sinceDays = 30;
-  const signal = new AbortController().signal;
-  await expect(reads.initial(signal)).resolves.toEqual(report);
-  await expect(reads.read(undefined, signal)).resolves.toBe(report);
-  expect(plugins.readUsage).toHaveBeenLastCalledWith(
-    { installationId: "installation", digest: "digest", viewId: "usage", sinceDays: 7 },
-    signal,
-  );
-  await expect(reads.read("unbound", signal)).rejects.toThrow("no cursor");
-  expect(plugins.readUsage).toHaveBeenCalledTimes(2);
 });
 
 it("captures Diff workspace, baseline and focus while refusing guest continuation", async () => {

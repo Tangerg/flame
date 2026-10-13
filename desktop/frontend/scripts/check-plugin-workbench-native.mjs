@@ -280,7 +280,6 @@ async function refreshPage(id, method, binding, query, text) {
     "plugins.readTrajectory": "sessions.trajectory",
     "plugins.readMemory": "agentMemory.list",
     "plugins.readSchedules": "schedules.list",
-    "plugins.readUsage": "usage.summary",
     "plugins.readDiff": "workspace.diff.get",
     "plugins.readSkills": "skills.discovered.list",
     "plugins.readSkill": "skills.discovered.get",
@@ -510,15 +509,7 @@ try {
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
   const defaults = (await rpc("plugins.list")).data;
   assert.equal(defaults.length, 10);
-  for (const name of [
-    "trajectory",
-    "memory",
-    "schedules",
-    "usage",
-    "skills",
-    "diff",
-    "diagnostics",
-  ]) {
+  for (const name of ["trajectory", "memory", "schedules", "skills", "diff", "diagnostics"]) {
     const installation = defaults.find((item) => item.selected.name === `flame.${name}`);
     assert.ok(installation, `default ${name} package must be installed`);
     assert.equal(installation.state, "enabled");
@@ -858,38 +849,8 @@ try {
   await closePanel(installed.schedules.title, schedules.id);
   console.log("Schedules: backend-owned saved schedule, refresh, retirement passed");
 
-  const report = await openPanel(installed.usage.title, "Recorded usage loaded.");
   usage = await rpc("usage.summary");
   assert.equal(usage.runs, 2);
-  assert.ok(report.content.includes("Not reported"));
-  assert.equal(
-    await guest(
-      report.id,
-      "[...document.querySelectorAll('#totals > div')].find(e => e.querySelector('dt').textContent === 'Finished Runs').querySelector('dd').textContent",
-    ),
-    "2",
-  );
-  await refreshPage(report.id, "plugins.readUsage", installed.usage, {}, "Recorded usage loaded.");
-  await clickText("7d");
-  const period = await pageWith("Recorded usage loaded.");
-  assert.notEqual(period.id, report.id, "period replacement must retire the captured report");
-  await assert.rejects(guest(report.id, "document.body.innerText"), /page is not ready/);
-  await rpc("plugins.setEnablement", {
-    installationId: installed.usage.installationId,
-    enabled: false,
-  });
-  await noPages();
-  await assert.rejects(guest(period.id, "document.body.innerText"), /page is not ready/);
-  await rpc("plugins.setEnablement", {
-    installationId: installed.usage.installationId,
-    enabled: true,
-  });
-  const successor = await openPanel(installed.usage.title, "Recorded usage loaded.");
-  assert.notEqual(successor.id, period.id, "re-enablement must create a successor page");
-  await closePanel(installed.usage.title, successor.id);
-  console.log(
-    "Usage: recorded zero/unpriced usage, period replacement, withdrawal and re-enablement passed",
-  );
 
   const diffPage = await openPanel(installed.diff.title, "Workspace diff loaded.");
   assert.match(

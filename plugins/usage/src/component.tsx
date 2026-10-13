@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ComponentContext } from "@flame/plugin-sdk";
 import { ChartColumn } from "@flame/icons/react";
 import type { UsageBucket, UsageSummary } from "@flame/runtime-contract/wire";
 import {
+  Button,
+  Panel,
+  PanelTitle,
   DataTable,
   EmptyState,
   Metadata,
@@ -10,13 +14,6 @@ import {
   Stats,
   Toolbar,
 } from "@flame/ui";
-import {
-  mountView,
-  ReadStatus,
-  useRead,
-  ViewPanel,
-  type ViewProps,
-} from "../../src/view";
 
 const number = new Intl.NumberFormat("en-US");
 const dollars = new Intl.NumberFormat("en-US", {
@@ -37,8 +34,7 @@ const options = [
 ];
 const cost = (amount?: number) =>
   amount === undefined ? "Not reported" : dollars.format(amount);
-function Usage({ view }: ViewProps<UsageSummary>) {
-  const { data: report } = useRead(view);
+export function UsageReport({ report }: { report: UsageSummary }) {
   const [group, setGroup] = useState("byProvider");
   const [filter, setFilter] = useState("");
   const buckets = report[group as "byProvider" | "byModel" | "byDay"] ?? [];
@@ -52,16 +48,7 @@ function Usage({ view }: ViewProps<UsageSummary>) {
     ...fields.map(([, key]) => number.format(bucket[key] ?? 0)),
   ]);
   return (
-    <ViewPanel
-      view={view}
-      title="Usage"
-      description="Recorded usage from finished Runs in the selected period."
-    >
-      <ReadStatus
-        view={view}
-        ready="Recorded usage loaded."
-        loading="Reading usage…"
-      />
+    <>
       <Stats
         id="totals"
         aria-label="Recorded usage totals"
@@ -137,7 +124,87 @@ function Usage({ view }: ViewProps<UsageSummary>) {
         complete price for that total or bucket. Child execution is counted
         through its owning Run; detached utility-model work is excluded.
       </Metadata>
-    </ViewPanel>
+    </>
   );
 }
-mountView(Usage);
+
+const periods = [
+  { value: "all", label: "All time", query: {} },
+  { value: "30", label: "Last 30 days", query: { sinceDays: 30 } },
+  { value: "7", label: "Last 7 days", query: { sinceDays: 7 } },
+] as const;
+type Period = (typeof periods)[number];
+type Read = {
+  loading: boolean;
+  accepted?: { report: UsageSummary; period: Period };
+  error?: string;
+};
+
+export function Usage({ context }: { context: ComponentContext }) {
+  const [period, setPeriod] = useState<Period>(periods[0]);
+  const [read, setRead] = useState<Read>({ loading: true });
+  const reading = useRef<AbortController>(undefined);
+  const refresh = useCallback(async () => {
+    reading.current?.abort();
+    const controller = new AbortController();
+    reading.current = controller;
+    const signal = AbortSignal.any([context.signal, controller.signal]);
+    setRead((previous) => ({ ...previous, loading: true, error: undefined }));
+    try {
+      const report = await context.track(
+        context.runtime.usage.summary(period.query, signal),
+      );
+      if (!signal.aborted)
+        setRead({ loading: false, accepted: { report, period } });
+    } catch (error) {
+      if (!signal.aborted)
+        setRead((previous) => ({
+          ...previous,
+          loading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "The report could not be read.",
+        }));
+    }
+  }, [context, period]);
+  useEffect(() => {
+    void refresh();
+    return () => reading.current?.abort();
+  }, [refresh]);
+  return (
+    <Panel label="Usage">
+      <Toolbar label="Usage report actions">
+        <PanelTitle>Usage</PanelTitle>
+        <Select
+          label="Period"
+          value={period.value}
+          options={periods.map(({ value, label }) => ({ value, label }))}
+          onValueChange={(value) =>
+            setPeriod(periods.find((item) => item.value === value)!)
+          }
+        />
+        <Button disabled={read.loading} onClick={() => void refresh()}>
+          Refresh
+        </Button>
+      </Toolbar>
+      <Metadata>
+        Recorded usage from finished Runs in the selected period.
+      </Metadata>
+      {read.loading && <p role="status">Reading usage…</p>}
+      {read.error && (
+        <p role="alert">The current report could not be read: {read.error}</p>
+      )}
+      {read.accepted && (
+        <>
+          <p role="status">
+            Recorded usage loaded. {read.accepted.period.label}.
+            {read.accepted.period !== period &&
+              " Showing the last accepted period while the selected period is unavailable."}
+          </p>
+          <UsageReport report={read.accepted.report} />
+        </>
+      )}
+    </Panel>
+  );
+}

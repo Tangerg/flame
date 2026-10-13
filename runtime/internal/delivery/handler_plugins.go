@@ -307,22 +307,6 @@ func (s *Handler) ReadPluginSchedules(ctx context.Context, in protocol.ReadPlugi
 	return page, nil
 }
 
-func (s *Handler) ReadPluginUsage(ctx context.Context, in protocol.ReadPluginUsageRequest) (report *protocol.UsageSummary, err error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return nil, err
-	}
-	err = s.plugins.WithView(ctx, id, digest, in.ViewID, plugin.UsageSummary, func(*plugin.Installation, plugin.ViewDeclaration) error {
-		var readErr error
-		report, readErr = s.UsageSummary(ctx, in.UsageSummaryRequest)
-		return readErr
-	})
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return report, nil
-}
-
 func (s *Handler) ReadPluginSkills(ctx context.Context, in protocol.ReadPluginSkillsRequest) (catalog *protocol.SkillDiscovery, err error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {

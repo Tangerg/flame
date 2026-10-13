@@ -62,7 +62,7 @@ func (c *capabilityRuntime) ReadPluginSchedules(context.Context, protocol.ReadPl
 	return protocol.NewPage([]protocol.Schedule{}), nil
 }
 
-func (c *capabilityRuntime) ReadPluginUsage(context.Context, protocol.ReadPluginUsageRequest) (*protocol.UsageSummary, error) {
+func (c *capabilityRuntime) UsageSummary(context.Context, protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
 	return &protocol.UsageSummary{}, nil
 }
 
@@ -104,16 +104,16 @@ func TestSkillPageReadsRequirePluginAndSkillCapabilities(t *testing.T) {
 	}
 }
 
-func TestUsagePageRequiresPluginCapability(t *testing.T) {
-	const params = `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"1111111111111111111111111111111111111111111111111111111111111111","viewId":"usage","sinceDays":7}`
+func TestUsageSummaryIsIndependentOfPluginPresentation(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
-		response := call(t, map[string]bool{protocol.FeaturePlugins: enabled}, "plugins.readUsage", params)
-		if enabled {
-			if response.Error != nil {
-				t.Fatalf("enabled usage read: %+v", response.Error)
-			}
-		} else if got := problemType(t, response); got != "capability_not_negotiated" {
-			t.Fatalf("usage read without plugin capability: %s", got)
+		response := call(t, map[string]bool{protocol.FeaturePlugins: enabled}, "usage.summary", `{"sinceDays":7}`)
+		if response.Error != nil {
+			t.Fatalf("canonical usage with plugin presentation=%t: %+v", enabled, response.Error)
+		}
+		retired := call(t, map[string]bool{protocol.FeaturePlugins: enabled}, "plugins.readUsage", `{}`)
+		failure, ok := retired.Error.(*transport.Error)
+		if !ok || failure.Code != -32601 {
+			t.Fatalf("retired usage entrance survived: %+v", retired.Error)
 		}
 	}
 }

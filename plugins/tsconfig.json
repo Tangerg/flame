@@ -10,7 +10,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "allowImportingTsExtensions": true,
-    "types": ["node", "react", "react-dom"]
+    "types": ["node", "react", "react-dom"],
+    "lib": ["DOM", "ESNext"]
   },
   "include": ["src", "*/src/*.tsx", "test"]
 }

@@ -29,10 +29,6 @@ const scheduleHTML = await readFile(
   new URL("../../../plugins/schedules/views/schedules.html", import.meta.url),
   "utf8",
 );
-const usageHTML = await readFile(
-  new URL("../../../plugins/usage/views/usage.html", import.meta.url),
-  "utf8",
-);
 const skillsHTML = await readFile(
   new URL("../../../plugins/skills/views/skills.html", import.meta.url),
   "utf8",
@@ -499,64 +495,6 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.reload();
     await page.waitForFunction(() => window.mount);
     await page.setViewportSize({ width: 640, height: 720 });
-    const usage = {
-      total: {},
-      sessions: 1,
-      runs: 1,
-      byProvider: [{ key: "provider <script> injected", runs: 1 }],
-      byModel: [{ key: "provider/model", runs: 1, costUsd: 0 }],
-      byDay: [{ key: "2026-10-10", runs: 1 }],
-    };
-    await page.evaluate(({ html, initial }) => void window.mount(html, initial, "dark"), {
-      html: usageHTML,
-      initial: usage,
-    });
-    await frame.getByText("Recorded usage loaded.").waitFor();
-    await page.setViewportSize({ width: 320, height: 720 });
-    const scrollable = frame.getByRole("region", { name: "Scrollable usage breakdown" });
-    await scrollable.focus();
-    await scrollable.press("ArrowRight");
-    await expect
-      .poll(() => scrollable.evaluate((element) => element.scrollLeft))
-      .toBeGreaterThan(0);
-
-    assert.equal(await page.evaluate(() => window.reads.length), 0);
-    assert.equal(
-      await frame.getByText("No finished Runs with reported usage in this period.").isVisible(),
-      false,
-    );
-    assert.equal(await frame.locator("#totals dd").nth(1).textContent(), "0");
-    assert.equal(await frame.locator("#totals dd").first().textContent(), "Not reported");
-    assert.equal(
-      await frame.locator("tbody").textContent(),
-      "provider <script> injectedNot reported100000",
-    );
-    assert.equal(await frame.locator("script").count(), 2);
-    await reviewAppearance("usage");
-    await choose(frame, "Group by", "Model");
-    assert.equal(await frame.locator("tbody tr").count(), 1);
-    assert.equal(await frame.locator("tbody td").first().textContent(), "0.00");
-    await frame.getByRole("searchbox", { name: "Filter" }).fill("absent");
-    await frame.getByText("No matching rows.").waitFor();
-    await frame.getByRole("searchbox", { name: "Filter" }).fill("");
-    await page.evaluate(() => (window.readFailure = true));
-    await frame.getByRole("button", { name: "Refresh" }).click();
-    await frame.getByRole("alert").waitFor();
-    assert.equal(await frame.locator("tbody tr").count(), 1);
-    assert.equal(await frame.locator("#totals dd").first().textContent(), "Not reported");
-    assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
-    await page.evaluate(() => (window.readFailure = false));
-    await frame.getByRole("button", { name: "Refresh" }).click();
-    await frame.getByText("Recorded usage loaded.").waitFor();
-    await page.evaluate(() => window.dispose());
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
-    await page.evaluate(({ html }) => void window.mount(html, { total: {} }), { html: usageHTML });
-    await frame.getByText("No finished Runs with reported usage in this period.").waitFor();
-    assert.equal(await frame.locator("#breakdown").isVisible(), false);
-    await page.evaluate(() => window.dispose());
-    await page.reload();
-    await page.waitForFunction(() => window.mount);
     for (const initial of [
       {
         type: "available",

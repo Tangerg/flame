@@ -2,37 +2,40 @@
 
 ## Current stage
 
-Stage 3t, committed in a3661279, migrates the bundled Icon gallery to an ordinary public React component.
-Its prebuilt ESM bundles the canonical icon owner's public catalog/drawings and
-imports the host's shared React/JSX/UI modules. Search is local rendering state.
-The namespace declaration has no callable contribution or backend; Domain/package/
-Protocol/SDK/client admission now supports that actual content-only requirement.
-An authored empty, null, malformed or unknown callable reference remains refused.
-Reviews still declares and requires its own callable binding.
+Stage 3u migrates Usage to an ordinary installed public React component. Its SDK
+context enters the canonical `usage.summary` query; the existing Runtime accounting
+owner and recorded facts are unchanged. The component owns all-time/30-day/7-day
+selection, grouping, filtering and refresh. An owned request is canceled when its
+period changes or the component retires; failed reads retain the accepted report
+and label its actual period. SDK track joins the query through the current lifetime.
 
-The old Icon gallery HTML, server-side markup builder, static view enum and host
-carrier branch are deleted. Existing fixture DTOs are migrated; obsolete browser/
-native static-carrier cases are removed without adding or running UI tests.
-Core protocol is 2026-10-13.8; backend identity remains .4. No business storage
-format changes. Remaining feature-specific HTML views/renderers, other placements,
-dependency status/retention, model streaming and all-consumer migration remain open.
+The former Usage HTML/source, Desktop carrier adapter, closed Usage view kind and
+`plugins.readUsage` Go/Protocol/catalog/shared TS wrapper are deleted together.
+Current fixture DTOs are migrated; obsolete carrier UI/E2E cases are removed without
+adding or executing UI tests. Core protocol is 2026-10-13.9; backend remains .4.
+Rebuild clients/package artifacts; no business storage migration is introduced.
 
-Production Core/CLI/Reviews build, Core generation, shared TS/public SDK/portable
-components/Reviews/Desktop type checks, changed source lint, production Vite build,
-ESM exact rebuild and remaining HTML exact rebuild pass. The component-only package
-admission regression passes in 0.626s. Domain/Delivery/Bootstrap test sources compile;
-Bootstrap TestMain was not executed. Final full/vet/race/integration checks remain
-queued. No graphical rendering, UI/E2E/screenshot or native window qualification.
+Core generation, production Runtime/CLI/Reviews build, shared Runtime TS/portable/
+Desktop type checks, changed lint, production Vite build and exact component/remaining
+HTML rebuilds pass. The dispatch regression proves canonical usage is independent
+of plugin presentation and the retired endpoint is method-not-found (0.865s).
+Root/Domain/package/Delivery/Bootstrap test sources compile; TestMain is not run.
+Full/vet/race/integration execution remains queued; graphical execution is excluded.
 
-Main ffaf30c9 is merged in 7ff60fa4. The one API inventory conflict adopts main's
-actual CLI Start/Resume receipt reconciliation while preserving current plugin
-methods. Merged production Core/CLI/Reviews builds and affected CLI test source
-compilation pass. Owned frontend dist and temporary compile outputs are removed;
-all command handles are terminal. User design inputs remain read-only, with SHA-256
-unchanged. Verification remains development first, with final execution concentrated
-at the final phase. The full goal remains active.
+Main synchronization and round cleanup are in progress. User design input hashes
+remain unchanged. Full proposal/review/P01-P48 completion remains open, including
+remaining page/renderer carriers, dependency status/retention, all-consumer migration
+and canonical models/stream decorators. Verification remains development first.
 
 ## Completed
+
+- Stage 3u: ordinary Usage ESM and direct canonical public query, local period/group/
+  filter/refresh state, cancellation and joined I/O, preserved accepted read on failure.
+- Stage 3u: remove the duplicate usage read operation/request/client binding and closed
+  kind, generated contracts, HTML source/resource and Desktop carrier adapter. Preserve
+  backend zero/unpriced/range/restart/uninstall accounting regression source at its
+  current canonical owner. Dispatch execution passes; final lifecycle execution queued.
+
 
 - Stage 3t (a3661279): component-only declaration admission and optional callable SDK context;
   ordinary Icon gallery ESM from canonical icon exports, local Hooks filtering,
@@ -231,6 +234,7 @@ at the final phase. The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Ordinary Usage components call the canonical public accounting query through their explicit SDK context | A trusted installed component needs no feature-specific carrier or duplicated query envelope; Runtime still owns all recorded accounting | Keeping plugins.readUsage, a dummy backend contribution, copied accounting/cache state, HTML compatibility or treating component retirement as Run cancellation |
 | 2026-10-13 | Permit an absent own callable contribution for actual content-only components; keep explicitly authored references strict | Icon gallery requires shared React/UI and immutable package content, not a backend; an invented operation would add an ownerless contract | Dummy backend/callable capability, static HTML compatibility, implicit service discovery or weakening invalid-reference admission |
 | 2026-10-13 | Expose the RPC owner cancellation signal to technical resource subscriptions and use it as the sole client closed fact | Clearing stream handlers during client shutdown otherwise strands lease joining; the resource observer must learn the original connection outcome | A second closed boolean, idle lease timers, suppressing cleanup errors or a separate client lifecycle root |
 | 2026-10-13 | Keep resource URL authority inside an existing Core subscription and route each asset read through the public resource query | Native/browser ESM and relative assets need ordinary URLs without persistent bearer credentials; subscription cancellation supplies an existing stop/join owner | Tokens in durable data, permanent unsigned package URLs, timers/heartbeat leases, bypassing exact source/integrity checks, Blob source rewriting or a second asset/installation database |
@@ -324,7 +328,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -355,6 +359,23 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3u development and canonical usage entrance
+
+- Passed: Core generation, production Runtime/CLI/Reviews build, shared Runtime TS,
+  portable and Desktop type checks, changed source lint, production Vite build and
+  portable formatting. Usage ESM is 5,590 bytes; its exact rebuild and all remaining
+  HTML resource rebuild checks pass.
+- Passed focused backend dispatch execution: canonical usage succeeds regardless of
+  plugin presentation capability and the retired entrance returns method-not-found
+  (0.865s). Root/Domain/package/Delivery/Bootstrap test sources compile only.
+- Corrected introduced development failures: importing the full public SDK exposes
+  its existing ESNext Promise/Array library requirements; portable tsconfig now
+  declares DOM/ESNext. The new regression initially accessed a concrete RPC code on
+  an error interface; use the actual transport error type before asserting its code.
+- Not run: full/vet/race/cross-module lifecycle execution, deferred to final phase;
+  all UI/E2E/screenshot/native execution, excluded. Retired GUI tests are deleted with
+  their carrier, and accounting preservation remains covered in backend source.
 
 ### Stage 3t development and component-only admission
 
@@ -748,6 +769,12 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3u advances Core to .9 and deletes plugins.readUsage and the usageSummary view
+  kind. Rebuild clients and package resources; use canonical usage.summary. Ordinary
+  component authors need the current SDK library environment. Accounting/storage is
+  unchanged. Complete graphical runtime proof remains unclaimed.
+
 
 - Stage 3t advances Core to .8 and removes the static view kind. Rebuild clients and
   installed packages together. Components without an own callable expose no binding;

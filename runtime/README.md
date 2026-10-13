@@ -86,6 +86,15 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-13.9
+
+Usage is an ordinary installed React component. It reads the public `usage.summary`
+operation through the explicit SDK Runtime client, with cancellation and I/O joining
+owned by its component lifetime. The former `plugins.readUsage` wrapper/request,
+closed usage view kind, HTML resource and graphical carrier adapter are deleted.
+Rebuild clients and installed package artifacts together. Accounting and business
+storage formats are unchanged.
+
 ## Protocol 2026-10-13.8
 
 Client components may omit their own callable contribution. The public SDK admits
@@ -360,29 +369,20 @@ User message after its authored parts, and the existing opening write-set persis
 exact message. It no longer introduces a separate unpersisted conversation entry or
 replaces the input committed by Run admission. Durable-context equality remains enforced.
 
-## Protocol 2026-10-10.5
+## Usage component
 
-The optional [Usage package](../plugins/usage/plugin.json) replaces the compiled Desktop
-Usage pane and its dedicated query cache. A `usageSummary` view reads `plugins.readUsage`,
-which embeds `UsageSummaryRequest` and delegates to the existing `usage.summary` owner.
-The report counts finished Runs with recorded usage, including each delegated Run's
-own process usage; detached utility-model work is excluded. The page renders canonical totals
-and provider/model/UTC-day buckets. Recorded zero remains zero, unpriced usage remains
-unpriced, and failed refresh preserves the last report with an explicit error.
+The optional [Usage package](../plugins/usage/plugin.json) reads the existing public
+`usage.summary` owner. Runtime interprets all-time, seven-day and thirty-day periods
+and counts finished Runs with recorded usage, including delegated process usage;
+detached utility-model work is excluded. The component renders canonical totals and
+provider/model/UTC-day buckets. Recorded zero remains zero and absent pricing remains
+unreported. Local grouping/filtering cannot change accounting.
 
-The trusted Host captures all-time, seven-day or thirty-day scope for each page instance;
-only Runtime interprets calendar periods. Guest filtering is local presentation and cannot
-change recorded totals. Usage pages accept refresh only, with no cursor, arbitrary query or
-mutation authority. Withdrawal and uninstall remove presentation without changing accounting.
-The existing transport and carrier byte limits refuse oversized reports explicitly.
-
-The HTML bridge uses `flame.view.ready.v3` / `flame.view.connect.v3` and replies with
-`{type: "data", data: <canonical result>}`. It carries both bounded pages and complete
-reports directly. Rebuild all clients and first-party package resources, then reinstall
-and explicitly select their new digests. The host grants a read-only theme projection at connection
-and publishes updates over the same port. Older handshakes and page replies have no aliases.
-Install and enable the current Usage package to expose its view in the Context Dock; the former settings
-pane has no fallback. This change requires no accounting or installation data migration.
+An owned request cancels when its selected period changes or the component retires.
+Failed reads retain the last accepted report and label its actual period. Refresh
+reuses the selected query. Disablement/uninstall withdraws presentation and resources
+without changing accounting. There is no view-specific usage query or HTML guest.
+Rebuild the prebuilt ESM and explicitly select the changed package release.
 
 ## Protocol 2026-10-10.4
 
@@ -989,7 +989,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"`, `"skills"`,
+`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"skills"`,
 `"workspaceDiff"` or `"clientDiagnostics"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,

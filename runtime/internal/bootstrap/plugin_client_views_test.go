@@ -64,7 +64,7 @@ func TestClientPresentationPackagesAdmitResourcesWithoutRuntimeQueries(t *testin
 			if content != string(authored) {
 				t.Fatal("resource differs from the admitted release")
 			}
-			refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadUsage, protocol.ReadPluginUsageRequest{ReadPluginViewRequest: view}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+			refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 			if !errors.Is(refused.Failure, protocol.ErrPluginNotFound) {
 				t.Fatalf("client view acquired Runtime query authority: %v", refused.Failure)
 			}

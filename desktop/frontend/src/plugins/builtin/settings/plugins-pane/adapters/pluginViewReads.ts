@@ -3,8 +3,6 @@ import type {
   AgentMemoryItem,
   Page,
   Schedule,
-  UsageSummary,
-  UsageSummaryRequest,
   ReadPluginViewRequest,
   TrajectoryEntry,
 } from "@flame/runtime-contract/wire";
@@ -61,20 +59,6 @@ export function createScheduleViewReads(
   return createViewReads(plugins, view, (cursor, signal) =>
     plugins.readSchedules({ ...view, cursor }, signal),
   );
-}
-
-export function createUsageViewReads(
-  plugins: Pick<FlameClient["plugins"], "readView" | "readUsage">,
-  binding: Readonly<ReadPluginViewRequest>,
-  period: Readonly<UsageSummaryRequest>,
-): PluginViewReads<UsageSummary> {
-  const view = Object.freeze({ ...binding });
-  const captured = { ...period };
-  return createViewReads(plugins, view, (cursor, signal) => {
-    if (cursor !== undefined)
-      return Promise.reject(new Error("Usage reports have no cursor continuation"));
-    return plugins.readUsage({ ...view, ...captured }, signal);
-  });
 }
 
 export function createSkillViewReads(

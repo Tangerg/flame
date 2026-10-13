@@ -79,7 +79,6 @@ func TestSkillsViewUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.
 	missing := detail
 	missing.Name = "absent"
 	refuse(delivery.PluginsReadSkill, missing, protocol.ErrSkillNotFound)
-	refuse(delivery.PluginsReadUsage, protocol.ReadPluginUsageRequest{ReadPluginViewRequest: view}, protocol.ErrPluginNotFound)
 	memorySource, err := filepath.Abs("../../../plugins/memory")
 	if err != nil {
 		t.Fatal(err)

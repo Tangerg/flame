@@ -26,7 +26,6 @@ const (
 	PluginsReadTrajectory      Name = "plugins.readTrajectory"
 	PluginsReadMemory          Name = "plugins.readMemory"
 	PluginsReadSchedules       Name = "plugins.readSchedules"
-	PluginsReadUsage           Name = "plugins.readUsage"
 	PluginsReadDiff            Name = "plugins.readDiff"
 	PluginsReadSkills          Name = "plugins.readSkills"
 	PluginsReadSkill           Name = "plugins.readSkill"
@@ -114,12 +113,6 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.ReadPluginSkillsRequest) (*protocol.Page[protocol.SkillProposal], error) {
 		return s.ReadPluginSkillProposals(ctx, in)
 	})
-	r.query(MethodMeta{Name: PluginsReadUsage, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Materializes: []Name{UsageSummary}}, func(s interface {
-		ReadPluginUsage(context.Context, protocol.ReadPluginUsageRequest) (*protocol.UsageSummary, error)
-	}, ctx context.Context, in protocol.ReadPluginUsageRequest) (*protocol.UsageSummary, error) {
-		return s.ReadPluginUsage(ctx, in)
-	})
-
 	r.query(MethodMeta{Name: PluginsReadSchedules, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSchedules), Errors: pluginErrors(), Materializes: []Name{SchedulesList}}, func(s interface {
 		ReadPluginSchedules(context.Context, protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error)
 	}, ctx context.Context, in protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error) {

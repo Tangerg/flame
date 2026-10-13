@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
@@ -252,7 +253,7 @@ func TestScheduleViewUsesBackendPagesAndUninstallWithdrawsOwner(t *testing.T) {
 
 }
 
-func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
+func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing.T) {
 	cfg := poMCPConfig(t)
 	model := delegateRestartModel{chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		message := chat.NewAssistantMessage(chat.NewTextPart("Recorded zero usage"))
@@ -269,11 +270,13 @@ func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-usage").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewUsageSummary {
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || len(installed.Selected.Views) != 0 {
 		t.Fatalf("usage admission: %+v", installed.Selected)
 	}
-	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "usage"}
-	read := protocol.ReadPluginUsageRequest{ReadPluginViewRequest: view}
+	release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
+	component := installed.Selected.Components[0]
+	resourceRequest := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: release, ComponentID: component.ID}, Path: component.Entry}
+	read := protocol.UsageSummaryRequest{}
 	refused := func(input any, method delivery.Name, want error) {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
@@ -281,14 +284,18 @@ func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}
 	}
-	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginDisabled)
+	refused(resourceRequest, delivery.PluginsReadResource, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-usage")
-	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
-	authored, err := os.ReadFile(filepath.Join(source, "views", "usage.html"))
-	if err != nil || html.HTML != string(authored) {
+	resource := r.must(delivery.PluginsReadResource, resourceRequest, "").(*protocol.PluginResource)
+	body, err := base64.StdEncoding.DecodeString(resource.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authored, err := os.ReadFile(filepath.Join(source, component.Entry))
+	if err != nil || string(body) != string(authored) {
 		t.Fatalf("usage resource differs from admitted bytes: %v", err)
 	}
-	if empty := r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary); empty.Runs != 0 {
+	if empty := r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary); empty.Runs != 0 {
 		t.Fatalf("empty usage invented runs: %+v", empty)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Reported zero"}, "usage-session").(*protocol.Session)
@@ -299,26 +306,25 @@ func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
 	waitForRunEvents(t, collectRunEvents(events), "usage source record")
 	var recorded *protocol.UsageSummary
 	for _, days := range []*int{nil, new(7), new(30)} {
-		read.UsageSummaryRequest.SinceDays = days
-		recorded = r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary)
-		canonical := r.must(delivery.UsageSummary, read.UsageSummaryRequest, "").(*protocol.UsageSummary)
-		if !reflect.DeepEqual(recorded, canonical) || recorded.Runs != 1 || recorded.Sessions != 1 || recorded.Total.InputTokens != 0 || recorded.Total.CostUSD != nil {
-			t.Fatalf("usage view differs from recorded zero/unpriced usage: %+v / %+v", recorded, canonical)
+		read.SinceDays = days
+		recorded = r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary)
+		if recorded.Runs != 1 || recorded.Sessions != 1 || recorded.Total.InputTokens != 0 || recorded.Total.CostUSD != nil {
+			t.Fatalf("usage report differs from recorded zero/unpriced usage: %+v", recorded)
 		}
 	}
 	invalid := read
 	invalid.SinceDays = new(0)
-	refused(invalid, delivery.PluginsReadUsage, protocol.ErrInvalidParams)
-	refused(protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.PluginsReadSchedules, protocol.ErrPluginNotFound)
+	refused(invalid, delivery.UsageSummary, protocol.ErrInvalidParams)
+	refused(protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: protocol.ReadPluginViewRequest{PluginReleaseRequest: release, ViewID: "usage"}}, delivery.PluginsReadSchedules, protocol.ErrPluginNotFound)
 	r.close()
 	r = poMCPOpen(t, cfg)
-	if restarted := r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(restarted, recorded) {
+	if restarted := r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(restarted, recorded) {
 		t.Fatal("restart changed the recorded report")
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-usage")
-	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginDisabled)
+	refused(resourceRequest, delivery.PluginsReadResource, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-usage")
-	if canonical := r.must(delivery.UsageSummary, read.UsageSummaryRequest, "").(*protocol.UsageSummary); !reflect.DeepEqual(canonical, recorded) {
+	if canonical := r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(canonical, recorded) {
 		t.Fatal("uninstall changed accounting records")
 	}
 }
