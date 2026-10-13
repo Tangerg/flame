@@ -2,42 +2,47 @@
 
 ## Current stage
 
-Stage 3x, committed in fd1a9161, completes the management point inspector and
-HTTP resource query consumption projection. Core protocol advances to
-2026-10-13.11; backend callable protocol stays 2026-10-13.4.
+Stage 3y, committed in 0643197b, migrates the actual Trajectory page to ordinary
+prebuilt React/ESM. Core protocol is 2026-10-13.12; backend protocol stays .4.
+The old sessionTrajectory view kind, HTML/source, Desktop carrier adapter, public
+plugins.readTrajectory Go/Protocol/TS method and generated artifacts are removed.
 
-Point declarations, contribution projections and ResolvePluginPoint requests carry
-the admitted canonical JSON string. Runtime parses it through the existing point
-owner. The public Go helper, generated Go/Schema/TS bindings and actual manager
-consumer are migrated together; the former object-shaped request is refused.
-Metadata parsing is for display only, and dispatch retains original schema bytes.
+Public component scope now admits Session targets. The existing navigation owner
+projects an immutable Session ID through ComponentContext, and a changed Session
+remounts the rendering instance and cancels/joins old observation. Session dock
+placement derives from the admitted scope without a Trajectory/package-name branch.
+Workspace and installation scopes retain their existing contracts.
 
-The built-in manager reads point values for an explicitly reviewed target,
-attributes and order without activating code. It shows optionality and composition,
-labels accepted results with their captured input, keeps the last accepted snapshot
-on read failure, and cancels/joins reads under their current operations generation.
-There is no automatic candidate selection or persisted composition in this inspector.
+Trajectory reads canonical sessions.trajectory through its explicit SDK Runtime
+client. Public discovery supplies descendant capability, captured for a pagination
+chain. The component owns only filters, disclosures and accepted page/cursor state;
+failed reads retain the last accepted page. Recorded usage/absence, unknown outcome
+without invented duration, redacted reasoning, deferred image expansion and page-
+local counts remain explicit. Session export/execution controls retain their owners.
 
-The existing HTTP endpoint catalog advertises the Core query each resource route
-projects. The generator publishes that relation to manifest/TS/reference. The source
-consumer gate follows a generated route to an actual module import or global fetch;
-unused metadata and unrelated lookalike identifiers receive no credit. No operation
-exemption or dummy RPC call was introduced. The integrated gate now passes 109/109
-Desktop fact families, including actual point and resource consumers.
+The 8485-byte ESM rebuilds exactly using the existing public build path. Production
+Go, shared SDK/package/Desktop types, changed lint, eight locales and Vite build pass.
+Focused Session-scope admission, old-kind refusal and canonical trajectory boundary
+checks pass. Bootstrap/installed history/resource regression source compiles only;
+actual process execution and full/vet/race remain final-phase work. No UI/E2E checks
+were added or executed; retired carrier cases are removed and existing fixtures are
+migrated for source compilation. Static API coverage passes 108/108 after retiring
+one duplicate operation; it does not prove complete platform acceptance.
 
-Production Go builds, shared/Desktop TypeScript checks, changed lint, 1054-key/eight-
-locale validation and Vite build pass. Necessary focused backend, raw-string client
-and source-consumer checks pass. Full/vet/race/installed lifecycle verification is
-still queued for the final phase; graphical/UI/E2E checks remain excluded. Static
-consumer coverage is not complete platform acceptance.
-
-Local main b5160b5f is already integrated; this round's merge reports up to date.
-Owned frontend output and contract-test cache are removed. Original input hashes
-remain unchanged. Full proposal/review/P01-P48 scope stays active: remaining carriers,
-scoped dependency lifetime/retention, canonical model decorators/streaming, author
-parity and final requirement-level acceptance remain required.
+Local main b5160b5f is already integrated. Owned build outputs/temporary binaries
+are removed, and all owned handles are terminal. Original proposal/review/draft
+hashes remain unchanged. Full proposal/review/P01-P48 scope stays active, including
+Diagnostics/Memory/Schedules/Skills/renderers/actions, observed scoped dependencies,
+canonical model decorators/streaming, independent author parity and final audit.
 
 ## Completed
+
+- Stage 3y (0643197b): actual ordinary Trajectory component, public immutable Session
+  target/dock projection and direct canonical history reads; delete its closed view,
+  duplicate read entrance, HTML/carrier and obsolete GUI cases in the same change.
+- Stage 3y: preserve canonical history/descendant/cursor/evidence regression source,
+  exact-release asset admission/restart/disablement checks and independent history
+  retention. Process source compiles; final execution is queued.
 
 - Stage 3x (fd1a9161): canonical raw point contracts through projections, public
   Go/Protocol/CLI/TS query and actual built-in manager inspection; exact large numeric
@@ -250,7 +255,8 @@ parity and final requirement-level acceptance remain required.
 
 ## Next
 
-1. Continue real page/renderer migration and delete closed carrier paths. Keep capture,
+1. Migrate Diagnostics through an explicit public client-observation collaborator, then
+   continue Memory/Schedules/Skills/renderer/action migration and delete closed paths. Keep capture,
    ordinary shared modules and supported resource ownership with their current owners.
 2. Complete scoped point lifecycle, observed dependency status/retention, and actual
    Tool/automatic/cross-plugin consumer migration with original command/Run ownership.
@@ -261,6 +267,8 @@ parity and final requirement-level acceptance remain required.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-13 | Project Session component targets from the existing navigation owner and call canonical trajectory directly | Session identity is captured interaction data; the old read wrapper/HTML carrier adds feature knowledge without owning history | Private Session stores in author code, an ambient currentSession lookup, a copied history store, a new RPC wrapper or a retained sessionTrajectory kind |
+| 2026-10-13 | Capture descendant scope with an accepted cursor chain; retain accepted pages on failed reads | Runtime owns capability/cursor admission and durable evidence; rendering owns its local page and filters | Changing cursor scope mid-chain, advancing a failed cursor, fabricated duration/usage or component disablement deleting history |
 | 2026-10-13 | Transport admitted point contracts as canonical JSON strings and parse metadata only for display | The same JavaScript numeric rounding risk as callable contracts would change exact schema identity; the Runtime point owner remains authoritative | Object/string compatibility readers, re-encoding parsed schemas, relaxed identity or another schema compiler |
 | 2026-10-13 | Derive HTTP query projection from the owning endpoint catalog and credit only consumed generated resource URLs | Native module imports invoke the existing leased Core resource query; an RPC-only callsite checker cannot see that real consumer | Dummy readResource calls, hand-written query exemptions, unused metadata credit or a second resource route |
 | 2026-10-13 | Keep provider choices in Runtime and project them through the existing built-in manager/DataQuery owner | Enablement and availability cannot silently select a role. Real human recovery needs visible recorded choices and explicit candidate submission | Local authoritative selection state, first-candidate defaults, inferred enablement selection or placeholder API calls |
@@ -361,7 +369,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; current view/component replacement and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
 | Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented/compiled; actual all-consumer migration and execution acceptance open | runtime/plugins.go; plugin_calls.go; internal/delivery/handler_plugin_calls.go; pluginservices/calls.go; CLI plugins call; TS client methods/wireCallPath |
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context and Schedules durable trigger restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Reviews, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
+| Public React/TS components and shared module instances | Reviews, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof, remaining placements and carrier replacement remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
 | Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; complete dependency binding, decorators/next and inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Existing Memory/Schedules/Reviews evidence retained; installed unary calls now reuse exact original routing and reject changed binding before recovery; new source compiled, final execution open | application/integration/plugins/commands.go; domain/integration/plugin/command.go; infra/sqlite/plugin_commands.go; bootstrap/plugin_command_recovery_test.go; Reviews receipts_test.go; bootstrap/plugin_reviews_response_loss_test.go |
@@ -392,6 +400,32 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 3y development and Session trajectory contracts
+
+- Passed: production Runtime/CLI/Reviews Go build; public SDK, portable package,
+  shared Runtime TS and Desktop typecheck; changed oxlint; locale gate (1054 keys,
+  eight complete catalogs); production Vite build.
+- Passed: actual component build and exact reproducibility check through the public
+  SDK build path. Trajectory ESM is 8485 bytes; other ordinary components are unchanged.
+- Passed: focused Domain old-view refusal (0.600s), package Session-scope/material
+  admission (0.724s), canonical trajectory unknown-evidence/descendant gate (0.866s).
+- Passed: Bootstrap and plugin Application test source compilation through TemporaryDirectory;
+  no TestMain, native fixture build or process acceptance was executed.
+- Passed: API source-consumer gate 108/108 (100 direct, seven materialized, one HTTP);
+  retired duplicate query is absent rather than exempted. Old API/carrier search finds
+  only the deliberate negative admission case for former sessionTrajectory metadata.
+- Existing graphical/RPC fixture contracts migrate to current resource/Core queries;
+  obsolete Trajectory carrier tests/cases are removed. No new graphical assertions,
+  UI/E2E execution or screenshot checks. Canonical backend regression source remains.
+- Resolved: initial Desktop typecheck found remaining retired RPC fixture calls;
+  migrate them to the component resource and canonical owner, preserving withdrawal
+  and history/Skill retention semantics. Initial lint path containing '..' was rejected;
+  rerun from each owning module passes.
+- Not run: full/vet/race/installed process acceptance (concentrated final phase), UI,
+  E2E/browser/native/screenshot checks (explicit exclusion). Session replacement and
+  shared renderer execution are not claimed as verified runtime behavior.
+- Product 0643197b; local main already integrated. Original input hashes unchanged.
 
 ### Stage 3x development and point/resource contracts
 
@@ -795,6 +829,13 @@ Stage 2a verification:
 
 ### Round cleanup
 
+- Stage 3y: product 0643197b committed; local main already integrated. Every owned
+  generation/build/typecheck/focused/source-compile/commit handle is terminal.
+  TemporaryDirectory removes Go test binaries; exact ESM checks clean their temporary
+  output. Owned frontend dist and empty retired Trajectory views directory are removed.
+  Retain formal ESM, regression source and required dependencies. No native/runtime/UI
+  process, shared configuration, external state, credentials or user data changed.
+
 - Stage 3x: product fd1a9161 committed; local main already integrated. All owned
   generation/build/typecheck/focused/commit handles are terminal. Remove owned frontend
   dist and contract Vitest cache; temporary source probes clean their own directories.
@@ -913,6 +954,13 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 3y advances Core to .12, removes plugins.readTrajectory and sessionTrajectory
+  view metadata, and adds public Session component context/scope. Rebuild clients and
+  packages together; no old HTML/object/operation reader is retained. Backend .4 and
+  trajectory storage/export versions stay unchanged. Disablement withdraws component
+  resources while canonical retained Session history remains available. Full installed
+  and graphical lifecycle qualification remains outstanding.
 
 - Stage 3x advances Core to .11 and changes point contract projection/request fields
   from objects to canonical JSON strings. Rebuild Go/CLI/TS clients together and retain
