@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -325,7 +326,15 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
 	}
 	pinned := true
-	updated, err := agentMemory.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: added.ID, Pinned: &pinned})
+	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateV1Input{ID: added.ID, Pinned: &pinned})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply, err := agentMemory.CallPlugin(t.Context(), update, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := agentMemory.DecodeUpdate(added.ID, reply)
 	if err != nil || !updated.Pinned {
 		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
 	}

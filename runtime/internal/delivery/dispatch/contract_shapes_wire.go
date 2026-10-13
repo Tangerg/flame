@@ -867,10 +867,6 @@ func registerObjectConstraints(s *Shapes) {
 		})
 	}
 	s.constraint(ObjectConstraintSpec{
-		GoType: typeOf[protocol.AgentMemoryUpdateRequest](),
-		Rules:  []ConditionalRule{{RequiredAny: []string{"content", "pinned"}}},
-	})
-	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.AgentMemoryItem](),
 		Rules: []ConditionalRule{{
 			Required: []string{"createdAt", "updatedAt"},

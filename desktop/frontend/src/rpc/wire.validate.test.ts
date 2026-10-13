@@ -418,17 +418,6 @@ describe("the generated wire checks", () => {
       validateWire("AgentMemoryAddRequest", { scope: "user", content: boundaryMemory }),
     ).toEqual([]);
     expect(
-      validateWire("AgentMemoryUpdateRequest", {
-        id: "mem_0123456789abcdef0123456789abcdef",
-        content: `${boundaryMemory}😀`,
-      }),
-    ).toEqual([
-      {
-        path: "AgentMemoryUpdateRequest.content",
-        detail: "expected at most 4096 character(s)",
-      },
-    ]);
-    expect(
       validateMethodResult("agentMemory.add", {
         id: "mem_0123456789abcdef0123456789abcdef",
         scope: "user",

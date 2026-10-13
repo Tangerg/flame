@@ -315,5 +315,10 @@ Changed decision is refused before provider preparation while its original outco
 is uncertain. The empty owner acknowledgement is validated before settlement and
 the current cache owner is reread. Core review/request/global decision enum and its
 invalid_params translation are removed; not_pending remains an explicit publisher
-refusal. Update/add and final process/lifecycle acceptance remain under migration;
+refusal. Update now also uses the generated public operation. Content, pin and unpin
+share one item intent with frozen patch omission/value semantics; changed uncertain
+input is refused before provider preparation. A validated acknowledgement precedes
+retirement, and the cache rereads its current owner instead of copying a potentially
+different provider's item into it. Core update/DTO are removed. Add and final
+process/lifecycle acceptance remain under migration;
 no UI/E2E tests run here.

@@ -554,15 +554,6 @@ func (u UsageSummaryRequest) ValidateWire() error {
 	)
 }
 
-func (a AgentMemoryUpdateRequest) ValidateWire() error {
-	return collectWireViolations("AgentMemoryUpdateRequest",
-		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
-		optionalTextPointerPattern("content", a.Content, "\\S"),
-		optionalMaxLength("content", a.Content, 4096),
-		requiredAnyWhen(true, []string{"content", "pinned"}, a),
-	)
-}
-
 func (a AgentMemoryAddRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryAddRequest",
 		requiredTextPattern("content", a.Content, "\\S"),

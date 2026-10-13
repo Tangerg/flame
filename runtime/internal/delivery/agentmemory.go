@@ -18,21 +18,7 @@ import (
 // agentMemoryUseCases is Delivery's consumer-side port. Its methods express
 // complete review use cases, rather than exposing the domain store workflow.
 type agentMemoryUseCases interface {
-	Update(ctx context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error)
 	Add(ctx context.Context, scope agentmemory.Scope, cwd, content string) (agentmemory.Item, error)
-}
-
-// UpdateAgentMemory edits and/or pins an item (agentMemory.update).
-func (s *Handler) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
-	item, err := s.agentMemory.Update(ctx, in.ID, in.Content, in.Pinned)
-	if err != nil {
-		return nil, mapAgentMemoryErr(err)
-	}
-	w, err := presentAgentMemoryItem(item)
-	if err != nil {
-		return nil, err
-	}
-	return &w, nil
 }
 
 // AddAgentMemory stores a user-authored active item (agentMemory.add).

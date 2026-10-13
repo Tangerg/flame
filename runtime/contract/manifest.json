@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.14",
+  "protocolVersion": "2026-10-14.15",
   "features": [
     "reasoning",
     "multimodal",
@@ -1332,21 +1332,6 @@
       "pagination": "none"
     },
     {
-      "name": "agentMemory.update",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "ownerResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "plugin_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "agentMemory"
-      ]
-    },
-    {
       "name": "agentMemory.add",
       "kind": "unary",
       "operation": "command",
@@ -1455,7 +1440,6 @@
         "recoveryAction": "promptUser",
         "methods": [
           "agentMemory.add",
-          "agentMemory.update",
           "goals.clear",
           "goals.get",
           "goals.resume",
@@ -1749,7 +1733,6 @@
         "recoveryAction": "promptUser",
         "methods": [
           "agentMemory.add",
-          "agentMemory.update",
           "plugins.call",
           "plugins.configure",
           "plugins.install",
@@ -2622,16 +2605,6 @@
         {
           "requires": [
             "goals"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "agentMemory.update",
-      "rules": [
-        {
-          "requires": [
-            "agentMemory"
           ]
         }
       ]
@@ -5682,17 +5655,6 @@
           ],
           "forbidden": [
             "workspace"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "AgentMemoryUpdateRequest",
-      "rules": [
-        {
-          "requiredAny": [
-            "content",
-            "pinned"
           ]
         }
       ]
@@ -9228,23 +9190,6 @@
         {
           "field": "sessionId",
           "constraint": "maxLength(256)"
-        },
-        {
-          "field": "content",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "content",
-          "constraint": "maxLength(4096)"
-        }
-      ]
-    },
-    {
-      "type": "AgentMemoryUpdateRequest",
-      "rules": [
-        {
-          "field": "id",
-          "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         },
         {
           "field": "content",

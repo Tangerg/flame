@@ -149,3 +149,54 @@ function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memo
     throw new Error("memory command acknowledgement is invalid");
   return output as MethodOutputs["flame.memory/delete.v1"];
 }
+
+export function updateInstalledMemory(
+  client: FlameClient,
+  input: MethodInputs["flame.memory/update.v1"],
+  signal?: AbortSignal,
+): Promise<AgentMemoryItem> {
+  const patch: MethodInputs["flame.memory/update.v1"] = {
+    ...(input.Content === undefined ? {} : { Content: input.Content }),
+    ID: input.ID,
+    ...(input.Pinned === undefined ? {} : { Pinned: input.Pinned }),
+  };
+  if (patch.Content === undefined && patch.Pinned === undefined)
+    return Promise.reject(new Error("memory update requires a change"));
+  return client.plugins.command(
+    `memory-update:${patch.ID}`,
+    { contract: CAPABILITY_JSON, method: "flame.memory/update.v1", input: patch },
+    () => selectMemoryBinding(client, signal),
+    (output) => {
+      const row = output as MethodOutputs["flame.memory/update.v1"];
+      if (
+        !row ||
+        row.ID !== patch.ID ||
+        typeof row.Content !== "string" ||
+        !row.Content.trim() ||
+        typeof row.Pinned !== "boolean" ||
+        typeof row.SessionID !== "string" ||
+        typeof row.Day !== "string" ||
+        !["project", "user"].includes(row.Scope) ||
+        !["active", "pending"].includes(row.Status) ||
+        !["auto", "user"].includes(row.Origin) ||
+        !Number.isFinite(Date.parse(row.CreatedAt)) ||
+        !Number.isFinite(Date.parse(row.UpdatedAt)) ||
+        Date.parse(row.UpdatedAt) < Date.parse(row.CreatedAt)
+      )
+        throw new Error("memory update acknowledgement is invalid");
+      return {
+        id: row.ID,
+        scope: row.Scope as "project" | "user",
+        content: row.Content,
+        origin: row.Origin as "auto" | "user",
+        status: row.Status as "active" | "pending",
+        pinned: row.Pinned,
+        sessionId: row.SessionID,
+        day: row.Day,
+        createdAt: row.CreatedAt,
+        updatedAt: row.UpdatedAt,
+      };
+    },
+    signal,
+  );
+}

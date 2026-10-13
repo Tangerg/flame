@@ -807,13 +807,6 @@ func registerAgentMemoryValues(s *Shapes) {
 		}...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.AgentMemoryUpdateRequest](),
-		Constraints: append(agentMemoryItemIdentity("id"), []FieldConstraint{
-			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},
-			{Field: "content", Kind: ConstraintMaxLength, Limit: agentmemory.MaxContentCharacters},
-		}...),
-	})
-	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.AgentMemoryAddRequest](),
 		Constraints: []FieldConstraint{
 			{Field: "content", Kind: ConstraintPattern, Value: nonBlankContent},

@@ -3,6 +3,7 @@ import {
   deleteInstalledMemory,
   readInstalledMemory,
   reviewInstalledMemory,
+  updateInstalledMemory,
 } from "../plugins/builtin/workspace/public/memory";
 // @vitest-environment-options { "url": "http://localhost:5173/" }
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
@@ -2129,11 +2130,11 @@ for await (const line of lines) {
         data: [expect.objectContaining({ id: added.id, content: "agent-memory replay cutpoint" })],
       });
 
-      const updated = await callAfterCommitLoss("agentMemory.update", (faultClient) =>
-        faultClient.agentMemory.update({
-          id: added.id,
-          content: "agent-memory replay cutpoint updated",
-          pinned: true,
+      const updated = await callAfterCommitLoss("plugins.call", (faultClient) =>
+        updateInstalledMemory(faultClient, {
+          ID: added.id,
+          Content: "agent-memory replay cutpoint updated",
+          Pinned: true,
         }),
       );
       await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
@@ -4146,10 +4147,10 @@ for await (const line of lines) {
       data: [expect.objectContaining({ id: user.id, content: "user memory marker" })],
     });
 
-    const updated = await client.agentMemory.update({
-      id: project.id,
-      content: "project memory marker updated",
-      pinned: true,
+    const updated = await updateInstalledMemory(client, {
+      ID: project.id,
+      Content: "project memory marker updated",
+      Pinned: true,
     });
     await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
       type: "agentMemory.changed",

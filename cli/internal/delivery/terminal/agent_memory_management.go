@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -106,6 +107,9 @@ func (a *app) AddAgentMemory(argument string) error {
 }
 
 func (a *app) EditAgentMemory(argument string) error {
+	if resumed, err := a.resumeMemoryUpdate(argument); resumed || err != nil {
+		return err
+	}
 	return a.loadAgentMemoryItem(argument, "loading agent memory to edit", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.openContextEditor(contextEditorRequest{
 			Title:       "Edit agent memory · " + item.ID,
@@ -117,18 +121,25 @@ func (a *app) EditAgentMemory(argument string) error {
 				if content == "" {
 					return errors.New("memory content is empty")
 				}
-				if content == item.Content {
+				pending := false
+				if a.workbench != nil {
+					_, pending = a.workbench.PendingInstalledCommand(memoryUpdateIntent(item.ID))
+				}
+				if content == item.Content && !pending {
 					a.message("agent memory unchanged · " + item.ID)
 					complete(nil)
 					return nil
 				}
-				return a.updateAgentMemory(target, protocol.AgentMemoryUpdateRequest{ID: item.ID, Content: &content}, "updating agent memory "+item.ID, complete)
+				return a.updateAgentMemory(&target, memory.UpdateV1Input{ID: item.ID, Content: &content}, "updating agent memory "+item.ID, complete)
 			},
 		})
 	})
 }
 
 func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
+	if resumed, err := a.resumeMemoryUpdate(argument); resumed || err != nil {
+		return err
+	}
 	verb := "pinning"
 	if !pinned {
 		verb = "unpinning"
@@ -142,10 +153,33 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 			a.message("agent memory is already " + state + " · " + item.ID)
 			return
 		}
-		if err := a.updateAgentMemory(target, protocol.AgentMemoryUpdateRequest{ID: item.ID, Pinned: &pinned}, verb+" agent memory "+item.ID, nil); err != nil {
+		if err := a.updateAgentMemory(&target, memory.UpdateV1Input{ID: item.ID, Pinned: &pinned}, verb+" agent memory "+item.ID, nil); err != nil {
 			a.message(err.Error())
 		}
 	})
+}
+
+func (a *app) resumeMemoryUpdate(argument string) (bool, error) {
+	if a.agentMemory == nil {
+		return false, errors.New("this runtime composition has no agent memory service")
+	}
+	_, identity, err := parseAgentMemoryReference(argument)
+	if err != nil {
+		return false, err
+	}
+	pending, found, err := a.pendingMemoryItemCommand(memory.UpdateV1Method, memoryUpdateIntent(""), identity)
+	if err != nil || !found {
+		return false, err
+	}
+	var input memory.UpdateV1Input
+	if err := json.Unmarshal(pending.Request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		return false, fmt.Errorf("pending agent memory update input is invalid: %w", err)
+	}
+	if input.ID != strings.TrimPrefix(pending.Intent, memoryUpdateIntent("")) || (input.Content == nil && input.Pinned == nil) {
+		return false, errors.New("pending agent memory update identity or patch is invalid")
+	}
+	a.message("reconciling original agent memory update · " + input.ID)
+	return true, a.updateAgentMemory(nil, input, "reconciling original agent memory update "+input.ID, nil)
 }
 
 func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
@@ -350,14 +384,39 @@ func (a *app) addAgentMemory(target conversation.MemoryTarget, content string, c
 	return nil
 }
 
-func (a *app) updateAgentMemory(target conversation.MemoryTarget, request protocol.AgentMemoryUpdateRequest, label string, complete func(error) bool) error {
+func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memory.UpdateV1Input, label string, complete func(error) bool) error {
+	if request.Content != nil {
+		request.Content = new(*request.Content)
+	}
+	if request.Pinned != nil {
+		request.Pinned = new(*request.Pinned)
+	}
 	presentation := a.session.context
 	a.status.note(label)
-	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (protocol.AgentMemoryItem, error) { return a.agentMemory.Update(ctx, request) },
+	if !a.runApplicationOperation(agentMemoryOperation, false,
+		func(ctx context.Context) (protocol.AgentMemoryItem, error) {
+			if a.workbench != nil {
+				if pending, found := a.workbench.PendingInstalledCommand(memoryUpdateIntent(request.ID)); found {
+					if err := retainedMemoryUpdate(pending.Request, request); err != nil {
+						return protocol.AgentMemoryItem{}, err
+					}
+				}
+			}
+			return installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryUpdateIntent(request.ID), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				return a.agentMemory.PrepareUpdate(ctx, request)
+			}, func(reply *protocol.CallPluginResponse) (protocol.AgentMemoryItem, error) {
+				return a.agentMemory.DecodeUpdate(request.ID, reply)
+			})
+		},
 		func(item protocol.AgentMemoryItem, err error) {
 			if err != nil {
-				a.message(label + " failed: " + err.Error())
+				message := label + " failed: " + err.Error()
+				if a.workbench != nil {
+					if _, pending := a.workbench.PendingInstalledCommand(memoryUpdateIntent(request.ID)); pending {
+						message += " · retry /memory-edit " + request.ID + " to reconcile the original command"
+					}
+				}
+				a.message(message)
 				if complete != nil {
 					complete(err)
 				}
@@ -368,12 +427,23 @@ func (a *app) updateAgentMemory(target conversation.MemoryTarget, request protoc
 				closed = complete(nil)
 			}
 			a.message("agent memory updated · " + item.ID)
-			if closed && a.session.context.current(presentation) {
-				a.showAgentMemory(target)
+			if closed && target != nil && a.session.context.current(presentation) {
+				a.showAgentMemory(*target)
 			}
 		},
 	) {
 		return errors.New("another agent memory operation is running")
+	}
+	return nil
+}
+
+func retainedMemoryUpdate(request protocol.CallPluginRequest, desired memory.UpdateV1Input) error {
+	var original memory.UpdateV1Input
+	if err := json.Unmarshal(request.Input, &original, json.RejectUnknownMembers(true)); err != nil {
+		return fmt.Errorf("pending agent memory update input is invalid: %w", err)
+	}
+	if !reflect.DeepEqual(original, desired) {
+		return fmt.Errorf("agent memory %s has an unconfirmed update; retry /memory-edit %s to reconcile the original patch before submitting changes", desired.ID, desired.ID)
 	}
 	return nil
 }
@@ -457,3 +527,4 @@ func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
 
 func memoryDeletionIntent(id string) string { return "memory-delete:" + id }
 func memoryReviewIntent(id string) string   { return "memory-review:" + id }
+func memoryUpdateIntent(id string) string   { return "memory-update:" + id }

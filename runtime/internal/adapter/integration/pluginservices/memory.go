@@ -73,14 +73,6 @@ func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content strin
 	item, err := memory.RestoreItem(value.value.Item)
 	return item, err
 }
-func (m *Memory) Update(ctx context.Context, id string, content *string, pinned *bool) (memory.Item, error) {
-	value, err := invokeCommand[rpc.UpdateInput, memory.ItemSnapshot](ctx, m.commands, m.contracts.Capability, rpc.Update, rpc.UpdateInput{ID: id, Content: content, Pinned: pinned}, func(value memory.ItemSnapshot) error { _, err := memory.RestoreItem(value); return err })
-	if err != nil {
-		return memory.Item{}, rpc.DecodeError(err)
-	}
-	item, err := memory.RestoreItem(value.value)
-	return item, err
-}
 func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
 	ctx = operation.Start(ctx, capability.Automatic, "memory.context", uuid.NewString())
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)

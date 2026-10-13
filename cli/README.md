@@ -279,6 +279,11 @@ one logical intent per item; an unconfirmed decision must be reconciled before a
 opposite decision can be submitted. Pending full/prefix IDs resolve before current
 workspace/catalog reads, and original decision/request/key survive restart.
 Core ReviewAgentMemory/agentMemory.review, its request and global decision enum
-are removed. Update and add remain under migration; their Core APIs serve real
+are removed. Editing and pin/unpin now use the generated public update operation.
+They share one item intent and retain the original nullable patch before I/O.
+An edited retry cannot confirm a different draft; /memory-edit first resumes the
+original pending patch without current workspace/catalog reads. Public snapshot
+decoding precedes intent retirement. Core UpdateAgentMemory/agentMemory.update and
+its request are removed. Add remains under migration; its Core API serves real
 consumers. Uncertain requests from retired Core contracts are not translated into
 fresh public commands.

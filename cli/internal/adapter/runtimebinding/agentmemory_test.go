@@ -160,18 +160,6 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}
 }
 
-func (a *agentMemoryBindingStub) UpdateAgentMemory(_ context.Context, request protocol.AgentMemoryUpdateRequest, options flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error) {
-	a.assertCommand(options)
-	if request.Content == nil || *request.Content != "edited" || request.Pinned == nil || !*request.Pinned {
-		a.t.Fatalf("update request = %+v", request)
-	}
-	a.actions = append(a.actions, "update:"+request.ID)
-	if a.updateResult != nil {
-		return a.updateResult, nil
-	}
-	return a.item(request.ID, protocol.AgentMemoryScopeProject, "edited", true), nil
-}
-
 func (a *agentMemoryBindingStub) AddAgentMemory(_ context.Context, request protocol.AgentMemoryAddRequest, options flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error) {
 	a.assertCommand(options)
 	if request.Scope != protocol.AgentMemoryScopeUser || request.Workspace != nil || request.Content != "authored" {
@@ -240,7 +228,15 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		t.Fatal(err)
 	}
 	content, pinned := "edited", true
-	updated, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+	update, err := adapter.PrepareUpdate(t.Context(), memory.UpdateV1Input{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply, err := adapter.CallPlugin(t.Context(), update, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := adapter.DecodeUpdate(adapterMemoryIDOne, reply)
 	if err != nil || updated.Content != content || !updated.Pinned {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
@@ -268,12 +264,11 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	result := protocol.AgentMemoryItem{
-		ID: adapterMemoryIDOther, Scope: protocol.AgentMemoryScopeProject, Content: "edited",
-		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
-		CreatedAt: now, UpdatedAt: now,
+	result, err := jsoninput.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOther, Scope: "project", Content: "edited", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, err := agentMemoryResult("update agent memory", adapterMemoryIDOne, "", &result, nil)
+	_, err = (&AgentMemory{}).DecodeUpdate(adapterMemoryIDOne, &protocol.CallPluginResponse{Output: result.JSON()})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -344,6 +339,21 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if a.pluginCall != nil {
 		return a.pluginCall(request, options)
 	}
+	if request.Method == memory.UpdateV1Method {
+		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
+		var input memory.UpdateV1Input
+		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+			a.t.Fatal(err)
+		}
+		a.actions = append(a.actions, "update:"+input.ID)
+		result := a.updateResult
+		if result == nil {
+			result = a.item(input.ID, protocol.AgentMemoryScopeProject, "edited", true)
+		}
+		output := memory.UpdateV1Output{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
+		encoded, err := jsoninput.Encode(output)
+		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
+	}
 	if request.Method == memory.ReviewV1Method {
 		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		var input memory.ReviewV1Input
@@ -385,7 +395,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 }
 
 func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) {
-	for _, method := range []string{memory.DeleteV1Method, memory.ReviewV1Method} {
+	for _, method := range []string{memory.DeleteV1Method, memory.ReviewV1Method, memory.UpdateV1Method} {
 		t.Run(method, func(t *testing.T) {
 
 			directory := t.TempDir()
@@ -416,11 +426,20 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			}
 			execute := func(ctx context.Context) error {
 				_, err := installedcommand.Execute(ctx, adapter, store, intent, policy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+					if method == memory.UpdateV1Method {
+						return adapter.PrepareUpdate(ctx, memory.UpdateV1Input{ID: adapterMemoryIDOne, Content: new("original patch"), Pinned: new(false)})
+					}
 					if method == memory.ReviewV1Method {
 						return adapter.PrepareReview(ctx, adapterMemoryIDOne, memory.ReviewApprove)
 					}
 					return adapter.PrepareDelete(ctx, adapterMemoryIDOne)
-				}, func(*protocol.CallPluginResponse) (memory.DeleteV1Output, error) { return memory.DeleteV1Output{}, nil })
+				}, func(reply *protocol.CallPluginResponse) (struct{}, error) {
+					if method == memory.UpdateV1Method {
+						_, err := adapter.DecodeUpdate(adapterMemoryIDOne, reply)
+						return struct{}{}, err
+					}
+					return struct{}{}, nil
+				})
 				return err
 			}
 			if err := execute(ctx); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
@@ -455,6 +474,10 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			stub.pluginCall = func(request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 				if request.InstallationID != pending.Request.InstallationID || request.Digest != pending.Request.Digest || request.Contribution != pending.Request.Contribution || request.Contract != pending.Request.Contract || request.Method != pending.Request.Method || request.Target != pending.Request.Target || !bytes.Equal(request.Input, pending.Request.Input) || options.IdempotencyKey != string(pending.CommandID) {
 					t.Fatal("delete recovery changed its original command or binding")
+				}
+				if method == memory.UpdateV1Method {
+					output, err := jsoninput.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOne, Scope: "user", Content: "original patch", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
+					return &protocol.CallPluginResponse{Output: output.JSON()}, err
 				}
 				return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
 			}

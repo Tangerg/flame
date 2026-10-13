@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-14.14",
+  "protocolVersion": "2026-10-14.15",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -195,42 +195,6 @@
       "enum": [
         "active",
         "pending"
-      ]
-    },
-    "AgentMemoryUpdateRequest": {
-      "type": "object",
-      "properties": {
-        "content": {
-          "type": "string",
-          "maxLength": 4096,
-          "pattern": "\\S"
-        },
-        "id": {
-          "type": "string",
-          "pattern": "^mem_[0-9a-f]{32}$"
-        },
-        "pinned": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "allOf": [
-        {
-          "anyOf": [
-            {
-              "required": [
-                "content"
-              ]
-            },
-            {
-              "required": [
-                "pinned"
-              ]
-            }
-          ]
-        }
       ]
     },
     "AppliedChange": {

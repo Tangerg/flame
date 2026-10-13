@@ -35,14 +35,12 @@ class AgentMemoryMutationGeneration {
   updateContent(id: string, content: string): Promise<void> {
     return this.#run(id, {
       execute: () => this.#gateway.updateContent(id, content),
-      commit: commitAgentMemoryItem,
     }).then(() => undefined);
   }
 
   setPinned(id: string, pinned: boolean): Promise<void> {
     return this.#run(id, {
       execute: () => this.#gateway.setPinned(id, pinned),
-      commit: commitAgentMemoryItem,
     }).then(() => undefined);
   }
 
@@ -135,18 +133,6 @@ const agentMemoryMutationPublication = createPublicationSlot<AgentMemoryMutation
 
 export function agentMemoryQuery(scope: AgentMemoryQuery["scope"], cwd?: string): AgentMemoryQuery {
   return scope === "user" ? { scope } : { scope, cwd };
-}
-
-function commitAgentMemoryItem(saved: AgentMemoryEntry): void {
-  queryClient.setQueriesData<AgentMemoryEntry[]>(
-    { queryKey: [WORKSPACE_AGENT_MEMORY_KEY] },
-    (current) => {
-      if (!current) return current;
-      const index = current.findIndex((item) => item.id === saved.id);
-      if (index < 0) return current;
-      return current.map((item) => (item.id === saved.id ? saved : item));
-    },
-  );
 }
 
 function commitAddedAgentMemory(input: AgentMemoryAddInput, saved: AgentMemoryEntry): void {

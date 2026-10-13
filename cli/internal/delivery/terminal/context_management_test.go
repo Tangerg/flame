@@ -43,22 +43,26 @@ type blockingAgentMemoryReviewService struct {
 
 type blockingAgentMemoryUpdateService struct {
 	AgentMemory
-	started  chan protocol.AgentMemoryUpdateRequest
+	started  chan memorycontract.UpdateV1Input
 	release  chan struct{}
 	canceled chan struct{}
 }
 
-func (b *blockingAgentMemoryUpdateService) Update(
-	ctx context.Context,
-	request protocol.AgentMemoryUpdateRequest,
-) (protocol.AgentMemoryItem, error) {
-	b.started <- request
+func (b *blockingAgentMemoryUpdateService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+	if request.Method != memorycontract.UpdateV1Method {
+		return b.AgentMemory.CallPlugin(ctx, request, commandID)
+	}
+	var input memorycontract.UpdateV1Input
+	if err := json.Unmarshal(request.Input, &input); err != nil {
+		return nil, err
+	}
+	b.started <- input
 	select {
 	case <-b.release:
-		return b.AgentMemory.Update(ctx, request)
+		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	case <-ctx.Done():
 		close(b.canceled)
-		return protocol.AgentMemoryItem{}, context.Cause(ctx)
+		return nil, context.Cause(ctx)
 	}
 }
 
@@ -134,9 +138,9 @@ func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, decisi
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Update(_ context.Context, request protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error) {
-	if err := request.ValidateWire(); err != nil {
-		return protocol.AgentMemoryItem{}, err
+func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycontract.UpdateV1Input) (protocol.AgentMemoryItem, error) {
+	if request.Content == nil && request.Pinned == nil {
+		return protocol.AgentMemoryItem{}, errors.New("update requires a change")
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -159,6 +163,19 @@ func (a *agentMemoryServiceStub) Update(_ context.Context, request protocol.Agen
 	return protocol.AgentMemoryItem{}, errors.New("not found")
 }
 
+func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycontract.UpdateV1Input) (protocol.CallPluginRequest, error) {
+	return boundMemoryRequest(memorycontract.UpdateV1Method, input)
+}
+func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (protocol.AgentMemoryItem, error) {
+	var row memorycontract.UpdateV1Output
+	if err := json.Unmarshal(reply.Output, &row); err != nil {
+		return protocol.AgentMemoryItem{}, err
+	}
+	if row.ID != id {
+		return protocol.AgentMemoryItem{}, errors.New("wrong update item")
+	}
+	return protocol.AgentMemoryItem{ID: row.ID, Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
 func (*agentMemoryServiceStub) PrepareReview(_ context.Context, id string, decision memorycontract.ReviewDecision) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.ReviewV1Method, memorycontract.ReviewV1Input{ID: id, Decision: string(decision)})
 }
@@ -175,8 +192,21 @@ func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, e
 }
 
 func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
-	if (request.Method != memorycontract.DeleteV1Method && request.Method != memorycontract.ReviewV1Method) || commandID == "" {
+	if (request.Method != memorycontract.DeleteV1Method && request.Method != memorycontract.ReviewV1Method && request.Method != memorycontract.UpdateV1Method) || commandID == "" {
 		return nil, errors.New("invalid memory command")
+	}
+	if request.Method == memorycontract.UpdateV1Method {
+		var input memorycontract.UpdateV1Input
+		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+			return nil, err
+		}
+		saved, err := a.updateItem(context.Background(), input)
+		if err != nil {
+			return nil, err
+		}
+		output := memorycontract.UpdateV1Output{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
+		encoded, err := jsoninput.Encode(output)
+		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
 	}
 	if request.Method == memorycontract.ReviewV1Method {
 		var input memorycontract.ReviewV1Input
@@ -359,7 +389,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryUpdateService{
-		AgentMemory: base, started: make(chan protocol.AgentMemoryUpdateRequest, 1),
+		AgentMemory: base, started: make(chan memorycontract.UpdateV1Input, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })

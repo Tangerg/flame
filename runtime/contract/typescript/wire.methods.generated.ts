@@ -9,7 +9,6 @@
 import type {
   AgentMemoryAddRequest,
   AgentMemoryItem,
-  AgentMemoryUpdateRequest,
   ApprovalModeResult,
   CallPluginRequest,
   CallPluginResponse,
@@ -267,7 +266,6 @@ const METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "agentMemory.update",
   "agentMemory.add",
   "feedback.create",
 ] as const;
@@ -374,7 +372,6 @@ const VALUE_METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "agentMemory.update",
   "agentMemory.add",
 ] as const;
 
@@ -1059,13 +1056,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "agentMemory.update": {
-    operation: "command",
-    response: "unary",
-    idempotency: "ownerResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "agentMemory.add": {
     operation: "command",
     response: "unary",
@@ -1299,9 +1289,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "goals.resume": [
     { requires: ["goals"] },
   ],
-  "agentMemory.update": [
-    { requires: ["agentMemory"] },
-  ],
   "agentMemory.add": [
     { requires: ["agentMemory"] },
   ],
@@ -1403,7 +1390,6 @@ export interface WireShapes {
   "tools.invoke": { params: InvokeToolRequest; result: unknown };
   "usage.session": { params: SessionUsageRequest; result: SessionUsage };
   "usage.summary": { params: UsageSummaryRequest; result: UsageSummary };
-  "agentMemory.update": { params: AgentMemoryUpdateRequest; result: AgentMemoryItem };
   "agentMemory.add": { params: AgentMemoryAddRequest; result: AgentMemoryItem };
   "feedback.create": { params: FeedbackRequest };
 }

@@ -91,7 +91,7 @@ Journal records contain original routing and salted input/intent fingerprints;
 they do not store authored input or business results. A typed decoder runs before
 settlement, and only witnessed owner refusals can settle as business failures.
 Core's removed requests are not converted or resent under a new command identity.
-Business storage and backend protocol remain unchanged. Remaining update/add
+Business storage and backend protocol remain unchanged. Remaining add
 and all-consumer/restart/native acceptance are still open.
 
 Core 2026-10-14.14 removes the Memory review method/request/global decision enum,
@@ -103,6 +103,16 @@ the original decision and refuses ambiguous pending prefixes. Clients own their
 review choices as presentation values; Runtime has no universal plugin-review enum.
 The public not_pending owner refusal replaces the former Core invalid_params
 translation. Retired requests receive no compatibility alias or automatic conversion.
+
+Core 2026-10-14.15 removes the Memory update API/DTO, delivery mapping and
+selected-role forwarder. CLI and workspace editing/pin/unpin use the publisher
+operation and its original item intent. Omission and explicit false remain distinct;
+an unknown command cannot absorb changed patch values. CLI resumes its stored raw
+patch before current target/catalog reads and rejects a changed editor resubmission.
+The generated publisher snapshot is decoded/validated before intent retirement.
+Workspace acknowledgement rereads the current cache owner rather than projecting
+an original provider's item into every current row with the same ID. The remaining
+Core add entrance, wider consumer migration and final acceptance remain open.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a

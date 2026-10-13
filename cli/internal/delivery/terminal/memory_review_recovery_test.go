@@ -64,3 +64,28 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 		t.Fatalf("exact pending identity lost precedence: found=%v error=%v", found, err)
 	}
 }
+
+func TestPendingMemoryUpdateKeepsOriginalPatchAndOmission(t *testing.T) {
+	content := "original patch"
+	original := memory.UpdateV1Input{ID: terminalMemoryPendingID, Content: &content, Pinned: new(false)}
+	request, err := boundMemoryRequest(memory.UpdateV1Method, original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := append([]byte(nil), request.Input...)
+	if err := retainedMemoryUpdate(request, memory.UpdateV1Input{ID: original.ID, Content: new(content), Pinned: new(false)}); err != nil {
+		t.Fatal(err)
+	}
+	for _, changed := range []memory.UpdateV1Input{
+		{ID: original.ID, Content: new("changed patch"), Pinned: new(false)},
+		{ID: original.ID, Content: &content},
+		{ID: original.ID, Content: &content, Pinned: new(true)},
+	} {
+		if err := retainedMemoryUpdate(request, changed); err == nil {
+			t.Fatal("changed patch replaced an unconfirmed original update")
+		}
+	}
+	if !bytes.Equal(before, request.Input) {
+		t.Fatal("checking a pending update changed original bytes")
+	}
+}

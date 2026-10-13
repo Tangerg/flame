@@ -381,7 +381,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"TestMCPServer":                 command("MCP", "TUI /mcp-test"),
 		"UpdateMCPServer":               command("MCP", "TUI /mcp-edit"),
 		"AddAgentMemory":                command("agent memory", "TUI /memory-add"),
-		"UpdateAgentMemory":             command("agent memory", "TUI memory edit/pin/unpin"),
 		"InvokeTool":                    command("diagnostic tools", "TUI /tool-invoke"),
 		"ListTools":                     command("diagnostic tools", "TUI /tools"),
 		"ListAgentDocs":                 command("authoring context", "TUI /agent-docs"),

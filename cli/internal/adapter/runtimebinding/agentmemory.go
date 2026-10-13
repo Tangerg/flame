@@ -17,7 +17,6 @@ import (
 )
 
 type agentMemoryBinding interface {
-	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 	AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 }
 
@@ -60,7 +59,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 			return nil, runtimeContractViolation("list agent memory exceeded its target capacity or returned an empty continuation")
 		}
 		for _, row := range result.Rows {
-			item := protocol.AgentMemoryItem{ID: row.ID, Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+			item := memoryProjection(row)
 			if err := conversation.ValidateMemoryItem(item); err != nil {
 				return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", len(items)+1, err)
 			}
@@ -92,14 +91,31 @@ func (a *AgentMemory) PrepareReview(ctx context.Context, id string, decision mem
 	return a.prepareCommand(ctx, memory.ReviewV1Method, input)
 }
 
-func (a *AgentMemory) Update(ctx context.Context, request protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error) {
-	r := a.runtime
-	if err := request.ValidateWire(); err != nil {
-		return protocol.AgentMemoryItem{}, err
+func (a *AgentMemory) PrepareUpdate(ctx context.Context, request memory.UpdateV1Input) (protocol.CallPluginRequest, error) {
+	input, err := jsoninput.Encode(request)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
 	}
-	options := r.commandOptions()
-	result, err := r.agentMemory.UpdateAgentMemory(ctx, request, options)
-	return agentMemoryResult("update agent memory", request.ID, "", result, err)
+	return a.prepareCommand(ctx, memory.UpdateV1Method, input)
+}
+
+func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (protocol.AgentMemoryItem, error) {
+	if reply == nil {
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory returned nil")
+	}
+	var output memory.UpdateV1Output
+	if err := json.Unmarshal(reply.Output, &output, json.RejectUnknownMembers(true)); err != nil {
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory output: %v", err)
+	}
+	item := memoryProjection(output)
+	if err := protocol.ValidateWireTree(item); err != nil {
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory projection: %v", err)
+	}
+	return agentMemoryResult("update agent memory", id, "", &item, nil)
+}
+
+func memoryProjection(row memory.UpdateV1Output) protocol.AgentMemoryItem {
+	return protocol.AgentMemoryItem{ID: row.ID, Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {

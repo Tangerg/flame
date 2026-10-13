@@ -1,7 +1,11 @@
 import type { AgentMemoryGateway } from "../application/ports/agentMemoryGateway";
 import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/client";
 import type { AgentMemoryEntry } from "../application/workspaceQueries";
-import { deleteInstalledMemory, reviewInstalledMemory } from "../public/memory";
+import {
+  deleteInstalledMemory,
+  reviewInstalledMemory,
+  updateInstalledMemory,
+} from "../public/memory";
 import { AgentMemoryMutationOwner } from "../application/agentMemoryMutationOwner";
 
 export function agentMemoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
@@ -24,10 +28,10 @@ function runtimeAgentMemoryGateway(client: FlameClient): AgentMemoryGateway {
       await reviewInstalledMemory(client, id, decision);
     },
     async updateContent(id, content) {
-      return agentMemoryEntry(await client.agentMemory.update({ id, content }));
+      return agentMemoryEntry(await updateInstalledMemory(client, { ID: id, Content: content }));
     },
     async setPinned(id, pinned) {
-      return agentMemoryEntry(await client.agentMemory.update({ id, pinned }));
+      return agentMemoryEntry(await updateInstalledMemory(client, { ID: id, Pinned: pinned }));
     },
     async delete(id) {
       await deleteInstalledMemory(client, id);

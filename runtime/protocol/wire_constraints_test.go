@@ -430,19 +430,7 @@ func TestAgentMemoryContentWireConstraintUsesUnicodeCharacters(t *testing.T) {
 		"AgentMemoryAddRequest",
 		"content",
 	)
-	assertConstraintField(
-		t,
-		(AgentMemoryUpdateRequest{ID: agentMemoryWireItemID('1'), Content: &content}).ValidateWire(),
-		"AgentMemoryUpdateRequest",
-		"content",
-	)
 	for _, blank := range []string{"", " \n\t"} {
-		assertConstraintField(
-			t,
-			(AgentMemoryUpdateRequest{ID: agentMemoryWireItemID('1'), Content: &blank}).ValidateWire(),
-			"AgentMemoryUpdateRequest",
-			"content",
-		)
 		assertConstraintField(
 			t,
 			(AgentMemoryAddRequest{Scope: AgentMemoryScopeUser, Content: blank}).ValidateWire(),
@@ -466,15 +454,11 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 
 	validID := agentMemoryWireItemID('a')
 	now := time.Unix(1, 0).UTC()
-	pinned := true
 	valid := []struct {
 		name     string
 		shape    string
 		validate func(string) error
 	}{
-		{name: "update request", shape: "AgentMemoryUpdateRequest", validate: func(id string) error {
-			return (AgentMemoryUpdateRequest{ID: id, Pinned: &pinned}).ValidateWire()
-		}},
 		{name: "item projection", shape: "AgentMemoryItem", validate: func(id string) error {
 			return (AgentMemoryItem{
 				ID: id, Scope: AgentMemoryScopeUser, Content: "fact",
@@ -497,24 +481,6 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 			assertConstraintField(t, shape.validate(id), shape.shape, "id")
 		}
 	}
-}
-
-func TestAgentMemoryUpdateRequiresAtLeastOneChange(t *testing.T) {
-	t.Parallel()
-
-	id := agentMemoryWireItemID('1')
-	content := "edited"
-	pinned := true
-	for _, request := range []AgentMemoryUpdateRequest{
-		{ID: id, Content: &content},
-		{ID: id, Pinned: &pinned},
-		{ID: id, Content: &content, Pinned: &pinned},
-	} {
-		if err := request.ValidateWire(); err != nil {
-			t.Errorf("ValidateWire rejected update with changes: %v", err)
-		}
-	}
-	assertConstraintField(t, (AgentMemoryUpdateRequest{ID: id}).ValidateWire(), "AgentMemoryUpdateRequest", "content|pinned")
 }
 
 func TestFeedbackRequiresRatingOrNonBlankText(t *testing.T) {

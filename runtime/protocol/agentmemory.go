@@ -44,13 +44,6 @@ const (
 	AgentMemoryStatusPending AgentMemoryStatus = "pending"
 )
 
-// AgentMemoryUpdateRequest — agentMemory.update body. A nil field is unchanged.
-type AgentMemoryUpdateRequest struct {
-	ID      string  `json:"id"`
-	Content *string `json:"content,omitzero"`
-	Pinned  *bool   `json:"pinned,omitzero"`
-}
-
 // AgentMemoryAddRequest — agentMemory.add body.
 type AgentMemoryAddRequest struct {
 	Scope     AgentMemoryScope `json:"scope"`

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.14";
+export const PROTOCOL_VERSION = "2026-10-14.15";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -245,12 +245,6 @@ export type AgentMemoryOrigin = "auto" | "user";
 export type AgentMemoryScope = "project" | "user";
 
 export type AgentMemoryStatus = "active" | "pending";
-
-export interface AgentMemoryUpdateRequest {
-  content?: string;
-  id: string;
-  pinned?: boolean;
-}
 
 export interface AppliedChange {
   from?: string;
