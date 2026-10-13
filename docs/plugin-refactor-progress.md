@@ -2,53 +2,66 @@
 
 ## Current stage
 
-Stage 4y (d33aa1482) establishes the public Go SDK captured unary model contract,
-flame.model/call.v1, over Scope chat.Request and complete chat.Response through
-the existing authenticated callback owner. ModelMethod owns the schema source;
-CallModel validates/snapshots before one delivery and validates detached evidence;
-NewModelCallback preserves the captured handler context and validates Scope values.
-No new model parser, text DTO, execution loop, history owner or result store exists.
-The calling operation still owns exact selection, budget and effect identity fencing.
-The SDK does not infer a provider, retry provider work or promise durable replay.
+Stage 4z (5cf6acb68) implements actual public Go callback streams on the existing
+Runtime-owned authenticated endpoint. StreamingMethod declares input, chunk and final
+output schemas; stream schema participates in immutable identity/admission. The
+feature generator emits canonical chunk references, Go aliases, TS MethodChunks and
+explicit documentation without changing unary artifact shapes. Core .20 projects
+optional stream metadata; backend remains 2026-10-14.2 and private formats are unchanged.
 
-ModelResult permits a valid known inner Response and ModelFailure together, rather
-than dropping admitted usage/reasoning/model metadata when an outer operation fails.
-Failure-only is valid; an empty outcome/blank failure is refused by the generated
-schema. Closed failure codes derive from one Go vocabulary; canceled/deadline
-categories retain errors.Is across transport. Absent usage/cache data and explicit
-zero remain distinguishable. This preserves known completed inner evidence, not
-unvalidated partial provider output or a durable model receipt.
+NewStreamingCallback/StreamHost reuse shared raw-input/call-context admission and
+the existing SSE reader/writer. Request evidence freezes before iteration; provider
+work and delivery remain lazy. Chunk/frame/final validation is explicit, and one
+terminal value is held until its source ends so a later error cannot turn tentative
+completion into success. Synchronous writes stop advancing on transport failure,
+with no unbounded event queue. Early consumer stop cancels transport; the existing
+callback lifetime cancels/joins source work. Lost/truncated final evidence stays
+unconfirmed; no reconnect/provider retry or competing result store is introduced.
 
-An external-package subprocess uses only public SDK/Scope APIs to call the captured
-host model without a Desktop relay and receives known inner response plus outer
-failure. Real cancellation stops both caller and model owner work; invalid input is
-refused before transport and retired references cannot enter the provider owner.
-Regenerate the public Go API inventory and update module documentation. Core stays
-2026-10-14.19 and backend stays 2026-10-14.2; existing methods/data formats are unchanged.
+NewModelStreamCallback/StreamModel use Scope response deltas and its accumulator.
+The callback's actual MaxResponseBytes bounds each frame/final result and conservatively
+bounds cumulative encoded deltas before accumulation, including metadata. This is
+explicit byte-based buffering policy and may be stricter than final response bytes;
+there is no arbitrary chunk-count ceiling or parallel model parser. A completed inner
+response/usage remains present with subsequent outer failure; partial admitted chunks
+remain observable without being claimed as complete response.
 
-Passed: full-response/usage/reasoning/captured-authority, invalid-input, strict empty
-outcome and external executable callback checks (0.680s combined); real cancel-owner
-regression (0.563s); final closed-code/schema/executable/cancellation checks (0.736s);
-Runtime/CLI production builds, API generation and gofmt/diff checks. Initial reasoning
-constructor arity was repaired before execution. No active executed failure remains.
-No frontend UI/E2E/screenshot tests are added or executed; no frontend code changed.
-Full/vet/race/native/all-workflow qualification remains in the final consolidated phase.
+An external-package subprocess consumes a callback capturing a frozen remaining Scope
+chain, verifies order/transformed input and one provider invocation without a Desktop
+relay. This proves callback streaming and the remaining-chain substrate, not installed
+host-to-backend decorator composition. Unary Go binding, installed admission and TS
+component binding reject stream methods before delivery/route persistence. Actual
+installed duplex stream delivery, contribution/dependency retention, durable inner
+observations, TS streaming parity and Interaction/auxiliary/Memory consumers remain open.
 
-This is a unary SDK foundation, not completion of canonical product model execution.
-Interaction/auxiliary/Memory production consumers, installation-selected model
-composition, streaming aggregation, remote next, frozen decorator order, backpressure,
-actual model identity and durable inner evidence remain open. Memory's existing
-narrower model/embedding grant is still an actual consumer; no replacement or
-compatibility claim is made. TS/independent published author parity also remains open.
-Next implement the real canonical streaming/decorator link and migrate production
-consumers through that owner, then finish scoped dependencies, all-workflow recovery
-and P01-P48/final acceptance. The full goal remains active.
+Passed: callback/model/stream/feature focused group (plugin 1.117s, generator 1.175s);
+shared unary raw-input/schema admission (0.337s), capability contract package (0.189s),
+aggregate-byte bound (0.774s), installed pre-route stream refusal (1.048s), external
+frozen-chain stream (0.678s); Runtime/CLI builds, API generation, shared/Desktop/plugin
+SDK types, Vite, source 90/90 (108 calls, three sidecars/14 topics), layer 1145/3702,
+exact regenerated ESM, affected native/terminal/adapter source compilation and gofmt/
+diff checks. Initial stream literal/helper/feature-emitter names and SSE media-type
+handling failures are repaired; SSE's existing HTTP reader owns media-type validation.
+No active executed failure remains. No frontend UI/E2E/screenshot tests are added or
+run. Full/vet/race/native/all-workflow qualification remains final consolidated work.
 
-Main 993eb865 is integrated; merge reports already up to date. Original design input
-hashes are unchanged. No temporary script/output/background process was retained;
-user-owned stash is preserved and this required worktree remains active.
+Main 993eb865 is integrated; merge reports already up to date. Original proposal,
+review and draft hashes are unchanged. Owned dist/temporary outputs are removed,
+no owned background process remains and user stash is preserved. Next implement
+installed host-to-backend stream/decorator binding and production canonical model
+migration, then close scoped dependencies, all-workflow recovery, independent author
+parity and P01-P48/final acceptance. The full goal remains active.
 
 ## Completed
+
+- Stage 4z (5cf6acb68): typed callback stream schemas/chunk/final identities and
+  feature Go/TS/canonical/documentation generation; Core optional stream metadata.
+- Stage 4z: same callback endpoint/SSE codec, shared original admission, lazy frozen
+  request, terminal-after-source ordering, bounded writes and stop/cancel/source joining.
+- Stage 4z: canonical Scope aggregation, captured byte budget, completed inner
+  evidence plus outer failure and external executable frozen remaining-chain proof.
+- Stage 4z: reject stream methods at unary Go/installed/TS admission; installed duplex
+  decorators, production consumers, TS streams and durable inner observation remain open.
 
 - Stage 4y (d33aa1482): public Go SDK complete Scope model request/response callback
   contract, caller-owned capture/admission and one-delivery explicit identity.
@@ -461,7 +474,7 @@ user-owned stash is preserved and this required worktree remains active.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Complete point lifecycle, durable scoped composition, required-member policy, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
 - Business View/renderer HTML carriers and closed contextual action wrappers are removed. Complete actual CLI/Core business facade migration through public installed operations with original binding, command/receipt and lifecycle owners. No frontend UI/E2E execution is authorized.
-- Public Go captured unary model contract now passes full-response and executable callback checks. Complete canonical product model execution/consumer migration, installed streaming decorators/remote next, frozen order, cancellation/backpressure, actual identity and durable inner evidence; the unary foundation does not close these requirements.
+- Public Go model callback streams now pass actual lazy/cancel/backpressure/aggregate/inner-failure and external frozen remaining-chain checks. Complete canonical product model execution/consumer migration, installed duplex streaming decorators/remote next, contribution retention, actual identity and durable inner evidence; callback substrate tests do not close installed production requirements.
 - Retain and execute final acceptance for Stage 3i business-only Memory input and missing-callback admission; Stage 3k installed public calls/refusal/recovery; Stage 3l original target/caller metadata; Stage 3m durable Schedules trigger propagation; Stage 3n dependency resolution/cycles; Stage 3o activation publication/retirement; Stage 3p provider waiting, setup/callback/authority/lifetime integration. Compilation is not runtime acceptance. Stage 3m has implemented the earlier durable handoff gap.
 - Complete public independent-author/module packaging, final declaration/activation/package integrity audit, deletion audit and all requirement-level verification. Current-source author builds do not establish availability of a published Runtime module.
 - Preserve unrelated main work, existing Memory ledger and Schedules business facts, source/credential/integrity checks and the management recovery entrance throughout remaining changes.
@@ -479,6 +492,10 @@ user-owned stash is preserved and this required worktree remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Chunk and terminal result schemas are distinct parts of one immutable streaming method identity | Stream support must correspond to executable behavior and generate the same Go/TS/canonical contract | A streaming flag on unary delivery, omitted chunk identity/schema, independent handwritten DTOs or premature final success |
+| 2026-10-14 | Existing callback endpoint and SSE codec own model stream framing/lifetime | Two logical directions do not justify another listener, parser, unbounded queue or client relay | Per-stream endpoint, custom SSE/JSON parser, detached producer, automatic reconnect/provider replay or treating partial output as completion |
+| 2026-10-14 | Scope accumulation uses the captured response byte capacity as conservative cumulative encoded-delta budget | The aggregation needed for a final model response must stay bounded by actual caller resources | Arbitrary chunk count, unbounded accumulator, parallel aggregate parser or an undocumented claim that this conservative budget equals final serialized bytes |
+| 2026-10-14 | Unary installed/component entrances refuse stream metadata before route/delivery creation | Callback streaming does not establish host-to-backend or TS transport support | Silent stream downgrade, orphan uncertain command after unsupported delivery or declaring installation/production parity from substrate tests |
 | 2026-10-14 | Public model exchange consumes Scope request/response through the existing callback owner | Canonical model semantics must preserve full usage/reasoning/metadata without a second text parser or provider-selection owner | A text-only model facade, new execution/history/result engine, inferred current provider or claiming a unary descriptor streams |
 | 2026-10-14 | Known valid inner response and outer failure coexist in the model result | Outer failure cannot erase completed inner evidence or imply no model work occurred | Failure-only projection that drops known response, fake success, unvalidated partial output or a second durable provider receipt |
 | 2026-10-14 | Model caller retains selection/budget/identity admission and one delivery | Generic callback authoring cannot impose Memory's two-call policy or promise provider replay after lost output | Universal Memory budget, automatic provider retry, new IDs for unresolved work, private model callback wrappers labeled migrated or claiming an SDK test proves product installation composition |
@@ -651,7 +668,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
-| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; complete production/installed dependency binding, streaming decorators/next and durable inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go |
+| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; typed callback streaming, canonical Scope aggregate, transport backpressure/cancellation, byte budget and external frozen remaining-chain proof now pass; installed host-to-backend stream/decorator binding, production consumers and durable inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go; plugin/stream.go; model_stream.go; model_stream_external_test.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Stage 4l-4o all actual CLI Schedule mutations retain original request/owner/revision before I/O; pending creation/edit/enablement precede new form/provider/revision reads. Capture/byte/store/owner/persistence/decoder checks pass. Native process replacement acceptance, remaining Memory/other entrances and cross-generation recovery open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
 | One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
@@ -673,13 +690,32 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | Cases | Required evidence | Status |
 | --- | --- | --- |
 | P01-P09 | Author parity, selected roles, plugin-defined points, declaration failure, provisional resources and available management | Open |
-| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy/retirement and public Go Scope model callback/full valid inner result plus outer failure/cancellation subset verified; complete installed production link, decorators and streaming still open |
+| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy/retirement and public Go Scope model callback/full valid inner result plus outer failure/cancellation subset verified; actual callback stream/aggregate/cancel/backpressure/external frozen remaining-chain subset now verified; installed duplex production link, decorators/retention and durable inner observations still open |
 | P21-P28 | Shared operation entrances, receipts/conflicts, scheduling acceptance/capture, independent Run lifetime and Memory owner invariants | Actual Schedules acceptance/capture/retirement and independent Run lifetime verified; full shared installed entrances remain open |
 | P29-P35 | Shared React binding, recoverable UI failure, target capture, shared resource owner, applicability, capacity and appearance owner | Open; UI/E2E execution excluded by user |
 | P36-P41 | Generation safety, waiting dependencies, retained data, generic history, remote environment and headless host calls | Open |
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+### Stage 4z real callback model streams and remaining-chain substrate
+
+- Passed: lazy/frozen request, Scope chunk/final equivalence, early stop/source join,
+  tentative-final rejection, failed-write source stop, completed inner plus outer
+  failure, external frozen order/transformed input and stream generation/identity
+  group (plugin 1.117s; generator 1.175s). Byte-budget regression 0.774s; independent
+  executable stream 0.678s; installed pre-route refusal 1.048s.
+- Passed: affected unary Method admission/schema regressions 0.337s, all capability
+  pure contract tests 0.189s; Runtime/CLI builds and current API generation.
+- Passed: shared/Desktop/plugin SDK types, Vite, source 90/90 with 108 calls and
+  three sidecars/14 topics, layer 1145/3702, exact rebuilt resources, native/terminal/
+  adapter source compilation, gofmt/diff, original input hashes and main integration.
+- Repaired: stream literal/helper/feature-emitter references and media-type handling.
+  SSE's HTTP reader owns parsing/validation. No failure is skipped or weakened.
+- Not run: frontend UI/E2E/screenshot by user instruction; full/vet/race/native remain
+  final-phase work. Installed duplex stream composition, production consumers,
+  dependency retention, durable evidence and TS author parity remain unproven.
+
 
 ### Stage 4y public captured unary model foundation
 
@@ -1798,6 +1834,13 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Core .20 adds stream schema metadata; rebuild current Go/TS clients together.
+  Callback stream methods require the actual new stream API and final consumption,
+  with no downgrade/retry. Aggregate byte policy conservatively counts encoded
+  deltas, so callers must allocate their actual response budget accordingly. Existing
+  unary identities, backend protocol/private data formats stay unchanged. Installed
+  duplex/TS/production model composition and independent module publication remain open.
 
 - New public Go model callback APIs require the current module for external authors.
   No existing Core/backend method or private data format changes; no module is
