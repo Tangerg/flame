@@ -17,6 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
@@ -139,13 +141,13 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 		t.Fatalf("private command identity conflict=%v", reused.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: false}, "disable")
-	unavailable := invoke(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "")
+	unavailable := memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("withdrawn owner remained callable=%v", unavailable.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 1 || page.Data[0] != *fact {
 		t.Fatalf("reenable lost private facts=%+v", page)
 	}
@@ -224,7 +226,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	installed = stageCommandReplacement(t, r, installed, source)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-memory")
-	unavailable := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	unavailable := memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
@@ -241,7 +243,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	replay := r.must(delivery.AgentMemoryAdd, request, "lost").(*protocol.AgentMemoryItem)
-	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
 	}

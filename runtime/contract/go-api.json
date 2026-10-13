@@ -237,10 +237,6 @@
               "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
             },
             {
-              "name": "ListAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
-            },
-            {
               "name": "ListApprovalRules",
               "signature": "func(ctx context.Context, request protocol.ListApprovalRulesRequest, options CallOptions) (*protocol.ListApprovalRulesResult, error)"
             },
@@ -845,10 +841,6 @@
             {
               "name": "ListAgentDocs",
               "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
-            },
-            {
-              "name": "ListAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
             {
               "name": "ListApprovalRules",
@@ -3568,7 +3560,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.11\""
+          "value": "\"2026-10-14.12\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4504,32 +4496,6 @@
               "name": "ID",
               "type": "string",
               "tag": "json:\"id\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "AgentMemoryListRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Scope",
-              "type": "AgentMemoryScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            },
-            {
-              "name": "PageQuery",
-              "type": "PageQuery"
             }
           ],
           "methods": [

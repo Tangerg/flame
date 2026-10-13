@@ -2,7 +2,11 @@ package runtimebinding
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"testing"
 	"time"
 
@@ -18,25 +22,30 @@ const (
 )
 
 type agentMemoryBindingStub struct {
-	t            *testing.T
-	actions      []string
-	now          time.Time
-	listed       *protocol.Page[protocol.AgentMemoryItem]
-	nilList      bool
-	updateResult *protocol.AgentMemoryItem
-	addResult    *protocol.AgentMemoryItem
-	listPage     func(protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error)
+	pluginBinding
+	providerReads    int
+	provider         string
+	protocolOverride string
+	calls            []protocol.CallPluginRequest
+	t                *testing.T
+	actions          []string
+	now              time.Time
+	listed           *protocol.Page[protocol.AgentMemoryItem]
+	nilList          bool
+	updateResult     *protocol.AgentMemoryItem
+	addResult        *protocol.AgentMemoryItem
+	listPage         func(memory.ListV1Input) (*protocol.Page[protocol.AgentMemoryItem], error)
 }
 
-func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request protocol.AgentMemoryListRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error) {
+func (a *agentMemoryBindingStub) list(request memory.ListV1Input, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error) {
 	a.assertMeta(options.RequestMeta)
 	switch request.Scope {
-	case protocol.AgentMemoryScopeProject:
-		if request.Workspace == nil || request.Workspace.Path != "/workspace" {
+	case string(protocol.AgentMemoryScopeProject):
+		if request.CWD != "/workspace" {
 			a.t.Fatalf("project list request = %+v", request)
 		}
-	case protocol.AgentMemoryScopeUser:
-		if request.Workspace != nil {
+	case string(protocol.AgentMemoryScopeUser):
+		if request.CWD != "" {
 			a.t.Fatalf("user list request leaked workspace: %+v", request)
 		}
 	default:
@@ -52,7 +61,7 @@ func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request prot
 		return a.listed, nil
 	}
 	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{{
-		ID: adapterMemoryIDOne, Scope: request.Scope, Content: "durable fact", Origin: protocol.AgentMemoryOriginAuto,
+		ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScope(request.Scope), Content: "durable fact", Origin: protocol.AgentMemoryOriginAuto,
 		Status: protocol.AgentMemoryStatusPending, CreatedAt: a.now, UpdatedAt: a.now,
 	}}}, nil
 }
@@ -63,7 +72,7 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			calls := 0
 			item := protocol.AgentMemoryItem{ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeUser, Content: "fact", Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, CreatedAt: now, UpdatedAt: now}
-			stub := &agentMemoryBindingStub{t: t, listPage: func(request protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
+			stub := &agentMemoryBindingStub{t: t, listPage: func(request memory.ListV1Input) (*protocol.Page[protocol.AgentMemoryItem], error) {
 				calls++
 				if calls == 1 {
 					if request.Cursor != "" {
@@ -82,7 +91,7 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 				}
 				return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{item}}, nil
 			}}
-			adapter := &AgentMemory{runtime: &Connection{agentMemory: stub, meta: requestMeta("test")}}
+			adapter := &AgentMemory{runtime: &Connection{agentMemory: stub, plugins: stub, meta: requestMeta("test")}}
 			target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 			if err != nil {
 				t.Fatal(err)
@@ -125,7 +134,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &agentMemoryBindingStub{t: t, now: now, listed: test.listed, nilList: test.nilList}
 			adapter := &AgentMemory{runtime: &Connection{
-				agentMemory: stub,
+				agentMemory: stub, plugins: stub,
 				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 					Ref:          protocol.WorkspaceRef{Path: "/workspace"},
 					ProjectRoot:  "/workspace",
@@ -207,7 +216,7 @@ func (a *agentMemoryBindingStub) assertCommand(options flameruntime.CommandOptio
 func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.T) {
 	stub := &agentMemoryBindingStub{t: t, now: time.Now()}
 	adapter := &AgentMemory{runtime: &Connection{
-		agentMemory: stub,
+		agentMemory: stub, plugins: stub,
 		workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
 			Ref:          protocol.WorkspaceRef{Path: "/workspace"},
 			ProjectRoot:  "/workspace",
@@ -302,5 +311,85 @@ func TestAgentMemoryAdapterRejectsAnUnidentifiedAddition(t *testing.T) {
 			adapter := &AgentMemory{runtime: &Connection{agentMemory: test.stub, meta: requestMeta("test")}}
 			requireRuntimeContractViolation(t, test.invoke(adapter))
 		})
+	}
+}
+
+const memoryInstallation = "12345678-1234-1234-1234-123456789abc"
+
+func (a *agentMemoryBindingStub) ListPluginProviders(_ context.Context, _ flameruntime.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error) {
+	a.providerReads++
+	id := memoryInstallation
+	if a.provider != "" {
+		id = a.provider
+	}
+	return protocol.NewPage([]protocol.PluginProviderSelection{{Role: "memory", InstallationID: id, Contribution: "memory-provider"}}), nil
+}
+func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ flameruntime.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
+	contract, err := capability.Parse([]byte(memory.CapabilityJSON))
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	descriptor := contract.Descriptor()
+	if a.protocolOverride != "" {
+		descriptor.Protocol = a.protocolOverride
+	}
+	return protocol.NewPage([]protocol.PluginInstallation{{ID: memoryInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: descriptor}}}}}), nil
+}
+func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+	if request.InstallationID != memoryInstallation || request.Target.Reference != memoryInstallation || request.Contract != memory.CapabilityJSON || request.Method != memory.ListV1Method || options.IdempotencyKey != "" {
+		a.t.Fatalf("unbound memory query: %+v", request)
+	}
+	a.calls = append(a.calls, request)
+	var input memory.ListV1Input
+	if err := json.Unmarshal(request.Input, &input); err != nil {
+		a.t.Fatal(err)
+	}
+	page, err := a.list(input, flameruntime.CallOptions{RequestMeta: options.RequestMeta})
+	if err != nil || page == nil {
+		return nil, err
+	}
+	output := memory.ListV1Output{NextCursor: page.NextCursor, Rows: make([]memory.UpdateV1Output, 0, len(page.Data))}
+	for _, row := range page.Data {
+		output.Rows = append(output.Rows, memory.UpdateV1Output{ID: row.ID, Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
+	}
+	encoded, err := jsoninput.Encode(output)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	return &protocol.CallPluginResponse{Output: encoded.JSON()}, nil
+}
+
+func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
+	now := time.Now()
+	stub := &agentMemoryBindingStub{t: t}
+	stub.listPage = func(input memory.ListV1Input) (*protocol.Page[protocol.AgentMemoryItem], error) {
+		row := protocol.AgentMemoryItem{ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeUser, Content: "fact", Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, CreatedAt: now, UpdatedAt: now}
+		if input.Cursor == "" {
+			stub.provider = "replacement-installation"
+			return protocol.NewPageWithCursor([]protocol.AgentMemoryItem{row}, "next"), nil
+		}
+		row.ID = adapterMemoryIDTwo
+		return protocol.NewPage([]protocol.AgentMemoryItem{row}), nil
+	}
+	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
+	target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := adapter.Items(t.Context(), target)
+	if err != nil || len(items) != 2 || stub.providerReads != 1 || len(stub.calls) != 2 {
+		t.Fatalf("original Memory traversal: items=%v, providers=%d, calls=%d, error=%v", items, stub.providerReads, len(stub.calls), err)
+	}
+}
+
+func TestMemoryReadRefusesAnotherPublishedProtocolBeforeDispatch(t *testing.T) {
+	stub := &agentMemoryBindingStub{t: t, protocolOverride: "another-protocol"}
+	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
+	target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adapter.Items(t.Context(), target); !errors.Is(err, protocol.ErrPluginUnavailable) || len(stub.calls) != 0 {
+		t.Fatalf("mismatched publication dispatched: %v, calls=%d", err, len(stub.calls))
 	}
 }

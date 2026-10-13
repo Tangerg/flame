@@ -12,11 +12,6 @@ import (
 // complete Go collectors; it does not establish a separate management limit.
 const MaximumAgentMemoryItemsPerTarget = agentmemory.MaxVisiblePerTarget
 
-// ListAgentMemory returns curated Agent memory and review candidates.
-func (r *binding) ListAgentMemory(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error) {
-	return r.invoke[protocol.AgentMemoryListRequest, *protocol.Page[protocol.AgentMemoryItem]](ctx, delivery.AgentMemoryList, request, callOptions(options))
-}
-
 // ReviewAgentMemory accepts or rejects an Agent memory candidate.
 func (r *binding) ReviewAgentMemory(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.AgentMemoryReview, request, commandOptions(options))

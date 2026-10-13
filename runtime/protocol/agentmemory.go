@@ -44,14 +44,6 @@ const (
 	AgentMemoryStatusPending AgentMemoryStatus = "pending"
 )
 
-// AgentMemoryListRequest — agentMemory.list body. Scope is explicit. Project
-// scope requires Workspace; user scope forbids it (contract shape rules).
-type AgentMemoryListRequest struct {
-	Scope     AgentMemoryScope `json:"scope"`
-	Workspace *WorkspaceRef    `json:"workspace,omitzero"`
-	PageQuery
-}
-
 // AgentMemoryReviewRequest — agentMemory.review body. decision is
 // "approve" | "reject".
 type AgentMemoryReviewRequest struct {

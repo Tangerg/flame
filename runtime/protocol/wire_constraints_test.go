@@ -319,27 +319,6 @@ func TestAgentMemoryTargetIsUnambiguous(t *testing.T) {
 	t.Parallel()
 
 	workspace := &WorkspaceRef{Path: "/repo"}
-	for _, request := range []AgentMemoryListRequest{
-		{Scope: AgentMemoryScopeProject, Workspace: workspace},
-		{Scope: AgentMemoryScopeUser},
-	} {
-		if err := request.ValidateWire(); err != nil {
-			t.Errorf("ValidateWire rejected valid target %+v: %v", request, err)
-		}
-	}
-
-	assertConstraintField(
-		t,
-		(AgentMemoryListRequest{Scope: AgentMemoryScopeProject}).ValidateWire(),
-		"AgentMemoryListRequest",
-		"workspace",
-	)
-	assertConstraintField(
-		t,
-		(AgentMemoryListRequest{Scope: AgentMemoryScopeUser, Workspace: workspace}).ValidateWire(),
-		"AgentMemoryListRequest",
-		"workspace",
-	)
 	assertConstraintField(
 		t,
 		(AgentMemoryAddRequest{Scope: AgentMemoryScopeUser, Workspace: workspace, Content: "fact"}).ValidateWire(),

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -26,7 +28,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	list := func() delivery.Result {
-		return r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		return memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	}
 	if response := list(); response.Failure == nil || !errors.Is(response.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("enablement chose a provider: %v", response.Failure)
@@ -61,14 +63,14 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	r.must(delivery.AgentMemoryAdd, request, "uncertain")
-	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
 	}
 	r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: "selected owner's fact"}, "new-command")
 	r = reopenCommandRuntime(t, r, &cfg)
 	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page = r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page = readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 1 || page.Data[0].Content != "selected owner's fact" {
 		t.Fatalf("restart changed provider choice or private data: %+v", page.Data)
 	}

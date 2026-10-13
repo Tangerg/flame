@@ -12,7 +12,6 @@ import (
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
@@ -65,18 +64,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	}
 	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
-func (m *Memory) List(ctx context.Context, input app.ListInput) (pagination.Page[memory.Item], error) {
-	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
-	if err != nil {
-		return pagination.Page[memory.Item]{}, err
-	}
-	value, err := query(ctx, location, session, m.contracts.List, rpc.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: input.Limit.Explicit()}, sdk.ParamsBase{})
-	if err != nil {
-		return pagination.Page[memory.Item]{}, rpc.DecodeError(err)
-	}
-	items, err := restoreItems(value.Rows)
-	return pagination.Page[memory.Item]{Rows: items, NextCursor: value.NextCursor}, err
-}
+
 func (m *Memory) Add(ctx context.Context, scope memory.Scope, cwd, content string) (memory.Item, error) {
 	value, err := invokeCommand[rpc.AddInput, rpc.AddResult](ctx, m.commands, m.contracts.Capability, rpc.Add, rpc.AddInput{Scope: scope, CWD: cwd, Content: content}, func(value rpc.AddResult) error { _, err := memory.RestoreItem(value.Item); return err })
 	if err != nil {

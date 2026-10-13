@@ -853,7 +853,6 @@ func registerObjectConstraints(s *Shapes) {
 	})
 
 	for _, target := range []reflect.Type{
-		typeOf[protocol.AgentMemoryListRequest](),
 		typeOf[protocol.AgentMemoryAddRequest](),
 	} {
 		s.constraint(ObjectConstraintSpec{

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.11` · 100 methods
+Protocol `2026-10-14.12` · 99 methods
 
 ## Methods
 
@@ -105,7 +105,6 @@ Protocol `2026-10-14.11` · 100 methods
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
 | `usage.summary` | query | unary | none | none | none | — | — | — |
-| `agentMemory.list` | query | unary | none | none | cursor | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `agentMemory.review` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `agentMemory.update` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
 | `agentMemory.delete` | command | unary | ownerResponse | none | none | — | `agentMemory` | `plugin_unavailable`, `capability_not_negotiated` |
@@ -1246,7 +1245,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `goals.get` | always | `goals` |
 | `goals.stop` | always | `goals` |
 | `goals.resume` | always | `goals` |
-| `agentMemory.list` | always | `agentMemory` |
 | `agentMemory.review` | always | `agentMemory` |
 | `agentMemory.update` | always | `agentMemory` |
 | `agentMemory.delete` | always | `agentMemory` |

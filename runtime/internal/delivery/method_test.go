@@ -123,7 +123,7 @@ func TestRunReplayCursorRequiresRunEventFrames(t *testing.T) {
 func TestPaginationIsDerivedFromWireShapes(t *testing.T) {
 	t.Parallel()
 
-	wantCursor := []Name{AgentMemoryList, InterruptsList, ItemsList, ModelInvocationsList, RunsList, SessionsList, SessionsTrajectory, WorkspaceFilesList}
+	wantCursor := []Name{InterruptsList, ItemsList, ModelInvocationsList, RunsList, SessionsList, SessionsTrajectory, WorkspaceFilesList}
 	var gotCursor []Name
 	for _, method := range Contract().Metas() {
 		if method.Pagination == PaginationCursor {

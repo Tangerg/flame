@@ -66,7 +66,6 @@ import type {
   Model,
   PendingInterruptSet,
   Page,
-  PageQuery,
   Provider,
   ProviderTestResult,
   ResumeRunRequest,
@@ -176,7 +175,6 @@ interface WorkspaceMethods {
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
   };
   agentMemory: {
-    list: (query?: PageQuery, signal?: AbortSignal) => AutoPagingPromise<Page<AgentMemoryItem>>;
     add: (content: string) => MutationPromise<AgentMemoryItem>;
   };
 }
@@ -357,10 +355,6 @@ export interface Methods {
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
   agentMemory: {
-    list: (
-      target: AgentMemoryTarget & PageQuery,
-      signal?: AbortSignal,
-    ) => AutoPagingPromise<Page<AgentMemoryItem>>;
     review: (id: string, decision: AgentMemoryReviewDecision) => MutationPromise<void>;
     update: (params: AgentMemoryUpdateRequest) => MutationPromise<AgentMemoryItem>;
     delete: (id: string) => MutationPromise<void>;
@@ -387,7 +381,6 @@ export interface Methods {
     setRule: (params: SetApprovalRuleRequest) => MutationPromise<void>;
     forgetRule: (id: string) => MutationPromise<void>;
   };
-
 }
 
 function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
@@ -419,8 +412,6 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
       rejectProposal: (ref) => call("skills.proposals.reject", { ...ref, workspace }),
     },
     agentMemory: {
-      list: (query, signal) =>
-        call("agentMemory.list", { ...query, scope: "project", workspace }, { signal }),
       add: (content) => call("agentMemory.add", { scope: "project", workspace, content }),
     },
   };
@@ -665,7 +656,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       summary: (params, signal) => call("usage.summary", params ?? {}, { signal }),
     },
     agentMemory: {
-      list: (params, signal) => call("agentMemory.list", params ?? {}, { signal }),
       review: (id, decision) =>
         call("agentMemory.review", {
           id,
@@ -693,6 +683,5 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       setRule: (params) => call("approval.setRule", params),
       forgetRule: (id) => call("approval.forgetRule", { id }),
     },
-
   };
 }

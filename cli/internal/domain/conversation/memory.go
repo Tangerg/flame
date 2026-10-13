@@ -31,12 +31,20 @@ func NewMemoryTarget(scope protocol.AgentMemoryScope, workspace string) (MemoryT
 }
 
 func (t MemoryTarget) Validate() error {
-	var workspace *protocol.WorkspaceRef
-	if t.Workspace != "" {
-		workspace = &protocol.WorkspaceRef{Path: t.Workspace}
-	}
-	if err := protocol.ValidateWireTree(protocol.AgentMemoryListRequest{Scope: t.Scope, Workspace: workspace}); err != nil {
-		return fmt.Errorf("agent memory target: %w", err)
+	switch t.Scope {
+	case protocol.AgentMemoryScopeUser:
+		if t.Workspace != "" {
+			return fmt.Errorf("agent memory user target cannot carry a workspace")
+		}
+	case protocol.AgentMemoryScopeProject:
+		if t.Workspace == "" {
+			return fmt.Errorf("agent memory project target requires a workspace")
+		}
+		if err := (protocol.WorkspaceRef{Path: t.Workspace}).ValidateWire(); err != nil {
+			return fmt.Errorf("agent memory workspace: %w", err)
+		}
+	default:
+		return fmt.Errorf("unknown agent memory scope %q", t.Scope)
 	}
 	return nil
 }

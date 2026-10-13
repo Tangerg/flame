@@ -5,6 +5,7 @@ import type {
   WorkspaceFileChange as RpcFileChange,
   WorkspaceSummary as RpcWorkspaceSummary,
 } from "@flame/runtime-contract/client";
+import { readInstalledMemory } from "../public/memoryReader";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { agentMemoryEntry } from "./runtimeAgentMemoryGateway";
 import {
@@ -55,13 +56,10 @@ export function registerWorkspaceDataProviders(
     key: WORKSPACE_AGENT_MEMORY_KEY,
     fetcher: async (params, signal) => {
       const q = requiredParams<AgentMemoryQuery>(WORKSPACE_AGENT_MEMORY_KEY, params);
-      if (!runtimeCapability("agentMemory")) return [];
-      const result =
-        q.scope === "user"
-          ? await runtimeClient().agentMemory.list({ scope: "user" }, signal).autoPagingToArray()
-          : await workspace(q.cwd, signal).then((resources) =>
-              resources.agentMemory.list(undefined, signal).autoPagingToArray(),
-            );
+      if (!runtimeCapability("plugins")) return [];
+      const client = runtimeClient();
+      const cwd = q.scope === "project" ? (await workspace(q.cwd, signal)).ref.path : "";
+      const result = await readInstalledMemory(client, q.scope, cwd, signal);
       return result.map(agentMemoryEntry);
     },
   });

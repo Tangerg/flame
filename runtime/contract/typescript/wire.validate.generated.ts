@@ -22,7 +22,6 @@ export type WireTypeName =
   | "AgentMemoryAddRequest"
   | "AgentMemoryItem"
   | "AgentMemoryItemRequest"
-  | "AgentMemoryListRequest"
   | "AgentMemoryOrigin"
   | "AgentMemoryReviewDecision"
   | "AgentMemoryReviewRequest"
@@ -196,7 +195,6 @@ export type WireTypeName =
   | "OpenPluginResourcesRequest"
   | "PageContinuation"
   | "PageOfAgentDoc"
-  | "PageOfAgentMemoryItem"
   | "PageOfFileEntry"
   | "PageOfItem"
   | "PageOfMCPServer"
@@ -448,28 +446,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   AgentMemoryItemRequest: object({
     id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
   }, ["id"]),
-  AgentMemoryListRequest: allOf([
-    object({
-      cursor: allOf([text(), maxLength(65536)]),
-      limit: allOf([integer(), minimum(1)]),
-      scope: ref(() => CHECKS.AgentMemoryScope),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-    }, ["scope"]),
-    ifThen(
-      fields({
-        scope: literal("project"),
-      }, ["scope"]),
-      fields({}, ["workspace"]),
-    ),
-    ifThen(
-      fields({
-        scope: literal("user"),
-      }, ["scope"]),
-      fields({
-        workspace: absent(),
-      }, []),
-    ),
-  ]),
   AgentMemoryOrigin: enumOf(["auto", "user"]),
   AgentMemoryReviewDecision: enumOf(["approve", "reject"]),
   AgentMemoryReviewRequest: object({
@@ -2290,10 +2266,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, []),
   PageOfAgentDoc: object({
     data: array(ref(() => CHECKS.AgentDoc)),
-    nextCursor: allOf([text(), maxLength(65536)]),
-  }, ["data"]),
-  PageOfAgentMemoryItem: object({
-    data: array(ref(() => CHECKS.AgentMemoryItem)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfFileEntry: object({
@@ -4452,7 +4424,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "tools.invoke": ref(() => CHECKS.InvokeToolRequest),
   "usage.session": ref(() => CHECKS.SessionUsageRequest),
   "usage.summary": ref(() => CHECKS.UsageSummaryRequest),
-  "agentMemory.list": ref(() => CHECKS.AgentMemoryListRequest),
   "agentMemory.review": ref(() => CHECKS.AgentMemoryReviewRequest),
   "agentMemory.update": ref(() => CHECKS.AgentMemoryUpdateRequest),
   "agentMemory.delete": ref(() => CHECKS.AgentMemoryItemRequest),
@@ -4562,7 +4533,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "tools.invoke": anything(),
   "usage.session": ref(() => CHECKS.SessionUsage),
   "usage.summary": ref(() => CHECKS.UsageSummary),
-  "agentMemory.list": ref(() => CHECKS.PageOfAgentMemoryItem),
   "agentMemory.review": object({}, []),
   "agentMemory.update": ref(() => CHECKS.AgentMemoryItem),
   "agentMemory.delete": object({}, []),

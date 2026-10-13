@@ -54,10 +54,6 @@ func (c *capabilityRuntime) SubscribeRuntime(context.Context, protocol.RuntimeSu
 	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent, error) bool) {}, nil
 }
 
-func (c *capabilityRuntime) ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
-	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{}}, nil
-}
-
 func (c *capabilityRuntime) UsageSummary(context.Context, protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
 	return &protocol.UsageSummary{}, nil
 }

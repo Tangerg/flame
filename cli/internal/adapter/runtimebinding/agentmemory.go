@@ -2,7 +2,10 @@ package runtimebinding
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/domain/memory"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
@@ -12,7 +15,6 @@ import (
 )
 
 type agentMemoryBinding interface {
-	ListAgentMemory(context.Context, protocol.AgentMemoryListRequest, flameruntime.CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)
 	ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest, flameruntime.CommandOptions) error
 	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 	DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest, flameruntime.CommandOptions) error
@@ -27,13 +29,11 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	if err != nil {
 		return nil, err
 	}
-	request := protocol.AgentMemoryListRequest{Scope: validated.Scope}
-	if validated.Scope == protocol.AgentMemoryScopeProject {
-		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
-	}
-	if err := protocol.ValidateWireTree(request); err != nil {
+	bound, err := r.selectedInstalledCall(ctx, memory.CapabilityJSON, memory.ListV1Method)
+	if err != nil {
 		return nil, err
 	}
+	input := memory.ListV1Input{Scope: string(validated.Scope), CWD: validated.Workspace, Limit: new(int64(100))}
 	traversal, err := newCursorTraversal("list agent memory", "", flameruntime.MaximumAgentMemoryItemsPerTarget)
 	if err != nil {
 		return nil, err
@@ -41,18 +41,26 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	items := make([]protocol.AgentMemoryItem, 0)
 	seen := make(map[string]struct{})
 	for {
-		request.Cursor = traversal.Current()
-		result, err := r.agentMemory.ListAgentMemory(ctx, request, r.callOptions())
+		input.Cursor = traversal.Current()
+		encoded, err := jsoninput.Encode(input)
+		if err != nil {
+			return nil, err
+		}
+		request := bound
+		request.Input = encoded.JSON()
+		reply, err := r.CallPlugin(ctx, request, "")
 		if err != nil {
 			return nil, classifyError(err)
 		}
-		if result == nil {
-			return nil, runtimeContractViolation("list agent memory returned nil")
+		var result memory.ListV1Output
+		if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
+			return nil, runtimeContractViolation("list agent memory output: %v", err)
 		}
-		if len(items)+len(result.Data) > flameruntime.MaximumAgentMemoryItemsPerTarget || (len(result.Data) == 0 && result.NextCursor != "") {
+		if len(result.Rows) > 100 || len(items)+len(result.Rows) > flameruntime.MaximumAgentMemoryItemsPerTarget || (len(result.Rows) == 0 && result.NextCursor != "") {
 			return nil, runtimeContractViolation("list agent memory exceeded its target capacity or returned an empty continuation")
 		}
-		for _, item := range result.Data {
+		for _, row := range result.Rows {
+			item := protocol.AgentMemoryItem{ID: row.ID, Scope: protocol.AgentMemoryScope(row.Scope), Content: row.Content, Origin: protocol.AgentMemoryOrigin(row.Origin), Status: protocol.AgentMemoryStatus(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 			if err := conversation.ValidateMemoryItem(item); err != nil {
 				return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", len(items)+1, err)
 			}

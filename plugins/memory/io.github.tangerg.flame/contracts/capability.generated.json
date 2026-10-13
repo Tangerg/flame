@@ -24,7 +24,11 @@
                 "type": "string"
               }
             },
-            "required": ["Scope", "CWD", "Content"],
+            "required": [
+              "Scope",
+              "CWD",
+              "Content"
+            ],
             "type": "object"
           }
         },
@@ -41,7 +45,11 @@
             "type": "string"
           }
         },
-        "required": ["Scope", "CWD", "Content"],
+        "required": [
+          "Scope",
+          "CWD",
+          "Content"
+        ],
         "type": "object"
       },
       "output": {
@@ -121,7 +129,10 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
               }
             },
-            "required": ["Item", "Changed"],
+            "required": [
+              "Item",
+              "Changed"
+            ],
             "type": "object"
           }
         },
@@ -135,7 +146,10 @@
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
           }
         },
-        "required": ["Item", "Changed"],
+        "required": [
+          "Item",
+          "Changed"
+        ],
         "type": "object"
       }
     },
@@ -153,7 +167,9 @@
                 "type": "string"
               }
             },
-            "required": ["ID"],
+            "required": [
+              "ID"
+            ],
             "type": "object"
           }
         },
@@ -164,7 +180,9 @@
             "type": "string"
           }
         },
-        "required": ["ID"],
+        "required": [
+          "ID"
+        ],
         "type": "object"
       },
       "output": {
@@ -198,7 +216,10 @@
                 "type": "string"
               }
             },
-            "required": ["Scope", "Project"],
+            "required": [
+              "Scope",
+              "Project"
+            ],
             "type": "object"
           }
         },
@@ -212,7 +233,10 @@
             "type": "string"
           }
         },
-        "required": ["Scope", "Project"],
+        "required": [
+          "Scope",
+          "Project"
+        ],
         "type": "object"
       },
       "output": {
@@ -319,7 +343,11 @@
                 "type": "string"
               }
             },
-            "required": ["Scope", "CWD", "Cursor"],
+            "required": [
+              "Scope",
+              "CWD",
+              "Cursor"
+            ],
             "type": "object"
           }
         },
@@ -345,7 +373,11 @@
             "type": "string"
           }
         },
-        "required": ["Scope", "CWD", "Cursor"],
+        "required": [
+          "Scope",
+          "CWD",
+          "Cursor"
+        ],
         "type": "object"
       },
       "output": {
@@ -428,7 +460,10 @@
                 "type": "array"
               }
             },
-            "required": ["Rows", "NextCursor"],
+            "required": [
+              "Rows",
+              "NextCursor"
+            ],
             "type": "object"
           }
         },
@@ -445,7 +480,10 @@
             "type": "array"
           }
         },
-        "required": ["Rows", "NextCursor"],
+        "required": [
+          "Rows",
+          "NextCursor"
+        ],
         "type": "object"
       }
     },
@@ -472,7 +510,10 @@
                 "type": "string"
               }
             },
-            "required": ["MessageCount", "Transcript"],
+            "required": [
+              "MessageCount",
+              "Transcript"
+            ],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_MaintenanceInput": {
@@ -491,7 +532,12 @@
                 "type": "string"
               }
             },
-            "required": ["SessionID", "Project", "Compacted", "Conversation"],
+            "required": [
+              "SessionID",
+              "Project",
+              "Compacted",
+              "Conversation"
+            ],
             "type": "object"
           }
         },
@@ -511,7 +557,12 @@
             "type": "string"
           }
         },
-        "required": ["SessionID", "Project", "Compacted", "Conversation"],
+        "required": [
+          "SessionID",
+          "Project",
+          "Compacted",
+          "Conversation"
+        ],
         "type": "object"
       },
       "output": {
@@ -523,7 +574,9 @@
                 "type": "boolean"
               }
             },
-            "required": ["Published"],
+            "required": [
+              "Published"
+            ],
             "type": "object"
           }
         },
@@ -534,7 +587,9 @@
             "type": "boolean"
           }
         },
-        "required": ["Published"],
+        "required": [
+          "Published"
+        ],
         "type": "object"
       }
     },
@@ -555,7 +610,10 @@
                 "type": "string"
               }
             },
-            "required": ["ID", "Decision"],
+            "required": [
+              "ID",
+              "Decision"
+            ],
             "type": "object"
           }
         },
@@ -569,7 +627,10 @@
             "type": "string"
           }
         },
-        "required": ["ID", "Decision"],
+        "required": [
+          "ID",
+          "Decision"
+        ],
         "type": "object"
       },
       "output": {
@@ -615,7 +676,12 @@
                 "type": "integer"
               }
             },
-            "required": ["Project", "Query", "TopK", "EmbeddingSpace"],
+            "required": [
+              "Project",
+              "Query",
+              "TopK",
+              "EmbeddingSpace"
+            ],
             "type": "object"
           }
         },
@@ -641,7 +707,12 @@
             "type": "integer"
           }
         },
-        "required": ["Project", "Query", "TopK", "EmbeddingSpace"],
+        "required": [
+          "Project",
+          "Query",
+          "TopK",
+          "EmbeddingSpace"
+        ],
         "type": "object"
       },
       "output": {
@@ -739,7 +810,9 @@
                 "type": "boolean"
               }
             },
-            "required": ["ID"],
+            "required": [
+              "ID"
+            ],
             "type": "object"
           }
         },
@@ -756,7 +829,9 @@
             "type": "boolean"
           }
         },
-        "required": ["ID"],
+        "required": [
+          "ID"
+        ],
         "type": "object"
       },
       "output": {

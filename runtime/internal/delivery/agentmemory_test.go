@@ -84,51 +84,6 @@ func (r *recordingAgentMemory) Add(_ context.Context, scope agentmemory.Scope, c
 	return testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: serverAgentMemoryItemID('1'), Scope: scope, Content: content, Origin: agentmemory.OriginUser, Status: agentmemory.StatusActive}), nil
 }
 
-func TestAgentMemoryListResolvesTargetAndMapsWire(t *testing.T) {
-	rec := &recordingAgentMemory{items: []agentmemory.Item{
-		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: serverAgentMemoryItemID('1'), Scope: agentmemory.ScopeProject, Content: "- fact", Origin: agentmemory.OriginAuto, Status: agentmemory.StatusPending}),
-	}}
-	s := newTestHandler(&stubRuntime{})
-	s.agentMemory = rec
-
-	out, err := s.ListAgentMemory(context.Background(), protocol.AgentMemoryListRequest{
-		Scope: "project", Workspace: &protocol.WorkspaceRef{Path: "/repo/"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rec.listScope != agentmemory.ScopeProject || rec.listCWD != "/repo/" {
-		t.Fatalf("input = %v %q, want project /repo/", rec.listScope, rec.listCWD)
-	}
-	if len(out.Data) != 1 || out.Data[0].Status != "pending" || out.Data[0].Origin != "auto" {
-		t.Fatalf("wire = %+v", out.Data)
-	}
-
-	if _, err := s.ListAgentMemory(context.Background(), protocol.AgentMemoryListRequest{
-		Scope: "user",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if rec.listScope != agentmemory.ScopeUser || rec.listCWD != "" {
-		t.Fatalf("user input = %v %q, want user with no workspace", rec.listScope, rec.listCWD)
-	}
-}
-
-func TestAgentMemoryTargetRefusesPartialTargets(t *testing.T) {
-	t.Parallel()
-
-	for _, request := range []protocol.AgentMemoryListRequest{
-		{Scope: protocol.AgentMemoryScopeProject},
-		{Scope: protocol.AgentMemoryScopeUser, Workspace: &protocol.WorkspaceRef{Path: "/ignored"}},
-	} {
-		server := newTestHandler(&stubRuntime{})
-		server.agentMemory = &recordingAgentMemory{}
-		if _, err := server.ListAgentMemory(context.Background(), request); !errors.Is(err, protocol.ErrInvalidParams) {
-			t.Errorf("ListAgentMemory(%+v) error = %v, want invalid_params", request, err)
-		}
-	}
-}
-
 func TestAgentMemoryReviewMapsDecision(t *testing.T) {
 	rec := &recordingAgentMemory{}
 	s := newTestHandler(&stubRuntime{})

@@ -73,6 +73,13 @@ error translations and the schedules feature gate are removed. Clients consume
 the publisher contract through plugins.call. External consumers must use
 `CallPlugin`; no compatibility alias or old-method request translation exists.
 
+Memory catalog readers in CLI and the workspace client now use the public installed
+list operation and retain one selected binding across the traversal. ListAgentMemory,
+agentMemory.list and their list request DTO are removed without aliases. The public
+workspace reader and generated CLI projection consume the same publisher contract;
+remaining Memory mutation Core entrances are under migration. Private ledger,
+watermark, curation, model maintenance and receipt owners are unchanged.
+
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a
 Session without a Goal returns null through `goals.get` in both bindings. Receipt

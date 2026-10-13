@@ -173,7 +173,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	query := protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser, PageQuery: protocol.PageQuery{Limit: new(1)}}
+	query := memoryrpc.ListInput{Scope: memorydomain.ScopeUser, Limit: new(1)}
 	for {
 		input, err := jsoninput.Encode(memoryrpc.ListInput{Scope: memorydomain.ScopeUser, Cursor: query.Cursor, Limit: query.Limit})
 		if err != nil {
@@ -188,7 +188,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		if err := json.Unmarshal(result.Output, &page); err != nil {
 			t.Fatal(err)
 		}
-		canonical := r.must(delivery.AgentMemoryList, query, "").(*protocol.Page[protocol.AgentMemoryItem])
+		canonical := readMemoryPage(r, query)
 		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID.String() != canonical.Data[0].ID || page.Rows[0].Content != canonical.Data[0].Content || page.NextCursor != canonical.NextCursor {
 			t.Fatal("installed Memory operation differs from the private owner's canonical projection")
 		}
@@ -198,7 +198,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		query.Cursor = page.NextCursor
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
-	result := r.endpoint.Invoke(t.Context(), delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	result := memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("uninstalled Memory owner=%v", result.Failure)
 	}

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.11",
+  "protocolVersion": "2026-10-14.12",
   "features": [
     "reasoning",
     "multimodal",
@@ -1332,21 +1332,6 @@
       "pagination": "none"
     },
     {
-      "name": "agentMemory.list",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "cursor",
-      "errors": [
-        "plugin_unavailable",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "agentMemory"
-      ]
-    },
-    {
       "name": "agentMemory.review",
       "kind": "unary",
       "operation": "command",
@@ -1501,7 +1486,6 @@
         "methods": [
           "agentMemory.add",
           "agentMemory.delete",
-          "agentMemory.list",
           "agentMemory.review",
           "agentMemory.update",
           "goals.clear",
@@ -1798,7 +1782,6 @@
         "methods": [
           "agentMemory.add",
           "agentMemory.delete",
-          "agentMemory.list",
           "agentMemory.review",
           "agentMemory.update",
           "plugins.call",
@@ -2673,16 +2656,6 @@
         {
           "requires": [
             "goals"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "agentMemory.list",
-      "rules": [
-        {
-          "requires": [
-            "agentMemory"
           ]
         }
       ]
@@ -5734,35 +5707,6 @@
           ],
           "required": [
             "text"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "AgentMemoryListRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "project"
-            }
-          ],
-          "required": [
-            "workspace"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "user"
-            }
-          ],
-          "forbidden": [
-            "workspace"
           ]
         }
       ]

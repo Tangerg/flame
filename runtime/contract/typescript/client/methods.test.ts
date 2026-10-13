@@ -291,7 +291,6 @@ describe("methods factory", () => {
     await client.close();
   });
 
-
   it("binds an immutable workspace identity into every nested resource call", async () => {
     const call = vi.fn().mockResolvedValue({ data: [] });
     const methods = createMethods({ call } as unknown as RpcClient);
@@ -300,18 +299,12 @@ describe("methods factory", () => {
 
     ref.path = "/retargeted";
     await workspace.files.list({ path: "src" });
-    await workspace.agentMemory.list();
 
     expect(workspace.ref).toEqual({ path: "/repo" });
     expect(call).toHaveBeenCalledWith(
       "workspace.files.list",
       { path: "src", workspace: { path: "/repo" } },
       undefined,
-    );
-    expect(call).toHaveBeenCalledWith(
-      "agentMemory.list",
-      { scope: "project", workspace: { path: "/repo" } },
-      { signal: undefined },
     );
   });
 
@@ -390,8 +383,7 @@ describe("methods factory", () => {
     await workspace.hooks.list(signal);
     await workspace.skills.listDiscovered(signal);
     await workspace.skills.listProposals(signal);
-    await workspace.agentMemory.list(undefined, signal);
-    expect(call).toHaveBeenCalledTimes(6);
+    expect(call).toHaveBeenCalledTimes(5);
     for (const invocation of call.mock.calls) expect(invocation[2]).toEqual({ signal });
   });
 
@@ -570,9 +562,11 @@ describe("methods factory", () => {
     await expect(attempt).resolves.toMatchObject({
       id: "ses_fork_1",
     });
-    await expect(methods.sessions.fork({ sessionId: asSessionId("ses_1") })).resolves.toMatchObject({
-      id: "ses_fork_2",
-    });
+    await expect(methods.sessions.fork({ sessionId: asSessionId("ses_1") })).resolves.toMatchObject(
+      {
+        id: "ses_fork_2",
+      },
+    );
 
     const keys = call.mock.calls.map((args) => args[2]?.idempotencyKey as string);
     expect(keys[0]).toBeTruthy();
@@ -721,7 +715,9 @@ describe("methods factory", () => {
     const restartedMethods = createMethods({ call: replayCall } as unknown as RpcClient, {
       mutationJournal: restartedJournal,
     });
-    await expect(restartedMethods.sessions.fork({ sessionId: asSessionId("ses_1") })).resolves.toMatchObject({
+    await expect(
+      restartedMethods.sessions.fork({ sessionId: asSessionId("ses_1") }),
+    ).resolves.toMatchObject({
       id: "ses_fork_1",
     });
 

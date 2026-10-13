@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	memoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -20,37 +19,10 @@ import (
 // agentMemoryUseCases is Delivery's consumer-side port. Its methods express
 // complete review use cases, rather than exposing the domain store workflow.
 type agentMemoryUseCases interface {
-	List(ctx context.Context, input memoryapp.ListInput) (pagination.Page[agentmemory.Item], error)
 	Review(ctx context.Context, id string, decision agentmemory.ReviewDecision) error
 	Update(ctx context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error)
 	Delete(ctx context.Context, id string) error
 	Add(ctx context.Context, scope agentmemory.Scope, cwd, content string) (agentmemory.Item, error)
-}
-
-// ListAgentMemory returns active + pending memory for one explicit target
-// (agentMemory.list).
-func (s *Handler) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
-	scope, cwd, err := agentMemoryTargetFromWire(in.Scope, in.Workspace)
-	if err != nil {
-		return nil, err
-	}
-	limit, err := requestedPageLimit(in.Limit)
-	if err != nil {
-		return nil, wirePageError(err)
-	}
-	page, err := s.agentMemory.List(ctx, memoryapp.ListInput{Scope: scope, CWD: cwd, Cursor: in.Cursor, Limit: limit})
-	if err != nil {
-		return nil, mapAgentMemoryErr(err)
-	}
-	out := protocol.Page[protocol.AgentMemoryItem]{Data: make([]protocol.AgentMemoryItem, 0, len(page.Rows)), NextCursor: page.NextCursor}
-	for _, item := range page.Rows {
-		wire, err := presentAgentMemoryItem(item)
-		if err != nil {
-			return nil, err
-		}
-		out.Data = append(out.Data, wire)
-	}
-	return &out, nil
 }
 
 // ReviewAgentMemory approves or rejects a pending proposal (agentMemory.review).

@@ -10,7 +10,6 @@ import type {
   AgentMemoryAddRequest,
   AgentMemoryItem,
   AgentMemoryItemRequest,
-  AgentMemoryListRequest,
   AgentMemoryReviewRequest,
   AgentMemoryUpdateRequest,
   ApprovalModeResult,
@@ -72,7 +71,6 @@ import type {
   MCPToolExposure,
   OpenPluginResourcesRequest,
   PageOfAgentDoc,
-  PageOfAgentMemoryItem,
   PageOfFileEntry,
   PageOfMCPServer,
   PageOfMCPTool,
@@ -271,7 +269,6 @@ const METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "agentMemory.list",
   "agentMemory.review",
   "agentMemory.update",
   "agentMemory.delete",
@@ -381,7 +378,6 @@ const VALUE_METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "agentMemory.list",
   "agentMemory.update",
   "agentMemory.add",
 ] as const;
@@ -1067,13 +1063,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "agentMemory.list": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "cursor",
-  },
   "agentMemory.review": {
     operation: "command",
     response: "unary",
@@ -1328,9 +1317,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "goals.resume": [
     { requires: ["goals"] },
   ],
-  "agentMemory.list": [
-    { requires: ["agentMemory"] },
-  ],
   "agentMemory.review": [
     { requires: ["agentMemory"] },
   ],
@@ -1441,7 +1427,6 @@ export interface WireShapes {
   "tools.invoke": { params: InvokeToolRequest; result: unknown };
   "usage.session": { params: SessionUsageRequest; result: SessionUsage };
   "usage.summary": { params: UsageSummaryRequest; result: UsageSummary };
-  "agentMemory.list": { params: AgentMemoryListRequest; result: PageOfAgentMemoryItem };
   "agentMemory.review": { params: AgentMemoryReviewRequest };
   "agentMemory.update": { params: AgentMemoryUpdateRequest; result: AgentMemoryItem };
   "agentMemory.delete": { params: AgentMemoryItemRequest };

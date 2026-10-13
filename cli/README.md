@@ -259,3 +259,11 @@ the binding. Pending edits are reconciled before reading another revision. Reade
 use the generated publisher snapshot directly, without a Core Schedule projection
 or extra Enabled state. No Schedule Core API, DTO or feature flag remains; the
 client negotiates the generic plugins entrance and resolves the selected contract.
+
+Memory catalog reads use the publisher's generated Go contract and public installed
+query. The selected installation, release, contribution and complete contract are
+captured once for all pages. Project workspace resolution precedes capture; each
+page keeps that owner and target. Capacity/request/page bounds, repeated IDs/cursors,
+empty continuations and scope mismatches are refused without partial results.
+The former ListAgentMemory/agentMemory.list and workspace list wrapper are removed.
+Memory mutations and their original-command migration remain in progress.

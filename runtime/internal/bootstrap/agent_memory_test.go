@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -24,7 +26,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeProject, Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath})
 	if len(page.Data) != 1 || page.Data[0] != *edited {
 		t.Fatalf("restart lost user correction=%+v", page.Data)
 	}

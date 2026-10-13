@@ -1,3 +1,4 @@
+import { readInstalledMemory } from "../plugins/builtin/workspace/public/memoryReader";
 // @vitest-environment-options { "url": "http://localhost:5173/" }
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 import { execFile, spawn } from "node:child_process";
@@ -1161,21 +1162,14 @@ for await (const line of lines) {
         .workspace(workspace)
         .agentMemory.add("Memory page canonical ownership fixture");
       const query = { scope: "project" as const, workspace, limit: 1 };
-      expect((await client.agentMemory.list(query)).data).toContainEqual(created);
-      await expect(
-        client.agentMemory.list({ scope: "project" } as Parameters<
-          typeof client.agentMemory.list
-        >[0]),
-      ).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-      );
-      await expect(
-        client.agentMemory.list({ scope: "user", workspace } as Parameters<
-          typeof client.agentMemory.list
-        >[0]),
-      ).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-      );
+      expect(
+        (
+          await readInstalledMemory(client, "project", query.workspace.path).then((data) => ({
+            data,
+          }))
+        ).data,
+      ).toContainEqual(created);
+
       expect(component.scope).toBe("client");
       expect(
         Buffer.from((await client.plugins.readResource(resourceRequest)).body, "base64"),
@@ -1184,13 +1178,13 @@ for await (const line of lines) {
       await expect(client.plugins.readResource(resourceRequest)).rejects.toMatchObject({
         code: -32042,
       });
-      await expect(client.agentMemory.list(query)).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_unavailable",
+      await expect(
+        readInstalledMemory(client, "project", query.workspace.path).then((data) => ({ data })),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof Error && error.message.includes("unavailable"),
       );
       await activateManagedOwner("memory");
-      expect(
-        await client.workspace(workspace).agentMemory.list().autoPagingToArray(),
-      ).toContainEqual(created);
+      expect(await readInstalledMemory(client, "project", workspace.path)).toContainEqual(created);
     } finally {
       await activateManagedOwner("memory");
       if (created) await client.agentMemory.delete(created.id);
@@ -2124,7 +2118,9 @@ for await (const line of lines) {
       await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
         type: "agentMemory.changed",
       });
-      await expect(workspace.agentMemory.list()).resolves.toMatchObject({
+      await expect(
+        readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data })),
+      ).resolves.toMatchObject({
         data: [expect.objectContaining({ id: added.id, content: "agent-memory replay cutpoint" })],
       });
 
@@ -2138,7 +2134,9 @@ for await (const line of lines) {
       await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
         type: "agentMemory.changed",
       });
-      await expect(workspace.agentMemory.list()).resolves.toMatchObject({
+      await expect(
+        readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data })),
+      ).resolves.toMatchObject({
         data: [
           expect.objectContaining({
             id: added.id,
@@ -2156,7 +2154,13 @@ for await (const line of lines) {
       await expect(nextRuntimeEvent(events, "agentMemory.changed")).resolves.toMatchObject({
         type: "agentMemory.changed",
       });
-      expect((await workspace.agentMemory.list()).data).toEqual([]);
+      expect(
+        (
+          await readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({
+            data,
+          }))
+        ).data,
+      ).toEqual([]);
     } finally {
       if (memoryId) await client.agentMemory.delete(memoryId).catch(() => undefined);
       streamController.abort();
@@ -4126,10 +4130,14 @@ for await (const line of lines) {
       type: "agentMemory.changed",
     });
     expect(user).toMatchObject({ scope: "user", origin: "user", status: "active" });
-    await expect(workspace.agentMemory.list()).resolves.toMatchObject({
+    await expect(
+      readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data })),
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: project.id, content: "project memory marker" })],
     });
-    await expect(client.agentMemory.list({ scope: "user" })).resolves.toMatchObject({
+    await expect(
+      readInstalledMemory(client, "user", "").then((data) => ({ data })),
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: user.id, content: "user memory marker" })],
     });
 
@@ -4146,7 +4154,9 @@ for await (const line of lines) {
       content: "project memory marker updated",
       pinned: true,
     });
-    await expect(workspace.agentMemory.list()).resolves.toMatchObject({
+    await expect(
+      readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data })),
+    ).resolves.toMatchObject({
       data: [
         expect.objectContaining({
           id: project.id,
@@ -4167,11 +4177,15 @@ for await (const line of lines) {
     await expect(nextRuntimeEvent(runtimeEvents, "agentMemory.changed")).resolves.toMatchObject({
       type: "agentMemory.changed",
     });
-    expect((await workspace.agentMemory.list()).data.some((item) => item.id === project.id)).toBe(
-      false,
-    );
     expect(
-      (await client.agentMemory.list({ scope: "user" })).data.some((item) => item.id === user.id),
+      (
+        await readInstalledMemory(client, "project", workspace.ref.path).then((data) => ({ data }))
+      ).data.some((item) => item.id === project.id),
+    ).toBe(false);
+    expect(
+      (await readInstalledMemory(client, "user", "").then((data) => ({ data }))).data.some(
+        (item) => item.id === user.id,
+      ),
     ).toBe(false);
     streamController.abort();
     await runtimeEvents.return?.();

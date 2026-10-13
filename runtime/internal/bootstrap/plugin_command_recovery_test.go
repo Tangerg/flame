@@ -8,6 +8,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -30,7 +32,7 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	if failure := invoke(); failure == nil || !errors.Is(failure, protocol.ErrInternalError) {
 		t.Fatalf("missing receipt was settled or resubmitted: %v", failure)
 	}
-	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("receipt lookup executed the original mutation: %+v", page.Data)
 	}
@@ -95,12 +97,12 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	if replay.Failure == nil || !errors.Is(replay.Failure, protocol.ErrInternalError) {
 		t.Fatalf("old identity adopted replacement provider: %v", replay.Failure)
 	}
-	page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("old command mutated replacement owner: %+v", page.Data)
 	}
 	created := r.must(delivery.AgentMemoryAdd, request, "new-command").(*protocol.AgentMemoryItem)
-	page = r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem])
+	page = readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
 	if len(page.Data) != 1 || page.Data[0] != *created {
 		t.Fatalf("new command did not use replacement owner: %+v", page.Data)
 	}
