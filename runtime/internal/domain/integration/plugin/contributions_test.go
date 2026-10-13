@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"github.com/Tangerg/flame/runtime/capability"
+	"reflect"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, declared := range declaration.Contributions {
-		if admitted, found := release.Contribution(declared.ID); !found || admitted != declared {
+		if admitted, found := release.Contribution(declared.ID); !found || !reflect.DeepEqual(admitted, declared) {
 			t.Fatalf("contribution lost its independent identity: %+v", declared)
 		}
 	}

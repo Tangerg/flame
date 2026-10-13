@@ -81,6 +81,7 @@ import type {
   PageOfModel,
   PageOfModelInvocation,
   PageOfPendingInterruptSet,
+  PageOfPluginCollaborator,
   PageOfPluginInstallation,
   PageOfPluginProviderSelection,
   PageOfProvider,
@@ -112,6 +113,7 @@ import type {
   ReadPluginUsageRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
+  ResolvePluginRequirementsRequest,
   ResolveWorkspaceRequest,
   ResumeRunRequest,
   ResumeRunResponse,
@@ -242,6 +244,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.resolveRequirements",
   "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
@@ -369,6 +372,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.resolveRequirements",
   "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
@@ -815,6 +819,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.resolveRequirements": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1383,6 +1394,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.resolveRequirements": [
+    { requires: ["plugins"] },
+  ],
   "plugins.call": [
     { requires: ["plugins"] },
   ],
@@ -1555,6 +1569,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.resolveRequirements": { params: ResolvePluginRequirementsRequest; result: PageOfPluginCollaborator };
   "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };

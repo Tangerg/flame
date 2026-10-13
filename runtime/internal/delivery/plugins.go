@@ -6,28 +6,29 @@ import (
 )
 
 const (
-	PluginsList               Name = "plugins.list"
-	PluginsCall               Name = "plugins.call"
-	PluginsListProviders      Name = "plugins.listProviders"
-	PluginsSelectProvider     Name = "plugins.selectProvider"
-	PluginsInstall            Name = "plugins.install"
-	PluginsStage              Name = "plugins.stage"
-	PluginsSelect             Name = "plugins.select"
-	PluginsConfigure          Name = "plugins.configure"
-	PluginsSetEnablement      Name = "plugins.setEnablement"
-	PluginsUninstall          Name = "plugins.uninstall"
-	PluginsReadView           Name = "plugins.readView"
-	PluginsReadRenderer       Name = "plugins.readRenderer"
-	PluginsReadTrajectory     Name = "plugins.readTrajectory"
-	PluginsReadMemory         Name = "plugins.readMemory"
-	PluginsReadSchedules      Name = "plugins.readSchedules"
-	PluginsReadUsage          Name = "plugins.readUsage"
-	PluginsReadDiff           Name = "plugins.readDiff"
-	PluginsReadSkills         Name = "plugins.readSkills"
-	PluginsReadSkill          Name = "plugins.readSkill"
-	PluginsReadSkillLibrary   Name = "plugins.readSkillLibrary"
-	PluginsReadSkillProposals Name = "plugins.readSkillProposals"
-	PluginsRenameSession      Name = "plugins.renameSession"
+	PluginsList                Name = "plugins.list"
+	PluginsCall                Name = "plugins.call"
+	PluginsResolveRequirements Name = "plugins.resolveRequirements"
+	PluginsListProviders       Name = "plugins.listProviders"
+	PluginsSelectProvider      Name = "plugins.selectProvider"
+	PluginsInstall             Name = "plugins.install"
+	PluginsStage               Name = "plugins.stage"
+	PluginsSelect              Name = "plugins.select"
+	PluginsConfigure           Name = "plugins.configure"
+	PluginsSetEnablement       Name = "plugins.setEnablement"
+	PluginsUninstall           Name = "plugins.uninstall"
+	PluginsReadView            Name = "plugins.readView"
+	PluginsReadRenderer        Name = "plugins.readRenderer"
+	PluginsReadTrajectory      Name = "plugins.readTrajectory"
+	PluginsReadMemory          Name = "plugins.readMemory"
+	PluginsReadSchedules       Name = "plugins.readSchedules"
+	PluginsReadUsage           Name = "plugins.readUsage"
+	PluginsReadDiff            Name = "plugins.readDiff"
+	PluginsReadSkills          Name = "plugins.readSkills"
+	PluginsReadSkill           Name = "plugins.readSkill"
+	PluginsReadSkillLibrary    Name = "plugins.readSkillLibrary"
+	PluginsReadSkillProposals  Name = "plugins.readSkillProposals"
+	PluginsRenameSession       Name = "plugins.renameSession"
 )
 
 // pluginErrors is every problem wirePluginError can raise. Each plugins method
@@ -43,6 +44,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsResolveRequirements, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error)
+	}, ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {
+		return s.ResolvePluginRequirements(ctx, in)
+	})
 	r.extension(MethodMeta{Name: PluginsCall, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, pluginCallOperation, func(s interface {
 		PreparePluginCall(context.Context, protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error)
 	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {

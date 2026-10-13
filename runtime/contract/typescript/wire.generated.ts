@@ -1123,6 +1123,8 @@ export type PageOfModelInvocation = Page<ModelInvocation>;
 
 export type PageOfPendingInterruptSet = Page<PendingInterruptSet>;
 
+export type PageOfPluginCollaborator = Page<PluginCollaborator>;
+
 export type PageOfPluginInstallation = Page<PluginInstallation>;
 
 export type PageOfPluginProviderSelection = Page<PluginProviderSelection>;
@@ -1193,6 +1195,11 @@ export interface PluginCallFailure {
   message: string;
 }
 
+export interface PluginCollaborator {
+  bindings: PluginOperationBinding[];
+  id: string;
+}
+
 export type PluginComponent =
   | { type: "manifestField"; name: string }
   | { type: "flameExtension" }
@@ -1211,6 +1218,7 @@ export interface PluginContribution {
   contract: Descriptor;
   export: string;
   id: string;
+  requires: PluginRequirement[];
   server: string;
 }
 
@@ -1250,6 +1258,13 @@ export interface PluginInstallation {
   selected: PluginRelease;
   source: string;
   staged?: PluginRelease;
+}
+
+export interface PluginOperationBinding {
+  contract: Descriptor;
+  contribution: string;
+  digest: string;
+  installationId: string;
 }
 
 export type PluginPresentation = "admitted" | "withheld";
@@ -1302,6 +1317,12 @@ export type PluginRendererSelectorType = "toolName" | "resultShape" | "fileExten
 
 export interface PluginRequest {
   installationId: string;
+}
+
+export interface PluginRequirement {
+  contract: Descriptor;
+  id: string;
+  optional: boolean;
 }
 
 export interface PluginScheduleTemplate {
@@ -1568,6 +1589,12 @@ export interface RequestMeta {
   clientCapabilities?: ClientCapabilities;
   clientInfo?: ClientInfo;
   protocolVersion?: string;
+}
+
+export interface ResolvePluginRequirementsRequest {
+  contribution: string;
+  digest: string;
+  installationId: string;
 }
 
 export interface ResolveWorkspaceRequest {

@@ -3,11 +3,14 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -53,6 +56,10 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 	return &installedCall{calls: c, request: request, method: method}, nil
 }
 
+func (c *CommandCalls) Resolve(ctx context.Context, installation resourceid.InstallationID, digest fingerprint.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
+	return plugins.ResolveRequirements(ctx, c.installations, c.selections, installation, digest, contribution)
+}
+
 func (c *installedCall) Kind() capability.MethodKind { return c.method.Kind() }
 
 func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBinding, error) {
@@ -73,6 +80,38 @@ func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBindin
 	}
 	if !snapshot.Installation.ServerEnabled(contribution.Server) {
 		return plugins.ContributionBinding{}, plugin.ErrDisabled
+	}
+	if _, err := c.calls.Resolve(ctx, r.Installation, r.Digest, r.Contribution); err != nil {
+		return plugins.ContributionBinding{}, err
+	}
+	if actor, managed := operation.ActorFrom(ctx); managed {
+		consumer, found, err := c.calls.installations.Get(ctx, actor.InstallationID())
+		if err != nil {
+			return plugins.ContributionBinding{}, err
+		}
+		if !found || consumer.Selected.Digest() != actor.Release() {
+			return plugins.ContributionBinding{}, plugin.ErrUnavailable
+		}
+		declared := false
+		for _, entry := range consumer.Selected.Declaration().Contributions {
+			if entry.Server != actor.Server() {
+				continue
+			}
+			collaborators, err := c.calls.Resolve(ctx, actor.InstallationID(), actor.Release(), entry.ID)
+			if err != nil {
+				return plugins.ContributionBinding{}, err
+			}
+			for _, collaborator := range collaborators {
+				for _, provider := range collaborator.Bindings {
+					if provider.InstallationID == r.Installation && provider.Digest == r.Digest && provider.ContributionID == r.Contribution && provider.Contract == r.Contract.Identity() {
+						declared = true
+					}
+				}
+			}
+		}
+		if !declared {
+			return plugins.ContributionBinding{}, fmt.Errorf("%w: plugin call is outside the activation's declared requirements", plugin.ErrInvalid)
+		}
 	}
 	id, err := snapshot.Installation.ServerID(contribution.Server)
 	if err != nil {

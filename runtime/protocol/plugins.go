@@ -382,4 +382,31 @@ type PluginContribution struct {
 	Server   string                `json:"server"`
 	Export   string                `json:"export"`
 	Contract capability.Descriptor `json:"contract"`
+	Requires []PluginRequirement   `json:"requires"`
+}
+
+type PluginRequirement struct {
+	ID       string                `json:"id"`
+	Contract capability.Descriptor `json:"contract"`
+	Optional bool                  `json:"optional"`
+}
+
+type ResolvePluginRequirementsRequest struct {
+	InstallationID string `json:"installationId"`
+	Digest         string `json:"digest"`
+	Contribution   string `json:"contribution"`
+}
+
+type PluginCollaborator struct {
+	ID       string                   `json:"id"`
+	Bindings []PluginOperationBinding `json:"bindings"`
+}
+
+// PluginOperationBinding is immutable public routing evidence without a private
+// backend port or a connection-generation identity.
+type PluginOperationBinding struct {
+	InstallationID string                `json:"installationId"`
+	Digest         string                `json:"digest"`
+	Contribution   string                `json:"contribution"`
+	Contract       capability.Descriptor `json:"contract"`
 }

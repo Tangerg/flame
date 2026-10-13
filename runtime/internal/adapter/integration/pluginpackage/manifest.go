@@ -183,7 +183,22 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if err != nil {
 			return err
 		}
-		return release.AdmitContribution(plugin.Contribution{ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()})
+		value := plugin.Contribution{ID: w.ID, Server: w.Server, Export: w.Export, Contract: contract.Identity()}
+		for _, required := range w.Requires {
+			if !plugin.ValidResourcePath(required.Contract) || !strings.HasPrefix(required.Contract, plugin.Namespace+"/") {
+				return plugin.ErrInvalid
+			}
+			body, err := read(ctx, root, required.Contract, MaxManifestBytes)
+			if err != nil {
+				return err
+			}
+			dependency, err := capability.Parse(body)
+			if err != nil {
+				return err
+			}
+			value.Requires = append(value.Requires, plugin.Requirement{ID: required.ID, Contract: dependency.Identity(), Optional: required.Optional})
+		}
+		return release.AdmitContribution(value)
 	})
 	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {

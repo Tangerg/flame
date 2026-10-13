@@ -117,6 +117,9 @@ func (d Declaration) clone() Declaration {
 		d.Servers[index] = d.Servers[index].clone()
 	}
 	d.Contributions = slices.Clone(d.Contributions)
+	for index := range d.Contributions {
+		d.Contributions[index] = d.Contributions[index].clone()
+	}
 	d.Inputs = slices.Clone(d.Inputs)
 	d.Themes = slices.Clone(d.Themes)
 	d.Views = slices.Clone(d.Views)

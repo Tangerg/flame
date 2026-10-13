@@ -14,6 +14,7 @@ import (
 )
 
 type pluginRuntime interface {
+	ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) ([]protocol.PluginCollaborator, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
 	ListPluginProviders(context.Context) ([]protocol.PluginProviderSelection, error)
 	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, replay.CommandID) (*protocol.PluginProviderSelection, error)
@@ -45,6 +46,7 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
 	root.AddCommand(newPluginCallCommand(provider))
+	root.AddCommand(newPluginRequirementsCommand(provider))
 	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
 		if err != nil {
@@ -86,6 +88,33 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		}),
 	)
 	return root
+}
+
+func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
+	var input string
+	command := &cobra.Command{Use: "requirements", Short: "Resolve one contribution's declared collaborators", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if len(input) > 1<<20 {
+			return errors.New("plugin input exceeds 1 MiB")
+		}
+		var request protocol.ResolvePluginRequirementsRequest
+		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+			return err
+		}
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := runtime.ResolvePluginRequirements(cmd.Context(), request)
+		if err != nil {
+			return err
+		}
+		if values == nil {
+			values = []protocol.PluginCollaborator{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginCollaborator]{Data: values})
+	}}
+	command.Flags().StringVar(&input, "request", "{}", "Exact installation, release digest and contribution as JSON")
+	return command
 }
 
 func newPluginCallCommand(provider runtimeProvider) *cobra.Command {

@@ -388,6 +388,10 @@
               "signature": "func(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error)"
             },
             {
+              "name": "ResolvePluginRequirements",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
+            },
+            {
               "name": "ResolveWorkspace",
               "signature": "func(ctx context.Context, request protocol.ResolveWorkspaceRequest, options CallOptions) (*protocol.WorkspaceInfo, error)"
             },
@@ -1002,6 +1006,10 @@
             {
               "name": "RenamePluginSession",
               "signature": "func(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "ResolvePluginRequirements",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
             },
             {
               "name": "ResolveWorkspace",
@@ -8308,6 +8316,28 @@
           ]
         },
         {
+          "name": "PluginCollaborator",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Bindings",
+              "type": "[]PluginOperationBinding",
+              "tag": "json:\"bindings\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "PluginComponent",
           "kind": "struct",
           "fields": [
@@ -8362,6 +8392,11 @@
               "name": "Contract",
               "type": "capability.Descriptor",
               "tag": "json:\"contract\""
+            },
+            {
+              "name": "Requires",
+              "type": "[]PluginRequirement",
+              "tag": "json:\"requires\""
             }
           ],
           "methods": [
@@ -8525,6 +8560,38 @@
               "name": "DisabledSkills",
               "type": "[]string",
               "tag": "json:\"disabledSkills\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginOperationBinding",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "Contract",
+              "type": "capability.Descriptor",
+              "tag": "json:\"contract\""
             }
           ],
           "methods": [
@@ -8748,6 +8815,33 @@
               "name": "InstallationID",
               "type": "string",
               "tag": "json:\"installationId\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginRequirement",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Contract",
+              "type": "capability.Descriptor",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Optional",
+              "type": "bool",
+              "tag": "json:\"optional\""
             }
           ],
           "methods": [
@@ -9592,6 +9686,33 @@
               "name": "ClientCapabilities",
               "type": "*ClientCapabilities",
               "tag": "json:\"clientCapabilities,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ResolvePluginRequirementsRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },

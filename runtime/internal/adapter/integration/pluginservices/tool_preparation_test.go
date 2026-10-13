@@ -43,6 +43,10 @@ func (s *toolInstallationStore) Get(context.Context, resourceid.InstallationID) 
 	return s.snapshot, true, s.failure
 }
 
+func (s *toolInstallationStore) List(context.Context) ([]plugin.Snapshot, error) {
+	return []plugin.Snapshot{s.snapshot}, s.failure
+}
+
 type toolSourceRegistry struct{ server mcpserver.Server }
 
 func (r toolSourceRegistry) Dispatchable(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {

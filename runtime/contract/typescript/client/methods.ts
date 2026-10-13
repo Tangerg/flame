@@ -1,6 +1,8 @@
 import type {
   CallPluginRequest,
   CallPluginResponse,
+  ResolvePluginRequirementsRequest,
+  PluginCollaborator,
   PluginInstallation,
   PluginViewResource,
   ReadPluginViewRequest,
@@ -295,6 +297,10 @@ export interface Methods {
     };
   };
   plugins: {
+    resolveRequirements: (
+      request: ResolvePluginRequirementsRequest,
+      signal?: AbortSignal,
+    ) => Promise<Page<PluginCollaborator>>;
     call: (
       request: CallPluginRequest,
       options?: RpcCallOptions,
@@ -589,6 +595,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      resolveRequirements: (request, signal) =>
+        call("plugins.resolveRequirements", request, { signal }),
       call: (request, options) => call("plugins.call", request, options),
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),

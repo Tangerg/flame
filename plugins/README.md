@@ -10,6 +10,18 @@ server and export. Composition belongs to the consumer contract. Multiple
 contributions may share one backend; selection never equates their IDs with the
 server name. Installation reads these files without executing package code.
 
+A callable contribution may declare named `requires` entries with `id`, a local
+`contract` resource path and `optional`. Resolution uses exact admitted contracts:
+selection uses the configured installation/contribution, and collections return
+the enabled members. `plugins requirements --request '{"installationId":"…","digest":"…","contribution":"…"}'`
+projects these bindings through the same Runtime Go/Protocol/TypeScript query.
+An absent optional collaborator has an empty binding list. Required activation
+edges are checked across all contributions sharing an executable entry; optional
+collection members do not introduce startup edges. Fresh cross-plugin installed
+calls must match the caller entry's declared dependencies. Decoration composition,
+setup-time binding and lifetime freezing are still pending; this query does not
+activate a backend or freeze future selection changes.
+
 Build target-specific packages from the repository's local `go.work`:
 
 ```sh

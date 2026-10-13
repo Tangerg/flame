@@ -10,6 +10,10 @@ func (r *binding) CallPlugin(ctx context.Context, request protocol.CallPluginReq
 	return r.invoke[protocol.CallPluginRequest, *protocol.CallPluginResponse](ctx, delivery.PluginsCall, request, pluginCallOptions(options))
 }
 
+func (r *binding) ResolvePluginRequirements(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options CallOptions) (*protocol.Page[protocol.PluginCollaborator], error) {
+	return r.invoke[protocol.ResolvePluginRequirementsRequest, *protocol.Page[protocol.PluginCollaborator]](ctx, delivery.PluginsResolveRequirements, request, callOptions(options))
+}
+
 func (r *binding) ListPlugins(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.PluginsList, struct{}{}, callOptions(options))
 }

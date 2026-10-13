@@ -68,7 +68,15 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		if err != nil {
 			return protocol.PluginRelease{}, err
 		}
-		result.Contributions = append(result.Contributions, protocol.PluginContribution{ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: contract.Descriptor()})
+		presented := protocol.PluginContribution{ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: contract.Descriptor(), Requires: []protocol.PluginRequirement{}}
+		for _, requirement := range value.Requires {
+			required, err := capability.Parse(requirement.Contract.JSON())
+			if err != nil {
+				return protocol.PluginRelease{}, err
+			}
+			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: required.Descriptor(), Optional: requirement.Optional})
+		}
+		result.Contributions = append(result.Contributions, presented)
 	}
 	result.Servers = make([]protocol.PluginServerDeclaration, 0, len(v.Servers))
 	for _, item := range v.Servers {

@@ -12,6 +12,13 @@ type wireContribution struct {
 	Server   mcpserver.ServerName  `json:"server"`
 	Export   string                `json:"export"`
 	Contract string                `json:"contract"`
+	Requires []wireRequirement     `json:"requires,omitzero"`
+}
+
+type wireRequirement struct {
+	ID       plugin.ContributionID `json:"id"`
+	Contract string                `json:"contract"`
+	Optional bool                  `json:"optional"`
 }
 
 type wireInput struct {

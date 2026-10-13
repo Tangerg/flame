@@ -32,9 +32,24 @@ type Contribution struct {
 	Server   mcpserver.ServerName
 	Export   string
 	Contract jsoninput.Input
+	Requires []Requirement
+}
+
+// Requirement names one collaborator of this contribution. An optional
+// collection is composition data and does not impose an activation edge.
+type Requirement struct {
+	ID       ContributionID
+	Contract jsoninput.Input
+	Optional bool
+}
+
+func (v Contribution) clone() Contribution {
+	v.Requires = slices.Clone(v.Requires)
+	return v
 }
 
 func (b *Builder) AdmitContribution(value Contribution) error {
+	value = value.clone()
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
@@ -46,6 +61,21 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution contract: %v", err)
 	}
 	value.Contract = contract.Identity()
+	seen := make(map[ContributionID]bool, len(value.Requires))
+	for i, requirement := range value.Requires {
+		if err := requirement.ID.Validate(); err != nil {
+			return err
+		}
+		if seen[requirement.ID] {
+			return refuse(DiagnosticInvalidDependencies, "duplicate dependency %q", requirement.ID)
+		}
+		seen[requirement.ID] = true
+		required, err := capability.Parse(requirement.Contract.JSON())
+		if err != nil {
+			return refuse(DiagnosticInvalidDependencies, "invalid dependency %q contract: %v", requirement.ID, err)
+		}
+		value.Requires[i].Contract = required.Identity()
+	}
 	if slices.ContainsFunc(b.declaration.Contributions, func(current Contribution) bool { return current.ID == value.ID }) {
 		return refuse(DiagnosticInvalidDeclaration, "duplicate contribution %q", value.ID)
 	}
@@ -61,7 +91,7 @@ func (r Release) Contribution(id ContributionID) (Contribution, bool) {
 	if index < 0 {
 		return Contribution{}, false
 	}
-	return r.declaration.Contributions[index], true
+	return r.declaration.Contributions[index].clone(), true
 }
 func (r Release) HasImplementation(server mcpserver.ServerName, required *capability.Contract) bool {
 	return required != nil && slices.ContainsFunc(r.declaration.Contributions, func(value Contribution) bool {
