@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 public Tool receipt cutover.
+Prepared on 2026-10-14 and updated after the 2026-10-15 published Memory consumer cutover.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,9 +10,14 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `6b3a1d823` (public original-owner Tool result queries;
+- Latest product commit: `9f2bac554` (generated published Core Memory reads,
+  model-owned embedding port and named Go consumer projections; all consumers
+  migrated; focused/bootstrap/architecture/generator/CLI/build/vet pass).
+  Next: the two private Memory RPC callback/grant imports in consumer/preparation.
+  Previous: `6b3a1d823` (public original-owner Tool result queries;
   Core Schedule-specific decoder deleted; whole bootstrap/execution and all eight
-  SIGKILL cuts pass). Next: Core Memory private read/contract/callback dependencies.
+  SIGKILL cuts pass). The private read/entity/model-port dependencies are now removed; callback
+  grant construction remains open.
   Previous: `659f1aa30` (read-only existing-schema admission and
   atomic empty initialization); `146e8b220` qualifies independent Usage installation;
   `de2a57d54` (public idempotency conflict owner and

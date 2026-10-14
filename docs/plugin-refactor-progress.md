@@ -14,6 +14,40 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Core Memory reads consume published projections (2026-10-15)
+
+- `9f2bac554` removes production Core prompt/model imports of private Memory
+  domain and application types. Run context receives only ID/content/pinned/
+  ordering-time projections. The model adapter owns `TextEmbedder`; the previous
+  feature-owned resolver return interface and `ResolveMemory` entrance are gone.
+  Actual embedding calls and endpoint/accounting evidence retain their owner.
+- The existing feature contractgen emits Core's Memory consumer beside CLI's
+  consumer from the same published schema and canonical capability. Core binds
+  those exact published methods and validates wire output before decoding; it no
+  longer restores private business entities or builds a competing method schema.
+  Active requested targets, search bounds and required prompt ordering time remain
+  checked. Private lifecycle/canonical-write admission remains with the backend.
+  Maintenance uses the generated request/result projection with identical JSON.
+- The architecture gate exposed transparent aliases in the former Go generator.
+  The generator now emits defined projection types; all Memory/Schedules CLI
+  consumers and fixtures migrate together with explicit cross-frame conversion.
+  The unchanged architecture assertion passes, and the generator regression now
+  rejects aliases. Canonical JSON, numeric bounds and TS/component bytes do not
+  change. All three Go consumer outputs reproduce byte-for-byte.
+- Passed: focused embedding/Memory/context/prompt/recall/scope (1.239/2.954/1.609s),
+  full model/pluginservices (0.829/9.529s), real Memory bootstrap selection
+  (14.855s), final full generator/architecture/pluginservices (1.980/20.416/10.597s),
+  affected CLI Memory/Schedule/contract consumers (7.408/7.471s), Runtime/CLI/
+  independent Reviews build, affected vet and stash-free staged checks/commitlint.
+  Actual installed reads explicitly distinguish disabled optional absence from
+  store failure, preserve prompt values and keep configured resolver failure
+  distinct from an absent embedding role. Existing budget/provenance assertions
+  remain unchanged. No frontend UI/E2E/screenshot or Desktop aggregate check ran.
+- Two production private RPC imports remain in Memory consumer/tool preparation:
+  callback grant construction and its model budgets/Tool scope. These are real
+  remaining cutover work, not covered by the read projection or waived by green
+  checks. Continue them before the remaining availability/final acceptance audit.
+
 ### Original Tool outcomes use the public owner query (2026-10-15)
 
 - `6b3a1d823` removes the Core Schedule-specific receipt service and private
@@ -1380,9 +1414,10 @@ proof from source/native inspection and excluded UI execution.
 2. Public original-owner Tool result recovery is implemented in `6b3a1d823`.
    Complete bootstrap/execution and all eight original SIGKILL cuts pass. Include
    the final affected race check after the remaining cutover work.
-3. Migrate Core Memory consumption to its published operation/read projection;
-   remove production imports of private feature domain/application/RPC values.
-   Preserve optional absence versus operational failure and model-owned budgets.
+3. Core Memory published reads and model ports are migrated in `9f2bac554`.
+   Remove the remaining two private RPC callback/grant dependencies in Memory
+   consumer and Tool preparation. Preserve invocation-scoped grants, operation
+   budgets, configured-error versus optional absence and no provider replay.
 4. Finish transitive availability diagnostics, all Tool/automatic/cross-plugin
    target/origin/parent/original-route audit and retention policy review. No new
    automatic expiry is authorized; retain the current Run/Session/pending owners.
@@ -1762,7 +1797,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P45 | Actual blocked optional backend restart/disable management tests pass without loading that backend's component. |
 | P46 | Backend reverse-order cancellation/join, callback teardown, transaction panic/Goexit and settled close/error tests pass. UI teardown remains source only. |
 | P47 | Owner-backed selection, composition, connection and release inspection exist and are tested. Finish transitive failure/availability diagnostic review without a second readiness ledger. |
-| P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Open: private Memory consumer imports, superseded source/API/schema/example/README claims and final artifact checks. |
+| P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Core private Memory entity/application imports are removed in `9f2bac554`. Open: its two private RPC grant dependencies, superseded source/API/schema/example/README claims and final artifact checks. |
 
 ## Verification
 
