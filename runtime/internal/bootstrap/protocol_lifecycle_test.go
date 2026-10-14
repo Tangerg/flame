@@ -387,13 +387,13 @@ func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Respo
 		}))
 		return chat.NewResponse(&chat.Output{
 			Message: &message, FinishReason: chat.FinishReasonToolCalls,
-		}, nil)
+		}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	default:
 		l.resumedStartedOnce.Do(func() { close(l.resumedCallStarted) })
 		select {
 		case <-l.releaseResumedCall:
 			message := chat.NewAssistantMessage(chat.NewTextPart("settled before cancellation"))
-			return chat.NewResponse(&chat.Output{Message: &message}, nil)
+			return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
