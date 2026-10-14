@@ -56,7 +56,7 @@ func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) (*p
 		return nil, err
 	}
 	itemID, err := s.runs.Steer(ctx, runs.SteerCommand{
-		RunID: in.RunID, ExpectedSegmentID: in.ExpectedSegmentID, Input: input,
+		RunID: in.RunID, ExpectedSegmentID: in.ExpectedSegmentID, Input: input, Acceptance: runCommandIdentity(ctx),
 	})
 	if err != nil {
 		return nil, wireSteerError(err)
@@ -65,6 +65,9 @@ func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) (*p
 }
 
 func wireSteerError(err error) error {
+	if errors.Is(err, runs.ErrCommandKeyConflict) {
+		return protocol.ErrIdempotencyConflict
+	}
 	if input, ok := errors.AsType[*runs.InputBlockError](err); ok {
 		constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{
 			Field:  fmt.Sprintf("input[%d].%s", input.Index, input.Field),

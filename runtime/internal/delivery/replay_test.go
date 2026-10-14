@@ -641,7 +641,7 @@ func (s *countingSteerService) SteerRun(context.Context, protocol.SteerRunReques
 	return &protocol.SteerRunResponse{UserItemID: "item_steer"}, nil
 }
 
-func TestSteerAdmissionIdentityReplaysWithoutReExecuting(t *testing.T) {
+func TestSteerRedeliveryUsesTheRunAcceptanceOwner(t *testing.T) {
 	service := &countingSteerService{}
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
 	options := Options{IdempotencyKey: "steer-once"}
@@ -656,8 +656,8 @@ func TestSteerAdmissionIdentityReplaysWithoutReExecuting(t *testing.T) {
 	if result, err := endpoint.Call[protocol.SteerRunRequest, *protocol.SteerRunResponse](t.Context(), "runs.steer", request, options); err != nil || result.UserItemID != "item_steer" {
 		t.Fatalf("replayed steer: %v", err)
 	}
-	if calls := service.calls.Load(); calls != 1 {
-		t.Fatalf("SteerRun calls = %d, want 1", calls)
+	if calls := service.calls.Load(); calls != 2 {
+		t.Fatalf("Run owner calls = %d, want both attempts to consult their owner", calls)
 	}
 }
 

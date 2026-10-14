@@ -329,17 +329,18 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 func (i *InteractionExecutor) SubmitSteer(
 	ctx context.Context,
 	ref runs.ExecutorRef,
-	input []transcript.ContentBlock,
+	prepared runs.PreparedSteer,
 ) (string, error) {
 	session, err := i.session(ref)
 	if err != nil {
 		return "", err
 	}
-	message, err := runs.MaterializeUserMessage(input)
+	prepared = prepared.Clone()
+	message, err := runs.MaterializeUserMessage(prepared.Input)
 	if err != nil {
 		return "", err
 	}
-	return session.submitSteer(ctx, message, input)
+	return session.submitSteer(ctx, message, prepared)
 }
 
 func interactionAnswerSignalID(

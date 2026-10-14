@@ -423,7 +423,7 @@ export function wireMethodReturnsValue(
 
 export type WireOperationKind = "query" | "command" | "subscription";
 export type WireResponseKind = "unary" | "stream";
-export type WireIdempotencyPolicy = "none" | "replayResponse" | "ownerResponse" | "ownerRunStream";
+export type WireIdempotencyPolicy = "none" | "replayResponse" | "ownerResponse" | "ownerRun";
 export type WireReplayCursorPolicy = "none" | "run";
 export type WirePaginationKind = "none" | "cursor";
 
@@ -537,14 +537,14 @@ export const WIRE_METHOD_POLICY = {
   "runs.start": {
     operation: "command",
     response: "stream",
-    idempotency: "ownerRunStream",
+    idempotency: "ownerRun",
     replayCursor: "run",
     pagination: "none",
   },
   "runs.resume": {
     operation: "command",
     response: "stream",
-    idempotency: "ownerRunStream",
+    idempotency: "ownerRun",
     replayCursor: "run",
     pagination: "none",
   },
@@ -565,7 +565,7 @@ export const WIRE_METHOD_POLICY = {
   "runs.steer": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "ownerRun",
     replayCursor: "none",
     pagination: "none",
   },

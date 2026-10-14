@@ -62,7 +62,7 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-13.1
+## Protocol 2026-10-14.1
 
 Start and Resume use one Run-owned command acceptance. A keyed Resume commits
 its request fingerprint and original Run, Segment, and optional input Item
@@ -71,8 +71,14 @@ rules. Redelivery reads that immutable acceptance before current prompts or
 execution preparation; it never allocates a replacement opening. Delivery no
 longer reserves or caches a separate Run-stream response.
 
+Keyed Steer commits its immutable input and reserved Item reference with the
+Scope Signal head and pending execution context. Its acceptance query returns
+that original input and, when present, the exact applied User Item. The SDK
+`runs.recoverSteers()` reads original receipts after application restart and
+retains explicit original-command retry authority for inconclusive reads.
+
 `runs.getAcceptance` requires the original `namespace`, `key`, and `operation`
-(`start` or `resume`) as query parameters. It only reads. `accepted` includes
+(`start`, `resume`, or `steer`) as query parameters. It only reads. `accepted` includes
 the original opening references and a consistent current Run projection;
 `retired` retains those references without material. Deleted material cannot
 be relinked by importing the same Run ID. `notRecorded` describes this read
@@ -1330,7 +1336,9 @@ the operation is not an atomic filesystem or filesystem-plus-history transaction
 
 `runs.steer` and `Runtime.SteerRun` return `userItemId`, the identity reserved for that input. Success proves admission to the addressed active Segment, not model consumption. Only the matching committed user Item proves application at a model boundary. Clients reconcile by identity, including when the Item arrives before its receipt; identical text or attachments do not identify a command. A rejected steer must not silently become a new Run.
 
-Protocol `2026-09-22` replaces the empty steer acknowledgement. Upgrade Runtime, Desktop, and CLI together. Waiting execution snapshots containing pending steer inputs now require their reserved Item identities; older pending-steer snapshots are rejected, never guessed or replayed. Finish those executions before upgrading. Completed history is unchanged.
+Protocol `2026-10-14.1` makes keyed Steer acceptance Run-owned. Its original namespace, key, request fingerprint, reserved Item identity and immutable input commit with the Scope Signal admission head and execution context. `runs.getAcceptance` supports `steer` without redelivery or writer recovery. A consumed Signal receipt is not an applied input: only the exact completed User Item proves application. `sessions.snapshot.pendingSteers` retains accepted inputs until that Item commits, including after the Run finishes. Replaying a recorded command returns its original identity even when the original Run finished or its material was retired; importing the same Run ID never refills a retired receipt. Ordinary active execution still follows its existing crash policy.
+
+Upgrade Runtime, Desktop and CLI together. The current SQLite command-record shape refuses older data directories without conversion. Retain the old directory separately and use a fresh directory. The SDK journal adds a required concrete Steer request field; other mutations still persist no request bodies. Older journal shapes are refused and preserved, not cleared or decoded through an adapter. Such old Steer entries contain no body and cannot recover it from their hash.
 
 ## Command completion and configuration boundaries
 
@@ -1349,7 +1357,7 @@ receipt settles the command without another mutation; failed lookup retains the
 original identity, and `notRecorded` only permits dispatch while the original
 replay admission still holds. Receipt reads remain possible after expiry or
 store replacement. Neither reopening nor cold retry renews that age. Persisted
-journal encoding and Runtime protocol version are unchanged.
+journal entries use the current shape described under Steer admission. The SDK exposes `runs.recoverSteers()` for reading unresolved original Steer commands after application restart. It queries their original receipts without dispatch, returns each known or unknown observation, and exposes explicit `retry()` using the frozen original request. Query failure, expiry or store replacement cannot mint a new key, retarget a Segment, or renew the original deadline. Accepted receipts settle the client journal; Runtime snapshots retain any still-unapplied input.
 
 Disabling or deleting a schedule stops future occurrence claims. An already claimed occurrence retains its accepted input and may still start after that change; its Run must be canceled separately when required. Editing a schedule does not rewrite an occurrence already claimed from an earlier revision.
 

@@ -1,9 +1,11 @@
 package runs
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -15,32 +17,27 @@ import (
 // bound to a different request or to another operation entirely.
 var ErrCommandKeyConflict = errors.New("runs: idempotency key is already bound to another command")
 
-// CommandOperation names the externally initiated Run command whose acceptance
-// an opening transaction records. It is a closed value so a record cannot carry
-// an operation this build does not open.
+// CommandOperation names a Run-owned external command whose acceptance commits
+// with its opening or input-admission boundary.
 type CommandOperation string
 
 const (
 	// CommandStartOpening is a fresh root admission accepted by runs.start.
 	CommandStartOpening  CommandOperation = "start"
 	CommandResumeOpening CommandOperation = "resume"
+	CommandSteerInput    CommandOperation = "steer"
 )
 
 // Valid reports whether o is an operation whose acceptance this build records.
-func (o CommandOperation) Valid() bool { return o == CommandStartOpening || o == CommandResumeOpening }
+func (o CommandOperation) Valid() bool {
+	return o == CommandStartOpening || o == CommandResumeOpening || o == CommandSteerInput
+}
 
-// CommandAcceptance is the immutable fact that Runtime accepted one externally
-// initiated Run command and bound it to the exact opening it produced. It is the
-// external-command peer of [AutomationStart]'s acceptance: the acceptance use
-// case commits it in the same transaction as the Run opening, so a lost response
-// never splits "this command was accepted" from "this Run was opened".
-//
-// Key is the caller's original idempotency key within the store's own namespace;
-// the namespace is the store's identity, validated at the delivery boundary.
-// The fingerprint pins the exact accepted request semantics. Operation, Session,
-// Run, Segment and UserItem are the owner-provided references the opening wrote.
-// It carries no Run status, completion time, or model output: those are projected
-// from their own owners at lookup.
+// CommandAcceptance binds one external command to its original product references.
+// Start and Resume commit it with their opening; Steer commits it with the Scope
+// Signal head and pending input context. SteerInput is immutable authored content,
+// not an application status. Only the exact completed User Item proves application.
+// The store owns the namespace and one global key; Fingerprint pins request semantics.
 type CommandAcceptance struct {
 	Key         string
 	Fingerprint string
@@ -49,9 +46,10 @@ type CommandAcceptance struct {
 	RunID       string
 	SegmentID   string
 	UserItemID  string
+	SteerInput  []transcript.ContentBlock
 }
 
-// Validate proves the acceptance names a legal operation and complete opening
+// Validate proves the acceptance names a legal operation and complete command
 // identity. It does not reach storage: the record's primary key enforces the one
 // global key constraint, and the material reference is a storage-boundary fact.
 func (a CommandAcceptance) Validate() error {
@@ -73,14 +71,34 @@ func (a CommandAcceptance) Validate() error {
 	if err := resourceid.ValidateSegment(a.SegmentID); err != nil {
 		return err
 	}
-	if a.UserItemID != "" || a.Operation == CommandStartOpening {
-		return resourceid.ValidateItem(a.UserItemID)
+	if a.UserItemID != "" || a.Operation == CommandStartOpening || a.Operation == CommandSteerInput {
+		if err := resourceid.ValidateItem(a.UserItemID); err != nil {
+			return err
+		}
+	}
+	if a.Operation == CommandSteerInput {
+		_, err := MaterializeUserMessage(a.SteerInput)
+		return err
+	}
+	if len(a.SteerInput) != 0 {
+		return errors.New("runs: opening acceptance contains steer input")
 	}
 	return nil
 }
 
+func (a CommandAcceptance) Clone() CommandAcceptance {
+	a.SteerInput = transcript.CloneContent(a.SteerInput)
+	return a
+}
+
+func (a CommandAcceptance) Equal(b CommandAcceptance) bool {
+	return a.Key == b.Key && a.Fingerprint == b.Fingerprint && a.Operation == b.Operation && a.SessionID == b.SessionID && a.RunID == b.RunID && a.SegmentID == b.SegmentID && a.UserItemID == b.UserItemID && slices.EqualFunc(a.SteerInput, b.SteerInput, func(x, y transcript.ContentBlock) bool {
+		return x.Kind == y.Kind && x.Text == y.Text && x.MediaType == y.MediaType && bytes.Equal(x.Bytes, y.Bytes)
+	})
+}
+
 // CommandIdentity is the external command reference the delivery boundary binds
-// to a Start before admission: the global idempotency key and the request
+// to a Run command before admission: the global idempotency key and the request
 // fingerprint that pins the exact accepted request. The namespace is the store's
 // own identity, validated at the delivery boundary.
 type CommandIdentity struct {
@@ -108,19 +126,17 @@ type CommandAcceptanceRecord struct {
 	Found          bool
 	CurrentRun     *run.Run
 	OtherOperation bool
+	AppliedItem    *transcript.Item
 }
 
-// CommandAcceptanceReader resolves a previously accepted command by its key so a
-// retry returns the original opening rather than admitting a second Run. It only
-// reads owner-provided facts; it never admits, completes, or repairs a record.
+// CommandAcceptanceReader observes original command facts without admitting,
+// completing, or repairing a record.
 type CommandAcceptanceReader interface {
 	Lookup(ctx context.Context, key string) (CommandAcceptanceRecord, error)
 }
 
-// LookupCommandAcceptance reports what an opening recorded for one external
-// command key. It is the read peer of the acceptance the opening transaction owns:
-// a client that lost a start ack resolves the key here instead of opening a second
-// Run. An absent key is the lookup's own not-recorded answer, not a failure.
+// LookupCommandAcceptance reads the immutable acceptance and original material.
+// An absent key is a not-recorded observation, not a failure or dispatch authority.
 func (c *Coordinator) LookupCommandAcceptance(ctx context.Context, key string) (CommandAcceptanceRecord, error) {
 	if key == "" {
 		return CommandAcceptanceRecord{}, nil

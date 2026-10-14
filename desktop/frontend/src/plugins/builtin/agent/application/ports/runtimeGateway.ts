@@ -13,11 +13,18 @@ export interface AgentSessionSnapshot {
   runs: AgentRunFact[];
   pendingInterruptSets: AgentPendingInterruptSet[];
   plan?: AgentPlan;
+  pendingSteers?: Array<{
+    runId: string;
+    userItemId: string;
+    input: AgentInput;
+    receipt: "accepted" | "notApplied";
+  }>;
 }
 
 export interface AgentSessionMaterialRead {
   snapshot: AgentSessionSnapshot;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
+  unresolvedSteers?: AgentUnresolvedSteer[];
 }
 
 export interface AgentSessionUsage {
@@ -30,6 +37,14 @@ export interface AgentSessionUsage {
 }
 
 export interface AgentSteerSubmission extends Promise<{ userItemId: string }> {
+  readonly idempotencyKey: string;
+  retry(): AgentSteerSubmission;
+}
+
+export interface AgentUnresolvedSteer {
+  idempotencyKey: string;
+  runId: string;
+  input: AgentInput;
   retry(): AgentSteerSubmission;
 }
 

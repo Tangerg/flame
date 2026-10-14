@@ -54,7 +54,7 @@ var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.FileStatus]():                        {string(protocol.FileStatusAdded), string(protocol.FileStatusModified), string(protocol.FileStatusDeleted), string(protocol.FileStatusRenamed), string(protocol.FileStatusUntracked)},
 	reflect.TypeFor[protocol.CapabilityRequirementType]():         {string(protocol.RequirementFeature), string(protocol.RequirementInterruptType), string(protocol.RequirementRuntimeTopic)},
 	reflect.TypeFor[protocol.CancelRunResponseType]():             {string(protocol.CancelRunRoot), string(protocol.CancelRunChild)},
-	reflect.TypeFor[protocol.RunCommandOperation]():               {string(protocol.RunCommandStart), string(protocol.RunCommandResume)},
+	reflect.TypeFor[protocol.RunCommandOperation]():               {string(protocol.RunCommandStart), string(protocol.RunCommandResume), string(protocol.RunCommandSteer)},
 	reflect.TypeFor[protocol.RunAcceptanceType]():                 {string(protocol.RunAcceptanceNotRecorded), string(protocol.RunAcceptanceAccepted), string(protocol.RunAcceptanceRetired)},
 	reflect.TypeFor[protocol.RecoveryAction]():                    {string(protocol.RecoveryRefetch), string(protocol.RecoveryColdRecover), string(protocol.RecoveryResubscribe), string(protocol.RecoveryReauthenticate), string(protocol.RecoveryWaitRetryAfter), string(protocol.RecoveryPromptUser), string(protocol.RecoveryStop)},
 	reflect.TypeFor[protocol.GoalStatus]():                        {string(protocol.GoalActive), string(protocol.GoalPaused), string(protocol.GoalBlocked), string(protocol.GoalCompleting)},

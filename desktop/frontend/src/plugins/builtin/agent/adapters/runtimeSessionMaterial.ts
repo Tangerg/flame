@@ -3,6 +3,7 @@ import type { AgentSessionMaterialRead } from "../application/ports/runtimeGatew
 import { stageAgentSessionSharedMaterial } from "../application/ports/sessionSharedMaterial";
 import { runtimePlan } from "./runtimePlan";
 import { runtimeItem, runtimePendingInterruptSet, runtimeRunFact } from "./runtimeAgentFacts";
+import { contentBlocksToAgentInput } from "./wireInput";
 
 export function runtimeSessionMaterial(
   sessionId: string,
@@ -14,6 +15,15 @@ export function runtimeSessionMaterial(
       items: snapshot.items.map(runtimeItem),
       runs: snapshot.runs.map(runtimeRunFact),
       pendingInterruptSets: snapshot.interrupts.map(runtimePendingInterruptSet),
+      pendingSteers: snapshot.pendingSteers?.map((steer) => ({
+        runId: steer.runId,
+        userItemId: steer.userItemId,
+        input: contentBlocksToAgentInput(steer.input),
+        receipt:
+          snapshot.runs.find((run) => run.id === steer.runId)?.status === "finished"
+            ? "notApplied"
+            : "accepted",
+      })),
       ...(plan ? { plan } : {}),
     },
     projectAssociatedSharedMaterial: stageAgentSessionSharedMaterial(sessionId, snapshot),

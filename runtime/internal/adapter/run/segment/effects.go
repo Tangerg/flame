@@ -42,11 +42,11 @@ type AutomationStartStore interface {
 	Save(context.Context, runs.AutomationReceipt) error
 }
 
-// CommandAcceptanceStore records the Run-owned run_opening acceptance in the
-// opening transaction, so a lost response never splits command acceptance from
-// the Run it opened.
+// CommandAcceptanceStore commits Run command receipts in the same transaction
+// as their opening or input-admission head and confirms uncertain commit ACKs.
 type CommandAcceptanceStore interface {
 	Save(context.Context, runs.CommandAcceptance) error
+	Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error)
 }
 
 // GoalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It

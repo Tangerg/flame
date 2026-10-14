@@ -112,6 +112,13 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 	for _, item := range snapshot.Items {
 		out.Items = append(out.Items, presentItem(item))
 	}
+	for _, pending := range snapshot.PendingSteers {
+		input := protocol.PendingSteerInput{RunID: pending.RunID, SegmentID: pending.SegmentID, UserItemID: pending.UserItemID}
+		for _, block := range pending.SteerInput {
+			input.Input = append(input.Input, presentContent(block))
+		}
+		out.PendingSteers = append(out.PendingSteers, input)
+	}
 	for _, record := range snapshot.Runs {
 		if !in.IncludeDescendants && record.Lineage().IsChild() {
 			continue

@@ -64,7 +64,7 @@ describe("Goal and mounted Session integration", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot },
-        runs: { subscribe },
+        runs: { recoverSteers: async () => [], subscribe },
         goals: { update, stop },
       }) as unknown as FlameClient;
     const adapter = installGoalRuntimeAdapter(getRuntimeClient, true);

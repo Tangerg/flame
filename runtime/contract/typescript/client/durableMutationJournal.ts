@@ -1,7 +1,10 @@
+import type { SteerRunRequest } from "../wire.generated";
+import { checkRequest } from "./request";
+
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 6;
+const JOURNAL_ENTRY_FIELD_COUNT = 7;
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -46,6 +49,7 @@ interface JournalEntry {
   idempotencyKey: string;
   createdAt: number;
   expiresAt: number;
+  steer: SteerRunRequest | null;
 }
 
 export interface DurableMutationIdentity {
@@ -53,6 +57,7 @@ export interface DurableMutationIdentity {
 }
 
 export interface DurableMutationJournal {
+  pendingSteers(): DurableMutationIdentity[];
   reserve(
     method: string,
     params: unknown,
@@ -94,8 +99,19 @@ function validEntry(value: unknown): value is JournalEntry {
     Number.isFinite(entry.createdAt) &&
     typeof entry.expiresAt === "number" &&
     Number.isFinite(entry.expiresAt) &&
-    entry.expiresAt > entry.createdAt
+    entry.expiresAt > entry.createdAt &&
+    validSteer(entry.steer, entry as JournalEntry)
   );
+}
+
+function validSteer(value: unknown, entry: JournalEntry): boolean {
+  if (value === null) return true;
+  try {
+    checkRequest("runs.steer", value);
+    return matchesCommand(entry, "runs.steer", value);
+  } catch {
+    return false;
+  }
 }
 
 function entryKey(idempotencyKey: string): string {
@@ -223,7 +239,8 @@ function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
     left.fingerprint === right.fingerprint &&
     left.idempotencyKey === right.idempotencyKey &&
     left.createdAt === right.createdAt &&
-    left.expiresAt === right.expiresAt
+    left.expiresAt === right.expiresAt &&
+    canonicalJSON(left.steer) === canonicalJSON(right.steer)
   );
 }
 
@@ -299,12 +316,18 @@ export function openDurableMutationJournal(
       idempotencyKey,
       createdAt,
       expiresAt: createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
+      steer: method === "runs.steer" ? structuredClone(params as SteerRunRequest) : null,
     };
     persistEntry(entry);
     return entry;
   };
 
   return {
+    pendingSteers() {
+      return loadEntries(options.storage)
+        .filter((entry) => entry.steer !== null)
+        .map((entry) => ({ entry: structuredClone(entry) }));
+    },
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {

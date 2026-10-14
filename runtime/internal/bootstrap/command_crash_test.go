@@ -46,7 +46,7 @@ type commandCrashExecutor struct {
 	phase   string
 }
 
-func (s commandCrashExecutor) SteerRun(ctx context.Context, _ protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
+func (s commandCrashExecutor) CancelRun(ctx context.Context, _ protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
 	// The unconstrained fixture records every execution, so replay cannot hide a
 	// duplicate behind a business uniqueness check. It is not a Run simulator.
 	if _, err := s.effects.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
@@ -55,10 +55,10 @@ func (s commandCrashExecutor) SteerRun(ctx context.Context, _ protocol.SteerRunR
 	if s.phase == "business" {
 		os.Exit(commandCrashExit)
 	}
-	return &protocol.SteerRunResponse{UserItemID: "item_crash"}, nil
+	return &protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: protocol.RunRef{ID: "run_crash", SessionID: "ses_crash", Status: protocol.RunStatusFinished, Provider: "test", Model: "test-model", CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(), Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled}}}, nil
 }
 
-func crashCommand(t *testing.T, db, effects *sql.DB, phase string) (*protocol.SteerRunResponse, error) {
+func crashCommand(t *testing.T, db, effects *sql.DB, phase string) (*protocol.CancelRunResponse, error) {
 	t.Helper()
 	namespace, err := sqlite.IdempotencyNamespace(t.Context(), db)
 	if err != nil {
@@ -71,10 +71,10 @@ func crashCommand(t *testing.T, db, effects *sql.DB, phase string) (*protocol.St
 	if err != nil {
 		t.Fatal(err)
 	}
-	return endpoint.Call[protocol.SteerRunRequest, *protocol.SteerRunResponse](t.Context(), delivery.RunsSteer,
-		protocol.SteerRunRequest{
-			RunID: "run_crash", ExpectedSegmentID: "seg_crash",
-			Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "once"}},
+	return endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), delivery.RunsCancel,
+		protocol.CancelRunRequest{
+			RunID:  "run_crash",
+			Reason: "once",
 		}, delivery.Options{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
 }
 
@@ -118,7 +118,7 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 			for range 2 {
 				response, err := crashCommand(t, db, effects, "")
 				if phase == "receipt" {
-					if err != nil || response == nil || response.UserItemID != "item_crash" {
+					if err != nil || response == nil || response.Run.ID != "run_crash" {
 						t.Fatalf("durable receipt lost its identity: %+v, %v", response, err)
 					}
 				} else if !errors.Is(err, protocol.ErrIdempotencyInProgress) || response != nil {

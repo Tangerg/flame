@@ -14,6 +14,7 @@ import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { runtimeSessionMaterial } from "./runtimeSessionMaterial";
+import { runtimeItem } from "./runtimeAgentFacts";
 import { toAgentSessionSummary } from "./runtimeSessionSummary";
 import { AgentCommandOwner } from "../application/agentCommandOwner";
 import { AgentSessionUsageOwner } from "../application/session/sessionUsage";
@@ -68,7 +69,50 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const includeDescendants = runtimeCapability("subagents");
     try {
       const snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
-      return runtimeSessionMaterial(sessionId, snapshot);
+      const material = runtimeSessionMaterial(sessionId, snapshot);
+      const recovered = (await client.runs.recoverSteers(signal)).map((command) => {
+        try {
+          if (command.observation.type === "unknown") throw command.observation.cause;
+          const receipt = command.observation.acceptance;
+          if (receipt.type !== "notRecorded") {
+            if (receipt.sessionId !== sessionId) return null;
+            if (receipt.type === "accepted" && receipt.appliedItem) {
+              const applied = receipt.appliedItem;
+              if (!material.snapshot.items.some((item) => item.id === applied.id))
+                material.snapshot.items.push(runtimeItem(applied));
+            } else if (receipt.userItemId && receipt.input) {
+              material.snapshot.pendingSteers ??= [];
+              if (
+                !material.snapshot.pendingSteers.some(
+                  (pending) => pending.userItemId === receipt.userItemId,
+                )
+              )
+                material.snapshot.pendingSteers.push({
+                  runId: receipt.runId,
+                  userItemId: receipt.userItemId,
+                  input: contentBlocksToAgentInput(receipt.input),
+                  receipt:
+                    receipt.type === "retired" || receipt.run?.status === "finished"
+                      ? "notApplied"
+                      : "accepted",
+                });
+            }
+            return null;
+          }
+        } catch (error) {
+          signal?.throwIfAborted();
+          console.warn("[session] original steer query failed:", error);
+        }
+        if (!snapshot.runs.some((run) => run.id === command.params.runId)) return null;
+        return {
+          idempotencyKey: command.idempotencyKey,
+          runId: command.params.runId,
+          input: contentBlocksToAgentInput(command.params.input),
+          retry: () => command.retry(),
+        };
+      });
+      material.unresolvedSteers = recovered.filter((command) => command !== null);
+      return material;
     } catch (error) {
       if (isErrorType(error, "session_not_found")) return null;
       throw error;

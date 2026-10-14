@@ -117,6 +117,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		t.Fatal(err)
 	}
 	stores, err := NewSessionStores(SessionStoresConfig{
+		CommandAcceptances:  NewCommandAcceptanceStore(readerDB),
 		Sessions:            readerSessionStore,
 		Transcript:          sqlite.NewTranscriptStore(readerDB),
 		Interrupts:          NewInterruptStore(sqlite.NewInterruptStore(readerDB)),

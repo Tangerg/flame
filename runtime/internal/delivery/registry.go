@@ -216,7 +216,7 @@ func (r *Registry) runStreamOwnerCommand[Capability, Params, Ack, Event any](
 ) {
 	meta.Kind = KindStream
 	meta.Operation = OperationCommand
-	meta.Idempotency = IdempotencyOwnerRunStream
+	meta.Idempotency = IdempotencyOwnerRun
 	meta.ReplayCursor = ReplayCursorRun
 	r.registerStream(meta, call)
 }

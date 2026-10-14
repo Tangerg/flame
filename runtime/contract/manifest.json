@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-13.1",
+  "protocolVersion": "2026-10-14.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -230,7 +230,7 @@
       "name": "runs.start",
       "kind": "stream",
       "operation": "command",
-      "idempotency": "ownerRunStream",
+      "idempotency": "ownerRun",
       "replayCursor": "run",
       "pagination": "none",
       "errors": [
@@ -247,7 +247,7 @@
       "name": "runs.resume",
       "kind": "stream",
       "operation": "command",
-      "idempotency": "ownerRunStream",
+      "idempotency": "ownerRun",
       "replayCursor": "run",
       "pagination": "none",
       "errors": [
@@ -293,7 +293,7 @@
       "name": "runs.steer",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "ownerRun",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -3736,7 +3736,9 @@
             "run"
           ],
           "optional": [
-            "userItemId"
+            "userItemId",
+            "input",
+            "appliedItem"
           ]
         },
         {
@@ -3747,7 +3749,8 @@
             "sessionId"
           ],
           "optional": [
-            "userItemId"
+            "userItemId",
+            "input"
           ]
         }
       ]

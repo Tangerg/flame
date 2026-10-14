@@ -95,7 +95,7 @@ export function openingEvents<R>(
 
 export async function respondNotRecorded(
   t: MemoryTransport,
-  operation: "start" | "resume",
+  operation: "start" | "resume" | "steer",
 ): Promise<void> {
   for (let attempt = 0; attempt < 50; attempt++) {
     const request = t

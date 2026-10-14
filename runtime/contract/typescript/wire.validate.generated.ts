@@ -213,6 +213,7 @@ export type WireTypeName =
   | "PageQuery"
   | "PatchResult"
   | "PendingInterruptSet"
+  | "PendingSteerInput"
   | "Plan"
   | "PlanState"
   | "PlanStatus"
@@ -2328,6 +2329,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     rootRunId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
+  PendingSteerInput: object({
+    input: array(ref(() => CHECKS.ContentBlock)),
+    runId: text(),
+    segmentId: text(),
+    userItemId: text(),
+  }, ["input", "runId", "segmentId", "userItemId"]),
   Plan: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     state: ref(() => CHECKS.PlanState),
@@ -3192,6 +3199,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["droppedRuns", "session"]),
   RunAcceptance: allOf([
     object({
+      appliedItem: ref(() => CHECKS.Item),
+      input: array(ref(() => CHECKS.ContentBlock)),
       run: ref(() => CHECKS.RunRef),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3201,6 +3210,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
+        appliedItem: absent(),
+        input: absent(),
         run: absent(),
         runId: absent(),
         segmentId: absent(),
@@ -3212,13 +3223,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("accepted"),
       }, ["run", "runId", "segmentId", "sessionId", "type"]),
       fields({
+        appliedItem: absent(),
         run: absent(),
         type: literal("retired"),
       }, ["runId", "segmentId", "sessionId", "type"]),
     ]),
   ]),
   RunAcceptanceType: enumOf(["notRecorded", "accepted", "retired"]),
-  RunCommandOperation: enumOf(["start", "resume"]),
+  RunCommandOperation: enumOf(["start", "resume", "steer"]),
   RunEvent: object({
     event: ref(() => CHECKS.StreamEvent),
     eventId: allOf([text(), maxLength(65540), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^evt_")]),
@@ -3739,6 +3751,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     goal: ref(() => CHECKS.Goal),
     interrupts: array(ref(() => CHECKS.PendingInterruptSet)),
     items: array(ref(() => CHECKS.Item)),
+    pendingSteers: array(ref(() => CHECKS.PendingSteerInput)),
     plan: ref(() => CHECKS.Plan),
     runs: array(ref(() => CHECKS.RunRef)),
     session: ref(() => CHECKS.Session),

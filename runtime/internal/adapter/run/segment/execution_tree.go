@@ -49,6 +49,14 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 		if err := e.executionTrees.SaveExecutionTree(ctx, update); err != nil {
 			return err
 		}
+		for _, acceptance := range tree.InputAcceptances {
+			if acceptance.Operation != runs.CommandSteerInput || acceptance.SessionID != update.Head.SessionID {
+				return errors.New("segment: foreign input acceptance")
+			}
+			if err := e.commandAcceptances.Save(ctx, acceptance); err != nil {
+				return err
+			}
+		}
 		if tree.Context != nil {
 			if err := e.executorCheckpoints.SaveCheckpoint(ctx, *tree.Context); err != nil {
 				return err
@@ -85,6 +93,12 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 	defer cancel()
 	head, found, readErr := e.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
 	if readErr == nil && found && head.SameCommit(update.Head) {
+		for _, acceptance := range tree.InputAcceptances {
+			record, lookupErr := e.commandAcceptances.Lookup(readCtx, acceptance.Key)
+			if lookupErr != nil || !record.Found || !record.Acceptance.Equal(acceptance) {
+				return errors.Join(err, lookupErr)
+			}
+		}
 		for _, started := range tree.StartedChildren {
 			confirmed, lookupErr := e.reconcileOpeningCommit(readCtx, started.Opening())
 			if lookupErr != nil || !confirmed {

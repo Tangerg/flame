@@ -7,6 +7,7 @@ import { projectAgentSessionSnapshot } from "./sessionSnapshot";
 import { reconcileSteerMessages } from "../view/viewMutations";
 import { notifyInfo } from "@/plugins/sdk";
 import { t } from "@/lib/i18n";
+import { restoreUnresolvedSteers } from "../input/steering";
 
 interface RefreshSessionProjectionOptions {
   invalidateQueuedRunEvents?: boolean;
@@ -57,6 +58,8 @@ export async function revalidateAgentSessionMaterial(
   const previous = viewPort.getSession(sessionId)?.view;
   const reconciled = previous ? reconcileSteerMessages(previous, view) : { view, unapplied: false };
   const committed = viewPort.commitViewRefresh(sessionId, token, reconciled.view);
+  if (committed && material.unresolvedSteers?.length)
+    restoreUnresolvedSteers(sessionId, material.unresolvedSteers);
   if (committed && reconciled.unapplied)
     notifyInfo(t("agent.steer.notApplied"), { source: "session" });
   return {

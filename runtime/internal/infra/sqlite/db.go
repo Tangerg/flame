@@ -559,16 +559,16 @@ func currentSchema() []string {
 		// One shared command-record store under a single global key. Three closed
 		// variants record different facts with different owners: a delivery-owned
 		// generic response reservation (pending_response) and its completed outcome
-		// (response), and a Run-owned immutable acceptance (run_opening) written in
-		// the Run opening transaction. The shared primary key is the one global key
+		// (response), and a Run-owned immutable acceptance (run_acceptance) written in
+		// the Run opening or input-admission transaction. The primary key is the global key
 		// constraint; a Run opening never passes through pending_response and a
-		// generic Complete never overwrites a run_opening. material_run_id is the
-		// retire-only reference to the original Run material: the opening establishes
+		// generic Complete never overwrites a run_acceptance. material_run_id is the
+		// retire-only reference to original Run material: acceptance establishes
 		// it, the material's deletion sets it NULL via the foreign key, and importing
 		// the same RunID cannot refill it.
 		`CREATE TABLE IF NOT EXISTS idempotency_records (
 			key          TEXT PRIMARY KEY,
-			kind         TEXT NOT NULL CHECK (kind IN ('pending_response','response','run_opening')),
+			kind         TEXT NOT NULL CHECK (kind IN ('pending_response','response','run_acceptance')),
 			fingerprint  TEXT NOT NULL,
 			payload      BLOB,
 			expires_at   INTEGER,
@@ -577,17 +577,20 @@ func currentSchema() []string {
 			run_id       TEXT,
 			segment_id   TEXT,
 			user_item_id TEXT,
+			steer_input BLOB,
 			material_run_id TEXT REFERENCES runs(run_id) ON DELETE SET NULL,
 			CHECK (
 				(kind IN ('pending_response','response')
 					AND payload IS NOT NULL AND expires_at IS NOT NULL
 					AND operation IS NULL AND session_id IS NULL AND run_id IS NULL
-					AND segment_id IS NULL AND user_item_id IS NULL AND material_run_id IS NULL)
+					AND segment_id IS NULL AND user_item_id IS NULL AND material_run_id IS NULL AND steer_input IS NULL)
 				OR
-				(kind = 'run_opening'
+				(kind = 'run_acceptance'
 					AND payload IS NULL AND expires_at IS NULL
 					AND operation IS NOT NULL AND session_id IS NOT NULL AND run_id IS NOT NULL
-					AND segment_id IS NOT NULL AND user_item_id IS NOT NULL)
+					AND segment_id IS NOT NULL AND user_item_id IS NOT NULL
+					AND ((operation IN ('start','resume') AND steer_input IS NULL)
+						OR (operation = 'steer' AND steer_input IS NOT NULL)))
 			)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_expires_at

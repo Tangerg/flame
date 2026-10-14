@@ -46,7 +46,7 @@ func (i *IdempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 		// Only completed responses expire. A pending_response reservation is an
 		// unresolved claim: releasing it on elapsed wall time would let the same key
 		// execute its business mutation again after a process crash, even though
-		// the first mutation may already have committed. A run_opening acceptance has
+		// the first mutation may already have committed. A run_acceptance acceptance has
 		// no wall-clock expiry at all and is never pruned here.
 		if _, execContextErr := db.ExecContext(ctx,
 			`DELETE FROM idempotency_records WHERE kind = 'response' AND expires_at <= ?`, now,
@@ -108,7 +108,7 @@ func (i *IdempotencyStore) Complete(ctx context.Context, record idempotency.Reco
 	}
 	// The pending reservation is gone. An exact already-committed response is an
 	// idempotent success; a different owner or outcome is a conflict; anything
-	// else means the claim was lost. A run_opening never answers here: it is not a
+	// else means the claim was lost. A run_acceptance never answers here: it is not a
 	// generic response and cannot share this owner's fingerprint.
 	var fingerprint string
 	var payload []byte

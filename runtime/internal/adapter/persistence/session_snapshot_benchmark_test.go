@@ -40,7 +40,8 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 			sessions := sqlite.NewSessionStore(db)
 			items := sqlite.NewTranscriptStore(db)
 			stores, err := NewSessionStores(SessionStoresConfig{
-				Sessions: sessions, Transcript: items, Runs: runs, History: history,
+				CommandAcceptances: NewCommandAcceptanceStore(db),
+				Sessions:           sessions, Transcript: items, Runs: runs, History: history,
 				Interrupts:          NewInterruptStore(sqlite.NewInterruptStore(db)),
 				ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 				Plan:                sqlite.NewPlanStore(db), ApprovalRules: sqlite.NewApprovalRuleStore(db),

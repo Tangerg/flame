@@ -188,7 +188,7 @@ func (g GetRunAcceptanceRequest) ValidateWire() error {
 		requiredTextPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
 		requiredText("key", g.Key),
 		maxLength("key", g.Key, 255),
-		closedEnum("operation", string(g.Operation), []string{"start", "resume"}, false),
+		closedEnum("operation", string(g.Operation), []string{"start", "resume", "steer"}, false),
 	)
 }
 
@@ -967,6 +967,8 @@ func (r RunAcceptance) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "sessionId", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "run", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "userItemId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "input", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "appliedItem", r),
 		requiredWhen(wireFieldEquals(r, "type", "accepted"), "runId", r),
 		requiredWhen(wireFieldEquals(r, "type", "accepted"), "segmentId", r),
 		requiredWhen(wireFieldEquals(r, "type", "accepted"), "sessionId", r),
@@ -975,6 +977,7 @@ func (r RunAcceptance) ValidateWire() error {
 		requiredWhen(wireFieldEquals(r, "type", "retired"), "segmentId", r),
 		requiredWhen(wireFieldEquals(r, "type", "retired"), "sessionId", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "retired"), "run", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "retired"), "appliedItem", r),
 	)
 }
 

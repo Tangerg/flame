@@ -67,7 +67,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lookup after reopen: %v", err)
 	}
-	if !record.Found || record.CurrentRun == nil || record.Acceptance != acceptance {
+	if !record.Found || record.CurrentRun == nil || !record.Acceptance.Equal(acceptance) {
 		t.Fatalf("reopened record = %+v, want the original opening with live material", record)
 	}
 
@@ -81,7 +81,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	if !retired.Found || retired.CurrentRun != nil {
 		t.Fatalf("retired record = %+v, want the identity without live material", retired)
 	}
-	if retired.Acceptance != acceptance {
+	if !retired.Acceptance.Equal(acceptance) {
 		t.Fatalf("retirement changed the recorded identity: %+v", retired.Acceptance)
 	}
 

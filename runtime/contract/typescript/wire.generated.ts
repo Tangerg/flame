@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-13.1";
+export const PROTOCOL_VERSION = "2026-10-14.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1128,6 +1128,13 @@ export interface PendingInterruptSet {
   sessionId: string;
 }
 
+export interface PendingSteerInput {
+  input: ContentBlock[];
+  runId: string;
+  segmentId: string;
+  userItemId: string;
+}
+
 export interface Plan {
   sessionId: string;
   state?: PlanState;
@@ -1559,12 +1566,12 @@ export interface RollbackSessionResponse {
 
 export type RunAcceptance =
   | { type: "notRecorded" }
-  | { type: "accepted"; run: RunRef; runId: string; segmentId: string; sessionId: string; userItemId?: string }
-  | { type: "retired"; runId: string; segmentId: string; sessionId: string; userItemId?: string };
+  | { type: "accepted"; appliedItem?: Item; input?: ContentBlock[]; run: RunRef; runId: string; segmentId: string; sessionId: string; userItemId?: string }
+  | { type: "retired"; input?: ContentBlock[]; runId: string; segmentId: string; sessionId: string; userItemId?: string };
 
 export type RunAcceptanceType = "notRecorded" | "accepted" | "retired";
 
-export type RunCommandOperation = "start" | "resume";
+export type RunCommandOperation = "start" | "resume" | "steer";
 
 export interface RunEvent {
   event: StreamEvent;
@@ -1792,6 +1799,7 @@ export interface SessionSnapshot {
   goal?: Goal;
   interrupts: PendingInterruptSet[];
   items: Item[];
+  pendingSteers?: PendingSteerInput[];
   plan?: Plan;
   runs: RunRef[];
   session: Session;
@@ -2264,7 +2272,7 @@ export const WIRE_ENUMS = {
   RememberScopeKind: ["session", "project", "global"],
   RestoreType: ["history", "files", "both"],
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
-  RunCommandOperation: ["start", "resume"],
+  RunCommandOperation: ["start", "resume", "steer"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],

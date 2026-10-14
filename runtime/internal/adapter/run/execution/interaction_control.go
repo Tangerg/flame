@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -60,7 +59,7 @@ func (i *interactionSession) stopModelProcess(ctx context.Context, processID age
 func (i *interactionSession) submitSteer(
 	ctx context.Context,
 	message corechat.Message,
-	content []transcript.ContentBlock,
+	prepared runs.PreparedSteer,
 ) (string, error) {
 	if ctx == nil {
 		return "", errors.New("execution: steer context is required")
@@ -72,7 +71,20 @@ func (i *interactionSession) submitSteer(
 	if process == nil {
 		return "", runs.ErrExecutorNotLive
 	}
-	itemID := runs.NewItemID(uuid.NewString())
+	itemID := prepared.ItemID
+	if err := resourceid.ValidateItem(itemID); err != nil {
+		return "", err
+	}
+	if acceptance := prepared.Acceptance; acceptance != nil {
+		if err := acceptance.Validate(); err != nil {
+			return "", err
+		}
+		expected := acceptance.Clone()
+		expected.Operation, expected.SessionID, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, i.start.SessionID, itemID, prepared.Input
+		if !acceptance.Equal(expected) {
+			return "", errors.New("execution: steer acceptance does not name its input owner")
+		}
+	}
 	signalID, err := agent.ParseSignalID("steer:" + itemID)
 	if err != nil {
 		return "", fmt.Errorf("execution: construct Interaction steer identity: %w", err)
@@ -82,9 +94,15 @@ func (i *interactionSession) submitSteer(
 		return "", fmt.Errorf("execution: construct Interaction steer Signal: %w", err)
 	}
 	i.state.mu.Lock()
+	if prior, found := i.state.pendingSteers[signalID]; found && prepared.Acceptance != nil {
+		if prior.acceptance == nil || prior.acceptance.Key != prepared.Acceptance.Key || prior.acceptance.Fingerprint != prepared.Acceptance.Fingerprint {
+			i.state.mu.Unlock()
+			return "", runs.ErrCommandKeyConflict
+		}
+	}
 	i.state.pendingSteers[signalID] = pendingInteractionSteer{
 		itemID:  itemID,
-		content: transcript.CloneContent(content),
+		content: transcript.CloneContent(prepared.Input), acceptance: prepared.Acceptance,
 	}
 	i.state.mu.Unlock()
 	accepted, deliverErr := process.DeliverSignals(
@@ -101,8 +119,24 @@ func (i *interactionSession) submitSteer(
 		return "", fmt.Errorf("execution: deliver Interaction steer Signal: %w", deliverErr)
 	}
 	if !accepted {
-		i.removePendingSteer(signalID)
-		return "", errors.New("execution: Interaction steer Signal was not accepted")
+		tree, err := i.committedTree(ctx, process.Relation().RootID())
+		if err != nil {
+			return "", err
+		}
+		matched := false
+		for _, snapshot := range tree.ProcessSnapshots() {
+			if snapshot.Relation().ProcessID() != process.Relation().ProcessID() {
+				continue
+			}
+			for _, receipt := range snapshot.SignalReceipts() {
+				if receipt.ID() == signalID && receipt.Matches(signal) {
+					matched = true
+				}
+			}
+		}
+		if !matched {
+			return "", errors.New("execution: steer duplicate has no exact admission receipt")
+		}
 	}
 	return itemID, nil
 }

@@ -22,7 +22,15 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	if tree.Update.Head.SessionID != s.spec.SessionID || tree.Update.Head.RootID != s.routes.root.member.MemberID {
 		return fmt.Errorf("runs: foreign execution tree")
 	}
-	commit := ExecutionTreeCommit{Update: tree.Update, Context: tree.Context}
+	commit := ExecutionTreeCommit{Update: tree.Update, Context: tree.Context, InputAcceptances: tree.InputAcceptances}
+	for _, acceptance := range tree.InputAcceptances {
+		if err := acceptance.Validate(); err != nil {
+			return err
+		}
+		if acceptance.Operation != CommandSteerInput || acceptance.SessionID != s.spec.SessionID || acceptance.RunID != s.routes.root.runID {
+			return errors.New("runs: foreign steer acceptance")
+		}
+	}
 	startedRoutes := make(map[string]*executorRoute)
 	var children []*managedChildStart
 	seen := make(map[string]struct{})

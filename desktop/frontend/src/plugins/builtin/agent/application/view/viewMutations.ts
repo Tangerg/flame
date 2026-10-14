@@ -64,11 +64,10 @@ export function reconcileSteerMessages(
   let unapplied = false;
   for (const pending of receipts) {
     const steer = pending.steer!;
-    const index = messages.findIndex(
-      (message) => message.id === pending.id && message.runId === steer.runId,
-    );
+    const index = messages.findIndex((message) => message.id === pending.id);
     if (index >= 0) {
-      messages[index] = { ...messages[index]!, steer };
+      if (messages[index]!.runId === steer.runId)
+        messages[index] = { ...messages[index]!, steer: { ...steer, receipt: "accepted" } };
     } else if (pending.runId !== steer.runId) {
       const run = authoritative.runsById[steer.runId];
       if (steer.receipt !== "accepted") messages.push(pending);

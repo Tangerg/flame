@@ -83,7 +83,7 @@ func TestResponseOnlyResumeAcceptanceCommitsWithAnswersAndRejectsKeyReuse(t *tes
 				t.Fatal(err)
 			}
 			record, err := commands.Lookup(ctx, "resume-once")
-			if err != nil || record.Acceptance != acceptance || record.CurrentRun == nil || record.CurrentRun.State() != run.Running {
+			if err != nil || !record.Acceptance.Equal(acceptance) || record.CurrentRun == nil || record.CurrentRun.State() != run.Running {
 				t.Fatalf("response-only acceptance=%+v,%v", record, err)
 			}
 			continue

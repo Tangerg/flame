@@ -200,6 +200,9 @@ func (inertAutomationStarts) Save(context.Context, runs.AutomationReceipt) error
 type inertCommandAcceptances struct{}
 
 func (inertCommandAcceptances) Save(context.Context, runs.CommandAcceptance) error { return nil }
+func (inertCommandAcceptances) Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error) {
+	return runs.CommandAcceptanceRecord{}, nil
+}
 
 type inertAutomationAuthority struct{}
 

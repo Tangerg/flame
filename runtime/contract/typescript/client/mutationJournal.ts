@@ -8,6 +8,7 @@ import {
   type MutationJournalStorage,
 } from "./durableMutationJournal";
 import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import type { SteerRunRequest } from "../wire.generated";
 
 export {
   MutationJournalCapacityError,
@@ -25,8 +26,17 @@ export interface MutationReservation {
 }
 
 export interface MutationJournal {
+  pendingSteers(): PendingSteerCommand[];
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
   dispose(): void;
+}
+
+export interface PendingSteerCommand {
+  readonly params: SteerRunRequest;
+  readonly idempotencyKey: string;
+  readonly namespace: string;
+  settle(): void;
+  reserve(): MutationReservation;
 }
 
 export interface MutationJournalOptions {
@@ -90,6 +100,31 @@ class MutationAuthority implements MutationJournal {
 
   constructor(journal: DurableMutationJournal) {
     this.#journal = journal;
+  }
+
+  pendingSteers(): PendingSteerCommand[] {
+    this.#assertCurrent();
+    return this.#journal
+      .pendingSteers()
+      .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
+      .map((identity) => ({
+        params: structuredClone(identity.entry.steer!),
+        idempotencyKey: identity.entry.idempotencyKey,
+        namespace: this.#journal.lookupNamespace(identity),
+        settle: () => {
+          this.#assertCurrent();
+          this.#journal.settle(identity);
+        },
+        reserve: () => {
+          this.#assertCurrent();
+          if (this.#claims.has(identity.entry.idempotencyKey))
+            throw new MutationJournalOwnershipError(
+              "Runtime mutation identity is already owned by an active command",
+            );
+          this.#journal.retain(identity);
+          return this.#claim(identity);
+        },
+      }));
   }
 
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined {
