@@ -84,9 +84,12 @@ durable; authored input and business results are not copied into it. The workspa
 Memory deletion consumer uses this path. Other component workflows and complete
 cross-reload integration remain under migration.
 
-Use `buildComponent` from `@flame/plugin-sdk/build` with a source entry and output
-directory. It uses the existing Rolldown compiler to emit prebuilt ESM and relative
-assets. Private dependencies are bundled. `HOST_MODULES` names shared React,
+Use `buildComponent` from `@flame/plugin-sdk/build` with a source entry, output
+directory and `compiler: rolldown` imported from the author toolchain's declared
+`rolldown` dependency. The compiler has one owner: the author's locked build graph.
+The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
+format. The former implicit compiler lookup is removed; all in-repository build
+callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,
 React DOM, JSX runtimes, SDK and UI modules; UI subpath imports are also external.
 The graphical client must map those imports to its actual shared instances before
 evaluating an entry. The workbench emits an import map to its actual shared ESM exports. Core resource

@@ -1,5 +1,3 @@
-import { rolldown } from "rolldown";
-
 export const HOST_MODULES = Object.freeze([
   "react",
   "react-dom",
@@ -12,8 +10,10 @@ export const HOST_MODULES = Object.freeze([
 
 // Private dependencies are bundled; these modules are supplied by the actual
 // workbench renderer. The format is identical for released and development code.
-export async function buildComponent({ input, directory }) {
-  const bundle = await rolldown({
+export async function buildComponent({ input, directory, compiler }) {
+  if (typeof compiler !== "function")
+    throw new TypeError("component compiler is required");
+  const bundle = await compiler({
     input,
     platform: "browser",
     external: (id) => HOST_MODULES.includes(id) || id.startsWith("@flame/ui/"),

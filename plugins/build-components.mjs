@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { rolldown } from "rolldown";
 import { access, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -42,7 +43,11 @@ for (const directory of await readdir(root, { withFileTypes: true })) {
     ? await mkdtemp(join(tmpdir(), "flame-components-"))
     : target;
   try {
-    await buildComponent({ input: fileURLToPath(source), directory: output });
+    await buildComponent({
+      input: fileURLToPath(source),
+      directory: output,
+      compiler: rolldown,
+    });
     if (check) {
       const files = (await readdir(output)).sort();
       assert.deepEqual((await readdir(target)).sort(), files);

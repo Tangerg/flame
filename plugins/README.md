@@ -66,6 +66,29 @@ Backend source is compiled from `runtime/internal/plugins/memory` and
 These are separate executables with private facts and process lifetimes, without
 separate published Go modules or first-party version resolution.
 
+## Standalone author artifacts
+
+Build a complete Usage author kit outside the checkout:
+
+```sh
+node plugins/build-author-kit.mjs --output /absolute/new/author-kit --offline
+```
+
+The command builds the existing icon/UI artifacts, packs the public SDK, UI,
+icons and Runtime contract, and copies the complete Usage source/declaration.
+It installs those archives in the independent directory, typechecks and builds
+using only that directory's declared toolchain, then compares every emitted
+resource byte with the bundled Usage package. Dependencies must resolve inside
+that directory. It never loads or renders a component. Omit `--offline` only when
+npm must fetch declared registry dependencies missing from the local cache.
+
+The result includes its own lockfile and build script. After moving it away from
+Flame, `npm ci --ignore-scripts`, `npm run typecheck` and `npm run build` reproduce
+the installable `usage` directory. Current-source tarballs are public author
+artifacts; this does not assert registry publication or rendered/native behavior.
+The SDK build function requires the author's declared `compiler: rolldown`, so
+source links and archives use the same explicit compiler owner.
+
 ## Shared page resources
 
 First-party components consume the shared `@flame/ui` and public SDK. Each
