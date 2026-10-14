@@ -63,6 +63,56 @@ restart test pass (`2ae070375`). The memory transport grant test, broken since t
 packages (plugins/*, application/integration/plugins, pluginservices, pluginpackage,
 point, plugin) are green.
 
+### Acceptance sweep (continued session)
+
+`go vet ./...` is clean (the whole module and every test binary compile). A broad
+non-bootstrap `go test` sweep then reconciled these pre-existing acceptance
+obligations (none were regressions from this session's product work; only the
+ModelEndpointKind enum below was this session's own follow-up):
+
+- Wire enum: `ModelEndpointKind` registered in the enum catalog and contracts
+  regenerated so `kind` is a closed enum (`1215a4087`).
+- Delivery inventory pins: `modelInvocations.endpoints` added to the cursor set,
+  `plugins.stream`/`plugins.openResources` to the stream set, and `agentMemory`/
+  `schedules` dropped from advertised core features (they are plugins, not
+  business-named features, per the proposal) (`4b4e1c930`).
+- Contractgen inventory: public Go imports now include `capability`/`point`; the
+  stale `schedules.create` OpenRPC assertion was dropped (`e3f5189f2`).
+- One JSON vocabulary: `exactjson` re-exports `Number`; the memory contract uses it
+  and `apiconsumers` moved to encoding/json/v2 with a bounded directory read
+  (`010fb6c54`).
+- Fixture drift: trajectory export and lifecycle/schedule test models supplied
+  `logical_purpose` and served-model/usage (`9a9ff5826`, `2ae070375`); the memory
+  transport grant test was adapted to the `chat.Model` contract (`9dff02ee5`).
+
+Remaining acceptance obligations (pre-existing, deeper, not yet done):
+
+- Orphan generated schema definitions. `TestGeneratedSchemasResolve` /
+  `TestEveryWireStructIsPublished`: schema.json emits standalone definitions for
+  `PageContinuation`, `PageQuery`, `RecordedUsage` (composed values flattened into
+  their containers) and `PageOfItem` (fully unused). The schema generator must stop
+  emitting standalone definitions for flattened/unreferenced value types; see
+  `internal/delivery/dispatch/contract_values_wire.go` registrations and the
+  not-on-wire list.
+- Operation registration. `TestDeliveryHandlerMatchesRegisteredOperationCapabilities`:
+  the delivery Handler exports `PreparePluginCall` and `StreamPlugin` that the
+  catalog does not register (98 vs 100). Decide whether each is a registered
+  operation or an unexported helper and reconcile.
+- Panic retention. `TestRecoveredPanicsKeepTheirStack`
+  (`runtime_question_test.go`): some reconnect/setup path absorbs a panic without
+  re-raising it or keeping its stack.
+- Capability gate example. `TestCapabilityGateRefusesADisabledFeature`
+  (`dispatch/contract_test.go`) still gates on `agentMemory.list`, a removed Core
+  Memory method; replace it with a currently-registered unconditionally gated
+  method and implement that method on the test `capabilityRuntime`.
+- Run command idempotency. `TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend`
+  (`client_callback_test.go`): the exercised Run command carries no idempotency key
+  that admission now requires.
+- Bootstrap suite and full/native/vet/race/dependency/format/deletion acceptance
+  remain concentrated final work; the embedding live-Run/Goal consumption,
+  retention/dependency/point lifecycle (priority #3) and independent author
+  qualification (priority #4) are not started.
+
 Original two-layer diagnosis, retained for reference:
 
 `TestScheduleCreateRecoversAcrossSIGKILLCuts` was fully root-caused this session with a
