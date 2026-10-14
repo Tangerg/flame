@@ -10,8 +10,12 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Last product commit: `13193c2d6` (original background resource targets).
-- Last progress correction before this handoff: `da8caff35`.
+- Last product commits (2026-10-14 session): `f59404a96` (bootstrap realignment +
+  unconfirmed-command projection), `13f9eb336` (contract orphan resolution). Earlier
+  this branch: `73ce66711` (two-phase startup recovery), `8ad951c7d` (embedding
+  endpoint evidence), `13193c2d6` (original background resource targets).
+- Last progress correction before this handoff: see the progress anchor's
+  "Session close 2026-10-14" entry.
 - Progress anchor: `/Users/tangerg/.codex/worktrees/unified-plugins/flame/docs/plugin-refactor-progress.md`.
 - `/Users/tangerg/Desktop/flame/docs/plugin-refactor-progress.md` is an existing
   symlink to that anchor. Preserve it.
@@ -183,21 +187,36 @@ focused race 1.839/7.932s. These are boundary/module results, not full acceptanc
 Root/bootstrap test sources were compiled with `go test -c`; their TestMain was not
 executed by those compile checks.
 
+Resolved since the last handoff:
+
+- `TestScheduleCreateRecoversAcrossSIGKILLCuts`: fixed by two-phase startup recovery
+  (`73ce66711`); all seven cuts pass.
+- Orphan generated definitions (RecordedUsage/PageContinuation/PageOfItem/PageQuery):
+  RESOLVED (`13f9eb336`). The generator separates embedding reach from standalone
+  `$ref` reach and withholds embedded-only owners from the published bundle while
+  keeping them in the walked set for validators, the TS generic emitter and the
+  wire-graph invariant. `ListModelEndpointsRequest` now embeds `PageQuery`.
+- Operation/publication inventories, JSON vocabulary/finite-read, panic retention,
+  capability gate, Run idempotency: resolved earlier this branch (see the anchor's
+  acceptance sweep). `go vet ./...` clean; non-bootstrap module sweep green.
+
 Still failing/unresolved:
 
-- `TestScheduleCreateRecoversAcrossSIGKILLCuts` in
-  `runtime/internal/adapter/run/execution/schedule_recovery_product_crash_test.go`.
-  Missing production `AgentMemory: toolRuntime.memory` was repaired; all seven
-  cases subsequently stopped at plugin activation handshake. Preserve cut/no-replay/
-  data assertions. Do not classify this as unrelated without causal evidence or
-  repeatedly run its expensive helper during unrelated development. A Scanner size
-  concern in `runtime/internal/bootstrap/testdata/managed-message-loss/main.go`
-  was speculation, not a demonstrated cause or implemented fix.
-- Earlier schema/architecture findings remain obligations: orphan generated
-  definitions (RecordedUsage/PageContinuation/PageOfItem/PageQuery), operation and
-  publication inventories, JSON vocabulary/finite-read checks and panic retention
-  around reconnect/setup. Check the anchor and current gate output; narrow green
-  tests do not clear them.
+- `TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement`
+  (`runtime/internal/bootstrap/schedules_callback_loss_test.go`): the ONLY remaining
+  bootstrap failure. A schedule run-now commits a Core Run opening whose SSE
+  acknowledgement is dropped, then disables the schedules plugin. On reopen, the
+  lost Core opening must be reconciled so the session can be retired, but
+  `recoverUncertainExecutions` revives through the original schedule command path
+  (`ReviveUncertainExecution` → `Schedules.AwaitOriginalCreateSource` →
+  `Pool.BoundServiceSession` → `WaitSession`) and blocks on the DISABLED plugin's
+  session until the context deadline (`session_busy`, then a host.Close shutdown
+  deadline). Root cause: a Core Run opening should be reconcilable without its
+  originating plugin live; revival of a plugin-backed uncertain execution should not
+  block indefinitely when the plugin is unavailable. The fix is a production
+  recovery-robustness change (defer/terminalize instead of blocking on WaitSession),
+  deferred as out of scope for a wrap-up. Already failing with both symptoms before
+  this session's test realignment.
 - A Desktop aggregate UI check was accidentally run much earlier and interrupted;
   resulting UI failures were not proven pre-existing. Do not rerun forbidden UI
   checks or claim those failures are resolved.

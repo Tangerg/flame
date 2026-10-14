@@ -6,7 +6,41 @@ Resumed on 2026-10-14 from `docs/plugin-refactor-handoff.md`. Main was already f
 merged (`git merge main` reported up to date; merge-base is main's tip `7ba40c117`),
 so the branch has not drifted. Original inputs/stash are unchanged.
 
-Latest completed product slice follows.
+### Session close 2026-10-14 (contract orphans + bootstrap realignment)
+
+This session resolved the deepest deferred generator obligation and brought the
+bootstrap suite from 14 failures to 1. The user asked to stop here and hand off;
+`docs/plugin-refactor-handoff.md` carries the forward brief.
+
+- Orphan generated schema definitions: RESOLVED (`13f9eb336`). See the detail below.
+- Bootstrap lifecycle tests realigned with this branch's tightened invariants
+  (`f59404a96`): two-phase recovery (recoverUncertainExecutions after assemble),
+  per-model usage fixtures, endpoint kind, Run idempotency key, full-descriptor
+  command contract, two trajectory components. One production fix: wirePluginError
+  projects ErrCommandUnconfirmed under the non-retryable internal category with the
+  cause preserved, so an unconfirmed command is neither resubmitted nor retargeted
+  while `errors.Is(_, plugin.ErrCommandUnconfirmed)` still holds.
+- Verified green this session: `go build ./...`, `go vet ./...`, contract
+  regeneration (idempotent), the full non-bootstrap module sweep (123 packages ok),
+  `internal/delivery/...`, and all of `internal/bootstrap` EXCEPT the one case below.
+- REMAINING bootstrap failure (1): `TestSchedulesReconcilesLostCoreOpeningBefore
+  PrivateAcknowledgement`. A schedule run-now committed a Core run opening whose SSE
+  acknowledgement was dropped (the `lostOpeningWriter`), leaving an uncertain Run in
+  flight; the schedules plugin is then DISABLED. On reopen the test expects the
+  lost Core opening reconciled so `sessions.delete` (retire-accepted-material)
+  succeeds, but `recoverUncertainExecutions` revives through the original schedule
+  command path (`ReviveUncertainExecution` → `Schedules.AwaitOriginalCreateSource`
+  → `Pool.BoundServiceSession` → `WaitSession`), which blocks on the disabled
+  plugin's session until the context deadline (`session_busy` at
+  `schedules_callback_loss_test.go:113`, shutdown deadline at
+  `plugin_acceptance_mcp_test.go:73` host.Close). This is the plugin-disabled
+  variant of the recovery-ordering issue the handoff flagged as concentrated final
+  work; a Core run opening should be reconcilable without its originating plugin
+  being live. It was already failing with both symptoms before this session's
+  bootstrap fixes; the fix is a production recovery-robustness change, deferred as
+  out of scope for a wrap-up.
+
+Earlier completed product slice follows.
 
 Stage 5ae (embedding endpoint evidence/metering) makes embedding a first-class
 physical endpoint beside chat, through one shared evidence/accounting owner. The
@@ -90,25 +124,24 @@ Resolved this sweep: operation registration (`ff` arch factories `streamOwnerCom
 `ff1d99bfe`), the capability-gate example (`skills.discovered.list`, `f087d90a2`),
 and the Run-command idempotency callback (`b048c093d`).
 
+Orphan generated schema definitions: RESOLVED (`13f9eb336`). The generator now
+separates two reasons a definition is reached — embedding (`defineEmbedded`)
+versus a standalone `$ref` (`define`, which marks `referenced`). `Definitions`
+withholds owners reached ONLY through embedding (`PageQuery`, `PageContinuation`,
+`RecordedUsage`, `PageOfItem`) from the published bundle while keeping them in
+the walked `schemaSet` for the Go validators, the TypeScript generic emitter and
+the wire-graph invariant; dual-use types a map/slice/request also references
+(`ModelUsage`, `RunSummary`, the embedded request types) stay published. The
+root `ListModelEndpointsRequest` had re-declared `cursor`/`limit` instead of
+embedding `PageQuery`; it now embeds the owner, so the one pagination contract
+states its bounds in every carrier. `notOnTheWire` records `PageQuery` and
+`RecordedUsage` beside the `PageContinuation` entry. `go build`, `go vet`,
+regeneration (idempotent), and the full `internal/arch`/`cmd/contractgen`/
+`protocol`/`delivery` contract suites pass. This matches the recorded decision
+"Named embedded public DTOs stay in the generated wire graph."
+
 Remaining acceptance obligations (pre-existing, deeper, not yet done):
 
-- Orphan generated schema definitions. `TestGeneratedSchemasResolve` /
-  `TestEveryWireStructIsPublished`: the generator (`cmd/contractgen/schema.go`
-  `object`, line ~230 `s.walk(embedded)`) emits a standalone `$def` for every
-  embedded struct even though embedding flattens its fields inline, so the def is
-  never `$ref`'d. `PageContinuation`, `PageQuery` and `RecordedUsage` are flattened
-  composed values (only `PageContinuation` is in the test's `notOnTheWire` list),
-  and `PageOfItem` is a generic instantiation nothing returns. Resolution is
-  multi-cause and the walked set is shared: validators are generated from the same
-  `schemaSet` (`validator.go` `reachableProtocolStructs(walked *schemaSet)`), and
-  `PageContinuation`/`PageQuery` are also walked through the `valueConstraint` path
-  (`bundle.go:67`), so these types must stay walked (for `ValidateWire` and the
-  flattened-field constraints) while being excluded from the published `$defs`.
-  Resolution needs a real separation of "walked for validation" from "published
-  definition" in the generator, plus handling `PageOfItem`'s generic instantiation,
-  then regeneration and re-running every contract-drift check. Deferred as the
-  deepest generator change; the prior quick-alias experiment was reverted because a
-  transparent alias trips the transport-boundary gate (now a Number constructor).
 - Bootstrap suite and full/native/vet/race/dependency/format/deletion acceptance
   remain concentrated final work; the embedding live-Run/Goal consumption,
   retention/dependency/point lifecycle (priority #3) and independent author
