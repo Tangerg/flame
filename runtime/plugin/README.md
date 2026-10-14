@@ -280,6 +280,11 @@ admitted call owner's behavior to this contract. The caller owns exact model
 selection, admission, budgets and identity fencing; the SDK does not resolve a
 different provider or establish another replay/result store.
 
+An explicit admission Refusal without response is returned as known refusal.
+If a valid response is already observed, the result preserves it alongside failure.
+Memory is a production consumer of this contract; its original private budget and
+receipt owner remain outside the SDK, and prompt-to-text policy stays with Memory.
+
 ModelResult retains a valid known inner Response alongside ModelFailure when an
 outer operation fails. Failure alone is also valid; an empty outcome is refused.
 Usage, reasoning, actual model metadata and absent versus explicit zero accounting

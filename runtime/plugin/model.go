@@ -91,6 +91,9 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 		}
 		command.Input = *command.Input.Clone()
 		response, err := call(ctx, command)
+		if refusal, known := errors.AsType[*capability.Refusal](err); known && response == nil {
+			return ModelResult{}, refusal
+		}
 		return modelResult(response, err)
 	})
 }

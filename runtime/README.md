@@ -177,9 +177,20 @@ complete request/response and the existing callback endpoint. Its result keeps
 validated inner response evidence even when an outer operation fails. A public
 external-package subprocess verifies model calls, full usage and causal cancellation
 without private imports or a Desktop relay. This is a foundation for the continuing
-canonical model execution migration; production Interaction/auxiliary/Memory paths,
+canonical model execution migration; production Interaction/auxiliary paths,
 installed streaming decorators/remote next and durable inner evidence are still open.
 No model execution Core method or streaming support is inferred from this unary API.
+
+Production Memory maintenance now uses that public complete Scope model exchange.
+The utility model is resolved once before the original maintenance dispatch and
+captured by its callback grant. Memory keeps its private two-external-call budget
+and original method/input identity fence. Its private prompt policy builds the
+canonical request; the backend uses Scope's text output contract only after the
+complete response arrives. Usage/reasoning/model evidence is preserved on the link,
+including a valid response alongside failure. Embedding has a separate private
+text-array/vector method rather than a string-valued model operation. The former
+flame.memory/model.v1 text multiplexer is removed. Full durable inner observation,
+generic embedding author parity and installed model/decorator composition remain open.
 
 Core 2026-10-14.21 projects optional stream schema on public method descriptors.
 The Go plugin SDK implements captured callback streaming on the existing endpoint,

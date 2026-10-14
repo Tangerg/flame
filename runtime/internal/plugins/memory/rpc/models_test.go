@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -12,10 +13,45 @@ import (
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
 
+func textModel(call func(context.Context, *chat.Request) (string, error)) chat.Model {
+	return chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		text, err := call(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+		message := chat.NewAssistantMessage(chat.NewTextPart(text))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+	})
+}
+func testModelRequest(prompt Prompt) *chat.Request {
+	return &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(prompt.SystemPrompt), chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt))}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens, OutputFormat: &chat.OutputFormat{Type: chat.OutputFormatText}}}
+}
+
 func testPrompt() Prompt {
-	return Prompt{Operation: "memory.extract", UserPrompt: "captured transcript", MaxInputBytes: 128, MaxOutputTokens: 64}
+	return Prompt{Operation: "memory.extract", SystemPrompt: "extract durable facts", UserPrompt: "captured transcript", MaxInputBytes: 128, MaxOutputTokens: 64}
+}
+
+func TestMemoryGrantKeepsCompleteModelEvidenceWithKnownResponseAndFailure(t *testing.T) {
+	callbacks := pluginsdk.NewCallbacks()
+	defer callbacks.Close()
+	session := new(sdk.ClientSession)
+	callbacks.AdmitSession(session)
+	message := chat.NewAssistantMessage(chat.NewTextPart("fact"), chat.NewReasoningPart("basis", nil))
+	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "captured-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
+	grant, release, err := GrantModels(t.Context(), callbacks, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		return response, errors.New("outer observation failed")
+	}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	actual, err := pluginsdk.CallModel(t.Context(), grant, "original", testModelRequest(testPrompt()))
+	if err == nil || !reflect.DeepEqual(actual, response) {
+		t.Fatalf("complete model evidence=%+v %v", actual, err)
+	}
 }
 
 func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
@@ -41,7 +77,7 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
 	var calls atomic.Int32
-	grant, release, err := GrantModels(t.Context(), broker, session, func(context.Context, Prompt) (string, error) { calls.Add(1); return "fact", nil }, nil)
+	grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { calls.Add(1); return "fact", nil }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,37 +119,37 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			session := new(sdk.ClientSession)
 			callbacks.AdmitSession(session)
 			var calls atomic.Int32
-			grant, release, err := GrantModels(t.Context(), callbacks, session, func(context.Context, Prompt) (string, error) {
+			grant, release, err := GrantModels(t.Context(), callbacks, session, textModel(func(context.Context, *chat.Request) (string, error) {
 				calls.Add(1)
 				if lost {
 					return "", errors.New("provider observation was lost")
 				}
 				return "original value", nil
-			}, nil)
+			}), nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer release()
-			method, err := modelMethod()
+			method, err := pluginsdk.ModelMethod()
 			if err != nil {
 				t.Fatal(err)
 			}
 			if method.Descriptor().Kind != capability.Mutation {
 				t.Fatal("external model call was declared as a query")
 			}
-			value, err := pluginsdk.CallHost(t.Context(), grant, method, "first", testPrompt())
-			if !lost && (err != nil || value != "original value") {
-				t.Fatalf("original value=%q error=%v", value, err)
+			value, err := pluginsdk.CallModel(t.Context(), grant, "first", testModelRequest(testPrompt()))
+			if !lost && (err != nil || value == nil || value.Output.Message.Text() != "original value") {
+				t.Fatalf("original value=%+v error=%v", value, err)
 			}
 			if lost && err == nil {
 				t.Fatal("lost provider result became known")
 			}
-			if _, err := pluginsdk.CallHost(t.Context(), grant, method, "first", testPrompt()); err == nil {
+			if _, err := pluginsdk.CallModel(t.Context(), grant, "first", testModelRequest(testPrompt())); err == nil {
 				t.Fatal("original external call was redelivered")
 			}
 			changed := testPrompt()
 			changed.UserPrompt = "changed input"
-			_, err = pluginsdk.CallHost(t.Context(), grant, method, "first", changed)
+			_, err = pluginsdk.CallModel(t.Context(), grant, "first", testModelRequest(changed))
 			failure, known := errors.AsType[*capability.Refusal](err)
 			if !known || failure.Code != "command_conflict" {
 				t.Fatalf("changed original input did not conflict: %v", err)
@@ -121,11 +157,11 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			if calls.Load() != 1 {
 				t.Fatalf("original identity caused %d provider calls", calls.Load())
 			}
-			_, _ = pluginsdk.CallHost(t.Context(), grant, method, "second", testPrompt())
+			_, _ = pluginsdk.CallModel(t.Context(), grant, "second", testModelRequest(testPrompt()))
 			if calls.Load() != 2 {
 				t.Fatalf("independent call did not consume the remaining budget: %d", calls.Load())
 			}
-			if _, err := pluginsdk.CallHost(t.Context(), grant, method, "third", testPrompt()); err == nil || calls.Load() != 2 {
+			if _, err := pluginsdk.CallModel(t.Context(), grant, "third", testModelRequest(testPrompt())); err == nil || calls.Load() != 2 {
 				t.Fatalf("budget exceeded: calls=%d error=%v", calls.Load(), err)
 			}
 		})
@@ -142,19 +178,23 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 	broker.AdmitSession(session)
 	entered := make(chan struct{})
 	settled := make(chan struct{})
-	grant, release, err := GrantModels(t.Context(), broker, session, func(ctx context.Context, _ Prompt) (string, error) {
+	grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(ctx context.Context, _ *chat.Request) (string, error) {
 		close(entered)
 		<-ctx.Done()
 		close(settled)
 		return "", ctx.Err()
-	}, nil)
+	}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
 	done := make(chan error, 1)
 	go func() { _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); done <- err }()
-	<-entered
+	select {
+	case <-entered:
+	case err := <-done:
+		t.Fatalf("model failed before admission: %v", err)
+	}
 	broker.RevokeSession(session)
 	select {
 	case <-settled:
@@ -201,7 +241,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	}
 	defer session.Close()
 	broker.AdmitSession(session)
-	grant, release, err := GrantModels(t.Context(), broker, session, func(context.Context, Prompt) (string, error) { return "durable fact", nil }, nil)
+	grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "durable fact", nil }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +261,7 @@ func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
-	grant, release, err := GrantModels(ctx, broker, session, func(context.Context, Prompt) (string, error) { return "", errors.New("must not be called") }, nil)
+	grant, release, err := GrantModels(ctx, broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "", errors.New("must not be called") }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,10 +350,10 @@ func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
 			session := new(sdk.ClientSession)
 			broker.AdmitSession(session)
 			var calls atomic.Int32
-			grant, release, err := GrantModels(t.Context(), broker, session, func(context.Context, Prompt) (string, error) {
+			grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) {
 				calls.Add(1)
 				return "fact", nil
-			}, nil)
+			}), nil)
 			if err != nil {
 				t.Fatal(err)
 			}
