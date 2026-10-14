@@ -14,6 +14,29 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Feature-owned identities and change observations (2026-10-15)
+
+- `d0c9afaec` removes the unconsumed Core Go/TS Schedule prefix and private
+  resource identity type. Schedules alone owns its identity/occurrence namespace;
+  existing accepted values and private storage are unchanged.
+- Memory/Schedules application code no longer imports Core's invalidation record
+  or resource enum. A local `OnChange` callback observes successful writes in the
+  caller's write-set; the transport still owns notification after private commit.
+  All callback consumers migrate. Counts for duplicate/failed writes and exactly
+  one winning concurrent curation generation remain asserted.
+- Passed: full Memory/Schedules, resource IDs and contractgen packages, real
+  bootstrap Memory/Schedule/original-owner recovery selection (34.508s), Runtime/
+  CLI/Reviews build, Desktop typecheck, generation, gofmt/diff and stash-free staged
+  checks/commitlint. No UI/E2E/screenshot or Desktop aggregate check ran.
+- Scope correction from the original proposal: P01 requires building a bundled
+  feature outside the repository using public artifacts; it does not require
+  relocating every backend or publishing every shared host utility. Next qualify
+  the complete Usage component from packed public SDK/UI/protocol artifacts and
+  the independent backend author from an SDK artifact, then native distribution
+  and individual acceptance. Backend source extraction remains necessary only
+  where a real author consumer needs a missing public capability. Local workspace
+  compilation must not be presented as released-module availability.
+
 ### Public model choice and catalog admission (2026-10-15)
 
 - `325998894` moves the immutable provider/model/reasoning choice and its closed

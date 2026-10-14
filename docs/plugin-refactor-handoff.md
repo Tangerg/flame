@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 public model choice/catalog slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 feature identity/notification slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `325998894` (public immutable model choice and released
+- Latest product commit: `d0c9afaec` removes Core Schedule identity vocabulary
+  and feature imports of Core invalidation records; `325998894` (public immutable model choice and released
   catalog admission, all consumers regenerated); `419735d13` extracts public
   SQLite/receipt owners and per-database transaction authority; preceding `6e23f4d00` implements target-owned point
   availability and actual
@@ -152,9 +153,13 @@ or deletion. Captured primary context and independent billing remain distinct.
    public-author receipt fixture pass (`419735d13`). Public `runtime/model` and `runtime/model/catalog` now own the immutable choice
    and catalog admission (`325998894`); all private consumers and generated
    Schedules contracts migrate. Focused packages, real bootstrap (63.710s),
-   external author compilation, builds and types pass. Extract remaining value/path/
-   policy dependencies and Memory/Schedules source, then complete
-   independent author/component/native packaging qualification. Workspace
+   external author compilation, builds and types pass. Qualify a complete bundled component (Usage) from packed public artifacts
+   outside the repository, independent backend author artifacts and native
+   distribution. The original P01 requires one bundled feature built from public
+   artifacts, not blanket publication of host utilities or moving every backend.
+   Extract further backend dependencies only for a demonstrated author need.
+   `d0c9afaec` removes Core Schedule identity vocabulary and Core invalidation
+   records from feature owners; full feature packages and bootstrap (34.508s) pass. Workspace
    compilation is not proof of published-module availability. Publishing is not
    authorized.
 5. Run concentrated integrated acceptance and repair failures. Individually audit
