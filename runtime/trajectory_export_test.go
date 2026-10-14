@@ -102,7 +102,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 			runID, state = child.ID(), "unknown"
 		}
 		if _, err := db.ExecContext(t.Context(), `INSERT INTO model_invocations
-			(call_id,session_id,run_id,segment_id,state,started_at,finished_at,usage) VALUES(?,?,?,?,?,?,?,?)`,
+			(call_id,session_id,run_id,segment_id,state,started_at,finished_at,usage,logical_purpose) VALUES(?,?,?,?,?,?,?,?,'conversation')`,
 			fmt.Sprintf("model:export:%03d", index), ses.ID, runID, "seg_export", state,
 			at.Add(time.Duration(index)*time.Millisecond).UnixNano(), at.Add(time.Second).UnixNano(), usage,
 		); err != nil {
