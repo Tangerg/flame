@@ -2,51 +2,44 @@
 
 ## Current stage
 
-Stage 5e (ad60cfaa7) implements TS installed mutation streams through the existing
-Runtime client, original intent journal and plugins.stream. An awaited chunk callback
-consumes the canonical stream; the returned Promise settles only after final output
-decoding or explicit owner refusal. Consumer/decoder/transport failure, missing final
-and client replacement retain original uncertainty without automatic replay.
-Restoration captures the original binding/input/key before current provider preparation
-and reads the original receipt without reproducing chunks.
+Stage 5f (06890e847) migrates production Memory maintenance to the public complete
+Scope model callback. Runtime captures the resolved utility model before original
+maintenance dispatch; the backend builds the canonical request and consumes Scope's
+text output contract after receiving the full response. Memory keeps its private
+prompt policy, two-external-call budget and method/input identity fence. Public model
+admission refuses without response explicitly; a valid response alongside failure
+retains usage, reasoning and actual model evidence. No provider replay is added.
 
-The journal derives unary/stream delivery from its retained required contract instead
-of storing another mutable mode or adding another journal. Existing unary commands
-remain unchanged and refuse stream metadata locally. HTTP waits for each request's
-own notification consumption, while the shared RPC receive loop continues handling
-nested/unrelated requests. Concurrent stream delivery is refused without a queue.
-Cancellation/closure ends the reader and observers and joins asynchronous consumers.
-Consumers must honor the supplied signal; no detached producer or browser relay is added.
+Embedding now has a separate private text-array/vector callback under the same
+budget. The former flame.memory/model.v1 string multiplexer and Completion port are
+removed. Callback limits derive from the actual escaped corpus without encoding
+that corpus a second time as a string. This is actual Memory production migration,
+not general embedding author parity or durable inner-observation completion.
 
-The public component SDK accepts generated MethodChunks as bindOperations' third
-map and exposes stream(intent, method, input, consume, signal). It validates/captures
-the declared method, target and binding, uses the same original journal and tracks
-the final Promise under the component lifetime. Unary query/command entrances retain
-their stream refusal. This is compiled author API evidence, not rendered UI proof.
+Passed: migrated existing budget/conflict/revocation/maximum corpus/in-request MCP
+checks and complete response-plus-failure evidence (final RPC group 1.447s);
+actual Memory maintenance/original input check (0.957s), public model group (0.504s),
+Runtime/CLI builds and formatting/diff checks. Old test signatures were migrated.
+A fixture with empty system text failed canonical request admission and left its
+retirement test waiting; the confirmed test process was stopped after stack evidence,
+the fixture/root wait were corrected, and final checks pass. No active executed
+failure remains. This does not prove all production model/decorator workflows.
 
-Unsafe numeric input/stream evidence is explicitly refused before acceptance rather
-than silently rounded. Full wide-number/schema/data parity remains an unfinished
-requirement; this refusal does not close it. Core remains 2026-10-14.21, backend
-2026-10-14.2 and storage/receipt formats are unchanged.
-
-Passed: stream backpressure/nested RPC, late final settlement, lost-final original
-route recovery after client replacement, unsafe number refusal/no replay and cancel/
-consumer join. Initial stream/unary client group passed (9 cases, 258ms); affected
-existing transport/stream/mutation group passed (73 cases, 333ms); final changed
-stream/client/HTTP group passed (51 cases, 301ms); final stream group passed (4 cases,
-259ms). Shared client/SDK/Desktop source typechecks, shared lint, formatting/diff and
-immutable input hashes passed. One async-assertion lint issue was repaired without
-weakening the assertion. No active executed failure remains.
-
-No frontend UI/E2E/screenshot cases changed or ran. Full/vet/race/native and all-
-workflow acceptance remain final consolidated work. Main 993eb865f is integrated;
-merge reports already up to date. Original proposal/review/draft remain untouched,
-and the user-owned stash is preserved. Next integrate actual production model/
-decorator selection and durable inner evidence, then scoped lifecycle/retention,
-wide-number/query parity, independent authors and P01-P48/final acceptance.
-Full goal remains active; no overall acceptance completion is claimed.
+Core remains 2026-10-14.21, backend 2026-10-14.2; storage/private receipts are unchanged.
+Main 993eb865f is integrated and the merge is up to date. Original proposal/review/
+draft hashes remain unchanged; user stash is preserved. No UI/E2E/screenshot cases
+changed or ran. Full/vet/race/native acceptance remains final consolidated work.
+Next complete Interaction/auxiliary installed model/decorator composition and durable
+inner evidence, then scoped lifecycle/retention, wide-number/query/independent author
+parity and P01-P48/final acceptance. Full goal remains active.
 
 ## Completed
+
+- Stage 5f (06890e847): actual Memory completion uses captured public Scope model
+  request/response and strict backend text consumption; the private string model
+  multiplexer is deleted and embedding is an independent private method.
+- Stage 5f: private method/input budget fencing, known refusal versus response-plus-
+  failure, maximum escaped corpus and production maintenance checks pass.
 
 - Stage 5e (ad60cfaa7): TS plugin mutation streams use canonical awaited chunk
   consumption and final decoding under the existing original intent journal.
@@ -521,6 +514,8 @@ Full goal remains active; no overall acceptance completion is claimed.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Memory production completion uses public Scope exchange with a utility model captured before dispatch | Preserve full known response and original selection while private Memory policy retains its real budget/receipt ownership | Private string model multiplexer, per-prompt live selection, provider replay or host-owned duplicate Memory result |
+| 2026-10-14 | Separate private embedding text-array/vector exchange from model completion | Embedding is not a text generation and needs no nested string encoding | Fake model operation for vectors or claiming a vector-only private port is full public embedding parity |
 | 2026-10-14 | TS streams use the existing intent journal; original contract derives unary/stream delivery | Recovery must keep original binding/input/key before current preparation without another mutable delivery mode or result store | A second stream journal, newly selected provider, chunk replay or retiring at opening response |
 | 2026-10-14 | Await notification consumption per HTTP request while shared RPC dispatch remains available | Backpressure must not deadlock nested calls; cancellation must join consumers rather than queue chunks | Awaiting one consumer in the global receive loop, unbounded inbox, concurrent delivery or detached asynchronous consumer |
 | 2026-10-14 | Refuse unsafe numeric stream input/evidence before accepted decoding | Current JS number construction cannot preserve those integers; refusal prevents false known output while full parity remains required | Silently rounded final evidence or claiming refusal implements full lossless cross-language parity |
@@ -709,7 +704,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; scoped composition, required-member/lifecycle policy, observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
-| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; typed callback streaming, canonical Scope aggregate, transport backpressure/cancellation, byte budget and external frozen remaining-chain proof now pass; SDK backend register/bind and acknowledged duplex streaming now pass with a real stdio decorator/model-next executable; Internal Runtime mutation-stream original route/recovery is verified in Stage 5b; public Go/Protocol stream delivery is verified in Stage 5c; typed/callback Go streaming is verified in Stage 5d; TS mutation streaming is verified in Stage 5e; decorator selection, production consumers and durable inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go; plugin/stream.go; model_stream.go; model_stream_external_test.go; plugin/backend_stream.go; backend_stream_test.go; backend_stream_external_test.go; pluginservices/streams.go; streams_test.go; commands.go; mcpconnection/pool.go; delivery/handler_plugin_calls.go; registry.go; transport/http/stream.go; plugin_stream_test.go; client_stream.go; plugin_streams.go; plugin_streams_test.go; plugin_streams_callback_test.go; plugin_callback_caller.go; TS client/pluginStream.ts; client.ts; transports/http.ts; durableMutationJournal.ts; plugin-sdk/src/index.ts |
+| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; typed callback streaming, canonical Scope aggregate, transport backpressure/cancellation, byte budget and external frozen remaining-chain proof now pass; SDK backend register/bind and acknowledged duplex streaming now pass with a real stdio decorator/model-next executable; Internal Runtime mutation-stream original route/recovery is verified in Stage 5b; public Go/Protocol stream delivery is verified in Stage 5c; typed/callback Go streaming is verified in Stage 5d; TS mutation streaming is verified in Stage 5e; decorator selection, Memory production completion is migrated in Stage 5f; Interaction/auxiliary consumers and durable inner evidence remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go; plugin/stream.go; model_stream.go; model_stream_external_test.go; plugin/backend_stream.go; backend_stream_test.go; backend_stream_external_test.go; pluginservices/streams.go; streams_test.go; commands.go; mcpconnection/pool.go; delivery/handler_plugin_calls.go; registry.go; transport/http/stream.go; plugin_stream_test.go; client_stream.go; plugin_streams.go; plugin_streams_test.go; plugin_streams_callback_test.go; plugin_callback_caller.go; TS client/pluginStream.ts; client.ts; transports/http.ts; durableMutationJournal.ts; plugin-sdk/src/index.ts |
 | No-Run unresolved human command pins original binding and recovery evidence | Stage 4l-4o all actual CLI Schedule mutations retain original request/owner/revision before I/O; pending creation/edit/enablement precede new form/provider/revision reads. Capture/byte/store/owner/persistence/decoder checks pass. Native process replacement acceptance, remaining Memory/other entrances and cross-generation recovery open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
 | One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
@@ -738,6 +733,13 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5f: final Memory RPC group passed (1.447s), production maintenance/input
+  check passed (0.957s), public model group passed (0.504s), Runtime/CLI builds,
+  formatting/diff and immutable hashes passed. Migrated test signatures and the
+  invalid empty-system fixture were corrected; a confirmed blocked test process
+  was stopped only after stack evidence. No active failure remains. Full/race/
+  native and installed production model/decorator acceptance remain deferred.
 
 - Stage 5e: stream/unary client contract group passed (9 cases, 258ms); affected
   existing transport/stream/mutation group passed (73 cases, 333ms); changed stream/
@@ -1929,6 +1931,11 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 5f removes Memory's private model callback protocol and requires current
+  backend/Runtime rebuild together. Private maintenance/receipt/data formats do not
+  change. Interaction/auxiliary decorators, durable inner evidence and generic
+  embedding parity remain open; complete response transport does not prove those.
 
 - Stage 5e adds client.plugins.stream and bindOperations' generated chunk-map stream
   entrance. Rebuild shared client/SDK/component resources together. Async consumers
