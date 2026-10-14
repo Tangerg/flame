@@ -14,6 +14,27 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Final dependency and Tool-admission audit (2026-10-15)
+
+- Product: `9f3de47f0`. A deterministic RED regression exposed lost transitive
+  dependency context. Existing requirement resolution now preserves every
+  installation/server/contribution and named edge in the failure path while
+  retaining `errors.Is(ErrUnavailable)`. Connection status continues to belong
+  to the existing MCP owner; no readiness ledger or retry was added.
+- Added final transformed Tool-proposal coverage: valid final arguments are the
+  same values approved, executed and retained in history. Invalid transformed
+  arguments settle as a Tool error before approval or execution. Existing hook,
+  authorization rewrite and concurrency assertions remain unchanged.
+- Passed: focused requirement/cycle/frozen-binding checks (0.261s) and final Tool
+  admission/rewrite checks (1.088s). Full current gates follow after source cleanup.
+- Retention source audit: Run-linked model evidence has the existing Run foreign
+  key with cascade; Session-only endpoints are removed atomically by Session
+  deletion, including rollback protection; unattached evidence is retained.
+  Pending/unknown command routes keep their original activation/release and do
+  not expire into replay permission. No new TTL or independent pruning owner is
+  introduced. Existing deletion, unsettled-Run and unknown-restart tests cover
+  these boundaries and remain in final gates.
+
 ### Published Memory caller policy and Core dependency closure (2026-10-15)
 
 - Product: `6d3728a0c`. Memory's existing Go contract generator now emits the
@@ -1843,7 +1864,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P02 | Verified by `TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource`: ordinary source, same contract/resources, independent identity, withdrawal, restart and uninstall. |
 | P03 | Verified by full first-party initialization/restart and independent-origin lifecycle tests; durable disable/uninstall is not reseeded. |
 | P04 | Backend verified by explicit provider selection and original-command routing tests; enablement never selects another provider. |
-| P05 | Backend verified by named requirement, required-cycle and missing-binding admission tests. Transitive failure diagnostics still need final source review. |
+| P05 | Backend verified by named requirement, required-cycle and missing-binding admission tests. Transitive failure diagnostics now retain the complete consumer path in `9f3de47f0`, with a RED/GREEN regression. |
 | P06 | Verified by actual Reviews/analyzer installed processes, point callbacks and consumer reconnect; no Core business enum is added. |
 | P07 | Backend verified by point/declaration contract admission and duplicate identity checks in pluginpackage/plugins. |
 | P08 | Backend verified by provisional setup failure, callback/resource retirement and connection publication checks. |
@@ -1851,7 +1872,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P10 | Verified by actual reentrant headless callback and original installed observer/RPC tests. |
 | P11 | Verified by executable stdio decorator/model-next and installed model-call evidence tests. |
 | P12 | Backend verified by captured composition order and checkpoint activation identity tests. |
-| P13 | Final response/input admission and approval paths are backend tested; final audit must trace rewritten Tool proposals to the arguments actually approved. |
+| P13 | Final rewritten Tool proposals are structurally admitted before approval; `9f3de47f0` verifies approved, executed and historical arguments match and rejects invalid proposals before approval/execution. |
 | P14 | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. Final affected race remains. |
 | P15 | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
 | P16 | Backend verified by known inner response/consumption surviving failed outer observation and reopen; uncertainty is not relabeled as no effect. |
@@ -1885,7 +1906,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P44 | Strict incompatible schema and immutable namespace admission tests pass. New current-schema regression also proves missing owner facts are not silently recreated. |
 | P45 | Actual blocked optional backend restart/disable management tests pass without loading that backend's component. |
 | P46 | Backend reverse-order cancellation/join, callback teardown, transaction panic/Goexit and settled close/error tests pass. UI teardown remains source only. |
-| P47 | Owner-backed selection, composition, connection and release inspection exist and are tested. Finish transitive failure/availability diagnostic review without a second readiness ledger. |
+| P47 | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
 | P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Core private Memory entity/application imports are removed in `9f2bac554`. Its private RPC grant dependencies are removed in `6d3728a0c`, with external Core build-closure proof. Open: superseded source/API/schema/example/README claims and final artifact checks. |
 
 ## Verification
