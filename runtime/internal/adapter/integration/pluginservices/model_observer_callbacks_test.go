@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -50,12 +51,18 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 				if err != nil {
 					return ref, err
 				}
-				refs <- ref
+				select {
+				case refs <- ref:
+				default:
+					return ref, errors.New("observer was dispatched recursively")
+				}
 				if status, err := phaseHostRequest(ctx, ref); err != nil || status != http.StatusNoContent {
 					return ref, errors.Join(err, errors.New("observer host RPC failed"))
 				}
-				if _, err := pluginsdk.CallSelectedModel(ctx, ref, "independent-from-observer", selectedCallInput("configured-model")); err == nil {
-					return ref, errors.New("independent exchange recursively reentered its active observer")
+				_, err = pluginsdk.CallSelectedModel(ctx, ref, "independent-from-observer", selectedCallInput("configured-model"))
+				failure, known := errors.AsType[*pluginsdk.ModelFailure](err)
+				if !known || failure.Code != pluginsdk.ModelFailed || failure.Message != plugin.ErrInvalid.Error()+": recursive model contributor observer" {
+					return ref, errors.Join(err, errors.New("independent exchange did not retain its explicit observer-cycle refusal"))
 				}
 				return ref, nil
 			}
