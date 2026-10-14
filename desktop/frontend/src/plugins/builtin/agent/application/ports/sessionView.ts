@@ -71,13 +71,18 @@ export interface AgentSessionViewPort {
   projectSteerReceipt(
     sessionId: string,
     messageId: string,
-    steer: NonNullable<Message["steer"]>,
+    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
+  ): void;
+  projectSteerDelivery(
+    sessionId: string,
+    messageId: string,
+    command: Pick<NonNullable<Message["steer"]>, "runId" | "delivery">,
   ): void;
   reconcileMessageIdentity(
     sessionId: string,
     fromId: string,
     toId: string,
-    steerRunId?: string,
+    steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
   ): void;
   appendLocalUserMessage(sessionId: string, messageId: string, input: AgentInput): void;
   beginViewRefresh(

@@ -24,11 +24,11 @@ import {
   useVisibleActionMaterialization,
 } from "./messageVisibleMaterial";
 import { reveal } from "@/ui";
-import { Badge, Button } from "@flame/ui";
-import { retrySteerInput } from "@/plugins/builtin/agent/public/input";
+import { Badge } from "@flame/ui";
 import { corner, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles } from "./messageStyles";
 import { UserMessageFold } from "./UserMessageFold";
+import { SteerInputStatus } from "./SteerInputStatus";
 
 function MessageBlockInner({
   row,
@@ -151,26 +151,7 @@ function MessageBlockInner({
           ) : (
             <MessageContextMenu msg={msg}>{messageContent}</MessageContextMenu>
           )}
-          {isUser && msg.steer && (
-            <Badge>
-              {t(
-                msg.steer.receipt === "notApplied"
-                  ? "agent.steer.notApplied"
-                  : msg.steer.receipt === "accepted"
-                    ? msg.runId === msg.steer.runId
-                      ? "agent.steer.applied"
-                      : "agent.steer.accepted"
-                    : msg.steer.receipt === "unknown"
-                      ? "agent.command.unknown"
-                      : "agent.steer.pending",
-              )}
-            </Badge>
-          )}
-          {isUser && msg.steer?.receipt === "unknown" && (
-            <Button variant="ghost" size="sm" onClick={() => retrySteerInput(msg.id)}>
-              {t("agent.command.retry")}
-            </Button>
-          )}
+          {isUser && <SteerInputStatus feedback={row.inputFeedback} messageId={msg.id} />}
           {isUser && !msg.steer && msg.runId === null && (
             <Badge>{t("agent.inputNotApplied")}</Badge>
           )}

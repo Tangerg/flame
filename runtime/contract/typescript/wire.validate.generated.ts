@@ -213,7 +213,6 @@ export type WireTypeName =
   | "PageQuery"
   | "PatchResult"
   | "PendingInterruptSet"
-  | "PendingSteerInput"
   | "Plan"
   | "PlanState"
   | "PlanStatus"
@@ -351,6 +350,7 @@ export type WireTypeName =
   | "StartGoalRequest"
   | "StartRunRequest"
   | "StartRunResponse"
+  | "SteerInput"
   | "SteerRunRequest"
   | "SteerRunResponse"
   | "StreamEvent"
@@ -2329,12 +2329,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     rootRunId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
-  PendingSteerInput: object({
-    input: array(ref(() => CHECKS.ContentBlock)),
-    runId: text(),
-    segmentId: text(),
-    userItemId: text(),
-  }, ["input", "runId", "segmentId", "userItemId"]),
   Plan: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     state: ref(() => CHECKS.PlanState),
@@ -3200,6 +3194,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RunAcceptance: allOf([
     object({
       appliedItem: ref(() => CHECKS.Item),
+      candidateUserItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       input: array(ref(() => CHECKS.ContentBlock)),
       run: ref(() => CHECKS.RunRef),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3220,10 +3215,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         userItemId: absent(),
       }, ["type"]),
       fields({
+        candidateUserItemId: absent(),
         type: literal("accepted"),
       }, ["run", "runId", "segmentId", "sessionId", "type"]),
       fields({
         appliedItem: absent(),
+        candidateUserItemId: absent(),
         run: absent(),
         type: literal("retired"),
       }, ["runId", "segmentId", "sessionId", "type"]),
@@ -3751,10 +3748,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     goal: ref(() => CHECKS.Goal),
     interrupts: array(ref(() => CHECKS.PendingInterruptSet)),
     items: array(ref(() => CHECKS.Item)),
-    pendingSteers: array(ref(() => CHECKS.PendingSteerInput)),
     plan: ref(() => CHECKS.Plan),
     runs: array(ref(() => CHECKS.RunRef)),
     session: ref(() => CHECKS.Session),
+    steerInputs: array(ref(() => CHECKS.SteerInput)),
   }, ["interrupts", "items", "runs", "session"]),
   SessionStatus: enumOf(["running", "waiting", "idle"]),
   SessionTitleEdit: object({
@@ -3939,6 +3936,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     userItemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId", "segmentId", "userItemId"]),
+  SteerInput: object({
+    input: array(ref(() => CHECKS.ContentBlock)),
+    runId: text(),
+    segmentId: text(),
+    userItemId: text(),
+  }, ["input", "runId", "segmentId", "userItemId"]),
   SteerRunRequest: object({
     expectedSegmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),

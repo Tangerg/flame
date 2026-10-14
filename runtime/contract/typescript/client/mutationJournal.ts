@@ -21,6 +21,8 @@ export type { MutationJournalScope, MutationJournalStorage } from "./durableMuta
 
 export interface MutationReservation {
   readonly idempotencyKey: string;
+  readonly steerItemId: string | null;
+  bindSteerItem(userItemId: string): void;
   readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string;
   authorizeDispatch(): string;
@@ -41,6 +43,7 @@ export interface MutationJournal {
 export type PendingRunCommand = RunCommand & {
   readonly idempotencyKey: string;
   readonly namespace: string;
+  readonly steerItemId: string | null;
   settle(): void;
   reserve(): MutationReservation;
 };
@@ -117,6 +120,7 @@ class MutationAuthority implements MutationJournal {
         ...structuredClone(identity.entry.command!),
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
+        steerItemId: identity.entry.steerItemId,
         settle: () => {
           this.#assertCurrent();
           this.#journal.settle(identity);
@@ -156,6 +160,13 @@ class MutationAuthority implements MutationJournal {
     const lifecycle = this.#lifecycle(identity);
     return {
       idempotencyKey: identity.entry.idempotencyKey,
+      get steerItemId() {
+        return identity.entry.steerItemId;
+      },
+      bindSteerItem: (userItemId) => {
+        this.#assertClaim(identity);
+        this.#journal.bindSteerItem(identity, userItemId);
+      },
       get requestMeta() {
         return structuredClone(identity.entry.command?.requestMeta ?? null);
       },

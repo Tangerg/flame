@@ -351,6 +351,7 @@ export const ko: Record<string, string> = {
   "agent.opening.review": "원래 입력과 선택 확인",
   "agent.command.unknown": "접수 결과가 확인되지 않음",
   "agent.command.retry": "원래 제출 재시도",
+  "agent.steer.retired": "원래 실행 기록을 사용할 수 없어 입력 적용 여부를 확인할 수 없습니다.",
   "agent.steer.applied": "모델 컨텍스트에 반영됨",
   "agent.steer.notApplied": "접수된 지시가 모델 컨텍스트에 반영되기 전에 실행이 종료되었습니다.",
   "agent.inputNotApplied": "아직 적용되지 않음",

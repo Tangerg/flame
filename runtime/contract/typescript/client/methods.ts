@@ -139,6 +139,14 @@ export interface RunOpeningResult<R> {
     | { type: "retired"; sessionId: string };
 }
 
+export type SteerCommandResult = SteerRunResponse & { type: "accepted" | "retired" };
+
+export interface SteerMutationPromise extends MutationPromise<SteerCommandResult> {
+  /** An opaque Runtime nomination, cached before dispatch; it is not acceptance. */
+  readonly inputIdentity: Promise<string>;
+  retry(options?: { signal?: AbortSignal }): SteerMutationPromise;
+}
+
 interface CommandObservation {
   readonly idempotencyKey: string;
   readonly observation:
@@ -155,8 +163,8 @@ export type RunCommandRecovery = CommandObservation &
         MutationPromise<RunOpeningResult<ResumeRunResponse>>,
         "retry"
       >)
-    | ({ operation: "steer"; params: SteerRunRequest } & Pick<
-        MutationPromise<SteerRunResponse>,
+    | ({ operation: "steer"; params: SteerRunRequest; userItemId: string | null } & Pick<
+        SteerMutationPromise,
         "retry"
       >)
   );
@@ -273,7 +281,7 @@ export interface Methods {
       runId: RunId,
       expectedSegmentId: SegmentId,
       input: ContentBlock[],
-    ) => MutationPromise<SteerRunResponse>;
+    ) => SteerMutationPromise;
     get: (runId: RunId, signal?: AbortSignal) => Promise<RunRef>;
     list: (
       query?: Omit<ListRunsRequest, "sessionId"> & { sessionId?: SessionId },
@@ -583,36 +591,88 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     );
   }
 
-  const openSteer = (params: SteerRunRequest, signal?: AbortSignal, original?: PendingRunCommand) =>
-    openMutation(
+  const openSteer = (
+    params: SteerRunRequest,
+    signal?: AbortSignal,
+    original?: PendingRunCommand,
+  ): SteerMutationPromise => {
+    let knownIdentity: string | undefined;
+    const observers = new Set<ReturnType<typeof Promise.withResolvers<string>>>();
+    const publishIdentity = async (userItemId: string) => {
+      if (knownIdentity !== undefined && knownIdentity !== userItemId)
+        throw new RpcProtocolError("runs.steer identity", [
+          { path: "$.userItemId", detail: "Runtime changed the original input identity" },
+        ]);
+      knownIdentity = userItemId;
+      const published = [...observers];
+      for (const observer of observers) observer.resolve(userItemId);
+      observers.clear();
+      await Promise.all(published.map((observer) => observer.promise));
+    };
+    const expose = (mutation: MutationPromise<SteerCommandResult>): SteerMutationPromise => {
+      const identity = Promise.withResolvers<string>();
+      if (knownIdentity !== undefined) identity.resolve(knownIdentity);
+      else observers.add(identity);
+      // Observing nomination is optional; the command still reports every failure.
+      identity.promise.catch(() => undefined);
+      const exposed = mutation.then(
+        (result) => result,
+        (error: unknown) => {
+          observers.delete(identity);
+          identity.reject(error);
+          throw error;
+        },
+      );
+      return Object.defineProperties(exposed, {
+        idempotencyKey: { enumerable: true, value: mutation.idempotencyKey },
+        inputIdentity: { enumerable: true, value: identity.promise },
+        retry: {
+          enumerable: true,
+          value: (options?: { signal?: AbortSignal }) => expose(mutation.retry(options)),
+        },
+      }) as SteerMutationPromise;
+    };
+    const mutation = openMutation(
       "runs.steer",
       params,
-      async (key, attempt, prepared) => {
+      async (key, attempt, prepared): Promise<SteerCommandResult> => {
+        if (attempt.steerItemId !== null) await publishIdentity(attempt.steerItemId);
         const namespace = attempt.lookupNamespace();
         if (!namespace)
           throw new MutationJournalScopeUnavailableError(
             "steer requires the Runtime store identity",
           );
         const acceptance = await queryAcceptance("steer", namespace, key, attempt.signal);
-        if (acceptance.type !== "notRecorded") {
-          if (!acceptance.userItemId)
-            throw new RpcProtocolError("runs.getAcceptance result", [
-              { path: "$.userItemId", detail: "accepted steer omitted its user Item identity" },
-            ]);
-          return { userItemId: acceptance.userItemId };
-        }
-        return perform("runs.steer", prepared, {
+        const userItemId =
+          acceptance.type === "notRecorded"
+            ? acceptance.candidateUserItemId
+            : acceptance.userItemId;
+        if (!userItemId)
+          throw new RpcProtocolError("runs.getAcceptance result", [
+            { path: "$", detail: "Steer lookup omitted its input identity" },
+          ]);
+        attempt.bindSteerItem(userItemId);
+        await publishIdentity(userItemId);
+        if (acceptance.type !== "notRecorded") return { type: acceptance.type, userItemId };
+        const acknowledged = await perform("runs.steer", prepared, {
           signal: attempt.signal,
           idempotencyKey: key,
           idempotencyNamespace: attempt.authorizeDispatch(),
           requestMeta: attempt.requestMeta,
         });
+        if (acknowledged.userItemId !== userItemId)
+          throw new RpcProtocolError("runs.steer result", [
+            { path: "$.userItemId", detail: "ACK differs from the nominated input identity" },
+          ]);
+        return { type: "accepted", ...acknowledged };
       },
       signal,
       undefined,
       original?.idempotencyKey,
       original?.reserve,
     );
+    return expose(mutation);
+  };
 
   const openWorkspace = async (
     ref?: WorkspaceRef,
@@ -699,6 +759,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 return {
                   ...observed,
                   operation: "steer",
+                  userItemId: command.steerItemId,
                   params: structuredClone(command.params),
                   retry: (options) => openSteer(command.params, options?.signal, command),
                 };

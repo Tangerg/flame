@@ -78,9 +78,9 @@ func TestSteerAcceptanceSharesTreeTransactionAndExactApplication(t *testing.T) {
 	if _, err := trees.LoadCheckpoint(ctx, head.RootID); err != nil {
 		t.Fatal(err)
 	}
-	pending, err := commands.PendingSessionInputs(ctx, draft.SessionID)
-	if err != nil || len(pending) != 1 || !pending[0].Equal(acceptance) {
-		t.Fatalf("pending=%+v,%v", pending, err)
+	acceptedInputs, err := commands.SessionSteerInputs(ctx, draft.SessionID)
+	if err != nil || len(acceptedInputs) != 1 || !acceptedInputs[0].Equal(acceptance) {
+		t.Fatalf("accepted inputs=%+v,%v", acceptedInputs, err)
 	}
 	other := acceptance.Clone()
 	other.SteerInput[0].Text = "changed draft"
@@ -98,9 +98,9 @@ func TestSteerAcceptanceSharesTreeTransactionAndExactApplication(t *testing.T) {
 	if err != nil || record.AppliedItem == nil || record.AppliedItem.ID() != item.ID() {
 		t.Fatalf("application=%+v,%v", record, err)
 	}
-	pending, err = commands.PendingSessionInputs(ctx, draft.SessionID)
-	if err != nil || len(pending) != 0 {
-		t.Fatalf("applied input stayed pending: %+v,%v", pending, err)
+	acceptedInputs, err = commands.SessionSteerInputs(ctx, draft.SessionID)
+	if err != nil || len(acceptedInputs) != 1 || !acceptedInputs[0].Equal(acceptance) {
+		t.Fatalf("applied input identity was lost: %+v,%v", acceptedInputs, err)
 	}
 	if _, err := db.ExecContext(ctx, `DELETE FROM runs WHERE run_id=?`, draft.RunID); err != nil {
 		t.Fatal(err)

@@ -363,6 +363,8 @@ export const es: Record<string, string> = {
   "agent.opening.review": "Revisar la entrada y las opciones originales",
   "agent.command.unknown": "Recepción sin confirmar",
   "agent.command.retry": "Reintentar el envío original",
+  "agent.steer.retired":
+    "Los datos de la ejecución original no están disponibles; no se puede confirmar si se aplicó la entrada.",
   "agent.steer.applied": "Incorporada al contexto del modelo",
   "agent.steer.notApplied":
     "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",

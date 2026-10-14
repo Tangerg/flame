@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import { dropMessage, reconcileMessageIdentity, reconcileSteerMessages } from "./viewMutations";
+import {
+  dropMessage,
+  projectSteerDelivery,
+  projectSteerReceipt,
+  reconcileMessageIdentity,
+  reconcileSteerMessages,
+} from "./viewMutations";
 
 const time = "2026-06-03T00:00:00Z";
 
@@ -20,64 +26,65 @@ function message(id: string, blocks: ContentBlock[] = []): Message {
 }
 
 describe("view mutations - messages", () => {
-  it("preserves an accepted steer through a live snapshot and applies only its exact durable Item", () => {
-    const pending = {
+  it("uses only snapshot evidence for accepted and applied Steer input", () => {
+    const accepted = {
       ...message("accepted"),
       role: "user" as const,
       runId: null,
       steer: { runId: "run_1", receipt: "accepted" as const },
     };
-    const previous = view({ messages: [pending] });
-    const active = view({ runsById: { run_1: { id: "run_1", status: "running" } as never } });
-    const retained = reconcileSteerMessages(previous, active);
-    expect(retained).toEqual({ view: { ...active, messages: [pending] }, unapplied: false });
-    const applied = { ...active, messages: [{ ...pending, steer: undefined, runId: "run_1" }] };
-    expect(reconcileSteerMessages(previous, applied)).toMatchObject({
-      unapplied: false,
-      view: {
-        messages: [
-          { id: "accepted", runId: "run_1", steer: { runId: "run_1", receipt: "accepted" } },
-        ],
-      },
+    const previous = view({ messages: [accepted] });
+    const active = view({
+      messages: [accepted],
+      runsById: { run_1: { id: "run_1", status: "running" } as never },
     });
-    const unrelated = {
+    expect(reconcileSteerMessages(previous, active)).toBe(active);
+    const applied = { ...active, messages: [{ ...accepted, runId: "run_1" }] };
+    expect(reconcileSteerMessages(previous, applied)).toBe(applied);
+    const replaced = {
       ...active,
-      messages: [{ ...pending, id: "same-payload-other-item", steer: undefined, runId: "run_1" }],
+      messages: [{ ...accepted, id: "same-payload-other-item", steer: undefined, runId: "run_1" }],
     };
-    expect(reconcileSteerMessages(previous, unrelated).view.messages.map(({ id }) => id)).toEqual([
-      "same-payload-other-item",
-      "accepted",
-    ]);
+    expect(reconcileSteerMessages(previous, replaced)).toBe(replaced);
   });
 
-  it("removes an unapplied steer only after a full terminal snapshot and reports it once", () => {
-    const previous = view({
-      messages: [
-        { ...message("accepted"), runId: null, steer: { runId: "run_1", receipt: "accepted" } },
-      ],
+  it("keeps an accepted unapplied input visible from the terminal snapshot", () => {
+    const accepted = {
+      ...message("accepted"),
+      role: "user" as const,
+      runId: null,
+      steer: { runId: "run_1", receipt: "accepted" as const },
+    };
+    const terminal = view({
+      messages: [accepted],
+      runsById: { run_1: { id: "run_1", status: "finished" } as never },
     });
-    const terminal = view({ runsById: { run_1: { id: "run_1", status: "finished" } as never } });
-    const settled = reconcileSteerMessages(previous, terminal);
-    expect(settled.view.messages).toEqual([]);
-    expect(settled.unapplied).toBe(true);
-    expect(reconcileSteerMessages(settled.view, terminal).unapplied).toBe(false);
+    expect(reconcileSteerMessages(view({ messages: [accepted] }), terminal)).toBe(terminal);
   });
 
   it.each(["pending", "unknown"] as const)(
     "does not infer steer rejection from a terminal Run while its receipt is %s",
     (receipt) => {
-      const pending = { ...message("local"), runId: null, steer: { runId: "run_1", receipt } };
+      const pending = {
+        ...message("local"),
+        role: "user" as const,
+        runId: null,
+        steer: { runId: "run_1", delivery: receipt },
+      };
       const terminal = view({ runsById: { run_1: { id: "run_1", status: "finished" } as never } });
       expect(reconcileSteerMessages(view({ messages: [pending] }), terminal)).toEqual({
-        view: { ...terminal, messages: [pending] },
-        unapplied: false,
+        ...terminal,
+        messages: [pending],
       });
     },
   );
 
   it("marks a late receipt applied when its durable Item survived an authoritative refresh", () => {
     const current = view({ messages: [{ ...message("durable"), role: "user" }] });
-    const accepted = reconcileMessageIdentity(current, "missing-local", "durable", "run_1");
+    const accepted = reconcileMessageIdentity(current, "missing-local", "durable", {
+      runId: "run_1",
+      receipt: "accepted",
+    });
     expect(accepted.messages[0]?.steer).toEqual({ runId: "run_1", receipt: "accepted" });
   });
 
@@ -119,5 +126,62 @@ describe("view mutations - messages", () => {
 
     expect(next.messages.map((m) => m.id)).toEqual(["m2"]);
     expect(dropMessage(original, "missing")).toBe(original);
+  });
+  it("projects local delivery observations separately from immutable Runtime receipts", () => {
+    const accepted = {
+      ...message("item"),
+      role: "user" as const,
+      runId: null,
+      steer: { runId: "run_1", receipt: "accepted" as const },
+    };
+    const next = projectSteerDelivery(view({ messages: [accepted] }), "item", {
+      runId: "run_1",
+      delivery: "unknown",
+    });
+    expect(next.messages[0]?.steer).toEqual({
+      runId: "run_1",
+      receipt: "accepted",
+      delivery: "unknown",
+    });
+  });
+
+  it.each(["assistant", "other-run", "other-origin"])(
+    "rejects Steer association with %s even when identity does not change",
+    (conflict) => {
+      const item: Message = {
+        ...message("item"),
+        role: conflict === "assistant" ? "assistant" : "user",
+        runId: conflict === "other-run" ? "run_other" : "run_1",
+        ...(conflict === "other-origin"
+          ? { steer: { runId: "run_other", delivery: "pending" as const } }
+          : {}),
+      };
+      const current = view({ messages: [item] });
+      const receipt = { runId: "run_1", receipt: "accepted" as const };
+      expect(() => projectSteerReceipt(current, "item", receipt)).toThrow(
+        "agent.steer.itemOwnerMismatch",
+      );
+      expect(() => reconcileMessageIdentity(current, "item", "item", receipt)).toThrow(
+        "agent.steer.itemOwnerMismatch",
+      );
+    },
+  );
+  it("does not let a late ACK erase non-application proved by the complete Session read", () => {
+    const input: Message = {
+      id: "item",
+      role: "user",
+      runId: null,
+      blocks: [],
+      steer: { runId: "run_1", receipt: "accepted", application: "notApplied" },
+    };
+    const next = projectSteerReceipt(view({ messages: [input] }), "item", {
+      runId: "run_1",
+      receipt: "accepted",
+    });
+    expect(next.messages[0]?.steer).toMatchObject({
+      runId: "run_1",
+      receipt: "accepted",
+      application: "notApplied",
+    });
   });
 });

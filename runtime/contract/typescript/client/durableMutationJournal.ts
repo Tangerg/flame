@@ -5,11 +5,12 @@ import type {
   RequestMeta,
 } from "../wire.generated";
 import { checkRequest } from "./request";
+import { validateWire } from "../wire.validate.generated";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 7;
+const JOURNAL_ENTRY_FIELD_COUNT = 8;
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -53,6 +54,7 @@ export type RunCommand =
   | { operation: "steer"; params: SteerRunRequest; requestMeta: RequestMeta | null };
 
 interface JournalEntry {
+  steerItemId: string | null;
   salt: string;
   namespace: string;
   fingerprint: string;
@@ -77,6 +79,7 @@ export interface DurableMutationJournal {
   ): DurableMutationIdentity | undefined;
   authorizeDispatch(identity: DurableMutationIdentity): string;
   lookupNamespace(identity: DurableMutationIdentity): string;
+  bindSteerItem(identity: DurableMutationIdentity, userItemId: string): void;
   retain(identity: DurableMutationIdentity): void;
   settle(identity: DurableMutationIdentity): void;
 }
@@ -96,11 +99,21 @@ function validText(value: unknown, maximum: number): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= maximum;
 }
 
+function validSteerItem(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    validateWire("RunAcceptance", { type: "notRecorded", candidateUserItemId: value }).length === 0
+  );
+}
+
 function validEntry(value: unknown): value is JournalEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const entry = value as Partial<JournalEntry>;
   return (
     Object.keys(value).length === JOURNAL_ENTRY_FIELD_COUNT &&
+    (entry.steerItemId === null ||
+      (validSteerItem(entry.steerItemId) && entry.command?.operation === "steer")) &&
     validText(entry.salt, MAX_IDENTITY_LENGTH) &&
     validText(entry.namespace, MAX_IDENTITY_LENGTH) &&
     typeof entry.fingerprint === "string" &&
@@ -311,6 +324,7 @@ function matchesCommand(
 
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
   return (
+    left.steerItemId === right.steerItemId &&
     left.salt === right.salt &&
     left.namespace === right.namespace &&
     left.fingerprint === right.fingerprint &&
@@ -386,6 +400,7 @@ export function openDurableMutationJournal(
     const createdAt = options.now();
     const salt = crypto.randomUUID();
     const entry: JournalEntry = {
+      steerItemId: null,
       salt,
       namespace: scope.namespace,
       fingerprint: fingerprint(
@@ -458,6 +473,22 @@ export function openDurableMutationJournal(
     lookupNamespace(identity) {
       readReservedEntry(identity);
       return identity.entry.namespace;
+    },
+    bindSteerItem(identity, userItemId) {
+      if (identity.entry.command?.operation !== "steer" || !validSteerItem(userItemId))
+        throw new MutationJournalOwnershipError(
+          "Runtime input identity does not belong to a Steer command",
+        );
+      const persisted = readReservedEntry(identity);
+      if (!persisted)
+        throw new MutationJournalOwnershipError("Runtime input identity has no reserved command");
+      if (persisted.steerItemId !== null && persisted.steerItemId !== userItemId)
+        throw new MutationJournalOwnershipError(
+          "Runtime changed the original Steer input identity",
+        );
+      if (persisted.steerItemId === userItemId) return;
+      persistEntry({ ...persisted, steerItemId: userItemId });
+      identity.entry.steerItemId = userItemId;
     },
     retain(identity) {
       if (readReservedEntry(identity)) return;

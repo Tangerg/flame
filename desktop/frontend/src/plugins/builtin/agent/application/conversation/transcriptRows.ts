@@ -7,6 +7,7 @@ import type {
 import type { DelegatedRunNarrativesByItemId } from "../view/runTree";
 import { selectDelegatedRunNarratives, selectRootNarrativeMessages } from "../view/runTree";
 import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
+import { steerInputFeedback, type SteerInputFeedback } from "../view/steerInputFeedback";
 
 export interface TurnFacts {
   toolCalls: Record<string, ToolCall>;
@@ -19,6 +20,7 @@ type TranscriptRunOwner =
   { kind: "unassigned" } | { kind: "owned"; runId: string; status: AgentRunStatus };
 
 export interface TranscriptRow {
+  inputFeedback?: SteerInputFeedback;
   message: Message;
   runOwner: TranscriptRunOwner;
   facts: TurnFacts;
@@ -61,16 +63,20 @@ export function buildTranscriptRows(
   const cache = new Map<string, CachedRow>();
 
   for (const message of messages) {
+    const inputFeedback = steerInputFeedback(message);
     const runOwner = transcriptRunOwner(message, view);
     const { facts, identities } = readTurnFacts(message, view.toolCalls, delegated, awaiting);
-    const rowIdentities = [runOwnerIdentity(runOwner), ...identities];
+    const rowIdentities = [runOwnerIdentity(runOwner), inputFeedback, ...identities];
     const cached = previous.get(message.id);
     if (cached !== undefined && sameIdentities(cached.identities, rowIdentities)) {
       rows.push(cached.row);
       cache.set(message.id, cached);
       continue;
     }
-    const entry: CachedRow = { row: { message, runOwner, facts }, identities: rowIdentities };
+    const entry: CachedRow = {
+      row: { message, runOwner, facts, ...(inputFeedback ? { inputFeedback } : {}) },
+      identities: rowIdentities,
+    };
     rows.push(entry.row);
     cache.set(message.id, entry);
   }

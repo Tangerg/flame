@@ -349,6 +349,7 @@ export const zhTW: Record<string, string> = {
   "agent.opening.review": "核對原輸入與選擇",
   "agent.command.unknown": "受理結果尚未確認",
   "agent.command.retry": "重試原提交",
+  "agent.steer.retired": "原執行記錄已無法使用，無法確認輸入是否已套用。",
   "agent.steer.applied": "已進入模型上下文",
   "agent.steer.notApplied": "本次執行已結束，有已接收的指令未進入模型上下文。",
   "agent.inputNotApplied": "尚未套用",

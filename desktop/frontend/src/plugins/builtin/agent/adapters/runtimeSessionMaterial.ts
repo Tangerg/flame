@@ -15,14 +15,11 @@ export function runtimeSessionMaterial(
       items: snapshot.items.map(runtimeItem),
       runs: snapshot.runs.map(runtimeRunFact),
       pendingInterruptSets: snapshot.interrupts.map(runtimePendingInterruptSet),
-      pendingSteers: snapshot.pendingSteers?.map((steer) => ({
+      steerInputs: snapshot.steerInputs?.map((steer) => ({
         runId: steer.runId,
         userItemId: steer.userItemId,
         input: contentBlocksToAgentInput(steer.input),
-        receipt:
-          snapshot.runs.find((run) => run.id === steer.runId)?.status === "finished"
-            ? "notApplied"
-            : "accepted",
+        receipt: "accepted",
       })),
       ...(plan ? { plan } : {}),
     },

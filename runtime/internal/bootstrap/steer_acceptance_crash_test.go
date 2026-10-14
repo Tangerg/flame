@@ -88,7 +88,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 		t.Fatalf("cold receipt=%+v,%v", receipt, err)
 	}
 	snapshot, err := api.GetSessionSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: receipt.SessionID})
-	if err != nil || len(snapshot.PendingSteers) != 1 || snapshot.PendingSteers[0].UserItemID != receipt.UserItemID {
+	if err != nil || len(snapshot.SteerInputs) != 1 || snapshot.SteerInputs[0].UserItemID != receipt.UserItemID {
 		t.Fatalf("cold pending snapshot=%+v,%v", snapshot, err)
 	}
 	for range 2 {

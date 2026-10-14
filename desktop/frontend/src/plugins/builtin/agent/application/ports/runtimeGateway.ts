@@ -19,11 +19,11 @@ export interface AgentSessionSnapshot {
   runs: AgentRunFact[];
   pendingInterruptSets: AgentPendingInterruptSet[];
   plan?: AgentPlan;
-  pendingSteers?: Array<{
+  steerInputs?: Array<{
     runId: string;
     userItemId: string;
     input: AgentInput;
-    receipt: "accepted" | "notApplied";
+    receipt: "accepted" | "retired";
   }>;
 }
 
@@ -57,14 +57,19 @@ export interface AgentSessionUsage {
   costUsd?: number;
 }
 
-export interface AgentSteerSubmission extends Promise<{ userItemId: string }> {
+export interface AgentSteerSubmission extends Promise<{
+  type: "accepted" | "retired";
+  userItemId: string;
+}> {
   readonly idempotencyKey: string;
+  readonly inputIdentity: Promise<string>;
   retry(): AgentSteerSubmission;
 }
 
 export interface AgentUnresolvedSteer {
   idempotencyKey: string;
   runId: string;
+  userItemId: string | null;
   input: AgentInput;
   retry(): AgentSteerSubmission;
 }

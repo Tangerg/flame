@@ -16,7 +16,14 @@ export {
   MutationSettlementClosedError,
 } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
-export type { Methods, StreamingResult, RunOpeningResult, RunCommandRecovery } from "./methods";
+export type {
+  Methods,
+  StreamingResult,
+  RunOpeningResult,
+  RunCommandRecovery,
+  SteerCommandResult,
+  SteerMutationPromise,
+} from "./methods";
 export { createFlameClient } from "./sdk";
 export type { FlameClient } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";

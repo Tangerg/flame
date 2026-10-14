@@ -504,6 +504,8 @@ export const en: Record<string, string> = {
   "agent.opening.review": "Review original input and choices",
   "agent.command.unknown": "Acceptance not confirmed",
   "agent.command.retry": "Retry original submission",
+  "agent.steer.retired":
+    "The original run material is unavailable; input application cannot be confirmed.",
   "agent.steer.applied": "Entered model context",
   "agent.steer.notApplied": "The run ended before an accepted instruction entered model context.",
   "agent.inputNotApplied": "Not yet applied",

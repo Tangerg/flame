@@ -76,6 +76,24 @@ func TestRunAcceptancePreservesLookupFailuresAndNamespace(t *testing.T) {
 	}
 }
 
+func TestUnrecordedSteerNominatesIdentityWithoutAcceptance(t *testing.T) {
+	reader := &acceptanceReadUseCases{}
+	handler := &Handler{runs: reader, idempotency: protocol.IdempotencyLimits{Namespace: testsupport.IdempotencyNamespace}}
+	request := protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original-steer", Operation: protocol.RunCommandSteer}
+	for range 2 {
+		result, err := handler.GetRunAcceptance(t.Context(), request)
+		if err != nil || result.Type != protocol.RunAcceptanceNotRecorded || result.CandidateUserItemID != runs.SteerItemID(request.Key) || result.UserItemID != "" || result.Run != nil {
+			t.Fatalf("nomination=%+v,%v", result, err)
+		}
+		if err := protocol.ValidateWireTree(*result); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if reader.record.Found || reader.reads != 2 {
+		t.Fatalf("nomination changed acceptance: %+v", reader)
+	}
+}
+
 type acceptedSubscriptionUseCases struct {
 	runUseCases
 	calls int

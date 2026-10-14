@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.2` · 111 methods
+Protocol `2026-10-14.3` · 111 methods
 
 ## Methods
 
@@ -237,7 +237,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 
 | tag | required | optional |
 | --- | --- | --- |
-| `notRecorded` | — | — |
+| `notRecorded` | — | `candidateUserItemId` |
 | `accepted` | `runId`, `segmentId`, `sessionId`, `run` | `userItemId`, `input`, `appliedItem` |
 | `retired` | `runId`, `segmentId`, `sessionId` | `userItemId`, `input` |
 
@@ -792,6 +792,8 @@ TypeScript validator from this single registry projection.
 | `RunAcceptance` | `sessionId` | `maxLength(256)` |
 | `RunAcceptance` | `userItemId` | `identity` |
 | `RunAcceptance` | `userItemId` | `maxLength(256)` |
+| `RunAcceptance` | `candidateUserItemId` | `identity` |
+| `RunAcceptance` | `candidateUserItemId` | `maxLength(256)` |
 | `CancelRunRequest` | `runId` | `nonEmpty` |
 | `CancelRunRequest` | `runId` | `identity` |
 | `CancelRunRequest` | `runId` | `maxLength(256)` |
