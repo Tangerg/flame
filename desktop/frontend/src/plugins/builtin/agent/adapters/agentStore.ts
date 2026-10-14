@@ -18,6 +18,7 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import {
   dropMessage,
   reconcileMessageIdentity,
+  projectSteerReceipt,
 } from "@/plugins/builtin/agent/application/view/viewMutations";
 import {
   dismissVisibleProblem,
@@ -75,6 +76,11 @@ interface AgentStore {
     steerRunId?: string,
   ) => void;
   dropMessage: (sessionId: string, id: string) => void;
+  projectSteerReceipt: (
+    sessionId: string,
+    messageId: string,
+    steer: NonNullable<Message["steer"]>,
+  ) => void;
   dropSession: (sessionId: string) => void;
   setStop: (sessionId: string, action: StopCurrentRootRunAction | null) => void;
   setSend: (sessionId: string, action: SendAgentInputAction | null) => void;
@@ -305,6 +311,13 @@ export const useAgentStore = create<AgentStore>((set) => ({
   dropMessage: (sessionId, id) =>
     set((state) => {
       const sessions = patchView(state.sessions, sessionId, (view) => dropMessage(view, id));
+      return sessions === state.sessions ? state : { sessions };
+    }),
+  projectSteerReceipt: (sessionId, messageId, steer) =>
+    set((state) => {
+      const sessions = patchView(state.sessions, sessionId, (view) =>
+        projectSteerReceipt(view, messageId, steer),
+      );
       return sessions === state.sessions ? state : { sessions };
     }),
   dropSession: (sessionId) =>

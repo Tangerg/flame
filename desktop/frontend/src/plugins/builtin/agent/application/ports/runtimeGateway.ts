@@ -29,6 +29,10 @@ export interface AgentSessionUsage {
   costUsd?: number;
 }
 
+export interface AgentSteerSubmission extends Promise<{ userItemId: string }> {
+  retry(): AgentSteerSubmission;
+}
+
 export interface AgentRuntimeGateway {
   createSession(input: { cwd: string }): Promise<AgentSessionSummary>;
   deleteSession(sessionId: string): Promise<void>;
@@ -52,7 +56,8 @@ export interface AgentRuntimeGateway {
   }): Promise<{
     droppedRuns: Array<{ runId: string; userInput?: AgentInput }>;
   }>;
-  steerRun(runId: string, segmentId: string, input: AgentInput): Promise<{ userItemId: string }>;
+  steerRun(runId: string, segmentId: string, input: AgentInput): AgentSteerSubmission;
+  isSteerReceiptUnknown(error: unknown): boolean;
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult>;

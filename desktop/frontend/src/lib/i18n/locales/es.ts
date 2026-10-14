@@ -390,6 +390,9 @@ export const es: Record<string, string> = {
   "settings.connection.status.checking": "Comprobando el runtime…",
   "settings.connection.status.reconnecting": "Reconectando…",
   "agent.steer.accepted": "Aceptada · esperando entrar en el contexto del modelo",
+  "agent.steer.pending": "Enviando entrada",
+  "agent.steer.unknown": "Recepción sin confirmar",
+  "agent.steer.retry": "Reintentar el envío original",
   "agent.steer.applied": "Incorporada al contexto del modelo",
   "agent.steer.notApplied":
     "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",
