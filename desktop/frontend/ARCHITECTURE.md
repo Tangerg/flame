@@ -91,36 +91,33 @@ workspace/
   events.ts           workspace subscription installation
 ```
 
-Trajectory analysis is a first-party portable package in `plugins/trajectory`, admitted by
-Runtime and rendered through `settings/plugins-pane`'s scoped isolated carrier. Workspace
-owns the contribution catalogue and full evidence export commands; it has no compiled
-Timeline or dedicated trajectory data provider.
+Trajectory analysis is an ordinary portable React component admitted from an exact
+Runtime release. It consumes public Session/evidence operations and captured target
+context. Workspace owns navigation and export commands; the generic loader owns
+module/resources and lifetime rather than trajectory business data.
 
 These UI groups share the existing Workspace owner. They do not each introduce a
-new application, domain, adapter, or navigation stack.
+new application, domain, adapter, or navigation stack. Memory's published client consumes its generated feature contract and public
+Runtime client. Workspace adapters translate that client into their application
+ports; Workspace's public surface exports application commands and queries.
 
-Scheduling presentation and templates live in the optional `plugins/schedules` portable
-release. The Host's `settings/schedules` owns trusted authoring and command receipt projections;
-its public controls capture Runtime revision and workspace intent. Templates only initialize
-explicitly opened drafts. The isolated page consumes canonical schedule pages, including
-reported firing times; it cannot submit commands or supply timers. Package withdrawal removes
-the view and withdraws the managed backend. The Schedules backend owns definitions,
-Occurrence claims, captured pending work and firing acceptance. Runtime owns dispatch
-wake-ups and Session/Run acceptance; accepted Runs continue after withdrawal.
+Scheduling presentation and templates live in `plugins/schedules`. Its ordinary
+component owns authoring forms, inspected revisions and original command handles,
+and enters the backend's public operations. Templates only initialize new drafts.
+The declared backend background contribution owns wake-ups, fair pending scans and
+dispatch; Runtime owns Session/Run acceptance. Withdrawal stops new background
+work and retires component observation; accepted Runs continue under Runtime.
 
-Usage presentation lives in the optional `plugins/usage` portable release. The trusted
-Host binds one Runtime-owned summary period; the isolated page renders canonical reports
-and local filters without a parallel accounting cache. `settings/plugins-pane` owns one
-read-only bridge for pages and reports, and retires each captured query with its contribution.
-The former compiled Usage pane, gateway and query invalidation target are removed.
+Usage presentation lives in `plugins/usage`. The ordinary component reads public
+Runtime accounting summaries for its chosen period and owns only local filters and
+accepted snapshots. Runtime remains the sole accounting owner. Contribution
+retirement cancels/joins reads; there is no read-only page bridge or second cache.
 
-Diff presentation lives in the optional `plugins/diff` portable release. Runtime owns
-workspace/Git reads and resource bounds; Host controls bind the comparison mode and file
-focus. The guest owns layout, filtering and folding. Navigation reads admitted Workspace
-view contributions with `material: "diff"`, opens a single choice or the catalogue, and
-keeps no separate renderer registration. The compiled Diff view, read provider and cache
-invalidation target are removed. Desktop dock preferences reset on their new version;
-the former layout and folding state is not shared with the guest.
+Diff presentation lives in `plugins/diff`. Runtime owns workspace/Git reads and
+resource bounds. The captured component target determines the workspace and file;
+local React state owns layout, filtering and folding. Navigation resolves admitted
+Workspace view contributions with `material: "diff"` and owns no separate renderer
+registration. The former compiled Diff view and guest carrier are removed.
 
 ## Dependencies and public surfaces
 
@@ -452,4 +449,9 @@ macOS packaging result.
 
 ## Shared UI and portable appearance
 
-`@flame/ui` owns shared control behavior and presentation. Desktop and Memory consume its compiled components and stylesheet. Icons remain independent; Desktop owns contributed-name metadata and supplies named glyphs to generic controls. Appearance selection and preference persistence remain in `theme/`. The carrier captures the painted document as a closed token projection and publishes it over the existing qualified channel. Appearance changes update the same guest without rereading business data. The v3 guest bootstrap is generated from the library, applies initial tokens before guest initialization, and observes subsequent projections. It cannot submit commands.
+`@flame/ui` owns shared control behavior and presentation. Desktop and ordinary
+portable components consume its compiled components, stylesheet and actual shared
+React/provider instances. Icons retain their independent authoring owner.
+Appearance selection and preference persistence stay in `theme/`; components inherit
+the workbench's current theme, typography and controls. No guest token channel,
+read-only bootstrap or private appearance projection remains.

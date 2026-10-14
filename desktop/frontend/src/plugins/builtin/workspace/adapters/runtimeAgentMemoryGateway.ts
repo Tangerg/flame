@@ -7,7 +7,7 @@ import {
   deleteInstalledMemory,
   reviewInstalledMemory,
   updateInstalledMemory,
-} from "../public/memory";
+} from "../../../../../../../plugins/memory/src/client";
 import { AgentMemoryMutationOwner } from "../application/agentMemoryMutationOwner";
 
 export function agentMemoryEntry(item: MemoryItem): AgentMemoryEntry {

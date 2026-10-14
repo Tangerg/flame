@@ -5,7 +5,7 @@ import {
   readInstalledMemory,
   reviewInstalledMemory,
   updateInstalledMemory,
-} from "../plugins/builtin/workspace/public/memory";
+} from "../../../../plugins/memory/src/client";
 // @vitest-environment-options { "url": "http://localhost:5173/" }
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 import { execFile, spawn } from "node:child_process";

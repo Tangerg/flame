@@ -136,6 +136,15 @@ source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugi
 of the local Runtime application module. Verify from `runtime` with the workspace
 enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
 
+## Public consumer client
+
+`src/client.ts` supplies headless reads and durable commands over this package's
+generated capability and public Runtime client. It owns traversal validation and
+acknowledgement decoding; business changes and receipts remain in the backend.
+Its exported item is a consumer projection, with vocabulary derived from the
+same generated contract. It imports no Desktop/Workspace implementation. Workspace
+adapters translate this client into their own application ports.
+
 ## Shared presentation
 
 The resource is ordinary prebuilt ESM from `src/component.tsx`, using shared React,

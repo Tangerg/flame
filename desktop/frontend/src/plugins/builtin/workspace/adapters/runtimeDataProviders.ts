@@ -5,7 +5,7 @@ import type {
   WorkspaceFileChange as RpcFileChange,
   WorkspaceSummary as RpcWorkspaceSummary,
 } from "@flame/runtime-contract/client";
-import { readInstalledMemory } from "../public/memory";
+import { readInstalledMemory } from "../../../../../../../plugins/memory/src/client";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { agentMemoryEntry } from "./runtimeAgentMemoryGateway";
 import {
