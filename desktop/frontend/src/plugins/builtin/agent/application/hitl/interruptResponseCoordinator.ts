@@ -1,11 +1,7 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { tupleKey } from "@/lib/tupleKey";
-import type { InterruptRef } from "../../domain/hitl";
-import type {
-  AgentSessionViewEntry,
-  AgentSessionViewPort,
-  InterruptResumeInput,
-} from "../ports/sessionView";
+import type { InterruptRef, InterruptResumeInput } from "../../domain/hitl";
+import type { AgentSessionViewEntry, AgentSessionViewPort } from "../ports/sessionView";
 import { agentSessionView } from "../ports/sessionView";
 import { selectAwaitingGroups } from "../view/awaitingInterrupts";
 

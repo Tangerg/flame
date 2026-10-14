@@ -74,8 +74,13 @@ longer reserves or caches a separate Run-stream response.
 Keyed Steer commits its immutable input and reserved Item reference with the
 Scope Signal head and pending execution context. Its acceptance query returns
 that original input and, when present, the exact applied User Item. The SDK
-`runs.recoverSteers()` reads original receipts after application restart and
-retains explicit original-command retry authority for inconclusive reads.
+`runs.recoverCommands()` enumerates frozen original Start, Resume and Steer requests
+after application restart, reads their receipts without dispatch, and retains explicit
+original-command retry authority for inconclusive reads. The SDK journal persists the
+complete prepared request before dispatch. Explicit replay keeps its original key,
+namespace and deadline; it never reads changed drafts or reviewed answers. Accepted
+openings recover observation through Session snapshots and the existing subscriptions.
+The former Steer-only SDK journal shape is rejected and preserved without migration.
 
 `runs.getAcceptance` requires the original `namespace`, `key`, and `operation`
 (`start`, `resume`, or `steer`) as query parameters. It only reads. `accepted` includes
@@ -1338,7 +1343,7 @@ the operation is not an atomic filesystem or filesystem-plus-history transaction
 
 Protocol `2026-10-14.1` makes keyed Steer acceptance Run-owned. Its original namespace, key, request fingerprint, reserved Item identity and immutable input commit with the Scope Signal admission head and execution context. `runs.getAcceptance` supports `steer` without redelivery or writer recovery. A consumed Signal receipt is not an applied input: only the exact completed User Item proves application. `sessions.snapshot.pendingSteers` retains accepted inputs until that Item commits, including after the Run finishes. Replaying a recorded command returns its original identity even when the original Run finished or its material was retired; importing the same Run ID never refills a retired receipt. Ordinary active execution still follows its existing crash policy.
 
-Upgrade Runtime, Desktop and CLI together. The current SQLite command-record shape refuses older data directories without conversion. Retain the old directory separately and use a fresh directory. The SDK journal adds a required concrete Steer request field; other mutations still persist no request bodies. Older journal shapes are refused and preserved, not cleared or decoded through an adapter. Such old Steer entries contain no body and cannot recover it from their hash.
+Upgrade Runtime, Desktop and CLI together. The current SQLite command-record shape refuses older data directories without conversion. Retain the old directory separately and use a fresh directory. The SDK journal requires a concrete frozen Start, Resume or Steer command; other mutations still persist no request bodies. Older journal shapes are refused and preserved, not cleared or decoded through an adapter. Omitted original request bodies cannot be recovered from their hash.
 
 ## Command completion and configuration boundaries
 
@@ -1357,7 +1362,7 @@ receipt settles the command without another mutation; failed lookup retains the
 original identity, and `notRecorded` only permits dispatch while the original
 replay admission still holds. Receipt reads remain possible after expiry or
 store replacement. Neither reopening nor cold retry renews that age. Persisted
-journal entries use the current shape described under Steer admission. The SDK exposes `runs.recoverSteers()` for reading unresolved original Steer commands after application restart. It queries their original receipts without dispatch, returns each known or unknown observation, and exposes explicit `retry()` using the frozen original request. Query failure, expiry or store replacement cannot mint a new key, retarget a Segment, or renew the original deadline. Accepted receipts settle the client journal; Runtime snapshots retain any still-unapplied input.
+journal entries use the current shape described under Steer admission. The SDK exposes `runs.recoverCommands()` for reading unresolved original Start, Resume and Steer commands after application restart. It queries their original receipts without dispatch, returns each known or unknown observation, and exposes explicit `retry()` using the frozen original request. Query failure, expiry or store replacement cannot mint a new key, retarget a Segment, or renew the original deadline. Accepted receipts settle the client journal; Runtime snapshots retain any still-unapplied input.
 
 Disabling or deleting a schedule stops future occurrence claims. An already claimed occurrence retains its accepted input and may still start after that change; its Run must be canceled separately when required. Editing a schedule does not rewrite an occurrence already claimed from an earlier revision.
 

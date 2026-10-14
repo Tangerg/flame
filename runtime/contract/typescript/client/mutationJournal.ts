@@ -6,9 +6,9 @@ import {
   type DurableMutationJournal,
   type MutationJournalScope,
   type MutationJournalStorage,
+  type RunCommand,
 } from "./durableMutationJournal";
 import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
-import type { SteerRunRequest } from "../wire.generated";
 
 export {
   MutationJournalCapacityError,
@@ -26,18 +26,17 @@ export interface MutationReservation {
 }
 
 export interface MutationJournal {
-  pendingSteers(): PendingSteerCommand[];
+  pendingCommands(): PendingRunCommand[];
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
   dispose(): void;
 }
 
-export interface PendingSteerCommand {
-  readonly params: SteerRunRequest;
+export type PendingRunCommand = RunCommand & {
   readonly idempotencyKey: string;
   readonly namespace: string;
   settle(): void;
   reserve(): MutationReservation;
-}
+};
 
 export interface MutationJournalOptions {
   storage?: MutationJournalStorage;
@@ -102,13 +101,13 @@ class MutationAuthority implements MutationJournal {
     this.#journal = journal;
   }
 
-  pendingSteers(): PendingSteerCommand[] {
+  pendingCommands(): PendingRunCommand[] {
     this.#assertCurrent();
     return this.#journal
-      .pendingSteers()
+      .pendingCommands()
       .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
       .map((identity) => ({
-        params: structuredClone(identity.entry.steer!),
+        ...structuredClone(identity.entry.command!),
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
         settle: () => {

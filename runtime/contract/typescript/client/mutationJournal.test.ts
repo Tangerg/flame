@@ -75,11 +75,15 @@ describe("mutation journal", () => {
   it("keeps independent connection journals alive until their own owner retires them", async () => {
     const firstStorage = new MemoryStorage();
     const first = journal(firstStorage);
-    const firstReservation = first.reserve("runs.start", { prompt: "first" })!;
+    const firstReservation = first.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "first" }],
+    })!;
     const secondStorage = new MemoryStorage();
     const second = journal(secondStorage, () => scope("idp_other"));
     const secondReservation = second.reserve("runs.start", {
-      prompt: "second",
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "second" }],
     })!;
     await expect(deliver(firstReservation, () => "first result")).resolves.toBe("first result");
     first.dispose();
@@ -88,23 +92,21 @@ describe("mutation journal", () => {
     expect(secondStorage.keys()).toEqual([]);
   });
 
-  it("persists only the unresolved command identity in the current shape", async () => {
+  it("keeps non-run mutation bodies out of the journal", async () => {
     const storage = new MemoryStorage();
     const current = journal(storage);
-    const reservation = current.reserve("runs.start", {
-      prompt: "never persist me",
-    })!;
+    const reservation = current.reserve("sessions.create", { title: "never persist me" })!;
 
     expect(storage.keys()).toHaveLength(1);
     const entry = storage.get(storage.keys()[0]!) as Record<string, unknown>;
     expect(Object.keys(entry).sort()).toEqual([
+      "command",
       "createdAt",
       "expiresAt",
       "fingerprint",
       "idempotencyKey",
       "namespace",
       "salt",
-      "steer",
     ]);
     expect(JSON.stringify(entry)).not.toContain("never persist me");
     expect(entry).not.toHaveProperty("owner");
@@ -136,7 +138,8 @@ describe("mutation journal", () => {
     const storage = new MemoryStorage();
     const predecessor = journal(storage);
     const firstReservation = predecessor.reserve("runs.start", {
-      prompt: "hello",
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
     })!;
     const firstResult = Promise.withResolvers<string>();
     const first = deliver(firstReservation, () => firstResult.promise);
@@ -145,7 +148,8 @@ describe("mutation journal", () => {
     const successor = journal(storage);
     predecessor.dispose();
     const replayReservation = successor.reserve("runs.start", {
-      prompt: "hello",
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
     })!;
     expect(replayReservation.idempotencyKey).toBe(firstReservation.idempotencyKey);
     const replayResult = Promise.withResolvers<string>();
@@ -171,12 +175,14 @@ describe("mutation journal", () => {
     });
     const predecessor = bind("http://127.0.0.1:17171");
     const pending = predecessor.journal.reserve("runs.start", {
-      prompt: "hello",
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
     })!;
 
     const successor = bind("http://127.0.0.1:27272");
     const replay = successor.journal.reserve("runs.start", {
-      prompt: "hello",
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
     })!;
 
     expect(successor.endpoint).not.toBe(predecessor.endpoint);
@@ -187,7 +193,10 @@ describe("mutation journal", () => {
   it("retains an ambiguous result and reuses its exact identity on explicit retry", async () => {
     const storage = new MemoryStorage();
     const current = journal(storage);
-    const reservation = current.reserve("runs.start", { prompt: "hello" })!;
+    const reservation = current.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
+    })!;
     const execute = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(new RpcTransportError("connection reset"))
@@ -208,7 +217,10 @@ describe("mutation journal", () => {
     const storage = new MemoryStorage();
     let available = true;
     const current = journal(storage, () => (available ? scope() : null));
-    const reservation = current.reserve("runs.start", { prompt: "hello" })!;
+    const reservation = current.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
+    })!;
     const execute = vi.fn(async () => {
       available = false;
       throw new RpcTransportError("discovery withdrawn");
@@ -290,12 +302,18 @@ describe("mutation journal", () => {
     const storage = new MemoryStorage();
     let namespace = "idp_runtime_store_a";
     const predecessor = journal(storage, () => scope(namespace));
-    const old = predecessor.reserve("runs.start", { prompt: "hello" })!;
+    const old = predecessor.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
+    })!;
 
     namespace = "idp_runtime_store_b";
     expect(() => old.authorizeDispatch()).toThrow(MutationJournalOwnershipError);
     const successor = journal(storage, () => scope(namespace));
-    const replacement = successor.reserve("runs.start", { prompt: "hello" })!;
+    const replacement = successor.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
+    })!;
 
     expect(replacement.idempotencyKey).toBe(old.idempotencyKey);
     expect(replacement.lookupNamespace()).toBe("idp_runtime_store_a");
@@ -304,7 +322,8 @@ describe("mutation journal", () => {
     predecessor.dispose();
     namespace = "idp_runtime_store_a";
     const recovered = journal(storage, () => scope(namespace)).reserve("runs.start", {
-      prompt: "hello",
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
     })!;
     expect(recovered.idempotencyKey).toBe(old.idempotencyKey);
   });
@@ -330,10 +349,18 @@ describe("mutation journal", () => {
 
     const storage = new MemoryStorage();
     const current = journal(storage);
-    current.reserve("runs.start", { prompt: "first" }, "fixed-key");
-    expect(() => current.reserve("runs.start", { prompt: "second" }, "fixed-key")).toThrow(
-      MutationJournalOwnershipError,
+    current.reserve(
+      "runs.start",
+      { sessionId: "ses_1", input: [{ type: "text", text: "first" }] },
+      "fixed-key",
     );
+    expect(() =>
+      current.reserve(
+        "runs.start",
+        { sessionId: "ses_1", input: [{ type: "text", text: "second" }] },
+        "fixed-key",
+      ),
+    ).toThrow(MutationJournalOwnershipError);
     for (let index = 1; index < 256; index++) {
       current.reserve(`runs.command.${index}`, { index });
     }
@@ -350,7 +377,10 @@ describe("mutation journal", () => {
       storage.values.delete(key);
     };
     const current = journal(storage);
-    const reservation = current.reserve("runs.start", { prompt: "hello" })!;
+    const reservation = current.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "hello" }],
+    })!;
     const execute = vi.fn().mockResolvedValue("done");
     const first = deliver(reservation, execute);
 
@@ -366,7 +396,7 @@ describe("mutation journal", () => {
     const interval = vi.spyOn(globalThis, "setInterval");
     const storage = new MemoryStorage();
     const current = journal(storage);
-    current.reserve("runs.start", { prompt: "hello" });
+    current.reserve("runs.start", { sessionId: "ses_1", input: [{ type: "text", text: "hello" }] });
     const persisted = structuredClone([...storage.values.entries()]);
 
     current.dispose();

@@ -58,6 +58,8 @@ function entry(value: AgentSessionView): AgentSessionViewEntry {
     resume: null,
     synchronize: null,
     cancelRun: null,
+    openingCommands: [],
+    retryOpening: null,
   };
 }
 

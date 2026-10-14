@@ -349,8 +349,13 @@ export const es: Record<string, string> = {
   "settings.connection.status.reconnecting": "Reconectando…",
   "agent.steer.accepted": "Aceptada · esperando entrar en el contexto del modelo",
   "agent.steer.pending": "Enviando entrada",
-  "agent.steer.unknown": "Recepción sin confirmar",
-  "agent.steer.retry": "Reintentar el envío original",
+  "agent.opening.start": "Solicitud de inicio sin confirmar",
+  "agent.opening.resume": "Solicitud de reanudación sin confirmar",
+  "agent.opening.notRecorded":
+    "Esta consulta no encontró la solicitud original; su aceptación sigue sin confirmarse.",
+  "agent.opening.review": "Revisar la entrada y las opciones originales",
+  "agent.command.unknown": "Recepción sin confirmar",
+  "agent.command.retry": "Reintentar el envío original",
   "agent.steer.applied": "Incorporada al contexto del modelo",
   "agent.steer.notApplied":
     "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",

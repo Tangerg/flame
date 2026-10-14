@@ -24,7 +24,7 @@ it.each(["AbortError", "TimeoutError"])("retains an in-progress command after %s
     scope: () => ({ namespace: "runtime-store", retentionSeconds: 60 }),
   };
   const journal = createMutationJournal(options);
-  const params = { sessionId: "ses_1" };
+  const params = { sessionId: "ses_1", input: [{ type: "text", text: "original input" }] };
   const reservation = journal.reserve("runs.start", params)!;
   const controller = new AbortController();
   const cause = new DOMException("observation stopped", name);
@@ -69,14 +69,19 @@ it("refuses expired replay without deleting evidence or issuing a replacement ke
   };
   const original = openDurableMutationJournal(options).reserve(
     "runs.start",
-    { text: "hello" },
+    { sessionId: "ses_1", input: [{ type: "text", text: "hello" }] },
     undefined,
     () => false,
   )!;
   const before = durable.keys().map((key) => [key, durable.get(key)]);
   now = 2_000;
   const restarted = openDurableMutationJournal(options);
-  const recovered = restarted.reserve("runs.start", { text: "hello" }, undefined, () => false)!;
+  const recovered = restarted.reserve(
+    "runs.start",
+    { sessionId: "ses_1", input: [{ type: "text", text: "hello" }] },
+    undefined,
+    () => false,
+  )!;
   expect(recovered.entry).toEqual(original.entry);
   expect(restarted.lookupNamespace(recovered)).toBe("runtime-store");
   expect(() => restarted.authorizeDispatch(recovered)).toThrow(MutationJournalError);

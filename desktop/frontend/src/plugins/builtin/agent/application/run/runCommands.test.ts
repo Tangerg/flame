@@ -68,6 +68,8 @@ describe("active Session Run commands", () => {
       resume: null,
       synchronize: null,
       cancelRun,
+      openingCommands: [],
+      retryOpening: null,
     });
 
     expect(stopCurrentRootRun()).toBe(true);
@@ -95,6 +97,8 @@ describe("active Session Run commands", () => {
       resume: null,
       synchronize: null,
       cancelRun,
+      openingCommands: [],
+      retryOpening: null,
     });
 
     expect(cancelSessionRun({ sessionId: "session-1", runId: running.id })).toBe(true);
@@ -122,6 +126,8 @@ describe("active Session Run commands", () => {
       resume: null,
       synchronize: null,
       cancelRun,
+      openingCommands: [],
+      retryOpening: null,
     });
     configureSessions("session-successor", {
       "session-predecessor": entry(predecessorRun, predecessorCancel),

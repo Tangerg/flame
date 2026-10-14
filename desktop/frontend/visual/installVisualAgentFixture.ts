@@ -64,7 +64,7 @@ import {
 import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { toolRenderingPlugins } from "@/main/builtinPlugins";
-import type { InterruptResumeInput } from "@/plugins/builtin/agent/application/ports/sessionView";
+import type { InterruptResumeInput } from "@/plugins/builtin/agent/domain/hitl";
 import { CONFIG, DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import { visualFeatureCapabilities } from "./agentFixtureFacts";

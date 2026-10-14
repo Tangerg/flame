@@ -28,6 +28,8 @@ function seed(commandError: AgentProblem | null, shared: Record<string, unknown>
     resume: null,
     synchronize: null,
     cancelRun: null,
+    openingCommands: [],
+    retryOpening: null,
   };
 }
 

@@ -79,7 +79,7 @@ describe("createFlameClient", () => {
     const transport = createMemoryTransport();
     const dispose = vi.fn();
     const client = createFlameClient(transport, {
-      mutationJournal: { pendingSteers: () => [], reserve: () => undefined, dispose },
+      mutationJournal: { pendingCommands: () => [], reserve: () => undefined, dispose },
     });
 
     await client.close();
@@ -93,7 +93,7 @@ describe("createFlameClient", () => {
     const failure = new Error("journal cleanup failed");
     const client = createFlameClient(transport, {
       mutationJournal: {
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve: () => undefined,
         dispose: () => {
           throw failure;
@@ -116,7 +116,7 @@ describe("createFlameClient", () => {
     });
     const client = createFlameClient(transport, {
       mutationJournal: {
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve: () => undefined,
         dispose: () => {
           throw journalFailure;
@@ -148,7 +148,7 @@ describe("createFlameClient", () => {
       throw journalFailure;
     });
     const client = createFlameClient(transport, {
-      mutationJournal: { pendingSteers: () => [], reserve: () => undefined, dispose },
+      mutationJournal: { pendingCommands: () => [], reserve: () => undefined, dispose },
     });
 
     const first = client.close();

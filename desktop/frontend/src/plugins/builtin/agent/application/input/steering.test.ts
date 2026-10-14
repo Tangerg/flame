@@ -66,7 +66,7 @@ describe("steer command observation", () => {
       gateway = installAgentRuntimeGateway(
         () =>
           ({
-            runs: { recoverSteers: async () => [] },
+            runs: { recoverCommands: async () => [] },
             sessions: { snapshot },
           }) as unknown as FlameClient,
       );

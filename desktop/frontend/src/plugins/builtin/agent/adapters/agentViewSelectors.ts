@@ -25,6 +25,16 @@ import type {
   StopCurrentRootRunAction,
 } from "../application/ports/sessionView";
 import { useAgentStore } from "./agentStore";
+import type { AgentOpeningCommand } from "../application/ports/runtimeGateway";
+
+const NO_OPENING_COMMANDS: readonly AgentOpeningCommand[] = [];
+
+export function useAgentOpeningCommands(): readonly AgentOpeningCommand[] {
+  const sessionId = navigator().use((location) => location.session);
+  return useAgentStore(
+    (state) => state.sessions[sessionId]?.openingCommands ?? NO_OPENING_COMMANDS,
+  );
+}
 
 function useActiveAgentView<T>(select: (view: AgentSessionView) => T): T {
   const sessionId = navigator().use((location) => location.session);

@@ -346,8 +346,13 @@ export const de: Record<string, string> = {
   "settings.connection.status.reconnecting": "Verbindung wird wiederhergestellt…",
   "agent.steer.accepted": "Angenommen · wartet auf Modellkontext",
   "agent.steer.pending": "Eingabe wird gesendet",
-  "agent.steer.unknown": "Annahme nicht bestätigt",
-  "agent.steer.retry": "Ursprüngliche Eingabe erneut senden",
+  "agent.opening.start": "Unbestätigte Startanfrage",
+  "agent.opening.resume": "Unbestätigte Fortsetzungsanfrage",
+  "agent.opening.notRecorded":
+    "Diese Abfrage fand keinen Eintrag der ursprünglichen Anfrage; die Annahme bleibt unbestätigt.",
+  "agent.opening.review": "Ursprüngliche Eingabe und Auswahl prüfen",
+  "agent.command.unknown": "Annahme nicht bestätigt",
+  "agent.command.retry": "Ursprüngliche Eingabe erneut senden",
   "agent.steer.applied": "In den Modellkontext aufgenommen",
   "agent.steer.notApplied":
     "Der Lauf endete, bevor eine angenommene Anweisung in den Modellkontext aufgenommen wurde.",

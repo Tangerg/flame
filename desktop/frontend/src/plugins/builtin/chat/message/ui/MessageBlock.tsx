@@ -161,14 +161,14 @@ function MessageBlockInner({
                       ? "agent.steer.applied"
                       : "agent.steer.accepted"
                     : msg.steer.receipt === "unknown"
-                      ? "agent.steer.unknown"
+                      ? "agent.command.unknown"
                       : "agent.steer.pending",
               )}
             </Badge>
           )}
           {isUser && msg.steer?.receipt === "unknown" && (
             <Button variant="ghost" size="sm" onClick={() => retrySteerInput(msg.id)}>
-              {t("agent.steer.retry")}
+              {t("agent.command.retry")}
             </Button>
           )}
           {isUser && !msg.steer && msg.runId === null && (

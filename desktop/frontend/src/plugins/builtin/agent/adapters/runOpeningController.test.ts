@@ -32,6 +32,7 @@ describe("run opening controller", () => {
       markInteracted: vi.fn(),
       setAbortController: vi.fn(),
       abortCurrent,
+      onRejected: vi.fn(),
       setStartError: vi.fn(),
     });
 
@@ -76,6 +77,7 @@ describe("run opening controller", () => {
       setAbortController: vi.fn(),
       abortCurrent: vi.fn(),
       setStartError,
+      onRejected: vi.fn(),
     });
 
     controller.begin(() => Promise.reject(rejected), { observe: vi.fn(), onStartError });
@@ -102,6 +104,7 @@ describe("run opening controller", () => {
       setAbortController: vi.fn(),
       abortCurrent: vi.fn(),
       setStartError,
+      onRejected: vi.fn(),
     });
 
     controller.begin(
@@ -130,9 +133,10 @@ describe("run opening controller", () => {
     expect(onStartError).not.toHaveBeenCalled();
   });
 
-  it("surfaces a transport failure through the product command channel", async () => {
+  it("queries the original command after an uncertain opening instead of offering a new command", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setStartError = vi.fn<(problem: AgentProblem) => void>();
+    const onRejected = vi.fn();
     const controller = createRunOpeningController({
       sessionId: "ses_1",
       isCancelled: () => false,
@@ -140,13 +144,15 @@ describe("run opening controller", () => {
       setAbortController: vi.fn(),
       abortCurrent: vi.fn(),
       setStartError,
+      onRejected,
     });
 
     controller.begin(() => Promise.reject(new RpcTransportError("connection unavailable")), {
       observe: vi.fn(),
     });
 
-    await vi.waitFor(() => expect(setStartError).toHaveBeenCalledWith({ code: "transport_error" }));
+    await vi.waitFor(() => expect(onRejected).toHaveBeenCalledOnce());
+    expect(setStartError).not.toHaveBeenCalled();
   });
 });
 

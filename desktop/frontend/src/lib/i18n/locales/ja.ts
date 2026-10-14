@@ -338,8 +338,13 @@ export const ja: Record<string, string> = {
   "settings.connection.status.reconnecting": "再接続中…",
   "agent.steer.accepted": "受け付け済み・モデルのコンテキストへの追加待ち",
   "agent.steer.pending": "入力を送信中",
-  "agent.steer.unknown": "受付結果を確認できません",
-  "agent.steer.retry": "元の送信を再試行",
+  "agent.opening.start": "未確認の開始リクエスト",
+  "agent.opening.resume": "未確認の再開リクエスト",
+  "agent.opening.notRecorded":
+    "この照会では元のリクエストの記録が見つかりませんでした。受付結果はまだ未確認です。",
+  "agent.opening.review": "元の入力と選択を確認",
+  "agent.command.unknown": "受付結果を確認できません",
+  "agent.command.retry": "元の送信を再試行",
   "agent.steer.applied": "モデルのコンテキストに追加済み",
   "agent.steer.notApplied":
     "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",

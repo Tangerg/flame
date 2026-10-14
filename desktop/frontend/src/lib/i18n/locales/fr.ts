@@ -351,8 +351,13 @@ export const fr: Record<string, string> = {
   "settings.connection.status.reconnecting": "Reconnexion…",
   "agent.steer.accepted": "Acceptée · en attente du contexte du modèle",
   "agent.steer.pending": "Envoi de l’entrée",
-  "agent.steer.unknown": "Réception non confirmée",
-  "agent.steer.retry": "Réessayer l’envoi initial",
+  "agent.opening.start": "Demande de démarrage non confirmée",
+  "agent.opening.resume": "Demande de reprise non confirmée",
+  "agent.opening.notRecorded":
+    "Cette requête n’a trouvé aucune trace de la demande initiale ; son acceptation reste non confirmée.",
+  "agent.opening.review": "Vérifier la saisie et les choix initiaux",
+  "agent.command.unknown": "Réception non confirmée",
+  "agent.command.retry": "Réessayer l’envoi initial",
   "agent.steer.applied": "Ajoutée au contexte du modèle",
   "agent.steer.notApplied":
     "L’exécution s’est terminée avant qu’une instruction acceptée soit ajoutée au contexte du modèle.",

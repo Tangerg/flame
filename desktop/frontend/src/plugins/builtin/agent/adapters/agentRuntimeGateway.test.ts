@@ -217,7 +217,7 @@ describe("agentRuntimeGateway", () => {
   it("translates structured steering input only at the runtime adapter", async () => {
     const steer = vi.fn().mockResolvedValue({ userItemId: "item_steer" });
     runtimeClient = () =>
-      ({ runs: { recoverSteers: async () => [], steer } }) as unknown as FlameClient;
+      ({ runs: { recoverCommands: async () => [], steer } }) as unknown as FlameClient;
     uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     const result = await agentRuntime().steerRun("run_1", "seg_1", {
@@ -239,7 +239,7 @@ describe("agentRuntimeGateway", () => {
     const mutation = createMutationPromise(execute, "original-steer");
     const steer = vi.fn(() => mutation);
     runtimeClient = () =>
-      ({ runs: { recoverSteers: async () => [], steer } }) as unknown as FlameClient;
+      ({ runs: { recoverCommands: async () => [], steer } }) as unknown as FlameClient;
     uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     const submitted = agentRuntime().steerRun("run_1", "seg_original", {
@@ -309,7 +309,7 @@ describe("agentRuntimeGateway", () => {
       runtimeClient = () =>
         ({
           sessions: { snapshot: readSnapshot },
-          runs: { recoverSteers: async () => [] },
+          runs: { recoverCommands: async () => [] },
         }) as unknown as FlameClient;
       uninstall = installAgentRuntimeGateway(getRuntimeClient);
 

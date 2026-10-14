@@ -2,6 +2,7 @@ import type { MCPServerID } from "@flame/runtime-contract/wire";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import {
   asRunId,
+  asItemId,
   asSegmentId,
   asSessionId,
   createMutationSettler,
@@ -10,7 +11,11 @@ import {
 } from "@flame/runtime-contract/client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 import { configureAgentRuntimeGateway } from "../application/ports/runtimeGateway";
-import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
+import type {
+  AgentRuntimeGateway,
+  AgentOpeningCommand,
+  AgentUnresolvedSteer,
+} from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { runtimeSessionMaterial } from "./runtimeSessionMaterial";
@@ -68,14 +73,80 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const sid = asSessionId(sessionId);
     const includeDescendants = runtimeCapability("subagents");
     try {
-      const snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      let snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      const commands = await client.runs.recoverCommands(signal);
+      if (
+        commands.some(
+          (command) =>
+            command.operation !== "steer" &&
+            command.observation.type === "known" &&
+            command.observation.acceptance.type !== "notRecorded" &&
+            command.observation.acceptance.sessionId === sessionId,
+        )
+      )
+        snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
       const material = runtimeSessionMaterial(sessionId, snapshot);
-      const recovered = (await client.runs.recoverSteers(signal)).map((command) => {
+      const unresolvedOpenings: AgentOpeningCommand[] = [];
+      const unresolvedSteers: AgentUnresolvedSteer[] = [];
+      for (const command of commands) {
+        if (command.operation !== "steer") {
+          if (
+            command.observation.type === "known" &&
+            command.observation.acceptance.type !== "notRecorded"
+          )
+            continue;
+          const belongs =
+            command.operation === "start"
+              ? command.params.sessionId === sessionId
+              : snapshot.runs.some((run) => run.id === command.params.runId);
+          const request =
+            command.operation === "start"
+              ? {
+                  operation: "start" as const,
+                  input: contentBlocksToAgentInput(command.params.input),
+                  options: {
+                    provider: command.params.provider,
+                    model: command.params.model,
+                    reasoningEffort: command.params.reasoningEffort,
+                  },
+                  ...(command.params.params
+                    ? { generation: structuredClone({ ...command.params.params }) }
+                    : {}),
+                }
+              : {
+                  operation: "resume" as const,
+                  runId: command.params.runId,
+                  ...(command.params.input
+                    ? { input: contentBlocksToAgentInput(command.params.input) }
+                    : {}),
+                  responses: structuredClone(command.params.responses),
+                };
+          if (belongs)
+            unresolvedOpenings.push({
+              ...request,
+              idempotencyKey: command.idempotencyKey,
+              receipt: command.observation.type === "unknown" ? "unknown" : "notRecorded",
+              retry: async (retrySignal) => {
+                const opening = await command.retry({ signal: retrySignal });
+                return {
+                  ...opening,
+                  result: {
+                    runId: asRunId(opening.result.runId),
+                    segmentId: asSegmentId(opening.result.segmentId),
+                    ...(opening.result.userItemId
+                      ? { userItemId: asItemId(opening.result.userItemId) }
+                      : {}),
+                  },
+                };
+              },
+            });
+          continue;
+        }
         try {
           if (command.observation.type === "unknown") throw command.observation.cause;
           const receipt = command.observation.acceptance;
           if (receipt.type !== "notRecorded") {
-            if (receipt.sessionId !== sessionId) return null;
+            if (receipt.sessionId !== sessionId) continue;
             if (receipt.type === "accepted" && receipt.appliedItem) {
               const applied = receipt.appliedItem;
               if (!material.snapshot.items.some((item) => item.id === applied.id))
@@ -97,21 +168,22 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                       : "accepted",
                 });
             }
-            return null;
+            continue;
           }
         } catch (error) {
           signal?.throwIfAborted();
           console.warn("[session] original steer query failed:", error);
         }
-        if (!snapshot.runs.some((run) => run.id === command.params.runId)) return null;
-        return {
+        if (!snapshot.runs.some((run) => run.id === command.params.runId)) continue;
+        unresolvedSteers.push({
           idempotencyKey: command.idempotencyKey,
           runId: command.params.runId,
           input: contentBlocksToAgentInput(command.params.input),
           retry: () => command.retry(),
-        };
-      });
-      material.unresolvedSteers = recovered.filter((command) => command !== null);
+        });
+      }
+      material.unresolvedSteers = unresolvedSteers;
+      material.unresolvedOpenings = unresolvedOpenings;
       return material;
     } catch (error) {
       if (isErrorType(error, "session_not_found")) return null;
