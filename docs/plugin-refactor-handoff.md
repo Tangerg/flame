@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 published Memory consumer cutover.
+Prepared on 2026-10-14 and updated after the 2026-10-15 public Tool-context/embedding contract cutover.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,13 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `9f2bac554` (generated published Core Memory reads,
+- Latest product commit: `2079ee06f` (public Tool context and text embedding
+  contracts; private Memory scope/embedding method removed; actual Memory and
+  public independent-author checks pass).
+  Next: remove the private caller grant-policy factory/contract construction,
+  retain one authoritative resource policy and complete normal installed model
+  access. Source/private receipt formats are unchanged.
+  Previous: `9f2bac554` (generated published Core Memory reads,
   model-owned embedding port and named Go consumer projections; all consumers
   migrated; focused/bootstrap/architecture/generator/CLI/build/vet pass).
   Next: the two private Memory RPC callback/grant imports in consumer/preparation.

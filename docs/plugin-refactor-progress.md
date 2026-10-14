@@ -14,6 +14,40 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Public Tool context and text embedding contract (2026-10-15)
+
+- `2079ee06f` replaces the private `flame.memory/embed.v1` method with public SDK
+  `TextEmbeddingMethod`/`NewTextEmbeddingCallback`/`CallTextEmbedding`, using
+  `flame.model/embed-texts.v1`. Callback admission and resource/workflow budgets
+  remain with the caller. The generic SDK proves three independent exchanges;
+  the existing Memory grant still proves its own two-call policy unchanged.
+- Embeddings now use a distinct original child invocation, preserving the calling
+  origin and parent. Vector count/dimensions are validated. The vector projection
+  invents no provider response; the model adapter retains actual complete endpoint
+  response/usage/accounting evidence. No provider retry or result store is added.
+- `plugin.ToolContext` replaces the private Memory scope codec/header. Workspace
+  and optional vector-space identity project the captured calling owner. Callback
+  authority appears only in the existing public callback metadata and is no
+  longer copied into a private scope DTO. All producers/consumers migrate; the
+  private scope file and method reader are deleted. The original preparation
+  failure, grant withdrawal, source/context and max escaped corpus assertions
+  remain. Runtime/Memory must rebuild together for this metadata change; private
+  databases and command receipts keep their formats. Core wire/other SDK methods
+  retain their current contracts.
+- Passed: entire SDK (0.878s), entire Memory packages and pluginservices (8.788s),
+  real Memory/embedding bootstrap selection (15.169s), final focused SDK ownership/
+  malformed-output/context checks (1.423s), outside-module public author fixture
+  (5.261s), Runtime/CLI/Reviews build, generation and stash-free staged checks/
+  commitlint. The raw MCP preparation probe now installs the real SDK receiving
+  middleware; every original failure/count/lifetime assertion is preserved.
+  No frontend UI/E2E/screenshot or Desktop aggregate check ran.
+- The remaining private dependency is the Memory caller grant-policy factory
+  (and one construction of its already generated public contract). General SDK
+  wire contracts are now shared; do not declare the whole callback cutover done.
+  Move operation-specific policy behind the public consumer artifact, keep one
+  authoritative budget source and finish normal installed model access before
+  the remaining availability/final acceptance audit.
+
 ### Core Memory reads consume published projections (2026-10-15)
 
 - `9f2bac554` removes production Core prompt/model imports of private Memory
@@ -1414,9 +1448,10 @@ proof from source/native inspection and excluded UI execution.
 2. Public original-owner Tool result recovery is implemented in `6b3a1d823`.
    Complete bootstrap/execution and all eight original SIGKILL cuts pass. Include
    the final affected race check after the remaining cutover work.
-3. Core Memory published reads and model ports are migrated in `9f2bac554`.
-   Remove the remaining two private RPC callback/grant dependencies in Memory
-   consumer and Tool preparation. Preserve invocation-scoped grants, operation
+3. Core Memory published reads/model ports are migrated in `9f2bac554`; public
+   Tool context/text embeddings follow in `2079ee06f`. Remove the remaining
+   private caller grant-policy factory and contract construction in Memory
+   consumer/Tool preparation. Preserve invocation-scoped grants, operation
    budgets, configured-error versus optional absence and no provider replay.
 4. Finish transitive availability diagnostics, all Tool/automatic/cross-plugin
    target/origin/parent/original-route audit and retention policy review. No new
