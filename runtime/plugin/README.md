@@ -401,6 +401,38 @@ one capture and retain their original per-call identities. A failure or over-bud
 composition refuses before the physical endpoint, and release cancels/joins active
 calls before dropping either context or observer dependencies.
 
-Public model selection, token-capacity admission for auxiliary work and general
-request transformations remain separate unfinished semantic boundaries. Transparent model observers keep
+Public model selection now runs before fresh Run and auxiliary role binding, as
+described below. Token-capacity admission for auxiliary work and general request
+transformations remain unfinished semantic boundaries. Transparent model observers keep
 their existing Scope Call/Stream contract and cannot acquire those authorities.
+
+## Model selection before exact binding
+
+`ModelSelectionContract` publishes the `flame.model-selection.v1` selection role.
+The ordinary provider-selection API chooses one installed contribution explicitly.
+A backend registers `ModelSelectionMethod` and returns the complete provider,
+model and optional model-owned reasoning effort. The query carries the original
+calling origin/parent and a concrete call target, with no command identity or
+model-next grant. Absence of an explicit role preserves the caller's proposal;
+a selected-but-withdrawn, unavailable or invalid publisher refuses the use case.
+Runtime never discovers an implicit winner or silently falls back from a refusal.
+
+A fresh Run offers its composed initial Scope request before provider construction
+and final media/output-capacity admission. The selected identity is validated,
+passed to the executor, and frozen in the original Run opening. The Session keeps
+its separately owned user model preference. Command fingerprints retain the
+original user's input; accepted Start retries and waiting Resume read the original
+Run/checkpoint rather than rerunning selection. Descendant execution retains the
+accepted execution selection under the existing tree owner.
+
+Auxiliary work selects before resolving the provider instance. Its request is
+absent at capture because Memory can author two prompts later within one use case.
+`ModelSelectionRequest.request` is therefore optional, not an invented empty
+conversation. The selected identity travels with its actual resolved model into
+context composition, observation and pricing. Role changes affect new captures.
+No selector binding is retained as a later execution dependency after the query
+has returned; its result is the immutable selection owned by the accepted use case.
+
+Selection is presently per accepted execution/auxiliary capture. General input
+transforms, auxiliary token capacity and multiple independently routed physical
+calls still require their own admitted boundaries and final acceptance evidence.

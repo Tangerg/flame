@@ -101,8 +101,31 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: compose working context: %w", err)
 	}
-	if admitErr := c.models.AdmitInput(preparation.command.ModelSelection, draft.WorkingContext); admitErr != nil {
+	if c.modelSelector != nil {
+		request := &corechat.Request{Messages: draft.WorkingContext}
+		if draft.Options != nil {
+			request.Options = draft.Options.Clone()
+		}
+		selected, selectErr := c.modelSelector.SelectModel(ctx, draft.ModelSelection, request.Clone())
+		if selectErr != nil {
+			return StartResult{}, fmt.Errorf("runs: select opening model: %w", selectErr)
+		}
+		if err := selected.ValidateExact(); err != nil {
+			return StartResult{}, err
+		}
+		if err := c.AdmitSelection(selected); err != nil {
+			return StartResult{}, err
+		}
+		draft.ModelSelection = selected
+	}
+	if admitErr := c.models.AdmitInput(draft.ModelSelection, []corechat.Message{preparation.currentMessage}); admitErr != nil {
 		return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
+	}
+	if admitErr := c.models.AdmitInput(draft.ModelSelection, draft.WorkingContext); admitErr != nil {
+		return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
+	}
+	if err := c.rootStarts.ValidateRootStart(draft); err != nil {
+		return StartResult{}, err
 	}
 	ref, err := c.rootStarts.StageRoot(ctx, draft)
 	if err != nil {
@@ -141,7 +164,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 		WorkspaceCWD:       preparation.session.Workspace().Path(),
 		Isolated:           preparation.session.Isolated(),
 		ExecutorID:         ref.ExecutorID,
-		ModelSelection:     cmd.ModelSelection,
+		ModelSelection:     draft.ModelSelection,
 		GoalIncarnationID:  cmd.GoalIncarnationID,
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
@@ -233,12 +256,6 @@ func (c *Coordinator) prepareRootStart(
 	if err := draft.Validate(); err != nil {
 		return rootStartPreparation{}, err
 	}
-	if err := c.models.AdmitInput(effectiveSelection, draft.WorkingContext); err != nil {
-		return rootStartPreparation{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, err)
-	}
-	if err := c.rootStarts.ValidateRootStart(draft); err != nil {
-		return rootStartPreparation{}, err
-	}
 	return rootStartPreparation{
 		command: cmd, requestedSelection: requestedSelection, session: sess,
 		initialSession: initialSession, draft: draft, currentMessage: currentMessage,
@@ -282,8 +299,8 @@ func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string,
 }
 
 // resolveSessionSelection admits an explicitly requested selection, resolves
-// the Session that owns the default, and returns the one immutable selection
-// the opening will freeze. Existing Sessions never fall back to Runtime config.
+// the Session that owns the default, and returns the proposal from which
+// the opening selects its immutable execution route. Existing Sessions never fall back to Runtime config.
 func (c *Coordinator) resolveSessionSelection(
 	ctx context.Context,
 	cmd StartCommand,

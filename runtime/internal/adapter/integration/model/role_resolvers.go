@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
@@ -33,6 +34,7 @@ func LiveUtilityModel(
 	resolver ChatModelResolver,
 	mainSelection modelref.Selection,
 	roles RoleSource,
+	selector modelapp.Selector,
 ) (AuxiliaryResolver, error) {
 	if dependency.Missing(resolver) {
 		return nil, errors.New("model: utility chat resolver is required")
@@ -43,6 +45,9 @@ func LiveUtilityModel(
 	if dependency.Missing(roles) {
 		return nil, errors.New("model: utility role source is required")
 	}
+	if selector != nil && dependency.Missing(selector) {
+		return nil, errors.New("model: utility selector is typed nil")
+	}
 	return func(ctx context.Context, budget AuxiliaryBudget) (AuxiliaryModel, func(), error) {
 		if err := budget.Validate(); err != nil {
 			return AuxiliaryModel{}, nil, err
@@ -50,6 +55,16 @@ func LiveUtilityModel(
 		selection := mainSelection
 		if role := roles.Role(); role.Configured() {
 			selection = role.Selection()
+		}
+		if selector != nil {
+			selected, err := selector.SelectModel(ctx, selection, nil)
+			if err != nil {
+				return AuxiliaryModel{}, nil, fmt.Errorf("auxiliary model: select route: %w", err)
+			}
+			if err := selected.ValidateExact(); err != nil {
+				return AuxiliaryModel{}, nil, err
+			}
+			selection = selected
 		}
 		trace.SpanFromContext(ctx).SetAttributes(
 			attribute.String("flame.provider.id", selection.Provider()),

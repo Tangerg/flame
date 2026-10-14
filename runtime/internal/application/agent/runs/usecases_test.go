@@ -1153,6 +1153,10 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	activatedAfterOpening := false
 	control.resumeCheck = func() { _, activatedAfterOpening = effects.opening().Resume() }
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
+	c.modelSelector = modelSelectorFunc(func(context.Context, modelref.Selection, *corechat.Request) (modelref.Selection, error) {
+		t.Fatal("Resume reran model selection")
+		return modelref.Selection{}, errors.New("unexpected selection")
+	})
 
 	result, err := c.Resume(context.Background(), ResumeCommand{
 		RunID: "run_1",

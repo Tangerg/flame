@@ -2422,5 +2422,20 @@ same context/observer order with their actual role identity and input-text/outpu
 budget; contributed context participates in the final byte check before dispatch.
 Memory extraction/curation retain one capture and separate original call identities.
 Release joins active calls before dropping their ordinary installation dependencies.
-Public model selection, auxiliary token-capacity and request-transform boundaries
+Fresh Run and auxiliary capture selection now use the public model-selection
+boundary described below. Auxiliary token-capacity and request transformation
 remain under development.
+
+The public `plugin.ModelSelectionContract` role chooses a route before a fresh
+Run accepts its exact provider/model/reasoning identity. Media and output capacity
+checks, executor construction and the original durable Run opening use that same
+selected value. Session preference remains the user's proposal/default source.
+Accepted Start retry and waiting Resume preserve the original Run/checkpoint and
+do not call the selector again. An explicitly selected unavailable publisher is
+an error; absence of a selected publisher preserves the proposal without discovery.
+
+Auxiliary role selection enters the same public query before provider construction.
+The input request is absent until the owning use case authors it; the captured
+selected model then supplies subsequent context, observation and pricing identity.
+Selection is per accepted execution/use-case capture; per-call routes for multiple
+independent invocations and complete auxiliary token-capacity admission remain open.

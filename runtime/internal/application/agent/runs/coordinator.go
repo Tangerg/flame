@@ -9,6 +9,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
@@ -39,6 +40,7 @@ type Coordinator struct {
 	conversation                       ConversationReader
 	workingContexts                    WorkingContextComposer
 	models                             ModelAdmitter
+	modelSelector                      modelapp.Selector
 	continuation                       ExecutionContinuer
 	approvalRules                      ApprovalRulePreparer
 	acceptedContinuations              AcceptedContinuationStore
@@ -97,6 +99,7 @@ type Dependencies struct {
 	Conversation                       ConversationReader
 	WorkingContexts                    WorkingContextComposer
 	Models                             ModelAdmitter
+	ModelSelector                      modelapp.Selector
 	Continuation                       ExecutionContinuer
 	ApprovalRules                      ApprovalRulePreparer
 	AcceptedContinuations              AcceptedContinuationStore
@@ -131,6 +134,9 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 	}
 	if deps.Retention.MaxEvents <= 0 || deps.Retention.MaxBytes <= 0 {
 		return nil, errors.New("runs: replay retention budgets must be positive")
+	}
+	if deps.ModelSelector != nil && dependency.Missing(deps.ModelSelector) {
+		return nil, errors.New("runs: model selector is typed nil")
 	}
 	required := []struct {
 		name  string
@@ -186,6 +192,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		conversation:                       deps.Conversation,
 		workingContexts:                    deps.WorkingContexts,
 		models:                             deps.Models,
+		modelSelector:                      deps.ModelSelector,
 		continuation:                       deps.Continuation,
 		approvalRules:                      deps.ApprovalRules,
 		acceptedContinuations:              deps.AcceptedContinuations,

@@ -224,6 +224,7 @@ func buildAssemblyCore(
 		RootCancellation:                   execution.executor,
 		Conversation:                       execution.conversation.messages,
 		Models:                             modelcatalog.Selections{},
+		ModelSelector:                      execution.tools.modelComposition,
 		Continuation:                       execution.executor,
 		ApprovalRules:                      policy.approvals,
 		AcceptedContinuations:              cfg.Stores.AcceptedContinuations,

@@ -48,16 +48,11 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	utilityModel, err := modeladapter.LiveUtilityModel(chatResolver, defaultSelection, utilityRoleState)
-	if err != nil {
-		return modelEnvironment{}, err
-	}
 
 	environment := modelEnvironment{
 		defaultSelection:   defaultSelection,
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
-		utilityModel:       utilityModel,
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
 	}

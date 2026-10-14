@@ -63,7 +63,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 					}
 					return mustResolvedChat(t, model, nil), nil
 				},
-			}, testsupport.MustModelSelection("anthropic", "claude-test"), staticRoleSource{})
+			}, testsupport.MustModelSelection("anthropic", "claude-test"), staticRoleSource{}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

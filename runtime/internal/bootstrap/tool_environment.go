@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
@@ -99,7 +100,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
-	environment.utilityModel = environment.modelComposition.Auxiliary(deps.modelServices.utilityModel)
+	utility, err := modeladapter.LiveUtilityModel(deps.modelServices.chatResolver, deps.modelServices.defaultSelection, deps.modelServices.utilityRoleState, environment.modelComposition)
+	if err != nil {
+		return environment, err
+	}
+	environment.utilityModel = environment.modelComposition.Auxiliary(utility)
 	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
