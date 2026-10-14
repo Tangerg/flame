@@ -14,6 +14,27 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Current native and standalone artifact qualification (2026-10-15)
+
+- Current Wails v3 production `wails3 task package` passes after the final Memory
+  client move. The arm64 `.app` passes `codesign --verify --strict --deep`; its
+  minimum macOS version is 13.0. The task ran typecheck/Vite/native build/package,
+  never an app launch or UI/E2E/screenshot test. Its duplicate Objective-C library
+  linker warning does not change the successful exit/signature result.
+- Current Runtime `make build` passes. Its actual distribution contains ten
+  ordinary admitted-package manifests and both private backend executables; the
+  packaged Memory caller-policy bytes match the publisher. Binary metadata uses
+  Go 1.27.0 and released Scope v0.50.0. Neither distribution was launched against
+  user data or published.
+- The current Usage author kit builds outside the checkout from packed public
+  SDK/UI/icons/Runtime artifacts, resolves dependencies inside that directory,
+  and matches every bundled release resource byte. A second offline clean
+  `npm ci --ignore-scripts`, typecheck and build reproduces the same bytes.
+  The owned temporary kit is removed. Registry publication is not claimed.
+- Complete current full-module race remains the last running gate. Final source
+  and P01-P48/review reconciliation will distinguish executed backend/shared
+  verification from the user's explicitly excluded graphical interaction.
+
 ### Public Memory client and complete current Go gates (2026-10-15)
 
 - `03fb6eeb6` moves the installed Memory client's actual read/command implementation
