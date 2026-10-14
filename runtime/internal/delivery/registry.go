@@ -290,6 +290,19 @@ func (r *Registry) runStreamOwnerCommand[Capability, Params, Ack, Event any](
 	r.registerStream(meta, call)
 }
 
+// streamOwnerCommand retains command identity while its owner alone records
+// final evidence. Chunk delivery is ephemeral and has no replay cursor.
+func (r *Registry) streamOwnerCommand[Capability, Params, Ack, Event any](
+	meta MethodMeta,
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
+) {
+	meta.Kind = KindStream
+	meta.Operation = OperationCommand
+	meta.Idempotency = IdempotencyOwnerResponse
+	meta.ReplayCursor = ReplayCursorNone
+	r.registerStream(meta, call)
+}
+
 func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),

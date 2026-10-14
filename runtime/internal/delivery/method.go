@@ -95,8 +95,8 @@ const (
 	// to a same-key retry, so the business handler runs exactly once.
 	IdempotencyReplayResponse IdempotencyPolicy = "replayResponse"
 
-	// IdempotencyOwnerResponse redelivers the same logical command to the backend,
-	// which commits its mutation and reply together. Runtime retains no competing outcome.
+	// IdempotencyOwnerResponse re-enters the original owner's command/receipt
+	// path. Runtime retains no competing business outcome or stream chunk history.
 	IdempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
 	// IdempotencyOwnerRunStream records the command acceptance atomically with
@@ -415,8 +415,8 @@ func (m MethodMeta) validateOperationPolicy() error {
 		if m.Kind == KindUnary && m.Idempotency != IdempotencyReplayResponse && m.Idempotency != IdempotencyOwnerResponse {
 			return fmt.Errorf("%s: a unary command must replay its first response", m.Name)
 		}
-		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRunStream {
-			return fmt.Errorf("%s: a streaming run command must own its run opening", m.Name)
+		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRunStream && m.Idempotency != IdempotencyOwnerResponse {
+			return fmt.Errorf("%s: a streaming command must own its outcome", m.Name)
 		}
 	}
 	if m.ReplayCursor == ReplayCursorRun {

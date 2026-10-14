@@ -139,14 +139,16 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 
 func optionType(meta delivery.MethodMeta) reflect.Type {
 	switch {
-	case meta.Kind == delivery.KindStream && meta.Operation == delivery.OperationCommand:
+	case meta.Operation == delivery.OperationExtension:
+		return reflect.TypeFor[PluginCallOptions]()
+	case meta.Kind == delivery.KindStream && meta.Operation == delivery.OperationCommand && meta.ReplayCursor == delivery.ReplayCursorRun:
 		return reflect.TypeFor[RunCommandOptions]()
+	case meta.Operation == delivery.OperationCommand:
+		return reflect.TypeFor[CommandOptions]()
 	case meta.ReplayCursor == delivery.ReplayCursorRun:
 		return reflect.TypeFor[RunSubscriptionOptions]()
 	case meta.Kind == delivery.KindStream:
 		return reflect.TypeFor[SubscriptionOptions]()
-	case meta.Operation == delivery.OperationCommand:
-		return reflect.TypeFor[CommandOptions]()
 	default:
 		return reflect.TypeFor[CallOptions]()
 	}

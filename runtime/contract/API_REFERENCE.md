@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.20` · 95 methods
+Protocol `2026-10-14.21` · 96 methods
 
 ## Methods
 
@@ -65,6 +65,7 @@ Protocol `2026-10-14.20` · 95 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `plugins.stream` | command | stream | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.notifyChange` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
 | `plugins.openResources` | subscription | stream | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readResource` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -126,6 +127,7 @@ their own event stream.
 - `runs.resume`
 - `runs.subscribe`
 - `runtime.subscribe`
+- `plugins.stream`
 - `plugins.openResources`
 
 ## Run event reliability
@@ -1202,6 +1204,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `mcp.servers.reconnect` | always | `mcp` |
 | `mcp.authorizationAttempts.create` | always | `mcp` |
 | `mcp.authorizationAttempts.get` | always | `mcp` |
+| `plugins.stream` | always | `plugins` |
 | `plugins.notifyChange` | always | `plugins` |
 | `plugins.openResources` | always | `plugins` |
 | `plugins.readResource` | always | `plugins` |

@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"iter"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -17,6 +18,7 @@ import (
 type pluginCallUseCases interface {
 	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
+	PrepareStream(context.Context, plugins.CallRequest) (plugins.StreamCall, error)
 	Resolve(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
 	ResolvePoint(context.Context, *point.Contract, point.Context, []plugins.PointReference) ([]plugins.PointBinding, error)
 }
@@ -102,23 +104,11 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 	if s.pluginCalls == nil {
 		return "", nil, NewFailure(protocol.ErrPluginUnavailable, "plugin calls are unavailable")
 	}
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	request, err := parsePluginCall(in)
 	if err != nil {
 		return "", nil, err
 	}
-	contribution, err := plugin.ParseContributionID(in.Contribution)
-	if err != nil {
-		return "", nil, InvalidParameters(err)
-	}
-	contract, err := capability.Parse([]byte(in.Contract))
-	if err != nil {
-		return "", nil, InvalidParameters(err)
-	}
-	input, err := jsoninput.Parse(in.Input)
-	if err != nil {
-		return "", nil, InvalidParameters(err)
-	}
-	call, err := s.pluginCalls.Prepare(ctx, plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target})
+	call, err := s.pluginCalls.Prepare(ctx, request)
 	if err != nil {
 		return "", nil, wirePluginError(err)
 	}
@@ -135,6 +125,69 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 			return nil, wirePluginError(err)
 		}
 		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
+	}, nil
+}
+
+func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error) {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return plugins.CallRequest{}, err
+	}
+	contribution, err := plugin.ParseContributionID(in.Contribution)
+	if err != nil {
+		return plugins.CallRequest{}, InvalidParameters(err)
+	}
+	contract, err := capability.Parse([]byte(in.Contract))
+	if err != nil {
+		return plugins.CallRequest{}, InvalidParameters(err)
+	}
+	input, err := jsoninput.Parse(in.Input)
+	if err != nil {
+		return plugins.CallRequest{}, InvalidParameters(err)
+	}
+	return plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target}, nil
+}
+
+func (s *Handler) StreamPlugin(ctx context.Context, in protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+	if s.pluginCalls == nil {
+		return struct{}{}, nil, NewFailure(protocol.ErrPluginUnavailable, "plugin streams are unavailable")
+	}
+	request, err := parsePluginCall(in)
+	if err != nil {
+		return struct{}{}, nil, err
+	}
+	call, err := s.pluginCalls.PrepareStream(ctx, request)
+	if err != nil {
+		return struct{}{}, nil, wirePluginError(err)
+	}
+	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
+		for value, err := range call.Stream(ctx) {
+			if refusal, known := errors.AsType[*capability.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+				yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: refusal.Code, Message: refusal.Message}}, nil)
+				return
+			}
+			if err != nil {
+				yield(protocol.PluginStreamEvent{}, wirePluginError(err))
+				return
+			}
+			var kind protocol.PluginStreamKind
+			switch value.Kind {
+			case plugins.StreamChunk:
+				kind = protocol.PluginStreamChunk
+			case plugins.StreamResult:
+				kind = protocol.PluginStreamResult
+			default:
+				yield(protocol.PluginStreamEvent{}, wirePluginError(plugin.ErrCommandUnconfirmed))
+				return
+			}
+			if !yield(protocol.PluginStreamEvent{Kind: kind, Value: value.Value.JSON()}, nil) {
+				return
+			}
+			if kind == protocol.PluginStreamResult {
+				return
+			}
+		}
+		yield(protocol.PluginStreamEvent{}, wirePluginError(plugin.ErrCommandUnconfirmed))
 	}, nil
 }
 

@@ -10,6 +10,7 @@ const (
 	PluginsNotifyChange        Name = "plugins.notifyChange"
 	PluginsList                Name = "plugins.list"
 	PluginsCall                Name = "plugins.call"
+	PluginsStream              Name = "plugins.stream"
 	PluginsResolveRequirements Name = "plugins.resolveRequirements"
 	PluginsResolvePoint        Name = "plugins.resolvePoint"
 	PluginsOpenResources       Name = "plugins.openResources"
@@ -37,6 +38,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.streamOwnerCommand(MethodMeta{Name: PluginsStream, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		StreamPlugin(context.Context, protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)
+	}, ctx context.Context, in protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+		return s.StreamPlugin(ctx, in)
+	})
 	r.commandAck(MethodMeta{Name: PluginsNotifyChange, CapabilityRules: requires(protocol.FeaturePlugins)}, func(service interface {
 		NotifyPluginChange(context.Context, protocol.PluginChangeNotice) error
 	}, ctx context.Context, request protocol.PluginChangeNotice) error {

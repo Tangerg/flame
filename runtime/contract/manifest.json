@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.20",
+  "protocolVersion": "2026-10-14.21",
   "features": [
     "reasoning",
     "multimodal",
@@ -793,6 +793,25 @@
       ]
     },
     {
+      "name": "plugins.stream",
+      "kind": "stream",
+      "operation": "command",
+      "idempotency": "ownerResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
       "name": "plugins.notifyChange",
       "kind": "unary",
       "operation": "command",
@@ -1340,6 +1359,7 @@
     }
   ],
   "notifications": [
+    "notifications.plugin.stream",
     "notifications.run.event",
     "notifications.runtime.event"
   ],
@@ -1348,6 +1368,7 @@
     "runs.resume",
     "runs.subscribe",
     "runtime.subscribe",
+    "plugins.stream",
     "plugins.openResources"
   ],
   "httpEndpoints": [
@@ -1458,6 +1479,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
+          "plugins.stream",
           "plugins.uninstall",
           "runs.cancel",
           "runs.get",
@@ -1644,6 +1666,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
+          "plugins.stream",
           "plugins.uninstall"
         ]
       },
@@ -1665,6 +1688,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
+          "plugins.stream",
           "plugins.uninstall"
         ]
       },
@@ -1686,6 +1710,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
+          "plugins.stream",
           "plugins.uninstall"
         ]
       },
@@ -1707,6 +1732,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
+          "plugins.stream",
           "plugins.uninstall"
         ]
       },
@@ -1728,6 +1754,7 @@
           "plugins.selectProvider",
           "plugins.setEnablement",
           "plugins.stage",
+          "plugins.stream",
           "plugins.uninstall"
         ]
       },
@@ -2377,6 +2404,16 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.stream",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -6123,6 +6160,56 @@
           ],
           "forbidden": [
             "output"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PluginStreamEvent",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "kind",
+              "operator": "equals",
+              "value": "chunk"
+            }
+          ],
+          "required": [
+            "value"
+          ],
+          "forbidden": [
+            "failure"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "kind",
+              "operator": "equals",
+              "value": "result"
+            }
+          ],
+          "required": [
+            "value"
+          ],
+          "forbidden": [
+            "failure"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "kind",
+              "operator": "equals",
+              "value": "failure"
+            }
+          ],
+          "required": [
+            "failure"
+          ],
+          "forbidden": [
+            "value"
           ]
         }
       ]

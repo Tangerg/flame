@@ -248,6 +248,8 @@ export type WireTypeName =
   | "PluginResourceLease"
   | "PluginServerDeclaration"
   | "PluginSkill"
+  | "PluginStreamEvent"
+  | "PluginStreamKind"
   | "PluginTheme"
   | "PluginThemeColors"
   | "PluginThemeScheme"
@@ -2559,6 +2561,38 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     description: text(),
     name: text(),
   }, ["description", "name"]),
+  PluginStreamEvent: allOf([
+    object({
+      failure: ref(() => CHECKS.PluginCallFailure),
+      kind: ref(() => CHECKS.PluginStreamKind),
+      value: anything(),
+    }, ["kind"]),
+    ifThen(
+      fields({
+        kind: literal("chunk"),
+      }, ["kind"]),
+      fields({
+        failure: absent(),
+      }, ["value"]),
+    ),
+    ifThen(
+      fields({
+        kind: literal("result"),
+      }, ["kind"]),
+      fields({
+        failure: absent(),
+      }, ["value"]),
+    ),
+    ifThen(
+      fields({
+        kind: literal("failure"),
+      }, ["kind"]),
+      fields({
+        value: absent(),
+      }, ["failure"]),
+    ),
+  ]),
+  PluginStreamKind: enumOf(["chunk", "result", "failure"]),
   PluginTheme: object({
     colors: ref(() => CHECKS.PluginThemeColors),
     id: text(),
@@ -4287,6 +4321,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.CreateMCPAuthorizationAttemptRequest),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
+  "plugins.stream": ref(() => CHECKS.CallPluginRequest),
   "plugins.notifyChange": ref(() => CHECKS.PluginChangeNotice),
   "plugins.openResources": ref(() => CHECKS.OpenPluginResourcesRequest),
   "plugins.readResource": ref(() => CHECKS.ReadPluginResourceRequest),
@@ -4392,6 +4427,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": object({}, []),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttempt),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
+  "plugins.stream": object({}, []),
   "plugins.notifyChange": object({}, []),
   "plugins.openResources": ref(() => CHECKS.PluginResourceLease),
   "plugins.readResource": ref(() => CHECKS.PluginResource),
@@ -4459,6 +4495,7 @@ export function validateHTTPSidecarResponse(
 }
 
 export const WIRE_NOTIFICATION_NAMES = [
+  "notifications.plugin.stream",
   "notifications.run.event",
   "notifications.runtime.event",
 ] as const;
@@ -4467,11 +4504,13 @@ export type WireNotificationName = (typeof WIRE_NOTIFICATION_NAMES)[number];
 
 /** The validated params carried by each downstream notification. */
 export interface WireNotificationParams {
+  "notifications.plugin.stream": Wire.PluginStreamEvent;
   "notifications.run.event": Wire.RunEvent;
   "notifications.runtime.event": Wire.RuntimeEventNotification;
 }
 
 const NOTIFICATION_PARAMS: Record<WireNotificationName, WireCheck> = {
+  "notifications.plugin.stream": ref(() => CHECKS.PluginStreamEvent),
   "notifications.run.event": ref(() => CHECKS.RunEvent),
   "notifications.runtime.event": ref(() => CHECKS.RuntimeEventNotification),
 };

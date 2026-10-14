@@ -10,6 +10,7 @@ import (
 const (
 	NotificationRunEvent     = "notifications.run.event"
 	NotificationRuntimeEvent = "notifications.runtime.event"
+	NotificationPluginStream = "notifications.plugin.stream"
 )
 
 // Both encoders receive an event the delivery endpoint has already validated
@@ -76,6 +77,9 @@ func frameOperationEvent(event any) (StreamFrame, bool) {
 		return runEventToFrame(typed)
 	case protocol.RuntimeEvent:
 		return runtimeEventToFrame(typed)
+	case protocol.PluginStreamEvent:
+		notification, err := transport.NewNotification(NotificationPluginStream, typed)
+		return StreamFrame{Notification: notification}, err == nil
 	default:
 		return StreamFrame{}, false
 	}

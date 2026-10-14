@@ -155,6 +155,10 @@ func registerProblemUnion(s *Shapes) {
 
 func registerNotifications(s *Shapes) {
 	s.notification(NotificationSpec{
+		Name:       NotificationPluginStream,
+		ParamsType: typeOf[protocol.PluginStreamEvent](),
+	})
+	s.notification(NotificationSpec{
 		Name:       NotificationRunEvent,
 		ParamsType: typeOf[protocol.RunEvent](),
 	})

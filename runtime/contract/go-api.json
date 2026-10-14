@@ -418,6 +418,10 @@
               "signature": "func(ctx context.Context, request protocol.GoalRequest, options CommandOptions) (*protocol.Goal, error)"
             },
             {
+              "name": "StreamPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+            },
+            {
               "name": "SubscribeRun",
               "signature": "func(ctx context.Context, request protocol.SubscribeRunRequest, options RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
             },
@@ -1006,6 +1010,10 @@
             {
               "name": "StopGoal",
               "signature": "func(ctx context.Context, request protocol.GoalRequest, options CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "StreamPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
             },
             {
               "name": "SubscribeRun",
@@ -3551,6 +3559,21 @@
           "value": "\"toolName\""
         },
         {
+          "name": "PluginStreamChunk",
+          "type": "PluginStreamKind",
+          "value": "\"chunk\""
+        },
+        {
+          "name": "PluginStreamFailure",
+          "type": "PluginStreamKind",
+          "value": "\"failure\""
+        },
+        {
+          "name": "PluginStreamResult",
+          "type": "PluginStreamKind",
+          "value": "\"result\""
+        },
+        {
           "name": "PluginThemeDark",
           "type": "PluginThemeScheme",
           "value": "\"dark\""
@@ -3638,7 +3661,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.20\""
+          "value": "\"2026-10-14.21\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -9083,6 +9106,38 @@
               "tag": "json:\"description\""
             }
           ]
+        },
+        {
+          "name": "PluginStreamEvent",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "PluginStreamKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Value",
+              "type": "jsontext.Value",
+              "tag": "json:\"value,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*PluginCallFailure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginStreamKind",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "PluginTheme",

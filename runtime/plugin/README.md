@@ -312,10 +312,10 @@ Partially admitted chunks remain observable even when no complete response exist
 An external executable consumes a callback capturing a frozen remaining Scope
 stream chain and verifies its order, transformed input and single provider invocation.
 This proves the model callback stream and remaining-chain substrate; actual installed
-decorator selection/retention, host-to-backend streaming, TS author parity and
+decorator selection/retention, TS author parity and
 Interaction/auxiliary/Memory production migration remain open. Ordinary unary binding
 and installed unary admission refuse stream methods before delivery/route persistence.
-Only the actual streaming callback APIs advertise stream support.
+Only implemented streaming entrances advertise stream support.
 
 ## Backend streams
 
@@ -341,8 +341,12 @@ raw/typed invocation still refuses stream contracts.
 The external-package stdio subprocess publishes an exact decoration export, calls
 captured model next within its original request, transforms input/outer chunks and
 preserves known inner response/usage with outer failure. This proves real bidirectional
-SDK transport; Runtime installation admission/original route/recovery and production
-model/dependency composition are the next owning migration. General plugins.call and
-component bindings remain unary until that path is implemented; no compatibility
-alias or falsely streaming unary method is added. Backend protocol/private formats
-are unchanged.
+SDK transport. Runtime now admits installation-qualified mutation streams and
+retains their original Commands route. Public Runtime/Client.StreamPlugin and
+plugins.stream enter that owner through the same delivery endpoint. Chunks have
+no replay cursor; retry reads only the original private receipt. Explicit owner
+refusal is final evidence, while missing terminal delivery remains unconfirmed.
+The empty opening response conveys no business result. Ordinary plugins.call and
+component bindings remain unary; query/typed/TS streams and production model/
+dependency composition still require their owning migration. Core is
+2026-10-14.21; backend protocol/private formats are unchanged.

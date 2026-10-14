@@ -28,6 +28,20 @@ type PluginCallFailure struct {
 	Message string `json:"message"`
 }
 
+type PluginStreamKind string
+
+const (
+	PluginStreamChunk   PluginStreamKind = "chunk"
+	PluginStreamResult  PluginStreamKind = "result"
+	PluginStreamFailure PluginStreamKind = "failure"
+)
+
+type PluginStreamEvent struct {
+	Kind    PluginStreamKind   `json:"kind"`
+	Value   jsontext.Value     `json:"value,omitzero"`
+	Failure *PluginCallFailure `json:"failure,omitzero"`
+}
+
 type PluginProviderSelection struct {
 	Role           string `json:"role"`
 	InstallationID string `json:"installationId"`

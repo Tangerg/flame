@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.20";
+export const PROTOCOL_VERSION = "2026-10-14.21";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -201,6 +201,7 @@ export const RUN_PROBLEM_RECOVERY = {
 } as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;
 
 // The methods the runtime sends downstream. A client only ever subscribes.
+export const NOTIFICATIONS_PLUGIN_STREAM = "notifications.plugin.stream";
 export const NOTIFICATIONS_RUN_EVENT = "notifications.run.event";
 export const NOTIFICATIONS_RUNTIME_EVENT = "notifications.runtime.event";
 
@@ -1329,6 +1330,14 @@ export interface PluginSkill {
   name: string;
 }
 
+export interface PluginStreamEvent {
+  failure?: PluginCallFailure;
+  kind: PluginStreamKind;
+  value?: unknown;
+}
+
+export type PluginStreamKind = "chunk" | "result" | "failure";
+
 export interface PluginTheme {
   colors: PluginThemeColors;
   id: string;
@@ -2194,6 +2203,7 @@ export const WIRE_ENUMS = {
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
+  PluginStreamKind: ["chunk", "result", "failure"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
   ProviderConfigChangeType: ["set", "clear"],

@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"io"
 	"iter"
 	"reflect"
@@ -16,6 +17,12 @@ func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, 
 	var consumed atomic.Bool
 	rootID, segmentID := streamIdentity(acknowledgement)
 	return func(yield func(any, error) bool) {
+		fail := func(err error) {
+			if eventType == reflect.TypeFor[protocol.PluginStreamEvent]() {
+				err = errors.Join(ErrAcknowledgementUnknown, err)
+			}
+			yield(nil, err)
+		}
 		if !consumed.CompareAndSwap(false, true) {
 			yield(nil, ErrClosed)
 			return
@@ -23,12 +30,12 @@ func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, 
 		defer call.finish(nil)
 		for frame, err := range reader.Messages() {
 			if err != nil {
-				yield(nil, call.readError(err))
+				fail(call.readError(err))
 				return
 			}
 			event, err := decodeRemoteEvent(frame, eventType)
 			if err != nil {
-				yield(nil, err)
+				fail(err)
 				return
 			}
 			terminal := false
@@ -39,13 +46,16 @@ func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, 
 				}
 				terminal = run.Event.Type == protocol.StreamSegmentFinished
 			}
+			if stream, ok := event.(protocol.PluginStreamEvent); ok {
+				terminal = stream.Kind == protocol.PluginStreamResult || stream.Kind == protocol.PluginStreamFailure
+			}
 			if !yield(event, nil) || terminal {
 				return
 			}
 		}
 		// HTTP has no stream-error frame. EOF without the root boundary is a
 		// detached observation, never evidence that durable execution finished.
-		yield(nil, call.readError(io.ErrUnexpectedEOF))
+		fail(call.readError(io.ErrUnexpectedEOF))
 	}
 }
 
@@ -62,6 +72,11 @@ func decodeRemoteEvent(frame sse.Message, eventType reflect.Type) (any, error) {
 		return nil, invalidRemote("stream frame is not a notification")
 	}
 	switch eventType {
+	case reflect.TypeFor[protocol.PluginStreamEvent]():
+		if notification.Method != dispatch.NotificationPluginStream || frame.ID != "" {
+			return nil, invalidRemote("unexpected plugin stream notification")
+		}
+		return decodeRemoteValue(notification.Params, eventType)
 	case reflect.TypeFor[protocol.RunEvent]():
 		if notification.Method != dispatch.NotificationRunEvent {
 			return nil, invalidRemote("unexpected run notification")

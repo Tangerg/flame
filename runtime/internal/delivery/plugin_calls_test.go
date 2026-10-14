@@ -3,17 +3,84 @@ package delivery
 import (
 	"context"
 	"errors"
+	"iter"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type pluginCallTarget struct {
 	ids         []string
 	invocations []capability.Invocation
+}
+
+type pluginStreamOwner struct {
+	pluginCallUseCases
+	err error
+	ids []string
+}
+
+func (s *pluginStreamOwner) PrepareStream(_ context.Context, _ plugins.CallRequest) (plugins.StreamCall, error) {
+	return s, nil
+}
+
+func (*pluginStreamOwner) Kind() capability.MethodKind { return capability.Mutation }
+
+func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
+	return func(yield func(plugins.StreamEvent, error) bool) {
+		s.ids = append(s.ids, operation.Identity(ctx))
+		value, _ := jsoninput.Parse([]byte(`"partial"`))
+		if !yield(plugins.StreamEvent{Kind: plugins.StreamChunk, Value: value}, nil) {
+			return
+		}
+		yield(plugins.StreamEvent{}, s.err)
+	}
+}
+
+func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
+	contract := testsupport.CommandContract(t, "records.stream", "installation")
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: []byte(`{}`), Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	owner := &pluginStreamOwner{err: &capability.Refusal{Code: "refused", Message: "owner refused"}}
+	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
+	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
+	for range 2 {
+		result := endpoint.Invoke(t.Context(), PluginsStream, request, Options{IdempotencyKey: "original"})
+		if result.Failure != nil {
+			t.Fatal(result.Failure)
+		}
+		var events []protocol.PluginStreamEvent
+		for value, err := range result.Events {
+			if err != nil {
+				t.Fatal(err)
+			}
+			events = append(events, value.(protocol.PluginStreamEvent))
+		}
+		if len(events) != 2 || events[0].Kind != protocol.PluginStreamChunk || events[1].Kind != protocol.PluginStreamFailure || events[1].Failure.Code != "refused" {
+			t.Fatalf("known stream=%+v", events)
+		}
+	}
+	if owner.ids[0] == "" || owner.ids[0] != owner.ids[1] {
+		t.Fatalf("owner identity changed: %v", owner.ids)
+	}
+	owner.err = errors.New("outcome unknown")
+	result := endpoint.Invoke(t.Context(), PluginsStream, request, Options{IdempotencyKey: "original"})
+	var terminal bool
+	var failure error
+	for value, err := range result.Events {
+		if err != nil {
+			failure = err
+			break
+		}
+		terminal = value.(protocol.PluginStreamEvent).Kind != protocol.PluginStreamChunk
+	}
+	if failure == nil || terminal {
+		t.Fatalf("unknown error became terminal evidence: %v %v", terminal, failure)
+	}
 }
 
 func (*pluginCallTarget) Discover(context.Context) (*protocol.DiscoverResponse, error) {

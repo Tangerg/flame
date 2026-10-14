@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -15,6 +16,73 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 )
+
+type blockedChunkWriter struct {
+	*httptest.ResponseRecorder
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (w *blockedChunkWriter) Write(value []byte) (int, error) {
+	if bytes.Contains(value, []byte("notifications.plugin.stream")) {
+		close(w.entered)
+		<-w.release
+	}
+	return w.ResponseRecorder.Write(value)
+}
+
+func TestStreamProductionWaitsForChunkWrite(t *testing.T) {
+	id, err := jsonrpc.MakeID("original")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ack, err := transport.NewResponseResult(id, struct{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chunk, err := transport.NewNotification("notifications.plugin.stream", map[string]string{"kind": "chunk", "value": "partial"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer := &blockedChunkWriter{ResponseRecorder: httptest.NewRecorder(), entered: make(chan struct{}), release: make(chan struct{})}
+	advanced := make(chan struct{})
+	events := func(yield func(dispatch.StreamFrame) bool) {
+		if yield(dispatch.StreamFrame{Notification: chunk}) {
+			close(advanced)
+		}
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	request := httptest.NewRequest(stdhttp.MethodPost, "/v2/rpc", nil).WithContext(ctx)
+	served := make(chan struct{})
+	go func() {
+		defer close(served)
+		serveStream(writer, request, ack, events, "plugins.stream", cancel)
+	}()
+	select {
+	case <-writer.entered:
+	case <-time.After(time.Second):
+		close(writer.release)
+		t.Fatal("chunk write did not begin")
+	}
+	select {
+	case <-advanced:
+		close(writer.release)
+		t.Fatal("production advanced before the chunk was written")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(writer.release)
+	select {
+	case <-served:
+	case <-time.After(time.Second):
+		t.Fatal("stream did not join after writing")
+	}
+	select {
+	case <-advanced:
+	default:
+		t.Fatal("written chunk did not release production")
+	}
+}
 
 // The bridge goroutine is what drives the frame source, so the handler's own
 // recovery cannot see a defect raised there. One client's stream is not worth

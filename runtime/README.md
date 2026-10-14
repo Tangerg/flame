@@ -181,7 +181,7 @@ canonical model execution migration; production Interaction/auxiliary/Memory pat
 installed streaming decorators/remote next and durable inner evidence are still open.
 No model execution Core method or streaming support is inferred from this unary API.
 
-Core 2026-10-14.20 projects optional stream schema on public method descriptors.
+Core 2026-10-14.21 projects optional stream schema on public method descriptors.
 The Go plugin SDK implements captured callback streaming on the existing endpoint,
 with lazy production, immutable request evidence, synchronous transport backpressure,
 cancel/retire joining, independently validated chunks and a final outcome distinct
@@ -212,10 +212,17 @@ uncertainty. Valid final evidence or explicit owner refusal ends the route; gene
 transport failure does not. Callback preparation precedes dispatch and resources
 are joined when consumption ends.
 
-This internal mutation stream does not yet expose a public Go/Protocol entrance.
-Production model chains, query streams, dependency retention and TS delivery remain
-open. Existing unary entrances continue to refuse stream methods before route
-creation. Stream recovery stores no competing business result or chunk history.
+The public Go binding and Runtime Protocol now expose this mutation stream through
+StreamPlugin/plugins.stream and the same delivery endpoint. Its empty opening
+response conveys no business outcome. Ephemeral notifications.plugin.stream frames
+carry validated chunks, final results or explicit refusals; no cursor is accepted.
+The Go remote client recognizes terminal evidence and reports missing/malformed
+terminal delivery as an unknown acknowledgement without reconnecting or resubmitting.
+HTTP transport acknowledges each source yield only after its SSE frame is written,
+and cancellation joins the source. Production model chains, query streams, typed
+installed streaming proxies, dependency retention and TS delivery remain open.
+Unary entrances continue to refuse stream methods before route creation. Stream
+recovery stores no competing business result or chunk history.
 
 The operation catalog owns result nullability for execution, durable replay and
 the remote Go client. A required response cannot become a successful null; a

@@ -33,12 +33,9 @@ const streamWriteTimeout = 30 * time.Second
 
 // serveStream drives a streamable-HTTP response: the POST
 // response body IS this call's event stream. The first SSE frame is the
-// call's JSON-RPC response (carries the envelope id, NOT an SSE id: — a
-// one-shot ack, not a replayable run event); each subsequent frame is
-// a notifications.run.event with SSE id: = eventId. The loop ends when the
-// run stream ends (terminal segment.finished → the source sequence is drained)
-// or the client disconnects — a disconnect only detaches; the run keeps
-// running server-side and the client resumes via runs.subscribe.
+// call's JSON-RPC response. Later frames carry the catalog's notification type.
+// Only retained Run events have SSE cursors. Closing transport cancels and joins
+// this observation; the underlying business owner's recovery policy still applies.
 func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Response, events iter.Seq[dispatch.StreamFrame], methodLabel string, cancel context.CancelFunc) {
 	// Proxy hints + observability headers before NewHTTPWriter — the
 	// library adds Content-Type: text/event-stream itself and leaves our
@@ -70,15 +67,25 @@ func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Respons
 	// be selected on directly. Request-context cancellation unwinds the source (the
 	// run subscription aborts / the workspace channel closes) so the range ends;
 	// the send is ctx-guarded so a stalled write cannot strand this goroutine.
-	frames := make(chan dispatch.StreamFrame)
+	type deliveryFrame struct {
+		frame   dispatch.StreamFrame
+		written chan struct{}
+	}
+	frames := make(chan deliveryFrame)
 	settled := make(chan struct{})
 	go func() {
 		defer close(settled)
 		defer close(frames)
 		defer recoverStreamSourceDefect(ctx)
 		for frame := range events {
+			delivery := deliveryFrame{frame: frame, written: make(chan struct{})}
 			select {
-			case frames <- frame:
+			case frames <- delivery:
+			case <-ctx.Done():
+				return
+			}
+			select {
+			case <-delivery.written:
 			case <-ctx.Done():
 				return
 			}
@@ -94,7 +101,7 @@ func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Respons
 
 	for {
 		select {
-		case frame, ok := <-frames:
+		case delivery, ok := <-frames:
 			if !ok {
 				return // stream done — the bridge closed frames after the source drained
 			}
@@ -102,9 +109,10 @@ func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Respons
 			// its SSE id (replayable run events carry one; non-replayable run
 			// events and workspace events don't). The transport just writes it.
 			setWriteDeadline()
-			if err := writeSSEMessage(sw, frame.SSEID, frame.Notification); err != nil {
-				return // write failed — client gone; the source continues server-side
+			if err := writeSSEMessage(sw, delivery.frame.SSEID, delivery.frame.Notification); err != nil {
+				return
 			}
+			close(delivery.written)
 		case <-ticker.C:
 			setWriteDeadline()
 			if err := sw.Comment("heartbeat"); err != nil {
@@ -121,7 +129,7 @@ func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Respons
 // source, so the handler's own recovery — which is on the request goroutine —
 // never sees a panic raised there. Closing frames then ends this stream exactly
 // the way the dispatch already ends one whose event it cannot deliver: no
-// terminal frame, and the client replays the gap with Last-Event-Id.
+// terminal frame. The client's original owner policy determines recovery.
 func recoverStreamSourceDefect(ctx context.Context) {
 	recovered := recover()
 	if recovered == nil {

@@ -1030,6 +1030,11 @@ func registerPluginValues(s *Shapes) {
 		{RequiredAny: []string{"output", "failure"}},
 		{When: []delivery.FieldCondition{{Field: "failure", Operator: delivery.OperatorPresent}}, Forbidden: []string{"output"}},
 	}})
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.PluginStreamEvent](), Rules: []ConditionalRule{
+		{When: []delivery.FieldCondition{{Field: "kind", Operator: delivery.OperatorEquals, Value: string(protocol.PluginStreamChunk)}}, Required: []string{"value"}, Forbidden: []string{"failure"}},
+		{When: []delivery.FieldCondition{{Field: "kind", Operator: delivery.OperatorEquals, Value: string(protocol.PluginStreamResult)}}, Required: []string{"value"}, Forbidden: []string{"failure"}},
+		{When: []delivery.FieldCondition{{Field: "kind", Operator: delivery.OperatorEquals, Value: string(protocol.PluginStreamFailure)}}, Required: []string{"failure"}, Forbidden: []string{"value"}},
+	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: plugin.MaxRendererSelectorNameBytes}}})
 	s.valueConstraint(FieldConstraintSpec{
