@@ -1,5 +1,7 @@
 package modelref
 
+import modelchoice "github.com/Tangerg/flame/runtime/model"
+
 import "testing"
 
 func TestRoleOwnsProviderModelOnly(t *testing.T) {
@@ -11,11 +13,11 @@ func TestRoleOwnsProviderModelOnly(t *testing.T) {
 		t.Fatalf("role = %v", role)
 	}
 	// A role stores the pair and nothing else: its constructor is the only
-	// source, and it never carries the execution options a Selection may.
+	// source, and it never carries the execution options a model selection may.
 	if selection := role.Selection(); selection.Provider() != "openai" || selection.Model() != "gpt-5" || selection.ReasoningEffort() != "" {
 		t.Fatalf("selection = %v", selection)
 	}
-	if zero := (Role{}); zero.Configured() || zero.Selection() != (Selection{}) {
+	if zero := (Role{}); zero.Configured() || zero.Selection() != (modelchoice.Selection{}) {
 		t.Fatalf("zero role = %v", zero)
 	}
 }

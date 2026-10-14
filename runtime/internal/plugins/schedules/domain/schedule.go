@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 var ErrNotFound = errors.New("schedule: not found")
@@ -29,7 +29,7 @@ type Draft struct {
 	Title          string
 	Instructions   string
 	CWD            string
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 	Cron           string
 	Enabled        bool
 }
@@ -49,7 +49,7 @@ type Snapshot struct {
 	Title          string
 	Instructions   string
 	CWD            string
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 	Cron           string
 	LastRunAt      time.Time
 	NextRunAt      time.Time
@@ -62,7 +62,7 @@ type Schedule struct {
 	title          string
 	instructions   string
 	cwd            string
-	modelSelection modelref.Selection
+	modelSelection modelchoice.Selection
 	cron           string
 	lastRunAt      time.Time
 	// The cursor also determines enablement so a second enabled flag cannot drift from scheduling.
@@ -75,7 +75,7 @@ type Patch struct {
 	Title        *string
 	Instructions *string
 	CWD          *string
-	Selection    *modelref.Selection
+	Selection    *modelchoice.Selection
 	Cron         *string
 	Enabled      *bool
 }
@@ -231,14 +231,14 @@ func (s Schedule) Snapshot() Snapshot {
 	}
 }
 
-func (s Schedule) ID() string                         { return s.id.String() }
-func (s Schedule) Title() string                      { return s.title }
-func (s Schedule) Instructions() string               { return s.instructions }
-func (s Schedule) CWD() string                        { return s.cwd }
-func (s Schedule) ModelSelection() modelref.Selection { return s.modelSelection }
-func (s Schedule) Cron() string                       { return s.cron }
-func (s Schedule) Enabled() bool                      { return !s.nextRunAt.IsZero() }
-func (s Schedule) LastRunAt() time.Time               { return s.lastRunAt }
-func (s Schedule) NextRunAt() time.Time               { return s.nextRunAt }
-func (s Schedule) CreatedAt() time.Time               { return s.createdAt }
-func (s Schedule) Revision() uint64                   { return s.revision.Value() }
+func (s Schedule) ID() string                            { return s.id.String() }
+func (s Schedule) Title() string                         { return s.title }
+func (s Schedule) Instructions() string                  { return s.instructions }
+func (s Schedule) CWD() string                           { return s.cwd }
+func (s Schedule) ModelSelection() modelchoice.Selection { return s.modelSelection }
+func (s Schedule) Cron() string                          { return s.cron }
+func (s Schedule) Enabled() bool                         { return !s.nextRunAt.IsZero() }
+func (s Schedule) LastRunAt() time.Time                  { return s.lastRunAt }
+func (s Schedule) NextRunAt() time.Time                  { return s.nextRunAt }
+func (s Schedule) CreatedAt() time.Time                  { return s.createdAt }
+func (s Schedule) Revision() uint64                      { return s.revision.Value() }

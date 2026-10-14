@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -57,7 +57,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 				failure: tc.failure,
 			}
 			resolver, err := LiveUtilityModel(recordingChatResolver{
-				resolve: func(modelref.Selection) (ResolvedChat, error) {
+				resolve: func(modelchoice.Selection) (ResolvedChat, error) {
 					if tc.stage == "resolve" {
 						return ResolvedChat{}, tc.failure
 					}

@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestListRemoteModels(t *testing.T) {
@@ -49,7 +49,7 @@ func TestListRemoteModelsRejectsInvalidAdvertisedIdentity(t *testing.T) {
 		{name: "empty"},
 		{name: "whitespace", id: "model shadow"},
 		{name: "control", id: "model\nshadow"},
-		{name: "too long", id: strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1)},
+		{name: "too long", id: strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

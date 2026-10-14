@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type allowModels struct{}
 
-func (allowModels) AdmitSelection(modelref.Selection) error { return nil }
+func (allowModels) AdmitSelection(modelchoice.Selection) error { return nil }
 
 func fixedSessionID() string  { return "ses_schedule" }
 func fixedRunID() string      { return "run_schedule" }
@@ -142,7 +142,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 			Title:        &title,
 			Instructions: &instructions,
 			CWD:          &cwd,
-			ModelSelection: modelref.Patch{
+			ModelSelection: modelchoice.Patch{
 				Provider: &provider, Model: &model, ReasoningEffort: &effort,
 			},
 			Cron:    &cron,

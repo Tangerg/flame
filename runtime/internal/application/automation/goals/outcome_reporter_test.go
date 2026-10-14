@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type reportingStore struct {
@@ -42,7 +42,7 @@ func (r *reportingStore) List(context.Context) ([]goal.Goal, error) { return nil
 
 func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 	now := time.Date(2026, time.July, 23, 9, 0, 0, 0, time.UTC)
-	selection, err := modelref.New("provider", "model")
+	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
 	}

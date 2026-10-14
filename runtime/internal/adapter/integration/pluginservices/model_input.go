@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -24,7 +24,7 @@ func (o *ModelComposition) ValidateInput(ctx context.Context, bindings []plugins
 	}
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
-func (o *ModelComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelref.Selection, request *chat.Request) (*chat.Request, error) {
+func (o *ModelComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return nil, err
 	}

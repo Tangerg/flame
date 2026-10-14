@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 const (
@@ -70,7 +70,7 @@ func readModelProbeDocument(source io.Reader) (modelProbeDocument, error) {
 func (d modelProbeDocument) identities() ([]string, error) {
 	ids := make([]string, 0, len(d.list.Data))
 	for _, model := range d.list.Data {
-		identity, err := modelref.NewModelIdentity(model.ID)
+		identity, err := modelchoice.NewModelIdentity(model.ID)
 		if err != nil {
 			return nil, fmt.Errorf("advertised model identity %q: %w", model.ID, err)
 		}

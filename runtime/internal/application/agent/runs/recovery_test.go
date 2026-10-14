@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -1417,7 +1418,7 @@ func TestRecoveryValidationFailureDoesNotCommitPartialRepair(t *testing.T) {
 func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item) {
 	t.Helper()
 	createdAt := time.Date(2026, 8, 1, 2, 0, 0, 0, time.UTC)
-	selection, err := modelref.New("anthropic", "claude")
+	selection, err := modelchoice.New("anthropic", "claude")
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/scope/core/chat"
 	"strings"
 	"testing"
 	"time"
@@ -12,10 +11,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestNewRejectsMalformedDependencies(t *testing.T) {
@@ -237,7 +237,7 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 		}
 	}
 	if !deps.DefaultModelSelection.Configured() {
-		deps.DefaultModelSelection, _ = modelref.New("test-provider", "test-model")
+		deps.DefaultModelSelection, _ = modelchoice.New("test-provider", "test-model")
 	}
 	if deps.Models == nil {
 		deps.Models = testModelAdmitter{}
@@ -312,7 +312,7 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 		deps.NewItemID = func() string { return "item_test" }
 	}
 	if !deps.DefaultModelSelection.Configured() {
-		deps.DefaultModelSelection, _ = modelref.New("test-provider", "test-model")
+		deps.DefaultModelSelection, _ = modelchoice.New("test-provider", "test-model")
 	}
 	if deps.Models == nil {
 		deps.Models = testModelAdmitter{}
@@ -342,7 +342,7 @@ func (inertExecutionReleaser) Release(context.Context, runs.ExecutorRef) error {
 
 type testModelAdmitter struct{}
 
-func (testModelAdmitter) AdmitSelection(modelref.Selection) error { return nil }
+func (testModelAdmitter) AdmitSelection(modelchoice.Selection) error { return nil }
 
 type emptyMaterialSnapshotReader struct{}
 

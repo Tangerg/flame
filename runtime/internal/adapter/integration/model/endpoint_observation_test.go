@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -35,7 +35,9 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewModelInvocationStore(db)
-	resolve, err := NewObservedResolver(recordingChatResolver{resolve: func(_ modelref.Selection) (ResolvedChat, error) { return NewResolvedChat(endpointStreamFixture{}, nil) }}, store, nil)
+	resolve, err := NewObservedResolver(recordingChatResolver{resolve: func(_ modelchoice.Selection) (ResolvedChat, error) {
+		return NewResolvedChat(endpointStreamFixture{}, nil)
+	}}, store, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

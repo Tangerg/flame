@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func goalTestCost(t *testing.T, usd float64) accounting.Cost {
@@ -54,7 +54,7 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 		name        string
 		sessionID   string
 		objective   string
-		selection   modelref.Selection
+		selection   modelchoice.Selection
 		incarnation string
 		createdAt   time.Time
 	}{
@@ -432,9 +432,9 @@ func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	}
 }
 
-func testSelection(t *testing.T) modelref.Selection {
+func testSelection(t *testing.T) modelchoice.Selection {
 	t.Helper()
-	selection, err := modelref.New("provider", "model")
+	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
 	}

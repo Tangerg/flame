@@ -3,22 +3,23 @@ package model
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 type recordingChatResolver struct {
-	resolve func(modelref.Selection) (ResolvedChat, error)
+	resolve func(modelchoice.Selection) (ResolvedChat, error)
 }
 
 func (r recordingChatResolver) ResolveChat(
 	_ context.Context,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (ResolvedChat, error) {
 	return r.resolve(selection)
 }
@@ -53,7 +54,7 @@ func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
 	selection := testsupport.MustModelSelection("anthropic", "claude-test")
 	model := newTestChatModel(t)
 	calls := 0
-	resolver := recordingChatResolver{resolve: func(got modelref.Selection) (ResolvedChat, error) {
+	resolver := recordingChatResolver{resolve: func(got modelchoice.Selection) (ResolvedChat, error) {
 		calls++
 		if got != selection {
 			t.Fatalf("selection = %#v, want %#v", got, selection)
@@ -88,8 +89,8 @@ func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.
 	utilityRole := mustRole(t, "openai", "utility-model")
 	utilitySelection := utilityRole.Selection()
 	model := newTestChatModel(t)
-	var resolved []modelref.Selection
-	resolver := recordingChatResolver{resolve: func(selection modelref.Selection) (ResolvedChat, error) {
+	var resolved []modelchoice.Selection
+	resolver := recordingChatResolver{resolve: func(selection modelchoice.Selection) (ResolvedChat, error) {
 		resolved = append(resolved, selection)
 		if selection.Equal(utilitySelection) {
 			return ResolvedChat{}, errors.New("utility provider unavailable")
@@ -135,9 +136,9 @@ func mustResolvedChat(t testing.TB, model chat.Model, counter InputTokenCounter)
 	return resolved
 }
 
-type utilitySelectorFunc func(context.Context, modelref.Selection, *chat.Request) (modelref.Selection, error)
+type utilitySelectorFunc func(context.Context, modelchoice.Selection, *chat.Request) (modelchoice.Selection, error)
 
-func (f utilitySelectorFunc) SelectModel(ctx context.Context, proposal modelref.Selection, request *chat.Request) (modelref.Selection, error) {
+func (f utilitySelectorFunc) SelectModel(ctx context.Context, proposal modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
 	return f(ctx, proposal, request)
 }
 
@@ -148,7 +149,7 @@ func TestUtilitySelectionPrecedesExactProviderConstructionAndNeverFallsBack(t *t
 			selected := testsupport.MustModelSelection("provider", "selected-model")
 			model := newTestChatModel(t)
 			var steps []string
-			resolver := recordingChatResolver{resolve: func(selection modelref.Selection) (ResolvedChat, error) {
+			resolver := recordingChatResolver{resolve: func(selection modelchoice.Selection) (ResolvedChat, error) {
 				steps = append(steps, "resolve")
 				if selection != selected {
 					t.Errorf("constructed original route after selection: %+v", selection)
@@ -156,13 +157,13 @@ func TestUtilitySelectionPrecedesExactProviderConstructionAndNeverFallsBack(t *t
 				return mustResolvedChat(t, model, nil), nil
 			}}
 			refusal := errors.New("selector unavailable")
-			selector := utilitySelectorFunc(func(_ context.Context, proposal modelref.Selection, request *chat.Request) (modelref.Selection, error) {
+			selector := utilitySelectorFunc(func(_ context.Context, proposal modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
 				steps = append(steps, "select")
 				if proposal != proposed || request != nil {
 					t.Error("utility selection invented input or changed proposal")
 				}
 				if fail {
-					return modelref.Selection{}, refusal
+					return modelchoice.Selection{}, refusal
 				}
 				return selected, nil
 			})

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // The Run row's JSON columns. Token accounting, a failure classification, and
@@ -257,7 +257,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
 	}
-	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("decode run %q model selection: %w", id, err)
 	}

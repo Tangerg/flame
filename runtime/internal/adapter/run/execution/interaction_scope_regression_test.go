@@ -5,7 +5,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"iter"
 	"reflect"
 	"runtime"
@@ -17,11 +16,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
@@ -283,7 +283,7 @@ func TestNestedDelegatesInheritGenerationPolicy(t *testing.T) {
 	})
 	executor := newTestInteractionExecutor(t, model)
 	coordinator := scopeTestCoordinator(t, executor)
-	selection, err := modelref.NewWithReasoningEffort("test-provider", "test-model", "high")
+	selection, err := modelchoice.NewWithReasoningEffort("test-provider", "test-model", "high")
 	if err != nil {
 		t.Fatal(err)
 	}

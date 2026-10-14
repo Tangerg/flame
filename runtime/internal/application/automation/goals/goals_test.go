@@ -14,18 +14,17 @@ import (
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 // memStore is an in-memory goals.Store.
@@ -380,7 +379,7 @@ func (f *fakeRuns) WaitSessionStartable(ctx context.Context, _ string) error {
 	}
 }
 
-func (*fakeRuns) AdmitSelection(modelref.Selection) error { return nil }
+func (*fakeRuns) AdmitSelection(modelchoice.Selection) error { return nil }
 
 // eventSequence preserves the fake's hold-then-yield-terminal timing and the
 // production subscription's caller-cancellation behavior behind its iter.Seq
@@ -610,7 +609,7 @@ type terminalRaceRuns struct {
 }
 
 func (*terminalRaceRuns) WaitSessionStartable(context.Context, string) error { return nil }
-func (*terminalRaceRuns) AdmitSelection(modelref.Selection) error            { return nil }
+func (*terminalRaceRuns) AdmitSelection(modelchoice.Selection) error         { return nil }
 
 func (t *terminalRaceRuns) Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error) {
 	t.session = cmd.SessionID
@@ -708,8 +707,8 @@ func cleanupDriver(t testing.TB, d *goals.Driver) {
 
 func testPrompt(input goals.RunInstructionInput) string { return input.Objective }
 
-func testGoalModelSelection() modelref.Selection {
-	selection, err := modelref.New("p", "m")
+func testGoalModelSelection() modelchoice.Selection {
+	selection, err := modelchoice.New("p", "m")
 	if err != nil {
 		panic(err)
 	}
@@ -822,7 +821,7 @@ func TestDriverLeavesGoalRunsOnTheSessionSelectionWithoutAnOverride(t *testing.T
 	}
 	d := mustDriver(t, store, runUseCases, &fakeSessions{}, goals.NewSessionMutations(), uncontendedDriveOwnership{}, testPrompt)
 	cleanupDriver(t, d)
-	started, err := d.Start(t.Context(), "s1", "do it", modelref.Selection{}, run.Capabilities{})
+	started, err := d.Start(t.Context(), "s1", "do it", modelchoice.Selection{}, run.Capabilities{})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -914,7 +913,7 @@ func TestDriverWaitsForCurrentSessionRunBeforeFirstGoalRun(t *testing.T) {
 	}
 	d := mustDriver(t, store, runUseCases, &fakeSessions{}, goals.NewSessionMutations(), uncontendedDriveOwnership{}, testPrompt)
 	cleanupDriver(t, d)
-	if _, err := d.Start(t.Context(), "s1", "do it", modelref.Selection{}, run.Capabilities{}); err != nil {
+	if _, err := d.Start(t.Context(), "s1", "do it", modelchoice.Selection{}, run.Capabilities{}); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	select {
@@ -1291,7 +1290,7 @@ func TestDriverRefusesConcurrentStart(t *testing.T) {
 	d := mustDriver(t, store, fake, &fakeSessions{}, goals.NewSessionMutations(), uncontendedDriveOwnership{}, testPrompt)
 	cleanupDriver(t, d)
 
-	if _, err := d.Start(context.Background(), "s1", "obj2", modelref.Selection{}, run.Capabilities{}); err != goals.ErrGoalActive {
+	if _, err := d.Start(context.Background(), "s1", "obj2", modelchoice.Selection{}, run.Capabilities{}); err != goals.ErrGoalActive {
 		t.Fatalf("Start on active goal = %v, want ErrGoalActive", err)
 	}
 	select {

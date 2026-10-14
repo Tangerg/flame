@@ -58,6 +58,13 @@ field set that their Go decoder admits. All three strings are required, includin
 empty strings for the default selection. Schedules contracts and typed CLI/TS
 consumers are regenerated from that owner; arbitrary string maps are not accepted.
 
+[`model`](model/README.md) owns that immutable public choice for Runtime and
+independent authors. [`model/catalog`](model/catalog/README.md) applies the shared
+released Scope catalog's effort and modality facts without provider I/O or model
+inference. Former private selection/catalog implementations are removed. Moving
+the schema owner changes generated reference identities; rebuild Schedules
+contracts, typed consumers and component bytes together.
+
 ## First-party initialization
 
 `make build` produces `build/flame` and its complete companion `build/plugins`

@@ -6,11 +6,10 @@ import (
 	"mime"
 	"strings"
 
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 	"github.com/Tangerg/scope/models/catalog"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 var ErrUnsupportedInputModality = errors.New("model: unsupported input modality")
@@ -18,7 +17,7 @@ var ErrUnsupportedInputModality = errors.New("model: unsupported input modality"
 // AdmitInput rejects media that a known catalog model does not
 // accept. A catalog miss remains admissible because compatible endpoints may
 // expose private models whose capabilities are not available locally.
-func (Selections) AdmitInput(selection modelref.Selection, messages []chat.Message) error {
+func (Selections) AdmitInput(selection modelchoice.Selection, messages []chat.Message) error {
 	if err := selection.ValidateExact(); err != nil {
 		return fmt.Errorf("model: input-modality selection: %w", err)
 	}

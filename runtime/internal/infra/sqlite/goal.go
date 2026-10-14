@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
@@ -207,7 +207,7 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 		}
 		return goal.Snapshot{}, fmt.Errorf("sqlite: scan goal: %w", err)
 	}
-	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return goal.Snapshot{}, fmt.Errorf("sqlite: decode goal model selection: %w", err)
 	}

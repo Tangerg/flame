@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/models/catalog"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 type Selections struct{}
@@ -20,7 +19,7 @@ var ErrUnsupportedReasoningEffort = errors.New("model: unsupported reasoning eff
 // catalog models. A catalog miss remains admissible because compatible
 // endpoints may expose private models whose capabilities are unavailable
 // locally; their provider remains the execution authority.
-func (Selections) AdmitSelection(selection modelref.Selection) error {
+func (Selections) AdmitSelection(selection modelchoice.Selection) error {
 	effort := selection.ReasoningEffort()
 	if effort == "" {
 		return nil
@@ -34,7 +33,7 @@ func (Selections) AdmitSelection(selection modelref.Selection) error {
 	}
 	return fmt.Errorf(
 		"%w: %w: model %q/%q does not advertise %q (available: %v)",
-		modelref.ErrUnsupported,
+		modelchoice.ErrUnsupported,
 		ErrUnsupportedReasoningEffort,
 		selection.Provider(),
 		selection.Model(),

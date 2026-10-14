@@ -6,17 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
-func mustRunSelection(t testing.TB) modelref.Selection {
+func mustRunSelection(t testing.TB) modelchoice.Selection {
 	t.Helper()
-	selection, err := modelref.New("provider", "model")
+	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
-		t.Fatalf("modelref.New: %v", err)
+		t.Fatalf("modelchoice.New: %v", err)
 	}
 	return selection
 }

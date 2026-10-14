@@ -3,9 +3,9 @@ package testsupport
 import (
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // RunMetricsInput names the values accepted by MustRunMetrics.
@@ -17,8 +17,8 @@ type RunMetricsInput struct {
 
 // DefaultModelSelection returns the deterministic model identity MustRestoreRun supplies when
 // a fixture omits one.
-func DefaultModelSelection() modelref.Selection {
-	selection, _ := modelref.New("anthropic", "claude")
+func DefaultModelSelection() modelchoice.Selection {
+	selection, _ := modelchoice.New("anthropic", "claude")
 	return selection
 }
 
@@ -26,8 +26,8 @@ func DefaultModelSelection() modelref.Selection {
 // pair that does not resolve is a broken fixture rather than a behavior under
 // test, so it panics like the rest of this package instead of reporting a
 // failure the test would have to interpret.
-func MustModelSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
+func MustModelSelection(provider, model string) modelchoice.Selection {
+	selection, err := modelchoice.New(provider, model)
 	if err != nil {
 		panic(err)
 	}

@@ -9,7 +9,7 @@ import (
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -116,6 +116,6 @@ func (incompleteObservationModel) Stream(context.Context, *chat.Request) iter.Se
 
 type observationResolver struct{ ChatResolver }
 
-func (observationResolver) ResolveChat(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error) {
+func (observationResolver) ResolveChat(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
 	return modeladapter.NewResolvedChat(incompleteObservationModel{}, nil)
 }

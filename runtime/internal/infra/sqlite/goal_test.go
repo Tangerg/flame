@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func newGoalStore(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore) {
@@ -294,11 +294,11 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	}
 }
 
-func testReasoningSelection(t testing.TB, provider, model, effort string) modelref.Selection {
+func testReasoningSelection(t testing.TB, provider, model, effort string) modelchoice.Selection {
 	t.Helper()
-	selection, err := modelref.NewWithReasoningEffort(provider, model, effort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, effort)
 	if err != nil {
-		t.Fatalf("modelref.NewWithReasoningEffort(%q, %q, %q): %v", provider, model, effort, err)
+		t.Fatalf("modelchoice.NewWithReasoningEffort(%q, %q, %q): %v", provider, model, effort, err)
 	}
 	return selection
 }

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"iter"
 	"sync/atomic"
 	"testing"
@@ -18,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -31,6 +31,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -249,11 +250,11 @@ func (passthroughRunWorkingContext) ComposeWorkingContext(
 	return input.Seed, nil
 }
 
-func (passthroughRunWorkingContext) AdmitInput(modelref.Selection, []chat.Message) error {
+func (passthroughRunWorkingContext) AdmitInput(modelchoice.Selection, []chat.Message) error {
 	return nil
 }
 
-func (passthroughRunWorkingContext) AdmitSelection(modelref.Selection) error { return nil }
+func (passthroughRunWorkingContext) AdmitSelection(modelchoice.Selection) error { return nil }
 
 type inertRunControl struct{}
 
@@ -433,10 +434,10 @@ func handlerWithModels(cfg models.Config) *Handler {
 // listing marks.
 type defaultSelectionSessions struct {
 	sessionUseCases
-	selection modelref.Selection
+	selection modelchoice.Selection
 }
 
-func (d defaultSelectionSessions) DefaultModelSelection() modelref.Selection { return d.selection }
+func (d defaultSelectionSessions) DefaultModelSelection() modelchoice.Selection { return d.selection }
 
 // handlerWithTools builds a Handler whose only wired coordinator is the tools one —
 // enough for the tools.* handler tests.
@@ -1051,9 +1052,9 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 
 type allowModelSelections struct{}
 
-func (allowModelSelections) AdmitSelection(modelref.Selection) error { return nil }
+func (allowModelSelections) AdmitSelection(modelchoice.Selection) error { return nil }
 
-func fixtureDefaultModelSelection() modelref.Selection {
+func fixtureDefaultModelSelection() modelchoice.Selection {
 	return testsupport.MustModelSelection("test-provider", "test-model")
 }
 

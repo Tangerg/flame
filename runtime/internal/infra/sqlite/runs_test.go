@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -19,6 +18,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
@@ -369,7 +369,7 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	ctx := context.Background()
 	store, _ := newRunStores(t)
-	selection, err := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
+	selection, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}

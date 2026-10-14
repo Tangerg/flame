@@ -9,10 +9,8 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/optional"
-
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 // Totals is the cumulative token and cost fact reported for one scope. CostUSD
@@ -137,7 +135,7 @@ func (u Usage) Validate() error {
 	}
 	slices.Sort(models)
 	for _, model := range models {
-		if _, err := modelref.NewModelIdentity(model); err != nil {
+		if _, err := modelchoice.NewModelIdentity(model); err != nil {
 			return fmt.Errorf("accounting: model identity: %w", err)
 		}
 		if err := u.ByModel[model].Validate(); err != nil {
@@ -404,7 +402,7 @@ func checkedAddInt64(left, right int64) (int64, bool) {
 func (s Snapshot) Validate() error {
 	var previous string
 	for index, model := range s.Models {
-		if _, err := modelref.NewModelIdentity(model.Model); err != nil {
+		if _, err := modelchoice.NewModelIdentity(model.Model); err != nil {
 			return fmt.Errorf("accounting snapshot: models[%d]: %w", index, err)
 		}
 		if index > 0 && model.Model <= previous {
@@ -420,7 +418,7 @@ func (s Snapshot) Validate() error {
 
 // Validate checks one model's token and cost counters.
 func (m ModelUsage) Validate() error {
-	if _, err := modelref.NewModelIdentity(m.Model); err != nil {
+	if _, err := modelchoice.NewModelIdentity(m.Model); err != nil {
 		return fmt.Errorf("model usage: %w", err)
 	}
 	if err := m.Tokens.Validate(); err != nil {

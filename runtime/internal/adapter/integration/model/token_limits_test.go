@@ -3,11 +3,11 @@ package model
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestLookupTokenLimitsPreservesIndependentCatalogFacts(t *testing.T) {
-	selection, err := modelref.New("openai", "gpt-5-pro")
+	selection, err := modelchoice.New("openai", "gpt-5-pro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestLookupTokenLimitsPreservesIndependentCatalogFacts(t *testing.T) {
 }
 
 func TestLookupTokenLimitsAllowsPrivateCatalogMiss(t *testing.T) {
-	selection, err := modelref.New("openai-compatible", "private-model")
+	selection, err := modelchoice.New("openai-compatible", "private-model")
 	if err != nil {
 		t.Fatal(err)
 	}

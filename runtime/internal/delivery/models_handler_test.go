@@ -3,12 +3,13 @@ package delivery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -106,7 +107,7 @@ func TestSetUtilityRoleClassifiesInvalidIdentityBeforePersistence(t *testing.T) 
 		Provider: "anthropic\x00shadow",
 		Model:    "claude-3-5-haiku-20241022",
 	})
-	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrProviderIdentity) {
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelchoice.ErrProviderIdentity) {
 		t.Fatalf("set invalid utility role err = %v, want ErrInvalidParams and ErrProviderIdentity", err)
 	}
 	if saver.calls != 0 {

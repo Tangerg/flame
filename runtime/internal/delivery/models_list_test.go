@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -210,7 +210,7 @@ func TestListModelsMapsUnsupportedProviderToInvalidParams(t *testing.T) {
 }
 
 func TestListModelsMarksOnlyTheRuntimeDefaultSelection(t *testing.T) {
-	selection, err := modelref.New("testprov", "m-beta")
+	selection, err := modelchoice.New("testprov", "m-beta")
 	if err != nil {
 		t.Fatal(err)
 	}

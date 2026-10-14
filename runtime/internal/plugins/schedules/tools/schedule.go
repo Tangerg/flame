@@ -7,16 +7,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
-
-	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type createScheduleArgs struct {
@@ -137,7 +135,7 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 }
 
 func (in createScheduleArgs) draft() (scheduledomain.Draft, error) {
-	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w", err)
 	}

@@ -2,14 +2,14 @@ package runs
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -34,7 +34,7 @@ type segmentSpec struct {
 	ExecutorID string
 	// The admission facts below describe a fresh root only. A resumed Segment
 	// reads them from the parked Runs in Continuation, which own them.
-	ModelSelection     modelref.Selection
+	ModelSelection     modelchoice.Selection
 	GoalIncarnationID  string
 	InitialSession     *session.Session
 	SessionReplacement *session.Replacement

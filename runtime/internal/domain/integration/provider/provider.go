@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 var (
@@ -162,7 +162,7 @@ func (c Credential) Source() (KeySource, bool) {
 // Provider is one registry entry. Its fields are private so invalid primitive
 // combinations cannot leak between the Domain, storage, protocol, and UI.
 type Provider struct {
-	id         modelref.ProviderIdentity
+	id         modelchoice.ProviderIdentity
 	credential Credential
 	baseURL    BaseURL
 }
@@ -181,7 +181,7 @@ func New(id string) (Provider, error) {
 	if strings.TrimSpace(id) == "" {
 		return Provider{}, ErrIDRequired
 	}
-	identity, err := modelref.NewProviderIdentity(id)
+	identity, err := modelchoice.NewProviderIdentity(id)
 	if err != nil {
 		return Provider{}, fmt.Errorf("%w: %v", ErrIDInvalid, err)
 	}

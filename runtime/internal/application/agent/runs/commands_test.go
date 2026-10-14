@@ -2,17 +2,17 @@ package runs
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"math"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -180,7 +180,7 @@ func TestStartExecutionValidateRequiresExactModelSelection(t *testing.T) {
 	t.Parallel()
 
 	execution := validRootExecutionStart()
-	execution.ModelSelection = modelref.Selection{}
+	execution.ModelSelection = modelchoice.Selection{}
 	err := execution.Validate()
 	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
 		t.Fatalf("Validate() error = %v, want required model selection", err)

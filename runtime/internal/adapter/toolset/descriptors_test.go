@@ -9,15 +9,12 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -25,6 +22,8 @@ import (
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -39,7 +38,7 @@ func (activeGoalStub) Report(context.Context, goals.ReportCommand) (goals.Report
 
 type allWiredGoalStarter struct{}
 
-func (allWiredGoalStarter) Start(context.Context, string, string, modelref.Selection, run.Capabilities) (goal.Goal, error) {
+func (allWiredGoalStarter) Start(context.Context, string, string, modelchoice.Selection, run.Capabilities) (goal.Goal, error) {
 	return goal.Goal{}, nil
 }
 

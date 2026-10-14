@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -189,8 +189,8 @@ func TestMaterializeUserMessage(t *testing.T) {
 }
 
 func TestWireRunStartErrPreservesInvalidModelIdentity(t *testing.T) {
-	err := wireRunStartErr(modelref.ErrProviderIdentity)
-	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrProviderIdentity) {
+	err := wireRunStartErr(modelchoice.ErrProviderIdentity)
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelchoice.ErrProviderIdentity) {
 		t.Fatalf("err = %v, want ErrInvalidParams and ErrProviderIdentity", err)
 	}
 }

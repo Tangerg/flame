@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser walks the
@@ -39,7 +39,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		incarnationID = "incarnation_goal_lost"
 	)
 	createdAt := time.Date(2026, 9, 2, 9, 0, 0, 0, time.UTC)
-	selection, err := modelref.New("anthropic", "claude-test")
+	selection, err := modelchoice.New("anthropic", "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		incarnationID = "incarnation_goal_idle"
 	)
 	createdAt := time.Date(2026, 9, 2, 10, 0, 0, 0, time.UTC)
-	selection, err := modelref.New("anthropic", "claude-test")
+	selection, err := modelchoice.New("anthropic", "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}

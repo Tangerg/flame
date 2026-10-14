@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
@@ -22,7 +22,7 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			goals, plans := sqlite.NewGoalStore(db), sqlite.NewPlanStore(db)
 			seedSession(t, sqlite.NewSessionStore(db), "session")
-			value, err := goal.New("session", "objective", modelref.Selection{}, run.Capabilities{}, "incarnation", at)
+			value, err := goal.New("session", "objective", modelchoice.Selection{}, run.Capabilities{}, "incarnation", at)
 			if err != nil {
 				t.Fatal(err)
 			}

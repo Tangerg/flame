@@ -2,13 +2,14 @@ package executionctx
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // ModelCalls binds nested consumption to the admitted execution member. Finish
 // projects original physical evidence through that member's existing commit pump.
 type ModelCalls interface {
-	Start(context.Context, string, modelref.Selection) (func(context.Context, error) error, error)
+	Start(context.Context, string, modelchoice.Selection) (func(context.Context, error) error, error)
 }
 
 type modelCallsKey struct{}

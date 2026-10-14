@@ -1,4 +1,4 @@
-package modelref
+package model
 
 import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 

@@ -1,7 +1,7 @@
 package schedule
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // Capturing instructions independently prevents later definition edits or deletion from changing pending work.
@@ -9,14 +9,14 @@ type Execution struct {
 	title          string
 	instructions   string
 	cwd            string
-	modelSelection modelref.Selection
+	modelSelection modelchoice.Selection
 }
 
 type ExecutionSnapshot struct {
 	Title          string
 	Instructions   string
 	CWD            string
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 }
 
 func (s Schedule) Execution() Execution {
@@ -48,7 +48,7 @@ func (e Execution) Snapshot() ExecutionSnapshot {
 	}
 }
 
-func (e Execution) Title() string                      { return e.title }
-func (e Execution) Instructions() string               { return e.instructions }
-func (e Execution) CWD() string                        { return e.cwd }
-func (e Execution) ModelSelection() modelref.Selection { return e.modelSelection }
+func (e Execution) Title() string                         { return e.title }
+func (e Execution) Instructions() string                  { return e.instructions }
+func (e Execution) CWD() string                           { return e.cwd }
+func (e Execution) ModelSelection() modelchoice.Selection { return e.modelSelection }

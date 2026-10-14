@@ -6,7 +6,7 @@ import (
 	"time"
 
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -76,7 +76,7 @@ func mapModelError(err error) error {
 		errors.Is(err, modelapp.ErrProviderUnconfigured) ||
 		errors.Is(err, modelapp.ErrProviderUpdateRequired) ||
 		errors.Is(err, modelapp.ErrEmbeddingUnsupported) ||
-		modelref.IsInvalid(err) {
+		modelchoice.IsInvalid(err) {
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err

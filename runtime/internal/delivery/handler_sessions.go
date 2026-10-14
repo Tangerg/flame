@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -29,10 +29,10 @@ func wireSessionErr(err error) error {
 	if errors.Is(err, session.ErrRevisionConflict) {
 		return NewFailure(errors.Join(protocol.ErrRevisionConflict, err), "the session changed after it was read")
 	}
-	if modelref.IsInvalid(err) {
+	if modelchoice.IsInvalid(err) {
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
-	if errors.Is(err, modelref.ErrUnsupported) {
+	if errors.Is(err, modelchoice.ErrUnsupported) {
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
@@ -188,7 +188,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 	}
 	view, err := s.sessions.UpdateView(ctx, in.SessionID, sessions.Patch{
 		Title: in.Title,
-		ModelSelection: modelref.Patch{
+		ModelSelection: modelchoice.Patch{
 			Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
 		},
 		WorkspacePath:    cwd,

@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 type rootStartPreparation struct {
 	command            StartCommand
-	requestedSelection modelref.Selection
+	requestedSelection modelchoice.Selection
 	session            session.Session
 	initialSession     *session.Session
 	draft              RootExecutionStart
@@ -298,27 +298,27 @@ func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string,
 func (c *Coordinator) resolveSessionSelection(
 	ctx context.Context,
 	cmd StartCommand,
-) (session.Session, *session.Session, modelref.Selection, error) {
+) (session.Session, *session.Session, modelchoice.Selection, error) {
 	requested := cmd.ModelSelection
 	if requested.Configured() {
 		if err := c.AdmitSelection(requested); err != nil {
-			return session.Session{}, nil, modelref.Selection{}, err
+			return session.Session{}, nil, modelchoice.Selection{}, err
 		}
 	}
 	sess, initial, err := c.resolveSession(ctx, cmd, requested)
 	if err != nil {
-		return session.Session{}, nil, modelref.Selection{}, err
+		return session.Session{}, nil, modelchoice.Selection{}, err
 	}
 	effective := requested
 	if !effective.Configured() {
 		effective = sess.Selection()
 	}
 	if err := effective.ValidateExact(); err != nil {
-		return session.Session{}, nil, modelref.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
+		return session.Session{}, nil, modelchoice.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
 	}
 	if effective != requested {
 		if err := c.AdmitSelection(effective); err != nil {
-			return session.Session{}, nil, modelref.Selection{}, err
+			return session.Session{}, nil, modelchoice.Selection{}, err
 		}
 	}
 	return sess, initial, effective, nil
@@ -327,7 +327,7 @@ func (c *Coordinator) resolveSessionSelection(
 func (c *Coordinator) resolveSession(
 	ctx context.Context,
 	cmd StartCommand,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (session.Session, *session.Session, error) {
 	if cmd.NewSession != nil {
 		return c.sessionCreator.PrepareOpening(

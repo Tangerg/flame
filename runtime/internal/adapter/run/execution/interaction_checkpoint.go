@@ -11,11 +11,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -356,7 +356,7 @@ func interactionCallCounts(
 ) ([]interactionModelCallsWire, error) {
 	models := make([]interactionModelCallsWire, 0, len(byModel))
 	for model, usage := range byModel {
-		if _, err := modelref.NewModelIdentity(model); err != nil {
+		if _, err := modelchoice.NewModelIdentity(model); err != nil {
 			return nil, err
 		}
 		if err := usage.Validate(); err != nil || usage.Model != model {
@@ -702,7 +702,7 @@ func decodeInteractionCallCounts(values []interactionModelCallsWire) (map[string
 	result := make(map[string]int, len(values))
 	previous := ""
 	for index, value := range values {
-		if _, err := modelref.NewModelIdentity(value.Model); err != nil {
+		if _, err := modelchoice.NewModelIdentity(value.Model); err != nil {
 			return nil, fmt.Errorf("models[%d]: %w", index, err)
 		}
 		if value.Calls <= 0 || index > 0 && value.Model <= previous {

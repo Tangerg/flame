@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestReplaceDerivesTheStateFromItsExpectedRun(t *testing.T) {
@@ -59,7 +59,7 @@ func TestReplacementCannotRewriteAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := modelref.New("other", "model")
+	selection, err := modelchoice.New("other", "model")
 	if err != nil {
 		t.Fatal(err)
 	}

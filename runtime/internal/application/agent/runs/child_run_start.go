@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // ChildRunStartReservation is the durable, non-public identity allocated for
@@ -77,7 +77,7 @@ func (c ChildRunStartReservation) validateIdentity() error {
 
 // draft is the child Run this reservation admits once its executor child is
 // durably published: every identity comes from the reservation, which owns them.
-func (c ChildRunStartReservation) draft(model modelref.Selection, startedAt time.Time) rundomain.Draft {
+func (c ChildRunStartReservation) draft(model modelchoice.Selection, startedAt time.Time) rundomain.Draft {
 	return rundomain.Draft{
 		RunID:           c.Binding.RunID,
 		SessionID:       c.SessionID,
@@ -102,7 +102,7 @@ type StartedChildRun struct {
 // concludes.
 func NewStartedChildRun(
 	reservation ChildRunStartReservation,
-	model modelref.Selection,
+	model modelchoice.Selection,
 	startedAt time.Time,
 	events []EventCommit,
 ) (StartedChildRun, error) {

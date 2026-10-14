@@ -7,10 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/embedding"
-	"github.com/google/uuid"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
@@ -18,7 +14,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/embedding"
+	"github.com/google/uuid"
 )
 
 // EmbeddingResolver builds observed embedding clients from the current
@@ -47,7 +47,7 @@ func NewEmbeddingResolver(providers CredentialLookup, journal EndpointJournal, p
 }
 
 // Resolve builds an embedder for the current selection and registry snapshot.
-func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Selection) (agentmemoryapp.Embedder, error) {
+func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.Selection) (agentmemoryapp.Embedder, error) {
 	if e == nil || dependency.Missing(e.providers) || dependency.Missing(e.journal) {
 		return nil, errors.New("model: embedding resolver is not configured")
 	}
@@ -84,7 +84,7 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 // ValidateEmbeddingModel implements the application role-validation port while
 // keeping the usable embedder inside the adapter that owns it.
 func (e *EmbeddingResolver) ValidateEmbeddingModel(ctx context.Context, providerID, model string) error {
-	selection, err := modelref.New(providerID, model)
+	selection, err := modelchoice.New(providerID, model)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (e *EmbeddingResolver) ValidateEmbeddingModel(ctx context.Context, provider
 type embedder struct {
 	id        string
 	model     embedding.Model
-	selection modelref.Selection
+	selection modelchoice.Selection
 	journal   EndpointJournal
 	pricing   accounting.Pricing
 }

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // IDPrefix is the type prefix assigned when a Runtime generates a Session ID.
@@ -39,7 +39,7 @@ type Draft struct {
 	ID        string
 	Title     string
 	Workspace Workspace
-	Selection modelref.Selection
+	Selection modelchoice.Selection
 	CreatedAt time.Time
 }
 
@@ -49,7 +49,7 @@ type Draft struct {
 // Runtime-owned maintenance.
 type Patch struct {
 	Title            *string
-	Selection        *modelref.Selection
+	Selection        *modelchoice.Selection
 	Workspace        *Workspace
 	Favorite         *bool
 	Isolated         *bool
@@ -67,7 +67,7 @@ type Snapshot struct {
 	ID        string
 	Title     string
 	Workspace Workspace
-	Selection modelref.Selection
+	Selection modelchoice.Selection
 	ParentID  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -83,7 +83,7 @@ type Session struct {
 	id        string
 	title     string
 	workspace Workspace
-	selection modelref.Selection
+	selection modelchoice.Selection
 	parentID  string
 	createdAt time.Time
 	updatedAt time.Time
@@ -314,7 +314,7 @@ func (s Session) Title() string { return s.title }
 func (s Session) Workspace() Workspace { return s.workspace }
 
 // Selection returns the exact provider/model pair owned by the Session.
-func (s Session) Selection() modelref.Selection { return s.selection }
+func (s Session) Selection() modelchoice.Selection { return s.selection }
 
 // ParentID returns the immutable parent Session identity, or empty for a root.
 func (s Session) ParentID() string { return s.parentID }

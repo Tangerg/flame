@@ -1,4 +1,4 @@
-package modelref
+package model
 
 import (
 	"errors"

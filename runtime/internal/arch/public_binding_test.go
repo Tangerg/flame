@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "capability", "jsoninput", "localruntime", "plugin", "point", "protocol", "storage"}
+	want := []string{".", "capability", "jsoninput", "localruntime", "model", "plugin", "point", "protocol", "storage"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -98,6 +98,8 @@ flameruntime "github.com/Tangerg/flame/runtime"
 "github.com/Tangerg/flame/runtime/capability"
 "github.com/Tangerg/flame/runtime/jsoninput"
 "github.com/Tangerg/flame/runtime/localruntime"
+modelchoice "github.com/Tangerg/flame/runtime/model"
+modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
 pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
@@ -113,6 +115,8 @@ var _ flameruntime.PluginStreamer = (*flameruntime.Client)(nil)
 var _ flameruntime.PluginStreamer = (*flameruntime.PluginCallbackCaller)(nil)
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
+var _ = modelchoice.NewWithReasoningEffort
+var _ = (modelcatalog.Selections{}).AdmitSelection
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
 var _ = pluginsdk.RegisterTools

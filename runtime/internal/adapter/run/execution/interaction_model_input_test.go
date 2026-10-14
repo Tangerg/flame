@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/media"
 	"iter"
 	"reflect"
 	"strings"
@@ -14,12 +11,15 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/media"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -27,7 +27,7 @@ type inputCaptureComposition struct {
 	contextCaptureComposition
 	transformed       int
 	failure           error
-	expectedSelection modelref.Selection
+	expectedSelection modelchoice.Selection
 }
 
 func (*inputCaptureComposition) ResolveContext(context.Context) ([]plugins.ContributionBinding, error) {
@@ -47,7 +47,7 @@ func (c *inputCaptureComposition) ResolveInput(ctx context.Context) ([]plugins.C
 	bindings[0].Contract = contract.Identity()
 	return bindings, nil
 }
-func (c *inputCaptureComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelref.Selection, request *chat.Request) (*chat.Request, error) {
+func (c *inputCaptureComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
 	c.transformed++
 	if executionctx.ModelCallsFromContext(ctx) == nil {
 		c.t.Error("input preparation has no original execution publisher")
@@ -128,7 +128,7 @@ func (c *waitingInputComposition) ResolveInput(ctx context.Context) ([]plugins.C
 	owner := &inputCaptureComposition{contextCaptureComposition: contextCaptureComposition{t: c.t}}
 	return owner.ResolveInput(ctx)
 }
-func (c *waitingInputComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelref.Selection, request *chat.Request) (*chat.Request, error) {
+func (c *waitingInputComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
 	c.inputCalls++
 	if len(request.Options.Stop) != 0 {
 		c.t.Error("transformed Options entered retained context")
@@ -195,7 +195,7 @@ type mediaInputComposition struct {
 	received bool
 }
 
-func (c *mediaInputComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelref.Selection, request *chat.Request) (*chat.Request, error) {
+func (c *mediaInputComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
 	c.transformed++
 	result := request.Clone()
 	for mi, message := range result.Messages {

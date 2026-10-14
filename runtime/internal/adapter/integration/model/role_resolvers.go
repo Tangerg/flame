@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // RoleSource is the read view a live specialized-model resolver needs. The
@@ -24,7 +24,7 @@ type RoleSource interface {
 // configuration snapshot. The utility role adapter depends only on that
 // behavior, not on ChatResolver's registry implementation.
 type ChatModelResolver interface {
-	ResolveChat(context.Context, modelref.Selection) (ResolvedChat, error)
+	ResolveChat(context.Context, modelchoice.Selection) (ResolvedChat, error)
 }
 
 // LiveUtilityModel resolves the optional specialized role on every use. An
@@ -32,7 +32,7 @@ type ChatModelResolver interface {
 // silently falls back to another provider/model when resolution fails.
 func LiveUtilityModel(
 	resolver ChatModelResolver,
-	mainSelection modelref.Selection,
+	mainSelection modelchoice.Selection,
 	roles RoleSource,
 	selector modelapp.Selector,
 ) (AuxiliaryResolver, error) {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestCredentialFormattingNeverRevealsTheAPIKey(t *testing.T) {
@@ -116,7 +116,7 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 	for _, value := range []string{
 		"open ai",
 		"openai\x00shadow",
-		strings.Repeat("p", modelref.MaximumProviderIdentityCharacters+1),
+		strings.Repeat("p", modelchoice.MaximumProviderIdentityCharacters+1),
 	} {
 		if _, err := New(value); !errors.Is(err, ErrIDInvalid) {
 			t.Errorf("New(%q) error = %v, want ErrIDInvalid", value, err)

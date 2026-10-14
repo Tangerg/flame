@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -45,12 +46,12 @@ func (b AuxiliaryBudget) Validate() error {
 // SelectedChat captures the exact selection and model construction
 // together. Wrapping its model cannot detach or invent the selected identity.
 type SelectedChat struct {
-	selection modelref.Selection
+	selection modelchoice.Selection
 	resolved  ResolvedChat
 	limits    modelref.TokenLimits
 }
 
-func NewSelectedChat(selection modelref.Selection, resolved ResolvedChat) (SelectedChat, error) {
+func NewSelectedChat(selection modelchoice.Selection, resolved ResolvedChat) (SelectedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return SelectedChat{}, err
 	}
@@ -63,8 +64,8 @@ func NewSelectedChat(selection modelref.Selection, resolved ResolvedChat) (Selec
 	}
 	return SelectedChat{selection: selection, resolved: resolved, limits: limits}, nil
 }
-func (m SelectedChat) Selection() modelref.Selection { return m.selection }
-func (m SelectedChat) Model() chat.Model             { return m.resolved.Model() }
+func (m SelectedChat) Selection() modelchoice.Selection { return m.selection }
+func (m SelectedChat) Model() chat.Model                { return m.resolved.Model() }
 func (m SelectedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return m.resolved.InputTokenCounter()
 }

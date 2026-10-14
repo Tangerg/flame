@@ -1906,7 +1906,7 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput", "capability", "point":
+	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput", "capability", "point", "model":
 		return ringValue
 	case "internal/cancellation", "internal/capture", "internal/completion", "internal/idempotency", "internal/keylock":
 		return ringMechanism
@@ -1914,7 +1914,7 @@ func layerOf(rel string) string {
 		return ringProtocol
 	case "internal/contractcatalog":
 		return ringGenerator
-	case "plugin", "plugin/sqlite", "storage/sqlite":
+	case "plugin", "plugin/sqlite", "storage/sqlite", "model/catalog":
 		return ringInfra
 	}
 	switch {

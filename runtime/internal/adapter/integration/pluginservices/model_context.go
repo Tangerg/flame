@@ -4,12 +4,12 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/capability"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -45,7 +45,7 @@ func (o *ModelComposition) validateCompositionBindings(ctx context.Context, cont
 
 // PrepareContext executes only captured input contributors. Their output remains
 // request context, never authored conversation, model selection or Tool identity.
-func (o *ModelComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelref.Selection, request *chat.Request) ([]chat.Message, error) {
+func (o *ModelComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) ([]chat.Message, error) {
 	if request == nil {
 		return nil, errors.New("model context: request is required")
 	}

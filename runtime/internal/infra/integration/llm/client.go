@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/alibaba"
 	"github.com/Tangerg/scope/models/anthropic"
@@ -36,7 +36,7 @@ const (
 
 type ClientSpec struct {
 	provider   Provider
-	model      modelref.ModelIdentity
+	model      modelchoice.ModelIdentity
 	credential providerdomain.APIKey
 	endpoint   providerdomain.BaseURL
 	httpClient *http.Client
@@ -49,7 +49,7 @@ func (s ClientSpec) Format(state fmt.State, _ rune) {
 }
 
 func NewClientSpec(provider Provider, model string, credential providerdomain.APIKey) (ClientSpec, error) {
-	identity, err := modelref.NewModelIdentity(model)
+	identity, err := modelchoice.NewModelIdentity(model)
 	if err != nil {
 		return ClientSpec{}, fmt.Errorf("llm: model: %w", err)
 	}

@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestProviderMetadataRejectsIncompletePolicies(t *testing.T) {
-	embeddingIdentity, err := modelref.NewModelIdentity("embedding")
+	embeddingIdentity, err := modelchoice.NewModelIdentity("embedding")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestProviderMetadataRejectsIncompletePolicies(t *testing.T) {
 		embedding EmbeddingCapability
 	}{
 		{name: "blank identity", endpoint: ProviderEndpointOptional, models: ProviderModelsBundled, embedding: NoEmbeddingCapability()},
-		{name: "oversized identity", id: strings.Repeat("p", modelref.MaximumProviderIdentityCharacters+1), endpoint: ProviderEndpointOptional, models: ProviderModelsBundled, embedding: NoEmbeddingCapability()},
+		{name: "oversized identity", id: strings.Repeat("p", modelchoice.MaximumProviderIdentityCharacters+1), endpoint: ProviderEndpointOptional, models: ProviderModelsBundled, embedding: NoEmbeddingCapability()},
 		{name: "missing endpoint policy", id: "provider", models: ProviderModelsBundled, embedding: NoEmbeddingCapability()},
 		{name: "missing model source", id: "provider", endpoint: ProviderEndpointOptional, embedding: NoEmbeddingCapability()},
 		{name: "zero embedding capability", id: "provider", endpoint: ProviderEndpointOptional, models: ProviderModelsBundled},

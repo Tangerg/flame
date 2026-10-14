@@ -1,10 +1,9 @@
-// Package modelref defines an explicit provider/model/reasoning selection and
-// the immutable token-limit envelope attached to that exact identity.
+// Package model owns immutable provider/model/reasoning selections.
 // Executions and specialized runtime roles share the same invariant: a
 // selection is either unset (use the surrounding default) or names provider
 // and model together; reasoning effort is optional and belongs to that exact
 // model. Provider inference is deliberately unsupported.
-package modelref
+package model
 
 import (
 	"errors"

@@ -7,8 +7,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -16,7 +16,7 @@ import (
 // or an explicit user stop.
 
 type goalUseCases interface {
-	Start(ctx context.Context, sessionID, objective string, selection modelref.Selection, capabilities run.Capabilities) (goal.Goal, error)
+	Start(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error)
 	UpdateObjective(ctx context.Context, sessionID, objective string, caller run.Capabilities) (goal.Goal, error)
 	Clear(ctx context.Context, sessionID string) error
 	Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error)
@@ -47,7 +47,7 @@ func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error 
 
 // StartGoal opens and begins driving a goal for the session (goals.start).
 func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
-	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return nil, mapGoalErr(err)
 	}
@@ -109,9 +109,9 @@ func mapGoalErr(err error) error {
 	case errors.Is(err, goals.ErrNoGoal),
 		errors.Is(err, goal.ErrNotResumable),
 		errors.Is(err, goal.ErrNotEditable),
-		modelref.IsInvalid(err),
+		modelchoice.IsInvalid(err),
 		errors.Is(err, goal.ErrInvalid),
-		errors.Is(err, modelref.ErrUnsupported):
+		errors.Is(err, modelchoice.ErrUnsupported):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
 		return err

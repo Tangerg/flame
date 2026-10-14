@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -44,14 +45,14 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		t.Fatal(created.Failure)
 	}
 	sessionID := created.Value.(*protocol.Session).ID
-	model := strings.Repeat("模", modelref.MaximumModelIdentityCharacters)
+	model := strings.Repeat("模", modelchoice.MaximumModelIdentityCharacters)
 	providers := []string{
-		strings.Repeat("a", modelref.MaximumProviderIdentityCharacters),
-		strings.Repeat("o", modelref.MaximumProviderIdentityCharacters),
+		strings.Repeat("a", modelchoice.MaximumProviderIdentityCharacters),
+		strings.Repeat("o", modelchoice.MaximumProviderIdentityCharacters),
 	}
 	now := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
 	for index, provider := range providers {
-		selection, err := modelref.New(provider, model)
+		selection, err := modelchoice.New(provider, model)
 		if err != nil {
 			t.Fatal(err)
 		}

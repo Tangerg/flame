@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -94,7 +94,7 @@ func (c *contextCaptureComposition) ResolveContext(context.Context) ([]plugins.C
 func (*contextCaptureComposition) ValidateContext(context.Context, []plugins.ContributionBinding) error {
 	return nil
 }
-func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelref.Selection, request *chat.Request) ([]chat.Message, error) {
+func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) ([]chat.Message, error) {
 	c.calls++
 	if executionctx.ModelCallsFromContext(ctx) == nil {
 		c.t.Error("context preparation has no original execution publisher")
@@ -150,7 +150,7 @@ func (*contextCaptureComposition) ResolveInput(context.Context) ([]plugins.Contr
 func (*contextCaptureComposition) ValidateInput(context.Context, []plugins.ContributionBinding) error {
 	return nil
 }
-func (*contextCaptureComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelref.Selection, request *chat.Request) (*chat.Request, error) {
+func (*contextCaptureComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
 	return request.Clone(), nil
 }
 

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestScheduleNewOwnsInitialLifecycle(t *testing.T) {
@@ -443,8 +443,8 @@ func TestNextRunRejectsUnreachableCron(t *testing.T) {
 	}
 }
 
-func mustModelSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
+func mustModelSelection(provider, model string) modelchoice.Selection {
+	selection, err := modelchoice.New(provider, model)
 	if err != nil {
 		panic(err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"slices"
 	"strings"
@@ -16,10 +15,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -133,7 +133,7 @@ func TestInteractionExecutorRejectsOutputAboveSelectedModelLimit(t *testing.T) {
 			return interactionTextResponse("unused"), nil
 		}),
 	)
-	selection, err := modelref.New("openai", "gpt-5-pro")
+	selection, err := modelchoice.New("openai", "gpt-5-pro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestInteractionExecutorRequiresExactRootModelSelection(t *testing.T) {
 		}),
 	)
 	start := interactionTestStart()
-	start.ModelSelection = modelref.Selection{}
+	start.ModelSelection = modelchoice.Selection{}
 	if err := executor.ValidateRootStart(start); err == nil {
 		t.Fatal("Interaction executor accepted a root without an exact model selection")
 	}
@@ -215,10 +215,10 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
 	})
-	var resolved []modelref.Selection
+	var resolved []modelchoice.Selection
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(),
-		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
+		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
 			return modeladapter.NewResolvedChat(model, nil)
 		}),
@@ -241,16 +241,16 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 	if _, err := executor.resolveChat(t.Context(), testDefaultSelection()); err != nil || len(resolved) != 2 {
 		t.Fatalf("second exact-default resolution = (%v, %#v), want a fresh resolver call", err, resolved)
 	}
-	if _, err := executor.resolveChat(t.Context(), modelref.Selection{}); err == nil {
+	if _, err := executor.resolveChat(t.Context(), modelchoice.Selection{}); err == nil {
 		t.Fatal("resolve implicit selection succeeded, want exact-selection error")
 	}
 }
 
-type interactionChatResolverFunc func(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error)
+type interactionChatResolverFunc func(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error)
 
 func (i interactionChatResolverFunc) ResolveChat(
 	ctx context.Context,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (modeladapter.ResolvedChat, error) {
 	return i(ctx, selection)
 }
@@ -263,7 +263,7 @@ func interactionChatResolver(
 	model chat.Model,
 	counter modeladapter.InputTokenCounter,
 ) InteractionChatResolver {
-	return interactionChatResolverFunc(func(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error) {
+	return interactionChatResolverFunc(func(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
 		return modeladapter.NewResolvedChat(model, counter)
 	})
 }

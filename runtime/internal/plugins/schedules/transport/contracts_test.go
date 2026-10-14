@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	workspace "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
+	models "github.com/Tangerg/flame/runtime/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )

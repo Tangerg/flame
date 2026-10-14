@@ -6,14 +6,13 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // ErrInvalidPortableSnapshot marks a structurally decoded archive that cannot
@@ -49,7 +48,7 @@ type PortableSession struct {
 	ID        string
 	Title     string
 	CWD       string
-	Selection modelref.Selection
+	Selection modelchoice.Selection
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Favorite  bool
@@ -65,7 +64,7 @@ type PortableRun struct {
 	// SpawnedByItemID they preserve the execution tree exactly across export/import.
 	ParentRunID string
 	RootRunID   string
-	Selection   modelref.Selection
+	Selection   modelchoice.Selection
 	Outcome     run.Outcome
 	Failure     *run.Failure
 	// UnresolvedEffects retains source execution identities as historical evidence.

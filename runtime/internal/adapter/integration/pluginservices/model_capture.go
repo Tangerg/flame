@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -251,7 +251,7 @@ func (c *modelCapture) close() {
 	close(c.done)
 }
 
-func beginCapturedModelCall(ctx context.Context, selection modelref.Selection) (context.Context, func(context.Context, error) error, error) {
+func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection) (context.Context, func(context.Context, error) error, error) {
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, nil, err

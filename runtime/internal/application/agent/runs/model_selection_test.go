@@ -5,15 +5,15 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type modelSelectorFunc func(context.Context, modelref.Selection, *chat.Request) (modelref.Selection, error)
+type modelSelectorFunc func(context.Context, modelchoice.Selection, *chat.Request) (modelchoice.Selection, error)
 
-func (f modelSelectorFunc) SelectModel(ctx context.Context, proposed modelref.Selection, request *chat.Request) (modelref.Selection, error) {
+func (f modelSelectorFunc) SelectModel(ctx context.Context, proposed modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
 	return f(ctx, proposed, request)
 }
 
@@ -24,7 +24,7 @@ func TestFreshStartBindsSelectedModelAndKeepsSessionPreferenceAndOriginalInput(t
 	effects := &fakeEffects{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
 	count := 0
-	coordinator.modelSelector = modelSelectorFunc(func(_ context.Context, proposal modelref.Selection, request *chat.Request) (modelref.Selection, error) {
+	coordinator.modelSelector = modelSelectorFunc(func(_ context.Context, proposal modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
 		count++
 		if proposal != proposed || len(request.Messages) != 1 || request.Messages[0].Text() != "question" || request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != 128 {
 			t.Error("selection lost original proposal/context/output reservation")
@@ -57,8 +57,8 @@ func TestSelectionFailureRefusesBeforeStagingAndDurableOpening(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
 	refusal := errors.New("selection unavailable")
-	coordinator.modelSelector = modelSelectorFunc(func(context.Context, modelref.Selection, *chat.Request) (modelref.Selection, error) {
-		return modelref.Selection{}, refusal
+	coordinator.modelSelector = modelSelectorFunc(func(context.Context, modelchoice.Selection, *chat.Request) (modelchoice.Selection, error) {
+		return modelchoice.Selection{}, refusal
 	})
 	_, err := coordinator.Start(t.Context(), StartCommand{Acceptance: &CommandIdentity{Key: "selected-opening", Fingerprint: testsupport.Digest("selected opening").String()}, NewSession: &SessionOpening{SessionID: "ses_selected", RunID: "run_selected", CWD: "/selected", Title: "Selected"}, ModelSelection: testsupport.DefaultModelSelection(), Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "question"}}})
 	if !errors.Is(err, refusal) || control.started.SessionID != "" || control.validated.SessionID != "" {
@@ -72,9 +72,9 @@ func TestSelectionFailureRefusesBeforeStagingAndDurableOpening(t *testing.T) {
 func TestAcceptedStartRecoveryDoesNotSelectAgain(t *testing.T) {
 	accepted := validCommandAcceptance()
 	reader := &recordingAcceptanceReader{record: CommandAcceptanceRecord{Found: true, CurrentRun: nil, Acceptance: accepted}}
-	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader, ModelSelector: modelSelectorFunc(func(context.Context, modelref.Selection, *chat.Request) (modelref.Selection, error) {
+	coordinator := mustNewCoordinator(Dependencies{CommandAcceptances: reader, ModelSelector: modelSelectorFunc(func(context.Context, modelchoice.Selection, *chat.Request) (modelchoice.Selection, error) {
 		t.Fatal("accepted command reran selection")
-		return modelref.Selection{}, errors.New("unexpected selection")
+		return modelchoice.Selection{}, errors.New("unexpected selection")
 	})})
 	result, err := coordinator.Start(t.Context(), StartCommand{SessionID: accepted.SessionID, Acceptance: &CommandIdentity{Key: accepted.Key, Fingerprint: accepted.Fingerprint}})
 	if err != nil || !result.Reopened || result.RunID != accepted.RunID {

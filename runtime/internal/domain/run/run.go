@@ -3,15 +3,15 @@ package run
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"strconv"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/optional"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // ErrIdentityConflict reports an attempt to reuse a durable Run identity for a
@@ -50,7 +50,7 @@ type Run struct {
 	sessionID         string
 	id                string
 	lineage           Lineage
-	modelSelection    modelref.Selection
+	modelSelection    modelchoice.Selection
 	goalIncarnationID goalref.IncarnationID
 	state             State
 	activeSegmentID   string
@@ -73,7 +73,7 @@ type Snapshot struct {
 	SessionID         string
 	ID                string
 	Lineage           Lineage
-	ModelSelection    modelref.Selection
+	ModelSelection    modelchoice.Selection
 	GoalIncarnationID string
 	State             State
 	ActiveSegmentID   string
@@ -481,13 +481,13 @@ func (r Run) validateTransitionTime(at time.Time) error {
 	return nil
 }
 
-func (r Run) ID() string                         { return r.id }
-func (r Run) SessionID() string                  { return r.sessionID }
-func (r Run) Lineage() Lineage                   { return r.lineage }
-func (r Run) ModelSelection() modelref.Selection { return r.modelSelection }
-func (r Run) GoalIncarnationID() string          { return r.goalIncarnationID.String() }
-func (r Run) State() State                       { return r.state }
-func (r Run) ActiveSegmentID() string            { return r.activeSegmentID }
+func (r Run) ID() string                            { return r.id }
+func (r Run) SessionID() string                     { return r.sessionID }
+func (r Run) Lineage() Lineage                      { return r.lineage }
+func (r Run) ModelSelection() modelchoice.Selection { return r.modelSelection }
+func (r Run) GoalIncarnationID() string             { return r.goalIncarnationID.String() }
+func (r Run) State() State                          { return r.state }
+func (r Run) ActiveSegmentID() string               { return r.activeSegmentID }
 func (r Run) Outcome() (Outcome, bool) {
 	if r.outcome == nil {
 		return "", false

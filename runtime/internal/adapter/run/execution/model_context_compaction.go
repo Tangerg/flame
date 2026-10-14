@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -87,7 +87,7 @@ type ModelContextInputTokenCounter interface {
 type ModelContextCompaction struct {
 	persistence   modelContextPersistence
 	sessionID     string
-	selection     modelref.Selection
+	selection     modelchoice.Selection
 	instructions  []corechat.Message
 	candidate     []corechat.Message
 	trailer       []corechat.Message
@@ -104,7 +104,7 @@ type ModelContextCompaction struct {
 // members are message slices of the same type that must not be transposable.
 type ModelContextCompactionInput struct {
 	SessionID    string
-	Selection    modelref.Selection
+	Selection    modelchoice.Selection
 	Instructions []corechat.Message
 	Candidate    []corechat.Message
 	// Trailer is Runtime context the model boundary appends after the reduced
@@ -272,7 +272,7 @@ func (m ModelContextCompaction) Durable() bool {
 func (m ModelContextCompaction) SessionID() string { return m.sessionID }
 
 // ModelSelection returns the model whose actual context limit governs this call.
-func (m ModelContextCompaction) ModelSelection() modelref.Selection { return m.selection }
+func (m ModelContextCompaction) ModelSelection() modelchoice.Selection { return m.selection }
 
 // Instructions returns an independently owned immutable prompt prefix.
 func (m ModelContextCompaction) Instructions() []corechat.Message {

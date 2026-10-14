@@ -3,21 +3,19 @@ package maintenance
 import (
 	"context"
 	"errors"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
-
-	"github.com/Tangerg/scope/models/catalog"
-
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/core/media"
 	"github.com/Tangerg/scope/core/metadata"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 type contextInputCounter struct {
@@ -223,7 +221,7 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 		t.Fatal(err)
 	}
 	counter := &contextInputCounter{count: func(*chat.Request) int64 { return threshold - 1 }}
-	selection, err := modelref.New("openai", "gpt-5.6-sol")
+	selection, err := modelchoice.New("openai", "gpt-5.6-sol")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +276,7 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 	}
 	countErr := errors.New("provider count unavailable")
 	counter := &contextInputCounter{err: countErr}
-	selection, err := modelref.New("openai", "gpt-5.6-sol")
+	selection, err := modelchoice.New("openai", "gpt-5.6-sol")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +338,7 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 		}
 		return threshold / 10
 	}}
-	selection, err := modelref.New("openai", "gpt-5.6-sol")
+	selection, err := modelchoice.New("openai", "gpt-5.6-sol")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +503,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := modelref.New("openai", "gpt-5.4-mini")
+	selection, err := modelchoice.New("openai", "gpt-5.4-mini")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +586,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := modelref.New("alibaba", "qwen-mt-plus")
+	selection, err := modelchoice.New("alibaba", "qwen-mt-plus")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -995,7 +993,7 @@ func durableContextRequestWithCalibration(
 	preCompact func(context.Context) (bool, error),
 ) executionadapter.ModelContextCompaction {
 	t.Helper()
-	selection, err := modelref.New("anthropic", "claude-test")
+	selection, err := modelchoice.New("anthropic", "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1217,7 +1215,7 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 	if !found {
 		t.Fatal("catalog omitted openai/gpt-5.4-mini")
 	}
-	selection, err := modelref.New("openai", "gpt-5.4-mini")
+	selection, err := modelchoice.New("openai", "gpt-5.4-mini")
 	if err != nil {
 		t.Fatal(err)
 	}

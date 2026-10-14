@@ -9,18 +9,18 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 type endpointResolver struct{ model chat.Model }
 
-func (r endpointResolver) ResolveChat(context.Context, modelref.Selection) (models.ResolvedChat, error) {
+func (r endpointResolver) ResolveChat(context.Context, modelchoice.Selection) (models.ResolvedChat, error) {
 	return models.NewResolvedChat(r.model, nil)
 }
 

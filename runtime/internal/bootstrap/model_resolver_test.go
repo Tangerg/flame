@@ -4,7 +4,7 @@ import (
 	"context"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
@@ -18,7 +18,7 @@ func testChatResolver(client chatclient.Client) ChatResolver {
 
 func (r staticTestChatResolver) ResolveChat(
 	_ context.Context,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (modeladapter.ResolvedChat, error) {
 	return modeladapter.NewResolvedChat(r.client, nil)
 }
@@ -28,7 +28,7 @@ func (r staticTestChatResolver) ValidateChatModel(
 	providerID,
 	model string,
 ) error {
-	selection, err := modelref.New(providerID, model)
+	selection, err := modelchoice.New(providerID, model)
 	if err != nil {
 		return err
 	}

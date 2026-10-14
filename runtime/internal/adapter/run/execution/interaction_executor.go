@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"iter"
 	"os"
 	"slices"
@@ -15,6 +14,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -22,6 +22,7 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -42,7 +43,7 @@ const (
 // InteractionChatResolver resolves one exact provider construction selected by
 // a Run. Resolution happens during staging and must not invoke the model.
 type InteractionChatResolver interface {
-	ResolveChat(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error)
+	ResolveChat(ctx context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error)
 }
 
 type InteractionModelEvidence interface {
@@ -188,7 +189,7 @@ func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) e
 }
 
 func validateModelOutputReservation(
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 	options *corechat.Options,
 ) error {
 	if options == nil || options.MaxOutputTokens == nil {
@@ -807,7 +808,7 @@ func (i *InteractionExecutor) RequestRootCancellation(
 
 func (i *InteractionExecutor) resolveChat(
 	ctx context.Context,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (modeladapter.ResolvedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return modeladapter.ResolvedChat{}, fmt.Errorf("execution: Interaction: %w", err)
@@ -844,7 +845,7 @@ func clonedOptions(options *corechat.Options) corechat.Options {
 	return options.Clone()
 }
 
-func executionOptions(selection modelref.Selection, options *corechat.Options) corechat.Options {
+func executionOptions(selection modelchoice.Selection, options *corechat.Options) corechat.Options {
 	cloned := clonedOptions(options)
 	cloned.ReasoningEffort = corechat.ReasoningEffort(selection.ReasoningEffort())
 	return cloned

@@ -1588,6 +1588,217 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/runtime/model",
+      "constants": [
+        {
+          "name": "MaximumModelIdentityCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaximumProviderIdentityCharacters",
+          "type": "untyped int",
+          "value": "64"
+        },
+        {
+          "name": "MaximumReasoningEffortCharacters",
+          "type": "untyped int",
+          "value": "32"
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrIncomplete",
+          "type": "error"
+        },
+        {
+          "name": "ErrModelIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrProviderIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrReasoningEffortIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrReasoningEffortWithoutModel",
+          "type": "error"
+        },
+        {
+          "name": "ErrUnsupported",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "IsInvalid",
+          "signature": "func(err error) bool"
+        },
+        {
+          "name": "New",
+          "signature": "func(provider string, model string) (Selection, error)"
+        },
+        {
+          "name": "NewModelIdentity",
+          "signature": "func(value string) (ModelIdentity, error)"
+        },
+        {
+          "name": "NewProviderIdentity",
+          "signature": "func(value string) (ProviderIdentity, error)"
+        },
+        {
+          "name": "NewReasoningEffortIdentity",
+          "signature": "func(value string) (ReasoningEffortIdentity, error)"
+        },
+        {
+          "name": "NewWithReasoningEffort",
+          "signature": "func(provider string, model string, reasoningEffort string) (Selection, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "ModelIdentity",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Patch",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Provider",
+              "type": "*string"
+            },
+            {
+              "name": "Model",
+              "type": "*string"
+            },
+            {
+              "name": "ReasoningEffort",
+              "type": "*string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Apply",
+              "signature": "func(current Selection) (Selection, error)"
+            },
+            {
+              "name": "Empty",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "ProviderIdentity",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "ReasoningEffortIdentity",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Selection",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Configured",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Equal",
+              "signature": "func(other Selection) bool"
+            },
+            {
+              "name": "JSONSchemaAlias",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Model",
+              "signature": "func() string"
+            },
+            {
+              "name": "Provider",
+              "signature": "func() string"
+            },
+            {
+              "name": "ReasoningEffort",
+              "signature": "func() string"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "ValidateExact",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/runtime/model/catalog",
+      "imports": [
+        "github.com/Tangerg/flame/runtime/model",
+        "github.com/Tangerg/scope/core/chat"
+      ],
+      "variables": [
+        {
+          "name": "ErrUnsupportedInputModality",
+          "type": "error"
+        },
+        {
+          "name": "ErrUnsupportedReasoningEffort",
+          "type": "error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Selections",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "AdmitInput",
+              "signature": "func(selection model.Selection, messages []chat.Message) error"
+            },
+            {
+              "name": "AdmitSelection",
+              "signature": "func(selection model.Selection) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime/plugin",
       "imports": [
         "context",

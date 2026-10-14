@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/optional"
-
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/optional"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // WorkspaceResolver is the filesystem boundary needed when a Session is
@@ -26,7 +25,7 @@ type WorkspaceResolver interface {
 // the Domain patch receives only the resulting exact Workspace value.
 type Patch struct {
 	Title            *string
-	ModelSelection   modelref.Patch
+	ModelSelection   modelchoice.Patch
 	WorkspacePath    *string
 	Favorite         *bool
 	Isolated         *bool
@@ -64,7 +63,7 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 
 // Create starts and persists a fresh root Session in an admitted workspace.
 func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Session, error) {
-	created, _, err := c.prepareInitial(c.newID(), title, cwd, modelref.Selection{})
+	created, _, err := c.prepareInitial(c.newID(), title, cwd, modelchoice.Selection{})
 	if err != nil {
 		return session.Session{}, err
 	}
@@ -80,7 +79,7 @@ func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Se
 func (c *Coordinator) PrepareOpening(
 	ctx context.Context,
 	id, title, cwd string,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (current session.Session, initial *session.Session, err error) {
 	_, err = c.Get(ctx, id)
 	if err == nil {
@@ -94,13 +93,13 @@ func (c *Coordinator) PrepareOpening(
 
 // DefaultModelSelection is the selection a Session created without one runs
 // on. Clients read it instead of choosing a stand-in model of their own.
-func (c *Coordinator) DefaultModelSelection() modelref.Selection {
+func (c *Coordinator) DefaultModelSelection() modelchoice.Selection {
 	return c.defaultModelSelection
 }
 
 func (c *Coordinator) prepareInitial(
 	id, title, cwd string,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (session.Session, *session.Session, error) {
 	workspace, err := c.resolveSessionWorkspace(cwd)
 	if err != nil {
@@ -150,7 +149,7 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 	if err != nil {
 		return session.Session{}, err
 	}
-	var selection *modelref.Selection
+	var selection *modelchoice.Selection
 	if !patch.ModelSelection.Empty() {
 		resolved, selectionErr := patch.ModelSelection.Apply(current.Selection())
 		if selectionErr != nil {

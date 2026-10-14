@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // Only a pre-store refusal proves that a failed command caused no write; store errors retain an unknown outcome.
@@ -47,7 +47,7 @@ type CWDResolver interface {
 }
 
 type ModelAdmitter interface {
-	AdmitSelection(selection modelref.Selection) error
+	AdmitSelection(selection modelchoice.Selection) error
 }
 
 type Dependencies struct {
@@ -63,7 +63,7 @@ type Patch struct {
 	Title          *string
 	Instructions   *string
 	CWD            *string
-	ModelSelection modelref.Patch
+	ModelSelection modelchoice.Patch
 	Cron           *string
 	Enabled        *bool
 }

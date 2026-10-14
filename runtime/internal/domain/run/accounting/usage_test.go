@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestTokensAdd(t *testing.T) {
@@ -119,7 +119,7 @@ func TestUsageRejectsInvalidModelIdentities(t *testing.T) {
 	for _, model := range []string{
 		"bad model",
 		"model\x00shadow",
-		strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1),
+		strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1),
 	} {
 		if err := (Usage{ByModel: map[string]Totals{model: {}}}).Validate(); err == nil {
 			t.Fatalf("Usage.Validate accepted model identity %q", model)

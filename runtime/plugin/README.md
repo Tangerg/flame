@@ -616,3 +616,11 @@ admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
 per-database transaction lifetime live in [`storage/sqlite`](../storage/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
+
+## Model choices
+
+[`model`](../model/README.md) owns the immutable provider/model/reasoning choice
+and atomic patch rules shared with Runtime. [`model/catalog`](../model/catalog/README.md)
+admits known effort levels and input modalities from the released Scope catalog.
+Authors use these public packages directly; role configuration, endpoint evidence
+and execution budgets retain their respective owners.

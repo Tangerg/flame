@@ -7,9 +7,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -82,7 +82,7 @@ func NewChatResolver(providers CredentialLookup) (*ChatResolver, error) {
 // returns all capabilities Runtime consumes from that exact instance. Required
 // authentication fails as invalid credentials; optional-key providers may
 // resolve without a registry row.
-func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (ResolvedChat, error) {
+func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Selection) (ResolvedChat, error) {
 	if c == nil || dependency.Missing(c.providers) {
 		return ResolvedChat{}, errors.New("model: chat resolver is not configured")
 	}
@@ -97,7 +97,7 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selec
 	return NewResolvedChat(client, counter)
 }
 
-func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelref.Selection) (llm.ClientSpec, error) {
+func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelchoice.Selection) (llm.ClientSpec, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return llm.ClientSpec{}, fmt.Errorf("model: chat selection: %w", err)
 	}
@@ -133,7 +133,7 @@ func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelref
 // ValidateChatModel implements the application model-role validation port
 // without leaking the concrete chat client into the use-case layer.
 func (c *ChatResolver) ValidateChatModel(ctx context.Context, providerID, model string) error {
-	selection, err := modelref.New(providerID, model)
+	selection, err := modelchoice.New(providerID, model)
 	if err != nil {
 		return err
 	}

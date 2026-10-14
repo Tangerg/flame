@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -24,7 +24,7 @@ type interactionAccounting struct {
 	usageByProcess           map[agent.ProcessID]map[string]accounting.ModelUsage
 	contextByProcess         map[agent.ProcessID]ModelContextTokenCalibration
 	preparedContextByProcess map[agent.ProcessID]preparedModelContext
-	selection                modelref.Selection
+	selection                modelchoice.Selection
 	toolCalls                int
 }
 
@@ -45,7 +45,7 @@ type modelCallAccountingInput struct {
 }
 
 func newInteractionAccounting(
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) interactionAccounting {
 	return interactionAccounting{
 		usageByProcess:           make(map[agent.ProcessID]map[string]accounting.ModelUsage),
@@ -266,7 +266,7 @@ func (i *interactionAccounting) accountModelCall(
 
 func newModelCallAccountingInput(
 	response *corechat.Response,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 	cost accounting.Cost,
 ) (modelCallAccountingInput, error) {
 	if response == nil || response.Output == nil {

@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -17,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -101,7 +101,7 @@ func TestSessionCRUD(t *testing.T) {
 		t.Fatalf("List on empty DB = %d entries", len(list))
 	}
 
-	selection, selectionErr := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
+	selection, selectionErr := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
 	if selectionErr != nil {
 		t.Fatalf("model selection: %v", selectionErr)
 	}

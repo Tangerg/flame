@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // WaitingSubtreeCancellationRequest carries the complete durable waiting tree
@@ -291,11 +291,11 @@ func validateExecutionContinuationOrder(members []ExecutionMember, canonicalRunI
 
 // RootModelSelection is the root Run's frozen model selection, which a restored
 // executor resumes with.
-func (w ExecutionContinuation) RootModelSelection() modelref.Selection {
+func (w ExecutionContinuation) RootModelSelection() modelchoice.Selection {
 	for _, member := range w.Members {
 		if member.RunID == w.RootRunID {
 			return member.ModelSelection
 		}
 	}
-	return modelref.Selection{}
+	return modelchoice.Selection{}
 }

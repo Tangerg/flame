@@ -3,18 +3,17 @@ package bootstrap
 import (
 	"context"
 
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 // modelEnvironment is the composition-time graph shared by interactive model
 // execution, utility-model work, and embedding-backed search. Its live role
 // states let configuration changes take effect without rebuilding the Instance.
 type modelEnvironment struct {
-	defaultSelection   modelref.Selection
+	defaultSelection   modelchoice.Selection
 	chatResolver       ChatResolver
 	utilityRoleState   *models.RoleState
 	utilityModel       modeladapter.AuxiliaryResolver
@@ -24,7 +23,7 @@ type modelEnvironment struct {
 	callbacks          *pluginsdk.Callbacks
 }
 
-func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
+func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelchoice.Selection) (modelEnvironment, error) {
 	chatResolver, err := modeladapter.NewObservedResolver(cfg.ChatResolver, cfg.Stores.ModelInvocations, cfg.Pricing)
 	if err != nil {
 		return modelEnvironment{}, err

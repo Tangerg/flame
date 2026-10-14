@@ -9,14 +9,13 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/optional"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/optional"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -108,7 +107,7 @@ type StartCommand struct {
 	SessionID      string
 	NewSession     *SessionOpening
 	Actor          *operation.Actor
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 	Options        *corechat.Options
 	// Capabilities is the optional behavior enabled for this Run, already resolved
 	// by the caller against what this build can execute. The use case freezes it at

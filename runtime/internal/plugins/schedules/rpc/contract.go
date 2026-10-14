@@ -2,13 +2,13 @@ package rpc
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/capability"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 const (
@@ -40,7 +40,7 @@ type Page struct {
 type ItemInput struct{ ID string }
 type Ack struct{}
 
-var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelref.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
+var errorCodes = map[string]error{"workspace": workspaceapp.ErrCWDUnavailable, "command_conflict": idempotency.ErrKeyConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelchoice.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
 
 func Classify(err error) string {
 	if failure, ok := errors.AsType[*capability.Refusal](err); ok {
@@ -71,9 +71,9 @@ type ModelPatch struct {
 	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
 }
 
-func EncodeModelPatch(value modelref.Patch) ModelPatch {
+func EncodeModelPatch(value modelchoice.Patch) ModelPatch {
 	return ModelPatch{Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort}
 }
-func (p ModelPatch) Patch() modelref.Patch {
-	return modelref.Patch{Provider: p.Provider, Model: p.Model, ReasoningEffort: p.ReasoningEffort}
+func (p ModelPatch) Patch() modelchoice.Patch {
+	return modelchoice.Patch{Provider: p.Provider, Model: p.Model, ReasoningEffort: p.ReasoningEffort}
 }

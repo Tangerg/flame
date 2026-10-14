@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"syscall"
 
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	workspace "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/transport"
+	models "github.com/Tangerg/flame/runtime/model/catalog"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

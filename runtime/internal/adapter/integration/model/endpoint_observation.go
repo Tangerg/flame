@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ func NewObservedResolver(resolver ChatModelResolver, journal EndpointJournal, pr
 	return &ObservedResolver{resolver: resolver, journal: journal, pricing: pricing}, nil
 }
 
-func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (ResolvedChat, error) {
+func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelchoice.Selection) (ResolvedChat, error) {
 	resolved, err := r.resolver.ResolveChat(ctx, selection)
 	if err != nil {
 		return ResolvedChat{}, err
@@ -55,7 +56,7 @@ func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelref.S
 }
 
 func (r *ObservedResolver) ValidateChatModel(ctx context.Context, provider, model string) error {
-	selection, err := modelref.New(provider, model)
+	selection, err := modelchoice.New(provider, model)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func (r *ObservedResolver) ValidateChatModel(ctx context.Context, provider, mode
 type observedEndpoint struct {
 	inner     chat.Model
 	journal   EndpointJournal
-	selection modelref.Selection
+	selection modelchoice.Selection
 	pricing   accounting.Pricing
 }
 

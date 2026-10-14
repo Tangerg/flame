@@ -3,12 +3,13 @@ package models
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/optional"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type ProviderAuthenticationPolicy uint8
@@ -56,7 +57,7 @@ const (
 // only exist for a provider that actually has an embedding implementation.
 type EmbeddingCapability struct {
 	kind         embeddingCapabilityKind
-	defaultModel modelref.ModelIdentity
+	defaultModel modelchoice.ModelIdentity
 }
 
 func NoEmbeddingCapability() EmbeddingCapability {
@@ -68,7 +69,7 @@ func EmbeddingCapabilityWithoutDefault() EmbeddingCapability {
 }
 
 func EmbeddingCapabilityWithDefault(model string) (EmbeddingCapability, error) {
-	identity, err := modelref.NewModelIdentity(model)
+	identity, err := modelchoice.NewModelIdentity(model)
 	if err != nil {
 		return EmbeddingCapability{}, fmt.Errorf("models: default embedding model: %w", err)
 	}
@@ -80,7 +81,7 @@ func (c EmbeddingCapability) valid() bool {
 	case embeddingUnsupported, embeddingSupportedWithoutDefault:
 		return c.defaultModel.String() == ""
 	case embeddingSupportedWithDefault:
-		_, err := modelref.NewModelIdentity(c.defaultModel.String())
+		_, err := modelchoice.NewModelIdentity(c.defaultModel.String())
 		return err == nil
 	default:
 		return false
@@ -102,7 +103,7 @@ func (c EmbeddingCapability) DefaultModel() (string, bool) {
 // use cases. Closed endpoint, discovery, and embedding policies prevent the
 // contradictory combinations possible in the former public field bag.
 type ProviderMetadata struct {
-	id             modelref.ProviderIdentity
+	id             modelchoice.ProviderIdentity
 	authentication ProviderAuthenticationPolicy
 	endpoint       ProviderEndpointPolicy
 	models         ProviderModelSource
@@ -110,7 +111,7 @@ type ProviderMetadata struct {
 }
 
 func NewProviderMetadata(id string, authentication ProviderAuthenticationPolicy, endpoint ProviderEndpointPolicy, models ProviderModelSource, embedding EmbeddingCapability) (ProviderMetadata, error) {
-	identity, err := modelref.NewProviderIdentity(id)
+	identity, err := modelchoice.NewProviderIdentity(id)
 	if err != nil {
 		return ProviderMetadata{}, fmt.Errorf("models: provider identity: %w", err)
 	}
@@ -165,7 +166,7 @@ func (p ProviderMetadata) ConfigurationSatisfied(entry provider.Provider) bool {
 // Model is the application-facing catalog record used by model selection. It
 // carries only provider capability facts needed by model-selection use cases.
 type Model struct {
-	selection modelref.Selection
+	selection modelchoice.Selection
 	details   *Details
 }
 
@@ -173,7 +174,7 @@ type Model struct {
 // bundled catalog sources therefore cross the same admission boundary before
 // a model identity can reach a picker or generated response.
 func NewModel(providerID, modelID string, details *Details) (Model, error) {
-	selection, err := modelref.New(providerID, modelID)
+	selection, err := modelchoice.New(providerID, modelID)
 	if err != nil {
 		return Model{}, err
 	}
@@ -237,7 +238,7 @@ func validateDetails(details *Details) error {
 	}
 	levels := make(map[string]struct{}, len(details.ReasoningLevels))
 	for _, level := range details.ReasoningLevels {
-		identity, err := modelref.NewReasoningEffortIdentity(level)
+		identity, err := modelchoice.NewReasoningEffortIdentity(level)
 		if err != nil {
 			return fmt.Errorf("models: reasoning level: %w", err)
 		}
@@ -251,7 +252,7 @@ func validateDetails(details *Details) error {
 		return errors.New("models: reasoning levels have no default level")
 	}
 	if details.ReasoningDefault != "" {
-		identity, err := modelref.NewReasoningEffortIdentity(details.ReasoningDefault)
+		identity, err := modelchoice.NewReasoningEffortIdentity(details.ReasoningDefault)
 		if err != nil {
 			return fmt.Errorf("models: default reasoning level: %w", err)
 		}

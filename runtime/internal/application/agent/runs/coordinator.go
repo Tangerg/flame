@@ -7,18 +7,17 @@ import (
 	"iter"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
-
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ErrClosed is returned by [Coordinator.Start] once the Coordinator is closing:
@@ -81,7 +80,7 @@ type Coordinator struct {
 
 // AdmitSelection exposes the same model policy Start applies before any Goal
 // can freeze that selection durably.
-func (c *Coordinator) AdmitSelection(selection modelref.Selection) error {
+func (c *Coordinator) AdmitSelection(selection modelchoice.Selection) error {
 	if err := c.models.AdmitSelection(selection); err != nil {
 		return fmt.Errorf("%w: %w", ErrUnsupportedModelSelection, err)
 	}

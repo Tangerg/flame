@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func newUtilityRoleStore(t *testing.T) *sqlite.UtilityRoleStore {
@@ -64,8 +65,8 @@ func TestUtilityRoleStoreRejectsPartialPersistedSelection(t *testing.T) {
 		t.Fatalf("seed corrupt role: %v", execErr)
 	}
 	_, _, err = sqlite.NewUtilityRoleStore(db).LoadUtilityRole(context.Background())
-	if !errors.Is(err, modelref.ErrIncomplete) {
-		t.Fatalf("load partial role error = %v, want %v", err, modelref.ErrIncomplete)
+	if !errors.Is(err, modelchoice.ErrIncomplete) {
+		t.Fatalf("load partial role error = %v, want %v", err, modelchoice.ErrIncomplete)
 	}
 }
 

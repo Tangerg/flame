@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -27,7 +27,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 			}
 			request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 			before := request.Clone()
-			selection, err := modelref.New("test", "model")
+			selection, err := modelchoice.New("test", "model")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -56,7 +56,7 @@ func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := modelref.New("test", "model")
+	selection, err := modelchoice.New("test", "model")
 	if err != nil {
 		t.Fatal(err)
 	}

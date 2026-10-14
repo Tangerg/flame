@@ -8,7 +8,7 @@ import (
 	"unicode"
 
 	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type modelSource uint8
@@ -52,7 +52,7 @@ func (p modelPolicy) validate() error {
 		if p.listProtocol != 0 {
 			return errors.New("bundled model policy cannot carry a listing protocol")
 		}
-		if _, err := modelref.NewModelIdentity(p.defaultModel); err != nil {
+		if _, err := modelchoice.NewModelIdentity(p.defaultModel); err != nil {
 			return fmt.Errorf("bundled model policy model identity: %w", err)
 		}
 	case modelSourceEndpoint:
@@ -188,7 +188,7 @@ func (p providerProfile) withChatModels(models modelPolicy) providerProfile {
 }
 
 func (p providerProfile) validate() error {
-	if _, err := modelref.NewProviderIdentity(string(p.id)); err != nil {
+	if _, err := modelchoice.NewProviderIdentity(string(p.id)); err != nil {
 		return fmt.Errorf("provider identity: %w", err)
 	}
 	if err := p.credential.validate(); err != nil {

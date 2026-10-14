@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 	"time"
@@ -11,9 +10,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // in-memory goals.Store for the tool tests.
@@ -66,7 +66,7 @@ func testSessionActiveGoal() goalstate.Goal {
 	return g
 }
 
-func testSelection() modelref.Selection {
+func testSelection() modelchoice.Selection {
 	return testsupport.MustModelSelection("provider", "model")
 }
 
@@ -280,11 +280,11 @@ func TestGetGoalReturnsNullWhenAbsent(t *testing.T) {
 type fakeStarter struct {
 	sessionID    string
 	objective    string
-	selection    modelref.Selection
+	selection    modelchoice.Selection
 	capabilities run.Capabilities
 }
 
-func (f *fakeStarter) Start(_ context.Context, sessionID, objective string, selection modelref.Selection, capabilities run.Capabilities) (goalstate.Goal, error) {
+func (f *fakeStarter) Start(_ context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error) {
 	f.sessionID = sessionID
 	f.objective = objective
 	f.selection = selection

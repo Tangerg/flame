@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -13,6 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -228,7 +228,7 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 				message := chat.NewAssistantMessage(chat.NewTextPart("done"))
 				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 			})
-			selected, err := modelref.NewWithReasoningEffort("openai", "gpt-5-pro", "high")
+			selected, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5-pro", "high")
 			if err != nil {
 				t.Fatal(err)
 			}

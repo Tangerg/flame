@@ -3,11 +3,12 @@ package execution
 import (
 	"context"
 	"errors"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type modelCalls struct {
@@ -20,7 +21,7 @@ func (i *interactionSession) modelCallContext(ctx context.Context, member runs.E
 	return executionctx.WithModelCalls(ctx, modelCalls{session: i, member: member})
 }
 
-func (m modelCalls) Start(ctx context.Context, id string, selection modelref.Selection) (func(context.Context, error) error, error) {
+func (m modelCalls) Start(ctx context.Context, id string, selection modelchoice.Selection) (func(context.Context, error) error, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return nil, err
 	}

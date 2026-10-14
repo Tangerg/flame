@@ -7,10 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -18,7 +15,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // invalidArtifact is the protocol adapter's structural-document error. Semantic
@@ -35,7 +34,7 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	if err := protocol.ValidateWireTree(art); err != nil {
 		return sessions.PortableSnapshot{}, invalidArtifact("artifact", "%v", err)
 	}
-	selection, err := modelref.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
 	if err == nil {
 		err = selection.ValidateExact()
 	}
@@ -180,7 +179,7 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, err
 	}
-	selection, err := modelref.NewWithReasoningEffort(artifact.Provider, artifact.Model, artifact.ReasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(artifact.Provider, artifact.Model, artifact.ReasoningEffort)
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path, "invalid model selection: %v", err)
 	}

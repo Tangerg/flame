@@ -12,9 +12,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // Status is one Goal's durable lifecycle state.
@@ -47,7 +47,7 @@ type Snapshot struct {
 	Status         Status
 	ReasonCode     ReasonCode
 	ReasonDetail   string
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 	Capabilities   run.Capabilities
 	Used           Usage
 	IncarnationID  string
@@ -63,7 +63,7 @@ type Goal struct {
 	objective     string
 	status        Status
 	reason        Reason
-	selection     modelref.Selection
+	selection     modelchoice.Selection
 	capabilities  run.Capabilities
 	used          Usage
 	incarnationID goalref.IncarnationID
@@ -137,7 +137,7 @@ func (c Current) Version() Version {
 // Restore remains strict about already-persisted snapshots.
 func New(
 	sessionID, objective string,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 	capabilities run.Capabilities,
 	incarnationID string,
 	now time.Time,
@@ -264,13 +264,13 @@ func (g Goal) Reason() Reason    { return g.reason }
 // ModelSelection is the Goal's own model override. Without one, each Goal Run
 // runs on the Session's selection at the time it starts, never a copy taken
 // when the Goal began.
-func (g Goal) ModelSelection() modelref.Selection { return g.selection }
-func (g Goal) Capabilities() run.Capabilities     { return g.capabilities.Clone() }
-func (g Goal) Used() Usage                        { return g.used }
-func (g Goal) IncarnationID() string              { return g.incarnationID.String() }
-func (g Goal) Revision() int64                    { return g.revision }
-func (g Goal) CreatedAt() time.Time               { return g.createdAt }
-func (g Goal) UpdatedAt() time.Time               { return g.updatedAt }
+func (g Goal) ModelSelection() modelchoice.Selection { return g.selection }
+func (g Goal) Capabilities() run.Capabilities        { return g.capabilities.Clone() }
+func (g Goal) Used() Usage                           { return g.used }
+func (g Goal) IncarnationID() string                 { return g.incarnationID.String() }
+func (g Goal) Revision() int64                       { return g.revision }
+func (g Goal) CreatedAt() time.Time                  { return g.createdAt }
+func (g Goal) UpdatedAt() time.Time                  { return g.updatedAt }
 
 func (g Goal) Version() Version {
 	return Version{sessionID: g.sessionID, incarnationID: g.incarnationID, revision: g.revision, committed: true}

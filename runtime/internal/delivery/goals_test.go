@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestMapGoalErrPreservesInvalidModelIdentity(t *testing.T) {
-	err := mapGoalErr(modelref.ErrModelIdentity)
-	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrModelIdentity) {
+	err := mapGoalErr(modelchoice.ErrModelIdentity)
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelchoice.ErrModelIdentity) {
 		t.Fatalf("err = %v, want ErrInvalidParams and ErrModelIdentity", err)
 	}
 }
@@ -78,7 +78,7 @@ func TestGoalProjectsCompletingStateDuringSettlement(t *testing.T) {
 
 func serverGoalWithState(t *testing.T, status goal.Status, reason goal.ReasonCode, detail string) goal.Goal {
 	t.Helper()
-	selection, err := modelref.New("provider", "model")
+	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
 	}

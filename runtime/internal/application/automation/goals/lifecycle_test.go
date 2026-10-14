@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type alreadyTerminalRuns struct{}
 
 func (alreadyTerminalRuns) WaitSessionStartable(context.Context, string) error { return nil }
-func (alreadyTerminalRuns) AdmitSelection(modelref.Selection) error            { return nil }
+func (alreadyTerminalRuns) AdmitSelection(modelchoice.Selection) error         { return nil }
 func (alreadyTerminalRuns) Start(context.Context, runs.StartCommand) (runs.StartResult, error) {
 	return runs.StartResult{}, nil
 }

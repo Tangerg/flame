@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
@@ -343,7 +343,7 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
 		return schedule.Schedule{}, err
 	}
-	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return schedule.Schedule{}, fmt.Errorf("sqlite: decode schedule model selection: %w", err)
 	}
@@ -375,7 +375,7 @@ func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	if err := json.Unmarshal([]byte(invocation), &snapshot.Invocation, json.RejectUnknownMembers(true)); err != nil {
 		return schedule.Occurrence{}, err
 	}
-	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return schedule.Occurrence{}, fmt.Errorf("decode schedule occurrence model selection: %w", err)
 	}

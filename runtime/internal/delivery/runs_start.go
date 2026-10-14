@@ -7,15 +7,14 @@ import (
 	"iter"
 	"slices"
 
-	corechat "github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
+	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // StartRun translates runs.start into the in-process execution path. It returns
@@ -27,7 +26,7 @@ import (
 // runs.resume.
 func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	options := generationOptionsFromWire(in.Params)
-	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}
@@ -146,7 +145,7 @@ func wireRunStartErr(err error) error {
 		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "input must contain a user text or image block")
-	case modelref.IsInvalid(err):
+	case modelchoice.IsInvalid(err):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrInvalidRunOptions):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())

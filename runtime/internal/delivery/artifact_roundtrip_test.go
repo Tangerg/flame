@@ -11,9 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -24,7 +21,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // TestArtifactVersionMatchesCurrentContractBaseline checks that session exports
@@ -348,7 +347,7 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 	// path would make the two exports differ by macOS's /private prefix rather than
 	// by anything the archive carries.
 	cwd := canonicalWorkspacePath(t, t.TempDir())
-	selection, err := modelref.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
+	selection, err := modelchoice.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
 	if err != nil {
 		t.Fatalf("seed model selection: %v", err)
 	}
@@ -385,7 +384,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	cost := 1.25
 	outcome := run.OutcomeCanceled
-	selection, err := modelref.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
+	selection, err := modelchoice.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
@@ -428,7 +427,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	outcome := run.OutcomeCompleted
-	selection, err := modelref.NewWithReasoningEffort("openai", "gpt-child", "medium")
+	selection, err := modelchoice.NewWithReasoningEffort("openai", "gpt-child", "medium")
 	if err != nil {
 		t.Fatalf("child model selection: %v", err)
 	}

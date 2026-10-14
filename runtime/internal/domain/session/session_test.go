@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
 	startedAt := time.Unix(1, 0).UTC()
-	initial, err := modelref.New("provider-a", "shared-model")
+	initial, err := modelchoice.New("provider-a", "shared-model")
 	if err != nil {
 		t.Fatalf("initial selection: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
 		t.Fatalf("initial selection = %v, want %v", parent.Selection(), initial)
 	}
 
-	replacement, err := modelref.New("provider-b", "shared-model")
+	replacement, err := modelchoice.New("provider-b", "shared-model")
 	if err != nil {
 		t.Fatalf("replacement selection: %v", err)
 	}
@@ -247,8 +247,8 @@ func mustWorkspace(t *testing.T, path string) Workspace {
 
 // mustModelSelection stays local: testsupport builds session fixtures, so this
 // package's own test cannot import it without a cycle.
-func mustModelSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
+func mustModelSelection(provider, model string) modelchoice.Selection {
+	selection, err := modelchoice.New(provider, model)
 	if err != nil {
 		panic(err)
 	}

@@ -12,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestSchedulesCreateListDelete(t *testing.T) {
@@ -221,7 +220,7 @@ func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Co
 
 type scheduleModelAdmitter struct{}
 
-func (scheduleModelAdmitter) AdmitSelection(modelref.Selection) error { return nil }
+func (scheduleModelAdmitter) AdmitSelection(modelchoice.Selection) error { return nil }
 
 func (m *memoryScheduleRegistry) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]scheduledomain.Schedule, error) {
 	out := make([]scheduledomain.Schedule, 0, len(m.items))

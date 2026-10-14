@@ -5,15 +5,14 @@ import (
 	"iter"
 	"time"
 
-	corechat "github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // The ports this package consumes to run a Segment. They are defined here on the
@@ -78,7 +77,7 @@ type WorkingContextComposer interface {
 // Authored input is structurally validated here; model-media admission belongs
 // to the complete transformed request at the physical execution boundary.
 type ModelAdmitter interface {
-	AdmitSelection(selection modelref.Selection) error
+	AdmitSelection(selection modelchoice.Selection) error
 }
 
 // WorkingContextInput is the exact fresh-root context composition input. Seed
@@ -243,7 +242,7 @@ type SessionCreator interface {
 	PrepareOpening(
 		ctx context.Context,
 		id, title, cwd string,
-		selection modelref.Selection,
+		selection modelchoice.Selection,
 	) (session.Session, *session.Session, error)
 }
 
@@ -308,7 +307,7 @@ type RootExecutionStart struct {
 	// the scratch copy.
 	WorkspaceCWD   string
 	Isolated       bool
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 	Options        *corechat.Options
 	// WorkingContext is the complete provider-neutral context for a fresh
 	// execution, including the current user message as its final entry. It is a
@@ -333,7 +332,7 @@ type ExecutionMember struct {
 	MemberID        string
 	ParentRunID     string
 	SpawnedByItemID string
-	ModelSelection  modelref.Selection
+	ModelSelection  modelchoice.Selection
 	Metrics         run.Metrics
 	// DrainedTools distinguishes an unfinished parent Tool from a result already
 	// committed while the executor still retains the child in an active batch.

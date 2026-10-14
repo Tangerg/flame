@@ -5,11 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -40,7 +39,7 @@ func (passthroughRunWorkingContext) ComposeWorkingContext(
 
 type acceptAllRunModelInputs struct{}
 
-func (acceptAllRunModelInputs) AdmitSelection(modelref.Selection) error { return nil }
+func (acceptAllRunModelInputs) AdmitSelection(modelchoice.Selection) error { return nil }
 
 func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinator {
 	t.Helper()
@@ -94,7 +93,7 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	return coordinator
 }
 
-func testDefaultSelection() modelref.Selection {
+func testDefaultSelection() modelchoice.Selection {
 	return testsupport.MustModelSelection("test-provider", "test-model")
 }
 

@@ -17,6 +17,8 @@ var publicPackagePaths = []string{
 	runtimeModulePath + "/capability",
 	runtimeModulePath + "/jsoninput",
 	runtimeModulePath + "/localruntime",
+	runtimeModulePath + "/model",
+	runtimeModulePath + "/model/catalog",
 	runtimeModulePath + "/plugin",
 	runtimeModulePath + "/plugin/sqlite",
 	runtimeModulePath + "/point",

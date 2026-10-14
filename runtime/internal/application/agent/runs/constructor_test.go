@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -42,7 +42,7 @@ func (passthroughWorkingContext) ComposeWorkingContext(
 
 type acceptAllModelInputs struct{}
 
-func (acceptAllModelInputs) AdmitSelection(modelref.Selection) error { return nil }
+func (acceptAllModelInputs) AdmitSelection(modelchoice.Selection) error { return nil }
 
 // mustNewCoordinator completes dependencies unrelated to a focused test. The
 // production constructor remains strict; tests opt into explicit inert doubles

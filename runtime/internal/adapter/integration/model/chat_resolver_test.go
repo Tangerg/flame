@@ -2,14 +2,14 @@ package model
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // TestChatResolverRejectsUnconfigured verifies an explicit provider that
@@ -56,9 +56,9 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 	}
 }
 
-func testDeepSeekSelection(t testing.TB, model string) modelref.Selection {
+func testDeepSeekSelection(t testing.TB, model string) modelchoice.Selection {
 	t.Helper()
-	selection, err := modelref.New("deepseek", model)
+	selection, err := modelchoice.New("deepseek", model)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // UsageSource reads retained physical evidence from one snapshot. The callback
@@ -105,7 +106,7 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 			return fmt.Errorf("sessions: aggregate endpoint %q: %w", source.Invocation.ID, err)
 		}
 		model := source.ServedModel
-		if _, err := modelref.New(source.Invocation.Provider, model); err != nil {
+		if _, err := modelchoice.New(source.Invocation.Provider, model); err != nil {
 			return err
 		}
 		scope := "unattached"

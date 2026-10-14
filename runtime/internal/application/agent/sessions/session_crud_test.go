@@ -10,9 +10,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type crudSessionStore struct {
@@ -233,7 +233,7 @@ func TestGeneratedTitleLosesToConcurrentUserTitle(t *testing.T) {
 }
 
 func TestViewPresentsExactSessionSelectionAndWorkspace(t *testing.T) {
-	selection, selectionErr := modelref.NewWithReasoningEffort("anthropic", "claude-opus-4-8", "high")
+	selection, selectionErr := modelchoice.NewWithReasoningEffort("anthropic", "claude-opus-4-8", "high")
 	if selectionErr != nil {
 		t.Fatal(selectionErr)
 	}
@@ -265,7 +265,7 @@ func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 	title := "  Renamed  "
 	selection := testsupport.MustModelSelection("anthropic", "claude-opus-4-8")
 	provider, model, effort := selection.Provider(), selection.Model(), "high"
-	selection, selectionErr := modelref.NewWithReasoningEffort(provider, model, effort)
+	selection, selectionErr := modelchoice.NewWithReasoningEffort(provider, model, effort)
 	if selectionErr != nil {
 		t.Fatal(selectionErr)
 	}
@@ -274,7 +274,7 @@ func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 
 	got, err := c.Update(ctx, "ses_1", Patch{
 		Title: &title,
-		ModelSelection: modelref.Patch{
+		ModelSelection: modelchoice.Patch{
 			Provider: &provider, Model: &model, ReasoningEffort: &effort,
 		},
 		WorkspacePath: &cwd,
@@ -308,7 +308,7 @@ func TestSessionPatchCloneOwnsMutableInput(t *testing.T) {
 	favorite, isolated := true, true
 	patch := Patch{
 		Title: &title,
-		ModelSelection: modelref.Patch{
+		ModelSelection: modelchoice.Patch{
 			Provider: &provider, Model: &model, ReasoningEffort: &effort,
 		},
 		WorkspacePath: &cwd,

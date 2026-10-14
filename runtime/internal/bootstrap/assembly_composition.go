@@ -21,11 +21,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // policyComposition contains the application policies that share the same
@@ -187,7 +187,7 @@ type executionComposition struct {
 func buildExecutionComposition(
 	ctx context.Context,
 	cfg Config,
-	defaultSelection modelref.Selection,
+	defaultSelection modelchoice.Selection,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
@@ -339,13 +339,13 @@ func buildExecutionComposition(
 	}, nil
 }
 
-func runtimeDefaultModelSelection(cfg Config) (modelref.Selection, error) {
-	selection, err := modelref.New(cfg.Provider, cfg.Model)
+func runtimeDefaultModelSelection(cfg Config) (modelchoice.Selection, error) {
+	selection, err := modelchoice.New(cfg.Provider, cfg.Model)
 	if err == nil {
 		err = selection.ValidateExact()
 	}
 	if err != nil {
-		return modelref.Selection{}, fmt.Errorf("runtime: default model selection: %w", err)
+		return modelchoice.Selection{}, fmt.Errorf("runtime: default model selection: %w", err)
 	}
 	return selection, nil
 }

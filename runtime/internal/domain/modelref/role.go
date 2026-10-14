@@ -1,15 +1,17 @@
 package modelref
 
+import modelchoice "github.com/Tangerg/flame/runtime/model"
+
 // Role is an optional provider/model assignment for a specialized Runtime
-// capability. Unlike an execution Selection, it has no model-owned options;
+// capability. Unlike an execution model selection, it has no model-owned options;
 // its zero value leaves the capability unset or inheriting its main model.
 type Role struct {
-	selection Selection
+	selection modelchoice.Selection
 }
 
 // NewRole constructs an optional specialized model assignment.
 func NewRole(provider, model string) (Role, error) {
-	selection, err := New(provider, model)
+	selection, err := modelchoice.New(provider, model)
 	if err != nil {
 		return Role{}, err
 	}
@@ -26,8 +28,8 @@ func (r Role) Provider() string { return r.selection.Provider() }
 func (r Role) Model() string { return r.selection.Model() }
 
 // Selection projects a configured role into the exact execution selection
-// consumed by model adapters; an unset role projects to the zero Selection.
-func (r Role) Selection() Selection { return r.selection }
+// consumed by model adapters; an unset role projects to the zero model selection.
+func (r Role) Selection() modelchoice.Selection { return r.selection }
 
 // String returns the complete role identity used in diagnostics.
 func (r Role) String() string { return r.selection.String() }

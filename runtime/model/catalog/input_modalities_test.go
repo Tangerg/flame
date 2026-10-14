@@ -5,10 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
@@ -19,7 +18,7 @@ func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
 	messages := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("inspect"), chat.NewMediaPart(image)),
 	}
-	textOnly, err := modelref.New("alibaba", "qwen-mt-plus")
+	textOnly, err := modelchoice.New("alibaba", "qwen-mt-plus")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +26,7 @@ func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
 		t.Fatalf("text-only model error = %v, want ErrUnsupportedInputModality", admitErr)
 	}
 
-	imageCapable, err := modelref.New("openai", "gpt-5.6-sol")
+	imageCapable, err := modelchoice.New("openai", "gpt-5.6-sol")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +36,7 @@ func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
 }
 
 func TestSelectionsAdmitInputRejectsMissingModelSelection(t *testing.T) {
-	err := (Selections{}).AdmitInput(modelref.Selection{}, []chat.Message{
+	err := (Selections{}).AdmitInput(modelchoice.Selection{}, []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("inspect")),
 	})
 	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
@@ -50,7 +49,7 @@ func TestSelectionsAdmitInputAllowsPrivateCatalogMiss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := modelref.New("openai-compatible", "private-vision-model")
+	selection, err := modelchoice.New("openai-compatible", "private-vision-model")
 	if err != nil {
 		t.Fatal(err)
 	}

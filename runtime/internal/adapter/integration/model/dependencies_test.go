@@ -2,12 +2,13 @@ package model
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type pointerCredentialLookup struct{}
@@ -28,7 +29,7 @@ func (fakeEndpointJournal) SettleEndpointInvocation(context.Context, modelref.En
 
 type pointerChatResolver struct{}
 
-func (*pointerChatResolver) ResolveChat(context.Context, modelref.Selection) (ResolvedChat, error) {
+func (*pointerChatResolver) ResolveChat(context.Context, modelchoice.Selection) (ResolvedChat, error) {
 	return ResolvedChat{}, nil
 }
 
@@ -55,7 +56,7 @@ func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
 	if _, err := LiveUtilityModel(nilResolver, selection, role, nil); err == nil || !strings.Contains(err.Error(), "chat resolver") {
 		t.Fatalf("LiveUtilityModel typed-nil resolver error = %v", err)
 	}
-	if _, err := LiveUtilityModel(resolver, modelref.Selection{}, role, nil); err == nil || !strings.Contains(err.Error(), "model selection") {
+	if _, err := LiveUtilityModel(resolver, modelchoice.Selection{}, role, nil); err == nil || !strings.Contains(err.Error(), "model selection") {
 		t.Fatalf("LiveUtilityModel empty main selection error = %v", err)
 	}
 	var nilRole *pointerRoleSource

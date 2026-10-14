@@ -11,13 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/google/uuid"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/google/uuid"
 )
 
 func newScheduleStore(t *testing.T) *sqlite.ScheduleStore {
@@ -92,7 +91,7 @@ func TestScheduleCRUD(t *testing.T) {
 	s := newScheduleStore(t)
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
-	selection, selectionErr := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
+	selection, selectionErr := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
 	if selectionErr != nil {
 		t.Fatalf("model selection: %v", selectionErr)
 	}
@@ -392,7 +391,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	store, _ := newScheduleStores(t)
 	dueAt := time.Date(2026, 7, 25, 9, 0, 0, 0, time.UTC)
 	nextAt := dueAt.Add(time.Hour)
-	selection, selectionErr := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "xhigh")
+	selection, selectionErr := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "xhigh")
 	if selectionErr != nil {
 		t.Fatalf("model selection: %v", selectionErr)
 	}

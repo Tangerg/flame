@@ -10,17 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 const createDescription = `Create and start a persistent autonomous Goal for the current session.
@@ -71,7 +69,7 @@ type GoalOutcomeReporter interface {
 // GoalStarter is the one lifecycle operation create_goal needs. The Driver owns
 // admission waiting and loop lifetime; the tool does not reproduce either.
 type GoalStarter interface {
-	Start(ctx context.Context, sessionID, objective string, selection modelref.Selection, capabilities run.Capabilities) (goalstate.Goal, error)
+	Start(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error)
 }
 
 type creator struct{ goals GoalStarter }
@@ -151,7 +149,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	capabilities, _ := executionctx.RunCapabilities(ctx)
 	// Nobody chose a model for this Goal, so its Runs follow the Session's
 	// selection rather than a copy of the model this Run happens to use.
-	g, err := c.goals.Start(ctx, sessionID, args.Objective, modelref.Selection{}, capabilities)
+	g, err := c.goals.Start(ctx, sessionID, args.Objective, modelchoice.Selection{}, capabilities)
 	if err != nil {
 		switch {
 		case errors.Is(err, goals.ErrGoalActive):

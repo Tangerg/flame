@@ -12,10 +12,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestPluginThemeColorsRejectNonHexValues(t *testing.T) {
@@ -1400,9 +1400,9 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 	valid := StartRunRequest{
 		SessionID:       "ses_1",
 		Input:           []ContentBlock{{Type: ContentBlockText, Text: "go"}},
-		Provider:        strings.Repeat("提", modelref.MaximumProviderIdentityCharacters),
-		Model:           strings.Repeat("模", modelref.MaximumModelIdentityCharacters),
-		ReasoningEffort: strings.Repeat("强", modelref.MaximumReasoningEffortCharacters),
+		Provider:        strings.Repeat("提", modelchoice.MaximumProviderIdentityCharacters),
+		Model:           strings.Repeat("模", modelchoice.MaximumModelIdentityCharacters),
+		ReasoningEffort: strings.Repeat("强", modelchoice.MaximumReasoningEffortCharacters),
 	}
 	if err := valid.ValidateWire(); err != nil {
 		t.Fatalf("identity boundaries: %v", err)
@@ -1420,7 +1420,7 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 		},
 		{
 			name: "model too long", shape: "StartRunRequest", field: "model",
-			value: StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Provider: "openai", Model: strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1)},
+			value: StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Provider: "openai", Model: strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1)},
 		},
 		{
 			name: "reasoning control", shape: "StartRunRequest", field: "reasoningEffort",
@@ -1432,7 +1432,7 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 		},
 		{
 			name: "catalog model id too long", shape: "Model", field: "id",
-			value: Model{ID: strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1), Provider: "openai"},
+			value: Model{ID: strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1), Provider: "openai"},
 		},
 		{
 			name: "reasoning level whitespace", shape: "ModelCapabilities", field: "reasoningLevels[0]",
@@ -1440,16 +1440,16 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 		},
 		{
 			name: "reasoning level too long", shape: "ModelCapabilities", field: "reasoningLevels[0]",
-			value: ModelCapabilities{Reasoning: true, ReasoningLevels: []string{strings.Repeat("e", modelref.MaximumReasoningEffortCharacters+1)}},
+			value: ModelCapabilities{Reasoning: true, ReasoningLevels: []string{strings.Repeat("e", modelchoice.MaximumReasoningEffortCharacters+1)}},
 		},
 		{
 			name: "usage model key whitespace", shape: "Usage", field: "byModel[\"bad model\"]",
 			value: Usage{ByModel: map[string]ModelUsage{"bad model": {}}},
 		},
 		{
-			name: "artifact model key too long", shape: "Usage", field: "byModel[\"" + strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1) + "\"]",
+			name: "artifact model key too long", shape: "Usage", field: "byModel[\"" + strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1) + "\"]",
 			value: Usage{ByModel: map[string]ModelUsage{
-				strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1): {},
+				strings.Repeat("m", modelchoice.MaximumModelIdentityCharacters+1): {},
 			}},
 		},
 	} {

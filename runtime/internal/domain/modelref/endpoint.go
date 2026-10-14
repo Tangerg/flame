@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -57,7 +58,7 @@ func (i EndpointInvocation) Validate() error {
 	if i.Caller.Target.Scope != "call" || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {
 		return errors.New("models: endpoint invocation requires a distinct calling model operation")
 	}
-	if _, err := New(i.Provider, i.Model); err != nil {
+	if _, err := modelchoice.New(i.Provider, i.Model); err != nil {
 		return err
 	}
 	if i.SessionID != "" {

@@ -5,12 +5,6 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"net/http"
 	"path/filepath"
@@ -21,10 +15,16 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -34,10 +34,10 @@ import (
 type routedCallResolver struct {
 	model      chat.Model
 	mu         sync.Mutex
-	selections []modelref.Selection
+	selections []modelchoice.Selection
 }
 
-func (r *routedCallResolver) ResolveChat(_ context.Context, selection modelref.Selection) (models.ResolvedChat, error) {
+func (r *routedCallResolver) ResolveChat(_ context.Context, selection modelchoice.Selection) (models.ResolvedChat, error) {
 	r.mu.Lock()
 	r.selections = append(r.selections, selection)
 	r.mu.Unlock()
@@ -461,7 +461,7 @@ type sourceAdmissionPublisher struct {
 	draft   run.Draft
 }
 
-func (p sourceAdmissionPublisher) Start(ctx context.Context, id string, selection modelref.Selection) (func(context.Context, error) error, error) {
+func (p sourceAdmissionPublisher) Start(ctx context.Context, id string, selection modelchoice.Selection) (func(context.Context, error) error, error) {
 	if err := p.journal.StartModelInvocation(ctx, p.draft.SessionID, p.draft.RunID, p.draft.SegmentID, id, time.Now().UTC(), run.ModelIndependent); err != nil {
 		return nil, err
 	}

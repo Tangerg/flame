@@ -3,8 +3,8 @@ package testsupport
 import (
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // MustRestoreSession fills irrelevant lifecycle defaults, restores snapshot, and
@@ -41,8 +41,8 @@ func MustWorkspace(path string) session.Workspace {
 	return workspace
 }
 
-func fixtureSelection() modelref.Selection {
-	selection, err := modelref.New("test-provider", "test-model")
+func fixtureSelection() modelchoice.Selection {
+	selection, err := modelchoice.New("test-provider", "test-model")
 	if err != nil {
 		panic(err)
 	}

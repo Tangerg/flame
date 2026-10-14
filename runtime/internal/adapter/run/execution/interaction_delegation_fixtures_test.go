@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -167,7 +167,7 @@ func (d *delegateSessionStore) PrepareOpening(
 	string,
 	string,
 	string,
-	modelref.Selection,
+	modelchoice.Selection,
 ) (session.Session, *session.Session, error) {
 	return d.value, nil, nil
 }

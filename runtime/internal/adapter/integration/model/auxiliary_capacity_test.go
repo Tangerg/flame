@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -18,7 +18,7 @@ func (f auxiliaryCountFunc) CountInputTokens(ctx context.Context, request *chat.
 	return f(ctx, request)
 }
 
-func capacityFixture(t *testing.T, selection modelref.Selection, counter InputTokenCounter) SelectedChat {
+func capacityFixture(t *testing.T, selection modelchoice.Selection, counter InputTokenCounter) SelectedChat {
 	t.Helper()
 	resolved, err := NewResolvedChat(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		t.Fatal("admission executed provider")
@@ -110,7 +110,7 @@ func TestAuxiliaryCapacityFallbackAndUnknownCapacityPreserveTheirMeaning(t *test
 }
 
 func TestAuxiliaryWrappingPreservesCapacityCounterAndSelectedReasoning(t *testing.T) {
-	selection, err := modelref.NewWithReasoningEffort("openai", "gpt-5-pro", "high")
+	selection, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5-pro", "high")
 	if err != nil {
 		t.Fatal(err)
 	}

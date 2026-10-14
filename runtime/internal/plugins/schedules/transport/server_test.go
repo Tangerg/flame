@@ -1,16 +1,17 @@
 package transport
 
 import (
+	"context"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"reflect"
+	"strings"
+	"sync/atomic"
 	"testing"
 
-	"context"
-	"fmt"
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
@@ -18,11 +19,10 @@ import (
 	scheduledb "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/tools"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/runtime/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
-	"strings"
-	"sync/atomic"
 )
 
 func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {

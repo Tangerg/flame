@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -21,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -90,7 +90,7 @@ func (f *fakeRunSessions) setActive(value *run.Run) {
 func (f *fakeRunSessions) PrepareOpening(
 	_ context.Context,
 	id, title, cwd string,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 ) (session.Session, *session.Session, error) {
 	f.createdTitle = title
 	f.sess = testsupport.MustRestoreSession(session.Snapshot{ID: id, Title: title, Workspace: testsupport.MustWorkspace(cwd), Selection: selection})
@@ -399,10 +399,10 @@ func (f *fakeExecutionPorts) SubmitSteer(_ context.Context, ref ExecutorRef, pre
 type modelInputAdmissionProbe struct {
 	selectionErr   error
 	selectionCalls int
-	selected       []modelref.Selection
+	selected       []modelchoice.Selection
 }
 
-func (m *modelInputAdmissionProbe) AdmitSelection(selection modelref.Selection) error {
+func (m *modelInputAdmissionProbe) AdmitSelection(selection modelchoice.Selection) error {
 	m.selectionCalls++
 	m.selected = append(m.selected, selection)
 	return m.selectionErr
@@ -1133,9 +1133,9 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	activatedAfterOpening := false
 	control.resumeCheck = func() { _, activatedAfterOpening = effects.opening().Resume() }
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
-	c.modelSelector = modelSelectorFunc(func(context.Context, modelref.Selection, *corechat.Request) (modelref.Selection, error) {
+	c.modelSelector = modelSelectorFunc(func(context.Context, modelchoice.Selection, *corechat.Request) (modelchoice.Selection, error) {
 		t.Fatal("Resume reran model selection")
-		return modelref.Selection{}, errors.New("unexpected selection")
+		return modelchoice.Selection{}, errors.New("unexpected selection")
 	})
 
 	result, err := c.Resume(context.Background(), ResumeCommand{
@@ -2313,7 +2313,7 @@ func TestStartRejectsUnsupportedReasoningSelectionBeforeAnyOpeningSideEffect(t *
 	unsupported := errors.New("reasoning effort is not advertised by the selected model")
 	probe := &modelInputAdmissionProbe{selectionErr: unsupported}
 	c.models = probe
-	selection, err := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "impossible")
+	selection, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "impossible")
 	if err != nil {
 		t.Fatal(err)
 	}

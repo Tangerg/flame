@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 const sessionColumns = `id, title, title_search, workspace_path, workspace_search, parent_id, created_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
@@ -53,7 +53,7 @@ func rowToSession(scanner interface {
 		return session.Session{}, err
 	}
 	snapshot.Workspace = workspace
-	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return session.Session{}, err
 	}

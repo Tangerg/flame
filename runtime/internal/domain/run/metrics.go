@@ -3,12 +3,12 @@ package run
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/scope/core/chat"
 	"math"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // Metrics is the cumulative consumption of one Run across all of its Segments.
@@ -110,7 +110,7 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 	if err := m.Validate(); err != nil {
 		return Metrics{}, err
 	}
-	if _, err := modelref.NewModelIdentity(model); err != nil {
+	if _, err := modelchoice.NewModelIdentity(model); err != nil {
 		return Metrics{}, err
 	}
 	cost, err := accounting.CostFromOptional(costUSD)

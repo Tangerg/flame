@@ -15,17 +15,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // Store is the coordinator's consumer-owned Session persistence port. Domain
@@ -43,7 +42,7 @@ type Store interface {
 // ModelAdmitter validates an exact model choice before it becomes durable
 // Session policy.
 type ModelAdmitter interface {
-	AdmitSelection(selection modelref.Selection) error
+	AdmitSelection(selection modelchoice.Selection) error
 }
 
 // InterruptStore is the lifecycle coordinator's read view of open HITL
@@ -248,7 +247,7 @@ type Coordinator struct {
 	executionReleaser     ExecutionReleaser
 	paths                 WorkspaceResolver
 	models                ModelAdmitter
-	defaultModelSelection modelref.Selection
+	defaultModelSelection modelchoice.Selection
 	// checkpoints restores the working tree to a run-boundary checkpoint for a file
 	// rollback and drops a deleted session's snapshots; nil disables both (file
 	// restore is rejected as [ErrCheckpointUnavailable], drop no-ops).
@@ -292,7 +291,7 @@ type Dependencies struct {
 	ExecutionReleaser     ExecutionReleaser
 	Paths                 WorkspaceResolver
 	Models                ModelAdmitter
-	DefaultModelSelection modelref.Selection
+	DefaultModelSelection modelchoice.Selection
 	Checkpoints           WorkspaceCheckpoints
 	Sandbox               SandboxDiscarder
 	Goals                 GoalMutationGuard

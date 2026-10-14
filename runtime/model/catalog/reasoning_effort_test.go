@@ -4,11 +4,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func TestSelectionsAdmitSelectionUsesExactCatalogReasoningVocabulary(t *testing.T) {
-	supported, err := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
+	supported, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -16,7 +16,7 @@ func TestSelectionsAdmitSelectionUsesExactCatalogReasoningVocabulary(t *testing.
 		t.Fatalf("supported effort error = %v", err)
 	}
 
-	for _, selection := range []modelref.Selection{
+	for _, selection := range []modelchoice.Selection{
 		mustReasoningSelection(t, "openai", "gpt-5.6-sol", "turbo"),
 		mustReasoningSelection(t, "alibaba", "qwen-mt-plus", "high"),
 	} {
@@ -33,9 +33,9 @@ func TestSelectionsAdmitSelectionAllowsPrivateCatalogMiss(t *testing.T) {
 	}
 }
 
-func mustReasoningSelection(t *testing.T, provider, model, effort string) modelref.Selection {
+func mustReasoningSelection(t *testing.T, provider, model, effort string) modelchoice.Selection {
 	t.Helper()
-	selection, err := modelref.NewWithReasoningEffort(provider, model, effort)
+	selection, err := modelchoice.NewWithReasoningEffort(provider, model, effort)
 	if err != nil {
 		t.Fatal(err)
 	}

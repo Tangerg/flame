@@ -9,9 +9,9 @@ import (
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -33,7 +33,7 @@ func TestContinuationPreflightDoesNotAssembleOrAcquireAWriter(t *testing.T) {
 	}), InteractionExecutorConfig{})
 	assemblyFailure := errors.New("assembly is forbidden before acceptance")
 	assemblies := 0
-	executor.config.ChatResolver = interactionChatResolverFunc(func(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error) {
+	executor.config.ChatResolver = interactionChatResolverFunc(func(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
 		assemblies++
 		return modeladapter.ResolvedChat{}, assemblyFailure
 	})

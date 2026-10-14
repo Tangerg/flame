@@ -3,7 +3,6 @@ package pluginservices
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"net/http"
 	"reflect"
 	"sync/atomic"
@@ -13,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -54,7 +54,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 			if mode == "withdrawn" {
 				store.snapshot.Installation.Disable()
 			}
-			proposed, err := modelref.NewWithReasoningEffort("provider", "proposed-model", "high")
+			proposed, err := modelchoice.NewWithReasoningEffort("provider", "proposed-model", "high")
 			if err != nil {
 				t.Fatal(err)
 			}

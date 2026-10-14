@@ -18,14 +18,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/google/uuid"
 )
 
 var (
@@ -70,7 +69,7 @@ func (i *InsufficientCapabilitiesError) Is(target error) bool {
 // AutonomousRuns is the Goal driver's narrow view of the Run entry point.
 type AutonomousRuns interface {
 	WaitSessionStartable(ctx context.Context, sessionID string) error
-	AdmitSelection(selection modelref.Selection) error
+	AdmitSelection(selection modelchoice.Selection) error
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 	// Cancel returns after the Run has reached its complete terminal boundary.
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
@@ -210,7 +209,7 @@ func NewDriver(
 func (d *Driver) Start(
 	ctx context.Context,
 	sessionID, objective string,
-	selection modelref.Selection,
+	selection modelchoice.Selection,
 	capabilities run.Capabilities,
 ) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)

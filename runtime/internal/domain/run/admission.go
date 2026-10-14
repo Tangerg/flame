@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // ErrSessionBusy reports that admitting a root Run was rejected because the
@@ -30,7 +30,7 @@ type Draft struct {
 	// with the Run, because a Running Run without the segment driving it is a Run
 	// nothing can attach to.
 	SegmentID      string
-	ModelSelection modelref.Selection
+	ModelSelection modelchoice.Selection
 	// GoalIncarnationID is the autonomous-goal incarnation that admitted this root
 	// Run. It is durable admission provenance so crash recovery can terminalize
 	// the Run and charge the exact incarnation in one transaction. Child Runs leave it

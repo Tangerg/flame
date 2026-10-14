@@ -8,10 +8,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -19,10 +19,10 @@ type InteractionModelComposition interface {
 	Activations(context.Context, []plugins.ContributionBinding) ([]plugin.Activation, error)
 	ResolveInput(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateInput(context.Context, []plugins.ContributionBinding) error
-	PrepareInput(context.Context, []plugins.ContributionBinding, modelref.Selection, *chat.Request) (*chat.Request, error)
+	PrepareInput(context.Context, []plugins.ContributionBinding, modelchoice.Selection, *chat.Request) (*chat.Request, error)
 	ResolveContext(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateContext(context.Context, []plugins.ContributionBinding) error
-	PrepareContext(context.Context, []plugins.ContributionBinding, modelref.Selection, *chat.Request) ([]chat.Message, error)
+	PrepareContext(context.Context, []plugins.ContributionBinding, modelchoice.Selection, *chat.Request) ([]chat.Message, error)
 	Resolve(context.Context) ([]plugins.ContributionBinding, error)
 	Validate(context.Context, []plugins.ContributionBinding) error
 	HeldDependencies() []plugin.Dependency
