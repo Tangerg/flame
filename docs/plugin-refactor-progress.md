@@ -14,6 +14,30 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Standalone bundled component author artifact (2026-10-15)
+
+- `ecdbe5c39` adds the standalone Usage author-kit build. It packs the actual public
+  SDK/UI/icons/Runtime-contract artifacts, copies the complete bundled feature,
+  installs in a new external directory, typechecks/builds there and compares all
+  emitted resource bytes against the shipped component. Actual resolved package
+  paths must stay inside the artifact directory. No component is loaded/rendered.
+- The first independent build failed because the SDK's implicit compiler import
+  relied on a private development install. The final API requires the compiler
+  explicitly from the author's declared/locked toolchain. Every existing build
+  caller migrates; there is no implicit lookup, compatibility signature or fallback.
+  No dependency versions or lockfiles change in the final implementation.
+- Passed: external packed Usage typecheck/build and byte equality, clean artifact
+  reinstall/build, portable component reproducibility (all ten components), SDK/
+  portable/Reviews/Desktop types, Reviews production build, focused script lint,
+  formatting/diff and stash-free staged checks/commitlint. Missing npm cache
+  metadata was fetched explicitly before the offline qualification; this was an
+  installation prerequisite failure, not a skipped product assertion.
+- The result is a current-source author artifact, not a registry publication or
+  rendered/native proof. The owned external directory and its installed packages
+  are removed after qualification. No UI/E2E/screenshot or aggregate Desktop
+  check ran. Begin concentrated backend/native/vet/race and individual P01-P48/
+  review acceptance; repair defects at their owners and report excluded UI proof.
+
 ### Feature-owned identities and change observations (2026-10-15)
 
 - `d0c9afaec` removes the unconsumed Core Go/TS Schedule prefix and private

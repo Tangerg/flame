@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 feature identity/notification slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 standalone component author qualification.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `d0c9afaec` removes Core Schedule identity vocabulary
+- Latest product commit: `ecdbe5c39` (standalone packed Usage author kit and
+  explicit author-owned compiler); `d0c9afaec` removes Core Schedule identity vocabulary
   and feature imports of Core invalidation records; `325998894` (public immutable model choice and released
   catalog admission, all consumers regenerated); `419735d13` extracts public
   SQLite/receipt owners and per-database transaction authority; preceding `6e23f4d00` implements target-owned point
@@ -153,9 +154,11 @@ or deletion. Captured primary context and independent billing remain distinct.
    public-author receipt fixture pass (`419735d13`). Public `runtime/model` and `runtime/model/catalog` now own the immutable choice
    and catalog admission (`325998894`); all private consumers and generated
    Schedules contracts migrate. Focused packages, real bootstrap (63.710s),
-   external author compilation, builds and types pass. Qualify a complete bundled component (Usage) from packed public artifacts
-   outside the repository, independent backend author artifacts and native
-   distribution. The original P01 requires one bundled feature built from public
+   external author compilation, builds and types pass. Usage now builds outside the repository from packed public artifacts and
+   produces byte-identical release resources (`ecdbe5c39`). A clean reinstall
+   builds as well. The SDK compiler is an explicit author-toolchain argument;
+   all build callers migrate. Public artifacts are not registry publication.
+   Complete independent backend author and native distribution qualification. The original P01 requires one bundled feature built from public
    artifacts, not blanket publication of host utilities or moving every backend.
    Extract further backend dependencies only for a demonstrated author need.
    `d0c9afaec` removes Core Schedule identity vocabulary and Core invalidation
