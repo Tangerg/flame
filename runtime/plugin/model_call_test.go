@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"iter"
 	"net/http"
 	"reflect"
 	"sync/atomic"
@@ -105,5 +106,91 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 				t.Fatal("model callbacks displaced canonical RPC")
 			}
 		})
+	}
+}
+
+func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *testing.T) {
+	host := newTestCallbacks(t)
+	session := new(sdk.ClientSession)
+	host.AdmitSession(session)
+	original := capability.Invocation{ID: "retained-operation", Origin: capability.Automatic, Parent: "original-trigger", Target: capability.Target{Scope: "call", Reference: "retained-operation"}}
+	records := make(chan capability.Invocation, 2)
+	unary, err := NewSelectedModelCallback(func(ctx context.Context, _ Command[ModelCallRequest]) (*chat.Response, error) {
+		inv, _ := InvocationFromContext(ctx)
+		records <- inv
+		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream, err := NewSelectedModelStreamCallback(func(ctx context.Context, _ Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
+		return func(yield func(*chat.ResponseDelta, error) bool) {
+			inv, _ := InvocationFromContext(ctx)
+			records <- inv
+			yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("known")}, FinishReason: chat.FinishReasonStop}, nil)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := host.PublishRPC(http.NotFoundHandler(), unary, stream); err != nil {
+		t.Fatal(err)
+	}
+	var projections atomic.Int32
+	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire capability.Invocation) (context.Context, error) {
+		if wire != original {
+			return nil, errors.New("unretained invocation")
+		}
+		projections.Add(1)
+		return WithInvocation(ctx, wire)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	ctx, err := WithInvocation(t.Context(), original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("input")))
+	request.Options.MaxOutputTokens = new(int64(64))
+	input := ModelCallRequest{Selection: ModelSelection{Provider: "anthropic", Model: "configured"}, Budget: ModelCallBudget{MaxRequestBytes: 4096, MaxOutputTokens: 64}, Request: *request}
+	response, err := CallSelectedModel(ctx, ref, "background-unary", input)
+	if err != nil || response == nil {
+		t.Fatalf("retained background unary: %+v %v", response, err)
+	}
+	for _, err := range StreamSelectedModel(ctx, ref, "background-stream", input) {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, id := range []string{"background-unary", "background-stream"} {
+		got := <-records
+		if got.ID != id || got.Parent != original.ID || got.Origin != original.Origin {
+			t.Fatalf("background owner changed: %+v", got)
+		}
+	}
+	forgedOwner := original
+	forgedOwner.Origin = capability.Human
+	forged, err := WithInvocation(t.Context(), forgedOwner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CallSelectedModel(forged, ref, "forged-call", input); err == nil {
+		t.Fatal("forged background owner admitted")
+	}
+	refused := false
+	for _, err := range StreamSelectedModel(forged, ref, "forged-stream", input) {
+		if err == nil {
+			t.Fatal("forged background stream admitted")
+		}
+		refused = true
+	}
+	if !refused {
+		t.Fatal("forged background stream ended without refusal")
+	}
+	if projections.Load() != 2 || len(records) != 0 {
+		t.Fatalf("unretained work reached model: %d", projections.Load())
 	}
 }

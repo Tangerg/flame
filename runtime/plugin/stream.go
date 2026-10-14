@@ -196,6 +196,10 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 		request.Header.Set("Accept", "text/event-stream")
 		request.Header.Set("Authorization", ref.Credential)
 		request.Header.Set("Flame-Call", ref.Call)
+		if err := setCallbackInvocation(request, ctx); err != nil {
+			fail(err)
+			return
+		}
 		client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 		response, err := client.Do(request)
 		if err != nil {

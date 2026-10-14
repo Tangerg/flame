@@ -562,6 +562,9 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	request.Header.Set("Authorization", ref.Credential)
 	request.Header.Set("Flame-Call", ref.Call)
 	request.Header.Set("Content-Type", "application/json")
+	if err := setCallbackInvocation(request, ctx); err != nil {
+		return zero, err
+	}
 	transport := &http.Transport{Proxy: nil}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -601,4 +604,22 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 		return zero, err
 	}
 	return typed.value(method.Name())
+}
+
+// Only activation-scoped RPC grants admit a projected background invocation.
+// Ordinary call/next grants keep their captured owner regardless of this header.
+func setCallbackInvocation(request *http.Request, ctx context.Context) error {
+	invocation, found := ctx.Value(invocationKey{}).(capability.Invocation)
+	if !found {
+		return nil
+	}
+	if err := invocation.Validate(); err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(invocation)
+	if err != nil {
+		return err
+	}
+	request.Header.Set(InvocationHeader, string(encoded))
+	return nil
 }

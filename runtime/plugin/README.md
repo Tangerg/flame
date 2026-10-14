@@ -540,3 +540,9 @@ older hosts without that grant explicitly refuse them. No legacy method is relab
 In-repository publishers are migrated. External method-value assignments requiring
 the former exact Go function type must change and rebuild; there is no old-signature
 wrapper. This source break does not alter the canonical RPC wire contract.
+
+CallHost and StreamHost send the original context invocation in the existing
+Flame-Invocation header. An activation-scoped background RPC grant validates it
+against the retained calling-owner evidence before projecting the context. Forged
+origin/parent/target is refused. Ordinary call and next grants keep their captured
+owner and ignore this header; authenticated actor identity is never replaced.

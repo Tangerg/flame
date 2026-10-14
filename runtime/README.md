@@ -2522,3 +2522,8 @@ method-value consumers to update and rebuild; no old-signature wrapper remains. 
 must rebuild from the current SDK and use a host that grants the selected methods.
 Native installed-process acceptance, general remote composition, descendant Run/Goal
 accounting, embedding evidence and full P01-P48 acceptance remain final-delivery work.
+
+Background SDK model calls also carry the original retained invocation through the
+existing activation-scoped projection. The shared unary/stream senders preserve
+this header; Runtime validates it before selected-call child identity is derived.
+The header cannot replace an ordinary captured call, continuation or actor.
