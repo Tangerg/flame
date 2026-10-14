@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 standalone component author qualification.
+Prepared on 2026-10-14 and updated during the 2026-10-15 concentrated acceptance and query-stream repair.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `ecdbe5c39` (standalone packed Usage author kit and
+- Latest product commit: `882222cd8` (shared query-stream Go options, generated
+  consumers and integration gate realignment); `ecdbe5c39` (standalone packed Usage author kit and
   explicit author-owned compiler); `d0c9afaec` removes Core Schedule identity vocabulary
   and feature imports of Core invalidation records; `325998894` (public immutable model choice and released
   catalog admission, all consumers regenerated); `419735d13` extracts public
@@ -165,7 +166,14 @@ or deletion. Captured primary context and independent billing remain distinct.
    records from feature owners; full feature packages and bootstrap (34.508s) pass. Workspace
    compilation is not proof of published-module availability. Publishing is not
    authorized.
-5. Run concentrated integrated acceptance and repair failures. Individually audit
+5. Concentrated acceptance has started. Initial full Runtime/CLI runs failed on
+   integration drift and real process startup deadlines under concurrent package
+   load. `882222cd8` repairs stream options, public-value import boundaries,
+   activation fixtures, current sample version and conditional presence assertions.
+   Isolated failures pass with unchanged deadlines. Entire bootstrap passed
+   (144.656s); Wails v3 production `.app` build and signature verification pass
+   without UI launch. Full reruns use `-p 2` and exclude no tests. Race/vet and
+   individual P01-P48/review closure remain open. Repair every remaining failure. Individually audit
    P01-P48 and every review requirement with appropriate current evidence; delete
    remaining retired APIs/schemas/examples/docs and finish with a clean worktree.
 

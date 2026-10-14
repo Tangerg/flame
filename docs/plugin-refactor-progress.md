@@ -14,6 +14,37 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Concentrated acceptance, first integration repairs (2026-10-15)
+
+- `882222cd8` completes the public Go query-stream cutover. `StreamPlugin`, typed
+  streaming bindings and callback callers now use `PluginCallOptions`, matching
+  their query/command operation contract. All consumers and the generated Go API
+  migrate; the original public-surface assertion is retained. No wire epoch or
+  compatibility signature is added.
+- CLI's import rule now admits the exact public pure-value `runtime/capability`
+  contract used for operation admission and business refusal. Existing root/
+  localruntime boundaries stay enforced; new counterexamples still reject plugin
+  transport and storage imports from application code.
+- Final gates exposed a Schedule recovery fixture without the required activation
+  proof, a stale hand-authored request metadata sample, and a drift assertion that
+  assumed every optional nonempty scalar was globally required. The fixture now
+  supplies its original activation/release; the sample names the served protocol;
+  drift checks require the actual conditional/alternative presence helper instead.
+  Behavior/refusal/cancellation and original observation assertions are retained.
+- First full Runtime/CLI runs failed and are not counted as passes. Multiple real
+  process startup deadlines also expired under concurrent module-wide package
+  execution. Original startup/sideload checks pass isolated with unchanged
+  deadlines (Runtime selection 7.976s, sideload 0.811s). Full reruns now cap package
+  concurrency at two without excluding tests or weakening limits.
+- The entire bootstrap package passed in the initial full run (144.656s), including
+  original recovery/steer/schedule cases and all SIGKILL cuts. Focused repaired
+  execution (2.535s), drift (0.680s) and CLI architecture (0.477s) pass.
+- Native Wails v3 beta.29 production frontend/Go build and `.app` packaging pass
+  through the verified task graph. Strict deep signature verification passes and
+  the bundle declares macOS 13. No app/UI is launched and no UI/E2E/screenshot or
+  aggregate Desktop check runs. Full/race/vet and individual P01-P48/review closure
+  are still in progress; native compilation is not rendered workflow proof.
+
 ### Standalone bundled component author artifact (2026-10-15)
 
 - `ecdbe5c39` adds the standalone Usage author-kit build. It packs the actual public
