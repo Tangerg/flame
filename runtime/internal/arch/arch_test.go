@@ -1122,7 +1122,7 @@ func TestDeliveryHandlerMatchesRegisteredOperationCapabilities(t *testing.T) {
 	factories := map[string]struct{}{
 		"query": {}, "command": {}, "commandAck": {},
 		"subscription": {}, "runSubscription": {},
-		"runStreamOwnerCommand": {},
+		"runStreamOwnerCommand": {}, "streamOwnerCommand": {}, "extension": {},
 	}
 	walkErr := filepath.WalkDir(deliveryDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
