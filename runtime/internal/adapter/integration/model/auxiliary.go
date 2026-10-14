@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -45,6 +46,7 @@ func (b AuxiliaryBudget) Validate() error {
 type AuxiliaryModel struct {
 	selection modelref.Selection
 	resolved  ResolvedChat
+	limits    modelref.TokenLimits
 }
 
 func NewAuxiliaryModel(selection modelref.Selection, resolved ResolvedChat) (AuxiliaryModel, error) {
@@ -54,7 +56,11 @@ func NewAuxiliaryModel(selection modelref.Selection, resolved ResolvedChat) (Aux
 	if dependency.Missing(resolved.Model()) {
 		return AuxiliaryModel{}, errors.New("auxiliary model: resolved model is required")
 	}
-	return AuxiliaryModel{selection: selection, resolved: resolved}, nil
+	limits, _, err := LookupTokenLimits(selection)
+	if err != nil {
+		return AuxiliaryModel{}, err
+	}
+	return AuxiliaryModel{selection: selection, resolved: resolved, limits: limits}, nil
 }
 func (m AuxiliaryModel) Selection() modelref.Selection { return m.selection }
 func (m AuxiliaryModel) Model() chat.Model             { return m.resolved.Model() }
@@ -166,4 +172,94 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", fmt.Errorf("%w: auxiliary model returned blank text", chatclient.ErrInvalidOutput)
 	}
 	return text, nil
+}
+
+// AdmitRequest applies the selected model's known input/output envelope to the
+// complete request after context composition. A catalog miss retains unknown
+// capacity; it cannot manufacture a limit from the caller's byte budget.
+func (m AuxiliaryModel) AdmitRequest(ctx context.Context, request *chat.Request) error {
+	if request == nil {
+		return errors.New("auxiliary model: request is required")
+	}
+	if err := request.Validate(); err != nil {
+		return err
+	}
+	if err := m.selection.ValidateExact(); err != nil {
+		return err
+	}
+	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
+		return errors.New("auxiliary model: request cannot replace selected model")
+	}
+	if request.Options.MaxOutputTokens == nil {
+		return errors.New("auxiliary model: explicit output reservation is required")
+	}
+	reservation, err := modelref.NewOutputReservation(*request.Options.MaxOutputTokens)
+	if err != nil {
+		return err
+	}
+	ceiling, known, err := m.limits.InputCeiling(reservation)
+	if err != nil {
+		return err
+	}
+	if !known {
+		return nil
+	}
+	measurement := "estimated input"
+	var count int64
+	if counter, found := m.InputTokenCounter(); found {
+		measurement = "provider input"
+		count, err = counter.CountInputTokens(ctx, request.Clone())
+		if err != nil {
+			return fmt.Errorf("auxiliary model: count selected provider input: %w", err)
+		}
+		if count <= 0 {
+			return errors.New("auxiliary model: selected provider returned a non-positive input count")
+		}
+	} else {
+		estimated, err := modeltext.EstimateRequestTokens(request)
+		if err != nil {
+			return err
+		}
+		count = int64(estimated)
+	}
+	if count > ceiling {
+		return fmt.Errorf("auxiliary model: %s requires %d tokens; selected model permits %d after output reservation", measurement, count, ceiling)
+	}
+	return nil
+}
+
+// WithModel retains the frozen selected identity, capacity and counter while
+// replacing only its call projection with a caller-owned decorator.
+func (m AuxiliaryModel) WithModel(model chat.Model) (AuxiliaryModel, error) {
+	counter, _ := m.InputTokenCounter()
+	resolved, err := NewResolvedChat(model, counter)
+	if err != nil {
+		return AuxiliaryModel{}, err
+	}
+	m.resolved = resolved
+	return m, nil
+}
+
+// PrepareRequest applies model-owned options before contributors and capacity
+// observe the same final request. Callers cannot replace a captured selection.
+func (m AuxiliaryModel) PrepareRequest(request *chat.Request) (*chat.Request, error) {
+	if request == nil {
+		return nil, errors.New("auxiliary model: request is required")
+	}
+	if err := request.Validate(); err != nil {
+		return nil, err
+	}
+	if err := m.selection.ValidateExact(); err != nil {
+		return nil, err
+	}
+	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
+		return nil, errors.New("auxiliary model: request cannot replace selected model")
+	}
+	effort := chat.ReasoningEffort(m.selection.ReasoningEffort())
+	if request.Options.ReasoningEffort != "" && request.Options.ReasoningEffort != effort {
+		return nil, errors.New("auxiliary model: request cannot replace selected reasoning effort")
+	}
+	prepared := request.Clone()
+	prepared.Options.ReasoningEffort = effort
+	return prepared, nil
 }

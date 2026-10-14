@@ -404,11 +404,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		t.Fatal(err)
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	rawEstimate, err := estimateModelContextTokens(
-		append(cloneMessages(instructions), history...),
-		nil,
-		chat.Options{},
-	)
+	rawEstimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -484,11 +480,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("a3" + large)),
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	rawEstimate, err := estimateModelContextTokens(
-		append(cloneMessages(instructions), history...),
-		nil,
-		chat.Options{},
-	)
+	rawEstimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -571,11 +563,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
 	requestedOutput := modelInfo.Limits.MaxOutputTokens
 	options := chat.Options{MaxOutputTokens: &requestedOutput}
-	rawEstimate, err := estimateModelContextTokens(
-		append(cloneMessages(instructions), history...),
-		nil,
-		options,
-	)
+	rawEstimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: options})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1241,7 +1229,7 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("a2" + large)),
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	estimate, err := estimateModelContextTokens(append(cloneMessages(instructions), history...), nil, chat.Options{})
+	estimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
 	if err != nil {
 		t.Fatal(err)
 	}

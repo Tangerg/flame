@@ -2,23 +2,12 @@ package maintenance
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"fmt"
 	"math"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/media"
-)
-
-const (
-	// The media placeholders are the smallest valid values for their Source
-	// variants. A provider prices image/audio/document content by modality, not
-	// by the size of its transport encoding, so raw payload bytes must not be
-	// mistaken for text tokens in the provider-neutral estimate.
-	mediaURIPlaceholder       = "data:,x"
-	mediaReferencePlaceholder = "x"
 )
 
 // modelContextBudget owns the compaction trigger and the exact immutable
@@ -168,7 +157,7 @@ func (m modelContextBudget) estimatedTokens(messages []chat.Message) (int, error
 	if len(effective) == 0 {
 		return 0, nil
 	}
-	tokens, err := estimateModelContextTokens(effective, m.tools, m.options)
+	tokens, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: effective, Tools: m.tools, Options: m.options})
 	if err != nil {
 		return 0, fmt.Errorf("maintenance: estimate model context: %w", err)
 	}
@@ -183,93 +172,6 @@ func calibratedTokenEstimate(estimate, adjustment int) int {
 		return 0
 	}
 	return estimate + adjustment
-}
-
-// estimateModelContextTokens measures the complete provider-neutral request:
-// messages of every Part kind, Tool definitions, Options, metadata, provider
-// replay signatures, Tool identities, arguments, and results. It intentionally
-// does not use renderTranscript: that lossy auxiliary-model view is a different
-// artifact and omits model-visible protocol state.
-func estimateModelContextTokens(
-	messages []chat.Message,
-	tools []chat.ToolDefinition,
-	options chat.Options,
-) (int, error) {
-	request := chat.Request{Messages: messages, Tools: tools, Options: options}
-	if err := request.Validate(); err != nil {
-		return 0, err
-	}
-	request.Messages = modelContextEstimateMessages(messages)
-	request.Tools = cloneToolDefinitions(tools)
-	request.Options = options.Clone()
-	payload, err := json.Marshal(&request)
-	if err != nil {
-		return 0, err
-	}
-	return modeltext.EstimateTextTokens(string(payload)), nil
-}
-
-func modelContextEstimateMessages(messages []chat.Message) []chat.Message {
-	normalized := make([]chat.Message, len(messages))
-	for messageIndex := range messages {
-		message := messages[messageIndex]
-		normalized[messageIndex] = chat.Message{
-			Role:     message.Role,
-			Parts:    make([]chat.Part, len(message.Parts)),
-			Metadata: message.Metadata.Clone(),
-		}
-		for partIndex := range message.Parts {
-			part := message.Parts[partIndex]
-			value := part.Media
-			result := part.ToolResult
-			part.Media = nil
-			part.ToolResult = nil
-			normalized[messageIndex].Parts[partIndex] = part.Clone()
-			normalized[messageIndex].Parts[partIndex].Media = normalizedMedia(value)
-			normalized[messageIndex].Parts[partIndex].ToolResult = modelContextEstimateToolResult(result)
-		}
-	}
-	return normalized
-}
-
-func normalizedMedia(value *media.Media) *media.Media {
-	if value == nil {
-		return nil
-	}
-	normalized := *value
-	normalized.Source.Bytes = nil
-	normalized.Metadata = value.Metadata.Clone()
-	switch normalized.Source.Kind {
-	case media.SourceBytes:
-		normalized.Source.Bytes = []byte{0}
-	case media.SourceURI:
-		normalized.Source.URI = mediaURIPlaceholder
-	case media.SourceReference:
-		normalized.Source.Ref = mediaReferencePlaceholder
-	}
-	return &normalized
-}
-
-func modelContextEstimateToolResult(result *chat.ToolResult) *chat.ToolResult {
-	if result == nil {
-		return nil
-	}
-	// Replace media before cloning so the estimate never copies inline payloads.
-	withoutContent := *result
-	// Content supersedes Details in the provider projection.
-	if len(result.Output.Content) > 0 {
-		withoutContent.Output.Details = nil
-	}
-	withoutContent.Output.Content = nil
-	normalized := withoutContent.Clone()
-	normalized.Output.Content = make([]chat.ToolContent, len(result.Output.Content))
-	for index, content := range result.Output.Content {
-		value := content.Media
-		content.Media = nil
-		normalized.Output.Content[index] = content.Clone()
-		normalized.Output.Content[index].Media = normalizedMedia(value)
-	}
-	return &normalized
 }
 
 func cloneToolDefinitions(tools []chat.ToolDefinition) []chat.ToolDefinition {

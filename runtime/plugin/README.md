@@ -402,8 +402,9 @@ composition refuses before the physical endpoint, and release cancels/joins acti
 calls before dropping either context or observer dependencies.
 
 Public model selection now runs before fresh Run and auxiliary role binding, as
-described below. Token-capacity admission for auxiliary work and general request
-transformations remain unfinished semantic boundaries. Transparent model observers keep
+described below. Auxiliary capacity now checks the fully composed request against
+its captured selected-model limits, using that provider's counter when available.
+General request transformations remain unfinished semantic boundaries. Transparent model observers keep
 their existing Scope Call/Stream contract and cannot acquire those authorities.
 
 ## Model selection before exact binding
@@ -434,5 +435,18 @@ No selector binding is retained as a later execution dependency after the query
 has returned; its result is the immutable selection owned by the accepted use case.
 
 Selection is presently per accepted execution/auxiliary capture. General input
-transforms, auxiliary token capacity and multiple independently routed physical
-calls still require their own admitted boundaries and final acceptance evidence.
+transforms and multiple independently routed physical calls still require their
+own admitted boundaries and final acceptance evidence.
+
+Auxiliary captures freeze the selected catalog token envelope and optional input
+counter with the same model construction. After applying captured reasoning effort
+and composing context, Runtime reserves the requested output under the Domain's
+published independent input/output/context facts. It counts the complete request
+with the selected provider when available; counter failure, cancellation or a
+non-positive count refuses dispatch. Without a provider counter, auxiliary and
+primary compaction share the existing complete-request local estimate, including
+Scope framing, options and metadata. This estimate is a preflight approximation,
+not proof of provider-exact tokenization. A catalog miss keeps capacity unknown;
+existing caller text-byte/output budgets still apply. Decorators preserve frozen
+limits, selection and counter, and capture release cancels/joins counting before
+releasing its dependencies. The counted composed request is the one dispatched.

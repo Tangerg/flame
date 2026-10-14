@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -48,7 +47,7 @@ func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Au
 			}
 			bound, _ := o.Bind(resolved.Model(), nil, bindings)
 			lifetime, cancel := context.WithCancelCause(ctx)
-			capture = &auxiliaryModelCapture{owner: o, bindings: bindings, contexts: contexts, selection: resolved.Selection(), budget: budget, model: bound, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
+			capture = &auxiliaryModelCapture{owner: o, bindings: bindings, contexts: contexts, resolved: resolved, budget: budget, model: bound, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
 			o.mu.Lock()
 			o.auxiliary[capture] = struct{}{}
 			o.mu.Unlock()
@@ -58,13 +57,7 @@ func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Au
 			release()
 			return models.AuxiliaryModel{}, nil, err
 		}
-		counter, _ := resolved.InputTokenCounter()
-		projected, err := models.NewResolvedChat(capture, counter)
-		if err != nil {
-			capture.close()
-			return models.AuxiliaryModel{}, nil, err
-		}
-		result, err := models.NewAuxiliaryModel(resolved.Selection(), projected)
+		result, err := resolved.WithModel(capture)
 		if err != nil {
 			capture.close()
 			return models.AuxiliaryModel{}, nil, err
@@ -86,19 +79,19 @@ func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 }
 
 type auxiliaryModelCapture struct {
-	owner     *ModelComposition
-	bindings  []plugins.ContributionBinding
-	contexts  []plugins.ContributionBinding
-	selection modelref.Selection
-	budget    models.AuxiliaryBudget
-	model     chat.Model
-	lifetime  context.Context
-	cancel    context.CancelCauseFunc
-	release   func()
-	mu        sync.Mutex
-	closed    bool
-	active    sync.WaitGroup
-	done      chan struct{}
+	owner    *ModelComposition
+	bindings []plugins.ContributionBinding
+	contexts []plugins.ContributionBinding
+	resolved models.AuxiliaryModel
+	budget   models.AuxiliaryBudget
+	model    chat.Model
+	lifetime context.Context
+	cancel   context.CancelCauseFunc
+	release  func()
+	mu       sync.Mutex
+	closed   bool
+	active   sync.WaitGroup
+	done     chan struct{}
 }
 
 func (c *auxiliaryModelCapture) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
@@ -118,13 +111,15 @@ func (c *auxiliaryModelCapture) Call(ctx context.Context, request *chat.Request)
 	stop := context.AfterFunc(c.lifetime, func() { cancel(context.Cause(c.lifetime)) })
 	defer stop()
 	defer cancel(nil)
-	if request == nil {
-		return nil, errors.New("model composition: auxiliary request is required")
+	prepared, err := c.resolved.PrepareRequest(request)
+	if err != nil {
+		return nil, err
 	}
+	request = prepared
 	if err := c.admit(request); err != nil {
 		return nil, err
 	}
-	material, err := c.owner.PrepareContext(calling, c.contexts, c.selection, request)
+	material, err := c.owner.PrepareContext(calling, c.contexts, c.resolved.Selection(), request)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +131,9 @@ func (c *auxiliaryModelCapture) Call(ctx context.Context, request *chat.Request)
 	sent.Messages = append(cloneContextMessages(request.Messages[:prefix]), material...)
 	sent.Messages = append(sent.Messages, cloneContextMessages(request.Messages[prefix:])...)
 	if err := c.admit(sent); err != nil {
+		return nil, err
+	}
+	if err := c.resolved.AdmitRequest(calling, sent); err != nil {
 		return nil, err
 	}
 	return c.model.Call(calling, sent)

@@ -249,7 +249,7 @@ func TestModelContextEstimateCountsToolDetailsOnlyWithoutContent(t *testing.T) {
 		t.Fatal("estimating context discarded structured tool details")
 	}
 	message.Parts[0].ToolResult.Output.Details = jsontext.Value(`{"invalid"`)
-	if _, err := estimateModelContextTokens([]chat.Message{message}, nil, chat.Options{}); err == nil {
+	if _, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: []chat.Message{message}, Tools: nil, Options: chat.Options{}}); err == nil {
 		t.Fatal("hidden details bypassed request validation")
 	}
 	message.Parts[0].ToolResult.Output.Details = details
@@ -286,7 +286,7 @@ func mustEstimateModelContextTokens(
 	options chat.Options,
 ) int {
 	t.Helper()
-	tokens, err := estimateModelContextTokens(messages, tools, options)
+	tokens, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: messages, Tools: tools, Options: options})
 	if err != nil {
 		t.Fatal(err)
 	}

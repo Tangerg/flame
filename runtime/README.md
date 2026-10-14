@@ -2423,8 +2423,8 @@ budget; contributed context participates in the final byte check before dispatch
 Memory extraction/curation retain one capture and separate original call identities.
 Release joins active calls before dropping their ordinary installation dependencies.
 Fresh Run and auxiliary capture selection now use the public model-selection
-boundary described below. Auxiliary token-capacity and request transformation
-remain under development.
+boundary described below. Auxiliary capacity uses the captured selected-model
+envelope and final composed request; request transformation remains in development.
 
 The public `plugin.ModelSelectionContract` role chooses a route before a fresh
 Run accepts its exact provider/model/reasoning identity. Media and output capacity
@@ -2438,4 +2438,10 @@ Auxiliary role selection enters the same public query before provider constructi
 The input request is absent until the owning use case authors it; the captured
 selected model then supplies subsequent context, observation and pricing identity.
 Selection is per accepted execution/use-case capture; per-call routes for multiple
-independent invocations and complete auxiliary token-capacity admission remain open.
+independent invocations remain open. Auxiliary token admission now freezes selected
+catalog limits, reserves output and counts the fully composed request before
+provider dispatch. Provider counting is used when available, with errors/cancellation/
+non-positive results refusing; otherwise the shared request estimate is a local
+preflight approximation. Unknown catalog limits remain unknown, with the caller's
+existing byte/output envelope retained. Captured reasoning effort is applied before
+context, counting and provider I/O; original request/selection cannot be replaced.

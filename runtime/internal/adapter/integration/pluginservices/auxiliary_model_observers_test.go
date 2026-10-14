@@ -3,6 +3,8 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"sync/atomic"
@@ -195,4 +197,126 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			}
 		})
 	}
+}
+
+type contextCapacityCounter struct {
+	count    int64
+	calls    int
+	expected *chat.Request
+	t        *testing.T
+}
+
+func (c *contextCapacityCounter) CountInputTokens(_ context.Context, request *chat.Request) (int64, error) {
+	c.calls++
+	if len(request.Messages) != 4 || request.Messages[1].Text() != "retrieval material" || request.Options.ReasoningEffort != chat.ReasoningEffort("high") {
+		c.t.Error("capacity counter lost composed context or selected reasoning")
+	}
+	c.expected = request.Clone()
+	return c.count, nil
+}
+func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.T) {
+	for _, count := range []int64{272000, 272001} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			composition, _, _ := installedContextFixture(t, "valid")
+			counter := &contextCapacityCounter{count: count, t: t}
+			var calls atomic.Int32
+			provider := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+				calls.Add(1)
+				if !reflect.DeepEqual(request, counter.expected) {
+					t.Error("provider request differs from counted request")
+				}
+				message := chat.NewAssistantMessage(chat.NewTextPart("done"))
+				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+			})
+			selected, err := modelref.NewWithReasoningEffort("openai", "gpt-5-pro", "high")
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolved, err := models.NewResolvedChat(provider, counter)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base, err := models.NewAuxiliaryModel(selected, resolved)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+				return base, func() {}, nil
+			})
+			capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer release()
+			request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
+			request.Options.MaxOutputTokens = new(int64(64))
+			before := request.Clone()
+			ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context-capacity", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context-capacity"}})
+			_, err = capture.Model().Call(ctx, request)
+			wantCalls := int32(0)
+			if count == 272000 {
+				wantCalls = 1
+			}
+			if (err == nil) != (wantCalls == 1) || calls.Load() != wantCalls || counter.calls != 1 {
+				t.Fatalf("final capacity admission changed: provider=%d counter=%d %v", calls.Load(), counter.calls, err)
+			}
+			if !reflect.DeepEqual(request, before) {
+				t.Fatal("preparation changed original request")
+			}
+		})
+	}
+}
+
+func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependencies(t *testing.T) {
+	composition, _, _ := installedContextFixture(t, "valid")
+	started, canceled, canReturn := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var released atomic.Bool
+	var calls atomic.Int32
+	counter := auxiliaryCancelableCounter{started: started, canceled: canceled, canReturn: canReturn}
+	provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		calls.Add(1)
+		return nil, errors.New("unexpected generation")
+	})
+	resolved, err := models.NewResolvedChat(provider, &counter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := models.NewAuxiliaryModel(testsupport.MustModelSelection("openai", "gpt-5-pro"), resolved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+		return base, func() { released.Store(true) }, nil
+	})
+	capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
+	request.Options.MaxOutputTokens = new(int64(64))
+	ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context-counting", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context-counting"}})
+	result := make(chan error, 1)
+	go func() { _, err := capture.Model().Call(ctx, request); result <- err }()
+	<-started
+	closed := make(chan struct{})
+	go func() { release(); close(closed) }()
+	<-canceled
+	if released.Load() || len(composition.HeldDependencies()) != 1 {
+		t.Error("capacity counting released its owner before joining")
+	}
+	close(canReturn)
+	<-closed
+	if err := <-result; !errors.Is(err, context.Canceled) || !released.Load() || len(composition.HeldDependencies()) != 0 || calls.Load() != 0 {
+		t.Fatalf("capacity cancellation dispatched or leaked: provider=%d released=%t %v", calls.Load(), released.Load(), err)
+	}
+}
+
+type auxiliaryCancelableCounter struct{ started, canceled, canReturn chan struct{} }
+
+func (c *auxiliaryCancelableCounter) CountInputTokens(ctx context.Context, _ *chat.Request) (int64, error) {
+	close(c.started)
+	<-ctx.Done()
+	close(c.canceled)
+	<-c.canReturn
+	return 0, ctx.Err()
 }
