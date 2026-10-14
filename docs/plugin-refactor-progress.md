@@ -4,9 +4,49 @@
 
 Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
 failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
-`67e7801c1`. Wide-number parity and the remaining lifecycle work are next. Main
+`67e7801c1`; exact Go/TS feature JSON is implemented by `6a2f30440`. Remaining
+lifecycle work and independent/native qualification are next. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Exact feature JSON and closed model selection (2026-10-15)
+
+- `6a2f30440` changes Core to `2026-10-15.2`. Feature input/output, stream
+  chunk/final values, point values/attributes and canonical contract projections
+  cross Core as JSON strings. All Go/CLI/TS/component consumers are migrated;
+  former inline payloads and retired descriptor wire schemas are removed. Backend
+  protocol and private receipt/local pending input formats retain their owners.
+- One shared exact TS codec preserves int64/uint64 extremes, arbitrary decimal
+  precision, exponent spelling, negative zero and `1.0`. Generated feature numeric
+  projections use `JSONNumber`; the SDK encodes before cloning. Unsafe already
+  rounded JS numbers, non-finite values, unsupported objects, malformed Unicode
+  and duplicates are refused. No dependency or exponent expansion is introduced.
+- The durable journal binds the semantic request and exact original input source
+  with the same codec. Original command identity, private receipts, refusal and
+  acknowledgement-loss recovery remain intact. A shared corpus crosses actual Go
+  HTTP and TS unary/stream/recovery boundaries; changed source cannot reuse intent.
+- Full CLI checks exposed an owner mismatch: Selection decoded a closed three-field
+  record while its schema advertised an arbitrary string map. Marshal, presence-aware
+  decode and schema now share one private DTO. Schedules schemas and all CLI/TS
+  consumers are regenerated; the CLI form emits the required reasoningEffort field.
+  Conditional string validation was also repaired at the generator owner so legal
+  refusal frames are not accidentally required to include success output.
+- Passed: shared TS typecheck/lint and all 355 protocol tests; whole modelref,
+  CLI runtimebinding (16.170s) and terminal (29.038s); focused Schedules packages
+  and real bootstrap schedule/plugin checks (23.181s); affected public typed,
+  delivery/HTTP/pluginservices/contractgen checks; Runtime/CLI/Reviews builds;
+  SDK/portable/Reviews/Desktop typechecks and portable/Reviews component builds.
+  No UI/E2E/screenshot or Desktop aggregate checks were run. Full/native/vet/race/
+  closure remain final work. Generated artifacts and manual discover sample are
+  aligned with the current protocol; assertions were not relaxed.
+- The CLI public-method inventory now explicitly reviews five public Go/TS
+  composition/stream/endpoint methods. This records their actual boundary and
+  deliberate absence of a dedicated CLI editor, not completed native workflows.
+  Retention/pruning, transitive dependency status, scoped releases/points,
+  independent packaging and every P01-P48/review closure remain open.
+- Staged formatting/lint and commitlint passed with stash-free execution. The user
+  stash remains unchanged. All owned handles are terminal and temporary migration
+  resources are removed; ignored dependencies/build artifacts remain for continuation.
 
 ### Installed query streams (2026-10-15)
 
@@ -995,7 +1035,7 @@ Continue in the same worktree and branch. Preserve the complete proposal/review
 objective and report concrete remaining paths rather than a static completion count.
 
 1. Priority #3: retention/pruning, transitive dependency status and scoped release,
-   point lifetimes and Go/TS wide-number parity. Query streams are implemented;
+   point lifetimes. Query streams and exact Go/TS feature JSON are implemented;
    retain their cancellation/command-ownership checks during final acceptance.
    Audit actual Tool,
    automatic and cross-plugin target/origin/parent/original-route consumers.

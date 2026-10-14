@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 query-stream slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 exact feature JSON slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `67e7801c1` (installed query streams); preceding recovery
+- Latest product commit: `6a2f30440` (exact feature JSON and closed Selection schema);
+  query-stream commit: `67e7801c1`; preceding recovery
   commit: `8e32d9c35` (observer-bound receipt retirement and unavailable original
   source recovery). Tooling commit `59c826ec6` repairs the contract lock's two
   missing optional transitive peers without changing existing locked versions.
@@ -31,7 +32,7 @@ Read this handoff, the current-stage/next/review sections of the progress anchor
 `REFACTORING.md` and the relevant module README before editing.
 
 Before each slice, inspect status and relevant current code. After a complete slice,
-commit explicit owned paths, merge local main into this branch, update the existing
+commit explicit owned paths, preserve integrated main at `7ba40c117`, update the existing
 progress anchor, clean owned resources and report actual results. Use the last
 integrated main SHA to inspect incoming main changes; `HEAD..main` can produce a
 huge unrelated diff on this long-lived branch. Do not push or merge this branch into
@@ -101,7 +102,7 @@ Recent connected implementation:
 | `f3dfbe976` | Actual selected-call regression requires the original observer-cycle refusal and avoids recursive-test hangs |
 | `13193c2d6` | Retained background commands preserve original resource targets; only fresh Automatic/parentless triggers require their own installation target |
 
-Current identities: Core Protocol `2026-10-15.1`, backend protocol `.2`, export
+Current identities: Core Protocol `2026-10-15.2`, backend protocol `.2`, export
 schema 3, Scope modules v0.50.0. Strict database admission now requires
 `model_invocations.logical_purpose`; older shapes are refused without conversion
 or deletion. Captured primary context and independent billing remain distinct.
@@ -117,10 +118,15 @@ or deletion. Captured primary context and independent billing remain distinct.
    a model publisher, an expired next or stopped Scope effects. Never infer them
    from parent IDs or an ambient current Session.
 3. Complete retention/pruning, transitive dependency status and scoped release,
-   point lifetimes and Go/TS wide-number parity. Installed query streams now share
+   point lifetimes. Exact Go/TS feature JSON now crosses Core as JSON strings with
+   one TS codec; generated consumers, original-intent journals and components are
+   migrated in `6a2f30440`. Selection schema/decode share their closed three-field
+   owner; Schedules consumers are regenerated. Installed query streams now share
    the exact-contract operation policy with unary calls; queries have no command
    key/route/private receipt, while command streams retain original recovery.
-   Focused Go/TS delivery checks and SDK/portable/Desktop typechecks pass. Audit every Tool,
+   Shared TS 355 tests, whole CLI runtimebinding/terminal, focused real bootstrap
+   schedules, affected Go packages, Runtime/CLI/Reviews build and SDK/portable/
+   Reviews/Desktop typechecks pass. Audit every Tool,
    automatic and cross-plugin consumer for target/origin/parent/original route.
 4. Complete independent author/component/native packaging qualification. Workspace
    compilation is not proof of published-module availability. Publishing is not
