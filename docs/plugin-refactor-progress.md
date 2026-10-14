@@ -2,61 +2,71 @@
 
 ## Current stage
 
-Stage 5v (2f9b4cc94) moves selected-model media admission to the complete final
-request. Start, Resume and Steer validate source structure/target/identity, preserve
-original media bytes and commit their original input evidence. They no longer ask
-an early model policy whether an authored image can be accepted before its selected
-input converter has run. The obsolete media method is removed from the command
-ModelAdmitter port and its test collaborators, without a bypass flag/legacy branch.
+Stage 5w (2583125cd) grants independent selected-model unary/stream calls on the
+existing authenticated host callback endpoint. A public ModelCallRequest carries
+its exact provider/model proposal, complete Scope request and positive complete-
+request/output budget. Ordinary installed RPC grants now serve these collaborators
+beside canonical core Delivery RPC, with the same captured actor/call lifetime and
+per-reference transport capacity. A missing original invocation refuses dispatch.
 
-SelectedChat owns final media/model validation. Every primary reduction invokes it,
-including absent transform chains; transform paths additionally run full capacity.
-Root/delegated Call/Stream share that reducer and one complete prepared request.
-Unconverted media the selected model cannot accept refuses before provider generation
-and becomes the original accepted execution's failure. An image converted to text
-can reach a text-only model, without changing its retained user Item/checkpoint.
+Each fresh ID resolves the installed selector before construction, freezes the
+context/input/transparent observer bindings, validates final byte/output/media/token
+capacity and uses the existing observed provider resolver. Different calls can use
+different selected routes; there is no substrate-wide Memory two-call limit. Tools,
+media and complete options are admitted under the general caller envelope. Memory's
+text-only/two-call policy remains with Memory and its caller-specific admission.
 
-Canonical compaction is a source projection rather than the final provider request
-when transforms apply. Provider counting is withheld for selected transforms and
-canonical media the model does not support, using the existing local compaction
-projection. Only the specific unsupported-modality result permits that local path;
-other validation errors refuse. Final transformed counting remains authoritative,
-without counter fallback, retries, model redelivery or a competing media rule.
+One modelCapture owns both general/auxiliary retained contributions, cancellation,
+active-work joining and retirement. The former auxiliary-only capture implementation
+is removed, without an alias, legacy flag or second lifetime registry. Exact provider
+stream capability is preserved. SDK streams share the existing canonical response
+aggregate/outcome projection, with no extra parser, queue, model receipt or replay.
 
-This intentionally changes public failure timing: well-formed source media can be
-accepted before later model refusal, while malformed/empty/MIME-invalid source input
-still refuses the command before transition. Core 2026-10-14.29 publishes the change;
-generated contracts/samples and design/runtime/SDK documentation are updated. Backend
-.2 and export schema 3 unchanged. The original proposal/review remains read-only.
+Each actual physical dispatch still belongs to the original endpoint journal. Its
+caller ID/origin/parent, final request/provider/model, response/usage and captured
+price survive restart and outer failure. Original dispatch identities fence both
+same-input and changed-input redelivery. A lost acknowledgement never authorizes
+provider replay; unknown remains unknown. Captured next retains its original chain
+and does not acquire independent routing authority from this addition.
 
-Passed: original Start/composed-history/Steer/resume media evidence; invalid Resume
-input preserves waiting state; actual image-to-text versus unconverted/absent-chain
-failure in all twelve unary/stream x compacted/direct combinations; provider/counter
-never sees unsupported source; one final converted count; waiting restore carries
-original image into captured transformation and leaves committed input unchanged.
-Related Start/Resume/Steer/selection, primary/auxiliary/capacity checks passed. Runtime
-build/Runtime-bootstrap test-source compilation, generation, shared/desktop typecheck
-and scoped architecture/version/schema/drift gates passed. Earlier fixture reflect
-import and canonical counter ordering failures were repaired before passing. Old
-preflight-refusal tests are replaced by source-evidence and final-execution refusal
-proof for the intentional contract change, without skipped tests or weakened safety.
+Passed: real callback RPC coexistence/original-owner admission; three independent
+calls and installed selections; full Tools/request retention; initial/final framing
+and output budget refusal; actual image-to-text conversion for a text-only model;
+known physical usage/price after outer failure/restart; redelivery fencing; lazy
+stream/request snapshot/original ancestry and cancellation/join/dependency release.
+Related existing model/auxiliary/callback checks passed. Runtime build and Runtime/
+bootstrap test-source compilation passed. Public Go API inventory regenerated;
+scoped drift/version/dependency/public-package gates reported no failures. The same
+unchanged generated schema contains four orphan definitions and its schema gate
+fails: RecordedUsage, PageContinuation, PageOfItem and PageQuery. Required final
+schema cleanup is open; no assertion/check was weakened.
 
-Main 3d897dfb6 is integrated in 43c0b765c. Terminal unresolved-effect explanation
-source/translations and incoming tests are preserved; merge is clean. Desktop
-post-merge typecheck passed; no UI/E2E/screenshot tests authored or run. Original
-proposal/review/background draft hashes and user stash unchanged. Owned compile/
-test/typecheck handles and temporary outputs settled. Full/native/vet/race/all-
-workflow/P01-P48/review acceptance remains open. Last-known older architecture,
-Memory formatting and prior untriaged interrupted UI findings remain obligations.
+Core .29, backend .2 and export schema 3 remain unchanged: new collaborators have
+independent exact method identities, not a reinterpretation of an existing wire
+method or record. PublishRPC's variadic Go signature changes exact method-value
+assignments; all in-repository publishers are migrated and external rebuild/migration
+is documented, without an old-signature wrapper. The original proposal/review/draft
+hashes and user stash are unchanged. Main 3d897dfb6 is already integrated; this
+slice's merge reports up to date. No frontend UI/E2E/screenshot test authored/run.
 
-The premature authored-media rule is removed; final request admission is the sole
-model-media owner. Next implement multiple independently routed/admitted model calls
-and embedding/retention, then remaining dependency/author and final acceptance work.
-Full native/delegated/real process transformation acceptance is still unproven by
-these bounded checks. Approximate 65-70% full delivery/75% implementation remains a
-rough estimate, not counted P01-P48 closure. Full goal active.
+Full goal active. General remote composition and total-work/Run/Goal accounting are
+not closed by physical evidence alone: current Interaction accrual looks up its
+exact primary caller, so separately admitted descendant consumption must be connected
+to the existing accounting owner. Next fix that fact ownership, then embeddings/
+retention, dependency/author completeness and concentrated final acceptance. Rough
+65-70% full delivery/75% implementation is still an estimate, not P01-P48 closure.
+Owned build/test/generation handles and temporary compile artifacts have settled.
 
 ## Completed
+
+- Stage 5w (2583125cd): independent selected unary/stream callbacks, complete
+  request/output budgets and explicit original invocation on the shared endpoint.
+- Stage 5w: one general/auxiliary model capture, exact optional streaming,
+  retained chains/final admission/cancel-join and existing physical evidence owner.
+- Stage 5w: multiple selected routes, no Memory-wide count rule, full request/media,
+  original identity/usage/price/restart/refusal/stream proof; public Go API regenerated.
+- Stage 5w: main 3d897dfb6 already integrated; scoped schema gate still exposes four
+  unchanged orphan definitions, retained for final correction.
 
 - Stage 5v (2f9b4cc94): one final-request media owner; original source structural
   admission/evidence retained across Start/Resume/Steer and restored execution.
@@ -614,15 +624,16 @@ rough estimate, not counted P01-P48 closure. Full goal active.
 
 ## In progress
 
-- Stage 5t/5u/5v implement input transformation, complete prepared requests and
-  final model-media admission. Full delegated/native/real-process acceptance and
-  multiple independently routed/admitted call semantics remain open.
-
-- Stage 5p/5q close primary/auxiliary context capture; Stage 5r closes public
-  selection at accepted execution and auxiliary use-case boundaries. Complete
-  general transforms and separate per-call routes/physical identities. Stage 5s
-  completes auxiliary known-capacity preflight with provider counting or the shared
-  estimate; final integrated provider-exact acceptance remains unproven. The transparent observer does not supply these.
+- Stage 5w implements independent per-call selected routing, budgets and physical
+  evidence for unary/stream on ordinary installed RPC grants. Complete actual native/
+  process acceptance and general remote composition; do not turn the transparent
+  observer's specific contract into a universal once-through rule.
+- Connect descendant physical consumption to existing Run/Goal accounting and its
+  budget/uncertainty owner. Current Interaction only consumes its exact primary
+  EndpointForCaller result; adding a second tally/receipt owner is prohibited.
+- Stage 5t/5u/5v close captured input conversion/final model-media admission at
+  primary/auxiliary boundaries. Stage 5w covers general complete requests and fresh
+  installed per-call selection. Full delegated/native/all-workflow acceptance remains.
 
 - All actual CLI/workspace Memory reads and human mutations now use the public
   installed publisher contract. Core business methods/DTOs and the Memory feature
@@ -644,18 +655,24 @@ rough estimate, not counted P01-P48 closure. Full goal active.
 
 ## Next
 
-1. Complete multiple independently routed/admitted physical calls, embeddings
-   and retention. Each final request owns its media/capacity and original identity;
-   exact billing never derives from token estimates.
-2. Complete scoped point/dependency lifecycle, observed status/retention and actual
-   Tool/automatic/cross-plugin consumers with original command/Run ownership.
-3. Complete all-workflow generation recovery, independent author/module packaging,
-   deletion audit and consolidated native/full/vet/race/P01-P48 acceptance.
+1. Admit and accrue independently selected descendant model consumption through
+   the existing Run/Goal budget/accounting owner, retaining physical journal source
+   and unknown/restart semantics. Complete general remote composition contracts.
+2. Complete embedding full response/usage evidence, automatic unattached retention,
+   scoped point/dependency status/lifecycle and Tool/automatic/cross-plugin consumers.
+3. Complete independent author/module packaging, deletion audit and concentrated
+   native/full/vet/race/all-workflow/P01-P48/review acceptance. Fix required architecture
+   gates, including the four unchanged orphan generated schema definitions.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Give each independent model exchange a new ID, selected route and complete request/output budget | Repeated captured next still names the original effect; Memory's two-call rule is private business policy | Relabeling next, automatic provider retry, global Memory call limits, text-only general requests |
+| 2026-10-14 | Share one model capture and existing physical endpoint journal for fresh and auxiliary calls | Lifecycle/held dependencies and dispatch/usage/price already have owners | Duplicate capture registries, host model receipts, cached results or a second billing tally |
+| 2026-10-14 | Publish exact additive selected-model callbacks beside canonical RPC; preserve wire/storage epochs | No existing wire method/record changes; new methods have their own exact identities | Adding another listener, core business API copies, artificial storage epochs or accepting a changed old method |
+| 2026-10-14 | Migrate PublishRPC's variadic Go signature directly and disclose exact external method-value migration | Host collaborators need one canonical publication; no old-signature wrapper is retained | Deprecated publication alias or parallel callback startup owner |
+| 2026-10-14 | Keep descendant Run/Goal accrual explicitly open despite known physical evidence | Interaction currently accounts only its exact primary caller; source persistence alone cannot prove total-work budget correctness | Claiming multi-call metering complete or introducing a competing aggregate ledger |
 | 2026-10-14 | Source command admission owns structure/evidence; final prepared request owns selected-model media support | Pre-transform model checks prevented legitimate conversion and created a competing media decision | Early authored-media rejection, transformer-exists bypass flags, dropped original media or weakened final model checks |
 | 2026-10-14 | Well-formed media acceptance and later model failure retain the original Run/command outcome path; Core .29 | Opening/continuation acceptance cannot claim success for a model-visible projection not yet prepared | Promoting acceptance to model success, a second refusal receipt, implicit redelivery or pretending failure timing is unchanged |
 | 2026-10-14 | Canonical unsupported media cannot go to a provider counter; only its specific modality refusal allows local compaction projection | Provider counting is itself model-specific I/O and must not preempt final conversion | Counting rejected source media, swallowing arbitrary errors, estimating billing or suppressing final refusal |
@@ -891,10 +908,11 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
 | Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
-| Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; multiple-call and final native acceptance remain open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
+| Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; Stage 5w independent callback input/budget/media handling now verified; general composition and final native acceptance open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
 | Auxiliary complete-input capacity and original model-owned options | Stage 5s final context/provider count/local estimate, output reservation, known/unknown/error semantics, reasoning, request equality and cancel/join verified; final native/all-workflow acceptance open | model/auxiliary.go; auxiliary_capacity_test.go; pluginservices/auxiliary_model_observers.go/tests; modeltext/request_estimate.go; maintenance/compaction_trigger.go/tests |
-| Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; per-call routes/multiple invocations/final native acceptance remain open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
+| Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; Stage 5w fresh installed per-call routes now verified; general composition/Run-Goal accounting/final native acceptance open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
 | Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; Stage 5s auxiliary token preflight now verified; per-call routes/general transformation/final acceptance remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
@@ -932,6 +950,28 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5w scoped existing/new model, auxiliary and callback checks passed
+  (SDK 0.989/1.026s; pluginservices 5.449/6.469s). Reasoning string/Scope enum
+  compile mismatch was corrected; an initial command ran from repository root
+  rather than Runtime and was rerun from the owning module. Neither was skipped.
+- Stage 5w final selected/complete-budget/selection/media/stream/owner/RPC cases
+  passed (SDK 0.567s; pluginservices 3.676s). Three independent calls, distinct
+  actual installed choices, same/changed ID dispatch fencing and known durable
+  usage/price after outer failure/restart are checked at their existing owners.
+- Stage 5w Runtime/bootstrap go test -c (temporary outputs deleted), Runtime
+  go build ./... and contract generation passed. Generated diff is go-api.json;
+  schemas/TS/Core/version are unchanged. Changed gofmt and git diff checks passed.
+- Stage 5w scoped architecture/drift command failed only TestGeneratedSchemasResolve
+  (2.597s): unchanged RecordedUsage, PageContinuation, PageOfItem and PageQuery have
+  no references. This is a confirmed existing generated-schema obligation, not a
+  green gate. Other selected dependency/public-package/version/drift gates reported
+  no failures. Remaining older architecture failures are not revalidated this slice.
+- Full/native/all-workflow/vet/race and independent process/author qualification
+  remain for concentrated final checks. No frontend UI/E2E/screenshot authoring or
+  execution; no frontend sources changed, so typecheck was not repeated this slice.
+- Main sync after 2583125cd: already up to date at 3d897dfb6. Original three input
+  hashes and user stash match the recorded baseline. All owned handles settled.
 
 - Stage 5v original source/media and selected boundary checks passed (runs 0.514s;
   execution 1.430s). Initial no-transform compaction passed unsupported source to a
@@ -2348,6 +2388,14 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Stage 5w does not close Run/Goal totals or policy composition: the current
+  Interaction source lookup is exact-primary-only. Descendant invocation charges,
+  interruption, known failure and crash accrual must use the existing owner without
+  double counting, estimates-as-billing or a separate tally.
+- Ordinary installed selected-model callbacks are now implemented. Full real-process/
+  native/author acceptance, general remote composition, embedding evidence and
+  retention remain open; no source-only proof is treated as complete delivery.
+
 - Stage 5t/5u/5v implement public/auxiliary/primary input transformation and final
   model-media admission with original source evidence. Full real process/native/
   delegated and all-workflow acceptance remains open; bounded tests are not a full
@@ -2358,7 +2406,7 @@ Stage 2a verification:
   counter or the shared estimate. General transforms/per-call routes/multiple
   independently admitted calls and complete final acceptance remain open.
 - Internal AuxiliaryResolver now requires an explicit budget and returns exact
-  AuxiliaryModel capture. All known internal consumers are migrated; no public
+  SelectedChat capture. All known internal consumers are migrated; no public
   plugin SDK or protocol type changed in this slice.
 - The interrupted prohibited UI run exposed seven failures in partial output.
   Attribution is unproven; inspect merged feature contracts and consumers without
@@ -2426,6 +2474,14 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 5w adds exact host selected-model callback methods. External consumers
+  requiring them must rebuild/current-host grant. PublishRPC method-value types
+  requiring func(http.Handler) error must migrate to the variadic signature; no
+  old source wrapper remains. Wire/storage epochs stay Core .29/backend .2/export3.
+- Independently admitted descendant consumption is visible in physical evidence
+  and retained usage reports, but its Run/Goal totals/budget enforcement remain open.
+  Do not infer aggregate delivery completion from the per-call callback checks.
 
 - Core .29 changes media refusal timing for well-formed Start/Resume/Steer input.
   External consumers must observe the accepted Run outcome; structural validation
