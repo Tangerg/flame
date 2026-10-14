@@ -2,57 +2,76 @@
 
 ## Current stage
 
-Stage 5ab (8968bb1bf) supplies call-scoped host callbacks to the installed model
-selection, context and input phases. Each uses the existing Pool/OpenRPC and
-managed MCP connection, with the original invocation and receiver activation's
-frozen Actor/dependency authority. A contribution can call the host while its outer
-query is pending. Each reference is withdrawn on success, failure or unwinding;
-there is no new listener, business receipt, result cache or public wire method.
+Stage 5ac (5f0a5030a) cohosts installed transparent observer next continuations with
+canonical Runtime RPC and once-published host model collaborators. Call-local
+methods join one immutable grant map and cannot replace a published method or
+appear in another call. OpenRPC and background restoration share the same RPC
+handler construction; no extra endpoint, parser, business receipt or meter exists.
+The old observer-only callback path and its duplicated limits function are removed.
 
-Host-selected model policies now validate their exact current contribution through
-the Runtime composition owner. They no longer mistakenly require the invoking
-plugin to declare every member of Runtime's selected model pipeline. Arbitrary
-cross-plugin operations still require the caller's frozen declared bindings. The
-shared current-installation/release/contribution checks retain one implementation.
+Unary and stream observers capture the original active contributor path. Ordinary
+callbacks retain the receiver activation's frozen Actor/dependency bindings. Next
+retains the original caller's context values, invocation and exact remaining chain,
+with its actual network request linked into cancellation. It cannot borrow the
+observer Actor. A fresh independent exchange refuses reentry into the still-active
+observer instead of dispatching that contribution recursively or skipping policy.
+Canonical chunks, acknowledgement/backpressure, original response and consumption
+remain with their existing owners. No provider replay is added.
 
-An immutable active-contributor path refuses recursive selection/context/input
-reentry before another contributor dispatch. It neither skips a policy nor imposes
-an arbitrary depth limit. Primary context and input preparation also capture their
-actual execution member's existing model publisher before primary provider dispatch.
-Independent work uses the existing logical-start/source-settlement/fact pump; the
-not-yet-started primary Model ID is not fabricated as an admitted physical owner.
+Public Callbacks.OpenRPC now accepts variadic call-local callbacks; generated
+contract/go-api.json is current. External method-value/interface consumers must
+update and rebuild; there is no former-signature wrapper. Ordinary source calls
+remain valid. Core .31/backend .2/export schema3 and storage shape are unchanged.
 
-Boundary proof uses installed managed MCP handlers and real authenticated loopback
-callbacks: reentry while the outer query is pending, exact Actor/invocation, refusal
-of undeclared direct calls, explicit active-contributor cycle refusal, and stale
-references after success/failure in all three phases. Existing primary preparation
-checks retain the execution publisher. These are transport/composition boundaries,
-not a complete installed/native multi-call Run/Goal acceptance claim.
+Boundary proof covers shared published/local methods on one endpoint, large int64,
+local-name collision refusal, no continuation leakage and stale references.
+Installed managed MCP unary/stream handlers invoke canonical RPC while pending,
+then preserve a different original Actor through next. Fresh selected calls are
+refused on the active observer path without provider work or held-dependency leaks.
+Canonical streamed usage 9007199254740993 remains exact. Existing consumer-stop,
+known-inner/outer-failure and physical-source restart regressions retain their
+assertions. This is not full installed/native Run/Goal delivery or background effect
+restoration, which remain required.
 
-Whole pluginservices passed (17.916s); targeted callback concurrency checks passed
-with -race (8.272s). Final focused phase and primary preparation checks passed
-(1.765s/2.706s). Runtime build, changed-source gofmt and diff checks passed. No
-frontend UI/E2E/screenshot test was authored or executed. Native/full/vet/global
-race/closure acceptance and the unresolved Schedule handshake remain final work.
-Core .31/backend .2/export schema3 and database shape are unchanged in this slice.
+Whole plugin/pluginservices/mcpconnection passed (1.581/28.617/1.564s). Focused
+-race checks passed (1.839/7.932s). Runtime build and contract generation passed.
+Main 7ba40c117 (Scope v0.50.0 module graph) merged in 0227ffd94. Merged build,
+focused SDK/composition checks (0.477/5.681s), Runtime/bootstrap test-source compile,
+CLI and independent Reviews author compile passed. Regeneration produced no drift.
+The merged MCP package compiled but this focused selector matched no MCP tests;
+its whole-package execution was before merge, not after it.
 
-Main 14fca7975 remains integrated; merging main after the product commit reported
-already up to date. Original proposal/review/draft SHA-256 values and the user's
-stash remain unchanged. All test/build/commit handles are terminal. Test-owned
-servers/stores are closed, and no scratch script, background process, shared
-configuration or user-data mutation was introduced. Keep the active managed
-worktree and canonical progress symlink for the full goal. Overall 65-70% delivery/
-75% implementation remains a rough workload estimate, not a requirements count.
+Follow-up f3dfbe976 strengthens the fresh-exchange regression to require the original
+explicit observer-cycle refusal and fail promptly on recursive dispatch. Its first
+check stopped in missing shared Go cache files before executing assertions; standard
+library source still exists. Its TemporaryDirectory-owned GOCACHE rebuild completed
+and the strengthened unary/stream refusal check passed (1.957s). The temporary
+cache and compile outputs are removed, and all test/build/commit handles are terminal.
+Native/full/vet/global-race/closure and Schedule handshake acceptance are deliberately
+not rerun during development. No frontend UI/E2E/screenshot check was authored or run.
 
-Budget clarification: proposal 10.2/10.3/11.5 assigns resource budgets to the calling
-operation/execution. Current Run/Goal contracts have no configured total-cost or
-step ceiling. Preserve real owner-supplied per-call budgets and single-source
-consumption; do not invent a universal Goal limit from the earlier progress wording.
-Integrated in-flight/failure/unknown proof is still required under actual owner policy.
-Next: observer host RPC cohosting, background effect restoration, embedding evidence,
-retention/dependency/status/author lifecycle, and full P01-P48/review/native closure.
+Original proposal/review/draft hashes and user stash remain unchanged. No shared
+configuration, provider credentials, user data or external mutation was touched.
+Test-owned listeners/stores/processes are closed. Preserve the
+managed worktree and canonical progress symlink for the full goal. Overall 65-70%
+delivery/75% implementation remains a rough workload estimate, not a requirements
+count. Budget ceilings still belong to actual operation/execution contracts; there
+is no newly invented universal Run/Goal limit.
+Next: background original-effect restoration, embedding evidence/retention,
+dependency/status/author lifecycle and full P01-P48/review/native closure.
 
 ## Completed
+
+- Stage 5ac (5f0a5030a): one call-scoped grant cohosts canonical RPC, published host
+  collaborators and exact observer next; private observer-only path/limits removed.
+- Stage 5ac: local-name replacement/leakage refusal, original next authority/cancel
+  lifetime and active observer cycle refusal; unary/stream chunks and known evidence
+  remain under original owners.
+- Stage 5ac: generated variadic OpenRPC Go API and external rebuild documentation;
+  SDK/composition/MCP suites and focused -race pass; Scope v0.50.0 main merged.
+- Stage 5ac: merged Runtime/bootstrap/CLI/independent-author compile and focused
+  observer/preparation checks pass. Strengthened original-cycle refusal check passed
+  (1.957s) after isolated cache rebuilding; its earlier setup failure is retained below.
 
 - Stage 5ab (8968bb1bf): installed selection/context/input phases receive existing
   call-scoped host RPC under exact receiver authority; success/failure withdraw it.
@@ -668,15 +687,14 @@ retention/dependency/status/author lifecycle, and full P01-P48/review/native clo
 
 ## In progress
 
-- Stages 5aa/5ab implement live selected/auxiliary consumption, purpose-aware recovery
-  and preparation grants. Complete one installed/native normal-terminal/failure/
+- Stages 5aa/5ab/5ac implement live consumption, purpose-aware recovery and host grants
+  for preparation/observation. Complete one installed/native normal-terminal/failure/
   interruption/restart Run/Goal workflow, including unknown work and in-flight
   admission under the actual calling owner's resource policy.
 - Schedule crash acceptance still stops at plugin handshake after the production
   Memory dependency repair. Diagnose original exchange evidence in final integrated
   acceptance; preserve all seven cut cases and original no-replay/data assertions.
-- Complete observer host RPC cohosting, background original-effect restoration and
-  optional counter I/O admission. A phase callback cannot claim durable continuation.
+- Complete background original-effect restoration and optional counter I/O admission. A phase callback cannot claim durable continuation.
 - Complete embedding evidence/metering and historical retention at their existing
   owners. Preserve source-reported unknown usage/price without another billing tally.
 - Complete transitive dependency status, scoped retention/release, point lifecycle,
@@ -692,7 +710,7 @@ retention/dependency/status/author lifecycle, and full P01-P48/review/native clo
 
 ## Next
 
-1. Complete observer/background host collaborators and original effect ownership;
+1. Complete background host collaborators and original effect ownership;
    retain canonical RPC, exact frozen continuation and one physical-source owner.
 2. Complete embedding evidence/retention, scoped dependency/status and author work;
    prove full installed Run/Goal consumption under actual owner-supplied budgets.
@@ -703,6 +721,10 @@ retention/dependency/status/author lifecycle, and full P01-P48/review/native clo
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Cohost observer next, published host methods and canonical RPC under one call grant | Decorators need ordinary host collaborators while their outer call is pending | A private next-only endpoint, another listener or overwriting published methods |
+| 2026-10-14 | Keep original caller values for next while RPC uses the receiver activation | Managed callback authority must not retarget the captured remaining chain | Giving next the observer Actor, restoring values from wire or losing network cancellation |
+| 2026-10-14 | Extend active-contributor cycle refusal to installed observers | A fresh selected exchange may not recursively reenter its currently active observer | Blind recursion, silently bypassing the observer or reinterpreting next as a fresh exchange |
+| 2026-10-14 | Replace OpenRPC's source signature with variadic local callbacks and regenerate its API | Local continuation composition belongs to the existing callback lifecycle owner | Old-signature compatibility wrappers or a second SDK grant framework |
 | 2026-10-14 | Supply existing call-scoped host RPC during selection/context/input queries | Installed preparation code needs reentrant host collaborators under its actual receiver authority | Query identity without callbacks, activation fallback or another listener |
 | 2026-10-14 | Runtime authorizes its selected model pipeline; managed direct calls retain declared-requirement checks | Global host composition is not a caller plugin's dependency declaration | Requiring every caller to declare host policy members or disabling arbitrary cross-plugin admission |
 | 2026-10-14 | Reject active model-contributor cycles using an immutable captured path | Nested fresh generation must not recursively prepare its own ancestor or silently bypass policy | Blind reentry, arbitrary depth limits or skipping active contributors |
@@ -966,6 +988,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| Observer host callbacks and original next authority | Stage 5ac installed unary/stream RPC+next, distinct receiver/caller Actors, active-cycle refusal, large usage, stop/join and source/outcome boundaries verified; stronger original refusal assertion now passed after isolated cache rebuild; full native acceptance remains open | plugin/callbacks.go/tests; mcpconnection/pool.go; pluginservices/model_observers.go; model_phases.go; model_observer_callbacks_test.go; model_endpoint_test.go; contract/go-api.json |
 | Model preparation host collaborators and ownership | Stage 5ab installed selection/context/input authenticated reentry, original Actor/invocation, undeclared direct-call refusal, active-cycle refusal and stale reference boundaries verified; native/full effect composition remains open | pluginservices/model_selection.go; model_context.go; model_input.go; model_phases.go; calls.go; model_phase_callbacks_test.go; execution/interaction_context_reducer.go |
 | Live independent model consumption and primary-output isolation | Stage 5aa captured-member common selected/auxiliary publication, persisted purpose and different-model/unknown recovery implemented; publication/stream/source/SQLite/-race boundaries verified; owner-policy/in-flight and full installed/native Run/Goal acceptance open | executionctx/model_calls.go; execution/interaction_model_calls.go; interaction_model.go; interaction_tool.go; pluginservices/model_capture.go; runs/reducer.go; execution_fact.go; commit.go; recovery.go; recovery_commit.go; sqlite/db.go; model_invocation.go; model_endpoint.go; recovery/persistence.go; matching regressions |
 | One Run consumption owner across actual model calls and termination | Stage 5z per-call accrual, original usage/price, resume/interleaving/duplicate/context/terminal invariants implemented and verified; Stage 5aa live callback wiring implemented; full installed/native and total-work admission remain open | runs/execution_fact.go; execution_fact_commit.go; reducer_items.go; reducer_outcome.go; execution/interaction_accounting.go; interaction_session.go; interaction_durable_children.go; run/metrics.go; matching backend regressions |
@@ -1013,6 +1036,24 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5ac: callback/observer baseline passed (0.819/1.973s); migrated endpoint,
+  observer and auxiliary checks passed (0.686/4.991s). New SDK union and installed
+  RPC/next/distinct-authority/fresh-cycle checks passed (0.795/2.673s).
+- Stage 5ac: whole SDK/pluginservices/MCP passed (1.581/28.617/1.564s); focused
+  -race passed (1.839/7.932s). Runtime build, contract generator, changed gofmt -l
+  and diff checks passed. Generator changed only the intended Go API signature.
+- Stage 5ac: main 7ba40c117 merged in 0227ffd94 with Scope v0.50.0. Merged Runtime
+  build, SDK/composition checks (0.477/5.681s), Runtime/bootstrap go test -c,
+  CLI/independent Reviews author compile and regeneration passed. MCP compiled
+  with no tests matched by this focused selector. Compile artifacts were temporary.
+- Stage 5ac: follow-up f3dfbe976 assertion check failed during shared Go cache setup
+  before test execution (missing cached files, misleading missing-stdlib reports).
+  Stdlib source presence is verified. Its targeted TemporaryDirectory/GOCACHE
+  rebuild completed and the exact original-cycle unary/stream check passed (1.957s).
+  This is an environment/setup failure followed by an actual pass, not a skipped test.
+- Stage 5ac: no frontend UI/E2E/screenshot checks; full/native/vet/global-race/
+  closure/Schedule acceptance remain final work. Original input hashes/stash match.
 
 - Stage 5ab: baseline installed selection/context/input checks passed (1.752s).
 - Stage 5ab: initial phase/selection/context/input/independent callback checks passed
@@ -2521,12 +2562,12 @@ Stage 2a verification:
   Memory dependency repair. Preserve cut/no-replay/data assertions and inspect the
   original exchange before choosing a fix; causality is not classified as unrelated.
 - Full installed/native Run/Goal live/normal-terminal/failure/interruption/restart
-  accounting remains unproven. Stages 5aa/5ab are boundary implementations, not full
+  accounting remains unproven. Stages 5aa/5ab/5ac are boundary implementations, not full
   delivery. Preserve unknown consumption and the original logical/physical owner.
 - Complete actual owner-policy/in-flight admission and optional counting-provider
   evidence. Current contracts do not authorize inventing a universal Goal ceiling.
 - Preparation phases now receive host RPC with cycle refusal and their original
-  execution publisher. Observer RPC cohosting, background original-effect restoration
+  execution publisher. Observer RPC cohosting is implemented; background original-effect restoration
   and full durable composition remain open; cycles cannot silently bypass policy.
 - Embedding evidence, retention, transitive dependency/status/lifecycle, every
   consumer, independent author/module and all P01-P48/review acceptance remain open.
@@ -2609,6 +2650,14 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Stage 5ac replaces the public OpenRPC source signature with variadic callbacks.
+  External method-value/interface consumers require an SDK update and rebuild;
+  ordinary calls remain valid. Core/backend/storage formats are unchanged. No
+  published module release or external consumer deployment was performed.
+- Main's Scope v0.50.0 graph is integrated and workspace compile/boundary checks
+  pass. This is not qualification of old waiting checkpoints, native distributions
+  or an independently published module graph; final acceptance retains those duties.
 
 - Stage 5aa adds logical_purpose to the required database schema. Old databases are
   refused without conversion or deletion; no data migration was performed.
