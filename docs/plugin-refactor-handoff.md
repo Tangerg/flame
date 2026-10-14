@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 recovery schema-admission fix.
+Prepared on 2026-10-14 and updated after the 2026-10-15 public Tool receipt cutover.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,10 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `659f1aa30` (read-only existing-schema admission and
+- Latest product commit: `6b3a1d823` (public original-owner Tool result queries;
+  Core Schedule-specific decoder deleted; whole bootstrap/execution and all eight
+  SIGKILL cuts pass). Next: Core Memory private read/contract/callback dependencies.
+  Previous: `659f1aa30` (read-only existing-schema admission and
   atomic empty initialization); `146e8b220` qualifies independent Usage installation;
   `de2a57d54` (public idempotency conflict owner and
   outside-module classification proof); `882222cd8` (shared query-stream Go options, generated
@@ -119,6 +122,15 @@ Current identities: Core Protocol `2026-10-15.2`, backend protocol `.2`, export
 schema 3, Scope modules v0.50.0. Strict database admission now requires
 `model_invocations.logical_purpose`; older shapes are refused without conversion
 or deletion. Captured primary context and independent billing remain distinct.
+
+The complete execution race after the SQLite admission fix passes (278.105s).
+After `6b3a1d823`, full bootstrap passes (94.634s), full execution passes
+(64.294s), and all eight crash cuts pass separately (43.580s). The query-cut
+proxy now intercepts `plugin.ToolReceiptMethod`; original deadlines/assertions
+are unchanged. Current SDK/feature/pluginservices suites, architecture, public
+outside-module receipt projection and affected vet pass. Continue Memory's
+private consumer cutover and the existing individual acceptance audit. No UI
+execution or registry publication is implied.
 
 ## Remaining work and priority
 

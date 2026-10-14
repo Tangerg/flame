@@ -14,6 +14,38 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Original Tool outcomes use the public owner query (2026-10-15)
+
+- `6b3a1d823` removes the Core Schedule-specific receipt service and private
+  Schedule domain/RPC/output imports. Installed Tool recovery captures its exact
+  source/release/authority and reads the public SDK `ToolReceiptMethod` query.
+  The original backend projects its only private durable receipt through its
+  normal Tool codec; there is no host business decoder, new result table,
+  compatibility reader or provider replay.
+- Missing, unavailable, conflicting and malformed evidence remains Unknown.
+  Valid failed Tool receipts settle as failed Tool outcomes, distinct from query
+  failure. Schedules now preserves its stored business refusals through the
+  normal and recovery codecs. Internal checkpoint metadata replaces `create`
+  with `receipt`; old provisional shapes are explicitly refused. Private backend
+  schemas and receipt formats do not change. Unsupported optional queries do not
+  permit a fresh invocation.
+- The unrelated `append_record` recovery regression exposes the former hardcoded
+  path. SDK tests preserve wide JSON and original name/identity/input, distinguish
+  lookup conflicts from original refusals and assert that no mutation runs.
+  Producer tests retain historical edit/deletion/conflict/corruption assertions
+  and compare normal/refused output with recovered output. Public outside-module
+  receipt reading and Tool projection pass (4.551s).
+- Passed: complete SDK/SQLite/Schedules/pluginservices packages (including
+  pluginservices 7.734s), complete bootstrap (94.634s), complete execution
+  (64.294s), all eight original SIGKILL cuts separately (43.580s), full architecture
+  (20.455s), affected vet, generation and stash-free staged checks/commitlint.
+  The first full execution attempt failed because its durable query barrier still
+  intercepted the retired host query; the barrier now names the public SDK query,
+  with every original assertion and deadline preserved. No UI test ran.
+- Next: remove Core consumption of private Memory records/contracts and finish
+  the remaining callback, availability and final acceptance audit. This is not
+  whole-proposal completion.
+
 ### Existing-schema admission cannot compete with recovery writes (2026-10-15)
 
 - `659f1aa30` fixes the actual resolution-cut `SQLITE_BUSY` reproduced by race.
@@ -34,8 +66,8 @@ inputs and user stash remain unchanged.
 - Passed: complete public storage/private receipt/Core SQLite (0.751/0.929/2.874s),
   the same packages under race (1.859/1.914/36.386s), entire bootstrap (94.982s),
   all eight original SIGKILL cuts twice under race (95.367s), gofmt/diff and
-  stash-free staged checks/commitlint. The full execution race package is rerunning
-  with a sufficient aggregate harness budget; its per-scenario limits are unchanged.
+  stash-free staged checks/commitlint. The complete execution package also passes
+  under race (278.105s), with every original per-scenario limit unchanged.
 - Earlier race attempts are failures, not passes: the first exhausted its five
   minute package budget while building a child fixture; the second reproduced
   the resolution-cut write conflict. Other selected concurrent-owner packages
@@ -1343,13 +1375,11 @@ Continue in the same worktree and branch. The complete proposal/review objective
 is unfinished; the individual acceptance table distinguishes executed backend
 proof from source/native inspection and excluded UI execution.
 
-1. Record the full execution race result after `659f1aa30`. All eight SIGKILL
-   cuts have already passed twice under race and whole bootstrap passed again.
-2. Replace the Schedule-specific original Tool result reconstruction with one
-   public original-owner result query. Projection of private business receipts
-   belongs to the backend. Preserve exact captured source, missing/conflicting/
-   malformed receipt uncertainty, cancellation, publication lifetime and no replay.
-   Prove the path for an unrelated installed Tool and rerun whole bootstrap.
+1. The full execution race after `659f1aa30` passes (278.105s). All eight
+   SIGKILL cuts passed twice under race and whole bootstrap passed again.
+2. Public original-owner Tool result recovery is implemented in `6b3a1d823`.
+   Complete bootstrap/execution and all eight original SIGKILL cuts pass. Include
+   the final affected race check after the remaining cutover work.
 3. Migrate Core Memory consumption to its published operation/read projection;
    remove production imports of private feature domain/application/RPC values.
    Preserve optional absence versus operational failure and model-owned budgets.
@@ -1698,7 +1728,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P11 | Verified by executable stdio decorator/model-next and installed model-call evidence tests. |
 | P12 | Backend verified by captured composition order and checkpoint activation identity tests. |
 | P13 | Final response/input admission and approval paths are backend tested; final audit must trace rewritten Tool proposals to the arguments actually approved. |
-| P14 | Public command/stream continuation and original receipt paths are verified. Open: remove the Schedule-specific original Tool result reconstruction and prove the same recovery for an unrelated installed Tool. |
+| P14 | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. Final affected race remains. |
 | P15 | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
 | P16 | Backend verified by known inner response/consumption surviving failed outer observation and reopen; uncertainty is not relabeled as no effect. |
 | P17 | Backend/shared-client verified by early consumer withdrawal, cancellation/join and no premature final-result tests. |
@@ -1732,7 +1762,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P45 | Actual blocked optional backend restart/disable management tests pass without loading that backend's component. |
 | P46 | Backend reverse-order cancellation/join, callback teardown, transaction panic/Goexit and settled close/error tests pass. UI teardown remains source only. |
 | P47 | Owner-backed selection, composition, connection and release inspection exist and are tested. Finish transitive failure/availability diagnostic review without a second readiness ledger. |
-| P48 | Open: remove the live Schedule-specific host receipt codec and private Memory consumer imports, then clean superseded source/API/schema/example/README claims and recheck current artifacts. |
+| P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Open: private Memory consumer imports, superseded source/API/schema/example/README claims and final artifact checks. |
 
 ## Verification
 
