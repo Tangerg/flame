@@ -10,8 +10,8 @@ same watermark compare-and-set and human-review invariants as every other write.
 The installed stdio process opens only `PLUGIN_DATA/memory.db`, under an exclusive
 process lease. Its local declaration binds `memory-provider` to the `memory`
 server and export with the exact generated consumer contract. Multiple candidates may be enabled; product composition explicitly
-selects one installation/contribution for new calls. Runtime connects its human
-`agentMemory.*` operations, Run context reads and source-qualified `search_memory`
+selects one installation/contribution for new calls. Runtime connects human `plugins.call` operations, Run context reads and
+source-qualified `search_memory`
 Tool to that exact generation. Closing a component cannot stop this process.
 
 Optional model work uses the public SDK's invocation-scoped `CallbackRef`, bound
@@ -77,18 +77,27 @@ call-context input, completed-only, digest-only and bare-result databases are re
 retain that directory separately and use a fresh directory for this breaking change.
 
 `runtime/internal/plugins/memory/rpc/contracts.go` is the typed method
-source used by actual server registration and query consumers. Its generated
+source used by actual server registration. Query consumers use its generated
+contract rather than importing the private domain or constructing another schema.
+Core Run context consumes the generated Go projection in
+`runtime/internal/adapter/integration/pluginservices/memorycontract`; CLI keeps its
+independent generated projection from the same source. Its generated
 canonical capability, Schema, method references and TypeScript data maps live
 under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runtime
 with `go generate ./internal/plugins/memory/rpc`; the existing contractgen
-projects the same methods. The package builder copies this namespace into the
+projects the same methods. Generated Go operation frames are defined projection
+types, so callers explicitly convert shared read shapes instead of depending on
+transparent aliases. Canonical JSON and wire behavior are unchanged. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 
 The published snapshot owns its identity pattern, closed scope/origin/status
 vocabularies and Unicode content boundary. These derive from the private Go model
 and its existing constants, with canonical JSON and Go/TS consumers regenerated
 together. ItemID publishes its actual patterned string contract. Core has no
-Memory record or business enum; clients own their visible read projections and
+Memory business record or business enum; its prompt adapter retains only the
+consumed ID, content, pinned flag and ordering time. Private lifecycle admission
+stays with the backend. The read adapter validates the published method/output,
+active requested target and search bound before projecting prompt values; clients own their visible read projections and
 reject hidden/unknown states before presentation. A schema change requires rebuilding
 the ordinary ESM component against the exact generated capability.
 

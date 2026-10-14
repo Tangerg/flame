@@ -20,6 +20,8 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 )
 
+type memoryFixtureRecord = memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot
+
 const (
 	terminalMemoryPendingID = "mem_00000000000000000000000000000001"
 	terminalMemoryUserID    = "mem_00000000000000000000000000000002"
@@ -216,7 +218,7 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.AddV1Output{Item: memorycontract.UpdateV1Output{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
+		output := memorycontract.AddV1Output{Item: memoryFixtureRecord{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsoninput.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}

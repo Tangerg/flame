@@ -23,7 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	memorysqlite "github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
@@ -137,7 +136,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	utility := observers.Auxiliary(models.AuxiliaryResolver(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 		return auxiliaryFixture(model), func() { releases.Add(1) }, nil
 	}))
-	owner, err := NewMemory(MemoryConfig{Installations: store, Connections: pool, Callbacks: callbacks, Commands: calls, Conversation: history, Utility: utility, Embeddings: func(context.Context) (app.Embedder, error) { return nil, resolutionFailure }})
+	owner, err := NewMemory(MemoryConfig{Installations: store, Connections: pool, Callbacks: callbacks, Commands: calls, Conversation: history, Utility: utility, Embeddings: func(context.Context) (models.TextEmbedder, error) { return nil, resolutionFailure }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +174,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if _, err := owner.Search(t.Context(), project, "fact", 5); !errors.Is(err, resolutionFailure) {
 		t.Fatalf("configured role failure became absence: %v", err)
 	}
-	owner.embedder = func(context.Context) (app.Embedder, error) { return nil, nil }
+	owner.embedder = func(context.Context) (models.TextEmbedder, error) { return nil, nil }
 	if err := callbacks.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("human memory addition unexpectedly called Runtime RPC: %s", r.URL.Path)
 		http.Error(w, "unexpected callback", http.StatusBadRequest)
@@ -249,13 +248,27 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatal("unconfirmed original command did not invalidate consumer reads")
 	}
 	items, err := owner.Search(t.Context(), project, "keyword", 5)
-	if err != nil || len(items) != 1 || items[0].Content() != "keyword fact" {
+	if err != nil || len(items) != 1 || items[0].Content != "keyword fact" {
 		t.Fatalf("absent role lost keyword search: %v, %v", items, err)
 	}
+	current, err := owner.Items(t.Context(), "project", project)
+	if err != nil || len(current) != 1 || current[0].Content != "keyword fact" || current[0].ID != items[0].ID || current[0].UpdatedAt.IsZero() {
+		t.Fatalf("published active read changed prompt values: %+v, %v", current, err)
+	}
 	embedder := &preparedEmbedder{}
-	owner.embedder = func(context.Context) (app.Embedder, error) { return embedder, nil }
+	owner.embedder = func(context.Context) (models.TextEmbedder, error) { return embedder, nil }
 	items, err = owner.Search(t.Context(), project, "keyword", 5)
 	if err != nil || len(items) != 1 || embedder.calls.Load() != 2 {
 		t.Fatalf("human search callback metadata: items=%v, embeddings=%d, %v", items, embedder.calls.Load(), err)
+	}
+	failure := errors.New("installed memory read failed")
+	store.failure = failure
+	if items, err := owner.Items(t.Context(), "project", project); !errors.Is(err, failure) || len(items) != 0 {
+		t.Fatalf("operational failure became absent memory: %+v, %v", items, err)
+	}
+	store.failure = nil
+	store.snapshot.Installation.Disable()
+	if items, err := owner.Items(t.Context(), "project", project); err != nil || len(items) != 0 {
+		t.Fatalf("optional absence failed: %+v, %v", items, err)
 	}
 }

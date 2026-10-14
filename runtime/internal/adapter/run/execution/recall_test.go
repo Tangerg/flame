@@ -6,24 +6,23 @@ import (
 	"testing"
 
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type fakeAgentMemorySearcher struct {
-	items []agentmemory.Item
+	items []MemoryPromptItem
 	err   error
 	query string
 }
 
-func (f *fakeAgentMemorySearcher) Search(_ context.Context, _, query string, _ int) ([]agentmemory.Item, error) {
+func (f *fakeAgentMemorySearcher) Search(_ context.Context, _, query string, _ int) ([]MemoryPromptItem, error) {
 	f.query = query
 	return f.items, f.err
 }
 
 func TestRecalledMemoriesSkipsPinnedAndInjectsRest(t *testing.T) {
-	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{
-		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: "- pinned core", Pinned: true}),
-		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: "- relevant fact", Pinned: false}),
+	search := &fakeAgentMemorySearcher{items: []MemoryPromptItem{
+		testMemoryPromptItem(agentmemory.ItemSnapshot{Content: "- pinned core", Pinned: true}),
+		testMemoryPromptItem(agentmemory.ItemSnapshot{Content: "- relevant fact", Pinned: false}),
 	}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 	msg, ok, err := composer.recallPart(context.Background(), "/repo", "what is the fact")
@@ -47,7 +46,7 @@ func TestRecalledMemoriesEmptyCases(t *testing.T) {
 	if _, ok, _ := composer.recallPart(context.Background(), "/repo", "q"); ok {
 		t.Fatal("no items → no block")
 	}
-	allPinned := &fakeAgentMemorySearcher{items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: "- x", Pinned: true})}}
+	allPinned := &fakeAgentMemorySearcher{items: []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{Content: "- x", Pinned: true})}}
 	composer = newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: allPinned})
 	if _, ok, _ := composer.recallPart(context.Background(), "/repo", "q"); ok {
 		t.Fatal("all-pinned results → no block (already in the core)")
@@ -58,7 +57,7 @@ func TestRecalledMemoriesEmptyCases(t *testing.T) {
 }
 
 func TestRecalledMemoriesIncludeRelevantUserScope(t *testing.T) {
-	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{
+	search := &fakeAgentMemorySearcher{items: []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{
 		ID:      testAgentMemoryItemID(t, '1'),
 		Content: "- user prefers concise explanations",
 		Scope:   agentmemory.ScopeUser,
@@ -76,9 +75,9 @@ func TestRecalledMemoriesIncludeRelevantUserScope(t *testing.T) {
 }
 
 func TestRecalledMemoriesKeepWholeItemsWithinContextBudget(t *testing.T) {
-	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{
-		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '1'), Content: strings.Repeat("甲", 3000)}),
-		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '2'), Content: strings.Repeat("乙", 3000)}),
+	search := &fakeAgentMemorySearcher{items: []MemoryPromptItem{
+		testMemoryPromptItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '1'), Content: strings.Repeat("甲", 3000)}),
+		testMemoryPromptItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '2'), Content: strings.Repeat("乙", 3000)}),
 	}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 

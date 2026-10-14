@@ -36,15 +36,7 @@ func buildFeatureGo(artifacts featureArtifacts, output featureGoOutput) ([]byte,
 		if err != nil {
 			return nil, fmt.Errorf("feature Go %s: %w", name, err)
 		}
-		var document map[string]jsontext.Value
-		if err := json.Unmarshal(artifacts.definitions[name], &document); err != nil {
-			return nil, err
-		}
-		if len(document["$ref"]) != 0 {
-			fmt.Fprintf(&body, "type %s = %s\n\n", emitter.names[name], value)
-		} else {
-			fmt.Fprintf(&body, "type %s %s\n\n", emitter.names[name], value)
-		}
+		fmt.Fprintf(&body, "type %s %s\n\n", emitter.names[name], value)
 	}
 	prefix := output.Prefix
 	fmt.Fprintf(&body, "const %sCapabilityJSON = %s\n\n", prefix, strconv.Quote(string(artifacts.capability.Identity().JSON())))
@@ -59,11 +51,11 @@ func buildFeatureGo(artifacts featureArtifacts, output featureGoOutput) ([]byte,
 		fmt.Fprintf(&body, "const %s%sMethod = %s\n", prefix, name, strconv.Quote(method.Name))
 		for _, value := range []struct{ suffix, path string }{{"Input", method.Input}, {"Output", method.Output}} {
 			source := strings.TrimPrefix(value.path, "schema.json"+refPrefix)
-			fmt.Fprintf(&body, "type %s%s%s = %s\n", output.Prefix, name, value.suffix, emitter.names[source])
+			fmt.Fprintf(&body, "type %s%s%s %s\n", output.Prefix, name, value.suffix, emitter.names[source])
 		}
 		if method.Stream != "" {
 			source := strings.TrimPrefix(method.Stream, "schema.json"+refPrefix)
-			fmt.Fprintf(&body, "type %s%sChunk = %s\n", output.Prefix, name, emitter.names[source])
+			fmt.Fprintf(&body, "type %s%sChunk %s\n", output.Prefix, name, emitter.names[source])
 		}
 		body.WriteString("\n")
 	}

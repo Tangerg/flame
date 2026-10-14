@@ -64,7 +64,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 			return nil, runtimeContractViolation("list agent memory exceeded its target capacity or returned an empty continuation")
 		}
 		for _, row := range result.Rows {
-			item := memoryProjection(row)
+			item := memoryProjection(memory.UpdateV1Output(row))
 			if err := conversation.ValidateMemoryItem(item); err != nil {
 				return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", len(items)+1, err)
 			}
@@ -171,7 +171,7 @@ func (a *AgentMemory) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddV
 	if err := json.Unmarshal([]byte(reply.Output), &output, json.RejectUnknownMembers(true)); err != nil {
 		return memory.AddV1Output{}, runtimeContractViolation("add agent memory output: %v", err)
 	}
-	item := memoryProjection(output.Item)
+	item := memoryProjection(memory.UpdateV1Output(output.Item))
 	if _, err := agentMemoryResult("add agent memory", "", "", &item, nil); err != nil {
 		return memory.AddV1Output{}, err
 	}

@@ -85,8 +85,8 @@ func TestUnconfiguredEmbeddingRoleIsTheOnlyKeywordOnlyState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	embedder, err := role.ResolveMemory(t.Context())
+	embedder, err := role.Resolve(t.Context())
 	if err != nil || embedder != nil {
-		t.Fatalf("ResolveMemory unconfigured role = (%v, %v), want keyword-only", embedder, err)
+		t.Fatalf("Resolve unconfigured role = (%v, %v), want keyword-only", embedder, err)
 	}
 }

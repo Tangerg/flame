@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
@@ -33,7 +31,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		t.Fatal(canonicalErr)
 	}
 	pinnedMemoryID := testAgentMemoryItemID(t, '1')
-	memory := provenanceMemoryReader{items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{
+	memory := provenanceMemoryReader{items: []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{
 		ID: pinnedMemoryID, Content: "remember this", Pinned: true,
 	})}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
@@ -99,7 +97,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil))},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
-			items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: recalledMemoryID, Content: "recalled fact"})},
+			items: []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{ID: recalledMemoryID, Content: "recalled fact"})},
 		},
 	})
 	messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
@@ -211,15 +209,15 @@ func decodeContextProvenance(t *testing.T, values metadata.Map) contextSources {
 }
 
 type provenanceMemoryReader struct {
-	items []agentmemory.Item
+	items []MemoryPromptItem
 }
 
 func (p provenanceMemoryReader) Items(
 	_ context.Context,
-	scope agentmemory.Scope,
+	scope string,
 	_ string,
-) ([]agentmemory.Item, error) {
-	if scope != agentmemory.ScopeProject {
+) ([]MemoryPromptItem, error) {
+	if scope != string(agentmemory.ScopeProject) {
 		return nil, nil
 	}
 	return slices.Clone(p.items), nil

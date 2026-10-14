@@ -326,7 +326,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatal(err)
 	}
 	addedResult, err := agentMemory.DecodeAdd(addedReply)
-	added := memoryProjection(addedResult.Item)
+	added := memoryProjection(memory.UpdateV1Output(addedResult.Item))
 	if err != nil {
 		t.Fatalf("Add agent memory: %v", err)
 	}

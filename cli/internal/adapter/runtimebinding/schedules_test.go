@@ -14,6 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+type scheduleFixtureRecord = schedule.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fSnapshot
+
 type scheduleBindingStub struct {
 	pluginBinding
 	queries          []protocol.CallPluginRequest
@@ -158,9 +160,9 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		return nil, nil
 	}
 	value := schedule.ListV1Output{NextCursor: page.NextCursor}
-	value.Rows = page.Data
-	if value.Rows == nil {
-		value.Rows = make([]schedule.CreateV1Output, 0)
+	value.Rows = make([]scheduleFixtureRecord, 0, len(page.Data))
+	for _, row := range page.Data {
+		value.Rows = append(value.Rows, scheduleFixtureRecord(row))
 	}
 	encoded, err := jsoninput.Encode(value)
 	if err != nil {

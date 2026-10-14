@@ -59,7 +59,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 				return nil, runtimeContractViolation("list schedules repeats %q", row.ID)
 			}
 			seenIDs[row.ID] = struct{}{}
-			schedules = append(schedules, row)
+			schedules = append(schedules, schedule.CreateV1Output(row))
 		}
 		more, err := cursors.Advance(page.NextCursor)
 		if err != nil {
@@ -123,7 +123,7 @@ func (r *Connection) DecodeUpdate(expectedID string, reply *protocol.CallPluginR
 	if err := requireIdentity("update schedule", value.ID, expectedID); err != nil {
 		return schedule.UpdateV1Output{}, err
 	}
-	return value, nil
+	return schedule.UpdateV1Output(value), nil
 }
 
 func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {

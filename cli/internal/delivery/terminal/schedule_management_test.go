@@ -548,5 +548,5 @@ func (s *scheduleServiceStub) DecodeUpdate(id string, reply *protocol.CallPlugin
 	if err == nil && value.ID != id {
 		err = errors.New("another schedule acknowledged the mutation")
 	}
-	return value, err
+	return schedule.UpdateV1Output(value), err
 }

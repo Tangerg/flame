@@ -8,7 +8,6 @@ import (
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -104,9 +103,9 @@ func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) (*RoleEmbedd
 	return &RoleEmbedder{resolver: resolver, roles: roles}, nil
 }
 
-// ResolveMemory returns the optional embedder configured for agent-memory
-// ranking. An absent role is a normal keyword-only configuration.
-func (r *RoleEmbedder) ResolveMemory(ctx context.Context) (agentmemoryapp.Embedder, error) {
+// Resolve returns the optional configured embedding role. An absent role supplies no
+// embedding client; each consumer retains its own behavior for that absence.
+func (r *RoleEmbedder) Resolve(ctx context.Context) (TextEmbedder, error) {
 	if r == nil || r.resolver == nil || dependency.Missing(r.roles) {
 		return nil, errors.New("model: embedding role resolver is not configured")
 	}

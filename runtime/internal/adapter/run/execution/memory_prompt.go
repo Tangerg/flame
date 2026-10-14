@@ -3,8 +3,6 @@ package execution
 import (
 	"slices"
 	"strings"
-
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
 const memoryPromptCharsPerToken = 4
@@ -17,26 +15,26 @@ type pinnedMemoryPrompt struct {
 	sources contextSources
 }
 
-func newPinnedMemoryPrompt(items []agentmemory.Item, maxTokens int) pinnedMemoryPrompt {
+func newPinnedMemoryPrompt(items []MemoryPromptItem, maxTokens int) pinnedMemoryPrompt {
 	if len(items) == 0 {
 		return pinnedMemoryPrompt{}
 	}
 	ordered := slices.Clone(items)
-	slices.SortStableFunc(ordered, func(a, b agentmemory.Item) int {
-		if a.Pinned() != b.Pinned() {
-			if a.Pinned() {
+	slices.SortStableFunc(ordered, func(a, b MemoryPromptItem) int {
+		if a.Pinned != b.Pinned {
+			if a.Pinned {
 				return -1
 			}
 			return 1
 		}
-		return b.UpdatedAt().Compare(a.UpdatedAt())
+		return b.UpdatedAt.Compare(a.UpdatedAt)
 	})
 
 	var prompt strings.Builder
 	sources := make(contextSources, 0, len(ordered))
 	used := 0
 	for _, item := range ordered {
-		content := strings.TrimSpace(item.Content())
+		content := strings.TrimSpace(item.Content)
 		if content == "" {
 			continue
 		}
@@ -48,7 +46,7 @@ func newPinnedMemoryPrompt(items []agentmemory.Item, maxTokens int) pinnedMemory
 			prompt.WriteByte('\n')
 		}
 		prompt.WriteString(content)
-		sources = append(sources, contextSourcePinnedMemory.source(item.ID().String()))
+		sources = append(sources, contextSourcePinnedMemory.source(item.ID))
 		used += cost
 	}
 	return pinnedMemoryPrompt{text: prompt.String(), sources: sources}

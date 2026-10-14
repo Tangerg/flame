@@ -69,7 +69,7 @@ type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (
 
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
-	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.Stores.Installations, Callbacks: deps.modelServices.callbacks, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Invalidations: deps.publish})
+	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.Stores.Installations, Callbacks: deps.modelServices.callbacks, Embeddings: deps.modelServices.liveEmbedder.Resolve, Invalidations: deps.publish})
 	if err != nil {
 		return toolEnvironment{}, err
 	}
@@ -111,7 +111,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.utilityModel = environment.modelComposition.Auxiliary(utility)
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Commands: commandCalls})
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}

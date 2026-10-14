@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -101,7 +100,7 @@ func (s scopeCapturingMemorySearch) Search(
 	_ context.Context,
 	project, _ string,
 	_ int,
-) ([]agentmemory.Item, error) {
+) ([]MemoryPromptItem, error) {
 	*s.searchedAt = project
 	return nil, nil
 }

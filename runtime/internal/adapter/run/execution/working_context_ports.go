@@ -2,10 +2,10 @@ package execution
 
 import (
 	"context"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -29,12 +29,21 @@ type InteractionModelContextState interface {
 	CurrentSessionState(ctx context.Context, sessionID string) ([]corechat.Message, error)
 }
 
+// MemoryPromptItem contains only published values consumed by prompt composition.
+// Feature lifecycle and business validation stay with the private backend.
+type MemoryPromptItem struct {
+	ID        string
+	Content   string
+	Pinned    bool
+	UpdatedAt time.Time
+}
+
 // AgentMemoryReader supplies the pinned memory included in every fresh root.
 type AgentMemoryReader interface {
-	Items(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error)
+	Items(ctx context.Context, scope string, project string) ([]MemoryPromptItem, error)
 }
 
 // AgentMemorySearcher supplies prompt-relevant non-pinned memory.
 type AgentMemorySearcher interface {
-	Search(ctx context.Context, project, query string, topK int) ([]agentmemory.Item, error)
+	Search(ctx context.Context, project, query string, topK int) ([]MemoryPromptItem, error)
 }

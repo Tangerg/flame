@@ -290,14 +290,14 @@ func (a *app) updateSchedule(request schedule.UpdateV1Input, label string) {
 	presentation := a.session.context
 	a.status.note(label)
 	started := a.runApplicationOperation(scheduleOperation, false,
-		func(ctx context.Context) (schedule.CreateV1Output, error) {
+		func(ctx context.Context) (schedule.UpdateV1Output, error) {
 			return installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleUpdateIntent(request.ID), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareUpdate(ctx, request)
 			}, func(reply *protocol.CallPluginResponse) (schedule.UpdateV1Output, error) {
 				return a.schedules.DecodeUpdate(request.ID, reply)
 			})
 		},
-		func(updated schedule.CreateV1Output, err error) {
+		func(updated schedule.UpdateV1Output, err error) {
 			if err != nil {
 				message := label + " failed: " + err.Error()
 				if a.workbench != nil {

@@ -13,13 +13,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/google/uuid"
 )
+
+// TextEmbedder exposes the model adapter's captured vector space and observed call.
+// A feature consumes this port without owning provider resolution or evidence.
+type TextEmbedder interface {
+	ID() string
+	Embed(context.Context, []string) ([][]float32, error)
+}
 
 // EmbeddingResolver builds observed embedding clients from the current
 // provider-registry snapshot. Construction is intentionally uncached so
@@ -47,7 +53,7 @@ func NewEmbeddingResolver(providers CredentialLookup, journal EndpointJournal, p
 }
 
 // Resolve builds an embedder for the current selection and registry snapshot.
-func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.Selection) (agentmemoryapp.Embedder, error) {
+func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.Selection) (TextEmbedder, error) {
 	if e == nil || dependency.Missing(e.providers) || dependency.Missing(e.journal) {
 		return nil, errors.New("model: embedding resolver is not configured")
 	}

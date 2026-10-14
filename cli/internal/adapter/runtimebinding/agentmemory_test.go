@@ -18,6 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot
+
 const (
 	adapterMemoryIDOne   = "mem_00000000000000000000000000000001"
 	adapterMemoryIDTwo   = "mem_00000000000000000000000000000002"
@@ -395,7 +397,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if result == nil {
 			result = a.item(adapterMemoryIDTwo, memory.Scope(input.Scope), input.Content, false)
 		}
-		out := memory.AddV1Output{Item: memory.UpdateV1Output{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
+		out := memory.AddV1Output{Item: memoryFixtureRecord{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsoninput.Encode(out)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
@@ -443,12 +445,12 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if err != nil || page == nil {
 		return nil, err
 	}
-	output := memory.ListV1Output{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memory.UpdateV1Output, 0, len(page.Data))}
+	output := memory.ListV1Output{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memoryFixtureRecord, 0, len(page.Data))}
 	if a.pageCapacity != nil {
 		output.Capacity = a.pageCapacity(input)
 	}
 	for _, row := range page.Data {
-		output.Rows = append(output.Rows, memory.UpdateV1Output{ID: row.ID, Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
+		output.Rows = append(output.Rows, memoryFixtureRecord{ID: row.ID, Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
 	}
 	encoded, err := jsoninput.Encode(output)
 	if err != nil {
@@ -546,7 +548,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 					t.Fatal("delete recovery changed its original command or binding")
 				}
 				if method == memory.AddV1Method {
-					output, err := jsoninput.Encode(memory.AddV1Output{Changed: true, Item: memory.UpdateV1Output{ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
+					output, err := jsoninput.Encode(memory.AddV1Output{Changed: true, Item: memoryFixtureRecord{ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
 					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
 				if method == memory.UpdateV1Method {

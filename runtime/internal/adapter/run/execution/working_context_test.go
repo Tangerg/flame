@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -45,8 +44,8 @@ func TestWorkingContextRecallPreservesConversationAndOpeningInput(t *testing.T) 
 		corechat.NewUserMessage(corechat.NewTextPart("current question"), corechat.NewTextPart("current attachment")),
 	}
 	original := cloneChatMessages(seed)
-	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{
-		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '1'), Content: "relevant fact"}),
+	search := &fakeAgentMemorySearcher{items: []MemoryPromptItem{
+		testMemoryPromptItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '1'), Content: "relevant fact"}),
 	}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 	cwd := t.TempDir()

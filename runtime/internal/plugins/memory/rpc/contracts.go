@@ -1,6 +1,7 @@
 package rpc
 
 //go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/memorycontracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../../../../plugins/memory/io.github.tangerg.flame/contracts --ts ../../../../../plugins/memory/io.github.tangerg.flame/contracts --go-out ../../../../../cli/internal/domain/memory/contract.generated.go --go-package memory"
+//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/memorycontracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../../../../plugins/memory/io.github.tangerg.flame/contracts --ts ../../../../../plugins/memory/io.github.tangerg.flame/contracts --go-out ../../../adapter/integration/pluginservices/memorycontract/contract.generated.go --go-package memorycontract"
 
 import (
 	"github.com/Tangerg/flame/runtime/capability"

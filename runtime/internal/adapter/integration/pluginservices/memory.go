@@ -8,13 +8,12 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices/memorycontract"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	modeltext "github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
-	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -23,12 +22,12 @@ import (
 )
 
 type Memory struct {
-	contracts     rpc.Contracts
+	contract      *capability.Contract
 	installations plugins.Store
 	pool          *mcpconnection.Pool
 	callbacks     *pluginsdk.Callbacks
 	utility       models.AuxiliaryResolver
-	embedder      func(context.Context) (app.Embedder, error)
+	embedder      func(context.Context) (models.TextEmbedder, error)
 	history       ConversationReader
 	commands      *CommandCalls
 }
@@ -41,7 +40,7 @@ type MemoryConfig struct {
 	Connections   *mcpconnection.Pool
 	Callbacks     *pluginsdk.Callbacks
 	Utility       models.AuxiliaryResolver
-	Embeddings    func(context.Context) (app.Embedder, error)
+	Embeddings    func(context.Context) (models.TextEmbedder, error)
 	Conversation  ConversationReader
 	Commands      *CommandCalls
 }
@@ -58,39 +57,35 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	if config.Commands == nil {
 		return nil, errors.New("memory: command routing is required")
 	}
-	contracts, err := rpc.NewContracts()
+	contract, err := capability.Parse([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
-	return &Memory{contracts: contracts, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
+	return &Memory{contract: contract, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
 
-func (m *Memory) Items(ctx context.Context, scope memory.Scope, project string) ([]memory.Item, error) {
+func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.MemoryPromptItem, error) {
 	ctx = operation.Start(ctx, capability.Automatic, "memory.context", uuid.NewString())
-	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
+	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	values, err := query(ctx, location, session, m.contracts.Items, rpc.ItemsInput{Scope: scope, Project: project}, sdk.ParamsBase{})
-	if err != nil {
-		return nil, rpc.DecodeError(err)
-	}
-	items, err := restoreItems(values)
+	values, err := query[memorycontract.ItemsV1Input, memorycontract.ItemsV1Output](ctx, location, session, memorycontract.ItemsV1Method, memorycontract.ItemsV1Input{Scope: scope, Project: project}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range items {
-		if item.Status() != memory.StatusActive || item.Scope() != scope || item.Project() != project {
+	for _, item := range values {
+		if item.Status != "active" || item.Scope != scope || item.Project != project {
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
 	}
-	return items, nil
+	return memoryPromptItems(memorycontract.ItemsV1Output(values))
 }
-func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]memory.Item, error) {
-	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
+func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]execution.MemoryPromptItem, error) {
+	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
@@ -114,26 +109,23 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 	if err != nil {
 		return nil, err
 	}
-	values, err := query(ctx, location, session, m.contracts.Search, rpc.SearchInput{Project: project, Query: text, TopK: topK, EmbeddingSpace: space}, metadata)
-	if err != nil {
-		return nil, rpc.DecodeError(err)
-	}
-	items, err := restoreItems(values)
+	values, err := query[memorycontract.SearchV1Input, memorycontract.SearchV1Output](ctx, location, session, memorycontract.SearchV1Method, memorycontract.SearchV1Input{Project: project, Query: text, TopK: int64(topK), EmbeddingSpace: space}, metadata)
 	if err != nil {
 		return nil, err
 	}
-	if len(items) > max(topK, 0) {
+	if len(values) > max(topK, 0) {
 		return nil, errors.New("memory: backend exceeded requested search bound")
 	}
-	for _, item := range items {
-		if item.Status() != memory.StatusActive || item.Scope() != memory.ScopeUser && (item.Scope() != memory.ScopeProject || item.Project() != project) {
+	for _, item := range values {
+		visibleTarget := item.Scope == "user" && item.Project == "" || item.Scope == "project" && item.Project == project
+		if item.Status != "active" || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
 	}
-	return items, nil
+	return memoryPromptItems(memorycontract.ItemsV1Output(values))
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
-	binding, _, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contracts.Capability)
+	binding, _, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil
 	}
@@ -144,7 +136,10 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	_, err = invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	request := memorycontract.MaintainV1Input{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted}
+	request.Conversation.MessageCount = int64(len(messages))
+	request.Conversation.Transcript = modeltext.RenderTranscript(messages)
+	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
 		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: rpc.MaximumModelInput, MaxOutputTokens: rpc.MaximumModelOutput})
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
@@ -168,16 +163,15 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 			releaseModel()
 		}, nil
 	})
-	return rpc.DecodeError(err)
+	return err
 }
-func restoreItems(values []memory.ItemSnapshot) ([]memory.Item, error) {
-	items := make([]memory.Item, len(values))
+func memoryPromptItems(values memorycontract.ItemsV1Output) ([]execution.MemoryPromptItem, error) {
+	items := make([]execution.MemoryPromptItem, len(values))
 	for i, value := range values {
-		item, err := memory.RestoreItem(value)
-		if err != nil {
-			return nil, err
+		if value.UpdatedAt.IsZero() {
+			return nil, errors.New("memory: published prompt item has no ordering time")
 		}
-		items[i] = item
+		items[i] = execution.MemoryPromptItem{ID: value.ID, Content: value.Content, Pinned: value.Pinned, UpdatedAt: value.UpdatedAt}
 	}
 	return items, nil
 }

@@ -7,12 +7,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
@@ -23,7 +23,7 @@ import (
 type ToolPreparationConfig struct {
 	Installations plugins.Store
 	Callbacks     *pluginsdk.Callbacks
-	Embeddings    func(context.Context) (app.Embedder, error)
+	Embeddings    func(context.Context) (models.TextEmbedder, error)
 	Invalidations invalidation.Publish
 }
 
@@ -75,7 +75,7 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 	}, nil
 }
 
-func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (app.Embedder, error)) (context.Context, func(), error) {
+func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error)) (context.Context, func(), error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")

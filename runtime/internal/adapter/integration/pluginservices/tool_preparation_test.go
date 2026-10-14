@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -22,7 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -134,7 +134,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			t.Cleanup(transport.Close)
 			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 			var embeddingFailure error
-			resolve := func(context.Context) (app.Embedder, error) {
+			resolve := func(context.Context) (models.TextEmbedder, error) {
 				if embeddingFailure != nil {
 					return nil, embeddingFailure
 				}

@@ -2,6 +2,7 @@ package pluginservices
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -32,7 +34,7 @@ func contributionSession(ctx context.Context, store plugins.Store, selections pl
 	return binding, session, err
 }
 
-func query[P, R any](ctx context.Context, location plugins.ContributionBinding, session *sdk.ClientSession, method *pluginsdk.Method[P, R], input P, metadata sdk.ParamsBase) (R, error) {
+func query[P, R any](ctx context.Context, location plugins.ContributionBinding, session *sdk.ClientSession, name string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "plugins.query", "")
@@ -53,9 +55,21 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 	if err != nil {
 		return zero, err
 	}
-	bound, err := method.Bind(exported)
+	bound, err := exported.Method(name)
 	if err != nil {
 		return zero, err
 	}
-	return bound.CallWithMetadata(ctx, input, metadata)
+	admitted, err := jsoninput.Encode(input)
+	if err != nil {
+		return zero, err
+	}
+	output, err := bound.InvokeWithMetadata(ctx, "", admitted, metadata)
+	if err != nil {
+		return zero, err
+	}
+	var value R
+	if err := json.Unmarshal(output.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
+		return zero, err
+	}
+	return value, nil
 }

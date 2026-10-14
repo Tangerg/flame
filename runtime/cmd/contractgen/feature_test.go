@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
@@ -264,9 +265,16 @@ func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
 			t.Fatalf("Go projection lost %s", required)
 		}
 	}
-	if _, err := parser.ParseFile(token.NewFileSet(), "generated.go", generated, parser.AllErrors); err != nil {
+	file, err := parser.ParseFile(token.NewFileSet(), "generated.go", generated, parser.AllErrors)
+	if err != nil {
 		t.Fatal(err)
 	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		if declared, ok := node.(*ast.TypeSpec); ok && declared.Assign.IsValid() {
+			t.Errorf("consumer boundary reexports an alias: %s", declared.Name.Name)
+		}
+		return true
+	})
 	scoped, err := buildFeatureGo(artifacts, featureGoOutput{Package: "consumer"})
 	if err != nil {
 		t.Fatal(err)

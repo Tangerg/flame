@@ -356,8 +356,8 @@ func (w *WorkingContextComposer) recallPart(
 	injected := 0
 	used := 0
 	for _, item := range items {
-		content := strings.TrimSpace(item.Content())
-		if item.Pinned() || content == "" {
+		content := strings.TrimSpace(item.Content)
+		if item.Pinned || content == "" {
 			continue
 		}
 		cost := estimateMemoryPromptTokens(content)
@@ -369,7 +369,7 @@ func (w *WorkingContextComposer) recallPart(
 		}
 		body.WriteString(content)
 		body.WriteByte('\n')
-		sources = append(sources, contextSourceRecalledMemory.source(item.ID().String()))
+		sources = append(sources, contextSourceRecalledMemory.source(item.ID))
 		injected++
 		used += cost
 	}

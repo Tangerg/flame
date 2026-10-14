@@ -604,6 +604,14 @@ policy and acceptance query shapes are removed without compatibility readers.
 
 ## Plugin backend 2026-10-13.4
 
+Memory Run-context reads use the same generated published capability as external
+consumers. The prompt composer receives only ID/content/pinned/ordering-time
+projections; it cannot restore or advance a private Memory entity. Active target
+checks, search bounds, optional absence, operational errors and the existing prompt
+budgets retain their behavior. Model resolution returns the model adapter's
+`TextEmbedder` port, without a dependency on a feature application interface.
+The feature-specific callback grant cutover remains separate work.
+
 Memory and Schedules are optional, complete managed plugin backends. Their
 Local contribution declarations bind independent IDs to exact contracts and
 server exports; there is no closed service-kind routing enum. Product composition selects

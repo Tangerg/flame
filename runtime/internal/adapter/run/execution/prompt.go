@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -70,18 +69,18 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	// The always-on core is the PINNED items (project + user scope). Non-pinned
 	// approved memory is surfaced per turn by relevance (the recall block), so a
 	// growing corpus never bloats every prompt.
-	var pinned []agentmemory.Item
+	var pinned []MemoryPromptItem
 	if project := strings.TrimSpace(cwd); project != "" {
-		items, err := w.config.AgentMemory.Items(ctx, agentmemory.ScopeProject, filepath.Clean(project))
+		items, err := w.config.AgentMemory.Items(ctx, "project", filepath.Clean(project))
 		if err != nil {
-			slog.WarnContext(ctx, "execution: load pinned memory", "scope", agentmemory.ScopeProject, "error", err)
+			slog.WarnContext(ctx, "execution: load pinned memory", "scope", "project", "error", err)
 		} else {
 			pinned = appendPinned(pinned, items)
 		}
 	}
-	userItems, err := w.config.AgentMemory.Items(ctx, agentmemory.ScopeUser, "")
+	userItems, err := w.config.AgentMemory.Items(ctx, "user", "")
 	if err != nil {
-		slog.WarnContext(ctx, "execution: load pinned memory", "scope", agentmemory.ScopeUser, "error", err)
+		slog.WarnContext(ctx, "execution: load pinned memory", "scope", "user", "error", err)
 	} else {
 		pinned = appendPinned(pinned, userItems)
 	}
@@ -175,9 +174,9 @@ func (w *WorkingContextComposer) currentSessionPlan(
 }
 
 // appendPinned appends the pinned items of src to dst.
-func appendPinned(dst, src []agentmemory.Item) []agentmemory.Item {
+func appendPinned(dst, src []MemoryPromptItem) []MemoryPromptItem {
 	for _, item := range src {
-		if item.Pinned() {
+		if item.Pinned {
 			dst = append(dst, item)
 		}
 	}
