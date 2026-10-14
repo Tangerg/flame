@@ -127,7 +127,7 @@ import {
   type PluginCommandInput,
   type PluginCommandBinding,
 } from "./mutationJournal";
-import type { PendingSteerCommand } from "./mutationJournal";
+import type { PendingRunCommand } from "./mutationJournal";
 import { RpcProtocolError } from "./errors";
 
 export type { MethodsOptions } from "./wireCallPath";
@@ -145,12 +145,27 @@ export interface RunOpeningResult<R> {
     | { type: "retired"; sessionId: string };
 }
 
-export type SteerRecovery = Pick<MutationPromise<SteerRunResponse>, "retry"> & {
-  readonly params: SteerRunRequest;
+interface CommandObservation {
   readonly idempotencyKey: string;
   readonly observation:
     { type: "known"; acceptance: RunAcceptance } | { type: "unknown"; cause: unknown };
-};
+}
+
+export type RunCommandRecovery = CommandObservation &
+  (
+    | ({ operation: "start"; params: StartRunRequest } & Pick<
+        MutationPromise<RunOpeningResult<StartRunResponse>>,
+        "retry"
+      >)
+    | ({ operation: "resume"; params: ResumeRunRequest } & Pick<
+        MutationPromise<RunOpeningResult<ResumeRunResponse>>,
+        "retry"
+      >)
+    | ({ operation: "steer"; params: SteerRunRequest } & Pick<
+        MutationPromise<SteerRunResponse>,
+        "retry"
+      >)
+  );
 
 async function callOrDispose<R>(
   stream: { dispose: () => void },
@@ -237,7 +252,7 @@ export interface Methods {
     ) => AutoPagingPromise<Page<ModelInvocation>>;
   };
   runs: {
-    recoverSteers: (signal?: AbortSignal) => Promise<SteerRecovery[]>;
+    recoverCommands: (signal?: AbortSignal) => Promise<RunCommandRecovery[]>;
     start: (
       params: StartRunRequest,
       signal?: AbortSignal,
@@ -476,20 +491,48 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     return { result, events: stream.events };
   };
 
+  const queryAcceptance = (
+    operation: "start" | "resume" | "steer",
+    namespace: string,
+    key: string,
+    signal?: AbortSignal,
+  ) =>
+    perform("runs.getAcceptance", { namespace, key, operation }, { signal })
+      .then((receipt) => {
+        if (
+          receipt.type !== "notRecorded" &&
+          operation !== "resume" &&
+          (!receipt.userItemId || (operation === "steer" && !receipt.input?.length))
+        )
+          throw new RpcProtocolError("runs.getAcceptance result", [
+            {
+              path: "$",
+              detail: `accepted ${operation} omitted its original input identity or content`,
+            },
+          ]);
+        return receipt;
+      })
+      .catch((cause: unknown) => {
+        throw new MutationLookupError(cause);
+      });
+
   function openRun(
     method: "runs.start",
     params: StartRunRequest,
     signal?: AbortSignal,
+    original?: PendingRunCommand,
   ): MutationPromise<RunOpeningResult<StartRunResponse>>;
   function openRun(
     method: "runs.resume",
     params: ResumeRunRequest,
     signal?: AbortSignal,
+    original?: PendingRunCommand,
   ): MutationPromise<RunOpeningResult<ResumeRunResponse>>;
   function openRun(
     method: "runs.start" | "runs.resume",
     params: StartRunRequest | ResumeRunRequest,
     signal?: AbortSignal,
+    original?: PendingRunCommand,
   ): MutationPromise<RunOpeningResult<ResumeRunResponse>> {
     return openMutation(
       method,
@@ -500,23 +543,13 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           throw new MutationJournalScopeUnavailableError(
             "run opening requires the Runtime store identity",
           );
-        const acceptance = await perform(
-          "runs.getAcceptance",
-          {
-            namespace,
-            key: idempotencyKey,
-            operation: method === "runs.start" ? "start" : "resume",
-          },
-          { signal: attempt.signal },
-        ).catch((cause: unknown) => {
-          throw new MutationLookupError(cause);
-        });
+        const acceptance = await queryAcceptance(
+          method === "runs.start" ? "start" : "resume",
+          namespace,
+          idempotencyKey,
+          attempt.signal,
+        );
         if (acceptance.type !== "notRecorded") {
-          if (method === "runs.start" && !acceptance.userItemId) {
-            throw new RpcProtocolError("runs.getAcceptance result", [
-              { path: "$.userItemId", detail: "accepted start omitted its opening user Item" },
-            ]);
-          }
           return {
             result: {
               runId: acceptance.runId,
@@ -536,27 +569,13 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         return { result: opened.result, observation: { type: "stream", events: opened.events } };
       },
       signal,
+      undefined,
+      original?.idempotencyKey,
+      original?.reserve,
     );
   }
 
-  const querySteer = (namespace: string, key: string, signal?: AbortSignal) =>
-    perform("runs.getAcceptance", { namespace, key, operation: "steer" }, { signal })
-      .then((receipt) => {
-        if (receipt.type !== "notRecorded" && (!receipt.userItemId || !receipt.input?.length))
-          throw new RpcProtocolError("runs.getAcceptance result", [
-            { path: "$", detail: "accepted steer omitted its original input identity or content" },
-          ]);
-        return receipt;
-      })
-      .catch((cause: unknown) => {
-        throw new MutationLookupError(cause);
-      });
-
-  const openSteer = (
-    params: SteerRunRequest,
-    signal?: AbortSignal,
-    original?: PendingSteerCommand,
-  ) =>
+  const openSteer = (params: SteerRunRequest, signal?: AbortSignal, original?: PendingRunCommand) =>
     openMutation(
       "runs.steer",
       params,
@@ -566,7 +585,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           throw new MutationJournalScopeUnavailableError(
             "steer requires the Runtime store identity",
           );
-        const acceptance = await querySteer(namespace, key, attempt.signal);
+        const acceptance = await queryAcceptance("steer", namespace, key, attempt.signal);
         if (acceptance.type !== "notRecorded") {
           if (!acceptance.userItemId)
             throw new RpcProtocolError("runs.getAcceptance result", [
@@ -631,12 +650,13 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       list: (query, signal) => call("modelInvocations.list", query, { signal }),
     },
     runs: {
-      recoverSteers: (signal) =>
+      recoverCommands: async (signal) =>
         Promise.all(
-          mutationJournal.pendingSteers().map(async (command): Promise<SteerRecovery> => {
-            let observation: SteerRecovery["observation"];
+          mutationJournal.pendingCommands().map(async (command): Promise<RunCommandRecovery> => {
+            let observation: RunCommandRecovery["observation"];
             try {
-              const acceptance = await querySteer(
+              const acceptance = await queryAcceptance(
+                command.operation,
                 command.namespace,
                 command.idempotencyKey,
                 signal,
@@ -646,12 +666,35 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
             } catch (cause) {
               observation = { type: "unknown", cause };
             }
-            return {
-              params: structuredClone(command.params),
+            const observed = {
               idempotencyKey: command.idempotencyKey,
               observation,
-              retry: (options) => openSteer(command.params, options?.signal, command),
             };
+            switch (command.operation) {
+              case "start":
+                return {
+                  ...observed,
+                  operation: "start",
+                  params: structuredClone(command.params),
+                  retry: (options) =>
+                    openRun("runs.start", command.params, options?.signal, command),
+                };
+              case "resume":
+                return {
+                  ...observed,
+                  operation: "resume",
+                  params: structuredClone(command.params),
+                  retry: (options) =>
+                    openRun("runs.resume", command.params, options?.signal, command),
+                };
+              case "steer":
+                return {
+                  ...observed,
+                  operation: "steer",
+                  params: structuredClone(command.params),
+                  retry: (options) => openSteer(command.params, options?.signal, command),
+                };
+            }
           }),
         ),
       getAcceptance: (params, signal) => call("runs.getAcceptance", params, { signal }),

@@ -3,6 +3,7 @@ import type { RunId, SegmentId, RunOpeningResult } from "@flame/runtime-contract
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "./rpcProblem";
+import { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 
 type RunOpening = { runId: RunId; segmentId: SegmentId };
 
@@ -13,6 +14,7 @@ interface RunOpeningControllerOptions {
   setAbortController: (controller: AbortController) => void;
   abortCurrent: () => void;
   setStartError: (error: AgentProblem) => void;
+  onRejected: () => void;
 }
 
 export interface RunOpeningController {
@@ -35,6 +37,7 @@ export function createRunOpeningController({
   setAbortController,
   abortCurrent,
   setStartError,
+  onRejected,
 }: RunOpeningControllerOptions): RunOpeningController {
   let starting = false;
   let openingLease: object = {};
@@ -101,6 +104,8 @@ export function createRunOpeningController({
             releaseDraft();
             failure = err;
             console.error("[agent] run failed to start:", sessionId, err);
+            onRejected();
+            if (mutationSettlementIsUnknown(err)) return;
             const problem = agentProblemFromRpcFailure(err);
             if (problem) setStartError(problem);
           },

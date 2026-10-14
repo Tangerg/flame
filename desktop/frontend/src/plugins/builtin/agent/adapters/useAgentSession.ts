@@ -12,7 +12,7 @@ import { useEffect, useEffectEvent } from "react";
 import { queryClient } from "@/lib/queryClient";
 import type { AgentInput } from "@/plugins/builtin/agent/domain/input";
 import type { AgentSession } from "../application/ports/defaultSession";
-import type { InterruptResumeInput } from "../application/ports/sessionView";
+import type { InterruptResumeInput } from "../domain/hitl";
 import { selectCurrentRootRun } from "../application/view/runTree";
 import { AGENT_SESSION_USAGE_KEY } from "../application/session/sessionUsage";
 import { agentInputToContentBlocks } from "@/plugins/builtin/agent/adapters/wireInput";
@@ -53,6 +53,7 @@ export function useAgentSession(
     let abort: AbortController | null = null;
     let cancelled = false;
     let interacted = false;
+    let commandsReady = false;
     let projectionSynchronization: ReturnType<
       typeof createSessionProjectionSynchronization
     > | null = null;
@@ -103,7 +104,10 @@ export function useAgentSession(
           },
           pump: runPump.pump,
           onSynchronizationFailed: reportSynchronizationFailure,
-        }).then((authoritativeView) => authoritativeView !== null);
+        }).then((authoritativeView) => {
+          if (!cancelled && !signal.aborted) commandsReady = authoritativeView !== null;
+          return authoritativeView !== null;
+        });
       },
     });
 
@@ -120,12 +124,17 @@ export function useAgentSession(
         abort = ctrl;
       },
       setStartError: (error) => store().setCommandError(sessionId, error),
+      onRejected: () => {
+        commandsReady = false;
+        void projectionSynchronization?.request();
+      },
     });
 
     const recoverOpeningObservation = async (
       opening: RunOpeningResult<{ runId: RunId; segmentId: SegmentId }>,
       signal: AbortSignal,
     ): Promise<void> => {
+      commandsReady = false;
       try {
         const observation = opening.observation;
         if (observation.type !== "stream" && observation.sessionId !== sessionId) {
@@ -133,14 +142,15 @@ export function useAgentSession(
         }
         if (observation.type === "retired") {
           notifyInfo(t("agent.acceptedRunRetired"), { source: "session" });
-          await refreshAgentSessionProjection(sessionId, {
+          const view = await refreshAgentSessionProjection(sessionId, {
             signal,
             canCommit: () => !cancelled && !signal.aborted,
           });
+          if (!cancelled && !signal.aborted) commandsReady = view !== null;
           return;
         }
         if (observation.type === "stream") await disposeAsyncIterable(observation.events);
-        await startAgentSessionRecovery({
+        const view = await startAgentSessionRecovery({
           client: client(),
           sessionId,
           signal,
@@ -153,6 +163,7 @@ export function useAgentSession(
           pump: runPump.pump,
           onSynchronizationFailed: reportSynchronizationFailure,
         });
+        if (!cancelled && !signal.aborted) commandsReady = view !== null;
       } catch (error) {
         if (!cancelled && !signal.aborted) reportSynchronizationFailure(error);
         throw error;
@@ -160,7 +171,12 @@ export function useAgentSession(
     };
 
     const send = (input: AgentInput, options: AgentRunStartOptions = {}): boolean => {
-      if (runOpening.isStarting()) return false;
+      if (
+        !commandsReady ||
+        runOpening.isStarting() ||
+        store().sessions[sessionId]?.openingCommands.length
+      )
+        return false;
       const currentRoot = store().sessions[sessionId]?.view;
       if (currentRoot && selectCurrentRootRun(currentRoot)?.status === "waiting") return false;
       const wireInput = agentInputToContentBlocks(input);
@@ -186,7 +202,12 @@ export function useAgentSession(
       onSettled?: () => void,
       onStartError?: () => void,
     ): boolean => {
-      if (runOpening.isStarting()) return false;
+      if (
+        !commandsReady ||
+        runOpening.isStarting() ||
+        store().sessions[sessionId]?.openingCommands.length
+      )
+        return false;
       const wireResponses: InterruptResponse[] = responses.map((response) => ({
         itemId: asItemId(response.itemId),
         response: response.response,
@@ -257,12 +278,25 @@ export function useAgentSession(
     store().setSend(sessionId, send);
     store().setStop(sessionId, stop);
     store().setResume(sessionId, resume);
+    store().setRetryOpening(sessionId, (key) => {
+      if (!commandsReady || runOpening.isStarting()) return false;
+      const command = store().sessions[sessionId]?.openingCommands.find(
+        (pending) => pending.idempotencyKey === key,
+      );
+      if (!command) return false;
+      runOpening.begin((signal) => command.retry(signal), {
+        onResult: () => store().projectOpeningAccepted(sessionId, key),
+        observe: recoverOpeningObservation,
+      });
+      return true;
+    });
     store().setSynchronize(sessionId, (ownership) => {
       if (
         ownership === "replace-live" ||
         ownership === "retire-live" ||
         ownership === "replace-server"
       ) {
+        commandsReady = false;
         runOpening.retire();
         runCancellation.retire();
         if (ownership === "retire-live") {
@@ -286,6 +320,7 @@ export function useAgentSession(
       store().setSend(sessionId, null);
       store().setStop(sessionId, null);
       store().setResume(sessionId, null);
+      store().setRetryOpening(sessionId, null);
       store().setSynchronize(sessionId, null);
       store().setCancelRun(sessionId, null);
     };

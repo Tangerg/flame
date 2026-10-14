@@ -21,6 +21,7 @@ import {
   useRootNarrativeMessages,
   useTranscriptRows,
   useAgentSharedMaterial,
+  useAgentOpeningCommands,
 } from "./agentViewSelectors";
 import { AgentViewRefreshOwner, useAgentStore } from "./agentStore";
 
@@ -128,6 +129,7 @@ export function installAgentStatePorts(): () => void {
     useRootNarrativeMessages,
     useTranscriptRows,
     useProblem: useAgentProblem,
+    useOpeningCommands: useAgentOpeningCommands,
     usePlan: useAgentPlan,
     useSharedMaterial: useAgentSharedMaterial,
     useAction: useAgentAction,
@@ -154,7 +156,8 @@ export function installAgentStatePorts(): () => void {
         ),
     beginViewRefresh: (sessionId, invalidateQueuedRunEvents) =>
       refreshOwner.begin(sessionId, invalidateQueuedRunEvents),
-    commitViewRefresh: (sessionId, token, view) => refreshOwner.commit(sessionId, token, view),
+    commitViewRefresh: (sessionId, token, view, commands) =>
+      refreshOwner.commit(sessionId, token, view, commands),
     retireProjectionGeneration: (sessionIds) => refreshOwner.retireProjectionGeneration(sessionIds),
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
     clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),

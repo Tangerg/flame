@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { InterruptResumePayload } from "../ports/sessionView";
+import type { InterruptResumePayload } from "../../domain/hitl";
 import { agentSessionState } from "../ports/sessionState";
 import { stageInterruptResponse } from "./interruptResponseCoordinator";
 

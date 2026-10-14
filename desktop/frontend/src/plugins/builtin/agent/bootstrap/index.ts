@@ -1,6 +1,7 @@
 import { registerAgentDataProviders } from "../adapters/runtimeDataProviders";
 import type { FlameClient } from "@flame/runtime-contract/client";
-import { definePlugin } from "@/plugins/sdk";
+import { contributeLayout, definePlugin } from "@/plugins/sdk";
+import { PendingRunOpenings } from "../ui/PendingRunOpenings";
 import { installAgentSessionScope } from "../adapters/agentSessionScope";
 import { installAgentDefaultSessionPort } from "../adapters/agentDefaultSessionPort";
 import { installAgentRuntimeGateway } from "../adapters/agentRuntimeGateway";
@@ -27,6 +28,11 @@ export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
     provides: { sessions: AGENT_SESSIONS },
     setup(ctx) {
+      contributeLayout(ctx, "chat.banner.top", {
+        id: "pending-run-openings",
+        order: 0,
+        component: PendingRunOpenings,
+      });
       registerAgentDataProviders(ctx, runtimeClient);
       ctx.cleanup(installAgentStatePorts());
       ctx.cleanup(

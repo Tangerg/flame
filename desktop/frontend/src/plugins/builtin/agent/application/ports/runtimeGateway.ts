@@ -1,7 +1,13 @@
 import type { MCPServerID, RestoreType } from "@flame/runtime-contract/wire";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
-import type { AgentItem, AgentPendingInterruptSet, AgentRunFact } from "@/plugins/sdk";
-import type { ApprovalMode, ApprovalModeResult } from "../../domain/hitl";
+import type {
+  AgentItem,
+  AgentPendingInterruptSet,
+  AgentRunFact,
+  AgentDriver,
+  AgentRunStartOptions,
+} from "@/plugins/sdk";
+import type { ApprovalMode, ApprovalModeResult, InterruptResumeInput } from "../../domain/hitl";
 import type { AgentInput } from "../../domain/input";
 import type { AgentPlan } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentSessionSummary } from "../session/sessionQueries";
@@ -25,7 +31,22 @@ export interface AgentSessionMaterialRead {
   snapshot: AgentSessionSnapshot;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
   unresolvedSteers?: AgentUnresolvedSteer[];
+  unresolvedOpenings?: AgentOpeningCommand[];
 }
+
+export type AgentOpeningCommand = (
+  | {
+      operation: "start";
+      input: AgentInput;
+      options: AgentRunStartOptions;
+      generation?: Record<string, unknown>;
+    }
+  | { operation: "resume"; runId: string; input?: AgentInput; responses: InterruptResumeInput[] }
+) & {
+  idempotencyKey: string;
+  receipt: "notRecorded" | "unknown";
+  retry(signal: AbortSignal): ReturnType<AgentDriver["resume"]>;
+};
 
 export interface AgentSessionUsage {
   inputTokens?: number;

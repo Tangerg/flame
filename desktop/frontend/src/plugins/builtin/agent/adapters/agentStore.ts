@@ -28,6 +28,7 @@ import {
 } from "@/plugins/builtin/agent/application/view/problemPresentation";
 import { useAgentSessionStore } from "./agentSessionStore";
 import { runtimeAgentEvent, runtimeCancelResult, runtimeRunFact } from "./runtimeAgentFacts";
+import type { AgentOpeningCommand } from "../application/ports/runtimeGateway";
 
 interface SessionEntry {
   view: AgentSessionView;
@@ -43,6 +44,8 @@ interface SessionEntry {
   resume: ResumeRunAction | null;
   synchronize: SynchronizeSessionAction | null;
   cancelRun: CancelRunAction | null;
+  openingCommands: readonly AgentOpeningCommand[];
+  retryOpening: ((idempotencyKey: string) => boolean) | null;
 }
 
 interface AgentStore {
@@ -66,6 +69,7 @@ interface AgentStore {
     sessionId: string,
     token: AgentViewRefreshToken,
     view: AgentSessionView,
+    openingCommands?: readonly AgentOpeningCommand[],
   ) => boolean;
   retireProjectionGeneration: (sessionIds: readonly string[]) => void;
   replaceServerScope: (sessionIds: readonly string[]) => void;
@@ -87,6 +91,11 @@ interface AgentStore {
   setResume: (sessionId: string, action: ResumeRunAction | null) => void;
   setSynchronize: (sessionId: string, action: SynchronizeSessionAction | null) => void;
   setCancelRun: (sessionId: string, action: CancelRunAction | null) => void;
+  setRetryOpening: (
+    sessionId: string,
+    action: ((idempotencyKey: string) => boolean) | null,
+  ) => void;
+  projectOpeningAccepted: (sessionId: string, idempotencyKey: string) => void;
   clearProblem: (sessionId: string) => void;
   setCommandError: (sessionId: string, error: AgentProblem | null) => void;
 }
@@ -109,6 +118,8 @@ const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   resume: null,
   synchronize: null,
   cancelRun: null,
+  openingCommands: [],
+  retryOpening: null,
 });
 
 function patchSession(
@@ -244,7 +255,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
     });
     return token;
   },
-  commitViewRefresh: (sessionId, token, view) => {
+  commitViewRefresh: (sessionId, token, view, openingCommands) => {
     let committed = false;
     set((state) => {
       const entry = state.sessions[sessionId];
@@ -259,6 +270,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
       committed = true;
       return patchSessionState(state, sessionId, {
         view,
+        ...(openingCommands ? { openingCommands } : {}),
         viewRevision: advanceProjectionCounter(entry.viewRevision),
         authoritativeRevision: advanceProjectionCounter(entry.authoritativeRevision),
       });
@@ -275,6 +287,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
         sessions = patchSession(sessions, sessionId, {
           refreshSequence: advanceProjectionCounter(entry.refreshSequence),
           viewEpoch,
+          openingCommands: [],
         });
       }
       return sessions === state.sessions
@@ -290,6 +303,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
         if (!entry) continue;
         sessions = patchSession(sessions, sessionId, {
           view: EMPTY_AGENT_SESSION_VIEW,
+          openingCommands: [],
           problem: EMPTY_PROBLEM_PRESENTATION,
           viewEpoch,
           viewRevision: advanceProjectionCounter(entry.viewRevision),
@@ -333,6 +347,20 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((state) => patchSessionState(state, sessionId, { send: action })),
   setResume: (sessionId, action) =>
     set((state) => patchSessionState(state, sessionId, { resume: action })),
+  setRetryOpening: (sessionId, action) =>
+    set((state) => patchSessionState(state, sessionId, { retryOpening: action })),
+  projectOpeningAccepted: (sessionId, idempotencyKey) =>
+    set((state) => {
+      const entry = state.sessions[sessionId];
+      if (!entry) return state;
+      return patchSessionState(state, sessionId, {
+        openingCommands: entry.openingCommands.filter(
+          (command) => command.idempotencyKey !== idempotencyKey,
+        ),
+        problem: withCommandError(entry.problem, null),
+        viewRevision: advanceProjectionCounter(entry.viewRevision),
+      });
+    }),
   setSynchronize: (sessionId, action) =>
     set((state) => patchSessionState(state, sessionId, { synchronize: action })),
   setCancelRun: (sessionId, action) =>
@@ -371,9 +399,14 @@ export class AgentViewRefreshOwner {
     return useAgentStore.getState().beginViewRefresh(sessionId, invalidateQueuedRunEvents);
   }
 
-  commit(sessionId: string, token: AgentViewRefreshToken, view: AgentSessionView): boolean {
+  commit(
+    sessionId: string,
+    token: AgentViewRefreshToken,
+    view: AgentSessionView,
+    openingCommands?: readonly AgentOpeningCommand[],
+  ): boolean {
     if (!this.#ownsGeneration()) return false;
-    return useAgentStore.getState().commitViewRefresh(sessionId, token, view);
+    return useAgentStore.getState().commitViewRefresh(sessionId, token, view, openingCommands);
   }
 
   retireProjectionGeneration(sessionIds: readonly string[]): void {

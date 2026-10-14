@@ -57,7 +57,12 @@ export async function revalidateAgentSessionMaterial(
   const view = shared === projected.shared ? projected : { ...projected, shared };
   const previous = viewPort.getSession(sessionId)?.view;
   const reconciled = previous ? reconcileSteerMessages(previous, view) : { view, unapplied: false };
-  const committed = viewPort.commitViewRefresh(sessionId, token, reconciled.view);
+  const committed = viewPort.commitViewRefresh(
+    sessionId,
+    token,
+    reconciled.view,
+    material.unresolvedOpenings,
+  );
   if (committed && material.unresolvedSteers?.length)
     restoreUnresolvedSteers(sessionId, material.unresolvedSteers);
   if (committed && reconciled.unapplied)

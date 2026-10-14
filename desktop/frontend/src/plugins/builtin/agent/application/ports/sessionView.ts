@@ -1,7 +1,7 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { AgentRunStartOptions } from "@/plugins/sdk";
 import type { AgentInput } from "../../domain/input";
-import type { ApprovalDecision, RememberScope } from "../../domain/hitl";
+import type { InterruptResumeInput } from "../../domain/hitl";
 import type {
   AgentProblem,
   AgentPlan,
@@ -10,6 +10,7 @@ import type {
   Message,
 } from "@/plugins/sdk/types/agentSessionView";
 import type { TranscriptRow } from "../conversation/transcriptRows";
+import type { AgentOpeningCommand } from "./runtimeGateway";
 
 export type StopCurrentRootRunAction = () => boolean;
 export type SessionProjectionSynchronizationOwnership =
@@ -19,21 +20,6 @@ export type SynchronizeSessionAction = (
 ) => Promise<boolean>;
 export type CancelRunAction = (runId: string) => void;
 export type SendAgentInputAction = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
-export type InterruptResumePayload =
-  | {
-      type: "approval";
-      decision: ApprovalDecision;
-      editedArgs?: Record<string, unknown>;
-      remember?: { scope: RememberScope };
-    }
-  | {
-      type: "answer";
-      answers: string[][];
-    };
-export interface InterruptResumeInput {
-  itemId: string;
-  response: InterruptResumePayload;
-}
 export type ResumeRunAction = (
   runId: string,
   responses: InterruptResumeInput[],
@@ -51,6 +37,8 @@ export interface AgentSessionViewEntry {
   resume: ResumeRunAction | null;
   synchronize: SynchronizeSessionAction | null;
   cancelRun: CancelRunAction | null;
+  openingCommands: readonly AgentOpeningCommand[];
+  retryOpening: ((idempotencyKey: string) => boolean) | null;
 }
 
 export interface AgentViewRefreshToken {
@@ -70,6 +58,7 @@ export interface AgentSessionViewPort {
   useRootNarrativeMessages(): Message[];
   useTranscriptRows(): readonly TranscriptRow[];
   useProblem(): AgentProblem | null;
+  useOpeningCommands(): readonly AgentOpeningCommand[];
   usePlan(): AgentProjectionMaterial<AgentPlan>;
   useSharedMaterial<T = unknown>(path?: string): AgentProjectionMaterial<T>;
   useAction(kind: "stop"): StopCurrentRootRunAction | null;
@@ -99,6 +88,7 @@ export interface AgentSessionViewPort {
     sessionId: string,
     token: AgentViewRefreshToken,
     view: AgentSessionView,
+    openingCommands?: readonly AgentOpeningCommand[],
   ): boolean;
   retireProjectionGeneration(sessionIds: readonly string[]): void;
   replaceServerScope(sessionIds: readonly string[]): void;

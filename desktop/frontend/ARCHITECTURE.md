@@ -294,7 +294,7 @@ and Run termination. Only a definite refusal removes the provisional input. An
 accepted receipt binds the reserved Item identity, and that exact committed Item
 proves model-context application. Connection replacement retires local observation
 and retry actions while the SDK preserves its unresolved journal. Its concrete
-Steer descriptor retains the frozen original body and target before dispatch.
+Run command descriptor retains the frozen original body and target before dispatch.
 After application restart, Session mounting queries original command handles
 without dispatch and projects unknown submissions with their original retry
 authority. Runtime snapshot pending inputs remain visible after client settlement;
@@ -307,10 +307,26 @@ and operation before delivery. The journal reserves identity independently of
 dispatch admission: replay expiry and a replaced Runtime store forbid a write,
 but do not prevent a receipt read or renew the original deadline. A failed read
 retains uncertainty; `notRecorded` never grants a fresh key. Journal records use
-the current strict shape. Start and Resume do not persist prompt or answer bodies;
-Steer retains its concrete frozen request. A cold retry
-must supply the exact prepared parameters to reclaim their fingerprint; a known
-identity can be queried without those parameters.
+the current strict shape. Start, Resume and Steer persist their complete frozen
+requests, including input images, model options, reviewed answers, edited arguments,
+reasons and standing-policy choices. Other mutations retain identity without their
+request body. These client records contain authored content and must use the existing
+application storage lifetime. A definite receipt or refusal settles the record;
+inconclusive reads, expiry and store replacement preserve it.
+
+`runs.recoverCommands()` enumerates those original Run commands and reads their
+receipts without dispatch. Its explicit retry uses the captured original request,
+key, namespace and deadline. Session mounting renders unresolved opening submissions
+with those original choices and blocks a fresh Start or Resume until the original
+outcome is resolved. After a committed opening, Agent refreshes coherent Session
+material and uses the existing subscription owner for its current Segment. Acceptance
+never depends on observing that stream. The opening list and retry actions are
+ephemeral SDK projections; Desktop adds no durable command ledger.
+
+The former Steer-only journal shape and recovery API are removed. Incompatible
+records fail closed and remain intact; no reader reconstructs omitted request bodies
+or migrates unresolved work to a new identity. Retain prior journal evidence when
+upgrading the SDK and Desktop together.
 
 ## Runtime events and interruption
 

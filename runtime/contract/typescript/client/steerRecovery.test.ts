@@ -99,8 +99,9 @@ describe("cold original steer recovery", () => {
     const recovered = f.open(call as RpcClient["call"]);
     call.mockClear();
     f.expire();
-    const [command] = await recovered.methods.runs.recoverSteers();
-    expect(command!.idempotencyKey).toBe(pending.idempotencyKey);
+    const [command] = await recovered.methods.runs.recoverCommands();
+    if (command?.operation !== "steer") throw new Error("expected original steer");
+    expect(command.idempotencyKey).toBe(pending.idempotencyKey);
     command!.params.input[0] = { type: "text", text: "modified public descriptor" };
     expect(command!.observation).toMatchObject({
       type: "known",
@@ -137,7 +138,7 @@ describe("cold original steer recovery", () => {
       call.mockClear();
       if (condition === "lookup failure")
         call.mockRejectedValue(new RpcTransportError("query unavailable"));
-      const [command] = await second.methods.runs.recoverSteers();
+      const [command] = await second.methods.runs.recoverCommands();
       expect(command!.observation.type).toBe(condition === "lookup failure" ? "unknown" : "known");
       await expect(command!.retry()).rejects.toBeDefined();
       expect(call.mock.calls.every(([method]) => method === "runs.getAcceptance")).toBe(true);
@@ -164,10 +165,11 @@ describe("cold original steer recovery", () => {
       method === "runs.getAcceptance" ? { type: "notRecorded" } : { userItemId: "item_original" },
     );
     const second = f.open(replay as RpcClient["call"]);
-    const [command] = await second.methods.runs.recoverSteers();
+    const [command] = await second.methods.runs.recoverCommands();
     expect(command!.observation).toEqual({ type: "known", acceptance: { type: "notRecorded" } });
     expect(replay).toHaveBeenCalledTimes(1);
-    command!.params.expectedSegmentId = asSegmentId("seg_new");
+    if (command?.operation !== "steer") throw new Error("expected original steer");
+    command.params.expectedSegmentId = asSegmentId("seg_new");
     await expect(command!.retry()).resolves.toEqual({ userItemId: "item_original" });
     expect(replay.mock.calls[2]).toEqual([
       "runs.steer",

@@ -75,7 +75,7 @@ function observeSteer(
   function retainUnknown(submission: AgentSteerSubmission): void {
     view.projectSteerReceipt(sessionId, localId, { runId, receipt: "unknown" });
     owner.retainSteerRetry(localId, () => attempt(() => submission.retry(), submission));
-    notifyInfo(t("agent.steer.unknown"), { source: "session" });
+    notifyInfo(t("agent.command.unknown"), { source: "session" });
   }
 
   function attempt(open: () => AgentSteerSubmission, previous?: AgentSteerSubmission): void {

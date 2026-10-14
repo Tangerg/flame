@@ -80,7 +80,7 @@ describe("createFlameClient", () => {
     const dispose = vi.fn();
     const client = createFlameClient(transport, {
       mutationJournal: {
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve: () => undefined,
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
@@ -103,7 +103,7 @@ describe("createFlameClient", () => {
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
         },
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve: () => undefined,
         dispose: () => {
           throw failure;
@@ -129,7 +129,7 @@ describe("createFlameClient", () => {
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
         },
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve: () => undefined,
         dispose: () => {
           throw journalFailure;
@@ -162,7 +162,7 @@ describe("createFlameClient", () => {
     });
     const client = createFlameClient(transport, {
       mutationJournal: {
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve: () => undefined,
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");

@@ -18,7 +18,7 @@ export {
   MutationSettlementClosedError,
 } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
-export type { Methods, StreamingResult, RunOpeningResult, SteerRecovery } from "./methods";
+export type { Methods, StreamingResult, RunOpeningResult, RunCommandRecovery } from "./methods";
 export type { ResourceSubscription } from "./resources";
 export { createFlameClient } from "./sdk";
 export type { FlameClient } from "./sdk";

@@ -1,6 +1,6 @@
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
-import type { SteerRunRequest } from "../wire.generated";
+import type { StartRunRequest, ResumeRunRequest, SteerRunRequest } from "../wire.generated";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
@@ -43,6 +43,11 @@ export class MutationJournalCapacityError extends MutationJournalError {
   override readonly name = "MutationJournalCapacityError";
 }
 
+export type RunCommand =
+  | { operation: "start"; params: StartRunRequest }
+  | { operation: "resume"; params: ResumeRunRequest }
+  | { operation: "steer"; params: SteerRunRequest };
+
 interface JournalEntry {
   salt: string;
   namespace: string;
@@ -54,7 +59,7 @@ interface JournalEntry {
     intentFingerprint: string;
     route: Omit<CallPluginRequest, "input">;
   };
-  steer: SteerRunRequest | null;
+  command: RunCommand | null;
 }
 
 export type PluginCommandInput = Pick<CallPluginRequest, "contract" | "method" | "input">;
@@ -80,7 +85,7 @@ export interface DurableMutationJournal {
     request: CallPluginRequest,
     claimed: (idempotencyKey: string) => boolean,
   ): CapturedPluginCommand;
-  pendingSteers(): DurableMutationIdentity[];
+  pendingCommands(): DurableMutationIdentity[];
   reserve(
     method: string,
     params: unknown,
@@ -108,16 +113,6 @@ function validText(value: unknown, maximum: number): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= maximum;
 }
 
-function validSteer(value: unknown, entry: JournalEntry): boolean {
-  if (value === null) return true;
-  try {
-    checkRequest("runs.steer", value);
-    return matchesCommand(entry, "runs.steer", value);
-  } catch {
-    return false;
-  }
-}
-
 function validEntry(value: unknown): value is JournalEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const entry = value as Partial<JournalEntry>;
@@ -135,8 +130,8 @@ function validEntry(value: unknown): value is JournalEntry {
     Number.isFinite(entry.expiresAt) &&
     entry.expiresAt > entry.createdAt &&
     (entry.installed === undefined || validInstalled(entry.installed)) &&
-    validSteer(entry.steer, entry as JournalEntry) &&
-    (entry.steer === null || entry.installed === undefined)
+    validCommand(entry.command, entry as JournalEntry) &&
+    (entry.command === null || entry.installed === undefined)
   );
 }
 
@@ -164,6 +159,44 @@ function validInstalled(value: JournalEntry["installed"]): boolean {
     return requestRequiresIdempotency(method, request);
   } catch {
     return false;
+  }
+}
+
+function validCommand(value: unknown, entry: JournalEntry): boolean {
+  if (value === null) return true;
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 2
+  )
+    return false;
+  const command = value as Partial<RunCommand>;
+  if (
+    command.operation !== "start" &&
+    command.operation !== "resume" &&
+    command.operation !== "steer"
+  )
+    return false;
+  try {
+    const method = `runs.${command.operation}` as const;
+    checkRequest(method, command.params);
+    return matchesCommand(entry, method, command.params);
+  } catch {
+    return false;
+  }
+}
+
+function prepareCommand(method: string, params: unknown): RunCommand | null {
+  switch (method) {
+    case "runs.start":
+      return { operation: "start", params: structuredClone(checkRequest(method, params)) };
+    case "runs.resume":
+      return { operation: "resume", params: structuredClone(checkRequest(method, params)) };
+    case "runs.steer":
+      return { operation: "steer", params: structuredClone(checkRequest(method, params)) };
+    default:
+      return null;
   }
 }
 
@@ -304,7 +337,7 @@ function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
     left.createdAt === right.createdAt &&
     left.expiresAt === right.expiresAt &&
     canonicalJSON(left.installed) === canonicalJSON(right.installed) &&
-    canonicalJSON(left.steer) === canonicalJSON(right.steer)
+    canonicalJSON(left.command) === canonicalJSON(right.command)
   );
 }
 
@@ -391,7 +424,7 @@ export function openDurableMutationJournal(
               route: installed.route,
             },
           }),
-      steer: method === "runs.steer" ? structuredClone(params as SteerRunRequest) : null,
+      command: prepareCommand(method, params),
     };
     persistEntry(entry);
     return entry;
@@ -445,9 +478,9 @@ export function openDurableMutationJournal(
       });
       return { identity: { entry }, request: structuredClone(request) };
     },
-    pendingSteers() {
+    pendingCommands() {
       return loadEntries(options.storage)
-        .filter((entry) => entry.steer !== null)
+        .filter((entry) => entry.command !== null)
         .map((entry) => ({ entry: structuredClone(entry) }));
     },
     reserve(method, params, preferredKey, claimed) {

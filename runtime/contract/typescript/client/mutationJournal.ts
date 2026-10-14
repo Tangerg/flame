@@ -6,6 +6,7 @@ import {
   type DurableMutationJournal,
   type MutationJournalScope,
   type MutationJournalStorage,
+  type RunCommand,
   type PluginCommandInput,
   type PluginCommandBinding,
 } from "./durableMutationJournal";
@@ -13,7 +14,6 @@ import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise 
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 
 export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
-import type { SteerRunRequest } from "../wire.generated";
 
 export {
   MutationJournalCapacityError,
@@ -36,18 +36,17 @@ export interface MutationJournal {
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
-  pendingSteers(): PendingSteerCommand[];
+  pendingCommands(): PendingRunCommand[];
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
   dispose(): void;
 }
 
-export interface PendingSteerCommand {
-  readonly params: SteerRunRequest;
+export type PendingRunCommand = RunCommand & {
   readonly idempotencyKey: string;
   readonly namespace: string;
   settle(): void;
   reserve(): MutationReservation;
-}
+};
 
 export interface MutationJournalOptions {
   storage?: MutationJournalStorage;
@@ -149,13 +148,13 @@ class MutationAuthority implements MutationJournal {
       this.#preparing.delete(intent);
     }
   }
-  pendingSteers(): PendingSteerCommand[] {
+  pendingCommands(): PendingRunCommand[] {
     this.#assertCurrent();
     return this.#journal
-      .pendingSteers()
+      .pendingCommands()
       .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
       .map((identity) => ({
-        params: structuredClone(identity.entry.steer!),
+        ...structuredClone(identity.entry.command!),
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
         settle: () => {

@@ -30,7 +30,7 @@ describe("generated request validation", () => {
     const reserve = vi.fn(() => undefined);
     const client = createFlameClient(transport, {
       mutationJournal: {
-        pendingSteers: () => [],
+        pendingCommands: () => [],
         reserve,
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
