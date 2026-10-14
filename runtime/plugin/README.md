@@ -240,6 +240,25 @@ Endpoint/Client, and Schedules uses them for durable Run acceptance. Complete
 installed dependency binding and streaming decorators remain
 required parts of the complete plugin refactor.
 
+## Model preparation host collaborators
+
+Installed model selection, context and input handlers receive a call-scoped
+`CallbackFromContext` reference through the existing managed connection. It enters
+canonical Runtime RPC and the host's independently selected model callbacks while
+the outer query is pending. The host retains the original invocation and supplies
+the receiver activation's exact Actor and declared dependency bindings; the
+reference expires after either success or failure.
+
+Runtime authorizes its selected model pipeline separately from a plugin's declared
+cross-plugin requirements. That does not grant arbitrary calls to undeclared plugin
+operations. A nested model exchange that reenters a contributor still preparing its
+ancestor is explicitly refused before recursively invoking that contribution;
+Runtime neither bypasses the contributor nor retargets the frozen pipeline.
+Preparation inside an active execution carries its original member's accounting
+publisher, even before primary provider dispatch. Per-call request/output budgets
+remain supplied by the operation owner. Full native composition, observer host RPC
+cohosting and background effect restoration remain separate acceptance work.
+
 ## Background activation and retained caller projection
 
 A contribution's background declaration supplies SetupContribution.Background with

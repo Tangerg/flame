@@ -32,8 +32,7 @@ func (o *ModelComposition) ValidateContext(ctx context.Context, bindings []plugi
 
 func (o *ModelComposition) validateCompositionBindings(ctx context.Context, contract *capability.Contract, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
-		call := installedCall{calls: o.calls, request: plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract}}
-		captured, err := call.resolve(ctx)
+		captured, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 		if err != nil {
 			return err
 		}
@@ -70,6 +69,10 @@ func (o *ModelComposition) PrepareContext(ctx context.Context, bindings []plugin
 	var material []chat.Message
 	frozen := request.Clone()
 	for _, binding := range bindings {
+		calling, err := enterModelPhase(ctx, binding)
+		if err != nil {
+			return nil, err
+		}
 		session, err := o.calls.pool.ServiceSession(ctx, binding.ServerID)
 		if err != nil {
 			return nil, err
@@ -89,7 +92,14 @@ func (o *ModelComposition) PrepareContext(ctx context.Context, bindings []plugin
 		if err != nil {
 			return nil, err
 		}
-		raw, err := operation.Invoke(ctx, "", input)
+		metadata, release, err := o.calls.pool.OpenRPC(calling, binding.ServerID, session)
+		if err != nil {
+			return nil, err
+		}
+		raw, err := func() (jsoninput.Input, error) {
+			defer release()
+			return operation.InvokeWithMetadata(calling, "", input, metadata)
+		}()
 		if err != nil {
 			return nil, err
 		}

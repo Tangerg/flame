@@ -154,3 +154,15 @@ uses the same persisted purpose so a different independent model cannot replace
 primary context. Unknown independent attempts count admitted work with unknown
 price. A missing publisher under an executing owner is a composition error;
 unattached/Session-only captures make no Run claim.
+
+Model selection, context and input contributors receive call-scoped host RPC
+collaborators under their exact managed activation. Their query identity, origin,
+parent, cancellation and receiver dependency bindings survive the nested callback;
+success and failure both withdraw the reference. Runtime's selected model pipeline
+is authorized by its composition owner, while arbitrary cross-plugin calls still
+require the caller's declared bindings. A nested fresh exchange cannot reenter a
+contributor that is still preparing its ancestor: the captured active path refuses
+that cycle explicitly instead of skipping policy or inventing a recursion limit.
+Primary preparation captures its actual execution member's model publisher before
+provider dispatch; independent work therefore cannot silently become Session-only
+merely because the primary model invocation has not started yet.

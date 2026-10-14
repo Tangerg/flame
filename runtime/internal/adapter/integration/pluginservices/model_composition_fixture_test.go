@@ -18,7 +18,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func installedModelCompositionFixture(t *testing.T, contract *capability.Contract, members []string, register func(*pluginsdk.Backend)) (*ModelComposition, *toolInstallationStore) {
+func installedModelCompositionFixture(t *testing.T, contract *capability.Contract, members []string, register func(*pluginsdk.Backend), handlers ...http.Handler) (*ModelComposition, *toolInstallationStore) {
 	t.Helper()
 	name := testsupport.ServerName("observer")
 	contributions := make([]plugin.Contribution, len(members))
@@ -58,6 +58,11 @@ func installedModelCompositionFixture(t *testing.T, contract *capability.Contrac
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
 	callbacks := pluginsdk.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
+	if len(handlers) > 0 {
+		if err := callbacks.PublishRPC(handlers[0]); err != nil {
+			t.Fatal(err)
+		}
+	}
 	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)

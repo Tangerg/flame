@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"net/http"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -49,7 +50,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 				}); err != nil {
 					t.Fatal(err)
 				}
-			})
+			}, http.NotFoundHandler())
 			if mode == "withdrawn" {
 				store.snapshot.Installation.Disable()
 			}

@@ -53,8 +53,7 @@ func (o *ModelComposition) admitBinding(ctx context.Context, binding plugins.Con
 	if err != nil {
 		return err
 	}
-	call := installedCall{calls: o.calls, request: plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract}}
-	location, err := call.resolve(ctx)
+	location, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 	if err != nil {
 		return err
 	}

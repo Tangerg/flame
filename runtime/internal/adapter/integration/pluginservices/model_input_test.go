@@ -3,6 +3,7 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"net/http"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -52,7 +53,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 				}); err != nil {
 					t.Fatal(err)
 				}
-			})
+			}, http.NotFoundHandler())
 			var calls atomic.Int32
 			provider := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 				calls.Add(1)

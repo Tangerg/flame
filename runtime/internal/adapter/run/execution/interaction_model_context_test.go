@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -93,6 +94,9 @@ func (*contextCaptureComposition) ValidateContext(context.Context, []plugins.Con
 }
 func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelref.Selection, request *chat.Request) ([]chat.Message, error) {
 	c.calls++
+	if executionctx.ModelCallsFromContext(ctx) == nil {
+		c.t.Error("context preparation has no original execution publisher")
+	}
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
 	if err != nil || invocation.Parent == "" || invocation.Target.Reference != invocation.ID || selection != testDefaultSelection() || len(bindings) != 1 {
 		c.t.Errorf("original model/context attribution changed: %+v %v", invocation, err)

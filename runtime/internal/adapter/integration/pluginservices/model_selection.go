@@ -46,8 +46,11 @@ func (o *ModelComposition) SelectModel(ctx context.Context, proposed modelref.Se
 	if !chosen {
 		return proposed, nil
 	}
-	call := installedCall{calls: o.calls, request: plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract}}
-	live, err := call.resolve(ctx)
+	ctx, err = enterModelPhase(ctx, binding)
+	if err != nil {
+		return modelref.Selection{}, err
+	}
+	live, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 	if err != nil {
 		return modelref.Selection{}, err
 	}
@@ -92,7 +95,12 @@ func (o *ModelComposition) SelectModel(ctx context.Context, proposed modelref.Se
 	if request != nil {
 		input.Request = request.Clone()
 	}
-	result, err := bound.Call(ctx, input)
+	metadata, release, err := o.calls.pool.OpenRPC(ctx, binding.ServerID, session)
+	if err != nil {
+		return modelref.Selection{}, err
+	}
+	defer release()
+	result, err := bound.CallWithMetadata(ctx, input, metadata)
 	if err != nil {
 		return modelref.Selection{}, err
 	}

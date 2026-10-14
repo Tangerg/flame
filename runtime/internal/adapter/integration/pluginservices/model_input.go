@@ -50,6 +50,10 @@ func (o *ModelComposition) PrepareInput(ctx context.Context, bindings []plugins.
 	}
 	current := request.Clone()
 	for _, binding := range bindings {
+		calling, err := enterModelPhase(ctx, binding)
+		if err != nil {
+			return nil, err
+		}
 		session, err := o.calls.pool.ServiceSession(ctx, binding.ServerID)
 		if err != nil {
 			return nil, err
@@ -65,7 +69,14 @@ func (o *ModelComposition) PrepareInput(ctx context.Context, bindings []plugins.
 		if err != nil {
 			return nil, err
 		}
-		result, err := operation.Call(ctx, pluginsdk.ModelInputRequest{Selection: pluginsdk.ModelSelection{Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort()}, Request: *current.Clone()})
+		metadata, release, err := o.calls.pool.OpenRPC(calling, binding.ServerID, session)
+		if err != nil {
+			return nil, err
+		}
+		result, err := func() (chat.Request, error) {
+			defer release()
+			return operation.CallWithMetadata(calling, pluginsdk.ModelInputRequest{Selection: pluginsdk.ModelSelection{Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort()}, Request: *current.Clone()}, metadata)
+		}()
 		if err != nil {
 			return nil, err
 		}

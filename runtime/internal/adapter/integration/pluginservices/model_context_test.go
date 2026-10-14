@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
 	"testing"
@@ -106,7 +107,7 @@ func installedContextFixture(t *testing.T, mode string) (*ModelComposition, []pl
 		}); err != nil {
 			t.Fatal(err)
 		}
-	})
+	}, http.NotFoundHandler())
 	bindings, err := observer.ResolveContext(t.Context())
 	if err != nil || len(bindings) != len(members) {
 		t.Fatalf("composition resolve: %+v %v", bindings, err)

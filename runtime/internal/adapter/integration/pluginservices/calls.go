@@ -44,7 +44,18 @@ func (c *installedCall) Kind() capability.MethodKind { return c.method.Kind() }
 
 func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBinding, error) {
 	r := c.request
-	snapshot, found, err := c.calls.installations.Get(ctx, r.Installation)
+	if actor, managed := operation.ActorFrom(ctx); managed {
+		if !actor.Allows(plugin.Dependency{InstallationID: r.Installation, Digest: r.Digest}, r.Contribution, r.Contract.Identity()) {
+			return plugins.ContributionBinding{}, fmt.Errorf("%w: plugin call is outside the activation's captured requirements", plugin.ErrInvalid)
+		}
+	}
+	return c.calls.resolveContribution(ctx, r)
+}
+
+// Runtime-selected model policies belong to the host composition, not to the
+// invoking plugin's cross-plugin requirements. Both still validate current bytes.
+func (c *CommandCalls) resolveContribution(ctx context.Context, r plugins.CallRequest) (plugins.ContributionBinding, error) {
+	snapshot, found, err := c.installations.Get(ctx, r.Installation)
 	if err != nil {
 		return plugins.ContributionBinding{}, err
 	}
@@ -60,11 +71,6 @@ func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBindin
 	}
 	if !snapshot.Installation.ServerEnabled(contribution.Server) {
 		return plugins.ContributionBinding{}, plugin.ErrDisabled
-	}
-	if actor, managed := operation.ActorFrom(ctx); managed {
-		if !actor.Allows(plugin.Dependency{InstallationID: r.Installation, Digest: r.Digest}, r.Contribution, r.Contract.Identity()) {
-			return plugins.ContributionBinding{}, fmt.Errorf("%w: plugin call is outside the activation's captured requirements", plugin.ErrInvalid)
-		}
 	}
 	id, err := snapshot.Installation.ServerID(contribution.Server)
 	if err != nil {

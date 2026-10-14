@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -48,6 +49,9 @@ func (c *inputCaptureComposition) ResolveInput(ctx context.Context) ([]plugins.C
 }
 func (c *inputCaptureComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelref.Selection, request *chat.Request) (*chat.Request, error) {
 	c.transformed++
+	if executionctx.ModelCallsFromContext(ctx) == nil {
+		c.t.Error("input preparation has no original execution publisher")
+	}
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
 	if err != nil || invocation.Target.Reference != invocation.ID || invocation.Parent == "" || len(bindings) != 1 || (selection != testDefaultSelection() && selection != c.expectedSelection) {
 		c.t.Errorf("original primary transform attribution changed: %+v %v", invocation, err)

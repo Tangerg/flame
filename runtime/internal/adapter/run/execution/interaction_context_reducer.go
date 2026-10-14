@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -110,7 +111,8 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if err != nil {
 			return nil, err
 		}
-		calling, err := pluginsdk.WithInvocation(ctx, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
+		calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
+		calling, err = pluginsdk.WithInvocation(calling, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
 		if err != nil {
 			return nil, err
 		}
@@ -332,7 +334,8 @@ func (i *interactionModelContextReducer) prepareInput(ctx context.Context, invoc
 	if err != nil {
 		return nil, err
 	}
-	calling, err := pluginsdk.WithInvocation(ctx, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
+	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
+	calling, err = pluginsdk.WithInvocation(calling, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
 	if err != nil {
 		return nil, err
 	}
