@@ -2444,7 +2444,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.1\""
+          "value": "\"2026-10-14.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",

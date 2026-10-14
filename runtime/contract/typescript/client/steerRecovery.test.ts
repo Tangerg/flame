@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMethods } from "./methods";
-import type { RpcClient } from "./client";
+import type { RpcClient, RpcCallOptions } from "./client";
+import type { RequestMeta } from "../wire.generated";
 import { RpcTransportError } from "./errors";
 import { createMutationJournal, type MutationJournalStorage } from "./mutationJournal";
 import { asRunId, asSegmentId } from "./ids";
@@ -17,7 +18,7 @@ function fixture() {
   };
   let now = 1000;
   let namespace = "idp_original";
-  const open = (call: RpcClient["call"]) => {
+  const open = (call: RpcClient["call"], requestMeta?: RequestMeta) => {
     const journal = createMutationJournal({
       storage,
       now: () => now,
@@ -26,6 +27,7 @@ function fixture() {
     const methods = createMethods({ call } as RpcClient, {
       mutationJournal: journal,
       capabilities: () => discovery.capabilities as import("../wire.generated").ServerCapabilities,
+      requestMeta: () => requestMeta,
     });
     return { journal, methods };
   };
@@ -149,11 +151,15 @@ describe("cold original steer recovery", () => {
 
   it("retries only the persisted body and Segment under the same key after a pure not-recorded query", async () => {
     const f = fixture();
+    const requestMeta: RequestMeta = {
+      clientCapabilities: { features: { subagents: { enabled: true } } },
+    };
+    const originalMeta = structuredClone(requestMeta);
     const call = vi.fn(async (method: string) => {
       if (method === "runs.getAcceptance") return { type: "notRecorded" };
       throw new RpcTransportError("lost");
     });
-    const first = f.open(call as RpcClient["call"]);
+    const first = f.open(call as RpcClient["call"], requestMeta);
     const pending = first.methods.runs.steer(
       original.runId,
       original.expectedSegmentId,
@@ -161,10 +167,11 @@ describe("cold original steer recovery", () => {
     );
     await expect(pending).rejects.toBeInstanceOf(RpcTransportError);
     first.journal.dispose();
-    const replay = vi.fn(async (method: string) =>
+    requestMeta.clientCapabilities!.features!.subagents!.enabled = false;
+    const replay = vi.fn(async (method: string, _params: unknown, _options?: RpcCallOptions) =>
       method === "runs.getAcceptance" ? { type: "notRecorded" } : { userItemId: "item_original" },
     );
-    const second = f.open(replay as RpcClient["call"]);
+    const second = f.open(replay as RpcClient["call"], requestMeta);
     const [command] = await second.methods.runs.recoverCommands();
     expect(command!.observation).toEqual({ type: "known", acceptance: { type: "notRecorded" } });
     expect(replay).toHaveBeenCalledTimes(1);
@@ -177,6 +184,7 @@ describe("cold original steer recovery", () => {
       expect.objectContaining({
         idempotencyKey: pending.idempotencyKey,
         idempotencyNamespace: "idp_original",
+        requestMeta: originalMeta,
       }),
     ]);
     expect(f.values.size).toBe(0);

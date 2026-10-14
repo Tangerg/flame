@@ -2,6 +2,7 @@ package runtime_test
 
 import (
 	"context"
+	"crypto/rand"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -216,7 +217,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 				"After it finishes, answer exactly ORIGINAL_RESPONSE. Do not use any other tool. " +
 				"Obey a later user steer instruction over this prompt.",
 		}},
-	}, flameruntime.RunCommandOptions{})
+	}, flameruntime.RunCommandOptions{IdempotencyKey: rand.Text()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +243,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 				Text: "Override the earlier final-answer instruction. After the running shell settles, " +
 					"reply with exactly " + liveSteerMarker + " and nothing else.",
 			}},
-		}, flameruntime.CommandOptions{}); err != nil {
+		}, flameruntime.CommandOptions{IdempotencyKey: rand.Text()}); err != nil {
 			t.Fatal(err)
 		}
 		steerSent = true
@@ -272,7 +273,7 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 				"After the tool returns, reply with exactly " + liveHITLMarker + " and nothing else. " +
 				"Do not use another tool and do not answer before asking the question.",
 		}},
-	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta})
+	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta, IdempotencyKey: rand.Text()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +304,7 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 				Answers: [][]string{{"phoenix"}},
 			},
 		}},
-	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta})
+	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta, IdempotencyKey: rand.Text()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +456,7 @@ func TestLiveDeepSeekCrashHelper(t *testing.T) {
 			Text: "Call shell exactly once with this exact command: `touch " + toolMarkerPath + " && sleep 8`. " +
 				"After it finishes, reply exactly UNREACHABLE_HELPER_RESPONSE. Do not use another tool.",
 		}},
-	}, flameruntime.RunCommandOptions{})
+	}, flameruntime.RunCommandOptions{IdempotencyKey: rand.Text()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -731,7 +732,7 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 	started, events, err := f.runtime.StartRun(f.ctx, protocol.StartRunRequest{
 		SessionID: sessionID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: prompt}},
-	}, flameruntime.RunCommandOptions{})
+	}, flameruntime.RunCommandOptions{IdempotencyKey: rand.Text()})
 	if err != nil {
 		t.Fatal(err)
 	}

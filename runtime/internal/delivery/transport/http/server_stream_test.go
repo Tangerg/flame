@@ -76,6 +76,7 @@ func TestStreamableRunStart(t *testing.T) {
 
 	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.start","params":{"sessionId":"ses_1","input":[{"type":"text","text":"hi"}]}}`)
 	req, _ := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
+	req.Header.Set("Idempotency-Key", "stream-start")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	resp, err := netHTTP.DefaultClient.Do(req)

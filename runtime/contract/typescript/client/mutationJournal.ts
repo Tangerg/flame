@@ -9,6 +9,7 @@ import {
   type RunCommand,
 } from "./durableMutationJournal";
 import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import type { RequestMeta } from "../wire.generated";
 
 export {
   MutationJournalCapacityError,
@@ -20,6 +21,7 @@ export type { MutationJournalScope, MutationJournalStorage } from "./durableMuta
 
 export interface MutationReservation {
   readonly idempotencyKey: string;
+  readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string;
   authorizeDispatch(): string;
   track<T>(mutation: MutationPromise<T>): MutationPromise<T>;
@@ -27,7 +29,12 @@ export interface MutationReservation {
 
 export interface MutationJournal {
   pendingCommands(): PendingRunCommand[];
-  reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
+  reserve(
+    method: string,
+    params: unknown,
+    preferredKey?: string,
+    requestMeta?: RequestMeta | null,
+  ): MutationReservation | undefined;
   dispose(): void;
 }
 
@@ -126,10 +133,19 @@ class MutationAuthority implements MutationJournal {
       }));
   }
 
-  reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined {
+  reserve(
+    method: string,
+    params: unknown,
+    preferredKey?: string,
+    requestMeta: RequestMeta | null = null,
+  ): MutationReservation | undefined {
     this.#assertCurrent();
-    const identity = this.#journal.reserve(method, params, preferredKey, (idempotencyKey) =>
-      this.#claims.has(idempotencyKey),
+    const identity = this.#journal.reserve(
+      method,
+      params,
+      preferredKey,
+      (idempotencyKey) => this.#claims.has(idempotencyKey),
+      requestMeta,
     );
     if (!identity) return undefined;
     return this.#claim(identity);
@@ -140,6 +156,9 @@ class MutationAuthority implements MutationJournal {
     const lifecycle = this.#lifecycle(identity);
     return {
       idempotencyKey: identity.entry.idempotencyKey,
+      get requestMeta() {
+        return structuredClone(identity.entry.command?.requestMeta ?? null);
+      },
       lookupNamespace: () => {
         this.#assertClaim(identity);
         return this.#journal.lookupNamespace(identity);

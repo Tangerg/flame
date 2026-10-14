@@ -94,6 +94,35 @@ func TestAcceptanceLookupUsesOriginalQueryIdentityInBothBindings(t *testing.T) {
 	}
 }
 
+func TestRunCommandsRequireOriginalIdentityInBothBindings(t *testing.T) {
+	rt, server, _ := remoteRuntime(t)
+	client := remoteTestClient(t, server.URL)
+	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{}, CommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []struct {
+		name string
+		api  *binding
+	}{{"Go", &rt.binding}, {"HTTP", &client.binding}} {
+		t.Run(target.name, func(t *testing.T) {
+			input := []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "original input"}}
+			_, _, startErr := target.api.StartRun(t.Context(), protocol.StartRunRequest{SessionID: session.ID, Input: input}, RunCommandOptions{})
+			_, _, resumeErr := target.api.ResumeRun(t.Context(), protocol.ResumeRunRequest{RunID: "run_missing", Responses: []protocol.InterruptResponse{{ItemID: "item_missing", Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"answer"}}}}}}, RunCommandOptions{})
+			_, steerErr := target.api.SteerRun(t.Context(), protocol.SteerRunRequest{RunID: "run_missing", ExpectedSegmentID: "seg_missing", Input: input}, CommandOptions{})
+			for _, err := range []error{startErr, resumeErr, steerErr} {
+				if !errors.Is(err, protocol.ErrInvalidParams) || errors.Is(err, ErrAcknowledgementUnknown) {
+					t.Fatalf("unkeyed Run command = %v, want definitive refusal", err)
+				}
+			}
+			material, err := target.api.GetSessionSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: session.ID}, CallOptions{})
+			if err != nil || len(material.Runs) != 0 || len(material.Items) != 0 {
+				t.Fatalf("refused command changed Session material: %+v, %v", material, err)
+			}
+		})
+	}
+}
+
 func TestClientPreservesAnAbsentGoal(t *testing.T) {
 	rt, server, _ := remoteRuntime(t)
 	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{Title: "without a goal"}, CommandOptions{})
@@ -311,7 +340,7 @@ func TestClientDistinguishesPostAcknowledgementLossFromMalformedStream(t *testin
 			client := remoteTestClient(t, server.URL)
 			ack, events, err := client.StartRun(t.Context(), protocol.StartRunRequest{
 				SessionID: "ses_test", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "hello"}},
-			}, RunCommandOptions{})
+			}, RunCommandOptions{IdempotencyKey: "decode-stream"})
 			if err != nil || ack.RunID != "run_test" {
 				t.Fatalf("acknowledgement = (%+v, %v)", ack, err)
 			}

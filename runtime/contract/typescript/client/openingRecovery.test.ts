@@ -6,7 +6,12 @@ import { createMethods, type RunCommandRecovery } from "./methods";
 import type { RpcClient, RpcCallOptions } from "./client";
 import { RpcTransportError } from "./errors";
 import { createMutationJournal, type MutationJournalStorage } from "./mutationJournal";
-import type { StartRunRequest, ResumeRunRequest, ServerCapabilities } from "../wire.generated";
+import type {
+  StartRunRequest,
+  ResumeRunRequest,
+  ServerCapabilities,
+  RequestMeta,
+} from "../wire.generated";
 import discovery from "../samples/method.discover.resp.json";
 import run from "../samples/runref.full.json";
 
@@ -65,7 +70,7 @@ function fixture() {
   directories.push(directory);
   let now = 1000;
   let namespace = "idp_original";
-  const open = (call: RpcClient["call"]) => {
+  const open = (call: RpcClient["call"], requestMeta?: RequestMeta) => {
     const storage = diskStorage(directory);
     const journal = createMutationJournal({
       storage,
@@ -84,6 +89,7 @@ function fixture() {
       methods: createMethods(rpc, {
         mutationJournal: journal,
         capabilities: () => discovery.capabilities as ServerCapabilities,
+        requestMeta: () => requestMeta,
       }),
       unsubscribe,
     };
@@ -128,6 +134,37 @@ function assertOperation(command: RunCommandRecovery | undefined, operation: "st
 }
 
 describe.each(["start", "resume"] as const)("file-backed cold original %s", (operation) => {
+  it("redelivers the original admission metadata after client preferences change", async () => {
+    const f = fixture();
+    const originalMeta: RequestMeta = {
+      clientCapabilities: {
+        interruptTypes: ["approval", "question"],
+        features: { subagents: { enabled: true } },
+      },
+    };
+    const expectedMeta = structuredClone(originalMeta);
+    const first = f.open(
+      vi.fn(async (method: string) => {
+        if (method === "runs.getAcceptance") return { type: "notRecorded" };
+        throw new RpcTransportError("lost original response");
+      }) as RpcClient["call"],
+      originalMeta,
+    );
+    const mutation =
+      operation === "start" ? first.methods.runs.start(start) : first.methods.runs.resume(resume);
+    await expect(mutation).rejects.toBeInstanceOf(RpcTransportError);
+    originalMeta.clientCapabilities!.features!.subagents!.enabled = false;
+    first.journal.dispose();
+    const call = vi.fn(async (method: string, _params: unknown, options?: RpcCallOptions) => {
+      if (method === "runs.getAcceptance") return { type: "notRecorded" };
+      expect(options?.requestMeta).toEqual(expectedMeta);
+      throw new RpcTransportError("keep original evidence");
+    });
+    const second = f.open(call as RpcClient["call"], originalMeta);
+    const recovered = assertOperation((await second.methods.runs.recoverCommands())[0], operation);
+    await expect(recovered.retry()).rejects.toBeInstanceOf(RpcTransportError);
+    expect(call.mock.calls.some(([method]) => method === `runs.${operation}`)).toBe(true);
+  });
   it("reads the original receipt without writing or dispatching and observes accepted/retired material after expiry", async () => {
     for (const receiptType of ["accepted", "retired"] as const) {
       const f = fixture();
@@ -223,7 +260,7 @@ describe.each(["start", "resume"] as const)("file-backed cold original %s", (ope
 });
 
 describe("original opening evidence integrity", () => {
-  it.each(["former shape", "changed request"])(
+  it.each(["former shape", "changed request", "missing metadata", "changed metadata"])(
     "preserves %s bytes and refuses any lookup or write",
     async (damage) => {
       const f = fixture();
@@ -234,7 +271,14 @@ describe("original opening evidence integrity", () => {
       if (damage === "former shape") {
         entry.steer = null;
         delete entry.command;
-      } else (entry.command as { params: ResumeRunRequest }).params.responses = [];
+      } else if (damage === "changed request")
+        (entry.command as { params: ResumeRunRequest }).params.responses = [];
+      else if (damage === "missing metadata")
+        delete (entry.command as { requestMeta?: RequestMeta | null }).requestMeta;
+      else
+        (entry.command as { requestMeta: RequestMeta }).requestMeta = {
+          clientInfo: { name: "changed", version: "1" },
+        };
       cold.storage.set(key, entry);
       const bytes = f.evidence();
       await expect(cold.methods.runs.recoverCommands()).rejects.toThrow("corrupted");

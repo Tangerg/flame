@@ -62,6 +62,21 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-14.2
+
+Public Start, Resume and Steer commands require a caller-retained idempotency key.
+The shared Endpoint rejects an absent key before invoking the command. Retain the
+exact request and discovered store namespace before dispatch; use them for lookup
+or original-command redelivery after an uncertain acknowledgement. Go and HTTP
+bindings enforce the same contract. Internal Goal and automation origins retain
+their existing acceptance owners. Rebuild Runtime and clients together.
+
+The SDK journal freezes Run command metadata with its original parameters,
+including admission capabilities. Changed client preferences cannot change the
+original command on redelivery. Former entries without metadata are refused and
+preserved without conversion; resolve their pending commands with the owning
+client build before replacing it.
+
 ## Protocol 2026-10-14.1
 
 Start and Resume use one Run-owned command acceptance. A keyed Resume commits

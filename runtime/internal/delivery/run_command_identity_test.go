@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"slices"
 	"sync/atomic"
@@ -97,4 +98,41 @@ func TestOwnerRunCommandSerializesUntilOpeningAcknowledgement(t *testing.T) {
 			t.Fatal("delivery cached an owner-backed outcome")
 		}
 	})
+}
+
+type runIdentityService struct{ calls int }
+
+func (s *runIdentityService) StartRun(context.Context, protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	s.calls++
+	return &protocol.StartRunResponse{RunID: "run_1", SegmentID: "seg_1", UserItemID: "item_1"}, nil, nil
+}
+
+func (s *runIdentityService) ResumeRun(context.Context, protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	s.calls++
+	return &protocol.ResumeRunResponse{RunID: "run_1", SegmentID: "seg_2"}, nil, nil
+}
+
+func (s *runIdentityService) SteerRun(context.Context, protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
+	s.calls++
+	return &protocol.SteerRunResponse{UserItemID: "item_steer"}, nil
+}
+
+func TestOwnerRunCommandsRequireCallerIdentityBeforeDispatch(t *testing.T) {
+	for _, test := range []struct {
+		method  Name
+		request any
+	}{
+		{RunsStart, protocol.StartRunRequest{SessionID: "ses_1", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "input"}}}},
+		{RunsResume, protocol.ResumeRunRequest{RunID: "run_1", Responses: []protocol.InterruptResponse{{ItemID: "item_question", Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"answer"}}}}}}},
+		{RunsSteer, protocol.SteerRunRequest{RunID: "run_1", ExpectedSegmentID: "seg_1", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "input"}}}},
+	} {
+		t.Run(string(test.method), func(t *testing.T) {
+			service := &runIdentityService{}
+			endpoint := mustNewEndpoint(t, service, EndpointConfig{})
+			result := endpoint.Invoke(t.Context(), test.method, test.request, Options{})
+			if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) || service.calls != 0 {
+				t.Fatalf("unkeyed command = %+v, calls = %d; want refusal before dispatch", result, service.calls)
+			}
+		})
+	}
 }
