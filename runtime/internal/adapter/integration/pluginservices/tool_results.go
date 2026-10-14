@@ -98,7 +98,7 @@ func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, rel
 
 func NewToolResults(store plugins.Store, pool *mcpconnection.Pool) (*ToolResults, error) {
 	if dependency.Missing(store) || pool == nil {
-		return nil, errors.New("Tool results: installation store and connections are required")
+		return nil, errors.New("tool results: installation store and connections are required")
 	}
 	return &ToolResults{installations: store, pool: pool}, nil
 }

@@ -59,6 +59,58 @@ func TestInteractionToolUsesScopeAdmittedArguments(t *testing.T) {
 	}
 }
 
+func TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution(t *testing.T) {
+	for _, final := range []string{`{"resource":"rewritten"}`, `{"resource":17}`} {
+		t.Run(final, func(t *testing.T) {
+			var authorized ToolAuthorizationRequest
+			var executed string
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+				Name: "resource", Description: "Operate on a named resource.",
+			}, func(_ context.Context, input resourceInput) (string, error) {
+				executed = input.Resource
+				return executed, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+				if hasToolMessage(request.Messages) {
+					return interactionTextResponse("done"), nil
+				}
+				return interactionToolResponse(chat.ToolCall{ID: "proposal", Name: "resource", Arguments: `{"resource":"original"}`}, 1, 1), nil
+			})
+			decorated := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+				response, err := provider.Call(ctx, request)
+				if err == nil && !hasToolMessage(request.Messages) {
+					response = response.Clone()
+					response.Output.Message.Parts[0] = chat.NewToolCallPart(chat.ToolCall{ID: "proposal", Name: "resource", Arguments: final})
+				}
+				return response, err
+			})
+			executor := newObservedTestInteractionExecutor(t, decorated, InteractionExecutorConfig{
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "resource")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: capturingToolAuthorizer{request: &authorized},
+			})
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			ends := payloadsOf[runs.SegmentEnded](events)
+			results := payloadsOf[runs.ToolCallFinished](events)
+			if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || len(results) != 1 || results[0].ModelResult == nil {
+				t.Fatalf("final proposal did not settle through the Tool boundary: ends=%+v results=%+v", ends, results)
+			}
+			if final == `{"resource":17}` {
+				if authorized.CallID != "" || executed != "" || !results[0].ModelResult.IsError {
+					t.Fatalf("invalid final proposal reached approval or execution: %+v, %q", authorized, executed)
+				}
+				return
+			}
+			starts := payloadsOf[runs.ToolCallStarted](events)
+			if authorized.Arguments.Canonical() != final || executed != "rewritten" || len(starts) != 1 || starts[0].Arguments != final || results[0].ModelResult.IsError {
+				t.Fatalf("final proposal diverged across approval, execution or history: %+v, %q, %+v", authorized, executed, starts)
+			}
+		})
+	}
+}
+
 func TestInteractionToolSchedulingUsesSafeArguments(t *testing.T) {
 	for _, policy := range []string{"hook rewrite", "authorization rewrite", "immutable arguments"} {
 		t.Run(policy, func(t *testing.T) {

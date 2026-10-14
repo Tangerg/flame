@@ -128,6 +128,24 @@ func TestRequirementsValidateOtherContributionsSharingTheEntry(t *testing.T) {
 	}
 }
 
+func TestTransitiveRequirementFailureExplainsItsConsumerPath(t *testing.T) {
+	rootContract := requirementContract(t, "root", capability.Collection)
+	providerContract := requirementContract(t, "provider", capability.Collection)
+	missing := requirementContract(t, "missing", capability.Selection)
+	root := requirementSnapshot(t, testsupport.InstallationID(t), "root", rootContract, plugin.Requirement{ID: "provider", Contract: providerContract.Identity()})
+	provider := requirementSnapshot(t, testsupport.InstallationID(t), "provider", providerContract, plugin.Requirement{ID: "missing", Contract: missing.Identity()})
+	store := requirementInstallations{snapshots: []plugin.Snapshot{root, provider}}
+	_, err := ResolveRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, root.Installation.ID(), root.Selected.Digest(), "operations")
+	if !errors.Is(err, plugin.ErrUnavailable) {
+		t.Fatalf("transitive absence lost its category: %v", err)
+	}
+	for _, owner := range []string{root.Installation.ID().String() + "/backend/operations", provider.Installation.ID().String() + "/backend/operations", "requires provider", "requires missing"} {
+		if !strings.Contains(err.Error(), owner) {
+			t.Errorf("dependency failure omits %q: %v", owner, err)
+		}
+	}
+}
+
 func TestEntryRequirementsFreezeTheSelectedProviderForTheUseInterval(t *testing.T) {
 	contract := requirementContract(t, "consumer", capability.Collection)
 	model := requirementContract(t, "model", capability.Selection)

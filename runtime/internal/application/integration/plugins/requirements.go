@@ -222,7 +222,7 @@ func (c requirementCatalog) validateEntry(snapshot plugin.Snapshot, server strin
 			}
 			bindings, err := c.candidates(required)
 			if err != nil {
-				return err
+				return fmt.Errorf("plugin dependency %s/%s requires %s: %w", key, declaration.ID, required.ID, err)
 			}
 			for _, binding := range bindings {
 				if binding.InstallationID == snapshot.Installation.ID() && binding.ServerName.String() == server {
@@ -230,7 +230,7 @@ func (c requirementCatalog) validateEntry(snapshot plugin.Snapshot, server strin
 				}
 				provider := c.installations[binding.InstallationID]
 				if err := c.validateEntry(provider, binding.ServerName.String(), path); err != nil {
-					return err
+					return fmt.Errorf("plugin dependency %s/%s requires %s: %w", key, declaration.ID, required.ID, err)
 				}
 			}
 		}
