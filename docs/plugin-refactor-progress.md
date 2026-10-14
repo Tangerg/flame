@@ -45,7 +45,25 @@ imports); and two Stage-5aa `logical_purpose` fixture omissions in the trajector
 export tests that this slice repaired. Full/native/vet/race/closure stay concentrated
 at final acceptance. No frontend UI/E2E/screenshot check was authored or executed.
 
-### Schedule recovery deadlock: root cause (priority #2, diagnosis committed, fix open)
+### Schedule recovery deadlock: RESOLVED (priority #2 complete)
+
+Fixed in `73ce66711`: startup recovery is now two-phase. `assemble` performs
+plugin-independent reclaim and revival, then exposes the plugin-dependent step
+(uncertain-execution revival plus the paired ownership reconcile, in that order)
+as `recoverUncertainExecutions`, which the owner runs only after the delivery
+endpoint publishes the callback RPC. Production invokes it after
+`newDeliveryEndpoint`; the crash-test harness and the assemble-level recovery test
+invoke it after publishing callbacks. `TestScheduleCreateRecoversAcrossSIGKILLCuts`
+now passes all seven cuts. Two pre-existing test models that returned nil response
+metadata (the schedule crash model and `lifecycleModel`, both failing the correct
+per-model-usage accounting invariant that real models satisfy) now report served
+model and usage; `TestProtocolLifecycleSurvivesColdRestart` and the crash-like
+restart test pass (`2ae070375`). The memory transport grant test, broken since the
+`chat.Model` host-contract change, was adapted (`9dff02ee5`). All plugin backend
+packages (plugins/*, application/integration/plugins, pluginservices, pluginpackage,
+point, plugin) are green.
+
+Original two-layer diagnosis, retained for reference:
 
 `TestScheduleCreateRecoversAcrossSIGKILLCuts` was fully root-caused this session with a
 proxy trace of the real handshake. It is NOT the Scanner size the earlier handoff
