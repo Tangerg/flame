@@ -2,11 +2,57 @@
 
 ## Current stage
 
-Resumed on 2026-10-14 from `docs/plugin-refactor-handoff.md`. Main was already fully
-merged (`git merge main` reported up to date; merge-base is main's tip `7ba40c117`),
-so the branch has not drifted. Original inputs/stash are unchanged.
+Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
+failure is resolved by `8e32d9c35`; the next product slice is priority #3. Main
+integration remains `7ba40c117`; no push or merge into main occurred. The original
+inputs and user stash remain unchanged.
 
-### Session close 2026-10-14 (contract orphans + bootstrap realignment)
+### Recovery availability and observer lifetime (2026-10-15)
+
+- `TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement` now passes.
+  Reproduction corrected the handoff's immediate diagnosis: the observed deadlock
+  was in initial Scope checkpoint publication, not a disabled `WaitSession`.
+  `BeginRoot` waited for an authoritative fact receipt while the canceled Run pump
+  entered `finish` and waited for activation. The old host retained its Session
+  lease, leaving the reopened Session busy.
+- The Interaction state now owns the actual observer context instead of a second
+  attached boolean. Each receipt binds to that captured observer; cancellation or
+  consumption withdrawal ends its unacknowledged wait before activation is joined.
+  Detached execution cancellation still preserves known facts for a live observer.
+  Observer retirement checks its original context identity before detaching a
+  replacement. All affected consumers and direct receipt fixtures were migrated.
+- Original Schedule source availability is an explicit recovery qualification.
+  Disabled/disconnected sources make uncertain revival ineligible, allowing the
+  existing ownership sweep to close the lost Core Run. Unexpected storage errors
+  and cancellation retain their causes. Private pending work/receipts remain with
+  the original backend; reenabling reconciles the same acceptance without replay.
+- The real SIGKILL test now covers a disabled original installation in addition to
+  the unchanged seven cuts. The disabled path verifies original opening identity,
+  two original model calls, lost Core outcome, checkpoint retirement, one original
+  incomplete Tool Item, original private Schedule/receipt and no continuation
+  model call. It does not claim a live Scope unresolved-effect projection after
+  the plugin-independent ownership sweep has retired that execution.
+- Passed: entire bootstrap twice (94.827s, 88.065s); final entire execution module
+  twice in one `-count=2` run (124.514s), including all eight SIGKILL cuts; Run owner
+  suite (1.530s); pluginservices suite (13.743s); focused observation, slow receipt,
+  terminal receipt, original model evidence and source-availability regressions;
+  gofmt and `git diff --check`. No frontend UI/E2E/screenshot tests or Desktop
+  aggregate check were run. Global/native/vet/race/closure remain final work.
+- Earlier executions exposed two `resolution`-cut losses. The unchanged HEAD full
+  execution suite passed (60.116s), so those failures are not classified as
+  pre-existing. Diagnostic runs and the final two complete runs passed; all
+  temporary instrumentation was removed. Revisit this intermittent concern in
+  concentrated final acceptance rather than waiving the cut or weakening its
+  original assertions. A direct independent-model receipt fixture initially
+  blocked because it lacked the newly required observer; its lifecycle setup was
+  corrected while preserving every evidence/accounting assertion.
+- The worktree disappeared externally during the initial read-only inspection.
+  Its clean branch and exact HEAD remained intact; the same branch was restored
+  at the same path, without rebuilding from main or writing main checkout files.
+  Owned temporary baseline backups and test resources were cleaned; the worktree
+  remains available for continuation.
+
+### Session close 2026-10-14 (historical; bootstrap issue resolved above)
 
 This session resolved the deepest deferred generator obligation and brought the
 bootstrap suite from 14 failures to 1. The user asked to stop here and hand off;
@@ -888,12 +934,13 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
   for preparation/observation. Complete one installed/native normal-terminal/failure/
   interruption/restart Run/Goal workflow, including unknown work and in-flight
   admission under the actual calling owner's resource policy.
-- Schedule crash acceptance still stops at plugin handshake after the production
-  Memory dependency repair. Diagnose original exchange evidence in final integrated
-  acceptance; preserve all seven cut cases and original no-replay/data assertions.
+- Repeat Schedule crash acceptance in the final sweep, including the intermittent
+  resolution concern recorded above. Preserve all original no-replay/data assertions
+  and the new plugin-unavailable recovery qualification.
 - Complete execution-bound background Session/Run/Segment/member provenance and optional counter I/O admission. A phase callback cannot claim durable continuation.
-- Complete embedding evidence/metering and historical retention at their existing
-  owners. Preserve source-reported unknown usage/price without another billing tally.
+- Embedding evidence/metering is implemented. Complete physical-source historical
+  retention/pruning at its existing owners, preserving reported unknown usage/price
+  without another billing tally.
 - Complete transitive dependency status, scoped retention/release, point lifecycle,
   query streams and wide-number Go/TS parity. Existing unary/mutation-stream and
   composition boundary proofs do not close every consumer or automatic workflow.
@@ -907,18 +954,19 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## Next
 
-Resume in a new session using this same managed worktree and the handoff document.
-Preserve the full proposal/review objective and avoid carrying forward static
-percentage estimates.
+Continue in the same worktree and branch. Preserve the complete proposal/review
+objective and report concrete remaining paths rather than a static completion count.
 
-1. Complete embedding results/evidence/metering through existing source, live
-   accounting, query/export and recovery owners; use the handoff's inspected facts.
-2. Complete execution-bound background provenance and original effect ownership;
-   retain canonical RPC, exact frozen continuation and one physical-source owner.
-3. Complete retention/dependency/status, point/query-stream and independent author
-   qualification, then concentrate final acceptance and P01-P48/review closure.
-   Repair Schedule handshake and schema/architecture/format findings without
-   weakening assertions or running forbidden frontend UI/E2E checks.
+1. Priority #3: retention/pruning, transitive dependency status and scoped release,
+   point lifetimes, query streams and Go/TS wide-number parity. Audit actual Tool,
+   automatic and cross-plugin target/origin/parent/original-route consumers.
+2. Priority #4: independent author/component/native packaging qualification.
+   Workspace compilation alone does not prove public module availability; no
+   publishing is authorized.
+3. Concentrated integrated/native/vet/race/dependency/schema/architecture/format
+   acceptance, every P01-P48 and review obligation, and deletion of retired public
+   APIs/schemas/examples/docs. Repeat the Schedule resolution cut. Frontend
+   UI/E2E/screenshot execution and Desktop aggregate checks remain excluded.
 
 ## Decision ledger
 
@@ -1240,7 +1288,7 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | --- | --- | --- |
 | P01-P09 | Author parity, selected roles, plugin-defined points, declaration failure, provisional resources and available management | Open |
 | P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy/retirement and public Go Scope model callback/full valid inner result plus outer failure/cancellation subset verified; actual callback stream/aggregate/cancel/backpressure/external frozen remaining-chain subset now verified; SDK duplex/export/real stdio decorator-next subset now verified; Internal Runtime mutation-stream original route/recovery is now verified; public Go/Protocol stream delivery is now verified; typed/callback Go streaming is now verified; TS mutation streaming is now verified; Stage 5g production failed-outer known-response/accounting and host reopen are verified; Stage 5i transparent installed Interaction chain and original checkpoint/retention are implemented with HTTP boundary evidence; Stage 5j auxiliary/Memory consumers and captured lifetime are implemented/verified at their boundaries; Stage 5k physical chat endpoint admission/outcome/restart is verified at its boundaries; Stage 5l current transparent Interaction source accounting is verified; endpoint export/lifecycle, auxiliary/global/crash/multi-call accounting, transform/multiple-call contracts, transitive lifecycle and full native acceptance still open |
-| P21-P28 | Shared operation entrances, receipts/conflicts, scheduling acceptance/capture, independent Run lifetime and Memory owner invariants | Actual Schedules acceptance/capture/retirement and independent Run lifetime verified; full shared installed entrances remain open |
+| P21-P28 | Shared operation entrances, receipts/conflicts, scheduling acceptance/capture, independent Run lifetime and Memory owner invariants | Schedules acceptance/capture/retirement, lost Core acknowledgement across disable/reenable, and eight SIGKILL cuts verified; original private records and no replay preserved. Full shared installed entrances and final repeated acceptance remain open |
 | P29-P35 | Shared React binding, recoverable UI failure, target capture, shared resource owner, applicability, capacity and appearance owner | Open; UI/E2E execution excluded by user |
 | P36-P41 | Generation safety, waiting dependencies, retained data, generic history, remote environment and headless host calls | Open |
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |

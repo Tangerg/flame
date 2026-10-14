@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 at the user's request to continue in a new session.
+Prepared on 2026-10-14 and updated after the 2026-10-15 recovery slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,6 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
+- Latest product commit: `8e32d9c35` (observer-bound receipt retirement and
+  unavailable original-source recovery).
 - Last product commits (2026-10-14 session): `f59404a96` (bootstrap realignment +
   unconfirmed-command projection), `13f9eb336` (contract orphan resolution). Earlier
   this branch: `73ce66711` (two-phase startup recovery), `8ad951c7d` (embedding
@@ -104,9 +106,10 @@ or deletion. Captured primary context and independent billing remain distinct.
 
 ## Remaining work and priority
 
-1. Complete embedding results/evidence/metering through the existing physical
-   source, live Run/Goal consumption, query/export and recovery owners. General
-   host embedding access must stop depending on Memory-owned shared grant bounds.
+1. Embedding results/evidence/metering is implemented through the existing source,
+   live Run/Goal, query/export and recovery owners (see the progress anchor).
+   Historical retention/pruning remains priority #3. Memory-owned call bounds stay
+   Memory policy, as the proposal requires.
 2. Complete execution-bound background provenance and original active member
    ownership. Restored caller attribution does not restore Session/Run/Segment,
    a model publisher, an expired next or stopped Scope effects. Never infer them
@@ -202,40 +205,22 @@ Resolved since the last handoff:
 
 Still failing/unresolved:
 
-- `TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement`
-  (`runtime/internal/bootstrap/schedules_callback_loss_test.go`): the ONLY remaining
-  bootstrap failure. A schedule run-now commits a Core Run opening whose SSE
-  acknowledgement is dropped, then disables the schedules plugin. On reopen, the
-  lost Core opening must be reconciled so the session can be retired, but
-  `recoverUncertainExecutions` revives through the original schedule command path
-  (`ReviveUncertainExecution` → `Schedules.AwaitOriginalCreateSource` →
-  `Pool.BoundServiceSession` → `WaitSession`) and blocks on the DISABLED plugin's
-  session until the context deadline (`session_busy`, then a host.Close shutdown
-  deadline). Exact chain owners:
-  `runs/uncertain_revival.go:42 ReviveUncertainExecutions` (iterates non-terminal
-  roots; no unavailable-source branch) →
-  `run/execution/interaction_cold_recovery.go:18 PrepareUncertainExecution` →
-  `pluginservices/schedules.go:98 AwaitOriginalCreateSource` →
-  `mcpconnection/pool.go:326 BoundServiceSession` →
-  `infra/integration/mcp/connections.go:211 WaitSession`.
-  The test expects two things the fix must jointly satisfy, confirmed by reading
-  `schedules_callback_loss_test.go`:
-  (a) at the first reopen with the plugin DISABLED, the lost Core opening is
-  reconciled to a terminal/lost Run so `SessionsDelete` (retire-accepted-material,
-  line 113) succeeds — i.e. revival of a plugin-backed uncertain execution must NOT
-  block when the originating plugin is unavailable; it should leave/terminalize the
-  Core Run and keep the schedule's private pending work intact; and
-  (b) at the later reopen with the plugin RE-ENABLED (line 116-118), the private
-  pending work reconciles — advancing the schedule revision exactly once and
-  returning the ORIGINAL run/session IDs as the idempotent outcome — WITHOUT
-  recreating the already-retired session (sessions list stays empty, line 126-128).
-  Root cause: a Core Run opening must be reconcilable without its originating plugin
-  live; `WaitSession`/`AwaitOriginalCreateSource` needs an unavailable-source path
-  (defer/terminalize) instead of blocking. This is a production recovery-robustness
-  change in the exact two-phase recovery ordering the branch already stabilized, so
-  re-run the full `internal/bootstrap` suite (especially the other recovery/steer/
-  schedule tests and `TestScheduleCreateRecoversAcrossSIGKILLCuts`) after any change
-  here. Already failing with both symptoms before this session's test realignment.
+- The former bootstrap failure is RESOLVED on 2026-10-15 (`8e32d9c35`). Current
+  production tracing corrected the immediate old diagnosis: `BeginRoot` awaited
+  initial Scope checkpoint publication while the canceled Segment pump's `finish`
+  joined activation. The old host could not release its Session lease. Receipt
+  waits now belong to the actual captured observer lifetime; withdrawal ends the
+  wait while execution cancellation alone still preserves known facts. Original
+  Schedule source availability is an explicit eligibility result, so unavailable
+  sources do not prevent the existing Core ownership sweep. The original callback
+  loss test, entire bootstrap twice, and final entire execution suite twice pass,
+  including the original seven SIGKILL cuts and a new disabled-source cut.
+- Two earlier execution sweeps saw an intermittent `resolution` cut loss. An
+  unchanged HEAD execution sweep passed; no causal pre-existing classification was
+  established. Diagnostic runs and the final complete `-count=2` run passed with
+  original assertions preserved and all instrumentation removed. Repeat that cut
+  during final concentrated acceptance; do not waive it. The progress anchor has
+  the actual results and remaining acceptance concern.
 - A Desktop aggregate UI check was accidentally run much earlier and interrupted;
   resulting UI failures were not proven pre-existing. Do not rerun forbidden UI
   checks or claim those failures are resolved.
