@@ -37,9 +37,16 @@ date. Original proposal/review/draft SHA-256 values and user stash are unchanged
 All test/build/commit handles are terminal. Test-owned databases are closed; there
 is no scratch artifact, background process, shared configuration or user-data change.
 Preserve the managed worktree and canonical progress symlink for the full goal.
-Core .31/backend .2/export schema3 and Scope v0.50.0 remain current. Overall 65-70%
-delivery/75% implementation remains a rough workload estimate, not a requirements
-count. The full proposal/review objective is active and not complete.
+Core .31/backend .2/export schema3 and Scope v0.50.0 remain current. The previous
+65-70%/75% workload estimates are withdrawn: carrying them across completed slices
+without a requirement-level count was not a reliable progress measure. Report actual
+completed implementation and named remaining work/evidence until P01-P48 and the
+review have been individually audited. The full objective remains active and incomplete.
+Current remaining development includes embedding evidence/metering, execution-bound
+background provenance, retention/dependency/status and independent author qualification.
+Concentrated full/native acceptance, Schedule handshake repair and closure gates remain.
+Prefer completing these connected product paths over more fragmented plumbing slices;
+use focused verification during development and concentrate broad checks at acceptance.
 Next: actual execution-bound background provenance, embedding evidence/retention,
 dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
@@ -712,6 +719,7 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Withdraw carried-forward percentage estimates and report concrete completed/remaining requirements | The repeated 75% figure was not recalculated against P01-P48/review evidence and could not describe recent progress reliably | Repeating a stale estimate or inventing a higher percentage from commit counts |
 | 2026-10-14 | Validate retained background commands against their complete original target/provider, regardless of target scope | Recorded Session/workspace commands were wrongly refused by an installation-only precondition | Erasing the target, special cases for individual scopes or trusting a current UI selection |
 | 2026-10-14 | Restrict only fresh unrecorded triggers to Automatic/parentless/own-installation attribution | Fresh work has no original route proving a resource target or a human/model parent | Allowing unrecorded resource references or making a retained command acquire a new route |
 | 2026-10-14 | Keep caller attribution distinct from active execution restoration | A persisted invocation does not recreate an expired continuation or Scope member publisher | Inferring Run/Segment from parent IDs or claiming Session/Run metering from attribution alone |
