@@ -2,67 +2,72 @@
 
 ## Current stage
 
-Stage 5y (6839e9c6e) connects independent physical attempts to the existing lost-
-Run/Goal recovery accounting. The physical journal snapshots nonterminal-Run
-attempts whose caller has no logical Model accounting projection. Already accounted
-logical Models are excluded; standalone/Session-only sources are outside this Run
-collection. Claimed Session filtering and lost-tree planning preserve waiting trees
-that remain recoverable. No fake logical Model, invoice ledger or provider replay.
+Stage 5z (0ad3d34e5) removes the competing cumulative executor invoice. Each
+ModelCallCompleted now carries the actual model, original provider report and
+captured per-call price. The Run reducer accrues usage and steps through the same
+Metrics transition used by recovery, starting from the committed opening Run.
+SegmentEnded carries only outcome, failure, unresolved effects and duration;
+SegmentUsage, its accessor, the executor terminal report and cumulative override/
+monotonic-arbitration helpers are deleted. Scope process snapshots retain their
+checkpoint and primary-context calibration purpose, without billing authority.
 
-Known independent responses retain their captured usage/price even under outer
-failure. Unknown attempts count admitted work without fabricated tokens/price and
-make exact aggregate cost unknown. The existing Run metrics transition consumes
-those source facts without changing primary ContextTokens. Original source JSON,
-association/state/price, admission identity and served-model/usage projections are
-validated in the same transaction as the lost Run and Goal replacement. Failed
-transactions advance neither; terminal Run exclusion prevents a second boot charge.
+All in-repository fact producers, clones and fixtures use the new shape. Parent,
+sibling and nested-child Coordinator fixtures now supply actual model starts and
+completions before termination, preserving consumption, lineage and content
+assertions. Resume adds only the new call, a duplicate completion is refused, and
+interleaved model totals retain the primary context. Missing original usage keeps
+exact total price unknown even when later calls are priced. A previously unseen
+unknown model also retains its unknown price when its later response is known.
+Missing model, negative usage and price without usage are refused.
 
-Actual SQLite/Goal proof covers two known independent calls plus one unknown,
-large numeric input (9007199254740993), already-completed primary exclusion, outer
-failure, changed typed usage/price refusal, rejected Run transaction rollback,
-correct Goal Run/step/unknown-cost projection, unchanged primary context and a
-second database-open recovery with no repeat accrual. A first whole-struct compare
-mistook Scope clone nil/empty normalization for source change; it now compares
-canonical evidence and actual billing projections, preserving the stricter stale/
-changed-source refusal. No expected assertion was removed or weakened.
+The execution package check exposed a missing required Memory reader in production
+bootstrap. The selected installed Memory adapter already implements the reader;
+bootstrap now explicitly supplies it alongside search. The real Schedule crash
+helper now builds Runtime, but its plugin handshake does not settle within the
+existing deadline. This is an outstanding integrated acceptance failure, not a
+passing recovery proof or a reason to weaken the original assertions.
 
-Main 67c9f498f is integrated in ec8b986e0. Its Steer nomination/applied-evidence and
-steerInputs contracts are retained with the installed-plugin journal and original
-Run metadata/fingerprint checks. Shared wire dispatch still registers a lazy promise
-before execution; new Steer identity getters/binding use that same owner. API consumer
-inspection keeps installed components/HTTP consumers and credits actual RPC
-interfaces rather than command-handle members. Existing incoming UI tests preserved;
-none authored or executed. Source conflicts are resolved without a legacy reader.
+Main ed0b6db55 is integrated in 63695693a. Root/child cancellation failures and
+committed terminal snapshots survive. The shared methods-test conflict keeps main's
+new cancellation refusal cases and this branch's current Session edit contract;
+the retired action shape is not restored. Incoming UI tests are preserved, none
+were authored or run. Core .31, backend .2 and export schema3 are unchanged: this
+slice changes internal execution facts, not public wire encodings or stored JSON.
+Original proposal/review/draft hashes still match their read-only baseline.
+The user stash remains intact. All owned build/test/merge handles are terminal;
+fixture-owned temporary distributions/databases/FIFOs are managed by test cleanup.
+No scratch file, UI artifact, background job or shared configuration was introduced.
 
-The merged public graph advances Core to 2026-10-14.31, superseding this branch's
-.30 and main's .3; all generator-owned artifacts/canonical samples are regenerated.
-Journal entries now require steerItemId (null for non-Steer), original Run metadata,
-and the original installed route where applicable. Old incomplete journal entries
-are refused/preserved, without conversion. Backend .2/export schema3 unchanged.
-External strict clients must regenerate/rebuild for the merged Core/Steer shapes.
-Original proposal/review/draft hashes and user stash remain unchanged.
+Verified before merge: Runtime build; complete Runs and Run-domain package suites;
+focused execution/accounting/recovery/Coordinator tests. The final focused new
+accounting/restored-sibling pass took 0.927/0.463/1.118 seconds. The attempted full
+execution suite failed at the Schedule crash helper (50.302 seconds); after the
+Memory binding fix, its targeted rerun failed at handshake (85.910 seconds).
+Do not label that remaining failure unrelated/pre-existing without a causal proof.
+Post-merge Runtime build and focused Runs/cancellation/delivery checks pass
+(0.511/1.001 seconds). Shared contract and Desktop typecheck pass; all 44 shared
+methods protocol units pass (1.34 seconds). Full/native/vet/race/closure checks remain concentrated final work; UI/E2E/
+screenshot checks remain explicitly excluded.
 
-Passed: backend recovery/source/Goal regression and existing recovery commits;
-Runtime build and Runtime/bootstrap test-source compilation; scoped architecture/
-drift/version; merged delivery/Steer/acceptance/source recovery; shared/desktop
-TypeScript typecheck; 64 shared command/method/plugin-stream tests and 11 Steer
-recovery tests; three static AST API-consumer checks (no UI rendering). An initial
-textual test-file splice was syntactically invalid; repaired from both complete
-original test blocks, then static syntax/behavior checks passed. Commit hooks only
-formatted/linted incoming source; no UI/E2E/screenshot run or authorship occurred.
-
-Full goal active. This is the recovery slice of multi-call accounting; live child
-accrual, normal-terminal closure and generation-time total-work/Run/Goal budget are
-still open and must converge on the same logical/physical accounting classification.
-Adding live charges while still treating those sources as unaccounted at boot would
-double count and is prohibited. General policy/background grants, embeddings,
-retention/author/dependency and concentrated full/native/vet/race/P01-P48 acceptance
-remain open. Known orphan-schema/older architecture/format/interrupted UI findings
-are not cleared by bounded passes. Rough 65-70% delivery/75% implementation is still
-an estimate. Owned process handles and temporary compile/hook outputs have settled;
-worktree is clean before this progress-only commit.
+This completes the per-call accounting prerequisite, not live independent callback
+accounting or total-work admission. Those callbacks must enter the actual execution
+fact owner with original Model/Tool membership and a role that preserves primary
+stream/message/context state. Their logical/physical classification must change in
+the same transaction so boot cannot accrue a live-accounted source twice. Existing
+policy/background, embeddings, retention/dependency/author and P01-P48/review/native
+acceptance obligations remain. Rough 65-70% delivery/75% implementation remains an
+estimate, not a counted completion audit.
 
 ## Completed
+
+- Stage 5z (0ad3d34e5): one per-call Run consumption transition; cumulative executor
+  fields and terminal invoice deleted with all producers/clones/fixtures migrated.
+- Stage 5z: resumed/interleaved calls, exact per-call price, original unknown price,
+  duplicate completion refusal, primary context and unchanged terminal metrics proof.
+- Stage 5z: bootstrap supplies the already selected installed Memory reader; actual
+  Schedule recovery helper now reaches activation, with handshake acceptance open.
+- Stage 5z: main ed0b6db55 merged in 63695693a; cancellation failure evidence and
+  current Session edit/canonical contract tests preserved; incoming UI tests untouched.
 
 - Stage 5y (6839e9c6e): independent physical source snapshot and immutable proof
   in atomic lost Run/Goal recovery; known/failed/unknown consumption without replay.
@@ -649,6 +654,13 @@ worktree is clean before this progress-only commit.
 
 ## In progress
 
+- Stage 5z is the completed accounting prerequisite. Live selected callbacks still
+  need actual execution-member fact reporting, primary-output isolation and atomic
+  source/logical accounting classification. Run/Goal aggregate admission remains open.
+- Real Schedule crash acceptance now stops at plugin handshake after the production
+  Memory dependency repair. Diagnose original exchange evidence during final integrated
+  acceptance; preserve all seven cut cases and original no-replay/data assertions.
+
 - Stage 5y closes independent lost-tree accrual at its source/transaction boundary.
   Complete live Run/Goal consumption, normal terminal and total-work admission.
   The boot collection classification must change atomically with live integration;
@@ -704,6 +716,9 @@ worktree is clean before this progress-only commit.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Run reducer accrues original model consumption once per call; segment termination has no invoice | Executor cumulative snapshots overwrite independently accrued work and introduce a second transition owner | Cumulative confirmation/arbitration, dual accounting events, terminal replacement or an old-fact adapter |
+| 2026-10-14 | Unknown original usage keeps total price unknown across later known calls | A later priced report cannot establish the cost of previously admitted work | Treating the first priced report as a complete total, fabricated usage or free unknown calls |
+| 2026-10-14 | Bootstrap binds the existing selected installed Memory reader explicitly | Working context has a real required pinned-memory read contract; composition omitted its implementation | Typed-nil reader, empty stub, dropping pinned memory or recreating a private business facade |
 | 2026-10-14 | Lost Run/Goal recovery consumes independent physical sources through the existing atomic replacement | Primary-only recovery omitted separately admitted effects; logical completed calls already have their original projection | Fake logical Model receipts, a second invoice ledger, repricing or source replay |
 | 2026-10-14 | Unknown independent attempts retain missing tokens/price and invalidate exact total cost | Admission is known; provider usage/outcome cannot be invented | Zero usage/cost substitution, dropping uncertainty, or child input recalibrating the main context |
 | 2026-10-14 | Compare original JSON and billing-relevant source projections in the recovery transaction | Scope clones can normalize nil/empty containers; true usage/price changes must still refuse | Whole-struct DTO equality, trusting only altered DTO values, or weakening original evidence checks |
@@ -955,6 +970,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| One Run consumption owner across actual model calls and termination | Stage 5z per-call accrual, original usage/price, resume/interleaving/duplicate/context/terminal invariants implemented and verified; live independent callback wiring and total-work admission remain open | runs/execution_fact.go; execution_fact_commit.go; reducer_items.go; reducer_outcome.go; execution/interaction_accounting.go; interaction_session.go; interaction_durable_children.go; run/metrics.go; matching backend regressions |
 | Known independent inner consumption under lost outer execution | Stage 5y source/Run/Goal atomic recovery, unknown cost, primary exclusion, rollback/context/restart proof verified; live/normal-terminal/aggregate admission and native acceptance open | sqlite/model_endpoint.go; application/runs/recovery.go/recovery_commit.go; adapter/run/recovery/persistence.go/model_evidence_test.go |
 | Original executing Run/Segment for multiple physical model calls | Stage 5x active Model/Tool ownership, namespace/chronology/Session/wait/resume refusal and real callback source association verified; aggregate budgets/native/background/policy phases remain open | executionctx/scope.go; execution/interaction_model.go; interaction_tool.go; model/endpoint_observation.go; sqlite/model_endpoint.go/tests; pluginservices/model_calls.go/tests; plugin/model_call.go; protocol/model_invocations.go/version.go |
 | Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; stream.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
@@ -2490,6 +2506,13 @@ Stage 2a verification:
 - No remote push, publication, main-history mutation, production operation or credentialed action was performed.
 
 ## Unresolved questions
+
+- Stage 5z: actual Schedule crash acceptance still fails at activation handshake
+  after the missing production Memory binding was repaired. Preserve all original
+  cut/no-replay/data assertions; inspect original exchanges before choosing a fix.
+- Stage 5z: primary and independent logical call roles must preserve the current
+  primary stream/message/context while sharing per-call metrics. Current fact-only
+  interleaving proof does not establish that live callback contract.
 
 - Stage 5y recovery is not live budget closure. Independent sources currently
   lack a logical accounting projection and are consumed on lost-tree replacement;
