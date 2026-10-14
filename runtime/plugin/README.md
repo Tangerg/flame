@@ -491,3 +491,52 @@ command before its state transition. Core .29 publishes this failure-timing chan
 Canonical media the selected model cannot accept is never passed to its provider
 counter; compaction uses its local projection and final transformation/admission
 remains authoritative. Full native/multiple-call acceptance is still open.
+
+## Independent selected model calls
+
+`SelectedModelMethod` and `SelectedModelStreamMethod` publish
+`flame.model/selected-call.v1` and `flame.model/selected-stream.v1`. They use
+`ModelCallRequest`: an exact `ModelSelection`, complete Scope `chat.Request`, and
+`ModelCallBudget` with positive `maxRequestBytes` and `maxOutputTokens`. The output
+reservation must be present and fit the budget. Serialized request size includes
+messages, media, options, Tools and their schemas; the Runtime checks it again after
+captured context and input conversion, before exact model capacity admission.
+
+Use the RPC callback reference supplied to an ordinary installed invocation:
+
+```go
+ref, err := plugin.CallbackFromContext(ctx)
+if err != nil { return err }
+request.Options.MaxOutputTokens = new(int64(64))
+input := plugin.ModelCallRequest{
+    Selection: plugin.ModelSelection{Provider: "anthropic", Model: "configured-model"},
+    Budget: plugin.ModelCallBudget{MaxRequestBytes: 64 << 10, MaxOutputTokens: 64},
+    Request: *request.Clone(),
+}
+response, err := plugin.CallSelectedModel(ctx, ref, "workflow-model-call-1", input)
+```
+
+A real workflow supplies a distinct stable identity for each intended exchange,
+retains its own total-work budget, and handles failure/uncertainty through its existing
+owner. Another request can propose another route with another identity; there is no
+SDK-wide two-call limit. `StreamSelectedModel` freezes the request before iteration,
+preserves canonical deltas and `ModelResult`, and joins the provider when consumption
+stops. Never retry a lost exchange automatically or reuse its ID for changed input.
+
+`NewSelectedModelCallback` and `NewSelectedModelStreamCallback` bind an owner to these
+contracts. `Callbacks.PublishRPC` publishes them beside canonical RPC on the existing
+endpoint; per-reference transport limits, captured invocation and activation lifetime
+still apply. The existing physical endpoint journal fences production dispatch and
+retains full evidence. The SDK does not invent a model receipt store or fake Run.
+
+The reference for an observer's `next` is a captured continuation with its original
+capability. It does not grant selected-model routing. The transparent observer's
+once-through contract remains specific to observation; it is not a universal rule
+for composition. General durable composition still requires Scope-owned effects or
+an existing durable use case. New selected capabilities are additive exact methods;
+older hosts without that grant explicitly refuse them. No legacy method is relabeled.
+
+`PublishRPC` now has the variadic signature `func(http.Handler, ...Callback) error`.
+In-repository publishers are migrated. External method-value assignments requiring
+the former exact Go function type must change and rebuild; there is no old-signature
+wrapper. This source break does not alter the canonical RPC wire contract.

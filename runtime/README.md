@@ -2489,3 +2489,36 @@ observe the Run outcome rather than interpreting opening acceptance as media/mod
 success. A converter may adapt the original image without changing its stored
 user Item or retry identity. No new receipt, compatibility branch or error fallback
 is introduced. Rebuild Runtime and clients together.
+
+## Independent plugin model exchanges
+
+Ordinary installed calls receive an RPC callback reference from their original
+calling context. Its one Runtime endpoint now also serves the public selected-model
+callbacks. `CallSelectedModel` and `StreamSelectedModel` accept a distinct invocation
+ID, exact provider/model proposal, complete Scope request and `ModelCallBudget`.
+Three or more separately admitted requests are allowed; Memory's private two-call
+rule still belongs to Memory. A missing owning invocation is refused.
+
+Each request resolves the explicitly installed selector before provider construction,
+then captures the context, input and transparent observer chains. Its caller-owned
+budget includes serialized request framing, options, Tools and media. Input conversion
+may alter the provider projection; final byte/output/media/token admission precedes
+the actual provider exchange. The original caller's request remains unchanged.
+Unary and lazy streaming use the same capture, cancellation/join and held-dependency
+owner. Streaming is advertised only when the exact provider instance supports it.
+
+The existing observed resolver journals each physical dispatch with its own caller
+ID, inherited origin/parent and final provider/model/request. Known response, usage
+and price survive outer failure. Reusing the same identity cannot dispatch again,
+even with changed input; transport loss remains uncertainty and does not authorize
+an automatic retry. Core operations continue through canonical Delivery RPC; these
+host model collaborators do not add a business receipt or a second provider journal.
+
+The new callback methods have independent exact descriptors. Core .29, backend .2
+and export schema 3 are unchanged: this is an additive host collaborator capability,
+not a change to an existing command, stored record or wire method. Public Go API
+inventory is regenerated. The variadic PublishRPC source signature requires external
+method-value consumers to update and rebuild; no old-signature wrapper remains. Independently compiled consumers that need this capability
+must rebuild from the current SDK and use a host that grants the selected methods.
+Native installed-process acceptance, general remote composition, descendant Run/Goal
+accounting, embedding evidence and full P01-P48 acceptance remain final-delivery work.

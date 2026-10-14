@@ -484,6 +484,7 @@ func buildAssemblyCore(
 			},
 			idempotencyStore: cfg.Stores.Idempotency,
 			callbacks:        execution.models.callbacks,
+			modelCallbacks:   execution.tools.modelCallbacks,
 		},
 		lifetime: lifetime,
 	}

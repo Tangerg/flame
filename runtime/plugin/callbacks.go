@@ -172,13 +172,9 @@ func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits
 	if len(callbacks) == 0 {
 		return CallbackRef{}, nil, errors.New("plugin: callback operations are required")
 	}
-	methods := make(map[string]boundMethod, len(callbacks))
-	for _, callback := range callbacks {
-		method := callback.method
-		if method.contract == nil || method.invoke == nil && method.stream == nil || methods[method.contract.Name()].contract != nil {
-			return CallbackRef{}, nil, errors.New("plugin: callback operations must be valid and unique")
-		}
-		methods[method.contract.Name()] = method
+	methods, err := callbackMethods(callbacks)
+	if err != nil {
+		return CallbackRef{}, nil, err
 	}
 	return c.open(ctx, session, limits, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -189,10 +185,25 @@ func (c *Callbacks) Open(ctx context.Context, session *sdk.ClientSession, limits
 	}))
 }
 
+func callbackMethods(callbacks []Callback) (map[string]boundMethod, error) {
+	methods := make(map[string]boundMethod, len(callbacks))
+	for _, callback := range callbacks {
+		method := callback.method
+		if method.contract == nil || method.invoke == nil && method.stream == nil || methods[method.contract.Name()].contract != nil {
+			return nil, errors.New("plugin: callback operations must be valid and unique")
+		}
+		methods[method.contract.Name()] = method
+	}
+	return methods, nil
+}
+
+type callbackLimitsKey struct{}
+
 // PublishRPC publishes the canonical Runtime RPC transport once before any
 // backend can receive its reference. Publication owns the startup dependency
-// knot; it does not construct another Endpoint or register business methods.
-func (c *Callbacks) PublishRPC(handler http.Handler) error {
+// knot. Call-bound host collaborators share its endpoint; core business
+// operations retain the canonical RPC handler and its Delivery semantics.
+func (c *Callbacks) PublishRPC(handler http.Handler, callbacks ...Callback) error {
 	if handler == nil {
 		return errors.New("plugin: runtime RPC handler is required")
 	}
@@ -201,6 +212,25 @@ func (c *Callbacks) PublishRPC(handler http.Handler) error {
 		if value.IsNil() {
 			return errors.New("plugin: runtime RPC handler is required")
 		}
+	}
+	methods, err := callbackMethods(callbacks)
+	if err != nil {
+		return err
+	}
+	if len(methods) > 0 {
+		rpc := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				rpc.ServeHTTP(w, r)
+				return
+			}
+			limits, ok := r.Context().Value(callbackLimitsKey{}).(CallbackLimits)
+			if !ok {
+				http.Error(w, "callback call limits are required", http.StatusForbidden)
+				return
+			}
+			serveCallback(w, r, methods, limits)
+		})
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -457,7 +487,7 @@ func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
 	}()
 	// The owner context supplies target, origin and parent projections. The
 	// network request can cancel them, but cannot replace them with input fields.
-	request := r.WithContext(lifetime)
+	request := r.WithContext(context.WithValue(lifetime, callbackLimitsKey{}, call.limits))
 	request.Body = http.MaxBytesReader(w, body, call.limits.MaxRequestBytes)
 	call.handler.ServeHTTP(w, request)
 }

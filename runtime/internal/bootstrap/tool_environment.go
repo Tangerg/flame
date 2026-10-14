@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
@@ -35,6 +36,7 @@ type toolEnvironment struct {
 	schedules        *pluginservices.Schedules
 	pluginCalls      *pluginservices.CommandCalls
 	modelComposition *pluginservices.ModelComposition
+	modelCallbacks   []pluginsdk.Callback
 	utilityModel     models.AuxiliaryResolver
 	closers          []*teardown.Step
 	admission        *plugins.Admission
@@ -97,6 +99,10 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	}
 	environment.pluginCalls = commandCalls
 	environment.modelComposition, err = pluginservices.NewModelComposition(commandCalls, deps.modelServices.callbacks, admission)
+	if err != nil {
+		return environment, err
+	}
+	environment.modelCallbacks, err = environment.modelComposition.ModelCallbacks(deps.modelServices.chatResolver)
 	if err != nil {
 		return environment, err
 	}

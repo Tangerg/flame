@@ -21,14 +21,14 @@ type ModelComposition struct {
 	callbacks *pluginsdk.Callbacks
 	admission *plugins.Admission
 	mu        sync.Mutex
-	auxiliary map[*auxiliaryModelCapture]struct{}
+	captures  map[*modelCapture]struct{}
 }
 
 func NewModelComposition(calls *CommandCalls, callbacks *pluginsdk.Callbacks, admission *plugins.Admission) (*ModelComposition, error) {
 	if calls == nil || callbacks == nil || admission == nil {
 		return nil, errors.New("model composition: installed calls and callbacks are required")
 	}
-	return &ModelComposition{calls: calls, callbacks: callbacks, admission: admission, auxiliary: make(map[*auxiliaryModelCapture]struct{})}, nil
+	return &ModelComposition{calls: calls, callbacks: callbacks, admission: admission, captures: make(map[*modelCapture]struct{})}, nil
 }
 
 func (o *ModelComposition) Resolve(ctx context.Context) ([]plugins.ContributionBinding, error) {

@@ -91,3 +91,18 @@ identity and original transcript evidence; it cannot decide whether a later mode
 projection has an unsupported modality. Start/Resume/Steer acceptance therefore does
 not claim model-media success. The selected provider sees only the admitted final
 projection, and failure remains the original execution owner's observable outcome.
+
+Independent plugin model exchanges carry their own caller identity, exact selection
+proposal, complete Scope request and explicit request/output budget. They enter the
+same authenticated callback endpoint as canonical Runtime RPC. The existing observed
+provider resolver and physical journal own dispatch fencing, known outcomes, usage,
+price and restart uncertainty; a callback acknowledgement is not a second receipt or
+permission to replay. No Memory call-count rule applies to another plugin's workflow.
+
+A captured continuation still refers to the remainder of its original frozen chain.
+A fresh selected exchange is a different capability and cannot reinterpret that
+continuation as another provider call. Each fresh exchange resolves its installed
+selection, freezes context/input/observer bindings and admits the complete final
+request. Scope remains the durable effect and execution owner. General remote
+composition and Run/Goal aggregation of descendant model consumption require their
+own explicit execution contracts; physical evidence alone does not complete them.

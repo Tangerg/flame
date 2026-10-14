@@ -1666,6 +1666,10 @@
           "signature": "func(ctx context.Context, ref CallbackRef, id string, request *chat.Request) (*chat.Response, error)"
         },
         {
+          "name": "CallSelectedModel",
+          "signature": "func(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) (*chat.Response, error)"
+        },
+        {
           "name": "CallbackFromContext",
           "signature": "func(ctx context.Context) (CallbackRef, error)"
         },
@@ -1758,6 +1762,14 @@
           "signature": "func(stream func(context.Context, Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (Callback, error)"
         },
         {
+          "name": "NewSelectedModelCallback",
+          "signature": "func(call func(context.Context, Command[ModelCallRequest]) (*chat.Response, error)) (Callback, error)"
+        },
+        {
+          "name": "NewSelectedModelStreamCallback",
+          "signature": "func(stream func(context.Context, Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error]) (Callback, error)"
+        },
+        {
           "name": "NewStreamingCallback",
           "signature": "func[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, Command[P]) iter.Seq2[StreamValue[C, R], error]) (Callback, error)"
         },
@@ -1802,6 +1814,14 @@
           "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *capability.Contract) (*CapabilityBinding, error)"
         },
         {
+          "name": "SelectedModelMethod",
+          "signature": "func() (*Method[ModelCallRequest, ModelResult], error)"
+        },
+        {
+          "name": "SelectedModelStreamMethod",
+          "signature": "func() (*StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error)"
+        },
+        {
           "name": "SetUp",
           "signature": "func(ctx context.Context, session *mcp.ClientSession, contributions []SetupContribution, metadata mcp.ParamsBase) error"
         },
@@ -1812,6 +1832,10 @@
         {
           "name": "StreamModel",
           "signature": "func(ctx context.Context, ref CallbackRef, id string, request *chat.Request) iter.Seq2[StreamValue[chat.ResponseDelta, ModelResult], error]"
+        },
+        {
+          "name": "StreamSelectedModel",
+          "signature": "func(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) iter.Seq2[StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
           "name": "ToolCommandID",
@@ -1999,7 +2023,7 @@
             },
             {
               "name": "PublishRPC",
-              "signature": "func(handler http.Handler) error"
+              "signature": "func(handler http.Handler, callbacks ...Callback) error"
             },
             {
               "name": "RevokeSession",
@@ -2127,6 +2151,55 @@
             {
               "name": "Description",
               "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "ModelCallBudget",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MaxRequestBytes",
+              "type": "int64",
+              "tag": "json:\"maxRequestBytes\" jsonschema:\"minimum=1\""
+            },
+            {
+              "name": "MaxOutputTokens",
+              "type": "int64",
+              "tag": "json:\"maxOutputTokens\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Admit",
+              "signature": "func(request *chat.Request) error"
+            }
+          ]
+        },
+        {
+          "name": "ModelCallRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Selection",
+              "type": "ModelSelection",
+              "tag": "json:\"selection\""
+            },
+            {
+              "name": "Budget",
+              "type": "ModelCallBudget",
+              "tag": "json:\"budget\""
+            },
+            {
+              "name": "Request",
+              "type": "chat.Request",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
             }
           ]
         },

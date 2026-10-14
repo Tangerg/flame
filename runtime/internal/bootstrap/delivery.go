@@ -23,6 +23,7 @@ type runtimeApplication struct {
 	workers          runtimeWorkers
 	idempotencyStore idempotency.Store
 	callbacks        *pluginsdk.Callbacks
+	modelCallbacks   []pluginsdk.Callback
 }
 
 type runtimeWorkers struct {
@@ -86,7 +87,7 @@ func (h *runtimeApplication) publishCallbacks(endpoint *delivery.Endpoint) error
 			mux.Handle(entry.Method+" "+entry.Path, rpc)
 		}
 	}
-	return h.callbacks.PublishRPC(mux)
+	return h.callbacks.PublishRPC(mux, h.modelCallbacks...)
 }
 
 func (h *runtimeApplication) notifyExternalChange() {

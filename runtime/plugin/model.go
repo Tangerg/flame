@@ -62,18 +62,7 @@ func CallModel(ctx context.Context, ref CallbackRef, id string, request *chat.Re
 	if err != nil {
 		return nil, err
 	}
-	if result.Response != nil {
-		if err := result.Response.Validate(); err != nil {
-			return nil, err
-		}
-	}
-	if result.Failure != nil {
-		return result.Response.Clone(), result.Failure
-	}
-	if result.Response == nil {
-		return nil, errors.New("plugin: model acknowledgement has no outcome")
-	}
-	return result.Response.Clone(), nil
+	return modelOutcome(result)
 }
 
 // NewModelCallback leaves command admission and resource policy with its caller.
@@ -136,4 +125,19 @@ func modelResult(response *chat.Response, err error) (ModelResult, error) {
 		result.Failure = &ModelFailure{Code: code, Message: err.Error()}
 	}
 	return result, nil
+}
+
+func modelOutcome(result ModelResult) (*chat.Response, error) {
+	if result.Response != nil {
+		if err := result.Response.Validate(); err != nil {
+			return nil, err
+		}
+	}
+	if result.Failure != nil {
+		return result.Response.Clone(), result.Failure
+	}
+	if result.Response == nil {
+		return nil, errors.New("plugin: model acknowledgement has no outcome")
+	}
+	return result.Response.Clone(), nil
 }
