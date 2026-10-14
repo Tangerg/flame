@@ -14,6 +14,28 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Public Memory client and complete current Go gates (2026-10-15)
+
+- `03fb6eeb6` moves the installed Memory client's actual read/command implementation
+  from Workspace's public surface into the feature's public `src/client.ts`.
+  It imports only the published generated feature contract and public Runtime
+  client. Workspace adapters translate its result into their application ports;
+  Workspace publishes no adapter implementation or wire client. Feature vocabulary
+  derives from the generated contract. No forwarding alias or second store remains.
+- All consumers migrate. The existing E2E file changes only its import specifier;
+  no UI/E2E assertion or behavior is written, removed or executed. Desktop typecheck,
+  actual client lint, layer/public boundary checks and 95/95 product API closure
+  pass. Active Desktop architecture prose now describes ordinary components,
+  shared UI/theme and backend-owned Schedule wake-up/dispatch.
+- Complete current Go acceptance passes all 174 packages across Runtime,
+  localruntime, CLI and Reviews, with no excluded Go tests. Full module vet passes.
+  Root and both feature generation pipelines reproduce every tracked artifact
+  exactly. These Go sources are unchanged by the final TS client relocation.
+- Final complete race is running over that same full module set with unchanged
+  case assertions and a 900s package aggregate limit. Native/current artifact
+  qualification and final P01-P48/review reconciliation follow. The earlier failed
+  and terminated full run is retained as failure history, not counted as passed.
+
 ### Product-consumer closure and current author documentation (2026-10-15)
 
 - `33696b3c2` supplies actual CLI `plugins compositions`, `set-composition` and
