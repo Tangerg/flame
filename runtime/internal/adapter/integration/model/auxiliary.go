@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -17,8 +21,9 @@ import (
 
 // AuxiliaryResolver selects the current utility-role model for each call.
 // Resolving at the boundary lets a role configuration change take effect without
-// rebuilding the owning worker.
-type AuxiliaryResolver func(context.Context) (chat.Model, error)
+// rebuilding the owning worker. The caller releases the frozen capture after
+// all calls have joined; retained observers cannot retire before that boundary.
+type AuxiliaryResolver func(context.Context) (chat.Model, func(), error)
 
 // AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
 // Input bytes and output tokens are deliberately mandatory: background
@@ -62,6 +67,15 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	if err := prompt.validate(); err != nil {
 		return "", err
 	}
+	id := uuid.NewString()
+	invocation := capability.Invocation{ID: id, Origin: capability.Automatic, Parent: operation.Identity(ctx), Target: capability.Target{Scope: "call", Reference: id}}
+	if parent, err := pluginsdk.InvocationFromContext(ctx); err == nil {
+		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	if err != nil {
+		return "", err
+	}
 	// The span carries what Scope cannot see: which product operation asked and
 	// how much input it spent. Request, usage, and finish-reason telemetry
 	// belongs to the model span Scope's middleware opens at the provider
@@ -91,10 +105,14 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		}
 		span.End()
 	}()
-	model, err := r(ctx)
+	model, release, err := r(ctx)
 	if err != nil {
 		return "", err
 	}
+	if release == nil {
+		return "", errors.New("auxiliary model: captured model release is required")
+	}
+	defer release()
 	if dependency.Missing(model) {
 		return "", errors.New("auxiliary model: model is required")
 	}

@@ -19,13 +19,16 @@ import (
 type ModelObservers struct {
 	calls     *CommandCalls
 	callbacks *pluginsdk.Callbacks
+	admission *plugins.Admission
+	mu        sync.Mutex
+	auxiliary map[*auxiliaryModelCapture]struct{}
 }
 
-func NewModelObservers(calls *CommandCalls, callbacks *pluginsdk.Callbacks) (*ModelObservers, error) {
-	if calls == nil || callbacks == nil {
+func NewModelObservers(calls *CommandCalls, callbacks *pluginsdk.Callbacks, admission *plugins.Admission) (*ModelObservers, error) {
+	if calls == nil || callbacks == nil || admission == nil {
 		return nil, errors.New("model observers: installed calls and callbacks are required")
 	}
-	return &ModelObservers{calls: calls, callbacks: callbacks}, nil
+	return &ModelObservers{calls: calls, callbacks: callbacks, admission: admission, auxiliary: make(map[*auxiliaryModelCapture]struct{})}, nil
 }
 
 func (o *ModelObservers) Resolve(ctx context.Context) ([]plugins.ContributionBinding, error) {

@@ -256,6 +256,24 @@ Session without a Goal returns null through `goals.get` in both bindings. Receip
 and remote decoders require the declared fields before accepting typed values.
 Diagnostic Tool results remain opaque JSON, where null is a valid value.
 
+Auxiliary title, compaction, skill mining and Memory utility work now consume the
+same public observer choice. AuxiliaryResolver returns a captured model and a
+required release function. Complete releases after response validation; Memory
+holds one capture across extraction/curation and releases it only after its callback
+grant has canceled and joined. Observer captures register their exact releases at
+the existing installation admission point. HeldDependencies projects that live
+ownership into installation quiescence/retention; closing first cancels and joins
+all active model calls, then removes the held capture. A released model explicitly
+refuses further calls, and composition changes affect only subsequent captures.
+
+Public model callbacks now derive each command's call-scoped identity while
+preserving the original origin and parent. Distinct extraction/curation requests
+share their maintenance parent without sharing a model invocation identity. Unary
+and streaming next keep an already matching call identity. Memory's private
+two-external-call admission and original receipt recovery remain authoritative;
+receipt lookup does not acquire a new utility model or repeat an unknown call.
+Durable per-inner-invocation accounting/evidence remains separate unfinished work.
+
 Interaction consumes the public flame.model-observers.v1 decoration contract.
 Staging captures its stored outer-to-inner installation/release/contribution/export
 bindings and folds them into deployment identity and installation retention.
@@ -272,9 +290,9 @@ loop or model history is added. Unary inner evidence survives outer failure; str
 chunks retain actual consumer backpressure, usage and cancellation. Early stop
 cancels and joins the original producer. Non-streaming providers remain non-streaming.
 The physical adapter is checked with real SDK HTTP callbacks and installed release
-identity; full native production qualification remains final work. Auxiliary model
-consumers, admitted request transformation and multiple separate inner invocations
-remain open.
+identity; full native production qualification remains final work. Admitted request
+transformation, multiple separate inner invocations and transitive dependency
+retention/status remain open.
 
 Core 2026-10-14.23 adds plugins.listCompositions, plugins.setComposition and
 plugins.resolveComposition. The consumer supplies the complete decoration contract

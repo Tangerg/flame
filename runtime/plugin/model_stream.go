@@ -45,6 +45,11 @@ func NewModelStreamCallback(stream func(context.Context, Command[chat.Request]) 
 				return
 			}
 			command.Input = *command.Input.Clone()
+			ctx, err := modelCallContext(ctx, command.ID)
+			if err != nil {
+				yield(StreamValue[chat.ResponseDelta, ModelResult]{}, err)
+				return
+			}
 			var accumulated chat.ResponseAccumulator
 			var failure error
 			capacity, ok := ctx.Value(streamCapacityKey{}).(int64)

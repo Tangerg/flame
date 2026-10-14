@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -20,6 +21,45 @@ func TestModelMethodUsesScopeExchangeContract(t *testing.T) {
 	for _, value := range []jsontext.Value{[]byte(`{}`), []byte(`{"failure":{"code":"failed","message":" "}}`)} {
 		if err := method.contract.ValidateOutput(value); err == nil {
 			t.Fatalf("model contract accepted an absent outcome: %s", value)
+		}
+	}
+}
+
+func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testing.T) {
+	host := newTestCallbacks(t)
+	session := new(sdk.ClientSession)
+	host.AdmitSession(session)
+	parent := capability.Invocation{ID: "original-maintenance", Origin: capability.Human, Parent: "original-operation", Target: capability.Target{Scope: "installation", Reference: "captured-installation"}}
+	ctx, err := WithInvocation(t.Context(), parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := make(chan capability.Invocation, 2)
+	callback, err := NewModelCallback(func(ctx context.Context, command Command[chat.Request]) (*chat.Response, error) {
+		invocation, err := InvocationFromContext(ctx)
+		if err != nil || invocation.ID != command.ID {
+			return nil, errors.Join(err, errors.New("model command identity was not projected"))
+		}
+		seen <- invocation
+		message := chat.NewAssistantMessage(chat.NewTextPart("answer"))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, release, err := host.Open(ctx, session, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
+	for _, id := range []string{"extract", "curate"} {
+		if _, err := CallModel(ctx, ref, id, request); err != nil {
+			t.Fatal(err)
+		}
+		actual := <-seen
+		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (capability.Target{Scope: "call", Reference: id}) {
+			t.Fatalf("call lost original ancestry: %+v", actual)
 		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -33,6 +34,7 @@ type toolEnvironment struct {
 	schedules      *pluginservices.Schedules
 	pluginCalls    *pluginservices.CommandCalls
 	modelObservers *pluginservices.ModelObservers
+	utilityModel   models.AuxiliaryResolver
 	closers        []*teardown.Step
 	admission      *plugins.Admission
 }
@@ -93,11 +95,12 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.pluginCalls = commandCalls
-	environment.modelObservers, err = pluginservices.NewModelObservers(commandCalls, deps.modelServices.callbacks)
+	environment.modelObservers, err = pluginservices.NewModelObservers(commandCalls, deps.modelServices.callbacks, admission)
 	if err != nil {
 		return environment, err
 	}
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: deps.modelServices.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Commands: commandCalls})
+	environment.utilityModel = environment.modelObservers.Auxiliary(deps.modelServices.utilityModel)
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}

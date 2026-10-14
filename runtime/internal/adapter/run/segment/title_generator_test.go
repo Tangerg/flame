@@ -67,7 +67,7 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewTitleGenerator(func(context.Context) (chat.Model, error) { return &client, nil })
+	generator := NewTitleGenerator(func(context.Context) (chat.Model, func(), error) { return &client, func() {}, nil })
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider outage  \ninclude the request log")
 	if !errors.Is(err, providerErr) {
@@ -85,7 +85,7 @@ func TestGenerateUsesOpeningMessageFallbackWhenTheModelSaysNothingUsable(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewTitleGenerator(func(context.Context) (chat.Model, error) { return &client, nil })
+	generator := NewTitleGenerator(func(context.Context) (chat.Model, func(), error) { return &client, func() {}, nil })
 
 	got, err := generator.Generate(t.Context(), "  Diagnose empty title  \ninclude the request log")
 	if err != nil {
@@ -108,8 +108,8 @@ func TestGenerateUsesOpeningMessageFallbackWithoutUtilityClient(t *testing.T) {
 
 func TestGenerateReturnsOpeningMessageFallbackWhenUtilityResolutionFails(t *testing.T) {
 	resolutionErr := errors.New("utility credentials expired")
-	generator := NewTitleGenerator(func(context.Context) (chat.Model, error) {
-		return nil, resolutionErr
+	generator := NewTitleGenerator(func(context.Context) (chat.Model, func(), error) {
+		return nil, nil, resolutionErr
 	})
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider resolution  \ninclude the request log")

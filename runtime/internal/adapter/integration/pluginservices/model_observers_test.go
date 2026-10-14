@@ -271,7 +271,7 @@ func installedObserverFixture(t *testing.T, mode string) (*ModelObservers, []plu
 	if err != nil {
 		t.Fatal(err)
 	}
-	observer, err := NewModelObservers(calls, callbacks)
+	observer, err := NewModelObservers(calls, callbacks, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}

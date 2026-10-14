@@ -65,11 +65,13 @@ func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	first, firstErr := resolve(t.Context())
-	second, secondErr := resolve(t.Context())
+	first, releaseFirst, firstErr := resolve(t.Context())
+	second, releaseSecond, secondErr := resolve(t.Context())
 	if firstErr != nil || secondErr != nil {
 		t.Fatalf("resolve errors = (%v, %v)", firstErr, secondErr)
 	}
+	defer releaseFirst()
+	defer releaseSecond()
 	if first == nil || second == nil {
 		t.Fatalf("resolved models = (%v, %v), want two usable models", first, second)
 	}
@@ -96,7 +98,7 @@ func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.
 		t.Fatal(err)
 	}
 
-	got, err := resolve(t.Context())
+	got, _, err := resolve(t.Context())
 	if err == nil || got != nil || !strings.Contains(err.Error(), "utility provider unavailable") {
 		t.Fatalf("resolve configured utility = (%p, %v), want exact failure", got, err)
 	}

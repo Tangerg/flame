@@ -71,6 +71,9 @@ func (i *InteractionExecutor) heldDependencies(ctx context.Context) ([]plugin.De
 		return nil, err
 	}
 	held = append(held, commands...)
+	if i.config.ModelObservers != nil {
+		held = append(held, i.config.ModelObservers.HeldDependencies()...)
+	}
 	for _, session := range i.sessions.snapshot() {
 		held = append(held, session.installationDependencies()...)
 	}

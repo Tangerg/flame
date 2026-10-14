@@ -18,6 +18,7 @@ import (
 type InteractionModelObservers interface {
 	Resolve(context.Context) ([]plugins.ContributionBinding, error)
 	Validate(context.Context, []plugins.ContributionBinding) error
+	HeldDependencies() []plugin.Dependency
 	Bind(chat.Model, chat.Streamer, []plugins.ContributionBinding) (chat.Model, chat.Streamer)
 }
 

@@ -105,7 +105,8 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err := selections.Save(t.Context(), choice); err != nil {
 		t.Fatal(err)
 	}
-	routing, err := plugins.NewCommands(hostsqlite.NewPluginCommandStore(host), plugins.NewAdmission())
+	admission := plugins.NewAdmission()
+	routing, err := plugins.NewCommands(hostsqlite.NewPluginCommandStore(host), admission)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,15 +116,26 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	var modelCalls atomic.Int32
-	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+	observers, err := NewModelObservers(calls, callbacks, admission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var modelCalls, releases atomic.Int32
+	modelInvocations := make(chan capability.Invocation, 2)
+	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
+		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		modelInvocations <- invocation
 		modelCalls.Add(1)
 		message := chat.NewAssistantMessage(chat.NewTextPart("- callback-only model fact"))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
 	history := capturedConversation{chat.NewUserMessage(chat.NewTextPart("captured conversation")), chat.NewAssistantMessage(chat.NewTextPart("retained response")), chat.NewUserMessage(chat.NewTextPart("continued")), chat.NewAssistantMessage(chat.NewTextPart("complete"))}
 	resolutionFailure := errors.New("configured embedding role is unavailable")
-	owner, err := NewMemory(MemoryConfig{Installations: store, Connections: pool, Callbacks: callbacks, Commands: calls, Conversation: history, Utility: models.AuxiliaryResolver(func(context.Context) (chat.Model, error) { return model, nil }), Embeddings: func(context.Context) (app.Embedder, error) { return nil, resolutionFailure }})
+	utility := observers.Auxiliary(models.AuxiliaryResolver(func(context.Context) (chat.Model, func(), error) { return model, func() { releases.Add(1) }, nil }))
+	owner, err := NewMemory(MemoryConfig{Installations: store, Connections: pool, Callbacks: callbacks, Commands: calls, Conversation: history, Utility: utility, Embeddings: func(context.Context) (app.Embedder, error) { return nil, resolutionFailure }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,9 +149,16 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if modelCalls.Load() != 2 {
 		t.Fatalf("actual maintenance callbacks=%d", modelCalls.Load())
 	}
+	if releases.Load() != 1 || len(observers.HeldDependencies()) != 0 {
+		t.Fatal("maintenance did not release its single utility capture")
+	}
 	var id, hostInput, phase, privateInput string
 	if err := host.QueryRowContext(t.Context(), `SELECT id,business_input_json,phase FROM plugin_commands WHERE method=?`, rpc.Maintain).Scan(&id, &hostInput, &phase); err != nil {
 		t.Fatal(err)
+	}
+	first, second := <-modelInvocations, <-modelInvocations
+	if first.ID == second.ID || first.Parent != id || second.Parent != id || first.Origin != capability.Automatic || second.Origin != capability.Automatic || first.Target.Scope != "call" || second.Target.Scope != "call" {
+		t.Fatalf("model calls lost distinct original ancestry: %+v, %+v", first, second)
 	}
 	if err := private.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id=?`, id).Scan(&privateInput); err != nil {
 		t.Fatal(err)

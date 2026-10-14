@@ -19,11 +19,11 @@ import (
 )
 
 func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
-	return func(context.Context) (chat.Model, error) { return &c, nil }
+	return func(context.Context) (chat.Model, func(), error) { return &c, func() {}, nil }
 }
 
-func unexpectedClient(context.Context) (chat.Model, error) {
-	return nil, errors.New("unexpected utility model call")
+func unexpectedClient(context.Context) (chat.Model, func(), error) {
+	return nil, nil, errors.New("unexpected utility model call")
 }
 
 func textToolOutput(t *testing.T, output chat.ToolOutput) string {

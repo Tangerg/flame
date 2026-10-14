@@ -145,20 +145,28 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
 	_, err = invokeResolvedCommand[rpc.MaintenanceInput, rpc.MaintenanceResult](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, rpc.Maintain, rpc.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted, Conversation: rpc.Conversation{MessageCount: len(messages), Transcript: modeltext.RenderTranscript(messages)}}, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
-		model, err := m.utility(ctx)
+		model, releaseModel, err := m.utility(ctx)
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
 		}
+		if releaseModel == nil {
+			return sdk.ParamsBase{}, nil, errors.New("memory: captured utility model release is required")
+		}
 		grant, release, err := rpc.GrantModels(ctx, m.callbacks, original, model, nil)
 		if err != nil {
+			releaseModel()
 			return sdk.ParamsBase{}, nil, err
 		}
 		metadata, err := pluginsdk.CallbackMetadata(grant)
 		if err != nil {
 			release()
+			releaseModel()
 			return sdk.ParamsBase{}, nil, err
 		}
-		return metadata, release, nil
+		return metadata, func() {
+			release()
+			releaseModel()
+		}, nil
 	})
 	return rpc.DecodeError(err)
 }

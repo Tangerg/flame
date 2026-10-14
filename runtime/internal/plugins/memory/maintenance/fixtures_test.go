@@ -22,9 +22,13 @@ func (h capturedHistory) Read(ctx context.Context, id string) (Conversation, err
 	return Conversation{len(messages), modeltext.RenderTranscript(messages)}, err
 }
 
-func capturedCompletion(client chat.Model) rpc.Completion {
-	resolver := model.AuxiliaryResolver(func(context.Context) (chat.Model, error) { return client, nil })
-	return func(ctx context.Context, prompt rpc.Prompt) (string, error) {
-		return resolver.Complete(ctx, model.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
-	}
+type capturedUtility struct{ resolver model.AuxiliaryResolver }
+
+func capturedCompletion(client chat.Model) capturedUtility {
+	resolver := model.AuxiliaryResolver(func(context.Context) (chat.Model, func(), error) { return client, func() {}, nil })
+	return capturedUtility{resolver: resolver}
+}
+
+func (c capturedUtility) Complete(ctx context.Context, prompt rpc.Prompt) (string, error) {
+	return c.resolver.Complete(ctx, model.AuxiliaryPrompt{Operation: prompt.Operation, SystemPrompt: prompt.SystemPrompt, UserPrompt: prompt.UserPrompt, MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
 }

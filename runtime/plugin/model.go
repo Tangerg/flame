@@ -76,7 +76,8 @@ func CallModel(ctx context.Context, ref CallbackRef, id string, request *chat.Re
 	return result.Response.Clone(), nil
 }
 
-// NewModelCallback leaves admission, identity and resource policy with its caller.
+// NewModelCallback leaves command admission and resource policy with its caller.
+// Each command projects a call-scoped child identity, preserving origin/parent.
 func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.Response, error)) (Callback, error) {
 	if call == nil {
 		return Callback{}, errors.New("plugin: model call owner is required")
@@ -90,12 +91,30 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 			return ModelResult{}, err
 		}
 		command.Input = *command.Input.Clone()
+		ctx, err := modelCallContext(ctx, command.ID)
+		if err != nil {
+			return ModelResult{}, err
+		}
 		response, err := call(ctx, command)
 		if refusal, known := errors.AsType[*capability.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)
 	})
+}
+
+func modelCallContext(ctx context.Context, id string) (context.Context, error) {
+	call := capability.Invocation{ID: id, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: id}}
+	if parent, err := InvocationFromContext(ctx); err == nil {
+		if parent.ID == id && parent.Target == call.Target {
+			return ctx, nil
+		}
+		call.Origin, call.Parent = parent.Origin, parent.ID
+		if parent.ID == id {
+			call.Parent = parent.Parent
+		}
+	}
+	return WithInvocation(ctx, call)
 }
 
 func modelResult(response *chat.Response, err error) (ModelResult, error) {
