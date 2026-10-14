@@ -23,7 +23,7 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 	}) {
 		t.Fatal("Runtime public API does not contain Open returning *Runtime")
 	}
-	if !slices.Equal(binding.Imports, []string{"context", runtimeModulePath + "/plugin", runtimeModulePath + "/protocol", "iter"}) || slices.ContainsFunc(binding.Imports, func(path string) bool {
+	if !slices.Equal(binding.Imports, []string{"context", runtimeModulePath + "/capability", runtimeModulePath + "/plugin", runtimeModulePath + "/point", runtimeModulePath + "/protocol", "iter"}) || slices.ContainsFunc(binding.Imports, func(path string) bool {
 		return strings.Contains(path, "/internal/")
 	}) {
 		t.Fatalf("Runtime public imports = %v", binding.Imports)

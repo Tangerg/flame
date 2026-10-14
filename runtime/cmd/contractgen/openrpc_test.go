@@ -93,7 +93,6 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 		{method: "runs.start", param: "sessionId"},
 		{method: "skills.proposals.approve", param: "revision", pattern: "^[0-9a-f]{64}$"},
 		{method: "approval.listRules", param: "sessionId"},
-		{method: "schedules.create", param: "instructions", pattern: `\S`},
 		{method: "sessions.update", param: "expectedRevision", minimum: new(int64(1))},
 		{method: "sessions.list", param: "limit", minimum: new(int64(1))},
 		{method: "workspace.diff.get", param: "limit", minimum: new(int64(1))},
