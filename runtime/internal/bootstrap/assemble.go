@@ -440,11 +440,19 @@ func buildAssemblyCore(
 	if err := cfg.Stores.ModelInvocations.ReconcileEndpointInvocations(ctx, time.Now().UTC()); err != nil {
 		return nil, err
 	}
-	if err := runCoordinator.ReviveUncertainExecutions(ctx, recoveryPersistence, cfg.Stores.ExecutorCheckpoints, execution.executor); err != nil {
-		return nil, fmt.Errorf("runtime: revive uncertain executions: %w", err)
-	}
-	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
+	// Uncertain-execution revival resolves a crash-uncertain Tool outcome by
+	// querying its backing plugin session, and the ownership sweep must follow it
+	// in that order. A background plugin cannot serve that session until the
+	// Runtime has published its callback RPC, which only exists once the delivery
+	// endpoint is built. Defer both until the owner publishes callbacks.
+	recoverUncertain := func(ctx context.Context) error {
+		if err := runCoordinator.ReviveUncertainExecutions(ctx, recoveryPersistence, cfg.Stores.ExecutorCheckpoints, execution.executor); err != nil {
+			return fmt.Errorf("runtime: revive uncertain executions: %w", err)
+		}
+		if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
+			return fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
+		}
+		return nil
 	}
 	host := &Instance{
 		application: &runtimeApplication{
@@ -482,9 +490,10 @@ func buildAssemblyCore(
 				recovery:      ownershipRecovery,
 				invalidations: policy.invalidations.Publish,
 			},
-			idempotencyStore: cfg.Stores.Idempotency,
-			callbacks:        execution.models.callbacks,
-			modelCallbacks:   execution.tools.modelCallbacks,
+			idempotencyStore:           cfg.Stores.Idempotency,
+			callbacks:                  execution.models.callbacks,
+			modelCallbacks:             execution.tools.modelCallbacks,
+			recoverUncertainExecutions: recoverUncertain,
 		},
 		lifetime: lifetime,
 	}

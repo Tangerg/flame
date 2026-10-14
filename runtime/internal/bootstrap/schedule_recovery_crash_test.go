@@ -35,7 +35,9 @@ func scheduleCrashModel(t *testing.T, home string) chat.Model {
 					if err := os.WriteFile(filepath.Join(home, "recovered-model-result.json"), result, 0600); err != nil {
 						return nil, err
 					}
-					return completedTextResponse("scheduled from the original result"), nil
+					completion := completedTextResponse("scheduled from the original result")
+					completion.Metadata = &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
+					return completion, nil
 				}
 			}
 		}
@@ -46,7 +48,7 @@ func scheduleCrashModel(t *testing.T, home string) chat.Model {
 			}
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
 }
 
@@ -107,6 +109,14 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer host.Close()
 	endpoint := acceptedCommandEndpoint(t, api, stores)
+	// Mirror production delivery: publish the callback RPC, then run the deferred
+	// uncertain-execution revival that depends on background plugin sessions.
+	if err := host.application.publishCallbacks(endpoint); err != nil {
+		t.Fatal(err)
+	}
+	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	if phase == "commit" || phase == "edited" {
 		r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 		installed := poMCPActivate(r, os.Getenv("FLAME_TEST_SCHEDULE_SOURCE"))

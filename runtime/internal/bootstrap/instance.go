@@ -149,6 +149,11 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 	host.lifetime.delivery = endpoint
 	host.lifetime.stopRuntime = stopRuntime
+	// The delivery endpoint published the callback RPC, so background plugins can
+	// now activate; only now may uncertain-execution revival query their sessions.
+	if err = host.application.recoverUncertainExecutions(ctx); err != nil {
+		return nil, config.Settings{}, err
+	}
 	databaseChangesDone, err := stores.StartExternalChangeObserver(
 		runtimeContext,
 		host.application.notifyExternalChange,

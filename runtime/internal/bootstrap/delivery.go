@@ -24,6 +24,11 @@ type runtimeApplication struct {
 	idempotencyStore idempotency.Store
 	callbacks        *pluginsdk.Callbacks
 	modelCallbacks   []pluginsdk.Callback
+	// recoverUncertainExecutions resolves crash-uncertain executions and
+	// reconciles abandoned ownership. It queries live plugin sessions, which a
+	// background plugin cannot serve until the callback RPC is published, so its
+	// owner must invoke it only after publishCallbacks.
+	recoverUncertainExecutions func(context.Context) error
 }
 
 type runtimeWorkers struct {

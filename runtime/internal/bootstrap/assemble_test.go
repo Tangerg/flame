@@ -456,6 +456,13 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = host.Close() })
 
+	// Uncertain-execution revival is the post-callback-RPC recovery phase; the
+	// production owner runs it after publishing delivery. This parked Run has no
+	// plugin-backed effect, so it revives without a live plugin session.
+	if err := host.application.recoverUncertainExecutions(ctx); err != nil {
+		t.Fatalf("recover uncertain executions: %v", err)
+	}
+
 	if pending, listErr := cfg.Stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
 		t.Fatalf("pending after assemble = (%+v, %v), want none", pending, listErr)
 	}
