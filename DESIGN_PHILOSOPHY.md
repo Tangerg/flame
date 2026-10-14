@@ -120,3 +120,17 @@ owner; independently selected exchanges require distinct identities. Waiting or 
 changed active Segment refuses new generation under the old captured owner. Known
 physical settlement and recovery still retain the original evidence. The association
 is a prerequisite for descendant accounting, not proof that aggregate budgets close.
+
+Boot recovery includes admitted independent physical model attempts that have no
+logical Model accounting projection. It consumes immutable source response/usage/
+price beside the existing Run/Goal replacement, never another billing ledger. The
+same transaction validates original source JSON, association, state, served-model
+and usage projections. Completed logical Models are excluded from that collection.
+
+Unknown independent attempts count as admitted work while their usage and exact
+cost remain unknown. They cannot invent zero usage or a known exact price. Child
+consumption does not recalibrate the primary model context. A recovered terminal
+Run is excluded from later recovery, and a failed replacement transaction advances
+neither its totals nor Goal. Live accounting must converge on this ownership;
+adding live child accrual without changing its original accounting classification
+would introduce double counting and is not an accepted design.

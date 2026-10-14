@@ -78,6 +78,10 @@ func (r *recoveryStoreStub) ListOpenModelInvocations(context.Context) ([]OpenMod
 	return append([]OpenModelInvocation(nil), r.models...), nil
 }
 
+func (r *recoveryStoreStub) ListIndependentEndpoints(context.Context) ([]modelref.EndpointObservation, error) {
+	return nil, nil
+}
+
 func (r *recoveryStoreStub) ListOpenToolInvocations(context.Context) ([]OpenToolInvocation, error) {
 	if r.aliasOpen {
 		return r.tools, nil

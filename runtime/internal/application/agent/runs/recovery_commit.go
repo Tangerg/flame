@@ -30,6 +30,7 @@ func cloneRecoveryCommitInput(state RecoveryCommitInput) RecoveryCommitInput {
 	state.ItemReplacements = slices.Clone(state.ItemReplacements)
 	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)
 	state.ModelInvocations = cloneRecoveryModels(state.ModelInvocations)
+	state.IndependentEndpoints = cloneIndependentEndpoints(state.IndependentEndpoints)
 	state.ToolInvocations = slices.Clone(state.ToolInvocations)
 	state.DeleteInterrupts = slices.Clone(state.DeleteInterrupts)
 	state.PreservedSessionIDs = slices.Clone(state.PreservedSessionIDs)
@@ -66,6 +67,17 @@ func (r RecoveryCommit) ConversationTransitions() []RecoveryConversationTransiti
 // evidence, if any. It never authorizes continuation or provider replay.
 func (r RecoveryCommit) ModelInvocations() []ModelInvocationRecovery {
 	return cloneRecoveryModels(r.state.ModelInvocations)
+}
+
+func cloneIndependentEndpoints(values []modelref.EndpointObservation) []modelref.EndpointObservation {
+	result := make([]modelref.EndpointObservation, len(values))
+	for i, value := range values {
+		result[i] = value.Clone()
+	}
+	return result
+}
+func (r RecoveryCommit) IndependentEndpoints() []modelref.EndpointObservation {
+	return cloneIndependentEndpoints(r.state.IndependentEndpoints)
 }
 
 // ToolInvocations returns Tool attempts closed as incomplete.
@@ -172,6 +184,37 @@ func (r RecoveryCommit) Validate() error {
 	}
 	if err := validateRecoveryModelInvocations(state.ModelInvocations, lostByID, recoveredSessions); err != nil {
 		return err
+	}
+	seenSources := make(map[string]struct{}, len(state.IndependentEndpoints))
+	for _, source := range state.IndependentEndpoints {
+		owner, found := lostByID[source.RunID]
+		if !found || owner.State().SessionID() != source.SessionID || source.SegmentID == "" || source.FinishedAt.After(owner.State().UpdatedAt()) {
+			return errors.New("runs: independent source has no lost Run owner")
+		}
+		if err := source.Invocation.Validate(); err != nil {
+			return err
+		}
+		if source.Response != nil {
+			if err := source.Response.Validate(); err != nil {
+				return err
+			}
+		}
+		if source.Response == nil && source.CostUSD != nil {
+			return errors.New("runs: unobserved independent source has a price")
+		}
+
+		if _, err := accounting.CostFromOptional(source.CostUSD); err != nil {
+			return err
+		}
+		if _, duplicate := seenSources[source.Invocation.ID]; duplicate {
+			return errors.New("runs: independent recovery source repeats")
+		}
+		seenSources[source.Invocation.ID] = struct{}{}
+		for _, logical := range state.ModelInvocations {
+			if logical.CallID == source.Invocation.Caller.ID {
+				return errors.New("runs: independent source duplicates logical recovery")
+			}
+		}
 	}
 
 	replacedItems := make(map[string]transcript.Replacement, len(state.ItemReplacements))

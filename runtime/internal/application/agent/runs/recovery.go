@@ -29,6 +29,7 @@ type RecoveryStore interface {
 	ListNonTerminalRuns(ctx context.Context) ([]rundomain.Run, error)
 	ListPendingInterrupts(ctx context.Context) ([]Pending, error)
 	ListOpenModelInvocations(ctx context.Context) ([]OpenModelInvocation, error)
+	ListIndependentEndpoints(context.Context) ([]modelref.EndpointObservation, error)
 	ListOpenToolInvocations(ctx context.Context) ([]OpenToolInvocation, error)
 	SessionByID(ctx context.Context, sessionID string) (session.Session, error)
 	ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error)
@@ -69,6 +70,7 @@ type RecoveryCommitInput struct {
 	ItemReplacements        []transcript.Replacement
 	ConversationTransitions []RecoveryConversationTransition
 	ModelInvocations        []ModelInvocationRecovery
+	IndependentEndpoints    []modelref.EndpointObservation
 	ToolInvocations         []ToolInvocationRecovery
 	// DeleteInterrupts names every lost root's interrupt record, including one
 	// hidden in the resuming state after an answer claim; deletion is idempotent.
@@ -159,6 +161,7 @@ type Recovery struct {
 // deciding whether an opaque checkpoint preserves a product Run is a recovery
 // policy, not a Run aggregate or executor concern.
 type recoveryPlanner struct {
+	independent   []modelref.EndpointObservation
 	ctx           context.Context
 	store         RecoveryStore
 	resumability  WaitingExecutionResumability
@@ -371,6 +374,10 @@ func newRecoveryPlanner(
 	if err != nil {
 		return nil, fmt.Errorf("runs: load open model invocations for recovery: %w", err)
 	}
+	independent, err := recovery.store.ListIndependentEndpoints(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("runs: load independent model sources: %w", err)
+	}
 	toolInvocations, err := recovery.store.ListOpenToolInvocations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("runs: load open Tool invocations for recovery: %w", err)
@@ -439,9 +446,20 @@ func newRecoveryPlanner(
 	for _, invocation := range toolInvocations {
 		planner.observeTime(invocation.StartedAt)
 	}
+	for _, source := range independent {
+		if claims.includes(source.SessionID) {
+			planner.observeTime(source.FinishedAt)
+		}
+	}
 	// Every active tree's Transcript is required by planTree anyway. Preload it
 	// before constructing any terminal facts so a later Item in one tree cannot
 	// advance the shared recovery timestamp after another tree was planned.
+	for _, source := range independent {
+		if !claims.includes(source.SessionID) {
+			continue
+		}
+		planner.independent = append(planner.independent, source.Clone())
+	}
 	for _, tree := range trees {
 		items, err := planner.transcript(tree)
 		if err != nil {
@@ -574,11 +592,18 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		)
 	}
 	messageMark := history.Count() + len(closure)
-	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss, r.commit.ModelInvocations)
+	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss, r.commit.ModelInvocations, r.independent)
 	if err != nil {
 		return err
 	}
 	r.commit.LostRuns = append(r.commit.LostRuns, lostRuns...)
+	for _, lost := range lostRuns {
+		for _, source := range r.independent {
+			if source.RunID == lost.State().ID() {
+				r.commit.IndependentEndpoints = append(r.commit.IndependentEndpoints, source.Clone())
+			}
+		}
+	}
 	r.commit.ItemReplacements = append(r.commit.ItemReplacements, replacements...)
 	r.commit.ConversationTransitions = append(
 		r.commit.ConversationTransitions,
@@ -658,6 +683,7 @@ func recoverLostTree(
 	finishedAt time.Time,
 	loss Loss,
 	models []ModelInvocationRecovery,
+	independent []modelref.EndpointObservation,
 ) ([]rundomain.Replacement, []transcript.Replacement, error) {
 	failure, err := loss.failure()
 	if err != nil {
@@ -692,7 +718,7 @@ func recoverLostTree(
 				source := invocation.Endpoint
 				served := source.Invocation.Model
 				var reported *corechat.Usage
-				if source.Response.Metadata != nil {
+				if source.Response != nil && source.Response.Metadata != nil {
 					reported = source.Response.Metadata.Usage
 					if source.Response.Metadata.Model != "" {
 						served = source.Response.Metadata.Model
@@ -707,6 +733,27 @@ func recoverLostTree(
 					contextTokens = reported.InputTokens
 				}
 				active, err = active.AdvanceProgress(metrics, contextTokens, finishedAt)
+				if err != nil {
+					return rundomain.Run{}, err
+				}
+			}
+			for _, source := range independent {
+				if source.RunID != active.ID() {
+					continue
+				}
+				served := source.Invocation.Model
+				var usage *corechat.Usage
+				if source.Response != nil && source.Response.Metadata != nil {
+					usage = source.Response.Metadata.Usage
+					if source.Response.Metadata.Model != "" {
+						served = source.Response.Metadata.Model
+					}
+				}
+				metrics, err := active.Metrics().AccrueModelCall(served, usage, source.CostUSD)
+				if err != nil {
+					return rundomain.Run{}, err
+				}
+				active, err = active.AdvanceProgress(metrics, active.ContextTokens(), finishedAt)
 				if err != nil {
 					return rundomain.Run{}, err
 				}

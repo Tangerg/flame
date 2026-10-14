@@ -54,6 +54,8 @@ type ExecutorCheckpointStore interface {
 }
 
 type ModelInvocationStore interface {
+	ListIndependentEndpoints(context.Context) ([]modelref.EndpointObservation, error)
+	ValidateIndependentEndpoint(context.Context, modelref.EndpointObservation) error
 	ListStartedModelInvocations(
 		ctx context.Context,
 		yield func(sessionID, runID, segmentID, callID string, startedAt time.Time) error,
@@ -159,6 +161,10 @@ func (p *Persistence) ListPendingInterrupts(ctx context.Context) ([]runs.Pending
 	return p.interrupts.List(ctx, "")
 }
 
+func (p *Persistence) ListIndependentEndpoints(ctx context.Context) ([]modelref.EndpointObservation, error) {
+	return p.modelInvocations.ListIndependentEndpoints(ctx)
+}
+
 func (p *Persistence) ListOpenModelInvocations(ctx context.Context) ([]runs.OpenModelInvocation, error) {
 	var invocations []runs.OpenModelInvocation
 	err := p.modelInvocations.ListStartedModelInvocations(
@@ -238,6 +244,11 @@ func (p *Persistence) CommitRecovery(ctx context.Context, commit runs.RecoveryCo
 }
 
 func (p *Persistence) applyRecovery(ctx context.Context, commit runs.RecoveryCommit) error {
+	for _, source := range commit.IndependentEndpoints() {
+		if err := p.modelInvocations.ValidateIndependentEndpoint(ctx, source); err != nil {
+			return fmt.Errorf("recovery: validate independent source: %w", err)
+		}
+	}
 	if err := p.recoverModelInvocations(ctx, commit); err != nil {
 		return err
 	}

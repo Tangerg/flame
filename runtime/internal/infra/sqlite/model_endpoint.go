@@ -382,7 +382,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 		return err
 	}
 	var reported *chat.Usage
-	if source.Response.Metadata != nil {
+	if source.Response != nil && source.Response.Metadata != nil {
 		reported = source.Response.Metadata.Usage
 	}
 	usage, err := encodeModelInvocationUsage(reported)
@@ -481,4 +481,67 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 		}
 		return rows.Err()
 	})
+}
+
+// ListIndependentEndpoints returns retained descendant attempts not projected
+// through a logical Model receipt. Active Run recovery owns its one accrual.
+func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]modelref.EndpointObservation, error) {
+	rows, err := Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
+ WHERE endpoint_json IS NOT NULL AND run_id IN (SELECT run_id FROM runs WHERE state!=?)
+ AND NOT EXISTS(SELECT 1 FROM model_invocations logical WHERE logical.endpoint_json IS NULL AND logical.call_id=json_extract(model_invocations.endpoint_json,'$.caller.id'))
+ ORDER BY session_id,run_id,call_id`, runStateTerminal.databaseValue())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	values := []modelref.EndpointObservation{}
+	for rows.Next() {
+		value, err := scanEndpointObservation(rows, "")
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, rows.Err()
+}
+
+// ValidateIndependentEndpoint fences the recovery projection to the immutable
+// physical source in the same transaction as its Run/Goal replacement.
+func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, expected modelref.EndpointObservation) error {
+	source, found, err := m.EndpointForCaller(ctx, expected.Invocation.Caller.ID)
+	if err != nil {
+		return err
+	}
+	if !found || source.InvocationJSON != expected.InvocationJSON || source.RequestJSON != expected.RequestJSON || source.ResponseJSON != expected.ResponseJSON || source.SessionID != expected.SessionID || source.RunID != expected.RunID || source.SegmentID != expected.SegmentID || source.State != expected.State || source.FinishedAt != expected.FinishedAt || source.Failure != expected.Failure || !reflect.DeepEqual(source.CostUSD, expected.CostUSD) || source.RunID == "" || (source.Response == nil) != (expected.Response == nil) {
+		return errors.New("sqlite: independent endpoint recovery source changed")
+	}
+
+	if source.Invocation.ID != expected.Invocation.ID || source.Invocation.Caller != expected.Invocation.Caller || source.Invocation.Provider != expected.Invocation.Provider || source.Invocation.Model != expected.Invocation.Model || source.Invocation.SessionID != expected.Invocation.SessionID || !source.Invocation.StartedAt.Equal(expected.Invocation.StartedAt) {
+		return errors.New("sqlite: independent endpoint admission projection changed")
+	}
+	var actualUsage, expectedUsage *chat.Usage
+	actualModel, expectedModel := source.Invocation.Model, expected.Invocation.Model
+	if source.Response != nil && source.Response.Metadata != nil {
+		actualUsage = source.Response.Metadata.Usage
+		if source.Response.Metadata.Model != "" {
+			actualModel = source.Response.Metadata.Model
+		}
+	}
+	if expected.Response != nil && expected.Response.Metadata != nil {
+		expectedUsage = expected.Response.Metadata.Usage
+		if expected.Response.Metadata.Model != "" {
+			expectedModel = expected.Response.Metadata.Model
+		}
+	}
+	if actualModel != expectedModel || !reflect.DeepEqual(actualUsage, expectedUsage) {
+		return errors.New("sqlite: independent endpoint consumption projection changed")
+	}
+	var logical int
+	if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Invocation.Caller.ID).Scan(&logical); err != nil {
+		return err
+	}
+	if logical != 0 {
+		return errors.New("sqlite: independent endpoint has a logical accounting owner")
+	}
+	return nil
 }

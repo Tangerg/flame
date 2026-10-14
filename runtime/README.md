@@ -2557,3 +2557,32 @@ do not prove relational association. General remote policy grants, background ex
 restoration, total-work/Run/Goal budget and descendant crash accrual remain explicit
 integration work. Per-call resource capacity and provider-generation admission are
 not a claim that all optional counters or aggregate Goal budgets are now gated.
+
+## Independent model consumption during boot recovery
+
+Recovery now snapshots physical attempts owned by nonterminal Runs whose caller
+has no logical Model accounting record. Existing completed logical Models remain
+with their original accounting projection; the independent collection excludes them.
+Lost-tree planning accrues source-reported tokens and the captured price through the
+existing Run metrics/Goal recorder. The complete original source is checked inside
+the same transaction as the lost Run/Goal replacement, including raw JSON evidence,
+Session/Run/Segment, state, price, served model and reported usage. No response cache,
+replay authority, new invoice table or source-repricing path is added.
+
+The boot snapshot is ownership-filtered; preserved compatible waiting trees are not
+charged by a lost-tree replacement. An independent known response may coexist with
+outer failure. An unknown attempt preserves missing tokens/price, counts admitted
+work and makes exact aggregate price unknown. Its request never becomes continuation
+input. Independent consumption leaves the primary ContextTokens calibration intact.
+
+Actual SQLite/Goal regression proves large numeric token retention, completed-primary
+exclusion, known outer failure, unknown pricing, rejected typed usage/price changes,
+transaction rollback and no second accrual after reopening the database. Comparison
+uses canonical source JSON and billing-relevant projections rather than incidental
+nil/empty differences in Scope clones. Core .30/backend .2/export3 and storage remain
+unchanged; no public wire or persisted shape changes in this recovery slice.
+
+Live child accrual, normal-terminal closure and admission of aggregate Run/Goal budget
+remain incomplete. They must use the same logical/physical classification and atomic
+accounting owner before those requirements can close. This recovery proof is not
+qualification of all policy/background/native workflows or automatic retention.
