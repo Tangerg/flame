@@ -93,8 +93,9 @@ type ToolResultStore interface {
 }
 
 // ModelInvocationJournal applies provider-attempt transitions. It is an
-// operational journal, not a second copy of semantic Transcript output or Run
-// accounting. The consumer-owned methods keep application enums out of storage.
+// operational evidence journal. A known inner response can accompany outer failure;
+// it never creates executable Transcript continuation or advances Run accounting.
+// The consumer-owned methods keep application enums out of storage.
 type ModelInvocationJournal interface {
 	StartModelInvocation(
 		ctx context.Context,
@@ -113,6 +114,7 @@ type ModelInvocationJournal interface {
 		sessionID, runID, segmentID, callID string,
 		startedAt, finishedAt time.Time,
 		firstOutputLatencyMillis *int64,
+		usage *chat.Usage, response *chat.Response,
 	) error
 	MarkModelInvocationUnknown(
 		ctx context.Context,

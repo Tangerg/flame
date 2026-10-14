@@ -90,6 +90,11 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		value.ByModel = slices.Clone(value.ByModel)
 		return value, true
 	case ModelCallFailed:
+		value.KnownResponse = value.KnownResponse.Clone()
+		if value.Accounting != nil {
+			owned, _ := cloneExecutionFact(*value.Accounting)
+			value.Accounting = new(owned.(ModelCallCompleted))
+		}
 		if value.FirstOutputLatencyMillis != nil {
 			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
 		}

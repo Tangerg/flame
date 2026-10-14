@@ -1059,10 +1059,11 @@ func registerTrajectoryObservationConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ModelInvocation](),
 		Rules: []ConditionalRule{
-			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationStarted)}}, Forbidden: []string{"settledAt", "usage", "firstOutputLatencyMillis"}},
-			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationCompleted)}}, Required: []string{"settledAt"}},
-			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationFailed)}}, Required: []string{"settledAt"}, Forbidden: []string{"usage"}},
-			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationUnknown)}}, Required: []string{"settledAt"}, Forbidden: []string{"usage", "firstOutputLatencyMillis"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationFailed)}, {Field: "usage", Operator: delivery.OperatorPresent}}, Required: []string{"knownResponse"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationStarted)}}, Forbidden: []string{"settledAt", "usage", "firstOutputLatencyMillis", "knownResponse"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationCompleted)}}, Required: []string{"settledAt"}, Forbidden: []string{"knownResponse"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationFailed)}}, Required: []string{"settledAt"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationUnknown)}}, Required: []string{"settledAt"}, Forbidden: []string{"usage", "firstOutputLatencyMillis", "knownResponse"}},
 		},
 	})
 	s.constraint(ObjectConstraintSpec{

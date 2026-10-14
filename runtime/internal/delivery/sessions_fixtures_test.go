@@ -1118,7 +1118,7 @@ func (inertRuntimeStores) CompleteModelInvocation(context.Context, string, strin
 	return nil
 }
 
-func (inertRuntimeStores) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64) error {
+func (inertRuntimeStores) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64, *chat.Usage, *chat.Response) error {
 	return nil
 }
 

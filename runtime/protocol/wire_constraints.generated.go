@@ -1723,15 +1723,18 @@ func (m ModelInvocation) ValidateWire() error {
 		maxLength("callId", m.CallID, 256),
 		optionalNonNegativeNumber("firstOutputLatencyMillis", m.FirstOutputLatencyMillis),
 		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
+		requiredWhen(wireFieldEquals(m, "state", "failed") && wireFieldPresent(m, "usage"), "knownResponse", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "usage", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "firstOutputLatencyMillis", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "knownResponse", m),
 		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "completed"), "knownResponse", m),
 		requiredWhen(wireFieldEquals(m, "state", "failed"), "settledAt", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "failed"), "usage", m),
 		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "usage", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "firstOutputLatencyMillis", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "knownResponse", m),
 	)
 }
 

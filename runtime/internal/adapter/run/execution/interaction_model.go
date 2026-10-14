@@ -59,6 +59,9 @@ func (o *observedInteractionModel) Call(
 	}
 	response, err := o.model.Call(ctx, sent)
 	if err != nil {
+		if response != nil && response.Validate() == nil {
+			return response, o.finishKnownFailedCall(ctx, invocation, callID, response, nil, err)
+		}
 		return response, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
 	if response == nil {
@@ -105,6 +108,10 @@ func (o *observedInteractionModel) Stream(
 		var firstOutputLatencyMillis *int64
 		for chunk, streamErr := range sequence {
 			if streamErr != nil {
+				if response, responseErr := accumulated.Response(); responseErr == nil {
+					yield(nil, o.finishKnownFailedCall(ctx, invocation, callID, response, firstOutputLatencyMillis, streamErr))
+					return
+				}
 				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, streamErr))
 				return
 			}
@@ -160,6 +167,10 @@ func (o *observedInteractionModel) finishFailedCall(
 	cause error,
 ) error {
 	projectionErr := o.fail(ctx, invocation, callID, observation, firstOutputLatencyMillis)
+	return o.stopFailedCall(ctx, invocation, cause, projectionErr)
+}
+
+func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation interaction.ModelInvocation, cause, projectionErr error) error {
 	if projectionErr == nil {
 		if cause != nil {
 			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
@@ -167,6 +178,31 @@ func (o *observedInteractionModel) finishFailedCall(
 		return errors.Join(cause, o.session.stopModelProcess(ctx, invocation.Relation().ProcessID()))
 	}
 	return errors.Join(cause, projectionErr)
+}
+
+func (o *observedInteractionModel) finishKnownFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, response *corechat.Response, latency *int64, cause error) error {
+	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
+	defer cancel()
+	if err := o.session.flushDeltas(projectionCtx); err != nil {
+		return errors.Join(cause, err)
+	}
+	accounted, err := o.session.accounting.accountModelCall(invocation, callID, response)
+	if err != nil {
+		return errors.Join(cause, err)
+	}
+	var observation runs.ModelObservation
+	if response.Output.Message != nil {
+		for _, part := range response.Output.Message.Parts {
+			switch part.Kind {
+			case corechat.PartText, corechat.PartRefusal:
+				observation.Text += part.Text
+			case corechat.PartReasoning:
+				observation.Reasoning += part.Text
+			}
+		}
+	}
+	err = o.session.commitFact(projectionCtx, o.session.executorMember(invocation.Relation()), runs.ModelCallFailed{CallID: callID, Observation: observation, KnownResponse: response.Clone(), Accounting: &accounted, FirstOutputLatencyMillis: latency})
+	return o.stopFailedCall(ctx, invocation, cause, err)
 }
 
 func (o *observedInteractionModel) fail(

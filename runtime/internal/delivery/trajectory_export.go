@@ -120,7 +120,11 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		})
 	}
 	for _, row := range result.Evidence.ModelInvocations {
-		out.ModelInvocations = append(out.ModelInvocations, presentModelInvocation(row.RunID, row.Invocation))
+		model, err := presentModelInvocation(row.RunID, row.Invocation)
+		if err != nil {
+			return protocol.SessionTrajectory{}, err
+		}
+		out.ModelInvocations = append(out.ModelInvocations, model)
 	}
 	for _, row := range result.Evidence.ToolAttempts {
 		attempt := row.Invocation

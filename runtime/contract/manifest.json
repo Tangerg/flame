@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.21",
+  "protocolVersion": "2026-10-14.22",
   "features": [
     "reasoning",
     "multimodal",
@@ -4480,13 +4480,30 @@
             {
               "field": "state",
               "operator": "equals",
+              "value": "failed"
+            },
+            {
+              "field": "usage",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "knownResponse"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
               "value": "started"
             }
           ],
           "forbidden": [
             "settledAt",
             "usage",
-            "firstOutputLatencyMillis"
+            "firstOutputLatencyMillis",
+            "knownResponse"
           ]
         },
         {
@@ -4499,6 +4516,9 @@
           ],
           "required": [
             "settledAt"
+          ],
+          "forbidden": [
+            "knownResponse"
           ]
         },
         {
@@ -4511,9 +4531,6 @@
           ],
           "required": [
             "settledAt"
-          ],
-          "forbidden": [
-            "usage"
           ]
         },
         {
@@ -4529,7 +4546,8 @@
           ],
           "forbidden": [
             "usage",
-            "firstOutputLatencyMillis"
+            "firstOutputLatencyMillis",
+            "knownResponse"
           ]
         }
       ]

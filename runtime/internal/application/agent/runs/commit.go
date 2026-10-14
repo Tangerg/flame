@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"time"
 
@@ -58,6 +59,7 @@ func (m ModelInvocationState) String() string {
 // compare the exact attempt instead of updating whichever row happens to share
 // CallID.
 type ModelInvocationCommit struct {
+	KnownResponse            *corechat.Response
 	FirstOutputLatencyMillis *int64
 	// Usage is the provider's own report for this call, so an unsupported
 	// breakdown stays absent rather than being stored as a reported zero.
@@ -144,11 +146,26 @@ func (m ModelInvocationCommit) Validate() error {
 		}
 	}
 	if m.Usage != nil {
-		if m.State != ModelInvocationCompleted {
-			return errors.New("runs: only completed model invocations carry usage")
+		if m.State != ModelInvocationCompleted && (m.State != ModelInvocationFailed || m.KnownResponse == nil) {
+			return errors.New("runs: model invocation usage requires a known response")
 		}
 		if err := m.Usage.Validate(); err != nil {
 			return fmt.Errorf("runs: model invocation usage: %w", err)
+		}
+	}
+	if m.KnownResponse != nil {
+		if m.State != ModelInvocationFailed {
+			return errors.New("runs: known response evidence requires a failed outer model invocation")
+		}
+		if err := m.KnownResponse.Validate(); err != nil {
+			return err
+		}
+		var reported *corechat.Usage
+		if m.KnownResponse.Metadata != nil {
+			reported = m.KnownResponse.Metadata.Usage
+		}
+		if !reflect.DeepEqual(m.Usage, reported) {
+			return errors.New("runs: usage differs from known response evidence")
 		}
 	}
 	if err := runtimeidentity.ValidateEffect(m.CallID); err != nil {
@@ -230,6 +247,7 @@ func (e EventCommit) clone() EventCommit {
 	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
 	e.ModelInvocations = slices.Clone(e.ModelInvocations)
 	for index := range e.ModelInvocations {
+		e.ModelInvocations[index].KnownResponse = e.ModelInvocations[index].KnownResponse.Clone()
 		if latency := e.ModelInvocations[index].FirstOutputLatencyMillis; latency != nil {
 			e.ModelInvocations[index].FirstOutputLatencyMillis = new(*latency)
 		}

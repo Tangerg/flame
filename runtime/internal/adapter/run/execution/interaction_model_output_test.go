@@ -5,13 +5,62 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestFailedOuterModelRetainsKnownResponseAndAccounting(t *testing.T) {
+	message := chat.NewAssistantMessage(chat.NewTextPart("known inner answer"), chat.NewReasoningPart("basis", nil))
+	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		return response, errors.New("outer observer failed")
+	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: false})
+	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+	failed := payloadsOf[runs.ModelCallFailed](events)
+	if len(failed) != 1 || !reflect.DeepEqual(failed[0].KnownResponse, response) || failed[0].Accounting == nil || !reflect.DeepEqual(failed[0].Accounting.ReportedUsage, response.Metadata.Usage) || failed[0].Accounting.Steps != 1 || failed[0].Observation.Text != "known inner answer" || failed[0].Observation.Reasoning != "basis" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+		t.Fatalf("known inner evidence discarded or promoted: %+v", failed)
+	}
+	ends := payloadsOf[runs.SegmentEnded](events)
+	if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+		t.Fatalf("outer failure became success: %+v", ends)
+	}
+}
+
+func TestFailedOuterStreamRetainsCompletedInnerResponse(t *testing.T) {
+	message := chat.NewAssistantMessage(chat.NewTextPart("known streamed answer"))
+	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}}
+	model := struct {
+		chat.Model
+		chat.Streamer
+	}{
+		Model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			return nil, errors.New("unexpected unary")
+		}),
+		Streamer: chat.StreamerFunc(func(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+			return func(yield func(*chat.ResponseDelta, error) bool) {
+				for delta, err := range testsupport.StreamResponse(response, nil) {
+					if !yield(delta, err) {
+						return
+					}
+				}
+				yield(nil, errors.New("outer observer failed after inner completion"))
+			}
+		}),
+	}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
+	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+	failed := payloadsOf[runs.ModelCallFailed](events)
+	if len(failed) != 1 || !reflect.DeepEqual(failed[0].KnownResponse, response) || failed[0].Accounting == nil || failed[0].FirstOutputLatencyMillis == nil || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+		t.Fatalf("stream inner evidence lost or promoted: %+v", failed)
+	}
+}
 
 func TestUnavailableModelStreamClosesAttemptWithoutInventingResponse(t *testing.T) {
 	for _, test := range []struct {

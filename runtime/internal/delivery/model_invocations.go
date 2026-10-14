@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	json "encoding/json/v2"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
@@ -23,13 +24,24 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	}
 	rows := make([]protocol.ModelInvocation, len(page.Rows))
 	for index, row := range page.Rows {
-		rows[index] = presentModelInvocation(in.RunID, row)
+		var err error
+		rows[index], err = presentModelInvocation(in.RunID, row)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return protocol.NewPageWithCursor(rows, page.NextCursor), nil
 }
 
-func presentModelInvocation(runID string, row runs.ModelInvocationCommit) protocol.ModelInvocation {
+func presentModelInvocation(runID string, row runs.ModelInvocationCommit) (protocol.ModelInvocation, error) {
 	out := protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: runID, SegmentID: row.SegmentID, State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
+	if row.KnownResponse != nil {
+		encoded, err := json.Marshal(row.KnownResponse)
+		if err != nil {
+			return protocol.ModelInvocation{}, err
+		}
+		out.KnownResponse = string(encoded)
+	}
 	if usage := row.Usage; usage != nil {
 		owned := accounting.CloneReportedUsage(*usage)
 		out.Usage = &protocol.ModelInvocationUsage{
@@ -38,5 +50,5 @@ func presentModelInvocation(runID string, row runs.ModelInvocationCommit) protoc
 			ReasoningTokens: owned.ReasoningTokens,
 		}
 	}
-	return out
+	return out, nil
 }

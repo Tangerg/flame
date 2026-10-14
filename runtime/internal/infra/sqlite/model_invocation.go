@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
@@ -122,7 +123,7 @@ func (m *ModelInvocationStore) CompleteModelInvocation(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationCompleted.databaseValue(), firstOutputLatencyMillis, usage,
+		startedAt, finishedAt, modelInvocationCompleted.databaseValue(), firstOutputLatencyMillis, usage, nil,
 	)
 }
 
@@ -131,10 +132,11 @@ func (m *ModelInvocationStore) FailModelInvocation(
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
 	firstOutputLatencyMillis *int64,
+	usage *chat.Usage, response *chat.Response,
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationFailed.databaseValue(), firstOutputLatencyMillis, nil,
+		startedAt, finishedAt, modelInvocationFailed.databaseValue(), firstOutputLatencyMillis, usage, response,
 	)
 }
 
@@ -145,7 +147,7 @@ func (m *ModelInvocationStore) MarkModelInvocationUnknown(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationUnknown.databaseValue(), nil, nil,
+		startedAt, finishedAt, modelInvocationUnknown.databaseValue(), nil, nil, nil,
 	)
 }
 
@@ -156,6 +158,7 @@ func (m *ModelInvocationStore) finish(
 	state string,
 	firstOutputLatencyMillis *int64,
 	usage *chat.Usage,
+	response *chat.Response,
 ) error {
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
 		return err
@@ -176,15 +179,39 @@ func (m *ModelInvocationStore) finish(
 	if err != nil {
 		return err
 	}
+	var encodedResponse *string
+	if response != nil {
+		if state != modelInvocationFailed.databaseValue() {
+			return errors.New("sqlite: known response requires failed outer invocation")
+		}
+		if err := response.Validate(); err != nil {
+			return err
+		}
+		data, err := encodeStoredJSON(response)
+		if err != nil {
+			return err
+		}
+		encodedResponse = new(string(data))
+		var reported *chat.Usage
+		if response.Metadata != nil {
+			reported = response.Metadata.Usage
+		}
+		if !reflect.DeepEqual(usage, reported) {
+			return errors.New("sqlite: usage differs from known response")
+		}
+	} else if state == modelInvocationFailed.databaseValue() && usage != nil {
+		return errors.New("sqlite: failed model usage requires a known response")
+	}
 	result, err := Connection(ctx, m.db).ExecContext(ctx,
 		`UPDATE model_invocations
-		    SET state = ?, finished_at = ?, first_output_latency_millis = ?, usage = ?
+		    SET state = ?, finished_at = ?, first_output_latency_millis = ?, usage = ?, known_response = ?
 		  WHERE call_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
 		    AND state = ? AND started_at = ?`,
 		state,
 		finishedAt.UTC().UnixNano(),
 		firstOutputLatencyMillis,
 		encodedUsage,
+		encodedResponse,
 		callID,
 		sessionID,
 		runID,
@@ -218,8 +245,10 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 	return nil
 }
 
-// ModelInvocationRecord is a stored attempt, without semantic response content.
+// ModelInvocationRecord retains an attempt and any known response evidence;
+// failed response evidence never authorizes conversation continuation.
 type ModelInvocationRecord struct {
+	KnownResponse            *chat.Response
 	FirstOutputLatencyMillis *int64
 	Usage                    *chat.Usage
 	CallID                   string
@@ -232,7 +261,7 @@ type ModelInvocationRecord struct {
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
 func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]ModelInvocationRecord, error) {
-	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis FROM model_invocations WHERE run_id = ?`
+	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE run_id = ?`
 	args := []any{runID}
 	if beforeCallID != "" {
 		query += ` AND (started_at, call_id) < (?, ?)`
@@ -264,9 +293,24 @@ func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
 	var startedAt int64
 	var finishedAt sql.NullInt64
 	var usage sql.NullString
+	var response sql.NullString
 	var latency sql.NullInt64
-	if err := row.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency); err != nil {
+	if err := row.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency, &response); err != nil {
 		return ModelInvocationRecord{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
+	}
+	if response.Valid {
+		if record.State != modelInvocationFailed.databaseValue() {
+			return ModelInvocationRecord{}, errors.New("sqlite: response evidence has invalid model state")
+		}
+		if err := decodeStoredJSON([]byte(response.String), &record.KnownResponse); err != nil {
+			return ModelInvocationRecord{}, err
+		}
+		if record.KnownResponse == nil {
+			return ModelInvocationRecord{}, errors.New("sqlite: null model response evidence")
+		}
+		if err := record.KnownResponse.Validate(); err != nil {
+			return ModelInvocationRecord{}, err
+		}
 	}
 	if latency.Valid {
 		record.FirstOutputLatencyMillis = new(latency.Int64)
@@ -276,6 +320,15 @@ func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
 		record.Usage, err = decodeModelInvocationUsage(usage.String)
 		if err != nil {
 			return ModelInvocationRecord{}, err
+		}
+	}
+	if record.KnownResponse != nil {
+		var reported *chat.Usage
+		if record.KnownResponse.Metadata != nil {
+			reported = record.KnownResponse.Metadata.Usage
+		}
+		if !reflect.DeepEqual(record.Usage, reported) {
+			return ModelInvocationRecord{}, errors.New("sqlite: retained usage differs from known response")
 		}
 	}
 	record.StartedAt = time.Unix(0, startedAt).UTC()

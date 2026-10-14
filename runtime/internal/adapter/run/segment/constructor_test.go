@@ -167,7 +167,7 @@ func (inertModelInvocations) CompleteModelInvocation(context.Context, string, st
 	return nil
 }
 
-func (inertModelInvocations) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64) error {
+func (inertModelInvocations) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64, *chat.Usage, *chat.Response) error {
 	return nil
 }
 

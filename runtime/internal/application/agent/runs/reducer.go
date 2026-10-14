@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"maps"
+	"reflect"
 	"slices"
 	"time"
 
@@ -367,13 +368,45 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	if err != nil {
 		return factReduction{}, err
 	}
+	var usage *corechat.Usage
+	var progressed *run.Run
+	if failed.KnownResponse != nil {
+		if err := failed.KnownResponse.Validate(); err != nil {
+			return factReduction{}, err
+		}
+		if failed.Accounting == nil || failed.Accounting.CallID != failed.CallID {
+			return factReduction{}, errExecutorContract
+		}
+		var reported *corechat.Usage
+		if failed.KnownResponse.Metadata != nil {
+			reported = failed.KnownResponse.Metadata.Usage
+		}
+		if !reflect.DeepEqual(failed.Accounting.ReportedUsage, reported) {
+			return factReduction{}, errExecutorContract
+		}
+		progressEvents, err := r.modelUsageProgress(*failed.Accounting)
+		if err != nil {
+			return factReduction{}, err
+		}
+		events = append(events, progressEvents...)
+		value, err := r.progressedRun(finishedAt)
+		if err != nil {
+			return factReduction{}, err
+		}
+		progressed = &value
+		usage = failed.Accounting.ReportedUsage
+	} else if failed.Accounting != nil {
+		return factReduction{}, errExecutorContract
+	}
 	delete(r.modelCalls, failed.CallID)
 	r.modelBoundaryClosed = true
 	return factReduction{
-		events: append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
+		progress: progressed,
+		events:   append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ModelInvocationFailed, StartedAt: startedAt, FinishedAt: finishedAt,
+			Usage: usage, KnownResponse: failed.KnownResponse.Clone(),
 			FirstOutputLatencyMillis: failed.FirstOutputLatencyMillis,
 		}},
 	}, nil

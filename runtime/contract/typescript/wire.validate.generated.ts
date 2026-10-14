@@ -2117,6 +2117,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._:-]+$")]),
       firstOutputLatencyMillis: allOf([integer(), minimum(0)]),
+      knownResponse: text(),
       runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       settledAt: text(),
@@ -2126,10 +2127,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, ["callId", "runId", "segmentId", "startedAt", "state"]),
     ifThen(
       fields({
+        state: literal("failed"),
+      }, ["state", "usage"]),
+      fields({}, ["knownResponse"]),
+    ),
+    ifThen(
+      fields({
         state: literal("started"),
       }, ["state"]),
       fields({
         firstOutputLatencyMillis: absent(),
+        knownResponse: absent(),
         settledAt: absent(),
         usage: absent(),
       }, []),
@@ -2138,15 +2146,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         state: literal("completed"),
       }, ["state"]),
-      fields({}, ["settledAt"]),
+      fields({
+        knownResponse: absent(),
+      }, ["settledAt"]),
     ),
     ifThen(
       fields({
         state: literal("failed"),
       }, ["state"]),
-      fields({
-        usage: absent(),
-      }, ["settledAt"]),
+      fields({}, ["settledAt"]),
     ),
     ifThen(
       fields({
@@ -2154,6 +2162,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["state"]),
       fields({
         firstOutputLatencyMillis: absent(),
+        knownResponse: absent(),
         usage: absent(),
       }, ["settledAt"]),
     ),

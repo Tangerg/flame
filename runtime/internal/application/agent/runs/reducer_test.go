@@ -1898,6 +1898,35 @@ func TestFailedModelObservationReplacesLossyPreviewAndFencesLateDeltas(t *testin
 	}
 }
 
+func TestFailedOuterKnownResponseCommitsEvidenceAndUsageWithoutContinuation(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	mustReduce(t, reducer, ModelCallStarted{CallID: "known_inner"})
+	message := corechat.NewAssistantMessage(corechat.NewTextPart("known inner answer"), corechat.NewToolCallPart(corechat.ToolCall{ID: "unexecuted", Name: "read", Arguments: `{}`}))
+	usage := &corechat.Usage{InputTokens: 7, OutputTokens: 2}
+	response := &corechat.Response{Output: &corechat.Output{Message: &message, FinishReason: corechat.FinishReasonToolCalls}, Metadata: &corechat.ResponseMetadata{Model: "inner", Usage: usage}}
+	accounted := &ModelCallCompleted{CallID: "known_inner", ReportedUsage: usage, Tokens: accounting.Tokens{InputTokens: 7, OutputTokens: 2}, Steps: 1}
+	reduced := mustReduce(t, reducer, ModelCallFailed{CallID: "known_inner", KnownResponse: response, Accounting: accounted, Observation: ModelObservation{Text: "known inner answer"}})
+	if len(committedConversationMessages(reduced)) != 0 {
+		t.Fatal("failed outer response entered executable model continuation")
+	}
+	var invocations []ModelInvocationCommit
+	var progress bool
+	for _, reduction := range reduced {
+		if reduction.Commit != nil {
+			invocations = append(invocations, reduction.Commit.ModelInvocations...)
+			progress = progress || reduction.Commit.Progress != nil
+		}
+	}
+	if len(invocations) != 1 || invocations[0].State != ModelInvocationFailed || !reflect.DeepEqual(invocations[0].KnownResponse, response) || !reflect.DeepEqual(invocations[0].Usage, usage) || !progress {
+		t.Fatalf("failed response evidence/accounting=%+v progress=%v", invocations, progress)
+	}
+	for _, item := range completedItems(reduced) {
+		if item.Status() != transcript.ItemIncomplete {
+			t.Fatal("failed response promoted to successful transcript output")
+		}
+	}
+}
+
 func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_2" })

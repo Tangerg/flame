@@ -160,7 +160,7 @@ func (s *TrajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 }
 
 func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, sessionID, runID, callID string) (ModelInvocationRecord, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
+	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
 	record, err := scanModelInvocation(row)
 	if err != nil {
 		return ModelInvocationRecord{}, err

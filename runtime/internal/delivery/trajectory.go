@@ -57,7 +57,11 @@ func presentTrajectoryEntry(row sessions.TrajectoryEntry) (protocol.TrajectoryEn
 	case row.Run != nil:
 		entry.Type, entry.Run = protocol.TrajectoryEntryRun, new(presentRun(*row.Run))
 	case row.Model != nil:
-		entry.Type, entry.Model = protocol.TrajectoryEntryModel, new(presentModelInvocation(row.Model.RunID, row.Model.ModelInvocationCommit))
+		model, err := presentModelInvocation(row.Model.RunID, row.Model.ModelInvocationCommit)
+		if err != nil {
+			return protocol.TrajectoryEntry{}, err
+		}
+		entry.Type, entry.Model = protocol.TrajectoryEntryModel, &model
 	case row.Item != nil:
 		entry.Type, entry.Item = protocol.TrajectoryEntryItem, new(presentItem(*row.Item))
 	default:

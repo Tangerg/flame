@@ -483,7 +483,7 @@ func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCo
 		case runs.ModelInvocationFailed:
 			err = e.modelInvocations.FailModelInvocation(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.FirstOutputLatencyMillis,
+				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.FirstOutputLatencyMillis, invocation.Usage, invocation.KnownResponse,
 			)
 		case runs.ModelInvocationUnknown:
 			err = e.modelInvocations.MarkModelInvocationUnknown(

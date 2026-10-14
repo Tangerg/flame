@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -10,6 +11,39 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestFailedModelKnownResponseSurvivesReopenWithoutPromotingOutcome(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "known-response.db")
+	db, err := sqlite.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	draft := runDraft("run_known", "ses_known")
+	if err := sqlite.NewRunStore(db).Admit(t.Context(), draft); err != nil {
+		t.Fatal(err)
+	}
+	store := sqlite.NewModelInvocationStore(db)
+	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"), chat.NewReasoningPart("basis", nil))
+	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
+	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.FailModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt, draft.CreatedAt.Add(time.Second), nil, response.Metadata.Usage, response); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := sqlite.NewModelInvocationStore(db).PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
+	if err != nil || len(rows) != 1 || rows[0].State != "failed" || !reflect.DeepEqual(rows[0].KnownResponse, response) || !reflect.DeepEqual(rows[0].Usage, response.Metadata.Usage) {
+		t.Fatalf("retained inner evidence=%+v %v", rows, err)
+	}
+}
 
 func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testing.T) {
 	ctx := t.Context()
@@ -115,7 +149,7 @@ func TestFailedModelInvocationRetainsMeasuredLatencyWithoutUsage(t *testing.T) {
 	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt); err != nil {
 		t.Fatal(err)
 	}
-	if err := calls.FailModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt, draft.CreatedAt.Add(time.Second), new(int64(7))); err != nil {
+	if err := calls.FailModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt, draft.CreatedAt.Add(time.Second), new(int64(7)), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	page, err := calls.PageModelInvocations(t.Context(), draft.RunID, 0, "", 2)

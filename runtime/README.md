@@ -256,6 +256,23 @@ Session without a Goal returns null through `goals.get` in both bindings. Receip
 and remote decoders require the declared fields before accepting typed values.
 Diagnostic Tool results remain opaque JSON, where null is a valid value.
 
+Core 2026-10-14.22 adds model invocation knownResponse as the original complete
+Scope JSON string for a failed outer operation with validated inner completion.
+Interaction commits one failed fact containing that response and its accounting;
+unary response-plus-error and canonical stream completion followed by outer error
+both retain known usage/model/reasoning evidence. Incomplete output remains separate.
+The Run stays failed, and Tool calls/messages from the failed outer operation do
+not enter executable continuation. The existing model invocation row owns the one
+monotonic transition; list/trajectory/export are read projections. Export capacity
+counts the retained response bytes. A restarted host reads the same evidence.
+
+The exact host schema now includes known_response and permits failed-call usage
+only with validated matching response evidence. Former host schemas are refused
+without conversion or deletion; keep them separately and use a fresh data directory.
+Rebuild Go/TS consumers together. Plugin backend/private receipt formats are unchanged.
+This evidence boundary does not yet complete installed decorator selection/retention,
+multiple inner invocation identities or production remote composition.
+
 RPC parameters and `_meta` use exact, case-sensitive schema field names. Unknown members, duplicate members, invalid Unicode, trailing JSON values, and explicit `null` in typed fields are rejected. Omit optional fields; use the declared change variants to clear configuration. Opaque tool arguments may contain `null`. Clients must not rely on case folding or replacement of malformed text.
 
 Go consumers accepting authored JSON use `protocol.DecodeRequest(encoded, &request)`

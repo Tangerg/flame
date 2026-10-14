@@ -36,7 +36,7 @@ func (m ModelInvocationReader) PageModelInvocations(ctx context.Context, runID s
 
 func modelInvocationFromRecord(row sqlite.ModelInvocationRecord) (runs.ModelInvocationCommit, error) {
 	record := runs.ModelInvocationCommit{
-		FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage,
+		FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage, KnownResponse: row.KnownResponse.Clone(),
 		CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State),
 		StartedAt: row.StartedAt, FinishedAt: row.FinishedAt,
 	}

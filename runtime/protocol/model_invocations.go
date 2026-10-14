@@ -27,6 +27,9 @@ type ModelInvocationUsage struct {
 // not establish its result; SettledAt then records that observation, not a
 // provider completion time. Content belongs to Items. Absent usage means it was not recorded, not zero consumption.
 type ModelInvocation struct {
+	// KnownResponse is the original complete Scope JSON when an outer operation
+	// fails after observing inner completion. It is evidence, never continuation.
+	KnownResponse            string                `json:"knownResponse,omitzero"`
 	FirstOutputLatencyMillis *int64                `json:"firstOutputLatencyMillis,omitzero"`
 	Usage                    *ModelInvocationUsage `json:"usage,omitzero"`
 	CallID                   string                `json:"callId"`

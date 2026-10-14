@@ -38,8 +38,8 @@ func modelInvocationLatencyColumn() string {
 
 func modelInvocationUsageColumn() string {
 	return fmt.Sprintf(
-		"usage TEXT CHECK (usage IS NULL OR (state = '%s' AND json_valid(usage)))",
-		modelInvocationCompleted.databaseValue(),
+		"usage TEXT CHECK (usage IS NULL OR ((state = '%s' OR (state = '%s' AND known_response IS NOT NULL)) AND json_valid(usage)))",
+		modelInvocationCompleted.databaseValue(), modelInvocationFailed.databaseValue(),
 	)
 }
 
@@ -224,6 +224,7 @@ func currentSchema() []string {
 			finished_at INTEGER,
 			%[5]s,
 			%[6]s,
+			known_response TEXT CHECK (known_response IS NULL OR (state = '%[3]s' AND json_valid(known_response))),
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
 				(state = '%[1]s' AND finished_at IS NULL) OR

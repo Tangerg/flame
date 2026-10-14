@@ -3689,7 +3689,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.21\""
+          "value": "\"2026-10-14.22\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7933,6 +7933,11 @@
           "name": "ModelInvocation",
           "kind": "struct",
           "fields": [
+            {
+              "name": "KnownResponse",
+              "type": "string",
+              "tag": "json:\"knownResponse,omitzero\""
+            },
             {
               "name": "FirstOutputLatencyMillis",
               "type": "*int64",
