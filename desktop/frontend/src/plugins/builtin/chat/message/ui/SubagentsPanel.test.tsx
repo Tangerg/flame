@@ -154,6 +154,36 @@ it("keeps the selected run cancellation visible when no narrative was produced",
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
 });
 
+it("explains unconfirmed effects for the selected terminal child without replacing its outcome", () => {
+  material.rows = rows({
+    ...child,
+    status: "finished",
+    activeSegmentId: null,
+    finishedAt: "2026-01-01T00:00:01Z",
+    outcome: {
+      type: "canceled",
+      unresolvedEffects: [
+        { processId: "child-process", effectId: "child-effect", cause: "unknown" },
+      ],
+    },
+  });
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  const { rerender } = render(<SubagentsPanel />);
+  expect(screen.getByText(/This run has ended/)).toBeTruthy();
+  expect(screen.getByText("Canceled")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Operations with unconfirmed outcomes" }));
+  expect(screen.getByText("child-effect")).toBeTruthy();
+  expect(material.rows[0]!.facts.delegatedRuns.delegate![0]!.run.outcome?.type).toBe("canceled");
+
+  act(() => openWorkspaceSubagentRun("nested"));
+  rerender(<SubagentsPanel />);
+  expect(screen.queryByText(/This run has ended/)).toBeNull();
+  expect(screen.queryByText("child-effect")).toBeNull();
+});
+
 it("cancels the currently selected child and disables mutations while disconnected", () => {
   material.rows = rows();
   material.available = true;
