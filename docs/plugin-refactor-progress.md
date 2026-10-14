@@ -2,63 +2,71 @@
 
 ## Current stage
 
-Stage 5q (0e538bc42) completes installed context contribution capture for
-auxiliary text use cases. The same public ModelContextContract and exact ordered
-bindings now apply to utility work, including Memory extraction/curation. The
-existing auxiliary capture owns both context and observer dependencies until its
-caller releases the whole use case; no new held-dependency registry was added.
+Stage 5r (c69190524) implements the public installed model-selection boundary
+before fresh execution and auxiliary provider binding. ModelSelectionContract is
+an explicit selection role (flame.model-selection.v1), with one query method and
+complete provider/model/model-owned reasoning effort. Its request contains the
+caller's proposal and optional initial Scope request; absence is real when an
+auxiliary use case captures its model before authoring later prompts.
 
-AuxiliaryResolver now requires a caller-owned AuxiliaryBudget and returns an
-immutable AuxiliaryModel containing the actual exact role selection and its
-ResolvedChat. Live role changes affect new captures only. Model wrapping preserves
-the original selection and optional counter projection; it cannot invent identity
-or infer it from response metadata. All Runtime internal callers/fixtures are
-migrated, and the old bare-model resolver signature is removed without an alias.
+The ordinary selected-provider owner chooses the publisher. No selected role
+preserves the proposal without discovery; an explicitly selected but disabled,
+missing, invalid or failing publisher refuses without fallback. Binding capture
+uses the existing admission gate, but no lock crosses plugin I/O. The query checks
+the exact release/export/contract and live actor and retains original calling
+origin/parent plus a concrete query call target, with no command ID or next grant.
 
-Each attributed auxiliary call validates its original request, invokes captured
-context queries, inserts their valid system material without modifying caller
-messages, and checks the final input-text bytes and reserved output tokens before
-provider dispatch. Tools/non-text input are refused for these text-generation use
-cases. An invalid/failed/withdrawn contribution or exceeded budget dispatches no
-physical call. Repeated calls do not accumulate material. Memory retains one
-capture across its two phases and their separate original call IDs/parent metadata;
-its existing private callback count/receipt/admission owner remains authoritative.
-Named Memory maximum input/output constants supply the host capture and the same
-existing private callback checks, without a competing limit representation.
+Fresh Start selects after composing its initial input and before final model
+media/output-capacity validation, provider construction or Run acceptance. Current
+input and composed history are both admitted under the selected route. The same
+value reaches executor staging and the original durable Run opening. The Session
+keeps its independently owned user preference/proposal; selection does not rewrite
+user input or the original command fingerprint. Accepted Start retries and waiting
+Resume preserve their original Run/checkpoint and do not query selection again.
+Descendant execution inherits the accepted tree selection under its existing owner.
 
-Capture release cancels and joins active calls, including their context preparation,
-before releasing the original model and ordinary installation dependencies. Primary
-context capture/checkpoint behavior from Stage 5p is preserved. This slice adds
-input-text/output reservation admission, not complete provider token-capacity
-proof; auxiliary catalog/counter-based capacity admission remains open.
+Auxiliary roles select before ResolveChat, then retain the selected identity with
+the actual resolved model and context/observer capture. Selection failure performs
+no construction and never falls back to the original role. Bootstrap builds this
+utility resolver once when the installed selection owner is available, rather than
+constructing and replacing an unused preliminary resolver. The selector has no
+later invocation after its query returns, so no artificial execution dependency or
+selector checkpoint state is added. Accepted selection is the calling owner's fact.
 
-Passed: actual installed auxiliary context identity/order/lifetime, repeated calls,
-input/output budget refusal, failure/withdrawal before provider I/O, unchanged
-caller request and exact release; existing auxiliary observer cancel/join, Memory
-maintenance/callback identity/budget/revocation and title/compaction checks; role
-selection/no-fallback and completed-text contracts. Runtime/bootstrap test-source
-compilation, Runtime build and scoped dependency/domain/protocol checks passed.
-Initial test fixture return signatures, typed-nil fixture construction and a format
-verb were repaired before the relevant checks passed. No UI/E2E/screenshot test
-was authored or run this round. Full/native/vet/race remain concentrated final work.
+Passed: public selection contract/optional input; real installed MCP query origin,
+parent, original proposal, explicit absence, selected refusal/invalid/withdrawal;
+fresh Run selected identity with unchanged Session preference and original input;
+selection-before-validation/staging/opening; original accepted Start retry and
+waiting Resume without reselection; auxiliary selection-before-construction and
+no fallback. Existing installed context/observer/auxiliary checks pass after
+consolidating their duplicated managed connection/installation setup into one real
+fixture. Runtime build and Runtime/bootstrap test-source compilation pass. Scoped
+dependency/domain/protocol/public-package gates pass. Initial test field/new-session
+command setup and admission ordering errors were fixed without weakening existing
+unsupported-media or composed-history assertions. No UI/E2E/screenshot tests run.
 
-Main 414668baa remains integrated; git merge main reports already up to date.
-Original proposal/review/background draft hashes and the user's main stash remain
-unchanged. Core 2026-10-14.27, backend 2026-10-14.2 and export schema 3 are unchanged.
-Owned handles and compile temporary directories are settled. Six older full
-architecture failures, the unchanged Memory formatting failure and Stage 5p's
-interrupted/untriaged UI failures remain explicit acceptance obligations.
+Main 414668baa remains integrated; merging main reports already up to date.
+Original proposal/review/background draft SHA-256 and the user stash are unchanged.
+Core 2026-10-14.27, backend 2026-10-14.2 and export schema 3 are unchanged. Owned
+handles and temporary compile outputs have settled. Full/native/vet/race/all-workflow
+and P01-P48 acceptance remain open. Six known older architecture failures, unchanged
+Memory formatting and the prior interrupted/untriaged UI failures remain obligations.
 
-The model-selection investigation confirms the main Run's selection is frozen
-before its executor: choosing another model only inside a model wrapper would
-conflict with capacity and recovery ownership. Next implement the public selection
-boundary at the actual owner before exact binding, then auxiliary token capacity,
-general transforms and multiple separately admitted physical calls. Embeddings,
-complete retention, transitive dependencies, author parity and all P01-P48/review
-acceptance remain open. Overall estimate remains 65-70% full delivery and roughly
-75% implementation; this is not counted acceptance closure. Full goal active.
+Selection is now real at accepted execution/auxiliary capture boundaries; it is
+not dynamic per already-bound model call. Next finish auxiliary token-capacity
+admission, general input transforms and independently routed multiple calls. Complete
+embedding metering/retention, transitive dependency lifecycle, author parity and all
+review/P01-P48 closure remain part of the goal. Overall estimate stays approximately
+65-70% full delivery and 75% implementation, not counted acceptance. Full goal active.
 
 ## Completed
+
+- Stage 5r (c69190524): public explicit installed selection query, exact live
+  binding/original caller and refusal instead of implicit discovery/fallback.
+- Stage 5r: fresh Run selection before final model admission, identical selected
+  executor/durable Run identity, Session preference and original input preserved.
+- Stage 5r: accepted Start/Resume no-reselection and utility selection before
+  provider construction; one production utility resolver and shared real fixtures.
 
 - Stage 5q (0e538bc42): captured auxiliary exact role/model plus explicit caller
   budget; all internal resolver callers migrated without the bare-model signature.
@@ -581,10 +589,10 @@ acceptance remain open. Overall estimate remains 65-70% full delivery and roughl
 
 ## In progress
 
-- Stage 5p/5q close primary and auxiliary context contribution capture. Complete
-  public model route selection at the actual pre-binding owner, auxiliary provider
-  token-capacity admission, general input transforms and separate physical calls.
-  Do not claim the transparent observer path supplies those semantics.
+- Stage 5p/5q close primary/auxiliary context capture; Stage 5r closes public
+  selection at accepted execution and auxiliary use-case boundaries. Complete
+  auxiliary provider token capacity, general transforms and separate per-call
+  routes/physical identities. The transparent observer does not supply these.
 
 - All actual CLI/workspace Memory reads and human mutations now use the public
   installed publisher contract. Core business methods/DTOs and the Memory feature
@@ -606,9 +614,9 @@ acceptance remain open. Overall estimate remains 65-70% full delivery and roughl
 
 ## Next
 
-1. Complete public model route selection before the accepted exact binding,
-   auxiliary token-capacity admission, general transformations and multiple
-   independently admitted requests; then embeddings and complete retention.
+1. Complete auxiliary token-capacity admission, general input transformation
+   and independently routed/admitted multiple physical calls; then embeddings
+   and complete retention. Accepted executions never silently reselect.
 2. Complete scoped point/dependency lifecycle, observed status/retention and actual
    Tool/automatic/cross-plugin consumers with original command/Run ownership.
 3. Complete all-workflow generation recovery, independent author/module packaging,
@@ -618,6 +626,10 @@ acceptance remain open. Overall estimate remains 65-70% full delivery and roughl
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Public selection is an explicit installed query before fresh Run/auxiliary exact binding | Routing inside an already-bound model would disagree with media/capacity, construction and recovery | Post-admission provider swap, implicit discovery, selected-provider failure fallback or model-next grants at selection |
+| 2026-10-14 | Session user preference and accepted Run route are distinct facts with distinct existing owners | Routing can choose a model for this execution without rewriting the user's persistent default or original command | Overwriting Session preference with automatic routing, changing command fingerprints or keeping two mutable Run selections |
+| 2026-10-14 | Accepted Start retries/Resume restore the original route; selector query results require no later invocation binding | Durable Run/checkpoint already owns exact selection and a completed query has no future dependency | Reselecting after restart, retaining a fake selector execution dependency or adding a second selection store |
+| 2026-10-14 | Auxiliary selection precedes provider construction with absent request when prompts are authored later | Memory captures once for two later prompts; invented empty messages would misrepresent caller input | Selecting after construction, fake input conversations or an unused preliminary utility resolver |
 | 2026-10-14 | Auxiliary capture returns exact selection/model and requires the calling use case's text/output budget | Context authors need the actual model identity; contributed input must not bypass a caller's existing envelope | Response-derived identity, bare model without captured selection, implicit provider limits or observer-side expansion after admission |
 | 2026-10-14 | Capture context and observers together for the full auxiliary use case | Memory's two original calls share frozen dependencies and must cancel/join before release | Re-resolving contribution order each phase, additional held registry, per-call retirement before the workflow releases its capture |
 | 2026-10-14 | Public primary model selection must precede the Run/execution's accepted exact binding | Changing the provider only inside an already-bound model wrapper would contradict capacity and recovery identity | Changing endpoint identity while retaining the old capacity/calibration/selection or silently reselecting on restore |
@@ -834,7 +846,8 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
-| Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; selection, auxiliary token capacity and general transformation remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
+| Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; per-call routes/multiple invocations/final native acceptance remain open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
+| Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; auxiliary token capacity, per-call routes and general transformation remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory capacity removed with publisher bounds; business topics/record IDs and contract-specific notice routing removed; full Tool/dependency/streaming and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
@@ -871,6 +884,24 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5r: public SDK selection contract passed (0.901s); real installed selection,
+  explicit absence and related context/observer checks passed (3.122s initial;
+  later selected/auxiliary/context/observer subset 15.161s including linking).
+- Stage 5r: all focused Start/new selection/accepted command checks passed (0.556s).
+  Existing unsupported current/historical media checks retain their assertions:
+  both run under the chosen model before executor validation/staging. Initial
+  implementation ordering failures were repaired, not skipped or exempted.
+- Stage 5r: fresh selected Run versus Session preference, detached original input,
+  failure-before-staging/opening and accepted retry proof passed. Original Resume
+  and utility/installed subsets passed (runs 2.493s; model 1.825s), including no
+  reselection and no provider construction/fallback after selector failure.
+- Stage 5r: Runtime go build ./... and Runtime/bootstrap go test -c passed.
+  Scoped dependency/domain purity/JSON-tag/protocol/public-package gates passed
+  (2.855s). Full/native/vet/race and complete workflow suites remain final work.
+- Stage 5r: changed gofmt/diff/original hashes passed, main up to date and user stash
+  retained. No UI/E2E/screenshot authoring or execution; temporary compile outputs
+  and owned processes settled. Core/backend/export versions unchanged.
 
 - Stage 5q: auxiliary/completed-text/live-role/installed-context boundary checks
   passed (model 0.975s; pluginservices 2.700s). Final role/text validation passed
@@ -2202,8 +2233,9 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Primary/auxiliary context capture is implemented. Auxiliary token capacity,
-  public model route selection and multiple-call semantics remain open.
+- Primary/auxiliary context and accepted execution/use-case model selection are
+  implemented. Auxiliary token capacity, general input transforms and per-call
+  routes/multiple independently admitted model calls remain open.
 - Internal AuxiliaryResolver now requires an explicit budget and returns exact
   AuxiliaryModel capture. All known internal consumers are migrated; no public
   plugin SDK or protocol type changed in this slice.
