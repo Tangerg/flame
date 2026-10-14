@@ -2,12 +2,16 @@
 
 ## Current stage
 
-Stage 5w (2583125cd) grants independent selected-model unary/stream calls on the
+Stage 5w (2583125cd; background fix 9fa2080f4) grants independent selected-model unary/stream calls on the
 existing authenticated host callback endpoint. A public ModelCallRequest carries
 its exact provider/model proposal, complete Scope request and positive complete-
 request/output budget. Ordinary installed RPC grants now serve these collaborators
 beside canonical core Delivery RPC, with the same captured actor/call lifetime and
 per-reference transport capacity. A missing original invocation refuses dispatch.
+Shared CallHost/StreamHost now send the existing original invocation header for
+activation-scoped background grants. The grant's retained-owner projection validates
+it before child identity is derived; ordinary call/next grants keep their captured
+owner and authenticated Actor. Forged background origin/target/parent is refused.
 
 Each fresh ID resolves the installed selector before construction, freezes the
 context/input/transparent observer bindings, validates final byte/output/media/token
@@ -58,6 +62,10 @@ retention, dependency/author completeness and concentrated final acceptance. Rou
 Owned build/test/generation handles and temporary compile artifacts have settled.
 
 ## Completed
+
+- Stage 5w background fix (9fa2080f4): shared unary/stream callback senders carry
+  original retained invocation; scoped projection accepts the original and refuses
+  forged identity, while ordinary call/next ownership remains captured.
 
 - Stage 5w (2583125cd): independent selected unary/stream callbacks, complete
   request/output budgets and explicit original invocation on the shared endpoint.
@@ -668,6 +676,7 @@ Owned build/test/generation handles and temporary compile artifacts have settled
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Shared callback senders project the original background invocation through the existing validated header | Local SDK context cannot cross the network; activation grants must restore retained caller evidence before model child admission | Missing origin/parent, accepting a backend-supplied Actor, or replacing an ordinary captured call/next owner |
 | 2026-10-14 | Give each independent model exchange a new ID, selected route and complete request/output budget | Repeated captured next still names the original effect; Memory's two-call rule is private business policy | Relabeling next, automatic provider retry, global Memory call limits, text-only general requests |
 | 2026-10-14 | Share one model capture and existing physical endpoint journal for fresh and auxiliary calls | Lifecycle/held dependencies and dispatch/usage/price already have owners | Duplicate capture registries, host model receipts, cached results or a second billing tally |
 | 2026-10-14 | Publish exact additive selected-model callbacks beside canonical RPC; preserve wire/storage epochs | No existing wire method/record changes; new methods have their own exact identities | Adding another listener, core business API copies, artificial storage epochs or accepting a changed old method |
@@ -908,7 +917,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
-| Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
+| Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; stream.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
 | Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
 | Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; Stage 5w independent callback input/budget/media handling now verified; general composition and final native acceptance open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
 | Auxiliary complete-input capacity and original model-owned options | Stage 5s final context/provider count/local estimate, output reservation, known/unknown/error semantics, reasoning, request equality and cancel/join verified; final native/all-workflow acceptance open | model/auxiliary.go; auxiliary_capacity_test.go; pluginservices/auxiliary_model_observers.go/tests; modeltext/request_estimate.go; maintenance/compaction_trigger.go/tests |
@@ -950,6 +959,16 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5w background header fix: scoped selected/model-budget/captured/stopping/
+  callback/auxiliary/installed-model checks passed (SDK 1.132s; pluginservices
+  6.498s). Unary and stream accept the retained original background invocation and
+  refuse a forged origin before handler work. A final explicit refusal-event
+  assertion passed in the focused background regression (SDK 0.994s).
+- Background sender diff/format checks passed. No exported signatures, Core schema,
+  generated inventory or wire epoch changed in this follow-up. Real native command-
+  route restoration remains a final integration obligation beyond the SDK projection
+  probe. Main sync after 9fa2080f4 was already up to date at 3d897dfb6; handles settled.
 
 - Stage 5w scoped existing/new model, auxiliary and callback checks passed
   (SDK 0.989/1.026s; pluginservices 5.449/6.469s). Reasoning string/Scope enum
