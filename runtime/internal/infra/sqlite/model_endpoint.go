@@ -540,7 +540,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 			return err
 		}
 	}
-	return sqlitebase.RunInTx(ctx, m.db, func(ctx context.Context) error {
+	return sqlitebase.RunReadSnapshot(ctx, m.db, func(ctx context.Context) error {
 		if sessionID != "" {
 			var exists bool
 			if err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {

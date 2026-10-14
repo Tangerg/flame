@@ -51,6 +51,9 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 				ApprovalModes: sqlite.NewModeStore(db), ToolResults: sqlite.NewToolResultStore(db),
 				ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Goals: sqlite.NewGoalStore(db),
 				GoalRuns: mustGoalRuns(b, sqlite.NewGoalStore(db)), Tx: tx,
+				ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
+					return sqlitebase.RunReadSnapshot(ctx, db, read)
+				},
 			})
 			if err != nil {
 				b.Fatal(err)

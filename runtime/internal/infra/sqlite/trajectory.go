@@ -54,7 +54,7 @@ func (s *TrajectoryStore) Page(ctx context.Context, sessionID string, includeDes
 		return nil, errors.New("sqlite: trajectory page requires a positive limit")
 	}
 	var result []TrajectoryRecord
-	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlitebase.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		var exists bool
 		if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
 			return fmt.Errorf("sqlite: trajectory Session: %w", err)

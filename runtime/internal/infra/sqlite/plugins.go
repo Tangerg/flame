@@ -23,7 +23,7 @@ const (
 
 func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	var result []plugin.Snapshot
-	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlitebase.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations ORDER BY id`)
 		if err != nil {
 			return err
@@ -42,7 +42,7 @@ func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error)
 
 func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
 	var result plugin.Snapshot
-	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlitebase.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations WHERE id=?`, id.String())
 		if err != nil {
 			return err

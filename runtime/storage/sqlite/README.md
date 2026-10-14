@@ -23,6 +23,13 @@ cancellation or goroutine exit settles the owned transaction before returning it
 connection. Rollback diagnostics and cancellation causes are preserved, and a failed
 settlement discards the connection.
 
+`RunReadSnapshot` uses a deferred read snapshot so another WAL connection can
+commit while the reader retains its original consistent view. It joins an ambient
+read or write transaction for this database. Its callback must not mutate;
+`RunInTx` refuses promotion of a read snapshot into a write-set. Query, export,
+checkpoint and installation reads use this boundary; mutation paths retain
+immediate writer admission. Neither boundary retries the callback.
+
 `RunIndependentTx` deliberately starts a new write-set outside an ambient transaction
 for that database. An attempt to enter it while the same database transaction is
 active is refused rather than waiting on its own single connection. Schema admission

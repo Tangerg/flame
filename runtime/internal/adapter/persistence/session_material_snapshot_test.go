@@ -132,6 +132,9 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(readerDB),
 		Goals:               blockingGoal,
 		GoalRuns:            mustGoalRuns(t, writerGoalStore),
+		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
+			return sqlitebase.RunReadSnapshot(ctx, readerDB, read)
+		},
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlitebase.RunInTx(ctx, readerDB, fn)
 		},

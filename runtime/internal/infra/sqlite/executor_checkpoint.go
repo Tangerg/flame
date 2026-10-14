@@ -141,7 +141,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 // LoadCheckpoint returns one complete opaque executor checkpoint.
 func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
 	var checkpoint ExecutorCheckpointRecord
-	err := sqlitebase.RunInTx(ctx, e.db, func(ctx context.Context) error {
+	err := sqlitebase.RunReadSnapshot(ctx, e.db, func(ctx context.Context) error {
 		var err error
 		checkpoint, err = e.loadCheckpoint(ctx, rootMemberID)
 		return err
@@ -158,7 +158,7 @@ func (e *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, ses
 	}
 	var checkpoint ExecutorCheckpointRecord
 	found := false
-	err := sqlitebase.RunInTx(ctx, e.db, func(ctx context.Context) error {
+	err := sqlitebase.RunReadSnapshot(ctx, e.db, func(ctx context.Context) error {
 		rows, err := sqlitebase.Connection(ctx, e.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id=? LIMIT 2`, sessionID)
 		if err != nil {
 			return err

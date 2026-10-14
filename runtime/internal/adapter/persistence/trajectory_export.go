@@ -18,7 +18,7 @@ type TrajectoryExportConfig struct {
 	ModelInvocations *ModelInvocationReader
 	ToolInvocations  *sqlite.ToolInvocationStore
 	Feedback         *sqlite.FeedbackStore
-	Tx               Transactor
+	ReadSnapshot     Transactor
 }
 
 type TrajectoryExportReader struct {
@@ -27,7 +27,7 @@ type TrajectoryExportReader struct {
 	modelInvocations *ModelInvocationReader
 	toolInvocations  *sqlite.ToolInvocationStore
 	feedback         *sqlite.FeedbackStore
-	tx               Transactor
+	readSnapshot     Transactor
 }
 
 func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*TrajectoryExportReader, error) {
@@ -37,7 +37,7 @@ func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*TrajectoryExportRea
 	}{
 		{"snapshots", cfg.Snapshots}, {"sessions", cfg.Sessions},
 		{"model invocations", cfg.ModelInvocations}, {"Tool invocations", cfg.ToolInvocations},
-		{"feedback", cfg.Feedback}, {"transaction", cfg.Tx},
+		{"feedback", cfg.Feedback}, {"read snapshot", cfg.ReadSnapshot},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("persistence: trajectory export %s is required", required.name)
@@ -45,13 +45,13 @@ func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*TrajectoryExportRea
 	}
 	return &TrajectoryExportReader{
 		snapshots: cfg.Snapshots, sessions: cfg.Sessions, modelInvocations: cfg.ModelInvocations,
-		toolInvocations: cfg.ToolInvocations, feedback: cfg.Feedback, tx: cfg.Tx,
+		toolInvocations: cfg.ToolInvocations, feedback: cfg.Feedback, readSnapshot: cfg.ReadSnapshot,
 	}, nil
 }
 
 func (r *TrajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessionID string) (sessions.TrajectoryEvidence, error) {
 	var evidence sessions.TrajectoryEvidence
-	err := r.tx(ctx, func(ctx context.Context) error {
+	err := r.readSnapshot(ctx, func(ctx context.Context) error {
 		if _, err := r.sessions.Get(ctx, sessionID); err != nil {
 			return err
 		}

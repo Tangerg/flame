@@ -32,12 +32,17 @@ type Executor interface {
 
 type txKey struct{ database *sql.DB }
 
+type transaction struct {
+	tx       *sql.Tx
+	readOnly bool
+}
+
 // Connection returns the transaction carried by [RunInTx] for this exact database,
 // else the shared pool db. A store method MUST route through this (not the bare
 // s.db) for any statement that should join a caller's cross-store transaction.
 func Connection(ctx context.Context, db *sql.DB) Executor {
-	if tx, ok := ctx.Value(txKey{database: db}).(*sql.Tx); ok {
-		return tx
+	if owned, ok := ctx.Value(txKey{database: db}).(transaction); ok {
+		return owned.tx
 	}
 	return db
 }
@@ -53,13 +58,29 @@ func RunInTx(ctx context.Context, db *sql.DB, fn func(context.Context) error) er
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
-	if _, ok := ctx.Value(txKey{database: db}).(*sql.Tx); ok {
+	if owned, ok := ctx.Value(txKey{database: db}).(transaction); ok {
+		if owned.readOnly {
+			return errors.New("sqlite: write transaction cannot enter a read snapshot")
+		}
 		if err := fn(ctx); err != nil {
 			return errors.Join(err, cancellation.Err(ctx))
 		}
 		return nil
 	}
 	return RunIndependentTx(ctx, db, fn)
+}
+
+// RunReadSnapshot reads one consistent snapshot without reserving the WAL writer.
+// Reads join an ambient transaction for the same database. The callback must not
+// mutate; RunInTx refuses to promote this snapshot to a write-set.
+func RunReadSnapshot(ctx context.Context, db *sql.DB, read func(context.Context) error) error {
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
+	if _, ok := ctx.Value(txKey{database: db}).(transaction); ok {
+		return errors.Join(read(ctx), cancellation.Err(ctx))
+	}
+	return runIndependentTx(ctx, db, &sql.TxOptions{ReadOnly: true}, read)
 }
 
 // RunIndependentTx owns a fresh write-set and refuses an active transaction for
@@ -76,7 +97,7 @@ func runIndependentTx(ctx context.Context, db *sql.DB, options *sql.TxOptions, f
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
-	if _, active := ctx.Value(txKey{database: db}).(*sql.Tx); active {
+	if _, active := ctx.Value(txKey{database: db}).(transaction); active {
 		return errors.Join(errors.New("sqlite: independent transaction cannot enter an active database transaction"), cancellation.Err(ctx))
 	}
 	connection, err := db.Conn(ctx)
@@ -113,7 +134,7 @@ func runIndependentTx(ctx context.Context, db *sql.DB, options *sql.TxOptions, f
 		err = errors.Join(err, rollbackErr)
 	}()
 	if err = cancellation.Err(ctx); err == nil {
-		err = fn(context.WithValue(ctx, txKey{database: db}, tx))
+		err = fn(context.WithValue(ctx, txKey{database: db}, transaction{tx: tx, readOnly: options != nil && options.ReadOnly}))
 	}
 	err = errors.Join(err, cancellation.Err(ctx))
 	if err != nil {

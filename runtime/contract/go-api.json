@@ -13223,6 +13223,10 @@
         {
           "name": "RunIndependentTx",
           "signature": "func(ctx context.Context, db *sql.DB, fn func(context.Context) error) (err error)"
+        },
+        {
+          "name": "RunReadSnapshot",
+          "signature": "func(ctx context.Context, db *sql.DB, read func(context.Context) error) error"
         }
       ],
       "types": [

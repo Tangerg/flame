@@ -32,6 +32,7 @@ type Bundle struct {
 	// exposing its database path or contents.
 	IdempotencyNamespace runtimeidentity.IdempotencyNamespace
 	Transactor           func(context.Context, func(context.Context) error) error
+	ReadSnapshot         func(context.Context, func(context.Context) error) error
 
 	Sessions              *sqlitestore.SessionStore
 	Runs                  *sqlitestore.RunStore
@@ -178,6 +179,9 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		IdempotencyNamespace: idempotencyNamespace,
 		Transactor: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlitebase.RunInTx(ctx, db, fn)
+		},
+		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
+			return sqlitebase.RunReadSnapshot(ctx, db, read)
 		},
 		Sessions:              sqlitestore.NewSessionStore(db),
 		Runs:                  sqlitestore.NewRunStore(db),

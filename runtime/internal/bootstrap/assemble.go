@@ -111,6 +111,7 @@ func buildAssemblyCore(
 		Goals:               cfg.Stores.Goals,
 		GoalRuns:            goalRuns,
 		Tx:                  persistence.Transactor(cfg.Stores.Transactor),
+		ReadSnapshot:        persistence.Transactor(cfg.Stores.ReadSnapshot),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session write-set stores: %w", err)
@@ -388,7 +389,7 @@ func buildAssemblyCore(
 		return nil, err
 	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
-		ReadSnapshot:     cfg.Stores.Transactor,
+		ReadSnapshot:     cfg.Stores.ReadSnapshot,
 		Trajectory:       cfg.Stores.Trajectory,
 		ModelInvocations: modelInvocations,
 		Transcript:       cfg.Stores.Transcript,
@@ -413,7 +414,7 @@ func buildAssemblyCore(
 	trajectoryReader, err := persistence.NewTrajectoryExportReader(persistence.TrajectoryExportConfig{
 		Snapshots: sessionStores, Sessions: cfg.Stores.Sessions, ModelInvocations: modelInvocations,
 		ToolInvocations: cfg.Stores.ToolInvocations,
-		Feedback:        cfg.Stores.Feedback, Tx: persistence.Transactor(cfg.Stores.Transactor),
+		Feedback:        cfg.Stores.Feedback, ReadSnapshot: persistence.Transactor(cfg.Stores.ReadSnapshot),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct trajectory export reader: %w", err)

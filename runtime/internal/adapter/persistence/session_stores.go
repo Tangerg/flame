@@ -37,6 +37,7 @@ type SessionStores struct {
 	goals               goalStore
 	goalRuns            goalRunRecorder
 	tx                  Transactor
+	readSnapshot        Transactor
 }
 
 // SessionStoresConfig is the durable collaborator set for SessionStores.
@@ -56,9 +57,10 @@ type SessionStoresConfig struct {
 	Goals               goalStore
 	GoalRuns            goalRunRecorder
 	Tx                  Transactor
+	ReadSnapshot        Transactor
 }
 
-// Transactor runs a complete write-set inside one durable transaction.
+// Transactor settles the supplied read or write boundary as one transaction.
 type Transactor func(context.Context, func(context.Context) error) error
 
 // planProjection is the session-scoped Plan this write-set has to move with
@@ -122,6 +124,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		{name: "Goal store", value: cfg.Goals},
 		{name: "Goal Run recorder", value: cfg.GoalRuns},
 		{name: "transactor", value: cfg.Tx},
+		{name: "read snapshot", value: cfg.ReadSnapshot},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("persistence: session %s is required", required.name)
@@ -143,6 +146,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		goals:               cfg.Goals,
 		goalRuns:            cfg.GoalRuns,
 		tx:                  cfg.Tx,
+		readSnapshot:        cfg.ReadSnapshot,
 	}, nil
 }
 
@@ -154,7 +158,7 @@ var (
 
 func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, error) {
 	var snapshot sessions.MaterialSnapshot
-	err := s.tx(ctx, func(ctx context.Context) error {
+	err := s.readSnapshot(ctx, func(ctx context.Context) error {
 		ses, err := s.sessions.Get(ctx, sessionID)
 		if err != nil {
 			return err
@@ -200,7 +204,7 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 
 func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (sessions.Snapshot, error) {
 	var snapshot sessions.Snapshot
-	err := s.tx(ctx, func(ctx context.Context) error {
+	err := s.readSnapshot(ctx, func(ctx context.Context) error {
 		ses, err := s.sessions.Get(ctx, sessionID)
 		if err != nil {
 			return err

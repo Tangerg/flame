@@ -129,6 +129,10 @@ type goalSnapshotConnection struct {
 	afterGoalRead func() error
 }
 
+func (c *goalSnapshotConnection) BeginTx(ctx context.Context, options driver.TxOptions) (driver.Tx, error) {
+	return c.Conn.(driver.ConnBeginTx).BeginTx(ctx, options)
+}
+
 func (c *goalSnapshotConnection) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	rows, err := c.Conn.(driver.QueryerContext).QueryContext(ctx, query, args)
 	if err != nil || !strings.Contains(query, "FROM goals") {

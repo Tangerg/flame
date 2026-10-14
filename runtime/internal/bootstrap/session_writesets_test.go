@@ -206,6 +206,9 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),
+		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
+			return sqlitebase.RunReadSnapshot(ctx, db, read)
+		},
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlitebase.RunInTx(ctx, db, fn)
 		},

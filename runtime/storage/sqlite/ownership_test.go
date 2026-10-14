@@ -64,3 +64,38 @@ func TestIndependentTransactionRefusesItsOwnActiveDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestReadSnapshotJoinsItsOwnerButCannotPromoteToAWriteSet(t *testing.T) {
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "snapshot.db"), []string{`CREATE TABLE IF NOT EXISTS facts (value TEXT NOT NULL)`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO facts VALUES ('owned')`); err != nil {
+			return err
+		}
+		return sqlite.RunReadSnapshot(ctx, db, func(ctx context.Context) error {
+			var value string
+			if err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT value FROM facts`).Scan(&value); err != nil {
+				return err
+			}
+			if value != "owned" {
+				t.Fatalf("nested snapshot lost its uncommitted owner value: %q", value)
+			}
+			return nil
+		})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlite.RunReadSnapshot(t.Context(), db, func(ctx context.Context) error {
+		return sqlite.RunReadSnapshot(ctx, db, func(ctx context.Context) error {
+			if err := sqlite.RunInTx(ctx, db, func(context.Context) error { t.Fatal("read snapshot entered a mutation"); return nil }); err == nil {
+				t.Fatal("read snapshot accepted a write-set")
+			}
+			return nil
+		})
+	}); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -98,7 +98,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, reader, read)
+			return sqlitebase.RunReadSnapshot(ctx, reader, read)
 		},
 		Transcript: sqlite.NewTranscriptStore(reader), Interrupts: pages,
 		Runs: sqlite.NewRunStore(reader), Sessions: sqlite.NewSessionStore(reader), Plan: sqlite.NewPlanStore(reader),

@@ -34,7 +34,7 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 		return goal.Current{}, err
 	}
 	current := unwritten
-	err = sqlitebase.RunInTx(ctx, g.db, func(ctx context.Context) error {
+	err = sqlitebase.RunReadSnapshot(ctx, g.db, func(ctx context.Context) error {
 		row := sqlitebase.Connection(ctx, g.db).QueryRowContext(ctx,
 			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at
 			 FROM goals WHERE session_id = ?`, sessionID)
@@ -152,7 +152,7 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 // List returns every stored goal (for the boot reconcile).
 func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 	var out []goal.Goal
-	err := sqlitebase.RunInTx(ctx, g.db, func(ctx context.Context) error {
+	err := sqlitebase.RunReadSnapshot(ctx, g.db, func(ctx context.Context) error {
 		rows, err := sqlitebase.Connection(ctx, g.db).QueryContext(ctx,
 			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at FROM goals`)
 		if err != nil {

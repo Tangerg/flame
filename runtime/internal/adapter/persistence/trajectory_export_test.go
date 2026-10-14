@@ -54,8 +54,8 @@ func trajectoryExportFixture(t *testing.T) (*TrajectoryExportReader, *sql.DB, *e
 	reader, err := NewTrajectoryExportReader(TrajectoryExportConfig{
 		Snapshots: snapshots, Sessions: sqlite.NewSessionStore(db), ModelInvocations: modelReader,
 		ToolInvocations: sqlite.NewToolInvocationStore(db), Feedback: sqlite.NewFeedbackStore(db),
-		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+		ReadSnapshot: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunReadSnapshot(ctx, db, fn)
 		},
 	})
 	if err != nil {
