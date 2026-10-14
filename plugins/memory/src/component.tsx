@@ -302,7 +302,10 @@ export function Memory({ context }: { context: ComponentContext }) {
         if (!signal.aborted)
           setRead((previous) => ({
             ...previous,
-            error: error instanceof Error ? error.message : "Memory updates could not be observed.",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Memory updates could not be observed.",
           }));
       }
     };

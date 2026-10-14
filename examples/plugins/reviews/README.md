@@ -119,8 +119,8 @@ checks disable/reenable and refuses newly discovered contributors outside captur
 setup authority. Reconnecting the consumer explicitly admits its new collection.
 Point declaration availability belongs to the target consumer installation; another
 enabled copy cannot keep a disabled consumer's point available. This backend proof
-does not execute the board. Graphical/native qualification and independent published
-module validation remain required.
+does not execute the board. Independent public-module compilation and native
+packaging are separate gates; rendered board interaction is excluded.
 
 ## Mutation and recovery
 
@@ -211,7 +211,7 @@ same generic ESM/resource subscription and shared module mapping for this ordina
 installed package. Generation replacement requests a window reload; it cannot
 unload evaluated JavaScript. Unmount cancels observation and Dougong joins SDK I/O.
 
-Complete rendered browser/Wails acceptance, durable UI reconciliation after
-reload and replacement of remaining HTML carriers are still required. This slice
-has compilation, production bundle and backend resource-lifetime evidence;
-no graphical rendering or lifecycle acceptance is claimed.
+The former HTML carriers are removed. Compilation, production bundles and backend
+resource-lifetime checks provide source/build evidence. Rendered browser/Wails
+interaction and graphical reload reconciliation are excluded from executed
+acceptance and are not claimed as passed.

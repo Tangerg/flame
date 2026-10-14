@@ -128,8 +128,8 @@ can invalidate reads but cannot settle the original command. Subscription failur
 remains visible while accepted data is retained.
 The backend publishes the named `memory` capability. Runtime validates the full
 contract and declared export for queries and captures the contribution/export and
-complete capability for original command recovery. Public installed operation
-entrances, components and point dependency graphs remain in the continuing cutover.
+complete capability for original command recovery. Human, Tool and automatic
+entrances retain the same private business and receipt owners.
 
 Build packages using [the local application workflow](../README.md). Backend
 source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugins/memory) as part
@@ -154,8 +154,9 @@ scope/filter/edit and accepted page/cursor state. Unknown acknowledgement retain
 original mutation handle/key, blocks new changes and exposes same-command reconciliation.
 A failed read preserves the accepted page. No optimistic item or competing result
 owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
-Complete cross-reload command recovery and cross-entrance invalidation acceptance
-remain in the final public-consumer work.
+The shared client journal preserves the original binding across client generation
+changes. Backend/shared-client tests cover recovery and invalidation; rendered
+window-reload interaction is excluded from the current acceptance scope.
 
 ## Feature boundary
 

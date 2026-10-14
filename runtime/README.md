@@ -12,10 +12,20 @@ retain their checkpoint/calibration purpose. Unknown consumption cannot become a
 exact priced total because a later response is known. Captured selected and
 auxiliary calls now publish through the original execution member, with a persisted conversation/independent purpose. Independent outcomes
 cannot write primary output or context, and original unknown consumption remains
-unknown through recovery. Aggregate total-work admission and integrated native
-acceptance remain outstanding. The journal now requires logical_purpose for logical
+unknown through recovery. Each calling operation supplies its actual resource
+limits; no universal Run/Goal cost ceiling is inferred from accounting totals. The journal now requires logical_purpose for logical
 rows; old database shapes are refused unchanged by strict schema admission, without
 a migration or an old-row reader. Public wire/export epochs are unchanged.
+
+## Evidence retention
+
+Physical model evidence has one journal owner. Run-linked rows follow the Run's
+existing deletion lifetime; Session-only rows are deleted atomically with that
+Session. Unattached rows are retained without an automatic expiry. Failed Session
+deletion rolls evidence removal back. Unknown consumption remains unknown after
+restart and does not authorize another provider request. Pending plugin commands
+retain their original activation/release until the existing command owner settles
+them; there is no age-based permission to redispatch.
 
 ## Installed query streams
 

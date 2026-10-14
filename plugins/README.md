@@ -31,8 +31,12 @@ closer for acquired resources and honor the setup lifetime's cancellation. It is
 closed once after failure or session retirement; `Backend.Close` cancels and joins
 all setup lifetimes. Setup prepares registrations and collaborators; irreversible
 business effects belong to explicit operations with their command/receipt contract.
-Full point value/applicability/order semantics, dependency status projection and
-consumer/stream/component migration remain pending.
+Point values and applicability are validated by the consumer-owned contract.
+Requirement inspection and the existing MCP connection status explain selected
+bindings and activation failures; transitive failures preserve the consumer path.
+No separate readiness ledger advances those facts. CLI `plugins compositions`,
+`plugins set-composition` and `plugins resolve-composition` inspect/change these
+existing owners without loading a graphical component.
 
 
 Build target-specific packages from the repository's local `go.work`:

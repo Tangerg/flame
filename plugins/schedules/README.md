@@ -22,7 +22,7 @@ facts or competing success. Generic MCP source authorization has no Schedules
 type branch. Withdrawal during tool preparation is rechecked before invocation
 and emits no dispatch-dependent notice.
 
-Human definition commands and manual preparation retain their original
+Human definition commands and manual Run operations retain their original
 installation/release/method/input binding in Runtime before dispatch. Unresolved
 commands prevent replacement, configuration and uninstall, even after the host
 database is reopened. Disable/re-enable restores that same owner. Redelivery after
@@ -81,7 +81,7 @@ compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 The backend publishes the named `schedules` capability. Runtime validates the
 complete contract and declared export, including runNow, and captures the
 contribution/export and complete capability for original command recovery. Public
-installed operation entrances, components and point dependency graphs remain open.
+installed operation entrances retain that same original business owner.
 
 The backend executable connects through the public `ConnectCallback` and ordinary
 Runtime Client. `runs.start.newSession` carries the captured Session/Run identities;
@@ -131,9 +131,9 @@ classified business refusal retain their private replies. Missing acknowledgemen
 remains uncertainty; receipt absence cannot originate another command or Run.
 
 The Schedules capability identity changes; rebuild its generated contracts and
-installed backend together. Backend envelope .4 and stored business formats remain
-unchanged. The ordinary bound component and backend-owned background role migration
-remain in progress; this operation alone does not prove all installed lifecycle cases.
+installed backend together. The current backend protocol and stored business formats are
+unchanged by this operation cutover. The ordinary bound component and declared background contribution use
+this public operation; no host prepare-then-dispatch path remains.
 
 ## Bound editing component
 
@@ -147,8 +147,9 @@ retained after unknown acknowledgement; new commands are blocked until reconcili
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
 The component consumes existing schedule notices and cancels/joins its I/O on
-retirement. Failed pagination keeps the accepted page/cursor. Window-generation
-recovery and backend background-role acceptance remain final integration obligations.
+retirement. Failed pagination keeps the accepted page/cursor. Shared-client recovery
+and backend background activation are covered separately from excluded graphical
+window-reload interaction.
 
 ## Declared background activation
 
@@ -177,14 +178,14 @@ event. The ordinary component subscribes under its captured lifetime and refresh
 its bound owner; installation lifecycle remains plugins.changed. Private mutation
 notices still follow actual commits. Rebuild current Go/TS/ESM consumers together;
 the retired schedules.changed topic has no alias or double publication.
-No second scheduler, receipt store or compatibility reader exists. Native restart,
-withdrawal and non-selected-entry acceptance remain final verification requirements.
+No second scheduler, receipt store or compatibility reader exists. Backend restart,
+withdrawal and non-selected-entry activation use the same declared lifecycle.
 
 The publisher's go:generate contract command also emits the CLI's typed Go schema
 projection, alongside canonical capability JSON and TS. CLI catalog reads freeze
 the selected binding and enter the same public installed list operation as the
-ordinary component. Remaining Core mutation entrances retain their existing owner
-until their recovery-safe migration; schedules.list is removed without an alias.
+ordinary component. CLI mutations use the public installed operations and original
+receipt recovery; the former Core Schedule facades are removed without aliases.
 
 ## Feature boundary
 

@@ -65,8 +65,9 @@ activation reference. An invoked operation missing its call callback is refused.
 Fresh installed queries/commands carry call-scoped canonical callback metadata;
 receipt lookup retains its original route without acquiring new collaborators.
 Managed nested calls are checked against the session's immutable bindings, not a
-later selection. Actual Tool/automatic/UI consumer migration, complete point
-policies and durable execution projections remain open.
+later selection. Point resolution checks consumer-owned declaration, target and
+applicability contracts; execution and pending commands retain exact activation
+and transitive release dependencies.
 
 `runtime.BindPluginStreamingMethod` admits a typed query or mutation stream from the same
 immutable binding used by unary calls. Its Stream freezes input/options before lazy
@@ -77,9 +78,9 @@ refusal/uncertainty classification is preserved instead of reconstructed here.
 Runtime, Client and PluginCallbackCaller implement the same PluginStreamer port.
 The callback caller captures the original reference/envelope, opens its Client only
 on consumption and closes it when the sequence ends or stops. Invoked work missing
-its calling-owner callback cannot fall back to activation. These Go mechanisms do
-not yet complete query streams, TS author parity or production model/dependency
-composition. Core/backend/storage identities remain unchanged by this Go API addition.
+its calling-owner callback cannot fall back to activation. Query streams use no
+command journal or receipt; command streams retain original-route recovery.
+Go and TypeScript bindings preserve this distinction.
 
 `BindCapability(export, contract)` associates a named export with those existing
 handlers and checks its complete required set before publication. Several exports
@@ -186,8 +187,8 @@ a valid failed Tool receipt is distinct from a failure to read it.
 
 The current SDK requires `capability.Protocol` on invocation and description. It is
 a public wire contract identity, separate from internal build or data-directory
-versions. Only this current protocol is interpreted. Installed declaration/token
-matching remains part of the continuing refactor.
+versions. Only this current protocol is interpreted. Installed admission validates
+the declared contract, complete live exports and exact activation before dispatch.
 
 The [Reviews backend](../../examples/plugins/reviews/backend/server.go) binds Tool
 and typed method entrances to the same private owner. Its tests prove shared
@@ -200,9 +201,8 @@ This package supplies backend wire and setup primitives. The public Runtime
 `CallPlugin` entrance and typed `BindPluginMethod` proxy retain exact installed
 routing and reuse the existing receipt owner. Canonical Core callbacks use the
 ordinary typed Runtime Client and Delivery Endpoint. A direct backend session
-does not supply those installed guarantees. Full point values/applicability/order,
-actual all-consumer migration, component bindings and decorators remain unfinished
-parts of the unified-plugin refactor.
+does not supply those installed guarantees. Point resolution, frozen composition
+and component bindings use the installed owners rather than bypassing admission.
 
 ## Unary host callbacks
 
@@ -250,12 +250,10 @@ former-signature wrapper remains. Core/backend wire and storage formats are unch
 
 Memory search and maintenance now use this public unary transport. Memory owns
 its two-call policy and captured model collaborators. Real-process tests prove
-MCP → callback → nested MCP reentrancy without a Desktop relay. This slice does
-not yet prove full installed activation/dependency acceptance or remote decorator
-continuations. Canonical Runtime RPC/SSE callbacks now share the ordinary
-Endpoint/Client, and Schedules uses them for durable Run acceptance. Complete
-installed dependency binding and streaming decorators remain
-required parts of the complete plugin refactor.
+MCP → callback → nested MCP reentrancy without a Desktop relay. Canonical Runtime
+RPC/SSE callbacks share the ordinary Endpoint/Client, and Schedules uses them for
+durable Run acceptance. Installed callbacks carry immutable dependency bindings;
+remote continuations retain their original frozen chain.
 
 ## Model preparation host collaborators
 
@@ -281,8 +279,8 @@ chunks, backpressure, source response and per-call accounting remain authoritati
 
 Preparation inside an active execution carries its original member's accounting
 publisher, even before primary provider dispatch. Per-call request/output budgets
-remain supplied by the operation owner. Full native composition and background
-effect restoration remain separate acceptance work.
+remain supplied by the operation owner. Retained background caller attribution
+does not recreate an expired execution member, accounting publisher or next.
 
 ## Background activation and retained caller projection
 
@@ -345,12 +343,10 @@ that no model work occurred; the owning invocation must preserve that uncertaint
 
 The external-package subprocess regression consumes only public SDK/Scope APIs and
 the existing callback endpoint, without a Desktop relay. This proves the unary
-contract and callback path, not installation-wide model composition or streaming.
-Memory's narrower completion/embedding grant and production Interaction/auxiliary
-entrypoints remain actual consumers awaiting migration through the complete model
-execution/streaming owner. Production stream composition, installed remote next,
-frozen contribution order and durable inner evidence remain explicit work. No unary
-descriptor advertises streaming before that path exists.
+contract and callback path. Installed Interaction and auxiliary model composition
+use the same captured source, frozen contribution order and durable inner evidence.
+Memory allocates its narrower grant from its published caller policy. A unary
+descriptor never advertises streaming.
 
 ## Captured streams
 
@@ -379,9 +375,8 @@ Partially admitted chunks remain observable even when no complete response exist
 
 An external executable consumes a callback capturing a frozen remaining Scope
 stream chain and verifies its order, transformed input and single provider invocation.
-This proves the model callback stream and remaining-chain substrate; actual installed
-decorator selection/retention, TS author parity and
-Interaction/auxiliary/Memory production migration remain open. Ordinary unary binding
+Installed decorators retain this selection/order and exact activation; Go and TS
+stream consumers preserve the same cancellation and terminal rules. Ordinary unary binding
 and installed unary admission refuse stream methods before delivery/route persistence.
 Only implemented streaming entrances advertise stream support.
 
@@ -470,7 +465,7 @@ calls before dropping either context or observer dependencies.
 Public model selection now runs before fresh Run and auxiliary role binding, as
 described below. Auxiliary capacity now checks the fully composed request against
 its captured selected-model limits, using that provider's counter when available.
-General request transformations remain unfinished semantic boundaries. Transparent model observers keep
+Request transformations use the separate input contract below. Transparent model observers keep
 their existing Scope Call/Stream contract and cannot acquire those authorities.
 
 ## Model selection before exact binding
@@ -500,9 +495,8 @@ context composition, observation and pricing. Role changes affect new captures.
 No selector binding is retained as a later execution dependency after the query
 has returned; its result is the immutable selection owned by the accepted use case.
 
-Selection is presently per accepted execution/auxiliary capture. General input
-transforms and multiple independently routed physical calls still require their
-own admitted boundaries and final acceptance evidence.
+Selection is per accepted execution/auxiliary capture. Input transformations and
+independent routed physical calls use the separate admitted boundaries below.
 
 Auxiliary captures freeze the selected catalog token envelope and optional input
 counter with the same model construction. After applying captured reasoning effort
@@ -553,10 +547,11 @@ transformation, for root and delegated Call/Stream. A converter can turn unsuppo
 source media into supported text without replacing the original transcript. An
 unconverted unsupported request fails the accepted execution before provider I/O;
 there is no automatic replay. Structural MIME/empty-input errors still refuse the
-command before its state transition. Core .29 publishes this failure-timing change.
+command before its state transition. Current Core `2026-10-15.2` includes this failure-timing contract.
 Canonical media the selected model cannot accept is never passed to its provider
 counter; compaction uses its local projection and final transformation/admission
-remains authoritative. Full native/multiple-call acceptance is still open.
+remains authoritative. Independent calls retain their own identities, captured
+limits and physical source evidence.
 
 ## Independent selected model calls
 

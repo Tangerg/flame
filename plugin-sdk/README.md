@@ -81,8 +81,8 @@ callback and retains the original route/key/retention guard. The caller supplies
 the original serialized input; changed input is refused. The decoder must validate
 the publisher acknowledgement before settlement. Journal routing/fingerprints are
 durable; authored input and business results are not copied into it. The workspace
-Memory deletion consumer uses this path. Other component workflows and complete
-cross-reload integration remain under migration.
+Memory deletion consumer uses this path. Other durable component commands use
+the same journal; graphical reload interaction remains outside executed acceptance.
 
 Use `buildComponent` from `@flame/plugin-sdk/build` with a source entry, output
 directory and `compiler: rolldown` imported from the author toolchain's declared
@@ -100,10 +100,9 @@ through the existing contribution lifetime. Development uses this same format.
 The checked Reviews Board is the concrete consumer. It displays current owner
 data, submits inspected-revision changes, exposes conflict and uncertainty,
 retains the original recovery identity and invokes the installed analyzer query.
-The Reviews workspace declaration and actual ESM loader are implemented. Shared
-renderer/provider execution proof, remaining placements and complete browser/Wails
-lifecycle acceptance remain open. No UI/E2E execution
-is part of this development slice.
+The Reviews workspace declaration and actual ESM loader use the same shared
+module graph as other components. Source, types and native builds are checked
+separately from graphical execution; no UI/E2E or screenshot tests are run.
 
 Core Runtime failures are classified with the shared SDK's `isErrorType` export.
 Components must use this host module rather than bundling another RPC error class;
@@ -128,7 +127,7 @@ consumer/decoder failure and client replacement preserve the original identity,
 binding and input; restoration reads the original receipt without chunk replay or
 current-provider preparation. Raw JSON source and the shared exact codec preserve
 numeric evidence; already rounded unsafe JS inputs are refused. Installed
-production model/dependency lifecycle and final acceptance remain open.
+model/dependency lifetimes stay with their captured backend and calling owners.
 
 Streaming query methods use `bound.queryStream(method, input, consume, signal)`.
 Their chunks follow the same shared client backpressure and component lifetime as
