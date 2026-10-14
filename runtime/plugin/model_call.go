@@ -143,8 +143,12 @@ func NewSelectedModelStreamCallback(stream func(context.Context, Command[ModelCa
 }
 
 func selectedModelCallContext(ctx context.Context, id string) (context.Context, error) {
-	if _, err := InvocationFromContext(ctx); err != nil {
+	parent, err := InvocationFromContext(ctx)
+	if err != nil {
 		return nil, errors.Join(err, errors.New("plugin: selected model requires an owning invocation"))
+	}
+	if parent.ID == id {
+		return nil, errors.New("plugin: independent model invocation requires a distinct identity")
 	}
 	return modelCallContext(ctx, id)
 }

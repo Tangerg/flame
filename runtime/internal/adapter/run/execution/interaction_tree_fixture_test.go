@@ -184,12 +184,14 @@ func observeTestInteraction(t *testing.T, executor *InteractionExecutor, ctx con
 
 // The execution harness owns Session facts in memory; its separate physical
 // evidence database needs the same Session admission before recording a call.
+// This Session-only model fixture does not simulate relational Run association;
+// that boundary is verified with admitted SQLite Model/Tool owners.
 type fixtureEndpointJournal struct {
 	*sqlite.ModelInvocationStore
 	db *sql.DB
 }
 
-func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation) error {
+func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, _ string) error {
 	if invocation.SessionID != "" {
 		sessions := sqlite.NewSessionStore(j.db)
 		if _, err := sessions.Get(ctx, invocation.SessionID); errors.Is(err, session.ErrNotFound) {
@@ -200,7 +202,7 @@ func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, inv
 			return err
 		}
 	}
-	return j.ModelInvocationStore.StartEndpointInvocation(ctx, invocation)
+	return j.ModelInvocationStore.StartEndpointInvocation(ctx, invocation, "")
 }
 
 func newPricedObservedTestInteractionExecutor(t *testing.T, model chat.Model, pricing accounting.Pricing, config InteractionExecutorConfig) *InteractionExecutor {

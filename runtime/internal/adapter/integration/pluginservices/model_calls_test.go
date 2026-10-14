@@ -5,6 +5,12 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"net/http"
 	"path/filepath"
@@ -12,6 +18,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -316,5 +323,100 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 	}
 	if choices.Load() != 3 || input.Request.Options.Model != "proposed-model" {
 		t.Fatal("independent selection reused capture or mutated caller")
+	}
+}
+
+func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *testing.T) {
+	composition, _, _ := installedObserverFixture(t, "transparent")
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "executing-owner.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	sessionID := "ses_executing_owner"
+	if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: sessionID})); err != nil {
+		t.Fatal(err)
+	}
+	draft := testsupport.RunDraft(run.Draft{RunID: "run_executing_owner", SessionID: sessionID, SegmentID: "seg_executing_owner", CreatedAt: time.Unix(100, 0).UTC()})
+	runStore := sqlite.NewRunStore(db)
+	if err := runStore.Admit(t.Context(), draft); err != nil {
+		t.Fatal(err)
+	}
+	journal := sqlite.NewModelInvocationStore(db)
+	if err := journal.StartModelInvocation(t.Context(), sessionID, draft.RunID, draft.SegmentID, "logical_executing_owner", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	observed, err := models.NewObservedResolver(&routedCallResolver{model: chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
+		inv, _ := pluginsdk.InvocationFromContext(ctx)
+		row, found, err := journal.EndpointForCaller(ctx, inv.ID)
+		if err != nil || !found || row.RunID != draft.RunID || row.SegmentID != draft.SegmentID {
+			return nil, errors.New("provider started without its actual execution association")
+		}
+		calls.Add(1)
+		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+	})}, journal, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	callbacks, err := composition.ModelCallbacks(observed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := composition.callbacks.PublishRPC(http.NotFoundHandler(), callbacks...); err != nil {
+		t.Fatal(err)
+	}
+	sdkSession := new(sdk.ClientSession)
+	composition.callbacks.AdmitSession(sdkSession)
+	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: sessionID})
+	ctx = executionctx.WithInvocationOwner(ctx, "logical_executing_owner")
+	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: "original-plugin-operation", Origin: capability.Model, Parent: "logical_executing_owner", Target: capability.Target{Scope: "call", Reference: "original-plugin-operation"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, release, err := composition.callbacks.OpenRPC(ctx, sdkSession, pluginsdk.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	input := selectedCallInput("independent-route")
+	forged := executionctx.WithInvocationOwner(t.Context(), "foreign-wire-owner")
+	forged = executionctx.WithScope(forged, runs.ExecutionScope{SessionID: "ses_foreign"})
+	forged, err = pluginsdk.WithInvocation(forged, capability.Invocation{ID: "foreign-wire-owner", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "foreign-wire-owner"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "logical_executing_owner", input); err == nil || calls.Load() != 0 {
+		t.Fatal("independent request claimed primary invocation")
+	}
+	if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "original-plugin-operation", input); err == nil || calls.Load() != 0 {
+		t.Fatal("independent request relabeled original operation")
+	}
+	response, err := pluginsdk.CallSelectedModel(forged, ref, "independent-owned", input)
+	if err != nil || response == nil || calls.Load() != 1 {
+		t.Fatalf("captured executing owner: %+v %d %v", response, calls.Load(), err)
+	}
+	row, found, err := journal.EndpointForCaller(t.Context(), "independent-owned")
+	if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != capability.Model {
+		t.Fatalf("wire replaced captured origin: %+v %v", row, err)
+	}
+	active, _, err := runStore.Run(t.Context(), draft.RunID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting, err := active.Suspend(time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runStore.Suspend(t.Context(), waiting, draft.SegmentID, runtimeidentity.CommitID{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "independent-after-wait", input); err == nil || calls.Load() != 1 {
+		t.Fatalf("retired execution dispatched provider: %d %v", calls.Load(), err)
+	}
+	if len(composition.HeldDependencies()) != 0 {
+		t.Fatal("refused owner retained installed model dependency")
 	}
 }

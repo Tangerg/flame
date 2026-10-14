@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -87,6 +88,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, errors.New("execution: Tool call has no calling Interaction member")
 	}
 	ctx = runExecutionContext(ctx, o.session.scope, o.start)
+	ctx = executionctx.WithInvocationOwner(ctx, callID)
 	ctx = operation.Adopt(ctx, callID, capability.Model, member.MemberID)
 	ctx = runinput.WithCapabilities(ctx, o.start.InterruptKinds)
 	if err := o.session.awaitDispatchSegment(ctx); err != nil {

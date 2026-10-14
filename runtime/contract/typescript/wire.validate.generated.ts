@@ -2148,6 +2148,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       request: allOf([text(), minLength(1)]),
       response: text(),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      segmentId: text(),
       sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       settledAt: text(),
       startedAt: text(),

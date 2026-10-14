@@ -2527,3 +2527,33 @@ Background SDK model calls also carry the original retained invocation through t
 existing activation-scoped projection. The shared unary/stream senders preserve
 this header; Runtime validates it before selected-call child identity is derived.
 The header cannot replace an ordinary captured call, continuation or actor.
+
+## Captured execution association for model endpoints
+
+Core 2026-10-14.30 adds optional `segmentId` to physical endpoint observations.
+Generated public Go/API/schema/TS contracts and canonical samples are current;
+external strict clients must regenerate/rebuild. Backend .2 and export schema 3
+are unchanged. Existing relational scope columns and retained endpoint JSON remain
+unchanged; this slice needs no storage conversion or inferred old-record rewrite.
+
+Primary Call/Stream and Tool admission boundaries now capture their original logical
+call owner in the immutable host context. The observed provider resolver passes it
+explicitly to the endpoint journal. Before generation, the journal validates the
+actual logical Model/Tool record, matching Session, running Run and original active
+Segment. Fresh child requests then retain that Run/Segment even when their call ID
+is different. Absent owner means standalone/Session-only work, without lookup by
+wire caller ID or parent. Foreign Session, missing owner, waiting Run and old resumed
+Segment refuse admission without fabricating a dispatched provider observation.
+
+The original Model/Tool call namespaces are protected. Only the actual captured
+Model owner can use its own ID as physical caller; an independent selected exchange
+cannot use that owner ID or relabel its calling operation. Raw ancestry never grants
+execution authority. Query/trajectory/export projections expose the original Segment;
+known endpoint recovery validates the same Segment before consuming source evidence.
+
+Boundary tests use actual admitted SQLite Model and Tool records, callback dispatch,
+reserved-ID refusal and waiting/resumed transitions. Session-only execution harnesses
+do not prove relational association. General remote policy grants, background execution
+restoration, total-work/Run/Goal budget and descendant crash accrual remain explicit
+integration work. Per-call resource capacity and provider-generation admission are
+not a claim that all optional counters or aggregate Goal budgets are now gated.

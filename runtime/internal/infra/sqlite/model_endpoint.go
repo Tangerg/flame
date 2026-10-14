@@ -15,11 +15,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),endpoint_cost_usd,usage`
+const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_usd,usage`
 
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
@@ -43,7 +44,9 @@ func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error)
 	return []byte(input.String()), nil
 }
 
-func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation) error {
+// Caller IDs and wire parents describe ancestry, not execution authority. The
+// explicit logical owner supplies a frozen association; absence means no Run.
+func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, ownerCallID string) error {
 	if err := invocation.Validate(); err != nil {
 		return err
 	}
@@ -58,15 +61,35 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 	if invocation.SessionID != "" {
 		session = invocation.SessionID
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx, `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json)
-		SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,? FROM (
-		SELECT COALESCE((SELECT session_id FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL),?) session_id,
-		(SELECT run_id FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL) run_id,
-		(SELECT segment_id FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL) segment_id) scope
-		WHERE (scope.session_id IS NULL OR EXISTS(SELECT 1 FROM sessions WHERE id=scope.session_id))
-		AND (? IS NULL OR scope.session_id=?)`,
-		invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded),
-		invocation.Caller.ID, session, invocation.Caller.ID, invocation.Caller.ID, session, session)
+
+	scope := `SELECT ? session_id, NULL run_id, NULL segment_id`
+	args := []any{session}
+	if ownerCallID != "" {
+		if err := runtimeidentity.ValidateEffect(ownerCallID); err != nil {
+			return err
+		}
+		if invocation.SessionID == "" {
+			return errors.New("sqlite: endpoint execution owner requires its captured Session")
+		}
+		scope = `SELECT owner.session_id, owner.run_id, owner.segment_id FROM (
+			SELECT session_id,run_id,segment_id,started_at FROM model_invocations
+			WHERE call_id=? AND endpoint_json IS NULL AND state=?
+			UNION ALL SELECT session_id,run_id,segment_id,started_at FROM tool_invocations
+			WHERE call_id=? AND state=?
+		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
+		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
+		args = []any{ownerCallID, modelInvocationStarted.databaseValue(), ownerCallID, toolInvocationStarted.databaseValue(), runStateRunning.databaseValue(), invocation.StartedAt.UTC().UnixNano()}
+	}
+	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json)
+ SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,? FROM (` + scope + `) scope
+ WHERE (scope.session_id IS NULL OR EXISTS(SELECT 1 FROM sessions WHERE id=scope.session_id))
+ AND (? IS NULL OR scope.session_id=?)
+ AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
+ AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
+	parameters := []any{invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded)}
+	parameters = append(parameters, args...)
+	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
+	result, err := Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
 	if err != nil {
 		return err
 	}
@@ -75,7 +98,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 		return err
 	}
 	if changed != 1 {
-		return errors.New("sqlite: endpoint has no matching owning Session")
+		return errors.New("sqlite: endpoint has no matching active execution owner or Session")
 	}
 	return nil
 }
@@ -183,7 +206,7 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var finishedAt *int64
 	var response *string
 	var encodedUsage *string
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.CostUSD, &encodedUsage); err != nil {
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &value.CostUSD, &encodedUsage); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
 	value.InvocationJSON, err = jsoninput.Parse([]byte(encoded))
@@ -217,11 +240,17 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 			return modelref.EndpointObservation{}, err
 		}
 	}
+	if (value.RunID == "") != (value.SegmentID == "") {
+		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint execution association is incomplete")
+	}
 	if value.RunID != "" {
 		if value.SessionID == "" {
 			return modelref.EndpointObservation{}, errors.New("sqlite: endpoint Run has no Session")
 		}
 		if err := resourceid.ValidateRun(value.RunID); err != nil {
+			return modelref.EndpointObservation{}, err
+		}
+		if err := resourceid.ValidateSegment(value.SegmentID); err != nil {
 			return modelref.EndpointObservation{}, err
 		}
 	}
@@ -343,7 +372,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return err
 	}
-	if source.RunID != runID || source.SessionID != sessionID || source.Invocation.Caller.ID != callID || source.Response == nil || finishedAt.Before(source.FinishedAt) || source.Invocation.StartedAt.Before(startedAt) {
+	if source.RunID != runID || source.SessionID != sessionID || source.SegmentID != segmentID || source.Invocation.Caller.ID != callID || source.Response == nil || finishedAt.Before(source.FinishedAt) || source.Invocation.StartedAt.Before(startedAt) {
 		return errors.New("sqlite: recovered endpoint differs from original call")
 	}
 	if err := source.ResponseJSON.Validate(); err != nil {

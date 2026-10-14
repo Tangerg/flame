@@ -17,8 +17,10 @@ import (
 )
 
 // EndpointJournal commits observations without authorizing replay or continuation.
+// The owner is the host-captured logical Model/Tool call, not caller-supplied ancestry.
+// Its durable admission supplies the original Run/Segment before provider generation.
 type EndpointJournal interface {
-	StartEndpointInvocation(context.Context, modelref.EndpointInvocation) error
+	StartEndpointInvocation(context.Context, modelref.EndpointInvocation, string) error
 	SettleEndpointInvocation(context.Context, modelref.EndpointInvocation, modelref.EndpointOutcome) error
 }
 
@@ -83,7 +85,7 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	if err := m.journal.StartEndpointInvocation(ctx, invocation); err != nil {
+	if err := m.journal.StartEndpointInvocation(ctx, invocation, executionctx.InvocationOwner(ctx)); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
 	return invocation, nil

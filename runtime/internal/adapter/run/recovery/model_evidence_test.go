@@ -85,7 +85,7 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			}
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured request")))
 			invocation := modelref.EndpointInvocation{ID: "endpoint_pending", Caller: capability.Invocation{ID: "logical_pending", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "logical_pending"}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
-			if err := journal.StartEndpointInvocation(t.Context(), invocation); err != nil {
+			if err := journal.StartEndpointInvocation(t.Context(), invocation, "logical_pending"); err != nil {
 				t.Fatal(err)
 			}
 			if test.known {

@@ -55,6 +55,7 @@ type EndpointObservation struct {
 	CostUSD        *float64
 	SessionID      string
 	RunID          string
+	SegmentID      string
 	Invocation     EndpointInvocation
 	Response       *chat.Response
 	State          string

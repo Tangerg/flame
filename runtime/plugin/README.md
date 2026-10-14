@@ -546,3 +546,9 @@ Flame-Invocation header. An activation-scoped background RPC grant validates it
 against the retained calling-owner evidence before projecting the context. Forged
 origin/parent/target is refused. Ordinary call and next grants keep their captured
 owner and ignore this header; authenticated actor identity is never replaced.
+
+Independent selected exchanges require an ID distinct from their original calling
+operation and host-owned Model/Tool boundary. An existing logical Model/Tool ID
+cannot be repurposed as a fresh physical caller. The host captures execution ownership;
+wire invocation headers and parent fields cannot select another Run or Segment.
+Endpoint observations expose the original optional Segment in Core .30.

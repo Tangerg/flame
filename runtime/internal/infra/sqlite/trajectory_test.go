@@ -173,7 +173,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		{"endpoint_global", "utility_global", ""},
 	} {
 		value := modelref.EndpointInvocation{ID: source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: request, StartedAt: root.CreatedAt}
-		if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(ctx, value); err != nil {
+		if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(ctx, value, ""); err != nil {
 			t.Fatal(err)
 		}
 	}

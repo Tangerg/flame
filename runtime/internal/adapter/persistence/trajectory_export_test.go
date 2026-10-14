@@ -146,7 +146,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
 		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: "utility_" + id, Origin: capability.Automatic, Parent: "maintenance", Target: capability.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
-		if err := store.StartEndpointInvocation(t.Context(), invocation); err != nil {
+		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, FinishedAt: invocation.StartedAt.Add(time.Second), Failure: "outer rejected text"}); err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"iter"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -22,6 +23,14 @@ func (o *ModelComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]p
 		if err := input.Validate(); err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}
+		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		if err != nil {
+			return models.SelectedChat{}, nil, nil, err
+		}
+		if invocation.ID == executionctx.InvocationOwner(ctx) {
+			return models.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
+		}
+
 		selection, err := modelref.NewWithReasoningEffort(input.Selection.Provider, input.Selection.Model, input.Selection.ReasoningEffort)
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, err

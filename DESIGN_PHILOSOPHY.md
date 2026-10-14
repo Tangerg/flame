@@ -106,3 +106,17 @@ selection, freezes context/input/observer bindings and admits the complete final
 request. Scope remains the durable effect and execution owner. General remote
 composition and Run/Goal aggregation of descendant model consumption require their
 own explicit execution contracts; physical evidence alone does not complete them.
+
+A physical model exchange obtains its execution association from the host-captured,
+admitted logical Model or Tool call. Primary unary/stream and Tool boundaries seed
+that immutable context; nested callback dispatch preserves it. The journal freezes
+Session/Run/Segment from the original logical record only while its Run and Segment
+are active. Wire IDs, parent chains and an ambient current Session cannot choose or
+retarget that association. Unattached/Session-only work explicitly has no Run owner.
+
+Fresh model identities cannot claim existing logical Model/Tool IDs or their calling
+operation's identity. A genuine captured Model continuation uses its original Model
+owner; independently selected exchanges require distinct identities. Waiting or a
+changed active Segment refuses new generation under the old captured owner. Known
+physical settlement and recovery still retain the original evidence. The association
+is a prerequisite for descendant accounting, not proof that aggregate budgets close.

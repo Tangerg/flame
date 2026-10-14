@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"reflect"
@@ -23,7 +24,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured input")))
 	invocation := modelref.EndpointInvocation{ID: "endpoint-original", Caller: capability.Invocation{ID: "model-operation", Origin: capability.Human, Parent: "human-command", Target: capability.Target{Scope: "call", Reference: "model-operation"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
-	if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(t.Context(), invocation); err != nil {
+	if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -43,7 +44,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 		t.Fatalf("restart promoted unknown request: %+v, %v", rows, err)
 	}
 	invocation.ID = "endpoint-replacement"
-	if err := store.StartEndpointInvocation(t.Context(), invocation); err == nil {
+	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err == nil {
 		t.Fatal("same calling operation started a replacement endpoint")
 	}
 }
@@ -65,7 +66,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 		value.Caller.ID = "utility_" + scope.id
 		value.Caller.Target.Reference = value.Caller.ID
 		value.SessionID = scope.session
-		if err := store.StartEndpointInvocation(t.Context(), value); err != nil {
+		if err := store.StartEndpointInvocation(t.Context(), value, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -95,7 +96,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	invocation.ID = "endpoint_after_delete"
 	invocation.Caller.ID = "utility_after_delete"
 	invocation.Caller.Target.Reference = invocation.Caller.ID
-	if err := store.StartEndpointInvocation(t.Context(), invocation); err == nil {
+	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err == nil {
 		t.Fatal("new endpoint attached to deleted Session")
 	}
 	if _, err := sqlite.NewTrajectoryStore(db).Page(t.Context(), invocation.SessionID, true, nil, 100); !errors.Is(err, session.ErrNotFound) {
@@ -112,7 +113,7 @@ func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
 	invocation := modelref.EndpointInvocation{ID: "endpoint_usage", Caller: capability.Invocation{ID: "caller_usage", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "caller_usage"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
 	store := sqlite.NewModelInvocationStore(db)
-	if err := store.StartEndpointInvocation(t.Context(), invocation); err != nil {
+	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
 	}
 	message := chat.NewAssistantMessage(chat.NewTextPart("known"))
@@ -158,7 +159,12 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 		{id: "other", caller: "utility_other", session: "ses_other", input: 2},
 	} {
 		invocation := modelref.EndpointInvocation{ID: "endpoint_" + source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: draft.ModelSelection.Provider(), Model: draft.ModelSelection.Model(), SessionID: source.session, Request: request, StartedAt: draft.CreatedAt}
-		if err := store.StartEndpointInvocation(t.Context(), invocation); err != nil {
+		owner := ""
+		if source.id == "primary" {
+			owner = "logical_usage"
+			invocation.SessionID = draft.SessionID
+		}
+		if err := store.StartEndpointInvocation(t.Context(), invocation, owner); err != nil {
 			t.Fatal(err)
 		}
 		outcome := modelref.EndpointOutcome{FinishedAt: draft.CreatedAt.Add(time.Second), CostUSD: source.price}
@@ -214,4 +220,99 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 	if value, err := reporter.Summary(t.Context(), sessions.AllTimeUsage()); err == nil || value.Coverage.Calls != 0 {
 		t.Fatal("foreign ownership produced partial usage")
 	}
+}
+
+func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "scoped-endpoints.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	insertTrajectorySession(t, t.Context(), db, "ses_owner")
+	insertTrajectorySession(t, t.Context(), db, "ses_foreign")
+	draft := runDraft("run_owner", "ses_owner")
+	runs := sqlite.NewRunStore(db)
+	if err := runs.Admit(t.Context(), draft); err != nil {
+		t.Fatal(err)
+	}
+	journal := sqlite.NewModelInvocationStore(db)
+	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_owner", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "reserved_logical", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := sqlite.NewToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_owner", "item_owner", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent request")))
+	source := func(id, sessionID, parent string) modelref.EndpointInvocation {
+		return modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: id, Origin: capability.Model, Parent: parent, Target: capability.Target{Scope: "call", Reference: id}}, Provider: "anthropic", Model: "captured-model", SessionID: sessionID, Request: request, StartedAt: draft.CreatedAt.Add(time.Second)}
+	}
+	for _, test := range []struct {
+		id, owner, parent string
+		associated        bool
+	}{
+		{"child_model", "logical_owner", "unrelated-wire-parent", true},
+		{"child_tool", "tool_owner", "unrelated-wire-parent", true},
+		{"logical_owner", "logical_owner", "unrelated-wire-parent", true},
+		{"unowned_child", "", "logical_owner", false},
+	} {
+		invocation := source(test.id, draft.SessionID, test.parent)
+		if err := journal.StartEndpointInvocation(t.Context(), invocation, test.owner); err != nil {
+			t.Fatal(err)
+		}
+		row, found, err := journal.EndpointForCaller(t.Context(), test.id)
+		if err != nil || !found {
+			t.Fatalf("missing admitted source: %+v %v", row, err)
+		}
+		if test.associated {
+			if row.RunID != draft.RunID || row.SegmentID != draft.SegmentID || row.SessionID != draft.SessionID {
+				t.Fatalf("independent source lost owner: %+v", row)
+			}
+		} else if row.RunID != "" || row.SegmentID != "" {
+			t.Fatalf("wire ancestry invented a Run: %+v", row)
+		}
+	}
+	for _, test := range []struct{ id, owner, session string }{
+		{"foreign", "logical_owner", "ses_foreign"},
+		{"unknown", "missing_owner", draft.SessionID},
+		{"missing_session", "logical_owner", ""},
+		{"reserved_logical", "", draft.SessionID},
+		{"tool_owner", "logical_owner", draft.SessionID},
+	} {
+		if err := journal.StartEndpointInvocation(t.Context(), source(test.id, test.session, "logical_owner"), test.owner); err == nil {
+			t.Fatalf("unadmitted owner %s accepted", test.id)
+		}
+		if _, found, err := journal.EndpointForCaller(t.Context(), test.id); err != nil || found {
+			t.Fatalf("refused owner left provider evidence: %v %v", found, err)
+		}
+	}
+	early := source("before_owner", draft.SessionID, "logical_owner")
+	early.StartedAt = draft.CreatedAt.Add(-time.Second)
+	if err := journal.StartEndpointInvocation(t.Context(), early, "logical_owner"); err == nil {
+		t.Fatal("physical source preceded its admitted owner")
+	}
+	active, found, err := runs.Run(t.Context(), draft.RunID)
+	if err != nil || !found {
+		t.Fatal(err)
+	}
+	waiting, err := active.Suspend(draft.CreatedAt.Add(2 * time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runs.Suspend(t.Context(), waiting, draft.SegmentID, runtimeidentity.CommitID{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := journal.StartEndpointInvocation(t.Context(), source("after_wait", draft.SessionID, "logical_owner"), "logical_owner"); err == nil {
+		t.Fatal("waiting Run accepted new provider work")
+	}
+	if err := resumeParkedRun(t.Context(), runs, waiting, "seg_reopened_owner", draft.CreatedAt.Add(3*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := journal.StartEndpointInvocation(t.Context(), source("after_resume", draft.SessionID, "logical_owner"), "logical_owner"); err == nil {
+		t.Fatal("old source retargeted to resumed Segment")
+	}
+
 }

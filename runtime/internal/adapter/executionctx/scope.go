@@ -13,6 +13,7 @@ import (
 )
 
 type scopeKey struct{}
+type invocationOwnerKey struct{}
 type runCapabilitiesKey struct{}
 
 // WithScope returns a context carrying scope. The value is immutable and safe
@@ -87,4 +88,17 @@ func SessionID(ctx context.Context) string {
 		return scope.SessionID
 	}
 	return ""
+}
+
+// WithInvocationOwner captures the admitted logical Model/Tool boundary whose
+// durable Run/Segment owns nested provider work. Wire ancestry cannot replace it.
+func WithInvocationOwner(ctx context.Context, callID string) context.Context {
+	return context.WithValue(ctx, invocationOwnerKey{}, callID)
+}
+func InvocationOwner(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	owner, _ := ctx.Value(invocationOwnerKey{}).(string)
+	return owner
 }

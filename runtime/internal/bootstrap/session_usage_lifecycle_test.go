@@ -69,7 +69,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
 		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: id, Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
-		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation); err != nil {
+		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}
 		message := chat.NewAssistantMessage(chat.NewTextPart("known"))

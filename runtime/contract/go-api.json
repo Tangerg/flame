@@ -3941,7 +3941,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.29\""
+          "value": "\"2026-10-14.30\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8241,6 +8241,11 @@
               "name": "RunID",
               "type": "string",
               "tag": "json:\"runId,omitzero\""
+            },
+            {
+              "name": "SegmentID",
+              "type": "string",
+              "tag": "json:\"segmentId,omitzero\""
             },
             {
               "name": "Caller",
