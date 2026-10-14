@@ -3,6 +3,7 @@ package segment
 import (
 	"context"
 	"errors"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"iter"
 	"strings"
 	"testing"
@@ -67,7 +68,9 @@ func TestGenerateReturnsOpeningMessageFallbackWhenProviderFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewTitleGenerator(func(context.Context) (chat.Model, func(), error) { return &client, func() {}, nil })
+	generator := NewTitleGenerator(func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(&client), func() {}, nil
+	})
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider outage  \ninclude the request log")
 	if !errors.Is(err, providerErr) {
@@ -85,7 +88,9 @@ func TestGenerateUsesOpeningMessageFallbackWhenTheModelSaysNothingUsable(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	generator := NewTitleGenerator(func(context.Context) (chat.Model, func(), error) { return &client, func() {}, nil })
+	generator := NewTitleGenerator(func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(&client), func() {}, nil
+	})
 
 	got, err := generator.Generate(t.Context(), "  Diagnose empty title  \ninclude the request log")
 	if err != nil {
@@ -108,8 +113,8 @@ func TestGenerateUsesOpeningMessageFallbackWithoutUtilityClient(t *testing.T) {
 
 func TestGenerateReturnsOpeningMessageFallbackWhenUtilityResolutionFails(t *testing.T) {
 	resolutionErr := errors.New("utility credentials expired")
-	generator := NewTitleGenerator(func(context.Context) (chat.Model, func(), error) {
-		return nil, nil, resolutionErr
+	generator := NewTitleGenerator(func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+		return modeladapter.AuxiliaryModel{}, nil, resolutionErr
 	})
 
 	got, err := generator.Generate(t.Context(), "  Diagnose provider resolution  \ninclude the request log")

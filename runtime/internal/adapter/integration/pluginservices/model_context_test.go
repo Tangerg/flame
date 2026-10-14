@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
@@ -112,7 +113,7 @@ func installedContextFixture(t *testing.T, mode string) (*ModelComposition, []pl
 	method, _ := pluginsdk.ModelContextMethod()
 	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
 		invocation, err := pluginsdk.InvocationFromContext(ctx)
-		if err != nil || invocation.ID != "original-context" || invocation.Target.Reference != "original-context" || command.ID != "" {
+		if err != nil || !strings.HasPrefix(invocation.ID, "original-context") || invocation.Target.Reference != invocation.ID || command.ID != "" {
 			return pluginsdk.ModelContextResult{}, errors.New("original query attribution lost")
 		}
 		if err := command.Input.Validate(); err != nil {

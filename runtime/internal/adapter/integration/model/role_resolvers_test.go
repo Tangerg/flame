@@ -65,15 +65,18 @@ func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	first, releaseFirst, firstErr := resolve(t.Context())
-	second, releaseSecond, secondErr := resolve(t.Context())
+	first, releaseFirst, firstErr := resolve(t.Context(), AuxiliaryBudget{MaxInputBytes: 1024, MaxOutputTokens: 64})
+	second, releaseSecond, secondErr := resolve(t.Context(), AuxiliaryBudget{MaxInputBytes: 1024, MaxOutputTokens: 64})
 	if firstErr != nil || secondErr != nil {
 		t.Fatalf("resolve errors = (%v, %v)", firstErr, secondErr)
 	}
 	defer releaseFirst()
 	defer releaseSecond()
-	if first == nil || second == nil {
+	if first.Model() == nil || second.Model() == nil {
 		t.Fatalf("resolved models = (%v, %v), want two usable models", first, second)
+	}
+	if first.Selection() != selection || second.Selection() != selection {
+		t.Fatal("utility capture detached its exact selection")
 	}
 	if calls != 2 {
 		t.Fatalf("resolver calls = %d, want 2 current-registry reads", calls)
@@ -98,9 +101,9 @@ func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.
 		t.Fatal(err)
 	}
 
-	got, _, err := resolve(t.Context())
-	if err == nil || got != nil || !strings.Contains(err.Error(), "utility provider unavailable") {
-		t.Fatalf("resolve configured utility = (%p, %v), want exact failure", got, err)
+	got, _, err := resolve(t.Context(), AuxiliaryBudget{MaxInputBytes: 1024, MaxOutputTokens: 64})
+	if err == nil || got.Model() != nil || !strings.Contains(err.Error(), "utility provider unavailable") {
+		t.Fatalf("resolve configured utility = (%+v, %v), want exact failure", got, err)
 	}
 	if len(resolved) != 1 || !resolved[0].Equal(utilitySelection) {
 		t.Fatalf("resolved selections = %#v, want utility only", resolved)

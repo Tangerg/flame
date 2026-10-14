@@ -25,7 +25,9 @@ func (h capturedHistory) Read(ctx context.Context, id string) (Conversation, err
 type capturedUtility struct{ resolver model.AuxiliaryResolver }
 
 func capturedCompletion(client chat.Model) capturedUtility {
-	resolver := model.AuxiliaryResolver(func(context.Context) (chat.Model, func(), error) { return client, func() {}, nil })
+	resolver := model.AuxiliaryResolver(func(context.Context, model.AuxiliaryBudget) (model.AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(client), func() {}, nil
+	})
 	return capturedUtility{resolver: resolver}
 }
 

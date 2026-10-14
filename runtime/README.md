@@ -2417,5 +2417,10 @@ before model-visible capacity admission. Their system material is measured and
 sent for one call; it never becomes authored conversation. Exact captured
 installation/release/order survives waiting recovery and holds the ordinary
 installation dependency. A missing `model_contexts` checkpoint field is refused
-as an incompatible pre-release payload. Auxiliary context contributors and
-model-selection/request-transform boundaries remain under development.
+as an incompatible pre-release payload. Auxiliary text use cases now capture the
+same context/observer order with their actual role identity and input-text/output
+budget; contributed context participates in the final byte check before dispatch.
+Memory extraction/curation retain one capture and separate original call identities.
+Release joins active calls before dropping their ordinary installation dependencies.
+Public model selection, auxiliary token-capacity and request-transform boundaries
+remain under development.

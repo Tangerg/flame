@@ -134,7 +134,9 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	})
 	history := capturedConversation{chat.NewUserMessage(chat.NewTextPart("captured conversation")), chat.NewAssistantMessage(chat.NewTextPart("retained response")), chat.NewUserMessage(chat.NewTextPart("continued")), chat.NewAssistantMessage(chat.NewTextPart("complete"))}
 	resolutionFailure := errors.New("configured embedding role is unavailable")
-	utility := observers.Auxiliary(models.AuxiliaryResolver(func(context.Context) (chat.Model, func(), error) { return model, func() { releases.Add(1) }, nil }))
+	utility := observers.Auxiliary(models.AuxiliaryResolver(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(model), func() { releases.Add(1) }, nil
+	}))
 	owner, err := NewMemory(MemoryConfig{Installations: store, Connections: pool, Callbacks: callbacks, Commands: calls, Conversation: history, Utility: utility, Embeddings: func(context.Context) (app.Embedder, error) { return nil, resolutionFailure }})
 	if err != nil {
 		t.Fatal(err)

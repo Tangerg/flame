@@ -78,9 +78,9 @@ func TestCompleteRejectsMissingClient(t *testing.T) {
 }
 
 func TestCompleteRejectsInvalidResourceEnvelopeBeforeResolvingModel(t *testing.T) {
-	resolver := AuxiliaryResolver(func(context.Context) (chat.Model, func(), error) {
+	resolver := AuxiliaryResolver(func(context.Context, AuxiliaryBudget) (AuxiliaryModel, func(), error) {
 		t.Fatal("invalid resource envelope reached the resolver")
-		return nil, func() {}, nil
+		return AuxiliaryModel{}, func() {}, nil
 	})
 	for _, prompt := range []AuxiliaryPrompt{
 		{Operation: "test", MaxOutputTokens: 1},
@@ -96,8 +96,8 @@ func TestCompleteRejectsInvalidResourceEnvelopeBeforeResolvingModel(t *testing.T
 
 func TestCompletePreservesResolutionFailure(t *testing.T) {
 	failure := errors.New("provider unavailable")
-	resolver := AuxiliaryResolver(func(context.Context) (chat.Model, func(), error) {
-		return nil, nil, failure
+	resolver := AuxiliaryResolver(func(context.Context, AuxiliaryBudget) (AuxiliaryModel, func(), error) {
+		return AuxiliaryModel{}, nil, failure
 	})
 	text, err := resolver.Complete(t.Context(), AuxiliaryPrompt{Operation: "test", MaxInputBytes: 1, MaxOutputTokens: 1})
 	if text != "" || !errors.Is(err, failure) {
@@ -106,7 +106,9 @@ func TestCompletePreservesResolutionFailure(t *testing.T) {
 }
 
 func fixedAuxiliaryClient(client *chatclient.Client) AuxiliaryResolver {
-	return func(context.Context) (chat.Model, func(), error) { return client, func() {}, nil }
+	return func(context.Context, AuxiliaryBudget) (AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(client), func() {}, nil
+	}
 }
 
 func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {

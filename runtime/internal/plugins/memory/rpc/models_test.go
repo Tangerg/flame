@@ -336,7 +336,7 @@ func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
 	}{
 		{"unknown operation", func(p *Prompt) { p.Operation = "runtime.execute" }},
 		{"ungranted embedding", func(p *Prompt) { p.Operation = "memory.embed"; p.UserPrompt = `["fact"]` }},
-		{"unbounded input", func(p *Prompt) { p.MaxInputBytes = maximumModelInput + 1 }},
+		{"unbounded input", func(p *Prompt) { p.MaxInputBytes = MaximumModelInput + 1 }},
 		{"unbounded output", func(p *Prompt) { p.MaxOutputTokens = 2049 }},
 		{"input exceeds envelope", func(p *Prompt) { p.MaxInputBytes = len(p.UserPrompt) - 1 }},
 	} {

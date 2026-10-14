@@ -393,6 +393,14 @@ Waiting recovery uses captured bindings, without selecting a replacement chain.
 The checkpoint now requires `model_contexts`, including an explicit empty array;
 former payloads are refused rather than interpreted as an empty composition.
 
-Auxiliary context composition, model selection and general request transformations
-remain separate unfinished semantic boundaries. Transparent model observers keep
+Auxiliary text use cases capture the same context contract and observer order for
+their complete lifetime. The host captures the actual role selection and caller's
+input-text byte/output-token budget before building the request; each final request
+includes contributed context in that byte check. Memory extraction/curation share
+one capture and retain their original per-call identities. A failure or over-budget
+composition refuses before the physical endpoint, and release cancels/joins active
+calls before dropping either context or observer dependencies.
+
+Public model selection, token-capacity admission for auxiliary work and general
+request transformations remain separate unfinished semantic boundaries. Transparent model observers keep
 their existing Scope Call/Stream contract and cannot acquire those authorities.

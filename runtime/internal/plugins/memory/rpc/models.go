@@ -19,7 +19,8 @@ import (
 	"github.com/google/uuid"
 )
 
-const maximumModelInput = 512 * 1024
+const MaximumModelInput = 512 * 1024
+const MaximumModelOutput int64 = 2048
 
 // Six bytes per code point cover worst-case JSON escaping across both active targets.
 const maximumEmbeddingInput = memory.MaxVisiblePerTarget*2*(memory.MaxContentCharacters*6+3) + 1
@@ -118,7 +119,7 @@ func GrantModels(ctx context.Context, callbacks *pluginsdk.Callbacks, session *s
 
 func memoryModelRequest(request chat.Request) bool {
 	options := request.Options
-	if options.MaxOutputTokens == nil || *options.MaxOutputTokens <= 0 || *options.MaxOutputTokens > 2048 || len(request.Messages) != 2 || request.Messages[0].Role != chat.RoleSystem || request.Messages[1].Role != chat.RoleUser || len(request.Tools) != 0 || request.ToolChoice != nil || options.Model != "" {
+	if options.MaxOutputTokens == nil || *options.MaxOutputTokens <= 0 || *options.MaxOutputTokens > MaximumModelOutput || len(request.Messages) != 2 || request.Messages[0].Role != chat.RoleSystem || request.Messages[1].Role != chat.RoleUser || len(request.Tools) != 0 || request.ToolChoice != nil || options.Model != "" {
 		return false
 	}
 	if options.OutputFormat == nil || options.OutputFormat.Type != chat.OutputFormatText {
@@ -135,7 +136,7 @@ func memoryModelRequest(request chat.Request) bool {
 			}
 		}
 	}
-	return len(request.Messages[0].Text())+len(request.Messages[1].Text()) <= maximumModelInput
+	return len(request.Messages[0].Text())+len(request.Messages[1].Text()) <= MaximumModelInput
 }
 
 type RemoteModels struct {
@@ -144,7 +145,7 @@ type RemoteModels struct {
 }
 
 func (r RemoteModels) Complete(ctx context.Context, prompt Prompt) (string, error) {
-	if prompt.Operation != "memory.extract" && prompt.Operation != "memory.curate" || prompt.MaxInputBytes <= 0 || prompt.MaxInputBytes > maximumModelInput || prompt.MaxOutputTokens <= 0 || prompt.MaxOutputTokens > 2048 || len(prompt.SystemPrompt)+len(prompt.UserPrompt) > prompt.MaxInputBytes {
+	if prompt.Operation != "memory.extract" && prompt.Operation != "memory.curate" || prompt.MaxInputBytes <= 0 || prompt.MaxInputBytes > MaximumModelInput || prompt.MaxOutputTokens <= 0 || prompt.MaxOutputTokens > MaximumModelOutput || len(prompt.SystemPrompt)+len(prompt.UserPrompt) > prompt.MaxInputBytes {
 		return "", errors.New("memory: completion prompt refused")
 	}
 	client, err := chatclient.New(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {

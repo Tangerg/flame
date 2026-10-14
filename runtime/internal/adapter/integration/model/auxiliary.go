@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -23,7 +24,43 @@ import (
 // Resolving at the boundary lets a role configuration change take effect without
 // rebuilding the owning worker. The caller releases the frozen capture after
 // all calls have joined; retained observers cannot retire before that boundary.
-type AuxiliaryResolver func(context.Context) (chat.Model, func(), error)
+type AuxiliaryResolver func(context.Context, AuxiliaryBudget) (AuxiliaryModel, func(), error)
+
+// AuxiliaryBudget is the caller-owned input/output envelope for a captured use
+// case. Every complete model-visible request must remain within it.
+type AuxiliaryBudget struct {
+	MaxInputBytes   int
+	MaxOutputTokens int64
+}
+
+func (b AuxiliaryBudget) Validate() error {
+	if b.MaxInputBytes <= 0 || b.MaxOutputTokens <= 0 {
+		return errors.New("auxiliary model: positive input/output budget is required")
+	}
+	return nil
+}
+
+// AuxiliaryModel captures the exact role selection and model construction
+// together. Wrapping its model cannot detach or invent the selected identity.
+type AuxiliaryModel struct {
+	selection modelref.Selection
+	resolved  ResolvedChat
+}
+
+func NewAuxiliaryModel(selection modelref.Selection, resolved ResolvedChat) (AuxiliaryModel, error) {
+	if err := selection.ValidateExact(); err != nil {
+		return AuxiliaryModel{}, err
+	}
+	if dependency.Missing(resolved.Model()) {
+		return AuxiliaryModel{}, errors.New("auxiliary model: resolved model is required")
+	}
+	return AuxiliaryModel{selection: selection, resolved: resolved}, nil
+}
+func (m AuxiliaryModel) Selection() modelref.Selection { return m.selection }
+func (m AuxiliaryModel) Model() chat.Model             { return m.resolved.Model() }
+func (m AuxiliaryModel) InputTokenCounter() (InputTokenCounter, bool) {
+	return m.resolved.InputTokenCounter()
+}
 
 // AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
 // Input bytes and output tokens are deliberately mandatory: background
@@ -40,11 +77,8 @@ func (p AuxiliaryPrompt) validate() error {
 	if strings.TrimSpace(p.Operation) == "" {
 		return errors.New("auxiliary model: operation is required")
 	}
-	if p.MaxInputBytes <= 0 {
-		return errors.New("auxiliary model: max input bytes must be positive")
-	}
-	if p.MaxOutputTokens <= 0 {
-		return errors.New("auxiliary model: max output tokens must be positive")
+	if err := (AuxiliaryBudget{MaxInputBytes: p.MaxInputBytes, MaxOutputTokens: p.MaxOutputTokens}).Validate(); err != nil {
+		return err
 	}
 	inputBytes := len(p.SystemPrompt) + len(p.UserPrompt)
 	if inputBytes > p.MaxInputBytes {
@@ -105,7 +139,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		}
 		span.End()
 	}()
-	model, release, err := r(ctx)
+	captured, release, err := r(ctx, AuxiliaryBudget{MaxInputBytes: prompt.MaxInputBytes, MaxOutputTokens: prompt.MaxOutputTokens})
 	if err != nil {
 		return "", err
 	}
@@ -113,10 +147,10 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", errors.New("auxiliary model: captured model release is required")
 	}
 	defer release()
-	if dependency.Missing(model) {
+	if dependency.Missing(captured.Model()) {
 		return "", errors.New("auxiliary model: model is required")
 	}
-	client, err := chatclient.New(model, chatclient.Config{})
+	client, err := chatclient.New(captured.Model(), chatclient.Config{})
 	if err != nil {
 		return "", err
 	}

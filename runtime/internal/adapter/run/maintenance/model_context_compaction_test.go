@@ -3,6 +3,7 @@ package maintenance
 import (
 	"context"
 	"errors"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"reflect"
 	"strings"
 	"testing"
@@ -760,7 +761,9 @@ func TestRequiredCompactionCannotPersistTextFromARefusal(t *testing.T) {
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
 	compactor := mustNewCompactor(t, store,
-		func(context.Context) (chat.Model, func(), error) { return model, func() {}, nil },
+		func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+			return auxiliaryFixture(model), func() {}, nil
+		},
 		nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
 	request := durableContextRequest(t, sessionID, history, 0, nil)

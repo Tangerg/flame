@@ -3,6 +3,8 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"reflect"
 	"sync/atomic"
 	"testing"
 
@@ -25,10 +27,10 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 		message := chat.NewAssistantMessage(chat.NewTextPart("known response"))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
-	resolve := observer.Auxiliary(func(context.Context) (chat.Model, func(), error) {
-		return model, func() { releases.Add(1) }, nil
+	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(model), func() { releases.Add(1) }, nil
 	})
-	captured, release, err := resolve(t.Context())
+	captured, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 1024, MaxOutputTokens: 64})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,6 +42,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
+	request.Options.MaxOutputTokens = new(int64(64))
 	calling := func(id string) context.Context {
 		t.Helper()
 		ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: id, Origin: capability.Automatic, Parent: "original-maintenance", Target: capability.Target{Scope: "call", Reference: id}})
@@ -48,7 +51,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 		}
 		return ctx
 	}
-	first, err := captured.Call(calling("extract"), request)
+	first, err := captured.Model().Call(calling("extract"), request)
 	if err == nil || first == nil || first.Text() != "known response" {
 		t.Fatalf("original observer outcome: %+v, %v", first, err)
 	}
@@ -60,7 +63,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	if err := observer.calls.compositions.Save(t.Context(), empty); err != nil {
 		t.Fatal(err)
 	}
-	second, err := captured.Call(calling("curate"), request)
+	second, err := captured.Model().Call(calling("curate"), request)
 	if err == nil || second == nil {
 		t.Fatalf("choice change removed an original observer: %+v, %v", second, err)
 	}
@@ -68,7 +71,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	if held := observer.HeldDependencies(); len(held) != 0 || releases.Load() != 1 {
 		t.Fatalf("capture release leaked held state: %+v, %d", held, releases.Load())
 	}
-	if _, err := captured.Call(calling("late"), request); !errors.Is(err, pluginsdk.ErrStaleCall) || calls.Load() != 2 {
+	if _, err := captured.Model().Call(calling("late"), request); !errors.Is(err, pluginsdk.ErrStaleCall) || calls.Load() != 2 {
 		t.Fatalf("released capture invoked provider: %d, %v", calls.Load(), err)
 	}
 	text, err := resolve.Complete(t.Context(), models.AuxiliaryPrompt{Operation: "title", SystemPrompt: "write text", UserPrompt: "new input", MaxInputBytes: 128, MaxOutputTokens: 16})
@@ -81,16 +84,16 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 	observer, _, _ := installedObserverFixture(t, "transparent")
 	started, canceled, returnModel := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	var released atomic.Bool
-	resolve := observer.Auxiliary(func(context.Context) (chat.Model, func(), error) {
-		return chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
+	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+		return auxiliaryFixture(chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 			close(started)
 			<-ctx.Done()
 			close(canceled)
 			<-returnModel
 			return nil, ctx.Err()
-		}), func() { released.Store(true) }, nil
+		})), func() { released.Store(true) }, nil
 	})
-	model, release, err := resolve(t.Context())
+	model, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 1024, MaxOutputTokens: 64})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,8 +102,9 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
+	request.Options.MaxOutputTokens = new(int64(64))
 	called := make(chan error, 1)
-	go func() { _, err := model.Call(ctx, request); called <- err }()
+	go func() { _, err := model.Model().Call(ctx, request); called <- err }()
 	<-started
 	closed := make(chan struct{})
 	go func() { release(); close(closed) }()
@@ -112,5 +116,83 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 	<-closed
 	if err := <-called; !errors.Is(err, context.Canceled) || !released.Load() || len(observer.HeldDependencies()) != 0 {
 		t.Fatalf("release did not join canceled model: %t, %v", released.Load(), err)
+	}
+}
+
+func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing.T) {
+	for _, mode := range []string{"valid", "input-budget", "output-budget", "failure"} {
+		t.Run(mode, func(t *testing.T) {
+			fixtureMode := "valid"
+			if mode == "failure" {
+				fixtureMode = "failure"
+			}
+			composition, bindings, store := installedContextFixture(t, fixtureMode)
+			var calls, releases atomic.Int32
+			provider := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+				calls.Add(1)
+				invocation, err := pluginsdk.InvocationFromContext(ctx)
+				if err != nil || invocation.Parent != "original-effect" {
+					t.Errorf("auxiliary attribution changed: %+v %v", invocation, err)
+				}
+				if len(request.Messages) != 4 || request.Messages[0].Text() != "instructions" || request.Messages[1].Text() != "retrieval material" || request.Messages[2].Text() != "previous contributions: 0" || request.Messages[3].Text() != "question" {
+					t.Errorf("auxiliary composed input changed: %+v", request.Messages)
+				}
+				message := chat.NewAssistantMessage(chat.NewTextPart("done"))
+				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+			})
+			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+				return auxiliaryFixture(provider), func() { releases.Add(1) }, nil
+			})
+			budget := models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64}
+			if mode == "input-budget" {
+				budget.MaxInputBytes = 32
+			}
+			capture, release, err := resolve(t.Context(), budget)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer release()
+			if capture.Selection() != testsupport.DefaultModelSelection() {
+				t.Fatal("auxiliary exact selection changed")
+			}
+			if held := composition.HeldDependencies(); len(held) != 1 || held[0].InstallationID != bindings[0].InstallationID || held[0].Digest != bindings[0].Digest {
+				t.Fatalf("context release was not retained: %+v", held)
+			}
+			request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
+			request.Options.MaxOutputTokens = new(int64(64))
+			if mode == "output-budget" {
+				request.Options.MaxOutputTokens = new(int64(65))
+			}
+			before := request.Clone()
+			for _, id := range []string{"original-context-first", "original-context-second"} {
+				ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: id, Origin: capability.Automatic, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: id}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, err = capture.Model().Call(ctx, request)
+				if (err == nil) != (mode == "valid") {
+					t.Fatalf("auxiliary %s admission: %v", mode, err)
+				}
+			}
+			if !reflect.DeepEqual(request, before) {
+				t.Fatal("auxiliary contribution modified caller-owned request")
+			}
+			wantCalls := int32(0)
+			if mode == "valid" {
+				wantCalls = 2
+			}
+			if calls.Load() != wantCalls {
+				t.Fatalf("failed composition reached provider: %d", calls.Load())
+			}
+			store.snapshot.Installation.Disable()
+			ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context-withdrawn", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context-withdrawn"}})
+			if _, err := capture.Model().Call(ctx, request); err == nil {
+				t.Fatal("withdrawn context capture dispatched provider")
+			}
+			release()
+			if releases.Load() != 1 || len(composition.HeldDependencies()) != 0 {
+				t.Fatal("auxiliary context outlived its owning use case")
+			}
+		})
 	}
 }

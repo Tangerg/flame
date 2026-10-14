@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/scope/core/chat"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -44,7 +43,10 @@ func LiveUtilityModel(
 	if dependency.Missing(roles) {
 		return nil, errors.New("model: utility role source is required")
 	}
-	return func(ctx context.Context) (chat.Model, func(), error) {
+	return func(ctx context.Context, budget AuxiliaryBudget) (AuxiliaryModel, func(), error) {
+		if err := budget.Validate(); err != nil {
+			return AuxiliaryModel{}, nil, err
+		}
 		selection := mainSelection
 		if role := roles.Role(); role.Configured() {
 			selection = role.Selection()
@@ -55,14 +57,18 @@ func LiveUtilityModel(
 		)
 		resolved, err := resolver.ResolveChat(ctx, selection)
 		if err != nil {
-			return nil, nil, fmt.Errorf(
+			return AuxiliaryModel{}, nil, fmt.Errorf(
 				"auxiliary model: resolve %s/%s: %w",
 				selection.Provider(),
 				selection.Model(),
 				err,
 			)
 		}
-		return resolved.Model(), func() {}, nil
+		capture, err := NewAuxiliaryModel(selection, resolved)
+		if err != nil {
+			return AuxiliaryModel{}, nil, err
+		}
+		return capture, func() {}, nil
 	}, nil
 }
 

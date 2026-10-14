@@ -3,33 +3,38 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Auxiliary freezes observer bindings for the caller's whole use case. Memory
+// Auxiliary freezes context and observer bindings for the caller's whole use case. Memory
 // retains one capture across extraction/curation; Complete releases one request.
 func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
-	return func(ctx context.Context) (chat.Model, func(), error) {
-		if resolve == nil {
-			return nil, nil, errors.New("model observers: auxiliary resolver is required")
+	return func(ctx context.Context, budget models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+		if err := budget.Validate(); err != nil {
+			return models.AuxiliaryModel{}, nil, err
 		}
-		model, release, err := resolve(ctx)
+		if resolve == nil {
+			return models.AuxiliaryModel{}, nil, errors.New("model observers: auxiliary resolver is required")
+		}
+		resolved, release, err := resolve(ctx, budget)
 		if err != nil {
-			return nil, nil, err
+			return models.AuxiliaryModel{}, nil, err
 		}
 		if release == nil {
-			return nil, nil, errors.New("model observers: auxiliary model release is required")
+			return models.AuxiliaryModel{}, nil, errors.New("model observers: auxiliary model release is required")
 		}
-		if dependency.Missing(model) {
+		if dependency.Missing(resolved.Model()) {
 			release()
-			return nil, nil, errors.New("model observers: auxiliary model is required")
+			return models.AuxiliaryModel{}, nil, errors.New("model observers: auxiliary model is required")
 		}
 		var capture *auxiliaryModelCapture
 		err = o.admission.Under(ctx, func() error {
@@ -37,9 +42,13 @@ func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Au
 			if err != nil {
 				return err
 			}
-			bound, _ := o.Bind(model, nil, bindings)
+			contexts, err := o.ResolveContext(ctx)
+			if err != nil {
+				return err
+			}
+			bound, _ := o.Bind(resolved.Model(), nil, bindings)
 			lifetime, cancel := context.WithCancelCause(ctx)
-			capture = &auxiliaryModelCapture{owner: o, bindings: bindings, model: bound, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
+			capture = &auxiliaryModelCapture{owner: o, bindings: bindings, contexts: contexts, selection: resolved.Selection(), budget: budget, model: bound, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
 			o.mu.Lock()
 			o.auxiliary[capture] = struct{}{}
 			o.mu.Unlock()
@@ -47,9 +56,20 @@ func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Au
 		})
 		if err != nil {
 			release()
-			return nil, nil, err
+			return models.AuxiliaryModel{}, nil, err
 		}
-		return capture, capture.close, nil
+		counter, _ := resolved.InputTokenCounter()
+		projected, err := models.NewResolvedChat(capture, counter)
+		if err != nil {
+			capture.close()
+			return models.AuxiliaryModel{}, nil, err
+		}
+		result, err := models.NewAuxiliaryModel(resolved.Selection(), projected)
+		if err != nil {
+			capture.close()
+			return models.AuxiliaryModel{}, nil, err
+		}
+		return result, capture.close, nil
 	}
 }
 
@@ -58,7 +78,7 @@ func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 	defer o.mu.Unlock()
 	var values []plugin.Dependency
 	for capture := range o.auxiliary {
-		for _, binding := range capture.bindings {
+		for _, binding := range append(slices.Clone(capture.bindings), capture.contexts...) {
 			values = append(values, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
 		}
 	}
@@ -66,16 +86,19 @@ func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 }
 
 type auxiliaryModelCapture struct {
-	owner    *ModelComposition
-	bindings []plugins.ContributionBinding
-	model    chat.Model
-	lifetime context.Context
-	cancel   context.CancelCauseFunc
-	release  func()
-	mu       sync.Mutex
-	closed   bool
-	active   sync.WaitGroup
-	done     chan struct{}
+	owner     *ModelComposition
+	bindings  []plugins.ContributionBinding
+	contexts  []plugins.ContributionBinding
+	selection modelref.Selection
+	budget    models.AuxiliaryBudget
+	model     chat.Model
+	lifetime  context.Context
+	cancel    context.CancelCauseFunc
+	release   func()
+	mu        sync.Mutex
+	closed    bool
+	active    sync.WaitGroup
+	done      chan struct{}
 }
 
 func (c *auxiliaryModelCapture) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
@@ -95,7 +118,27 @@ func (c *auxiliaryModelCapture) Call(ctx context.Context, request *chat.Request)
 	stop := context.AfterFunc(c.lifetime, func() { cancel(context.Cause(c.lifetime)) })
 	defer stop()
 	defer cancel(nil)
-	return c.model.Call(calling, request)
+	if request == nil {
+		return nil, errors.New("model composition: auxiliary request is required")
+	}
+	if err := c.admit(request); err != nil {
+		return nil, err
+	}
+	material, err := c.owner.PrepareContext(calling, c.contexts, c.selection, request)
+	if err != nil {
+		return nil, err
+	}
+	sent := request.Clone()
+	prefix := 0
+	for prefix < len(request.Messages) && request.Messages[prefix].Role == chat.RoleSystem {
+		prefix++
+	}
+	sent.Messages = append(cloneContextMessages(request.Messages[:prefix]), material...)
+	sent.Messages = append(sent.Messages, cloneContextMessages(request.Messages[prefix:])...)
+	if err := c.admit(sent); err != nil {
+		return nil, err
+	}
+	return c.model.Call(calling, sent)
 }
 
 func (c *auxiliaryModelCapture) close() {
@@ -115,4 +158,29 @@ func (c *auxiliaryModelCapture) close() {
 	delete(o.auxiliary, c)
 	o.mu.Unlock()
 	close(c.done)
+}
+
+func (c *auxiliaryModelCapture) admit(request *chat.Request) error {
+	if err := request.Validate(); err != nil {
+		return err
+	}
+	if request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens <= 0 || *request.Options.MaxOutputTokens > c.budget.MaxOutputTokens {
+		return errors.New("model composition: auxiliary output exceeds the captured budget")
+	}
+	if len(request.Tools) > 0 || request.ToolChoice != nil {
+		return errors.New("model composition: auxiliary text generation cannot advertise Tools")
+	}
+	remaining := c.budget.MaxInputBytes
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.Kind != chat.PartText {
+				return errors.New("model composition: auxiliary input must contain text")
+			}
+			if len(part.Text) > remaining {
+				return errors.New("model composition: auxiliary input exceeds the captured budget")
+			}
+			remaining -= len(part.Text)
+		}
+	}
+	return nil
 }
