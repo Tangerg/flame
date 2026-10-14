@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated during the 2026-10-15 independent origin and SDK conflict qualification.
+Prepared on 2026-10-14 and updated after the 2026-10-15 recovery schema-admission fix.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,9 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `de2a57d54` (public idempotency conflict owner and
+- Latest product commit: `659f1aa30` (read-only existing-schema admission and
+  atomic empty initialization); `146e8b220` qualifies independent Usage installation;
+  `de2a57d54` (public idempotency conflict owner and
   outside-module classification proof); `882222cd8` (shared query-stream Go options, generated
   consumers and integration gate realignment); `ecdbe5c39` (standalone packed Usage author kit and
   explicit author-owned compiler); `d0c9afaec` removes Core Schedule identity vocabulary
@@ -120,6 +122,17 @@ or deletion. Captured primary context and independent billing remain distinct.
 
 ## Remaining work and priority
 
+
+Race then reproduced the original resolution cut as a real `SQLITE_BUSY` during
+existing-schema admission. `659f1aa30` removes repeated initialization writes for
+current schemas, keeps read admission/rollback owned, and acquires the writer
+slot before empty initialization. Both deterministic regressions first failed
+and now pass. Full storage/private receipt/Core SQLite race passes, whole
+bootstrap passes (94.982s), and every SIGKILL cut passes twice under race (95.367s).
+An earlier race run exhausted its package-level five-minute budget; a subsequent
+run reproduced the actual conflict. Neither failed run counts as a pass. Complete
+execution race is currently rerunning with a 900s aggregate budget and unchanged
+per-case assertions/limits. Record its result before changing recovery code.
 
 Source audit after the green full Runtime/CLI/shared-protocol gates still found
 live host-to-feature private imports: `pluginservices/schedules.go` reconstructs

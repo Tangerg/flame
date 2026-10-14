@@ -14,6 +14,34 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Existing-schema admission cannot compete with recovery writes (2026-10-15)
+
+- `659f1aa30` fixes the actual resolution-cut `SQLITE_BUSY` reproduced by race.
+  Schema admission previously read the current shape and then reexecuted every
+  initialization statement, including the Runtime identity seed. That upgraded
+  its read snapshot into a competing write-set during live recovery.
+- Two deterministic regressions fail on the old implementation: opening an exact
+  schema while another owner holds a write-set returns `SQLITE_BUSY`; reopening
+  after an owner fact is removed silently recreates it from initialization SQL.
+  Both pass after the repair. A concurrent empty-schema initialization regression
+  also proves one admitted initial fact.
+- Current-schema admission now settles a read-only snapshot and executes no
+  initialization SQL. Only an empty database enters writer admission, rechecks
+  the shape and initializes atomically. Configured write transactions acquire
+  SQLite's immediate writer slot before reading mutable state. No Go-level retry,
+  timeout/assertion relaxation, schema conversion or old reader is introduced.
+  Existing rollback/cancellation/panic/Goexit settlement assertions remain green.
+- Passed: complete public storage/private receipt/Core SQLite (0.751/0.929/2.874s),
+  the same packages under race (1.859/1.914/36.386s), entire bootstrap (94.982s),
+  all eight original SIGKILL cuts twice under race (95.367s), gofmt/diff and
+  stash-free staged checks/commitlint. The full execution race package is rerunning
+  with a sufficient aggregate harness budget; its per-scenario limits are unchanged.
+- Earlier race attempts are failures, not passes: the first exhausted its five
+  minute package budget while building a child fixture; the second reproduced
+  the resolution-cut write conflict. Other selected concurrent-owner packages
+  passed. No UI/E2E/screenshot or Desktop aggregate check ran. Continue the live
+  host/feature private-boundary cutover after recording the complete race result.
+
 ### Public conflict category and independent installation origin (2026-10-15)
 
 - `de2a57d54` moves the actual opaque idempotency mechanism to public
