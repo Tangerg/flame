@@ -401,12 +401,12 @@ func (m MethodMeta) validateOperationPolicy() error {
 	}
 	switch m.Operation {
 	case OperationExtension:
-		if m.Kind != KindUnary || m.Idempotency != IdempotencyOwnerResponse {
-			return fmt.Errorf("%s: an extension must resolve a unary owner operation", m.Name)
+		if m.Idempotency != IdempotencyOwnerResponse {
+			return fmt.Errorf("%s: an extension must resolve an owner operation", m.Name)
 		}
 	case OperationQuery:
-		if m.Kind != KindUnary || m.Idempotency != IdempotencyNone {
-			return fmt.Errorf("%s: a query must be unary and must not keep an idempotency replay", m.Name)
+		if m.Idempotency != IdempotencyNone {
+			return fmt.Errorf("%s: a query must not keep an idempotency replay", m.Name)
 		}
 	case OperationSubscription:
 		if m.Kind != KindStream || m.Idempotency != IdempotencyNone {

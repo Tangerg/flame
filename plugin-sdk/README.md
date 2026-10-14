@@ -118,3 +118,10 @@ binding and input; restoration reads the original receipt without chunk replay o
 current-provider preparation. Unsafe numeric input/stream evidence is refused
 before it can be accepted as a rounded result. Full wide-number parity, query
 streams and installed production model/dependency composition remain open.
+
+Streaming query methods use `bound.queryStream(method, input, consume, signal)`.
+Their chunks follow the same shared client backpressure and component lifetime as
+command streams, but carry no mutation intent or journal reservation. Query failure
+is a read failure; it cannot become an unconfirmed command or a private receipt
+lookup. Command streams continue through `bound.stream(intent, method, input,
+consume, signal)` with their original durable command identity.

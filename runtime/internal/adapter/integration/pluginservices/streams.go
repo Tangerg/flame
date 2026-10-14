@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -20,14 +21,15 @@ func (c *CommandCalls) PrepareStream(_ context.Context, request plugins.CallRequ
 	if err != nil {
 		return nil, err
 	}
-	if method.Kind() != capability.Mutation {
-		return nil, plugin.ErrInvalid
-	}
 	return &installedStream{installedCall: installedCall{calls: c, request: request, method: method}}, nil
 }
 
 func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
+		if c.Kind() == capability.Query {
+			c.streamQuery(ctx, yield)
+			return
+		}
 		fail := func(err error) { yield(plugins.StreamEvent{}, errors.Join(plugin.ErrCommandUnconfirmed, err)) }
 		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) capability.Target { return c.request.Target }, true)
 		if err != nil {
@@ -143,5 +145,68 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			return
 		}
 		yield(plugins.StreamEvent{Kind: plugins.StreamResult, Value: result}, nil)
+	}
+}
+
+func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.StreamEvent, error) bool) {
+	fail := func(err error) { yield(plugins.StreamEvent{}, err) }
+	location, err := c.resolve(ctx)
+	if err != nil {
+		fail(err)
+		return
+	}
+	session, err := c.calls.pool.ServiceSession(ctx, location.ServerID)
+	if err != nil {
+		fail(err)
+		return
+	}
+	exported, err := pluginsdk.ResolveCapability(ctx, session, location.Export, c.request.Contract)
+	if err != nil {
+		fail(err)
+		return
+	}
+	binding, err := exported.Method(c.request.Method)
+	if err != nil {
+		fail(err)
+		return
+	}
+	invocation, err := operation.Capture(ctx, c.request.Target)
+	if err != nil {
+		fail(err)
+		return
+	}
+	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	if err != nil {
+		fail(err)
+		return
+	}
+	metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
+	if err != nil {
+		fail(err)
+		return
+	}
+	defer release()
+	for value, err := range c.calls.pool.Stream(ctx, location.ServerID, session, binding, "", c.request.Input, metadata) {
+		if err != nil {
+			fail(err)
+			return
+		}
+		var event plugins.StreamEvent
+		if value.Chunk != nil {
+			event.Kind = plugins.StreamChunk
+			event.Value, err = jsoninput.Parse(*value.Chunk)
+		} else if value.Result != nil {
+			event.Kind = plugins.StreamResult
+			event.Value, err = jsoninput.Parse(*value.Result)
+		} else {
+			err = pluginsdk.ErrStreamUnconfirmed
+		}
+		if err != nil {
+			fail(err)
+			return
+		}
+		if !yield(event, nil) {
+			return
+		}
 	}
 }

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.31",
+  "protocolVersion": "2026-10-15.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -807,7 +807,7 @@
     {
       "name": "plugins.stream",
       "kind": "stream",
-      "operation": "command",
+      "operation": "extension",
       "idempotency": "ownerResponse",
       "replayCursor": "none",
       "pagination": "none",

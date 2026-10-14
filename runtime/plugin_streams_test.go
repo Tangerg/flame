@@ -114,3 +114,45 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 		})
 	}
 }
+
+func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *testing.T) {
+	method, err := pluginsdk.NewStreamingMethod[struct{}, uint64, bool](pluginsdk.MethodConfig{Name: "records.query", Kind: capability.Query, Target: "installation", Description: "Read streamed records."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := capability.New(capability.Config{Reference: "records", Composition: capability.Selection, Scope: "installation"}, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, complete := range []bool{true, false} {
+		caller := &typedStreamCaller{events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: []byte(`18446744073709551615`)}}}
+		if complete {
+			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: []byte(`true`)})
+		}
+		id := testsupport.InstallationID(t).String()
+		bound, err := BindPluginStreamingMethod(caller, PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: capability.Target{Scope: "installation", Reference: id}}, method)
+		if err != nil {
+			t.Fatal(err)
+		}
+		chunks, finals := 0, 0
+		var streamErr error
+		for value, err := range bound.Stream(t.Context(), struct{}{}, CommandOptions{}) {
+			if err != nil {
+				streamErr = err
+				break
+			}
+			if value.Chunk != nil {
+				chunks++
+				if *value.Chunk != ^uint64(0) {
+					t.Fatal("query stream narrowed the original uint64")
+				}
+			}
+			if value.Result != nil {
+				finals++
+			}
+		}
+		if chunks != 1 || (finals == 1) != complete || (streamErr == nil) != complete || errors.Is(streamErr, ErrAcknowledgementUnknown) || caller.options.IdempotencyKey != "" {
+			t.Fatalf("query stream acquired command semantics: chunks=%d finals=%d error=%v options=%+v", chunks, finals, streamErr, caller.options)
+		}
+	}
+}

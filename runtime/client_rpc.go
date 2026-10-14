@@ -158,7 +158,7 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 		if err := validateStreamIdentity(parameters, result.Value); err != nil {
 			return delivery.Result{}, err
 		}
-		result.Events = remoteEvents(call, reader, meta.Event, result.Value)
+		result.Events = remoteEvents(call, reader, meta.Event, operation, result.Value)
 		streaming = true
 		return result, nil
 	}

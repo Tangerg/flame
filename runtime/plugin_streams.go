@@ -32,9 +32,6 @@ func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding Plugi
 	if err != nil {
 		return nil, err
 	}
-	if required.Kind() != capability.Mutation {
-		return nil, errors.New("runtime: installed stream requires a command contract")
-	}
 	return &PluginStreamingMethod[P, C, R]{caller: caller, binding: binding, method: required}, nil
 }
 
@@ -45,7 +42,12 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 	capturedOptions, optionsErr := captureStreamOptions(options)
 	var consumed atomic.Bool
 	return func(yield func(pluginsdk.StreamValue[C, R], error) bool) {
-		fail := func(err error) { yield(pluginsdk.StreamValue[C, R]{}, errors.Join(ErrAcknowledgementUnknown, err)) }
+		fail := func(err error) {
+			if m != nil && m.method.Kind() == capability.Mutation {
+				err = errors.Join(ErrAcknowledgementUnknown, err)
+			}
+			yield(pluginsdk.StreamValue[C, R]{}, err)
+		}
 		if !consumed.CompareAndSwap(false, true) {
 			yield(pluginsdk.StreamValue[C, R]{}, ErrClosed)
 			return

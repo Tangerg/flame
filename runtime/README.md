@@ -17,6 +17,16 @@ acceptance remain outstanding. The journal now requires logical_purpose for logi
 rows; old database shapes are refused unchanged by strict schema admission, without
 a migration or an old-row reader. Public wire/export epochs are unchanged.
 
+## Installed query streams
+
+Core `2026-10-15.1` admits query and command streams through `plugins.stream`.
+The contribution's exact method contract owns that distinction. A query has no
+command idempotency key, route or private receipt; a command retains its original
+route and receipt-only reconciliation. Go `BindPluginStreamingMethod` supports
+both. The shared TS client and component SDK expose `queryStream` for reads and
+retain `stream` for durable commands. Early consumer withdrawal cancels and joins
+the original stream; missing final evidence never synthesizes completion.
+
 ## First-party initialization
 
 `make build` produces `build/flame` and its complete companion `build/plugins`

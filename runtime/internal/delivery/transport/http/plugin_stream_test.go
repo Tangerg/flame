@@ -6,19 +6,24 @@ import (
 	"iter"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type streamRuntime struct {
 	fakeRuntime
-	terminal protocol.PluginStreamEvent
-	starts   atomic.Int32
-	identity string
+	terminal          protocol.PluginStreamEvent
+	starts            atomic.Int32
+	identity          string
+	awaitCancellation bool
+	canceled          chan struct{}
 }
 
 func (s *streamRuntime) Discover(ctx context.Context) (*protocol.DiscoverResponse, error) {
@@ -28,11 +33,34 @@ func (s *streamRuntime) Discover(ctx context.Context) (*protocol.DiscoverRespons
 	return result, err
 }
 
+func (s *streamRuntime) PreparePluginStream(_ context.Context, request protocol.CallPluginRequest) (delivery.OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
+	contract, err := capability.Parse([]byte(request.Contract))
+	if err != nil {
+		return "", nil, err
+	}
+	method, found := contract.Method(request.Method)
+	if !found {
+		return "", nil, errors.New("missing stream method")
+	}
+	kind := delivery.OperationQuery
+	if method.Kind() == capability.Mutation {
+		kind = delivery.OperationCommand
+	}
+	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+		return s.StreamPlugin(ctx, request)
+	}, nil
+}
+
 func (s *streamRuntime) StreamPlugin(ctx context.Context, _ protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	s.identity = operation.Identity(ctx)
 	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
 		s.starts.Add(1)
 		if !yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamChunk, Value: []byte(`18446744073709551615`)}, nil) {
+			return
+		}
+		if s.awaitCancellation {
+			<-ctx.Done()
+			close(s.canceled)
 			return
 		}
 		if s.terminal.Kind != "" {
@@ -82,4 +110,74 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 			}
 		})
 	}
+}
+
+func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
+	method, err := pluginsdk.NewStreamingMethod[struct{}, uint64, bool](pluginsdk.MethodConfig{Name: "records.query", Kind: capability.Query, Target: "installation", Description: "Read streamed records."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := capability.New(capability.Config{Reference: "records", Composition: capability.Selection, Scope: "installation"}, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := &streamRuntime{terminal: protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: []byte(`true`)}}
+	server := newTestServerFor(t, owner)
+	defer server.Close()
+	client, err := flameruntime.Connect(t.Context(), flameruntime.RemoteConfig{Endpoint: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: "records.query", Input: []byte(`{}`), Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	if _, _, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{IdempotencyKey: "invalid-query-key"}); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("query admitted a command identity: %v", err)
+	}
+	_, events, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var received []protocol.PluginStreamEvent
+	for event, err := range events {
+		if err != nil {
+			t.Fatal(err)
+		}
+		received = append(received, event)
+	}
+	if len(received) != 2 || string(received[0].Value) != "18446744073709551615" || received[1].Kind != protocol.PluginStreamResult || owner.starts.Load() != 1 {
+		t.Fatalf("query stream=%+v calls=%d", received, owner.starts.Load())
+	}
+	owner.terminal = protocol.PluginStreamEvent{}
+	_, missing, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var missingErr error
+	for _, err := range missing {
+		if err != nil {
+			missingErr = err
+		}
+	}
+	if missingErr == nil || errors.Is(missingErr, flameruntime.ErrAcknowledgementUnknown) {
+		t.Fatalf("missing query evidence acquired command uncertainty: %v", missingErr)
+	}
+
+	owner.awaitCancellation = true
+	owner.canceled = make(chan struct{})
+	_, events, err = client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for event, err := range events {
+		if err != nil || event.Kind != protocol.PluginStreamChunk {
+			t.Fatalf("query cancellation opening=%+v error=%v", event, err)
+		}
+		break
+	}
+	select {
+	case <-owner.canceled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("early query consumption did not cancel its source")
+	}
+
 }

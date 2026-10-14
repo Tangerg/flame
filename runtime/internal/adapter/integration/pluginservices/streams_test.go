@@ -42,7 +42,11 @@ type streamFixture struct {
 func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	t.Helper()
 	f := &streamFixture{}
-	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: capability.Mutation, Target: "installation", Description: "Stream owned records."})
+	kind := capability.Mutation
+	if mode == "query" {
+		kind = capability.Query
+	}
+	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +79,15 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[struct{}]) iter.Seq2[pluginsdk.StreamValue[string, bool], error] {
 		return func(yield func(pluginsdk.StreamValue[string, bool], error) bool) {
 			f.invocations.Add(1)
+			if mode == "query" && command.ID != "" {
+				yield(pluginsdk.StreamValue[string, bool]{}, errors.New("query carried a command identity"))
+				return
+			}
 			if !yield(pluginsdk.StreamValue[string, bool]{Chunk: new("known partial")}, nil) {
+				return
+			}
+			if mode == "query" {
+				yield(pluginsdk.StreamValue[string, bool]{Result: new(true)}, nil)
 				return
 			}
 			if mode == "unknown" {
@@ -309,5 +321,40 @@ func TestInstalledStreamWithdrawalCannotReplayAtAnotherOwner(t *testing.T) {
 	f.store.snapshot.Installation.Disable()
 	if _, err := f.run(t, ctx); !errors.Is(err, plugin.ErrCommandUnconfirmed) || !errors.Is(err, plugin.ErrUnavailable) || f.invocations.Load() != 1 {
 		t.Fatalf("withdrawn original retargeted: %v calls=%d", err, f.invocations.Load())
+	}
+}
+
+func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
+	f := newStreamFixture(t, "query")
+	call, err := f.calls.PrepareStream(t.Context(), f.request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if call.Kind() != capability.Query {
+		t.Fatal("query stream became a command")
+	}
+	for range 2 {
+		ctx := operation.Start(t.Context(), capability.Human, "query-entrance", "")
+		var events []plugins.StreamEvent
+		for event, err := range call.Stream(ctx) {
+			if err != nil {
+				t.Fatal(err)
+			}
+			events = append(events, event)
+		}
+		if len(events) != 2 || events[0].Kind != plugins.StreamChunk || events[1].Kind != plugins.StreamResult || string(events[1].Value.JSON()) != "true" {
+			t.Fatalf("query stream = %+v", events)
+		}
+	}
+	var commands int
+	if err := f.host.QueryRowContext(t.Context(), "SELECT count(*) FROM plugin_commands").Scan(&commands); err != nil {
+		t.Fatal(err)
+	}
+	if commands != 0 {
+		t.Fatalf("query created %d durable command routes", commands)
+	}
+	dependencies, err := hostsqlite.NewPluginCommandStore(f.host).PendingCommandDependencies(t.Context())
+	if err != nil || len(dependencies) != 0 || f.receipt.Found || f.invocations.Load() != 2 {
+		t.Fatalf("query acquired command recovery evidence: dependencies=%v receipt=%+v invocations=%d error=%v", dependencies, f.receipt, f.invocations.Load(), err)
 	}
 }

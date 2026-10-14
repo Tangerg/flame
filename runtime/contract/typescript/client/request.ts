@@ -52,7 +52,11 @@ export function pluginDeliveryMethod(
 ): "plugins.call" | "plugins.stream" {
   const method = pluginMethod(request);
   if (method.stream === undefined) return "plugins.call";
-  if (method.kind !== "command")
-    throw new TypeError("Installed stream requires a command contract");
   return "plugins.stream";
+}
+
+export function pluginOperationKind(
+  request: Pick<CallPluginRequest, "contract" | "method">,
+): "query" | "command" {
+  return pluginMethod(request).kind as "query" | "command";
 }

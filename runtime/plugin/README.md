@@ -399,15 +399,23 @@ raw/typed invocation still refuses stream contracts.
 The external-package stdio subprocess publishes an exact decoration export, calls
 captured model next within its original request, transforms input/outer chunks and
 preserves known inner response/usage with outer failure. This proves real bidirectional
-SDK transport. Runtime now admits installation-qualified mutation streams and
-retains their original Commands route. Public Runtime/Client.StreamPlugin and
-plugins.stream enter that owner through the same delivery endpoint. Chunks have
-no replay cursor; retry reads only the original private receipt. Explicit owner
-refusal is final evidence, while missing terminal delivery remains unconfirmed.
-The empty opening response conveys no business result. Ordinary plugins.call and
-component bindings remain unary; query/TS streams and production model/
-dependency composition still require their owning migration. Core is
-2026-10-14.21; backend protocol/private formats are unchanged.
+SDK transport. Runtime admits installation-qualified query and command streams.
+The exact method contract selects query or owner-committed command policy before
+identity admission at the same `plugins.stream` delivery endpoint. Queries carry
+no command key, durable command route or private receipt. Early query consumption
+cancels its original source, and missing terminal evidence stays a read failure.
+Commands retain their original route and receipt-only recovery; chunks have no
+replay cursor. Explicit owner refusal is final evidence, while missing command
+terminal delivery remains unconfirmed. The empty opening conveys no business result.
+
+Public Runtime/Client.StreamPlugin and BindPluginStreamingMethod support both
+kinds; query calls use empty CommandOptions. The TypeScript client exposes
+`plugins.queryStream` beside the durable `plugins.stream` command entrance.
+Component bindings expose `queryStream(method, input, consume, signal)` and keep
+command `stream(intent, method, input, consume, signal)` under the mutation journal.
+Both reuse the existing receiver/backpressure/cancellation owner. Ordinary
+`plugins.call` remains unary. Core is `2026-10-15.1`; backend protocol and private
+formats are unchanged.
 
 ## Primary Interaction context composition
 

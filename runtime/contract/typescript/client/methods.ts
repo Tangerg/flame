@@ -1,5 +1,5 @@
 import { callPluginCommand } from "./pluginCommand";
-import { callPluginStream } from "./pluginStream";
+import { callPluginStream, queryPluginStream } from "./pluginStream";
 import type {
   OpenPluginResourcesRequest,
   PluginResourceLease,
@@ -344,6 +344,12 @@ export interface Methods {
     };
   };
   plugins: {
+    queryStream: <T>(
+      request: CallPluginRequest,
+      consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
+      decode: (output: unknown) => T,
+      signal?: AbortSignal,
+    ) => Promise<T>;
     stream: <T>(
       intent: string,
       input: PluginCommandInput,
@@ -834,6 +840,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      queryStream: (request, consume, decode, signal) =>
+        queryPluginStream(client, { perform }, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>
         callPluginStream(
           mutationJournal,

@@ -797,7 +797,7 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "plugins.stream": {
-    operation: "command",
+    operation: "extension",
     response: "stream",
     idempotency: "ownerResponse",
     replayCursor: "none",

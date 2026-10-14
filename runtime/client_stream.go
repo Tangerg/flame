@@ -7,18 +7,19 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/sse"
 )
 
-func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, acknowledgement any) iter.Seq2[any, error] {
+func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, operation delivery.OperationKind, acknowledgement any) iter.Seq2[any, error] {
 	var consumed atomic.Bool
 	rootID, segmentID := streamIdentity(acknowledgement)
 	return func(yield func(any, error) bool) {
 		fail := func(err error) {
-			if eventType == reflect.TypeFor[protocol.PluginStreamEvent]() {
+			if eventType == reflect.TypeFor[protocol.PluginStreamEvent]() && operation == delivery.OperationCommand {
 				err = errors.Join(ErrAcknowledgementUnknown, err)
 			}
 			yield(nil, err)

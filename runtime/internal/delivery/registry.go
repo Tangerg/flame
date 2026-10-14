@@ -131,12 +131,41 @@ func (r *Registry) command[Capability, Params, Response any](
 // query or owner-committed command policies. No caller-supplied kind is accepted.
 func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Response, error), error)) {
 	meta.Kind = KindUnary
+	meta.Result = reflect.TypeFor[Response]()
+	r.registerExtension(meta, classify, func(target Capability, ctx context.Context, request Params) (OperationKind, func(context.Context) rawResult, error) {
+		kind, call, err := prepare(target, ctx, request)
+		if err != nil || call == nil {
+			return kind, nil, err
+		}
+		return kind, func(ctx context.Context) rawResult {
+			value, err := call(ctx)
+			return rawResult{value: value, err: err}
+		}, nil
+	})
+}
+
+func (r *Registry) streamExtension[Capability, Params, Ack, Event any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Ack, iter.Seq2[Event, error], error), error)) {
+	meta.Kind = KindStream
+	meta.Result = reflect.TypeFor[Ack]()
+	meta.Event = reflect.TypeFor[Event]()
+	r.registerExtension(meta, classify, func(target Capability, ctx context.Context, request Params) (OperationKind, func(context.Context) rawResult, error) {
+		kind, call, err := prepare(target, ctx, request)
+		if err != nil || call == nil {
+			return kind, nil, err
+		}
+		return kind, func(ctx context.Context) rawResult {
+			ack, events, err := call(ctx)
+			return rawResult{value: ack, events: eraseEventType(events), err: err}
+		}, nil
+	})
+}
+
+func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) rawResult, error)) {
 	meta.Operation = OperationExtension
 	meta.Idempotency = IdempotencyOwnerResponse
 	meta.ReplayCursor = ReplayCursorNone
 	meta.Pagination = PaginationNone
 	meta.Params = reflect.TypeFor[Params]()
-	meta.Result = reflect.TypeFor[Response]()
 	r.add(meta, nil)
 	r.byName[meta.Name].classify = func(parameters any) (OperationKind, error) {
 		request, ok := parameters.(Params)
@@ -175,8 +204,7 @@ func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, 
 			return nil, fmt.Errorf("operation: %s resolved no invocation", meta.Name)
 		}
 		return &Method{Meta: resolved, invoke: func(_ any, ctx context.Context, _ any) rawResult {
-			value, err := call(ctx)
-			return rawResult{value: value, err: err}
+			return call(ctx)
 		}}, nil
 	}
 }
@@ -287,19 +315,6 @@ func (r *Registry) runStreamOwnerCommand[Capability, Params, Ack, Event any](
 	meta.Operation = OperationCommand
 	meta.Idempotency = IdempotencyOwnerRun
 	meta.ReplayCursor = ReplayCursorRun
-	r.registerStream(meta, call)
-}
-
-// streamOwnerCommand retains command identity while its owner alone records
-// final evidence. Chunk delivery is ephemeral and has no replay cursor.
-func (r *Registry) streamOwnerCommand[Capability, Params, Ack, Event any](
-	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
-) {
-	meta.Kind = KindStream
-	meta.Operation = OperationCommand
-	meta.Idempotency = IdempotencyOwnerResponse
-	meta.ReplayCursor = ReplayCursorNone
 	r.registerStream(meta, call)
 }
 

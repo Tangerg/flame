@@ -23,6 +23,12 @@ func (*streamCallbackTarget) Discover(context.Context) (*protocol.DiscoverRespon
 	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{Features: map[string]protocol.FeatureCapability{protocol.FeaturePlugins: {Enabled: true}}}}, nil
 }
 
+func (s *streamCallbackTarget) PreparePluginStream(_ context.Context, request protocol.CallPluginRequest) (delivery.OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
+	return delivery.OperationCommand, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+		return s.StreamPlugin(ctx, request)
+	}, nil
+}
+
 func (s *streamCallbackTarget) StreamPlugin(ctx context.Context, _ protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	if ctx.Value(streamCallbackOwnerKey{}) != "original owner" {
 		return struct{}{}, nil, errors.New("captured owner changed")

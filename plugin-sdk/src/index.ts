@@ -165,6 +165,20 @@ export function bindOperations<
     };
   }
   return {
+    queryStream: <K extends keyof Inputs & keyof Chunks & string>(
+      method: K,
+      input: Inputs[K],
+      consume: (chunk: Chunks[K], signal: AbortSignal) => void | Promise<void>,
+      signal: AbortSignal = context.signal,
+    ): Promise<Outputs[K]> =>
+      context.track(
+        context.runtime.plugins.queryStream(
+          request(method, input, "query", "stream"),
+          (chunk, signal) => consume(chunk as Chunks[K], signal),
+          (value) => value as Outputs[K],
+          AbortSignal.any([context.signal, signal]),
+        ),
+      ),
     stream: <K extends keyof Inputs & keyof Chunks & string>(
       intent: string,
       method: K,

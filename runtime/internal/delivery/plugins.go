@@ -41,10 +41,10 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
-	r.streamOwnerCommand(MethodMeta{Name: PluginsStream, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		StreamPlugin(context.Context, protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)
-	}, ctx context.Context, in protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
-		return s.StreamPlugin(ctx, in)
+	r.streamExtension(MethodMeta{Name: PluginsStream, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, pluginCallOperation, func(s interface {
+		PreparePluginStream(context.Context, protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error)
+	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
+		return s.PreparePluginStream(ctx, in)
 	})
 	r.commandAck(MethodMeta{Name: PluginsNotifyChange, CapabilityRules: requires(protocol.FeaturePlugins)}, func(service interface {
 		NotifyPluginChange(context.Context, protocol.PluginChangeNotice) error

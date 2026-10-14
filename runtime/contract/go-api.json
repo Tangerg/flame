@@ -3951,7 +3951,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.31\""
+          "value": "\"2026-10-15.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",

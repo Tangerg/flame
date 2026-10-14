@@ -5,14 +5,19 @@ import { MutationLookupError, mutationSettlementIsUnknown } from "./mutation";
 import { MutationJournalError } from "./durableMutationJournal";
 import type { MutationJournal, PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
-import { pluginDeliveryMethod } from "./request";
+import { pluginDeliveryMethod, pluginOperationKind } from "./request";
 import { parseReviewedJSON } from "./json";
-import { NOTIFICATIONS_PLUGIN_STREAM, type PluginStreamEvent } from "@flame/runtime-contract/wire";
+import {
+  NOTIFICATIONS_PLUGIN_STREAM,
+  type PluginStreamEvent,
+  type CallPluginRequest,
+} from "@flame/runtime-contract/wire";
 
 function observePluginStream(
   client: RpcClient,
   consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
   parent?: AbortSignal,
+  failure: (cause: unknown) => unknown = (cause) => cause,
 ) {
   const controller = new AbortController();
   const signal = AbortSignal.any([
@@ -33,7 +38,7 @@ function observePluginStream(
   const fail = (cause: unknown) => {
     if (ended) return;
     ended = true;
-    done.reject(new MutationLookupError(cause));
+    done.reject(failure(cause));
     cleanup();
   };
   const abort = () =>
@@ -103,7 +108,7 @@ export async function callPluginStream<T>(
   decode: (output: unknown) => T,
   signal?: AbortSignal,
 ): Promise<T> {
-  if (pluginDeliveryMethod(input) !== "plugins.stream")
+  if (pluginDeliveryMethod(input) !== "plugins.stream" || pluginOperationKind(input) !== "command")
     throw new TypeError("Plugin stream requires a streaming command method");
   parseReviewedJSON(JSON.stringify(input.input));
   const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
@@ -112,7 +117,12 @@ export async function callPluginStream<T>(
       "plugins.stream",
       request,
       async (key, attempt, prepared) => {
-        const stream = observePluginStream(client, consume, attempt.signal);
+        const stream = observePluginStream(
+          client,
+          consume,
+          attempt.signal,
+          (cause) => new MutationLookupError(cause),
+        );
         // The response can fail before a notification arrives; retain the same
         // observation rejection without allowing an orphan unhandled promise.
         const outcome = stream.result.then(
@@ -149,4 +159,35 @@ export async function callPluginStream<T>(
       reservation.idempotencyKey,
     ),
   );
+}
+
+export async function queryPluginStream<T>(
+  client: RpcClient,
+  wire: Pick<WireCallPath, "perform">,
+  request: CallPluginRequest,
+  consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
+  decode: (output: unknown) => T,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (
+    pluginDeliveryMethod(request) !== "plugins.stream" ||
+    pluginOperationKind(request) !== "query"
+  )
+    throw new TypeError("Plugin query stream requires a streaming query method");
+  const stream = observePluginStream(client, consume, signal);
+  const outcome = stream.result.then(
+    (value) => ({ value }),
+    (error: unknown) => ({ error }),
+  );
+  try {
+    await wire.perform("plugins.stream", structuredClone(request), {
+      signal: stream.signal,
+      onRequestRpcId: stream.bindRequest,
+    });
+    const final = await outcome;
+    if ("error" in final) throw final.error;
+    return decode(final.value);
+  } finally {
+    stream.cleanup();
+  }
 }

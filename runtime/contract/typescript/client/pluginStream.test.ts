@@ -209,3 +209,52 @@ it("client closure cancels and joins the in-flight chunk consumer while retainin
   expect(stopped).toBe(true);
   expect(store.keys()).toHaveLength(1);
 });
+
+it("reads a query stream without reserving a mutation and permits reentrant reads", async () => {
+  const store = storage();
+  const { client, requests } = open(
+    store,
+    notification("chunk", "partial") + notification("result", true),
+  );
+  const declaration = JSON.parse(contract) as { methods: { kind: string }[] };
+  declaration.methods[0]!.kind = "query";
+  try {
+    const result = client.plugins.queryStream(
+      { ...binding, ...input, contract: JSON.stringify(declaration) },
+      async (chunk) => {
+        expect(chunk).toBe("partial");
+        expect(store.keys()).toHaveLength(0);
+        await client.plugins.list();
+      },
+      (value) => value,
+    );
+    await expect(result).resolves.toBe(true);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.key).toBeNull();
+    expect(store.keys()).toHaveLength(0);
+  } finally {
+    await client.close();
+  }
+});
+
+it("keeps missing query stream evidence a read failure without mutation recovery", async () => {
+  const store = storage();
+  const { client, requests } = open(store, notification("chunk", "partial"));
+  const declaration = JSON.parse(contract) as { methods: { kind: string }[] };
+  declaration.methods[0]!.kind = "query";
+  try {
+    const failure = await client.plugins
+      .queryStream(
+        { ...binding, ...input, contract: JSON.stringify(declaration) },
+        () => undefined,
+        (value) => value,
+      )
+      .catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(MutationLookupError);
+    expect(requests).toHaveLength(1);
+    expect(store.keys()).toHaveLength(0);
+  } finally {
+    await client.close();
+  }
+});

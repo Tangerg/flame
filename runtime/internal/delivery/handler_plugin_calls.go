@@ -148,46 +148,56 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 	return plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target}, nil
 }
 
-func (s *Handler) StreamPlugin(ctx context.Context, in protocol.CallPluginRequest) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
 	if s.pluginCalls == nil {
-		return struct{}{}, nil, NewFailure(protocol.ErrPluginUnavailable, "plugin streams are unavailable")
+		return "", nil, NewFailure(protocol.ErrPluginUnavailable, "plugin streams are unavailable")
 	}
 	request, err := parsePluginCall(in)
 	if err != nil {
-		return struct{}{}, nil, err
+		return "", nil, err
 	}
 	call, err := s.pluginCalls.PrepareStream(ctx, request)
 	if err != nil {
-		return struct{}{}, nil, wirePluginError(err)
+		return "", nil, wirePluginError(err)
 	}
-	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
-		for value, err := range call.Stream(ctx) {
-			if refusal, known := errors.AsType[*capability.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
-				yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: refusal.Code, Message: refusal.Message}}, nil)
-				return
+	kind := OperationQuery
+	if call.Kind() == capability.Mutation {
+		kind = OperationCommand
+	}
+	unconfirmed := errors.New("plugin stream final outcome is unconfirmed")
+	if call.Kind() == capability.Mutation {
+		unconfirmed = errors.Join(plugin.ErrCommandUnconfirmed, unconfirmed)
+	}
+	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+		return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
+			for value, err := range call.Stream(ctx) {
+				if refusal, known := errors.AsType[*capability.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+					yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: refusal.Code, Message: refusal.Message}}, nil)
+					return
+				}
+				if err != nil {
+					yield(protocol.PluginStreamEvent{}, wirePluginError(err))
+					return
+				}
+				var kind protocol.PluginStreamKind
+				switch value.Kind {
+				case plugins.StreamChunk:
+					kind = protocol.PluginStreamChunk
+				case plugins.StreamResult:
+					kind = protocol.PluginStreamResult
+				default:
+					yield(protocol.PluginStreamEvent{}, wirePluginError(unconfirmed))
+					return
+				}
+				if !yield(protocol.PluginStreamEvent{Kind: kind, Value: value.Value.JSON()}, nil) {
+					return
+				}
+				if kind == protocol.PluginStreamResult {
+					return
+				}
 			}
-			if err != nil {
-				yield(protocol.PluginStreamEvent{}, wirePluginError(err))
-				return
-			}
-			var kind protocol.PluginStreamKind
-			switch value.Kind {
-			case plugins.StreamChunk:
-				kind = protocol.PluginStreamChunk
-			case plugins.StreamResult:
-				kind = protocol.PluginStreamResult
-			default:
-				yield(protocol.PluginStreamEvent{}, wirePluginError(plugin.ErrCommandUnconfirmed))
-				return
-			}
-			if !yield(protocol.PluginStreamEvent{Kind: kind, Value: value.Value.JSON()}, nil) {
-				return
-			}
-			if kind == protocol.PluginStreamResult {
-				return
-			}
-		}
-		yield(protocol.PluginStreamEvent{}, wirePluginError(plugin.ErrCommandUnconfirmed))
+			yield(protocol.PluginStreamEvent{}, wirePluginError(unconfirmed))
+		}, nil
 	}, nil
 }
 
