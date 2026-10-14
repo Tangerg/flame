@@ -33,9 +33,8 @@ type AcceptedSegment struct {
 	SegmentID string
 }
 
-// NewAcceptedContinuation binds the consumed open interrupt set to its Session as
-// the recovery hand-off. It reads only routing from the Pending; the resolutions
-// it will carry at revival are read from the settled Items, not copied here.
+// NewAcceptedContinuation reads only routing from the Pending; the resolutions it
+// carries at revival are read from the settled Items, never copied here.
 func NewAcceptedContinuation(sessionID string, pending Pending, resume run.TreeResumeDraft, inputItemID string) (AcceptedContinuation, error) {
 	if err := resume.ValidateForTree(sessionID, pending.RootRunID); err != nil {
 		return AcceptedContinuation{}, err
@@ -82,10 +81,8 @@ func (a AcceptedContinuation) Validate() error {
 	return nil
 }
 
-// RootRunID is the accepted tree's root, which keys the binding.
 func (a AcceptedContinuation) RootRunID() string { return a.Pending.RootRunID }
 
-// Clone returns an ownership-isolated copy.
 func (a AcceptedContinuation) Clone() AcceptedContinuation {
 	a.Pending = a.Pending.Clone()
 	a.Segments = slices.Clone(a.Segments)
