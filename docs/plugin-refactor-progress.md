@@ -14,6 +14,23 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Complete Runtime/CLI/shared-protocol gates (2026-10-15)
+
+- After `882222cd8`, complete Runtime and CLI `go test -p 2 ./... -count=1`
+  pass with every original timeout/assertion retained. Runtime execution passes
+  (64.977s), architecture passes (22.580s) and the entire bootstrap passes again
+  (94.266s). CLI runtimebinding (15.968s), sideload (2.014s), architecture and
+  terminal (25.558s) pass. This supersedes the first failed full runs; no failed
+  test is excluded or relabeled as a pre-existing failure.
+- Shared Runtime TS `npm run check` passes: types, lint, formatting, 30 files /
+  355 tests and knip. Its only repair is canonical formatting of one protocol
+  regression call; assertions and product logic are unchanged. No UI test runs.
+- Native production `.app` build/signature proof is recorded below. Public-author
+  API review still found private idempotency conflict types behind public SQLite
+  calls; move that actual mechanism/consumers to a public owner before final SDK
+  acceptance. Vet/race, independent author artifacts, final source/docs cleanup
+  and the individual P01-P48/review audit remain open.
+
 ### Concentrated acceptance, first integration repairs (2026-10-15)
 
 - `882222cd8` completes the public Go query-stream cutover. `StreamPlugin`, typed

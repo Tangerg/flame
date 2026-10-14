@@ -580,10 +580,7 @@ describe("streamRuntimeEvents — response-stream ownership", () => {
       { type: "sessions.changed", sequence: 1, sessionIds: ["session_1"] },
       "rpc_sessions",
     );
-    emitRuntime(
-      { type: "plugins.dataChanged", sequence: 1 },
-      "rpc_schedules",
-    );
+    emitRuntime({ type: "plugins.dataChanged", sequence: 1 }, "rpc_schedules");
 
     await expect(sessionsIterator.next()).resolves.toMatchObject({
       value: { type: "sessions.changed" },
