@@ -28,7 +28,10 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	if !caps.Features["subagents"].Enabled {
 		t.Fatalf("produced subagent Run trees were not advertised: %+v", caps.Features)
 	}
-	for _, feature := range []string{"plan", "goals", "agentMemory", "schedules", "skills"} {
+	// Memory and schedules are first-party plugins discovered through the generic
+	// plugin and capability system, not business-named core features; the refactor
+	// replaced that whitelist with consumer-owned capability and point contracts.
+	for _, feature := range []string{"plan", "goals", "skills"} {
 		if !caps.Features[feature].Enabled {
 			t.Fatalf("core feature %q was not advertised: %+v", feature, caps.Features)
 		}

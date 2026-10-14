@@ -29,7 +29,7 @@ func TestContractIsTheOnlyMethodTable(t *testing.T) {
 func TestStreamMethodsAreTheStreamingContract(t *testing.T) {
 	t.Parallel()
 
-	want := []string{"runs.start", "runs.resume", "runs.subscribe", "runtime.subscribe"}
+	want := []string{"plugins.openResources", "plugins.stream", "runs.start", "runs.resume", "runs.subscribe", "runtime.subscribe"}
 	got := Contract().StreamMethods()
 	slices.Sort(got)
 	slices.Sort(want)
