@@ -85,29 +85,24 @@ ModelEndpointKind enum below was this session's own follow-up):
   `logical_purpose` and served-model/usage (`9a9ff5826`, `2ae070375`); the memory
   transport grant test was adapted to the `chat.Model` contract (`9dff02ee5`).
 
+Resolved this sweep: operation registration (`ff` arch factories `streamOwnerCommand`/
+`extension`), panic retention (`debug.Stack()` in setup/admission recoveries,
+`ff1d99bfe`), the capability-gate example (`skills.discovered.list`, `f087d90a2`),
+and the Run-command idempotency callback (`b048c093d`).
+
 Remaining acceptance obligations (pre-existing, deeper, not yet done):
 
 - Orphan generated schema definitions. `TestGeneratedSchemasResolve` /
-  `TestEveryWireStructIsPublished`: schema.json emits standalone definitions for
-  `PageContinuation`, `PageQuery`, `RecordedUsage` (composed values flattened into
-  their containers) and `PageOfItem` (fully unused). The schema generator must stop
-  emitting standalone definitions for flattened/unreferenced value types; see
-  `internal/delivery/dispatch/contract_values_wire.go` registrations and the
-  not-on-wire list.
-- Operation registration. `TestDeliveryHandlerMatchesRegisteredOperationCapabilities`:
-  the delivery Handler exports `PreparePluginCall` and `StreamPlugin` that the
-  catalog does not register (98 vs 100). Decide whether each is a registered
-  operation or an unexported helper and reconcile.
-- Panic retention. `TestRecoveredPanicsKeepTheirStack`
-  (`runtime_question_test.go`): some reconnect/setup path absorbs a panic without
-  re-raising it or keeping its stack.
-- Capability gate example. `TestCapabilityGateRefusesADisabledFeature`
-  (`dispatch/contract_test.go`) still gates on `agentMemory.list`, a removed Core
-  Memory method; replace it with a currently-registered unconditionally gated
-  method and implement that method on the test `capabilityRuntime`.
-- Run command idempotency. `TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend`
-  (`client_callback_test.go`): the exercised Run command carries no idempotency key
-  that admission now requires.
+  `TestEveryWireStructIsPublished`: the generator (`cmd/contractgen/schema.go`
+  `object`, line ~230 `s.walk(embedded)`) emits a standalone `$def` for every
+  embedded struct even though embedding flattens its fields inline, so the def is
+  never `$ref`'d. `PageContinuation`, `PageQuery` and `RecordedUsage` are flattened
+  composed values (only `PageContinuation` is in the test's `notOnTheWire` list),
+  and `PageOfItem` is a generic instantiation nothing returns. Resolution is
+  multi-cause: stop emitting defs for flattened embeds (and confirm `ValidateWire`
+  generation is independent), add the genuinely-flattened types to `notOnTheWire`,
+  and stop (or reference) the unused `PageOfItem` instantiation — then regenerate
+  and re-run every contract-drift check. Deferred as the deepest generator change.
 - Bootstrap suite and full/native/vet/race/dependency/format/deletion acceptance
   remain concentrated final work; the embedding live-Run/Goal consumption,
   retention/dependency/point lifecycle (priority #3) and independent author
