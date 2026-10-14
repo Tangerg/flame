@@ -2,66 +2,71 @@
 
 ## Current stage
 
-Stage 5w (2583125cd; background fix 9fa2080f4) grants independent selected-model unary/stream calls on the
-existing authenticated host callback endpoint. A public ModelCallRequest carries
-its exact provider/model proposal, complete Scope request and positive complete-
-request/output budget. Ordinary installed RPC grants now serve these collaborators
-beside canonical core Delivery RPC, with the same captured actor/call lifetime and
-per-reference transport capacity. A missing original invocation refuses dispatch.
-Shared CallHost/StreamHost now send the existing original invocation header for
-activation-scoped background grants. The grant's retained-owner projection validates
-it before child identity is derived; ordinary call/next grants keep their captured
-owner and authenticated Actor. Forged background origin/target/parent is refused.
+Stage 5x (b7c6f3c14) fixes the execution association needed before descendant
+Run/Goal accounting. The previous physical admission inferred Run/Segment only
+when caller ID equaled a logical Model ID. Independent calls therefore lost the
+executing Run, while wire identity could also claim another logical namespace.
+That inference is removed. Primary Call/Stream and Tool boundaries capture the
+admitted logical owner in immutable host context; nested callbacks preserve it.
 
-Each fresh ID resolves the installed selector before construction, freezes the
-context/input/transparent observer bindings, validates final byte/output/media/token
-capacity and uses the existing observed provider resolver. Different calls can use
-different selected routes; there is no substrate-wide Memory two-call limit. Tools,
-media and complete options are admitted under the general caller envelope. Memory's
-text-only/two-call policy remains with Memory and its caller-specific admission.
+The endpoint journal now receives that owner explicitly. It resolves the existing
+logical Model/Tool admission, matching Session, running Run and original active
+Segment before provider generation. The source cannot precede the admitted owner.
+Missing/foreign ownership, waiting Run and an old Segment after resume refuse
+without inventing a dispatched observation. Absent owner is explicitly standalone/
+Session-only work; wire caller and parent cannot infer a Run. There is no separate
+Run mapping, provider receipt, compatibility reader or implicit current-Session path.
 
-One modelCapture owns both general/auxiliary retained contributions, cancellation,
-active-work joining and retirement. The former auxiliary-only capture implementation
-is removed, without an alias, legacy flag or second lifetime registry. Exact provider
-stream capability is preserved. SDK streams share the existing canonical response
-aggregate/outcome projection, with no extra parser, queue, model receipt or replay.
+Fresh calls cannot claim logical Model/Tool namespaces or their original calling
+operation ID. A captured primary Model may use its actual owner ID; independent
+selected calls require distinct IDs and cannot impersonate that owner. Original
+Run/Segment columns remain immutable physical facts. Endpoint reads/projected
+trajectory/export now carry Segment, reject incomplete association, and known
+recovery validates original Segment before consuming a physical source.
 
-Each actual physical dispatch still belongs to the original endpoint journal. Its
-caller ID/origin/parent, final request/provider/model, response/usage and captured
-price survive restart and outer failure. Original dispatch identities fence both
-same-input and changed-input redelivery. A lost acknowledgement never authorizes
-provider replay; unknown remains unknown. Captured next retains its original chain
-and does not acquire independent routing authority from this addition.
+Core 2026-10-14.30 adds optional segmentId to public endpoint observations. Public
+Go/API/schema/TS artifacts and canonical version samples are regenerated. Existing
+relational columns and retained endpoint JSON are unchanged, so no storage epoch,
+conversion or old-record reassociation is added. Backend .2/export schema 3 remain.
+External strict clients must regenerate/rebuild. All internal journal callers are
+migrated to the explicit-owner signature; no old-signature alias remains.
 
-Passed: real callback RPC coexistence/original-owner admission; three independent
-calls and installed selections; full Tools/request retention; initial/final framing
-and output budget refusal; actual image-to-text conversion for a text-only model;
-known physical usage/price after outer failure/restart; redelivery fencing; lazy
-stream/request snapshot/original ancestry and cancellation/join/dependency release.
-Related existing model/auxiliary/callback checks passed. Runtime build and Runtime/
-bootstrap test-source compilation passed. Public Go API inventory regenerated;
-scoped drift/version/dependency/public-package gates reported no failures. The same
-unchanged generated schema contains four orphan definitions and its schema gate
-fails: RecordedUsage, PageContinuation, PageOfItem and PageQuery. Required final
-schema cleanup is open; no assertion/check was weakened.
+Passed: actual SQLite primary/independent Model and Tool association, no wire-parent
+Run inference, reserved logical-ID refusal, foreign/missing owner, chronological
+admission, waiting refusal and stale Segment after resume; real callback generation
+sees its committed Run/Segment before provider work; forged client context cannot
+replace captured origin/ownership; new selected calls cannot reuse primary/operation
+IDs. Related media/auxiliary/evidence/usage/export checks and known recovery accrual
+passed. Runtime build and Runtime/bootstrap test-source compilation, generation,
+shared/desktop typecheck and scoped architecture/drift/version gates passed.
+The initial new fixture accidentally made its own ID its parent; corrected to a
+valid distinct parent without weakening the no-inference assertion. Some first
+filters selected no recovery/context tests; the real recovery regression was then
+run explicitly. Session-only execution fixtures do not prove relational association.
 
-Core .29, backend .2 and export schema 3 remain unchanged: new collaborators have
-independent exact method identities, not a reinterpretation of an existing wire
-method or record. PublishRPC's variadic Go signature changes exact method-value
-assignments; all in-repository publishers are migrated and external rebuild/migration
-is documented, without an old-signature wrapper. The original proposal/review/draft
-hashes and user stash are unchanged. Main 3d897dfb6 is already integrated; this
-slice's merge reports up to date. No frontend UI/E2E/screenshot test authored/run.
+Main 3d897dfb6 remains integrated; merge after b7c6f3c14 reports up to date. Original
+proposal/review/draft hashes and user stash unchanged. No frontend UI/E2E/screenshot
+authorship/execution; typecheck only. Owned processes, generation handles and temporary
+compile outputs settled. Required final full/native/vet/race/all-workflow checks,
+four previously observed orphan schemas and older architecture/format/UI findings
+remain open. The schema failure gate was not repeated in this development slice.
 
-Full goal active. General remote composition and total-work/Run/Goal accounting are
-not closed by physical evidence alone: current Interaction accrual looks up its
-exact primary caller, so separately admitted descendant consumption must be connected
-to the existing accounting owner. Next fix that fact ownership, then embeddings/
-retention, dependency/author completeness and concentrated final acceptance. Rough
-65-70% full delivery/75% implementation is still an estimate, not P01-P48 closure.
-Owned build/test/generation handles and temporary compile artifacts have settled.
+Full goal remains active. This slice fixes source ownership rather than claiming
+aggregate completion. Current Interaction accrual still consumes only its exact
+primary endpoint; independent descendants must enter the existing Run/Goal totals,
+budget and crash-accrual owner without double counting or estimates-as-billing.
+General policy-phase RPC grants, background execution restoration, optional counter
+admission and all-native/author qualification remain open. Rough 65-70% full delivery/
+75% implementation remains an estimate, not counted P01-P48 acceptance.
 
 ## Completed
+
+- Stage 5x (b7c6f3c14): host-captured logical Model/Tool ownership replaces caller-ID
+  inference; actual Session/Run/Segment active/chronological admission before generation.
+- Stage 5x: namespace/identity protection, missing/foreign/waiting/stale-Segment
+  refusal and actual callback source association/original client-context protection.
+- Stage 5x: Segment projection/recovery validation, Core .30 regenerated; unchanged
+  storage/backend .2/export3, main 3d897dfb6 integrated and originals/stash preserved.
 
 - Stage 5w background fix (9fa2080f4): shared unary/stream callback senders carry
   original retained invocation; scoped projection accepts the original and refuses
@@ -632,6 +637,13 @@ Owned build/test/generation handles and temporary compile artifacts have settled
 
 ## In progress
 
+- Stage 5x fixes the prerequisite physical execution association. Complete the
+  actual descendant Run/Goal totals/budgets/recovery owner: current Interaction
+  exact-primary lookup remains, and no second billing tally may be introduced.
+- Complete original ownership and RPC grants for policy-phase and background
+  work. The new active Model/Tool boundary checks do not prove all optional counter
+  admission, automatic native workflow or remote composition semantics.
+
 - Stage 5w implements independent per-call selected routing, budgets and physical
   evidence for unary/stream on ordinary installed RPC grants. Complete actual native/
   process acceptance and general remote composition; do not turn the transparent
@@ -663,19 +675,24 @@ Owned build/test/generation handles and temporary compile artifacts have settled
 
 ## Next
 
-1. Admit and accrue independently selected descendant model consumption through
-   the existing Run/Goal budget/accounting owner, retaining physical journal source
-   and unknown/restart semantics. Complete general remote composition contracts.
-2. Complete embedding full response/usage evidence, automatic unattached retention,
-   scoped point/dependency status/lifecycle and Tool/automatic/cross-plugin consumers.
+1. Project known descendant physical consumption into the existing Run/Goal
+   accounting/budget owner, with original Segment and transactional crash accrual.
+   Remove the exact-primary-only consumption assumption without another tally.
+2. Complete general policy/background grants and ownership, embedding full-response/
+   usage evidence, retention, scoped dependency status/lifecycle and actual consumers.
 3. Complete independent author/module packaging, deletion audit and concentrated
-   native/full/vet/race/all-workflow/P01-P48/review acceptance. Fix required architecture
-   gates, including the four unchanged orphan generated schema definitions.
+   native/full/vet/race/all-workflow/P01-P48/review acceptance. Fix required schema/
+   architecture/format obligations; frontend UI/E2E/screenshot execution stays excluded.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Capture the original logical Model/Tool owner; derive Run/Segment from its admitted record | Exact caller-ID inference lost descendants and gave wire naming execution authority | Guessing from caller/parent/current Session, a parallel Run mapping, or rewriting old observations |
+| 2026-10-14 | Require matching Session, active Run/Segment and chronological owner at generation admission | Old callbacks must not retarget paused/resumed work or start generation under a foreign fact | Silent Session-only fallback for a missing supplied owner, old-Segment dispatch or blind replay |
+| 2026-10-14 | Protect logical namespaces and require distinct independent exchange IDs | Fresh calls must not impersonate the primary source later consumed by accounting | Reusing operation/primary/Tool IDs or trusting arbitrary wire ancestry as evidence |
+| 2026-10-14 | Publish original endpoint Segment under Core .30, retain existing storage/backend/export shapes | Segment already exists as an immutable relational source; consumers need its faithful projection | Duplicate persisted association, another storage epoch or a compatibility alias |
+| 2026-10-14 | Fix association before descendant totals and keep aggregate delivery open | An unassociated physical child cannot safely be charged to Run/Goal; persisted evidence is not aggregate acceptance | Billing by Session guesses or claiming total-work budget completion from generation-gate probes |
 | 2026-10-14 | Shared callback senders project the original background invocation through the existing validated header | Local SDK context cannot cross the network; activation grants must restore retained caller evidence before model child admission | Missing origin/parent, accepting a backend-supplied Actor, or replacing an ordinary captured call/next owner |
 | 2026-10-14 | Give each independent model exchange a new ID, selected route and complete request/output budget | Repeated captured next still names the original effect; Memory's two-call rule is private business policy | Relabeling next, automatic provider retry, global Memory call limits, text-only general requests |
 | 2026-10-14 | Share one model capture and existing physical endpoint journal for fresh and auxiliary calls | Lifecycle/held dependencies and dispatch/usage/price already have owners | Duplicate capture registries, host model receipts, cached results or a second billing tally |
@@ -917,6 +934,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| Original executing Run/Segment for multiple physical model calls | Stage 5x active Model/Tool ownership, namespace/chronology/Session/wait/resume refusal and real callback source association verified; aggregate budgets/native/background/policy phases remain open | executionctx/scope.go; execution/interaction_model.go; interaction_tool.go; model/endpoint_observation.go; sqlite/model_endpoint.go/tests; pluginservices/model_calls.go/tests; plugin/model_call.go; protocol/model_invocations.go/version.go |
 | Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; stream.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
 | Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
 | Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; Stage 5w independent callback input/budget/media handling now verified; general composition and final native acceptance open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
@@ -959,6 +977,27 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5x initial owner fixture self-parent validation failed, corrected to a
+  distinct valid parent. The original no-inference assertion is retained and
+  reserved logical namespaces now have stronger explicit refusal coverage.
+- Stage 5x related scoped checks passed: SQLite 1.076s, pluginservices 19.940s,
+  execution 3.579s (media/auxiliary/evidence/usage cases). First recovery/context
+  filter outputs said no tests to run; they were not counted as executed proofs.
+- Stage 5x explicit owner/callback/SDK-background/current-recovery cases passed
+  (SQLite 0.806s; pluginservices 2.071s; SDK 1.000s; recovery 0.538s). Final active/
+  chronology/namespace/wait-resume/original-scope tests passed (SQLite 0.766s;
+  pluginservices 2.110s; recovery 0.598s). Dedicated callback source proof 1.313s.
+- Stage 5x Runtime/bootstrap go test -c and Runtime go build ./... passed; owned
+  compile files removed by TemporaryDirectory. Core .30 generation and both shared/
+  desktop npm run typecheck passed. Scoped dependency/public-package/protocol/
+  generated-contract drift gates passed (7.468s). Changed gofmt/git diff checks pass.
+- Full/native/all-workflow/vet/race and full required architecture remain deferred
+  for concentrated final acceptance. Previously failed orphan-schema gate not rerun;
+  no schema assertion/check weakened. No frontend UI/E2E/screenshot test authored/run.
+- Main sync after b7c6f3c14: already up to date at 3d897dfb6. Original three input
+  hashes and user stash unchanged. Every owned test/build/typecheck/generation handle
+  completed; no owned background process or temporary compile artifact remains.
 
 - Stage 5w background header fix: scoped selected/model-budget/captured/stopping/
   callback/auxiliary/installed-model checks passed (SDK 1.132s; pluginservices
@@ -2407,6 +2446,15 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Stage 5x repairs active Model/Tool endpoint association. General policy-phase
+  grants and background restoration still need original effect ownership before
+  their external work. Session-only harnesses and compilation are not native proof.
+- Descendant physical charges now have an actual Run/Segment source but current
+  aggregate consumption remains exact-primary-only. Run/Goal totals, total-work
+  admission, failure/unknown and crash accrual must converge on the existing owner.
+- Generation admission does not itself prove every optional counting-provider I/O
+  is gated, nor reserve aggregate Goal costs. Those boundaries remain explicitly open.
+
 - Stage 5w does not close Run/Goal totals or policy composition: the current
   Interaction source lookup is exact-primary-only. Descendant invocation charges,
   interruption, known failure and crash accrual must use the existing owner without
@@ -2493,6 +2541,15 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Core .30 adds optional segmentId to endpoint observations. External strict
+  clients require regeneration/rebuild. Backend .2 and export schema 3 unchanged;
+  retained columns/JSON require no conversion. Old unassociated observations remain
+  their original facts; no ancestry-based retroactive Run billing is introduced.
+- Internal StartEndpointInvocation now requires an explicit logical owner argument.
+  Existing in-repository consumers are migrated without an old signature. Fresh
+  selected IDs may no longer reuse calling/primary/Tool identities; callers need
+  distinct stable exchange IDs. No provider redelivery migration is authorized.
 
 - Stage 5w adds exact host selected-model callback methods. External consumers
   requiring them must rebuild/current-host grant. PublishRPC method-value types
