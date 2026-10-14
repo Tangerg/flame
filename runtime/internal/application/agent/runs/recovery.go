@@ -720,14 +720,8 @@ func recoverLostTree(
 					continue
 				}
 				source := invocation.Endpoint
-				served := source.Invocation.Model
-				var reported *corechat.Usage
-				if source.Response != nil && source.Response.Metadata != nil {
-					reported = source.Response.Metadata.Usage
-					if source.Response.Metadata.Model != "" {
-						served = source.Response.Metadata.Model
-					}
-				}
+				served := source.ServedModel
+				reported := source.Usage
 				metrics, err := active.Metrics().AccrueModelCall(served, reported, source.CostUSD)
 				if err != nil {
 					return rundomain.Run{}, err
@@ -745,14 +739,8 @@ func recoverLostTree(
 				if source.RunID != active.ID() {
 					continue
 				}
-				served := source.Invocation.Model
-				var usage *corechat.Usage
-				if source.Response != nil && source.Response.Metadata != nil {
-					usage = source.Response.Metadata.Usage
-					if source.Response.Metadata.Model != "" {
-						served = source.Response.Metadata.Model
-					}
-				}
+				served := source.ServedModel
+				usage := source.Usage
 				metrics, err := active.Metrics().AccrueModelCall(served, usage, source.CostUSD)
 				if err != nil {
 					return rundomain.Run{}, err

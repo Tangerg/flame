@@ -172,7 +172,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		{"endpoint_session", "utility_session", root.SessionID}, {"endpoint_other", "utility_other", other.SessionID},
 		{"endpoint_global", "utility_global", ""},
 	} {
-		value := modelref.EndpointInvocation{ID: source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: request, StartedAt: root.CreatedAt}
+		value := modelref.EndpointInvocation{ID: source.id, Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: request, StartedAt: root.CreatedAt}
 		owner := ""
 		if source.caller == "call_run_root" {
 			owner = source.caller

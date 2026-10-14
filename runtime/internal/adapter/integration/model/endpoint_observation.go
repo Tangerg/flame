@@ -81,7 +81,7 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Caller: caller, Provider: m.selection.Provider(), Model: m.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: request.Clone(), StartedAt: time.Now().UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Kind: modelref.EndpointChat, Caller: caller, Provider: m.selection.Provider(), Model: m.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: request.Clone(), StartedAt: time.Now().UTC()}
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}

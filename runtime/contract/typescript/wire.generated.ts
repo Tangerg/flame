@@ -1027,6 +1027,7 @@ export interface ModelEndpointInvocation {
   costUSD?: number;
   failure?: string;
   id: string;
+  kind: string;
   model: string;
   provider: string;
   request: string;

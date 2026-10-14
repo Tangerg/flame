@@ -16,6 +16,16 @@ func (*pointerCredentialLookup) Get(context.Context, string) (provider.Provider,
 	return provider.Provider{}, false, nil
 }
 
+type fakeEndpointJournal struct{}
+
+func (fakeEndpointJournal) StartEndpointInvocation(context.Context, modelref.EndpointInvocation, string) error {
+	return nil
+}
+
+func (fakeEndpointJournal) SettleEndpointInvocation(context.Context, modelref.EndpointInvocation, modelref.EndpointOutcome) error {
+	return nil
+}
+
 type pointerChatResolver struct{}
 
 func (*pointerChatResolver) ResolveChat(context.Context, modelref.Selection) (ResolvedChat, error) {
@@ -31,7 +41,7 @@ func TestModelResolversRejectMissingCredentialLookup(t *testing.T) {
 	if resolver, err := NewChatResolver(lookup); err == nil || resolver != nil {
 		t.Fatalf("NewChatResolver typed-nil lookup = (%v, %v)", resolver, err)
 	}
-	if resolver, err := NewEmbeddingResolver(lookup); err == nil || resolver != nil {
+	if resolver, err := NewEmbeddingResolver(lookup, fakeEndpointJournal{}, nil); err == nil || resolver != nil {
 		t.Fatalf("NewEmbeddingResolver typed-nil lookup = (%v, %v)", resolver, err)
 	}
 }
@@ -56,7 +66,7 @@ func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
 		t.Fatalf("NewRoleEmbedder nil resolver error = %v", err)
 	}
 
-	embeddingResolver, err := NewEmbeddingResolver(&pointerCredentialLookup{})
+	embeddingResolver, err := NewEmbeddingResolver(&pointerCredentialLookup{}, fakeEndpointJournal{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +76,7 @@ func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
 }
 
 func TestUnconfiguredEmbeddingRoleIsTheOnlyKeywordOnlyState(t *testing.T) {
-	resolver, err := NewEmbeddingResolver(&pointerCredentialLookup{})
+	resolver, err := NewEmbeddingResolver(&pointerCredentialLookup{}, fakeEndpointJournal{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

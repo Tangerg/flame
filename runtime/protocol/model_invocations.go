@@ -11,9 +11,20 @@ type ListModelEndpointsRequest struct {
 	Limit        *int   `json:"limit,omitzero"`
 }
 
+// ModelEndpointKind names the provider operation one endpoint recorded. Chat and
+// embedding share one evidence projection; Request and Response carry the exact
+// Scope JSON of whichever kind this is.
+type ModelEndpointKind string
+
+const (
+	ModelEndpointChat      ModelEndpointKind = "chat"
+	ModelEndpointEmbedding ModelEndpointKind = "embedding"
+)
+
 type ModelEndpointInvocation struct {
 	CostUSD   *float64              `json:"costUSD,omitzero"`
 	ID        string                `json:"id"`
+	Kind      ModelEndpointKind     `json:"kind"`
 	SessionID string                `json:"sessionId,omitzero"`
 	RunID     string                `json:"runId,omitzero"`
 	SegmentID string                `json:"segmentId,omitzero"`

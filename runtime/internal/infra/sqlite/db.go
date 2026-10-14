@@ -226,9 +226,11 @@ func currentSchema() []string {
 			%[5]s,
 			%[6]s,
 			endpoint_json TEXT CHECK (endpoint_json IS NULL OR json_valid(endpoint_json)),
+			endpoint_kind TEXT CHECK (endpoint_kind IS NULL OR endpoint_kind IN ('chat', 'embedding')),
 			endpoint_failure TEXT NOT NULL DEFAULT '',
 			endpoint_cost_usd REAL CHECK (endpoint_cost_usd IS NULL OR (endpoint_cost_usd >= 0 AND endpoint_json IS NOT NULL AND known_response IS NOT NULL)),
 			known_response TEXT CHECK (known_response IS NULL OR ((state = '%[3]s' OR (state = '%[2]s' AND endpoint_json IS NOT NULL)) AND json_valid(known_response))),
+			CHECK ((endpoint_json IS NULL) = (endpoint_kind IS NULL)),
 			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL AND logical_purpose IS NOT NULL)),
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (

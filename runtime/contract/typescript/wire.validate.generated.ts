@@ -2143,6 +2143,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       costUSD: allOf([numeric(), minimum(0)]),
       failure: text(),
       id: allOf([text(), minLength(1), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      kind: text(),
       model: allOf([text(), minLength(1)]),
       provider: allOf([text(), minLength(1)]),
       request: allOf([text(), minLength(1)]),
@@ -2153,7 +2154,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       settledAt: text(),
       startedAt: text(),
       state: ref(() => CHECKS.ModelInvocationState),
-    }, ["caller", "id", "model", "provider", "request", "startedAt", "state"]),
+    }, ["caller", "id", "kind", "model", "provider", "request", "startedAt", "state"]),
     ifThen(
       fields({}, ["runId"]),
       fields({}, ["sessionId"]),

@@ -4,36 +4,51 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"time"
 
+	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
-	"github.com/Tangerg/scope/core/embeddingclient"
+	"github.com/google/uuid"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
-// EmbeddingResolver builds embedding clients from the current provider-registry
-// snapshot. Construction is intentionally uncached so credential generations
-// do not accumulate for the process lifetime. Persisted vector identity remains
-// provider/model/endpoint-owned and deliberately excludes credential rotation.
+// EmbeddingResolver builds observed embedding clients from the current
+// provider-registry snapshot. Construction is intentionally uncached so
+// credential generations do not accumulate for the process lifetime. Persisted
+// vector identity remains provider/model/endpoint-owned and deliberately
+// excludes credential rotation. Every resolved embedder journals its real
+// provider request through the shared endpoint evidence owner.
 type EmbeddingResolver struct {
 	providers CredentialLookup
+	journal   EndpointJournal
+	pricing   accounting.Pricing
 }
 
-// NewEmbeddingResolver returns a complete resolver over the provider credential lookup.
-func NewEmbeddingResolver(providers CredentialLookup) (*EmbeddingResolver, error) {
+// NewEmbeddingResolver returns a complete resolver over the provider credential
+// lookup. The endpoint journal owns physical admission and settlement; pricing
+// is optional and absent when no price table is configured.
+func NewEmbeddingResolver(providers CredentialLookup, journal EndpointJournal, pricing accounting.Pricing) (*EmbeddingResolver, error) {
 	if dependency.Missing(providers) {
 		return nil, errors.New("model: embedding provider credential lookup is required")
 	}
-	return &EmbeddingResolver{providers: providers}, nil
+	if dependency.Missing(journal) {
+		return nil, errors.New("model: embedding endpoint journal is required")
+	}
+	return &EmbeddingResolver{providers: providers, journal: journal, pricing: pricing}, nil
 }
 
 // Resolve builds an embedder for the current selection and registry snapshot.
 func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Selection) (agentmemoryapp.Embedder, error) {
-	if e == nil || dependency.Missing(e.providers) {
+	if e == nil || dependency.Missing(e.providers) || dependency.Missing(e.journal) {
 		return nil, errors.New("model: embedding resolver is not configured")
 	}
 	if err := selection.ValidateExact(); err != nil {
@@ -62,11 +77,7 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if err != nil {
 		return nil, err
 	}
-	client, err := embeddingclient.New(m)
-	if err != nil {
-		return nil, err
-	}
-	created := &embedder{id: inputs.embeddingSpaceID(model), client: client}
+	created := &embedder{id: inputs.embeddingSpaceID(model), model: m, selection: selection, journal: e.journal, pricing: e.pricing}
 	return created, nil
 }
 
@@ -81,22 +92,86 @@ func (e *EmbeddingResolver) ValidateEmbeddingModel(ctx context.Context, provider
 	return err
 }
 
-// embedder adapts an embeddingclient.Client to the agent-memory search port.
+// embedder observes one embedding provider boundary: it admits the real request
+// before dispatch, settles its known response or uncertainty through the shared
+// endpoint journal, and projects the output vectors back to the search port. It
+// never reconstructs a provider response from vectors.
 type embedder struct {
-	id     string
-	client embeddingclient.Client
+	id        string
+	model     embedding.Model
+	selection modelref.Selection
+	journal   EndpointJournal
+	pricing   accounting.Pricing
 }
 
 func (e *embedder) ID() string { return e.id }
 
 func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	vecs, err := e.client.EmbedTexts(ctx, texts)
+	request, err := embedding.NewRequest(texts)
 	if err != nil {
 		return nil, err
 	}
-	out := make([][]float32, len(vecs))
-	for i, v := range vecs {
-		out[i] = embedding.Float32Vector(v)
+	request.Options.Model = e.selection.Model()
+	if err := request.Validate(); err != nil {
+		return nil, err
+	}
+	invocation, err := e.start(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	response, cause := e.model.Call(ctx, cloneEmbeddingRequest(request))
+	if response != nil && cause == nil {
+		cause = response.ValidateFor(request)
+	}
+	if response == nil && cause == nil {
+		cause = errors.New("model: embedding returned no response")
+	}
+	settleErr := e.finish(ctx, invocation, response, cause)
+	if cause = errors.Join(cause, settleErr); cause != nil {
+		return nil, cause
+	}
+	out := make([][]float32, len(response.Outputs))
+	for index, output := range response.Outputs {
+		out[index] = embedding.Float32Vector(output.Embedding)
 	}
 	return out, nil
+}
+
+func (e *embedder) start(ctx context.Context, request *embedding.Request) (modelref.EndpointInvocation, error) {
+	caller, err := pluginsdk.InvocationFromContext(ctx)
+	if err != nil {
+		return modelref.EndpointInvocation{}, err
+	}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Kind: modelref.EndpointEmbedding, Caller: caller, Provider: e.selection.Provider(), Model: e.selection.Model(), SessionID: executionctx.SessionID(ctx), Embedding: cloneEmbeddingRequest(request), StartedAt: time.Now().UTC()}
+	if err := invocation.Validate(); err != nil {
+		return modelref.EndpointInvocation{}, err
+	}
+	if err := e.journal.StartEndpointInvocation(ctx, invocation, executionctx.InvocationOwner(ctx)); err != nil {
+		return modelref.EndpointInvocation{}, err
+	}
+	return invocation, nil
+}
+
+func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *embedding.Response, cause error) error {
+	if response != nil && response.Validate() != nil {
+		cause = errors.Join(cause, response.Validate())
+		response = nil
+	}
+	failure := ""
+	if cause != nil {
+		failure = cause.Error()
+	}
+	var cost accounting.Cost
+	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && e.pricing != nil {
+		served := response.Metadata.Model
+		if served == "" {
+			served = invocation.Model
+		}
+		cost = e.pricing(invocation.Provider, served, &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens})
+	}
+	return e.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), EmbeddingResponse: response, FinishedAt: time.Now().UTC(), Failure: failure})
+}
+
+func cloneEmbeddingRequest(r *embedding.Request) *embedding.Request {
+	return &embedding.Request{Texts: slices.Clone(r.Texts), Options: r.Options.Clone()}
 }

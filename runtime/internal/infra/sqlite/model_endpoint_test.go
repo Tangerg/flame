@@ -14,7 +14,9 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/embedding"
 	"reflect"
+	"strings"
 )
 
 func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *testing.T) {
@@ -24,7 +26,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured input")))
-	invocation := modelref.EndpointInvocation{ID: "endpoint-original", Caller: capability.Invocation{ID: "model-operation", Origin: capability.Human, Parent: "human-command", Target: capability.Target{Scope: "call", Reference: "model-operation"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint-original", Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: "model-operation", Origin: capability.Human, Parent: "human-command", Target: capability.Target{Scope: "call", Reference: "model-operation"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
 	if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +62,7 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 	insertTrajectorySession(t, t.Context(), db, "ses_other")
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original request")))
 	store := sqlite.NewModelInvocationStore(db)
-	invocation := modelref.EndpointInvocation{ID: "endpoint_session", Caller: capability.Invocation{ID: "utility_session", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "utility_session"}}, Provider: "anthropic", Model: "captured-model", SessionID: "ses_endpoint", Request: request, StartedAt: time.Unix(100, 0).UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_session", Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: "utility_session", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "utility_session"}}, Provider: "anthropic", Model: "captured-model", SessionID: "ses_endpoint", Request: request, StartedAt: time.Unix(100, 0).UTC()}
 	for _, scope := range []struct{ id, session string }{{"session", "ses_endpoint"}, {"other", "ses_other"}, {"global", ""}} {
 		value := invocation
 		value.ID = "endpoint_" + scope.id
@@ -112,7 +114,7 @@ func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
-	invocation := modelref.EndpointInvocation{ID: "endpoint_usage", Caller: capability.Invocation{ID: "caller_usage", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "caller_usage"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_usage", Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: "caller_usage", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "caller_usage"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
 	store := sqlite.NewModelInvocationStore(db)
 	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 		t.Fatal(err)
@@ -159,7 +161,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 		{id: "unattached", caller: "utility_global", unknown: true},
 		{id: "other", caller: "utility_other", session: "ses_other", input: 2},
 	} {
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: draft.ModelSelection.Provider(), Model: draft.ModelSelection.Model(), SessionID: source.session, Request: request, StartedAt: draft.CreatedAt}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + source.id, Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: draft.ModelSelection.Provider(), Model: draft.ModelSelection.Model(), SessionID: source.session, Request: request, StartedAt: draft.CreatedAt}
 		owner := ""
 		if source.id == "primary" {
 			owner = "logical_usage"
@@ -249,7 +251,7 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent request")))
 	source := func(id, sessionID, parent string) modelref.EndpointInvocation {
-		return modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: id, Origin: capability.Model, Parent: parent, Target: capability.Target{Scope: "call", Reference: id}}, Provider: "anthropic", Model: "captured-model", SessionID: sessionID, Request: request, StartedAt: draft.CreatedAt.Add(time.Second)}
+		return modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: id, Origin: capability.Model, Parent: parent, Target: capability.Target{Scope: "call", Reference: id}}, Provider: "anthropic", Model: "captured-model", SessionID: sessionID, Request: request, StartedAt: draft.CreatedAt.Add(time.Second)}
 	}
 	for _, test := range []struct {
 		id, owner, parent string
@@ -316,4 +318,67 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 		t.Fatal("old source retargeted to resumed Segment")
 	}
 
+}
+
+func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	insertTrajectorySession(t, t.Context(), db, "ses_embed")
+	store := sqlite.NewModelInvocationStore(db)
+	request, err := embedding.NewRequest([]string{"first text", "second text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Options.Model = "embed-model"
+	invocation := modelref.EndpointInvocation{ID: "endpoint_embed", Kind: modelref.EndpointEmbedding, Caller: capability.Invocation{ID: "memory_search", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "memory_search"}}, Provider: "openai", Model: "embed-model", SessionID: "ses_embed", Embedding: request, StartedAt: time.Unix(100, 0).UTC()}
+	if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
+		t.Fatal(err)
+	}
+	first, _ := embedding.NewOutput([]float64{0.1, 0.2}, nil)
+	second, _ := embedding.NewOutput([]float64{0.3, 0.4}, nil)
+	response, err := embedding.NewResponse([]*embedding.Output{first, second}, &embedding.ResponseMetadata{Model: "embed-model-served", Usage: &embedding.Usage{InputTokens: 11}, CreatedAt: time.Unix(101, 0).UTC()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost := 0.0005
+	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{EmbeddingResponse: response, CostUSD: &cost, FinishedAt: invocation.StartedAt.Add(time.Second)}); err != nil {
+		t.Fatal(err)
+	}
+	// A chat response on an embedding admission must be refused, not stored.
+	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: &chat.Response{}, FinishedAt: invocation.StartedAt.Add(time.Second)}); err == nil {
+		t.Fatal("embedding endpoint accepted a chat response")
+	}
+	observed, found, err := store.EndpointForCaller(t.Context(), "memory_search")
+	if err != nil || !found {
+		t.Fatalf("embedding endpoint missing: %v", err)
+	}
+	if observed.Invocation.Kind != modelref.EndpointEmbedding || observed.State != "completed" || observed.ServedModel != "embed-model-served" {
+		t.Fatalf("embedding projection changed: %+v", observed)
+	}
+	if observed.Usage == nil || observed.Usage.InputTokens != 11 || observed.Usage.OutputTokens != 0 {
+		t.Fatalf("embedding usage is not input-only: %+v", observed.Usage)
+	}
+	if observed.CostUSD == nil || *observed.CostUSD != cost {
+		t.Fatalf("embedding cost lost: %+v", observed.CostUSD)
+	}
+	if observed.Response != nil {
+		t.Fatalf("embedding must not synthesize a chat response: %+v", observed.Response)
+	}
+	if !observed.HasResponse() || !strings.Contains(observed.ResponseJSON.String(), "0.3") || !strings.Contains(observed.RequestJSON.String(), "second text") {
+		t.Fatalf("embedding raw evidence lost: req=%s resp=%s", observed.RequestJSON.String(), observed.ResponseJSON.String())
+	}
+	var folded *modelref.EndpointObservation
+	if err := store.VisitEndpointInvocations(t.Context(), "ses_embed", time.Time{}, func(o modelref.EndpointObservation) error {
+		captured := o
+		folded = &captured
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if folded == nil || folded.Invocation.Kind != modelref.EndpointEmbedding || folded.Usage == nil || folded.Usage.InputTokens != 11 || folded.ServedModel != "embed-model-served" {
+		t.Fatalf("usage source did not fold embedding evidence: %+v", folded)
+	}
 }

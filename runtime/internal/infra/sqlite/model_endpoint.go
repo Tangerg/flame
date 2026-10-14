@@ -19,22 +19,25 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/embedding"
 )
 
-const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_usd,usage`
+const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_usd,usage,COALESCE(endpoint_kind,'')`
 
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
+	Kind      modelref.EndpointKind `json:"kind"`
 	Caller    capability.Invocation `json:"caller"`
 	Provider  string                `json:"provider"`
 	Model     string                `json:"model"`
 	SessionID string                `json:"sessionId,omitzero"`
-	Request   *chat.Request         `json:"request"`
+	Request   *chat.Request         `json:"request,omitzero"`
+	Embedding *embedding.Request    `json:"embedding,omitzero"`
 	StartedAt time.Time             `json:"startedAt"`
 }
 
 func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error) {
-	data, err := encodeStoredJSON(storedEndpointInvocation{ID: value.ID, Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, Request: value.Request, StartedAt: value.StartedAt})
+	data, err := encodeStoredJSON(storedEndpointInvocation{ID: value.ID, Kind: value.Kind, Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, Request: value.Request, Embedding: value.Embedding, StartedAt: value.StartedAt})
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +46,108 @@ func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error)
 		return nil, err
 	}
 	return []byte(input.String()), nil
+}
+
+// embeddingReportedUsage projects embedding usage onto the shared accounting
+// usage so one reporting owner totals both kinds. Embeddings consume input
+// tokens only; a nil provider usage stays unknown rather than a reported zero.
+func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
+	if response == nil || response.Metadata == nil || response.Metadata.Usage == nil {
+		return nil
+	}
+	return &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens}
+}
+
+// endpointOutcomeResponse encodes the known response for its kind and returns the
+// normalized reported usage. It refuses a response that does not match the
+// admitted kind and never fabricates a chat response for an embedding call.
+func endpointOutcomeResponse(invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) (encoded *string, usage *chat.Usage, hasResponse bool, err error) {
+	encode := func(value any) (*string, error) {
+		data, err := encodeStoredJSON(value)
+		if err != nil {
+			return nil, err
+		}
+		input, err := jsoninput.Parse(data)
+		if err != nil {
+			return nil, err
+		}
+		text := input.String()
+		return &text, nil
+	}
+	switch invocation.Kind {
+	case modelref.EndpointChat:
+		if outcome.EmbeddingResponse != nil {
+			return nil, nil, false, errors.New("sqlite: chat endpoint cannot settle an embedding response")
+		}
+		if outcome.Response == nil {
+			return nil, nil, false, nil
+		}
+		if err := outcome.Response.Validate(); err != nil {
+			return nil, nil, false, err
+		}
+		text, err := encode(outcome.Response)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		if outcome.Response.Metadata != nil {
+			usage = outcome.Response.Metadata.Usage
+		}
+		return text, usage, true, nil
+	case modelref.EndpointEmbedding:
+		if outcome.Response != nil {
+			return nil, nil, false, errors.New("sqlite: embedding endpoint cannot settle a chat response")
+		}
+		if outcome.EmbeddingResponse == nil {
+			return nil, nil, false, nil
+		}
+		if err := outcome.EmbeddingResponse.Validate(); err != nil {
+			return nil, nil, false, err
+		}
+		text, err := encode(outcome.EmbeddingResponse)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		return text, embeddingReportedUsage(outcome.EmbeddingResponse), true, nil
+	default:
+		return nil, nil, false, errors.New("sqlite: endpoint settlement has an unknown kind")
+	}
+}
+
+// decodeEndpointResponse parses one stored known response for its kind. It sets
+// the chat projection the primary-conversation recovery reads and returns the
+// normalized reported usage and served model both kinds expose.
+func decodeEndpointResponse(kind modelref.EndpointKind, response *string, chatResponse **chat.Response) (*chat.Usage, string, error) {
+	if response == nil {
+		return nil, "", nil
+	}
+	switch kind {
+	case modelref.EndpointChat:
+		if err := decodeStoredJSON([]byte(*response), chatResponse); err != nil {
+			return nil, "", err
+		}
+		if *chatResponse == nil || (*chatResponse).Validate() != nil {
+			return nil, "", errors.New("sqlite: endpoint response evidence is invalid")
+		}
+		if (*chatResponse).Metadata == nil {
+			return nil, "", nil
+		}
+		return (*chatResponse).Metadata.Usage, (*chatResponse).Metadata.Model, nil
+	case modelref.EndpointEmbedding:
+		var embResponse *embedding.Response
+		if err := decodeStoredJSON([]byte(*response), &embResponse); err != nil {
+			return nil, "", err
+		}
+		if embResponse == nil || embResponse.Validate() != nil {
+			return nil, "", errors.New("sqlite: endpoint response evidence is invalid")
+		}
+		served := ""
+		if embResponse.Metadata != nil {
+			served = embResponse.Metadata.Model
+		}
+		return embeddingReportedUsage(embResponse), served, nil
+	default:
+		return nil, "", errors.New("sqlite: endpoint response has an unknown kind")
+	}
 }
 
 // Caller IDs and wire parents describe ancestry, not execution authority. The
@@ -81,13 +186,13 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
 		args = []any{ownerCallID, modelInvocationStarted.databaseValue(), ownerCallID, toolInvocationStarted.databaseValue(), runStateRunning.databaseValue(), invocation.StartedAt.UTC().UnixNano()}
 	}
-	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json)
- SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,? FROM (` + scope + `) scope
+	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
+ SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope
  WHERE (scope.session_id IS NULL OR EXISTS(SELECT 1 FROM sessions WHERE id=scope.session_id))
  AND (? IS NULL OR scope.session_id=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
  AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
-	parameters := []any{invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded)}
+	parameters := []any{invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
 	parameters = append(parameters, args...)
 	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
 	result, err := Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
@@ -111,10 +216,14 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if _, err := accounting.CostFromOptional(outcome.CostUSD); err != nil {
 		return err
 	}
-	if outcome.CostUSD != nil && (outcome.Response == nil || outcome.Response.Metadata == nil || outcome.Response.Metadata.Usage == nil) {
+	response, usage, hasResponse, err := endpointOutcomeResponse(invocation, outcome)
+	if err != nil {
+		return err
+	}
+	if outcome.CostUSD != nil && usage == nil {
 		return errors.New("sqlite: endpoint price requires known reported usage")
 	}
-	if outcome.Response == nil && outcome.Failure == "" {
+	if !hasResponse && outcome.Failure == "" {
 		return errors.New("sqlite: missing endpoint response requires uncertainty evidence")
 	}
 	if outcome.FinishedAt.IsZero() || outcome.FinishedAt.Before(invocation.StartedAt) {
@@ -124,25 +233,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 		return err
 	}
 	state := modelInvocationUnknown.databaseValue()
-	var response *string
-	var encodedUsage *string
-	var usage *chat.Usage
-	if outcome.Response != nil {
-		if err := outcome.Response.Validate(); err != nil {
-			return err
-		}
-		data, err := encodeStoredJSON(outcome.Response)
-		if err != nil {
-			return err
-		}
-		input, err := jsoninput.Parse(data)
-		if err != nil {
-			return err
-		}
-		response = new(input.String())
-		if outcome.Response.Metadata != nil {
-			usage = outcome.Response.Metadata.Usage
-		}
+	if hasResponse {
 		state = modelInvocationCompleted.databaseValue()
 		if outcome.Failure != "" {
 			state = modelInvocationFailed.databaseValue()
@@ -207,7 +298,8 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var finishedAt *int64
 	var response *string
 	var encodedUsage *string
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &value.CostUSD, &encodedUsage); err != nil {
+	var kind string
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &value.CostUSD, &encodedUsage, &kind); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
 	value.InvocationJSON, err = jsoninput.Parse([]byte(encoded))
@@ -218,12 +310,19 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if err := decodeStoredJSON([]byte(encoded), &admission); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	value.Invocation = modelref.EndpointInvocation{ID: admission.ID, Caller: admission.Caller, Provider: admission.Provider, Model: admission.Model, SessionID: admission.SessionID, Request: admission.Request, StartedAt: admission.StartedAt}
+	if modelref.EndpointKind(kind) != admission.Kind {
+		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint kind differs from its admission")
+	}
+	value.Invocation = modelref.EndpointInvocation{ID: admission.ID, Kind: admission.Kind, Caller: admission.Caller, Provider: admission.Provider, Model: admission.Model, SessionID: admission.SessionID, Request: admission.Request, Embedding: admission.Embedding, StartedAt: admission.StartedAt}
 	var fields map[string]jsontext.Value
 	if err := decodeStoredJSON([]byte(encoded), &fields); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	value.RequestJSON, err = jsoninput.Parse(fields["request"])
+	requestField := "request"
+	if admission.Kind == modelref.EndpointEmbedding {
+		requestField = "embedding"
+	}
+	value.RequestJSON, err = jsoninput.Parse(fields[requestField])
 	if err != nil {
 		return modelref.EndpointObservation{}, err
 	}
@@ -255,17 +354,22 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 			return modelref.EndpointObservation{}, err
 		}
 	}
+	value.ServedModel = value.Invocation.Model
 	if response != nil {
 		value.ResponseJSON, err = jsoninput.Parse([]byte(*response))
 		if err != nil {
 			return modelref.EndpointObservation{}, err
 		}
-		if err := decodeStoredJSON([]byte(*response), &value.Response); err != nil {
-			return modelref.EndpointObservation{}, err
-		}
-		if value.Response == nil || value.Response.Validate() != nil || (value.State != modelInvocationCompleted.databaseValue() && value.State != modelInvocationFailed.databaseValue()) {
+		if value.State != modelInvocationCompleted.databaseValue() && value.State != modelInvocationFailed.databaseValue() {
 			return modelref.EndpointObservation{}, fmt.Errorf("sqlite: endpoint response evidence is invalid")
 		}
+	}
+	reported, served, err := decodeEndpointResponse(value.Invocation.Kind, response, &value.Response)
+	if err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	if served != "" {
+		value.ServedModel = served
 	}
 	var usage *chat.Usage
 	if encodedUsage != nil {
@@ -274,17 +378,14 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 			return modelref.EndpointObservation{}, err
 		}
 	}
-	var reported *chat.Usage
-	if value.Response != nil && value.Response.Metadata != nil {
-		reported = value.Response.Metadata.Usage
-	}
+	value.Usage = usage
 	if !reflect.DeepEqual(usage, reported) {
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint usage differs from known response")
 	}
 	if _, err := accounting.CostFromOptional(value.CostUSD); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	if value.CostUSD != nil && (value.Response == nil || value.Response.Metadata == nil || value.Response.Metadata.Usage == nil) {
+	if value.CostUSD != nil && reported == nil {
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint price has no reported usage")
 	}
 	if finishedAt != nil {
@@ -382,7 +483,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 			return err
 		}
 	}
-	if source == nil || source.Response == nil {
+	if source == nil || !source.HasResponse() {
 		return m.MarkModelInvocationUnknown(ctx, sessionID, runID, segmentID, callID, startedAt, finishedAt)
 	}
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
@@ -397,11 +498,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	if err := source.InvocationJSON.Validate(); err != nil {
 		return err
 	}
-	var reported *chat.Usage
-	if source.Response != nil && source.Response.Metadata != nil {
-		reported = source.Response.Metadata.Usage
-	}
-	usage, err := encodeModelInvocationUsage(reported)
+	usage, err := encodeModelInvocationUsage(source.Usage)
 	if err != nil {
 		return err
 	}
@@ -528,28 +625,14 @@ func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, e
 	if err != nil {
 		return err
 	}
-	if !found || source.InvocationJSON != expected.InvocationJSON || source.RequestJSON != expected.RequestJSON || source.ResponseJSON != expected.ResponseJSON || source.SessionID != expected.SessionID || source.RunID != expected.RunID || source.SegmentID != expected.SegmentID || source.State != expected.State || source.FinishedAt != expected.FinishedAt || source.Failure != expected.Failure || !reflect.DeepEqual(source.CostUSD, expected.CostUSD) || source.RunID == "" || (source.Response == nil) != (expected.Response == nil) {
+	if !found || source.InvocationJSON != expected.InvocationJSON || source.RequestJSON != expected.RequestJSON || source.ResponseJSON != expected.ResponseJSON || source.SessionID != expected.SessionID || source.RunID != expected.RunID || source.SegmentID != expected.SegmentID || source.State != expected.State || source.FinishedAt != expected.FinishedAt || source.Failure != expected.Failure || !reflect.DeepEqual(source.CostUSD, expected.CostUSD) || source.RunID == "" || source.HasResponse() != expected.HasResponse() {
 		return errors.New("sqlite: independent endpoint recovery source changed")
 	}
 
-	if source.Invocation.ID != expected.Invocation.ID || source.Invocation.Caller != expected.Invocation.Caller || source.Invocation.Provider != expected.Invocation.Provider || source.Invocation.Model != expected.Invocation.Model || source.Invocation.SessionID != expected.Invocation.SessionID || !source.Invocation.StartedAt.Equal(expected.Invocation.StartedAt) {
+	if source.Invocation.ID != expected.Invocation.ID || source.Invocation.Kind != expected.Invocation.Kind || source.Invocation.Caller != expected.Invocation.Caller || source.Invocation.Provider != expected.Invocation.Provider || source.Invocation.Model != expected.Invocation.Model || source.Invocation.SessionID != expected.Invocation.SessionID || !source.Invocation.StartedAt.Equal(expected.Invocation.StartedAt) {
 		return errors.New("sqlite: independent endpoint admission projection changed")
 	}
-	var actualUsage, expectedUsage *chat.Usage
-	actualModel, expectedModel := source.Invocation.Model, expected.Invocation.Model
-	if source.Response != nil && source.Response.Metadata != nil {
-		actualUsage = source.Response.Metadata.Usage
-		if source.Response.Metadata.Model != "" {
-			actualModel = source.Response.Metadata.Model
-		}
-	}
-	if expected.Response != nil && expected.Response.Metadata != nil {
-		expectedUsage = expected.Response.Metadata.Usage
-		if expected.Response.Metadata.Model != "" {
-			expectedModel = expected.Response.Metadata.Model
-		}
-	}
-	if actualModel != expectedModel || !reflect.DeepEqual(actualUsage, expectedUsage) {
+	if source.ServedModel != expected.ServedModel || !reflect.DeepEqual(source.Usage, expected.Usage) || !reflect.DeepEqual(source.Response, expected.Response) {
 		return errors.New("sqlite: independent endpoint consumption projection changed")
 	}
 	return nil

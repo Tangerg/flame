@@ -5408,6 +5408,9 @@
           "minLength": 1,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
+        "kind": {
+          "type": "string"
+        },
         "model": {
           "type": "string",
           "minLength": 1
@@ -5451,6 +5454,7 @@
       "required": [
         "caller",
         "id",
+        "kind",
         "model",
         "provider",
         "request",

@@ -194,12 +194,11 @@ func (r RecoveryCommit) Validate() error {
 		if err := source.Invocation.Validate(); err != nil {
 			return err
 		}
-		if source.Response != nil {
-			if err := source.Response.Validate(); err != nil {
+		if source.HasResponse() {
+			if err := source.ResponseJSON.Validate(); err != nil {
 				return err
 			}
-		}
-		if source.Response == nil && source.CostUSD != nil {
+		} else if source.CostUSD != nil {
 			return errors.New("runs: unobserved independent source has a price")
 		}
 
@@ -605,15 +604,15 @@ func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, r
 	if err := source.Invocation.Validate(); err != nil {
 		return err
 	}
-	if source.Response == nil {
-		if purpose != rundomain.ModelIndependent || source.CostUSD != nil || source.ResponseJSON.String() != "" || (source.State != "started" && source.State != "failed" && source.State != "unknown") {
+	if !source.HasResponse() {
+		if purpose != rundomain.ModelIndependent || source.CostUSD != nil || (source.State != "started" && source.State != "failed" && source.State != "unknown") {
 			return errors.New("runs: recovery endpoint has no admitted independent outcome")
 		}
 	} else {
 		if source.State != "completed" && source.State != "failed" {
 			return errors.New("runs: recovery endpoint has no known outcome")
 		}
-		if err := source.Response.Validate(); err != nil {
+		if err := source.ResponseJSON.Validate(); err != nil {
 			return err
 		}
 	}
@@ -623,7 +622,7 @@ func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, r
 	if _, err := accounting.CostFromOptional(source.CostUSD); err != nil {
 		return err
 	}
-	if source.CostUSD != nil && (source.Response.Metadata == nil || source.Response.Metadata.Usage == nil) {
+	if source.CostUSD != nil && source.Usage == nil {
 		return errors.New("runs: recovery endpoint price has no reported usage")
 	}
 	return nil

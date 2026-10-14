@@ -40,7 +40,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		return modelEnvironment{}, err
 	}
 	embeddingRoleState := models.NewRoleState(embeddingRole)
-	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.ProviderRegistry)
+	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.ProviderRegistry, cfg.Stores.ModelInvocations, cfg.Pricing)
 	if err != nil {
 		return modelEnvironment{}, err
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 // UsageSource reads retained physical evidence from one snapshot. The callback
@@ -105,10 +104,7 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 		if err := total.addCall(source); err != nil {
 			return fmt.Errorf("sessions: aggregate endpoint %q: %w", source.Invocation.ID, err)
 		}
-		model := source.Invocation.Model
-		if source.Response != nil && source.Response.Metadata != nil && source.Response.Metadata.Model != "" {
-			model = source.Response.Metadata.Model
-		}
+		model := source.ServedModel
 		if _, err := modelref.New(source.Invocation.Provider, model); err != nil {
 			return err
 		}
@@ -159,18 +155,10 @@ func (u *usageAccumulator) addCall(source modelref.EndpointObservation) error {
 	default:
 		return errors.New("usage source has an unknown state")
 	}
-	if (source.State == "completed" || source.State == "failed") != (source.Response != nil) {
+	if (source.State == "completed" || source.State == "failed") != source.HasResponse() {
 		return errors.New("usage source outcome differs from its state")
 	}
-	var reported *chat.Usage
-	if source.Response != nil {
-		if err := source.Response.Validate(); err != nil {
-			return err
-		}
-		if source.Response.Metadata != nil {
-			reported = source.Response.Metadata.Usage
-		}
-	}
+	reported := source.Usage
 	if reported != nil {
 		tokens, err := accounting.NewTokens(*reported)
 		if err != nil {

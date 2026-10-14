@@ -74,7 +74,7 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 		},
 		{
 			name: "endpoint failure bytes",
-			sql:  `INSERT INTO model_invocations(call_id,session_id,state,started_at,finished_at,endpoint_json,endpoint_failure) VALUES('endpoint_large','ses_export','unknown',1,2,'{}',zeroblob(?))`,
+			sql:  `INSERT INTO model_invocations(call_id,session_id,state,started_at,finished_at,endpoint_json,endpoint_kind,endpoint_failure) VALUES('endpoint_large','ses_export','unknown',1,2,'{}','chat',zeroblob(?))`,
 			args: []any{sessions.MaximumTrajectoryExportBytes + 1},
 		},
 		{
@@ -107,8 +107,8 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 func TestTrajectoryExportDiscardsEarlierPagesWhenLaterEvidenceIsCorrupt(t *testing.T) {
 	reader, db, snapshots := trajectoryExportFixture(t)
 	if _, err := db.ExecContext(t.Context(), `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x < 101)
-		INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,finished_at)
-		SELECT printf('call_%03d',x),'ses_export','run_export',CASE WHEN x=1 THEN '' ELSE 'seg_1' END,'completed',?,? FROM n`,
+		INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,finished_at,logical_purpose)
+		SELECT printf('call_%03d',x),'ses_export','run_export',CASE WHEN x=1 THEN '' ELSE 'seg_1' END,'completed',?,?,'conversation' FROM n`,
 		time.Unix(10, 0).UnixNano(), time.Unix(11, 0).UnixNano(),
 	); err != nil {
 		t.Fatal(err)
@@ -121,8 +121,8 @@ func TestTrajectoryExportDiscardsEarlierPagesWhenLaterEvidenceIsCorrupt(t *testi
 
 func TestTrajectoryExportRejectsMismatchedJournalOwnershipBeforeLoading(t *testing.T) {
 	for _, statement := range []string{
-		`INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,finished_at)
-		 VALUES('call_foreign','ses_foreign','run_export','seg_1','completed',1,2)`,
+		`INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,finished_at,logical_purpose)
+		 VALUES('call_foreign','ses_foreign','run_export','seg_1','completed',1,2,'conversation')`,
 		`INSERT INTO tool_invocations(call_id,item_id,session_id,run_id,segment_id,state,started_at,finished_at)
 		 VALUES('call_foreign','item_1','ses_foreign','run_export','seg_1','incomplete',1,2)`,
 	} {
@@ -145,7 +145,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: "utility_" + id, Origin: capability.Automatic, Parent: "maintenance", Target: capability.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: "utility_" + id, Origin: capability.Automatic, Parent: "maintenance", Target: capability.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
 		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

@@ -3634,6 +3634,16 @@
           "value": "\"video\""
         },
         {
+          "name": "ModelEndpointChat",
+          "type": "ModelEndpointKind",
+          "value": "\"chat\""
+        },
+        {
+          "name": "ModelEndpointEmbedding",
+          "type": "ModelEndpointKind",
+          "value": "\"embedding\""
+        },
+        {
           "name": "ModelInvocationCompleted",
           "type": "ModelInvocationState",
           "value": "\"completed\""
@@ -8233,6 +8243,11 @@
               "tag": "json:\"id\""
             },
             {
+              "name": "Kind",
+              "type": "ModelEndpointKind",
+              "tag": "json:\"kind\""
+            },
+            {
               "name": "SessionID",
               "type": "string",
               "tag": "json:\"sessionId,omitzero\""
@@ -8299,6 +8314,11 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "ModelEndpointKind",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "ModelInvocation",

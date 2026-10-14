@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -64,10 +65,15 @@ func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 
 func usd(value float64) *float64 { return &value }
 func usageSource(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
-	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: capability.Invocation{Origin: capability.Automatic}}, State: state, CostUSD: cost}
+	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: capability.Invocation{Origin: capability.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}
 	if state == "completed" || state == "failed" {
 		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 		value.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}}
+		responseJSON, err := jsoninput.Parse([]byte(`{"known":true}`))
+		if err != nil {
+			panic(err)
+		}
+		value.ResponseJSON = responseJSON
 	}
 	return value
 }
@@ -76,6 +82,7 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 	primary := usageSource("primary", "provider-a", "selected", "completed", at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
 	primary.SessionID = "ses_one"
 	primary.RunID = "run_one"
+	primary.ServedModel = "served"
 	primary.Response.Metadata.Model = "served"
 	auxiliary := usageSource("title", "provider-b", "served", "failed", at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
 	auxiliary.SessionID = "ses_one"

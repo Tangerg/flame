@@ -39,8 +39,8 @@ func presentModelEndpoint(row modelref.EndpointObservation) (protocol.ModelEndpo
 	if err := row.RequestJSON.Validate(); err != nil {
 		return protocol.ModelEndpointInvocation{}, err
 	}
-	value := protocol.ModelEndpointInvocation{CostUSD: row.CostUSD, ID: row.Invocation.ID, Caller: row.Invocation.Caller, Provider: row.Invocation.Provider, Model: row.Invocation.Model, SessionID: row.SessionID, RunID: row.RunID, SegmentID: row.SegmentID, Request: row.RequestJSON.String(), Failure: row.Failure, State: protocol.ModelInvocationState(row.State), StartedAt: row.Invocation.StartedAt, SettledAt: row.FinishedAt}
-	if row.Response != nil {
+	value := protocol.ModelEndpointInvocation{CostUSD: row.CostUSD, ID: row.Invocation.ID, Kind: protocol.ModelEndpointKind(row.Invocation.Kind), Caller: row.Invocation.Caller, Provider: row.Invocation.Provider, Model: row.Invocation.Model, SessionID: row.SessionID, RunID: row.RunID, SegmentID: row.SegmentID, Request: row.RequestJSON.String(), Failure: row.Failure, State: protocol.ModelInvocationState(row.State), StartedAt: row.Invocation.StartedAt, SettledAt: row.FinishedAt}
+	if row.HasResponse() {
 		if err := row.ResponseJSON.Validate(); err != nil {
 			return protocol.ModelEndpointInvocation{}, err
 		}

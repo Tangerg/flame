@@ -2,18 +2,43 @@
 
 ## Current stage
 
-Handoff requested by the user on 2026-10-14. Development is stopped for continuation
-in a new session. Read `docs/plugin-refactor-handoff.md` in this managed worktree
-first; it summarizes the committed implementation, remaining full objective,
-verification, failures and concrete entry points. The only uncommitted embedding
-experiment in modelref/endpoint.go was incomplete and has been withdrawn; no
-embedding implementation is delivered by that draft. Runtime go build ./... passes
-on the restored committed source. Original inputs/stash are unchanged. The existing
-worktree/branch and canonical anchor are retained; this goal is being paused at the
-user's request after committing the handoff. No further product work is authorized
-in this session until the user resumes it.
+Resumed on 2026-10-14 from `docs/plugin-refactor-handoff.md`. Main was already fully
+merged (`git merge main` reported up to date; merge-base is main's tip `7ba40c117`),
+so the branch has not drifted. Original inputs/stash are unchanged.
 
 Latest completed product slice follows.
+
+Stage 5ae (embedding endpoint evidence/metering) makes embedding a first-class
+physical endpoint beside chat, through one shared evidence/accounting owner. The
+`modelref` endpoint value is now kind-aware (`EndpointChat`/`EndpointEmbedding`):
+each kind carries exactly its own request/response payload, and the observation
+exposes the normalized facts (`ServedModel`, `Usage`, `HasResponse`) so recovery,
+reporting and delivery never decode a kind-specific response. `embedder.Embed`
+observes the real `embedding.Model.Call` boundary, admits before dispatch, and
+settles known evidence or uncertainty (input-token usage, served model, price)
+through the existing `EndpointJournal`; it no longer discards provider metadata and
+never synthesizes a chat response. SQLite persists `endpoint_kind` with a tie
+constraint and decodes each kind's response/usage; the shared usage reporter, live
+Run/Goal recovery accrual, recovery-commit validation, persistence selection and
+delivery projection read the normalized fields. Protocol `ModelEndpointInvocation`
+gains `kind` and contracts were regenerated (go-api/schema/TypeScript).
+
+Open within this priority: general host embedding access still rides Memory's private
+two-call model budget and corpus-sized envelope in `memory/rpc/models.go`; decoupling
+those grant bounds is the next embedding sub-slice.
+
+Verification: `go build ./...`, changed-file gofmt and a focused SQLite+observed-
+embedder regression (embedding kind/usage/served-model/cost/raw-JSON round-trip, and
+the usage source folding embedding evidence) pass. model/sqlite/sessions/recovery/
+persistence/modelref/execution(minus the documented Schedule SIGKILL helper) suites
+are green. Pre-existing failures confirmed by causal evidence (reproduced on HEAD's
+db.go or independent of this diff): `TestScheduleCreateRecoversAcrossSIGKILLCuts`
+(handshake); the delivery/contractgen operation-inventory drift
+(`modelInvocations.endpoints` pagination, `plugins.openResources` stream,
+`agentMemory` capability, `schedules.create` OpenRPC, public Go API capability/point
+imports); and two Stage-5aa `logical_purpose` fixture omissions in the trajectory
+export tests that this slice repaired. Full/native/vet/race/closure stay concentrated
+at final acceptance. No frontend UI/E2E/screenshot check was authored or executed.
 
 Stage 5ad (13193c2d6) removes the incorrect installation-only prerequisite from
 restoration of an original dispatched plugin command. Background restoration now
@@ -64,6 +89,19 @@ Next: actual execution-bound background provenance, embedding evidence/retention
 dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## Completed
+
+- Stage 5ae: embedding is a first-class physical endpoint beside chat through one
+  kind-aware `modelref` evidence owner; `embedder.Embed` observes `embedding.Model.Call`,
+  admits before dispatch and settles known/unknown input-token usage, served model and
+  price via the shared `EndpointJournal`, never synthesizing a chat response.
+- Stage 5ae: observation exposes normalized `ServedModel`/`Usage`/`HasResponse`; usage
+  reporter, live Run/Goal recovery accrual, recovery-commit, persistence and delivery
+  read them, so reporting folds embedding usage and recovery treats it like chat.
+- Stage 5ae: SQLite gains `endpoint_kind` with a tie constraint and per-kind response
+  decode; protocol `ModelEndpointInvocation` gains `kind`; contracts regenerated.
+  Focused SQLite+observed-embedder regressions pass; build/gofmt clean; affected
+  backend suites green except documented pre-existing failures. Not yet done: Memory
+  grant-bound decoupling, a dedicated contract/catalog test, full native acceptance.
 
 - Stage 5ad (13193c2d6): original dispatched/observed commands restore their stored
   resource targets; the former installation-only gate is removed for recorded work.
