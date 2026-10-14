@@ -64,7 +64,7 @@ func TestCoreCallbackBackendProcess(t *testing.T) {
 			if !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
 				return "", fmt.Errorf("core protocol fence: %w", err)
 			}
-			_, _, err = client.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, RunCommandOptions{})
+			_, _, err = client.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, RunCommandOptions{IdempotencyKey: "original", IdempotencyNamespace: testsupport.IdempotencyNamespace})
 			if !errors.Is(err, protocol.ErrSessionNotFound) || errors.Is(err, ErrAcknowledgementUnknown) {
 				return "", fmt.Errorf("typed core refusal: %w", err)
 			}
@@ -95,7 +95,7 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 		}
 	})
 	target := &coreCallbackTarget{settled: make(chan struct{})}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: ctx})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: ctx, IdempotencyNamespace: testsupport.IdempotencyNamespace})
 	if err != nil {
 		t.Fatal(err)
 	}
