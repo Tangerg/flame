@@ -2,8 +2,11 @@ package runs
 
 import (
 	"errors"
+	"iter"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 func TestLiveChildCancellationReleasesClaimWhenExecutorTeardownFails(t *testing.T) {
@@ -59,4 +62,33 @@ func TestLiveChildCancellationReleasesClaimWhenExecutorTeardownFails(t *testing.
 		t.Fatalf("retry child cancellation claim: %v", err)
 	}
 	live.abortChildCancellation(retry, errors.New("test cleanup"))
+}
+
+func TestLiveRootCancellationRetainsFailedSettlement(t *testing.T) {
+	cleanupErr := errors.New("executor cleanup failed")
+	executor := &fakeExecutor{block: true, releaseErr: cleanupErr}
+	coordinator := testCoordinator(executor, &fakeEffects{})
+	coordinator.rootCancellation = executor
+	sessions := &fakeRunSessions{}
+	coordinator.sessionReader = sessions
+	coordinator.sessionCreator = sessions
+	coordinator.activeRuns = sessions
+	coordinator.interrupts = sessions
+	coordinator.terminations = sessions
+	coordinator.runs = &fakeRunProjection{runs: map[string]run.Run{"run_1": runForSegment(testSegment())}}
+	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, stop := iter.Pull(stream)
+	defer stop()
+	next()
+	_, err = coordinator.Cancel(t.Context(), CancelCommand{RunID: "run_1", Reason: "stop"})
+	if _, failed := errors.AsType[*CancellationSettlementError](err); !failed || !errors.Is(err, cleanupErr) {
+		t.Fatalf("cancel erased incomplete settlement: %v", err)
+	}
+	consumePulledEvents(next)
+	if executor.releases() != 1 {
+		t.Fatalf("release count=%d, want one", executor.releases())
+	}
 }

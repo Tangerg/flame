@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RpcError, RpcTransportError } from "@flame/runtime-contract/client";
+import { RpcError, RpcProtocolError, RpcTransportError } from "@flame/runtime-contract/client";
 import { agentProblemFromRpcFailure } from "./rpcProblem";
 
 describe("agent RPC problem projection", () => {
@@ -44,5 +44,14 @@ describe("agent RPC problem projection", () => {
 
   it("does not turn programming errors into user-facing command failures", () => {
     expect(agentProblemFromRpcFailure(new TypeError("broken adapter"))).toBeNull();
+  });
+  it("keeps an invalid Runtime response visible as an unavailable command receipt", () => {
+    expect(
+      agentProblemFromRpcFailure(
+        new RpcProtocolError("runs.cancel result", [
+          { path: "$", detail: "invalid terminal projection" },
+        ]),
+      ),
+    ).toEqual({ code: "transport_error" });
   });
 });

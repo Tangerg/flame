@@ -505,7 +505,7 @@ describe("useAgentSession run timing guards", () => {
     });
   });
 
-  it("converges without an error when another client terminates the Run first", async () => {
+  it("keeps natural completion when cancellation receives the finished refusal", async () => {
     const terminal = runRef({
       id: "run_remote_terminal",
       status: "finished",
@@ -551,6 +551,97 @@ describe("useAgentSession run timing guards", () => {
     });
     expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+  it.each(["completed", "canceled"] as const)(
+    "reports a cancel failure and restores the real %s outcome when reopened",
+    async (outcome) => {
+      const terminal = runRef({
+        id: "run_cancel_failure",
+        status: "finished",
+        activeSegmentId: undefined,
+        outcome: { type: outcome },
+        finishedAt: "2026-07-30T02:00:02.000Z",
+      });
+      const receipt = Promise.withResolvers<CancelRunResponse>();
+      const readSnapshot = vi.fn().mockResolvedValue({ items: [], runs: [], interrupts: [] });
+      const cancel = vi.fn(() => receipt.promise);
+      runtimeClient = () =>
+        ({
+          sessions: { snapshot: readSnapshot },
+          runs: { recoverCommands: async () => [], cancel },
+        }) as unknown as FlameClient;
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { driver } = parkedDriver();
+      const mounted = renderHook(() =>
+        useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()),
+      );
+      await waitFor(() =>
+        expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+      );
+      act(() => {
+        useAgentStore
+          .getState()
+          .applyRunEvents(SID, [startedRunEvent(terminal.id, "seg_cancel_failure")]);
+        useAgentStore.getState().sessions[SID]!.stop?.();
+      });
+      await waitFor(() => expect(cancel).toHaveBeenCalledWith(terminal.id));
+      readSnapshot.mockResolvedValue({ items: [], runs: [terminal], interrupts: [] });
+      receipt.reject(
+        new RpcError({
+          message: "cancellation settlement unavailable",
+          data: { type: "internal_error" },
+        }),
+      );
+      await waitFor(() =>
+        expect(useAgentStore.getState().sessions[SID]!.problem.commandError?.code).toBe(
+          "internal_error",
+        ),
+      );
+      expect(useAgentStore.getState().sessions[SID]!.view.runsById[terminal.id]?.outcome).toEqual({
+        type: outcome,
+      });
+      mounted.unmount();
+      useAgentStore.getState().dropSession(SID);
+      renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+      await waitFor(() =>
+        expect(useAgentStore.getState().sessions[SID]!.view.runsById[terminal.id]?.outcome).toEqual(
+          { type: outcome },
+        ),
+      );
+      expect(cancel).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("reports unavailable terminal material after an already-finished cancellation refusal", async () => {
+    const receipt = Promise.withResolvers<CancelRunResponse>();
+    const snapshot = vi.fn().mockResolvedValue({ items: [], runs: [], interrupts: [] });
+    const cancel = vi.fn(() => receipt.promise);
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot },
+        runs: { recoverCommands: async () => [], cancel },
+      }) as unknown as FlameClient;
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    useNotificationStore.setState({ log: [] });
+    const onConnectionLost = vi.fn();
+    const { driver } = parkedDriver();
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, onConnectionLost));
+    await waitFor(() =>
+      expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+    );
+    act(() => {
+      useAgentStore
+        .getState()
+        .applyRunEvents(SID, [startedRunEvent("run_unavailable_cancel", "seg_unavailable_cancel")]);
+      useAgentStore.getState().sessions[SID]!.stop?.();
+    });
+    await waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+    snapshot.mockRejectedValue(new RpcConnectionError("terminal query unavailable"));
+    receipt.reject(new RpcError({ message: "already finished", data: { type: "run_finished" } }));
+    await waitFor(() => expect(onConnectionLost).toHaveBeenCalled());
+    expect(
+      useAgentStore.getState().sessions[SID]!.view.runsById.run_unavailable_cancel?.outcome,
+    ).toBeNull();
   });
 });
 

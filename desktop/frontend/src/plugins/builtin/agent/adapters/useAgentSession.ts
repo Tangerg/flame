@@ -256,6 +256,7 @@ export function useAgentSession(
             queryKey: [AGENT_SESSION_USAGE_KEY, sessionId],
           });
         },
+        onSynchronizationFailed: reportSynchronizationFailure,
         onFailure: (runId, error) => {
           console.error("[agent] run cancellation failed:", sessionId, runId, error);
           const problem = agentProblemFromRpcFailure(error);

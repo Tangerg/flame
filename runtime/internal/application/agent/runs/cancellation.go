@@ -10,6 +10,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
+// CancellationSettlementError means the Run owner could not join its complete
+// cleanup boundary. A committed terminal Run cannot turn it into a benign refusal.
+type CancellationSettlementError struct{ Cause error }
+
+func (e *CancellationSettlementError) Error() string {
+	if e.Cause == nil {
+		return "runs: cancellation settlement failed"
+	}
+	return fmt.Sprintf("runs: cancellation settlement failed: %v", e.Cause)
+}
+
+func (e *CancellationSettlementError) Unwrap() error { return e.Cause }
+
 // Cancel handles both live and parked runs under the same run/session admission
 // rules and returns the exact terminal Run committed by the winning write-set.
 // The durable abandon write-set is authoritative and commits before a parked
@@ -63,17 +76,17 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 		if errors.Is(requestErr, ErrSessionBusy) {
 			return CancelResult{}, requestErr
 		}
-		if errors.Is(requestErr, ErrRunFinished) {
-			return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
+		if settlementErr := entry.owner.wait(cleanupCtx); settlementErr != nil {
+			return CancelResult{}, &CancellationSettlementError{Cause: errors.Join(requestErr, settlementErr)}
 		}
-		return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
+		return CancelResult{}, requestErr
 	}
 	if interruptCommitted {
 		// The interrupt transaction won before cancellation. Its pump owns the
 		// live admission until it has published and closed the parked segment;
 		// join that boundary, then apply the durable parked cancel transaction.
 		if err := entry.owner.wait(cleanupCtx); err != nil {
-			return CancelResult{}, err
+			return CancelResult{}, &CancellationSettlementError{Cause: err}
 		}
 		return c.cancelKnownParkedRun(cleanupCtx, cmd, plan.root.run, plan.executor)
 	}
@@ -81,7 +94,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 	// stream context; joining the Run-tree owner returns that single owner's complete
 	// cleanup boundary without racing a second executor Release from this goroutine.
 	if err := entry.owner.wait(cleanupCtx); err != nil {
-		return CancelResult{}, err
+		return CancelResult{}, &CancellationSettlementError{Cause: err}
 	}
 	terminal, committed := entry.owner.committedTerminalRun()
 	if !committed {

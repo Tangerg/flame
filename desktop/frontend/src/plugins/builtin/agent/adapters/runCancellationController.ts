@@ -1,3 +1,4 @@
+import { isErrorType } from "@flame/runtime-contract/client";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 
@@ -15,6 +16,7 @@ interface RunCancellationControllerOptions<Response> {
   revalidateTerminal: (runId: string) => Promise<boolean>;
   onSettled: () => void;
   onFailure: (runId: string, error: unknown) => void;
+  onSynchronizationFailed: (error: unknown) => void;
 }
 
 export interface RunCancellationController {
@@ -30,6 +32,7 @@ export function createRunCancellationController<Response>({
   revalidateTerminal,
   onSettled,
   onFailure,
+  onSynchronizationFailed,
 }: RunCancellationControllerOptions<Response>): RunCancellationController {
   const pending = new Set<string>();
   const retiredError = new GenerationRetiredError("run_cancellation_generation");
@@ -62,8 +65,9 @@ export function createRunCancellationController<Response>({
             superseded = await cohort.settle(revalidateTerminal(runId));
           } catch (revalidationError) {
             if (revalidationError === retiredError) return;
+            onSynchronizationFailed(revalidationError);
           }
-          if (superseded) {
+          if (isErrorType(error, "run_finished") && superseded) {
             onSettled();
             return;
           }
