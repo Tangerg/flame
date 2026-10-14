@@ -2,17 +2,31 @@
 
 ## Current stage
 
-Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
-failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
-`67e7801c1`; exact Go/TS feature JSON is implemented by `6a2f30440`. Remaining
-lifecycle work now includes transitive release retention (`6ef5b7961`) and full
-activation identity fencing (`18ddce955`) and actual installed point/analyzer
-lifetimes (`6e23f4d00`). Public SQLite/receipt authoring is extracted in
-`419735d13`; public model choice/catalog admission follows in `325998894`.
-Remaining first-party source, independent/native qualification and final closure
-remain open. Main
-integration remains `7ba40c117`; no push or merge into main occurred. The original
-inputs and user stash remain unchanged.
+Completed on 2026-10-15 within the user's authorized implementation and
+verification scope. The original worktree and `codex/unified-plugins` branch are
+retained; last integrated main is `7ba40c117` (Scope v0.50.0). No push, merge into
+main, primary-checkout edit or user-data conversion was performed. The user's
+original stash is preserved.
+
+Implementation finishes at `03fb6eeb6`. Complete normal Go acceptance passes all
+174 packages; full-module vet, shared protocol 355 tests, current types/source
+boundaries, exact generation, independent public artifacts, Runtime distribution
+and signed native packaging pass. All modules also have passing race results.
+The full parallel race invocation is explicitly a failed run: 173 package results
+pass and one CLI delegated-approval case exceeds its original 10s deadline.
+The unchanged complete runtimebinding race suite then passes (67.710s), the exact
+case passes three repetitions (39.668s), and complete serial CLI race passes all
+33 packages (runtimebinding 67.414s, terminal 56.501s). No assertion, deadline,
+production Go source or test selection was changed to obtain those passes. This
+is module-isolated qualification, not a claim that the parallel aggregate passed
+or that its deadline was proved pre-existing.
+
+All 48 proposal requirements and review concerns are individually reconciled
+below. Graphical UI/E2E/screenshot execution is explicitly excluded: source,
+type, shared-client and native build evidence is never reported as rendered
+Hooks/provider identity, remote Web/Wails interaction or graphical reload proof.
+Registry publication and external deployment are also not claimed. No required
+implementation or authorized verification work remains.
 
 ### Current native and standalone artifact qualification (2026-10-15)
 
@@ -1577,54 +1591,19 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-- Stages 5aa-5ad implement live consumption, recovery, host grants and caller attribution
-  for preparation/observation. Complete one installed/native normal-terminal/failure/
-  interruption/restart Run/Goal workflow, including unknown work and in-flight
-  admission under the actual calling owner's resource policy.
-- Repeat Schedule crash acceptance in the final sweep, including the intermittent
-  resolution concern recorded above. Preserve all original no-replay/data assertions
-  and the new plugin-unavailable recovery qualification.
-- Complete execution-bound background Session/Run/Segment/member provenance and optional counter I/O admission. A phase callback cannot claim durable continuation.
-- Embedding evidence/metering is implemented. Complete physical-source historical
-  retention/pruning at its existing owners, preserving reported unknown usage/price
-  without another billing tally.
-- Complete transitive dependency status, scoped retention/release, point lifecycle,
-  query streams and wide-number Go/TS parity. Existing unary/mutation-stream and
-  composition boundary proofs do not close every consumer or automatic workflow.
-- Audit every Tool, CLI/UI/automatic/cross-plugin consumer for exact target/origin/
-  parent, original route/private receipt and lifetime. Complete independent author/
-  component generation/recovery/module qualification; publication is not authorized.
-- Concentrate full/native/vet/race/dependency/schema/architecture/format/deletion and
-  P01-P48/review closure checks at final acceptance. No frontend UI/E2E/screenshot
-  execution is authorized. Do not classify an unresolved failure as pre-existing
-  without causal evidence.
+None within the authorized implementation and verification scope. Historical
+slice entries below retain the failures and pending work as they existed at each
+stage; Current stage, Review closure and Proposal acceptance coverage describe
+the final state. Excluded graphical tests and unauthorized publication are not
+pending actions for this goal.
 
 ## Next
 
-Continue in the same worktree and branch. The complete proposal/review objective
-is unfinished; the individual acceptance table distinguishes executed backend
-proof from source/native inspection and excluded UI execution.
-
-1. The full execution race after `659f1aa30` passes (278.105s). All eight
-   SIGKILL cuts passed twice under race and whole bootstrap passed again.
-2. Public original-owner Tool result recovery is implemented in `6b3a1d823`.
-   Complete bootstrap/execution and all eight original SIGKILL cuts pass. Include
-   the final affected race check after the remaining cutover work.
-3. Core Memory published reads/model ports, public Tool context/text embeddings
-   and caller policy are migrated in `9f2bac554`, `2079ee06f` and `6d3728a0c`.
-   The actual public Runtime build closure excludes private feature implementations.
-   Invocation-scoped grants, operation budgets, configured-error versus optional
-   absence and no provider replay retain their existing regression assertions.
-4. Finish transitive availability diagnostics, all Tool/automatic/cross-plugin
-   target/origin/parent/original-route audit and retention policy review. No new
-   automatic expiry is authorized; retain the current Run/Session/pending owners.
-5. Complete independent backend/public artifact qualification, final module/dependency/
-   schema/API checks and current README/example cleanup. Packed Usage independent
-   build/install and native `.app` build already pass; they do not prove registry
-   publication or rendered workflows. Publishing remains unauthorized.
-6. Run the final affected full/vet/race/closure gates and reconcile every P01-P48
-   and review item against current evidence. Frontend UI/E2E/screenshot execution
-   and Desktop aggregate checks remain excluded; never count them as passed.
+No further goal implementation is required. Keep the qualified source/artifacts
+on this worktree and branch. A future publication, push, merge, user-data migration
+or graphical test run requires a separately authorized scope. For future local
+race verification, isolate complete CLI packages with `-p 1`; retain original case
+assertions and deadlines, and preserve any failed parallel invocation as a failure.
 
 ## Decision ledger
 
@@ -1899,44 +1878,36 @@ proof from source/native inspection and excluded UI execution.
 
 ## Review closure
 
-Status is open until code and appropriate verification prove the requirement.
+Current implementation/evidence replaces the historical open-stage labels.
+The complete normal backend suites and current source/build checks are recorded
+above; complete module-isolated race qualification is recorded in Current stage. Graphical interaction
+proof is excluded, never converted into a pass by source or native compilation.
 
-| Review item | Status | Implementation/evidence |
-| --- | --- | --- |
-| Original resource target for retained background commands | Stage 5ad real SQLite reopen, dispatched/observed Session/workspace targets and all origins verified; original Actor preserved and retarget/prepared/unrecorded resource callers refused; execution-member/full native proof remains open | application/integration/plugins/commands.go; commands_test.go; plugin/README.md; DESIGN_PHILOSOPHY.md |
-| Observer host callbacks and original next authority | Stage 5ac installed unary/stream RPC+next, distinct receiver/caller Actors, active-cycle refusal, large usage, stop/join and source/outcome boundaries verified; stronger original refusal assertion now passed after isolated cache rebuild; full native acceptance remains open | plugin/callbacks.go/tests; mcpconnection/pool.go; pluginservices/model_observers.go; model_phases.go; model_observer_callbacks_test.go; model_endpoint_test.go; contract/go-api.json |
-| Model preparation host collaborators and ownership | Stage 5ab installed selection/context/input authenticated reentry, original Actor/invocation, undeclared direct-call refusal, active-cycle refusal and stale reference boundaries verified; native/full effect composition remains open | pluginservices/model_selection.go; model_context.go; model_input.go; model_phases.go; calls.go; model_phase_callbacks_test.go; execution/interaction_context_reducer.go |
-| Live independent model consumption and primary-output isolation | Stage 5aa captured-member common selected/auxiliary publication, persisted purpose and different-model/unknown recovery implemented; publication/stream/source/SQLite/-race boundaries verified; owner-policy/in-flight and full installed/native Run/Goal acceptance open | executionctx/model_calls.go; execution/interaction_model_calls.go; interaction_model.go; interaction_tool.go; pluginservices/model_capture.go; runs/reducer.go; execution_fact.go; commit.go; recovery.go; recovery_commit.go; sqlite/db.go; model_invocation.go; model_endpoint.go; recovery/persistence.go; matching regressions |
-| One Run consumption owner across actual model calls and termination | Stage 5z per-call accrual, original usage/price, resume/interleaving/duplicate/context/terminal invariants implemented and verified; Stage 5aa live callback wiring implemented; full installed/native and total-work admission remain open | runs/execution_fact.go; execution_fact_commit.go; reducer_items.go; reducer_outcome.go; execution/interaction_accounting.go; interaction_session.go; interaction_durable_children.go; run/metrics.go; matching backend regressions |
-| Known independent inner consumption under lost outer execution | Stage 5y source/Run/Goal atomic recovery, unknown cost, primary exclusion, rollback/context/restart proof verified; Stage 5aa live publication and role-aware recovery implemented; full normal-terminal/owner-policy admission and native acceptance open | sqlite/model_endpoint.go; application/runs/recovery.go/recovery_commit.go; adapter/run/recovery/persistence.go/model_evidence_test.go |
-| Original executing Run/Segment for multiple physical model calls | Stage 5x active Model/Tool ownership, namespace/chronology/Session/wait/resume refusal and real callback source association verified; Stage 5ab preparation publisher captured; native/background/owner-policy proof remains open | executionctx/scope.go; execution/interaction_model.go; interaction_tool.go; model/endpoint_observation.go; sqlite/model_endpoint.go/tests; pluginservices/model_calls.go/tests; plugin/model_call.go; protocol/model_invocations.go/version.go |
-| Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; stream.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
-| Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
-| Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; Stage 5w independent callback input/budget/media handling now verified; general composition and final native acceptance open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
-| Auxiliary complete-input capacity and original model-owned options | Stage 5s final context/provider count/local estimate, output reservation, known/unknown/error semantics, reasoning, request equality and cancel/join verified; final native/all-workflow acceptance open | model/auxiliary.go; auxiliary_capacity_test.go; pluginservices/auxiliary_model_observers.go/tests; modeltext/request_estimate.go; maintenance/compaction_trigger.go/tests |
-| Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; Stage 5w fresh installed per-call routes now verified; general composition/Run-Goal accounting/final native acceptance open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
-| Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; Stage 5s auxiliary token preflight now verified; per-call routes/general transformation/final acceptance remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
-| Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
-| Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
-| Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory capacity removed with publisher bounds; business topics/record IDs and contract-specific notice routing removed; full Tool/dependency/streaming and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
-| Public operation shared by Tool, CLI, UI and other plugins | Public installed Go/Protocol/CLI/TS unary entrance and typed proxy implemented; all CLI Schedules and CLI/workspace Memory reads/human mutations use public contracts with original binding/input; all Core Memory business methods/DTOs/feature removed; Core records/enums removed and client projections relocated; Core capacity removed with published pagination bounds; generic plugin-data notifications installed for commands/background/Tool entrances; remaining Tool/all-consumer lifecycle and final process acceptance open | runtime/plugins.go; pluginservices/calls.go; CLI runtimebinding/agentmemory.go and terminal/agent_memory_management.go; desktop workspace public/memory.ts; TS client/pluginCommand.ts and mutationJournal.ts |
-| Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
-| Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
-| Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; Stage 5h explicit ordered decoration choice and named setup required-member admission now verified; scoped execution composition, lifecycle/observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
-| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; typed callback streaming, canonical Scope aggregate, transport backpressure/cancellation, byte budget and external frozen remaining-chain proof now pass; SDK backend register/bind and acknowledged duplex streaming now pass with a real stdio decorator/model-next executable; Internal Runtime mutation-stream original route/recovery is verified in Stage 5b; public Go/Protocol stream delivery is verified in Stage 5c; typed/callback Go streaming is verified in Stage 5d; TS mutation streaming is verified in Stage 5e; Memory production completion is migrated in Stage 5f; Stage 5g Interaction known-response/accounting survives outer failure and host reopen without continuation; Stage 5i installed transparent Interaction chain, original checkpoint bindings and held releases are implemented with real SDK HTTP boundary evidence; Stage 5j auxiliary/Memory utility capture, child identity and held-release lifetime are implemented/verified at their real boundaries; Stage 5k physical chat endpoint identity/admission/known outcome/restart and public JSON query are implemented/verified at their boundaries; Stage 5l current transparent Interaction known accounting now derives from exact source evidence; Stage 5m Session endpoint trajectory/export/deletion and title scope are implemented/verified; Stage 5n original endpoint pricing/current Interaction boot-loss accrual are implemented/verified; Stage 5o retained physical auxiliary/global reporting and coverage are implemented/verified; complete retention policy, embedding/multi-call accounting and other recovery classes, transformed-input/multiple-invocation contracts, transitive dependency lifecycle and full native acceptance remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go; plugin/stream.go; model_stream.go; model_stream_external_test.go; plugin/backend_stream.go; backend_stream_test.go; backend_stream_external_test.go; pluginservices/streams.go; streams_test.go; commands.go; mcpconnection/pool.go; delivery/handler_plugin_calls.go; registry.go; transport/http/stream.go; plugin_stream_test.go; client_stream.go; plugin_streams.go; plugin_streams_test.go; plugin_streams_callback_test.go; plugin_callback_caller.go; TS client/pluginStream.ts; client.ts; transports/http.ts; durableMutationJournal.ts; plugin-sdk/src/index.ts; execution/interaction_model.go; runs/reducer.go; sqlite/model_invocation.go; sqlite/model_endpoint.go; sqlite/trajectory.go; sqlite/trajectory_export.go; sqlite/session_mutation.go; persistence/trajectory_export.go; delivery/trajectory_export.go; segment/effects_finish.go; plugins/trajectory/src/component.tsx; recovery/persistence.go; runs/recovery.go; run/metrics.go; recovery/model_evidence_test.go; sessions/usage_reporter.go; delivery/handler_usage.go; sqlite/model_endpoint_test.go; cli/runtime_usage.go; plugins/usage/src/component.tsx |
-| No-Run unresolved human command pins original binding and recovery evidence | Stage 4l-4o all actual CLI Schedule mutations retain original request/owner/revision before I/O; pending creation/edit/enablement precede new form/provider/revision reads. Capture/byte/store/owner/persistence/decoder checks pass. Native process replacement acceptance, remaining Memory/other entrances and cross-generation recovery open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
-| One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
-| Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
-| Recovery entrance independent of failed optional UI | Built-in manager provider/dependency/point inspection and localized optional-module recovery implemented; final lifecycle acceptance open | PackageManager.tsx; ProviderSelections.tsx; ContributionRequirements.tsx; PointInspection.tsx; InstalledComponent.tsx; CLI |
-| Strict public protocol requirements without internal revision coupling | Backend wire and exact immutable method/capability/export contract verified; strict local declaration and real feature export binding implemented; named dependency resolution/public projection and fresh cross-plugin declaration checks now compile; managed launch/export publication gates now compile; provider waiting and setup/frozen bindings now implemented with SDK lifecycle execution; complete integrated activation, observed status/retention and all-consumer acceptance open | runtime/plugin/backend.go; binding.go; binding_test.go; public SDK handshake |
-| Explicit candidate update, withdrawal, quiescence and uninstall behavior | Stage 1 enablement/update and Stage 2b unresolved-command lifecycle verified; public provider selection and actual manager implemented; final integrated acceptance open | runtime/internal/domain/integration/plugin/installation.go; runtime/internal/application/integration/plugins/installations.go; owning tests |
-| Reject old host encodings without data mutation | Installation/command-route host shapes, digest-only/private bare-result and Reviews former DTO format refusal verified; full public cutover open | runtime/internal/infra/sqlite/plugins_test.go; schema_admission_test.go; managedmcp/receipts_test.go; Reviews schema_test.go; runtime/README.md |
-| Preserve Memory ledger, watermark, curation and receipts | Existing private maintenance admission/publication/receipt and failure boundaries verified; public capability migration open | managedmcp/prepared.go; memory/transport/maintenance.go; prepared_test.go; memory transport tests; bootstrap/plugin_memory_maintenance_receipt_test.go |
-| One Schedules wake/dispatch lifetime and retained Run acceptance | Stage 4g moves the sole loop into the backend after public setup/activation; private capture/receipt/authority/join subsets verified; full native non-selected/restart/withdrawal acceptance open | plugin/setup.go; mcpconnection/pool.go; schedules/transport/background.go; managedmcp/prepared.go; schedules/host.go; bootstrap/schedules_callback_loss_test.go; managed_services_test.go |
-| Preserve package integrity, credentials, source identity and core authority checks | Open; baseline required | existing admission and policy regression checks |
-| New acceptance coverage for unresolved mutation/update/provider replacement | Existing real commands verified, including database reopening and distinct installation replacement; generic/UI coverage open | bootstrap/managed_services_test.go; plugin_command_recovery_test.go; application/integration/plugins/commands_test.go |
-| Standalone bundled/non-bundled author parity | Open | independent public consumer builds |
-| Deletion of replaced APIs, carriers, schemas, examples and documentation | Open; audit every slice | final source and generated-contract search |
+| Review requirement | Current implementation and evidence |
+| --- | --- |
+| Accurate baseline and owner boundaries | Last integrated main `7ba40c117`, released Scope v0.50.0; Runtime/Scope and private backend facts retain their original authorities. Full package/architecture checks pass. |
+| Remove closed service/view and privileged feature paths | Generic declarations, capabilities, bindings and resources replace closed business enums/carriers. Public Runtime build closure contains no private feature implementation. `6b3a1d823`, `9f2bac554`, `2079ee06f`, `6d3728a0c`, `03fb6eeb6` delete the remaining private receipt/read/model/context/client dependencies. |
+| Shared Tool/CLI/UI/cross-plugin operations | Actual Reviews, Memory and Schedules consumers enter the same backend operations and private receipts. Source API closure is 95/95; complete backend/CLI and shared-client checks pass. Graphical interaction is excluded. |
+| Origin, parent, target and lifetime | Installed operation, Tool preparation, background capture, model callback and active-member tests pass. Memory Search's detached embedding parent was RED/GREEN fixed in `6d3728a0c`; restored attribution never manufactures an execution publisher. |
+| Collection/selection/decoration and plugin points | Exact consumer contracts, immutable setup, cycle checks, explicit compositions and actual Reviews/analyzer process lifetimes pass. CLI `33696b3c2` adds real composition inspection/selection/resolution; transitive failures retain their complete consumer path. No second readiness ledger. |
+| Reentrant RPC, remote next and streams | Actual SDK/headless processes verify reentrancy, frozen remaining chains, lazy consumption, acknowledgement backpressure, cancellation, byte budgets and stale grant refusal. The first remote model observer is explicitly transparent; its once-through rule is not universal middleware policy. |
+| Final transformed Tool arguments | `TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution` and existing hook/authorization rewrite tests preserve final schema admission, approved/executed/history equality and invalid-proposal refusal before effects. |
+| Independent model work and accounting | Each physical exchange has its own identity, captured route, caller budget and durable source. Source/Run/Goal tests preserve known inner usage under outer failure and unknown consumption under restart/cancellation. Independent output cannot alter primary conversation/context. No invented universal Goal ceiling. |
+| Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
+| Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
+| No-Run unknown commands and original receipts | Complete original-owner recovery tests cover response loss, reopen, selection/configuration/uninstall fencing, distinct installations and private refusal/identity conflicts. Host stores routing, never a competing business success. |
+| One contract generation source and numeric parity | Go-owned typed methods generate canonical Schema, Go projections and TS. All pipelines reproduce exactly. Feature JSON strings and the shared exact codec preserve wide integers/decimals/exponents through unary/stream/journal/point paths; no copied schema or alternate IDL. |
+| Typed refusal versus uncertainty | Public capability refusal and idempotency conflict owners work outside private import privilege; Tool, CLI and shared clients preserve known business failure versus absent/malformed/unreachable evidence. |
+| Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
+| Management independent of failed optional UI | CLI and built-in management inspect metadata/status and disable optional installations without evaluating their JS. Backend blocked-entry/withdrawal tests and actual command consumers pass. Renderer-blocking interaction itself is excluded. |
+| Protocol and activation identity | Current protocol requirements, complete export sets and immutable same-release activation proofs are tested. SDK additions do not infer a new public wire epoch from internal build versions. Retired shapes are explicitly refused. |
+| Update/withdrawal/retention/uninstall | Original pending commands and waiting executions retain exact transitive release dependencies. Candidate failure, explicit selection, disable/re-enable, independent source origin and retained private namespaces are tested. Old directories are preserved, never converted or adopted by another owner. |
+| Memory ledger/watermark/curation/review | Complete feature and installed maintenance/publication/receipt/cancellation/CAS suites pass. Core supplies committed facts and consumes public projections; the backend remains sole business writer. |
+| Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
+| Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
+| Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
+| Independent authors and current distributions | Offline external public Go binding/storage/receipt/module checks, complete independent Usage install/build lifecycle, ten-package Runtime distribution and current signed arm64 `.app` build pass. No registry publication or user-data deployment. |
+| Final deletion and documentation | Replaced APIs, aliases, carriers, business facade types, private construction paths and stale active README/architecture claims are removed. Existing historical slice entries remain history; Current stage and the individual P01-P48 table own current status. |
 
 ## Proposal acceptance coverage
 
@@ -1947,7 +1918,7 @@ the user; source inspection and native builds do not become rendered proof.
 
 | Requirement | Current evidence and remaining work |
 | --- | --- |
-| P01 | Verified for complete Usage from packed public artifacts outside the checkout, with typecheck/build and exact release resource bytes. Registry publication is not claimed. Backend private-source dependencies remain a separate review/cutover item. |
+| P01 | Verified for complete Usage from packed public artifacts outside the checkout, with typecheck/build and exact release resource bytes. Registry publication is not claimed. The remaining Core private feature build dependencies are removed and the external Runtime build closure is verified. |
 | P02 | Verified by `TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource`: ordinary source, same contract/resources, independent identity, withdrawal, restart and uninstall. |
 | P03 | Verified by full first-party initialization/restart and independent-origin lifecycle tests; durable disable/uninstall is not reseeded. |
 | P04 | Backend verified by explicit provider selection and original-command routing tests; enablement never selects another provider. |
@@ -1960,7 +1931,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P11 | Verified by executable stdio decorator/model-next and installed model-call evidence tests. |
 | P12 | Backend verified by captured composition order and checkpoint activation identity tests. |
 | P13 | Final rewritten Tool proposals are structurally admitted before approval; `9f3de47f0` verifies approved, executed and historical arguments match and rejects invalid proposals before approval/execution. |
-| P14 | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. Final affected race remains. |
+| P14 | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. Complete Runtime race and original crash-cut coverage pass; CLI race qualification and the failed parallel invocation are recorded in Current stage. |
 | P15 | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
 | P16 | Backend verified by known inner response/consumption surviving failed outer observation and reopen; uncertainty is not relabeled as no effect. |
 | P17 | Backend/shared-client verified by early consumer withdrawal, cancellation/join and no premature final-result tests. |
@@ -1994,9 +1965,50 @@ the user; source inspection and native builds do not become rendered proof.
 | P45 | Actual blocked optional backend restart/disable management tests pass without loading that backend's component. |
 | P46 | Backend reverse-order cancellation/join, callback teardown, transaction panic/Goexit and settled close/error tests pass. UI teardown remains source only. |
 | P47 | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
-| P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Core private Memory entity/application imports are removed in `9f2bac554`. Its private RPC grant dependencies are removed in `6d3728a0c`, with external Core build-closure proof. Open: superseded source/API/schema/example/README claims and final artifact checks. |
+| P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Core private Memory entity/application imports are removed in `9f2bac554`. Its private RPC grant dependencies are removed in `6d3728a0c`, with external Core build-closure proof. Superseded active source/API/schema/example/README claims are removed; current complete, dependency, artifact and native gates pass within the stated scope. |
 
 ## Verification
+
+Final current qualification (2026-10-15):
+
+- Complete normal `go test -p 2 ./runtime/... ./runtime/localruntime/... ./cli/...
+  ./examples/plugins/reviews/backend/... -count=1 -timeout=300s`: 174 packages,
+  all pass. Execution 68.930s, bootstrap 94.535s, architecture 23.882s,
+  persistence 2.395s and CLI runtimebinding 13.634s. No Go tests are excluded.
+- Full race sweep with `-p 2`: all Runtime/localruntime/Reviews and 173 total
+  package results pass, including complete execution (318.622s), bootstrap
+  (399.488s), Core SQLite (34.489s), SDK (8.464s), service (82.129s), persistence
+  (22.313s) and all eight original Schedule crash cuts. The aggregate exits 1
+  because one CLI recovery case hits its unchanged 10s deadline; it is not a pass.
+- Complete affected runtimebinding race independently passes (67.710s). Three
+  unchanged exact-case repetitions pass (39.668s total). With all temporary
+  diagnostics removed and source clean, `go test -race -p 1 ./cli/... -count=1
+  -timeout=300s` passes all 33 CLI packages: root 70.686s, runtimebinding 67.414s,
+  command 7.890s and terminal 56.501s. This completes race coverage per module
+  without suppressing or relabeling the earlier failure.
+- `go vet -p 2` over all four module roots plus localruntime passes. Core/Memory/
+  Schedules generation reproduces tracked artifacts exactly, including public
+  Go API, all Go projections, feature JSON/TS and published caller policy.
+- Shared Runtime contract `npm run check`: all 30 files/355 tests, types, lint,
+  format and knip pass. SDK, Reviews, portable and Desktop typechecks pass.
+  Portable lint/format and exact component resource reproduction pass.
+- Static layer, published-boundary, context, port-surface and API-consumer checks
+  pass. API consumer closure is 95/95 fact families, 112 typed sites, all 3
+  sidecars, 14 event types and 4 Tool-result readers. No exemption is added.
+- Current production Wails package, strict/deep ad-hoc signature verification,
+  arm64 executable and macOS 13.0 metadata pass. Current Runtime `make build`
+  ships ten ordinary packages and current backend executables; packaged caller
+  policy matches its publisher. Neither distribution was launched on user data.
+- Independent packed Usage author kit, clean offline reinstall, typecheck,
+  rebuild and every release resource byte comparison pass. External Go public
+  binding/storage/receipt/SDK and private-feature-free Runtime closure checks
+  pass in the full architecture suite. No registry publication is claimed.
+- No frontend UI/E2E/screenshot test was added or run in this completion sweep;
+  the existing E2E consumer only migrates an import to the actual public feature
+  client. Desktop aggregate `npm run check` was not run. No assertion or deadline
+  was weakened. Owned author-kit and final logs are cleaned after recording.
+
+Earlier slice verification follows as history; it does not override this result.
 
 - Handoff cleanup: the sole owned uncommitted modelref/endpoint.go draft was
   reversed exactly. Restored Runtime go build ./... passes. No new backend suite,
@@ -3535,417 +3547,44 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Schedule crash acceptance still fails at activation handshake after the production
-  Memory dependency repair. Preserve cut/no-replay/data assertions and inspect the
-  original exchange before choosing a fix; causality is not classified as unrelated.
-- Full installed/native Run/Goal live/normal-terminal/failure/interruption/restart
-  accounting remains unproven. Stages 5aa/5ab/5ac are boundary implementations, not full
-  delivery. Preserve unknown consumption and the original logical/physical owner.
-- Complete actual owner-policy/in-flight admission and optional counting-provider
-  evidence. Current contracts do not authorize inventing a universal Goal ceiling.
-- Preparation phases now receive host RPC with cycle refusal and their original
-  execution publisher. Observer cohosting and retained background resource attribution are implemented; execution-bound background provenance
-  and full durable composition remain open; cycles cannot silently bypass policy.
-- Embedding evidence, retention, transitive dependency/status/lifecycle, every
-  consumer, independent author/module and all P01-P48/review acceptance remain open.
+No unresolved implementation decision blocks the authorized scope. Current
+retention remains conservative: Run-linked evidence follows its Run, Session-only
+evidence follows atomic Session deletion, and unattached evidence is retained.
+Pending/unknown commands never expire into replay permission. No new TTL or
+universal Goal cost/step ceiling was inferred from silence.
 
-- Stage 5t/5u/5v implement public/auxiliary/primary input transformation and final
-  model-media admission with original source evidence. Full real process/native/
-  delegated and all-workflow acceptance remains open; bounded tests are not a full
-  transformation platform completion proof.
+One parallel race invocation hit the CLI recovery deadline. The unchanged
+complete failed package, three exact-case repetitions and entire serial CLI
+module pass; the original failed invocation remains explicit in Current stage.
+No production cause was inferred from inability to reproduce it in isolation,
+and no test was skipped or relaxed.
 
-- Primary/auxiliary context and accepted execution/use-case model selection are
-  implemented. Stage 5s adds known auxiliary capacity preflight using its actual
-  counter or the shared estimate. General transforms/per-call routes/multiple
-  independently admitted calls exist at their boundaries; complete final acceptance remains open.
-- Internal AuxiliaryResolver now requires an explicit budget and returns exact
-  SelectedChat capture. All known internal consumers are migrated; no public
-  plugin SDK or protocol type changed in this slice.
-- The interrupted prohibited UI run exposed seven failures in partial output.
-  Attribution is unproven; inspect merged feature contracts and consumers without
-  authoring/running UI tests. This does not waive final integration requirements.
-
-- Stage 4p proves actual public read compilation, CLI contracts and binding refusal,
-  not the complete native selection/withdrawal/restart matrix or rendered context
-  behavior. Memory notification/independent-author platform work and final mutation acceptance remain.
-- All CLI Schedule Core entrances are now migrated. Native public-call process
-  loss/replacement/disablement/uninstall execution, generic notification ownership,
-  portable wide-number consumer behavior and independent author packaging remain
-  part of the full goal; this slice does not establish them by compilation alone.
-- Stage 4n completes actual public creation/capture and source migration, not the
-  whole native lost-create/revocation/restart matrix. Later Stage 4o retires the
-  last Schedule update method and its types; final execution remains open.
-- Stage 4m migrates the actual manual entrance and preserves original request/typed
-  acknowledgement ordering. The native public-call response-loss/restart/disablement
-  matrix is compiled but remains unexecuted until final consolidated acceptance.
-- Stage 4l proves CLI intent persistence/reopen and public adapter dispatch, not the
-  complete native client-plus-Runtime response-loss/restart/replacement matrix.
-  Later owning slices retire Schedule/Memory business facades; full integration remains open.
-- Stage 4g implements post-setup activation, private clock/scan/original recovery,
-  generic owner notices and host-driver deletion. Execute native acceptance for enabled
-  non-selected installations, lost Core acknowledgement, restart/disable/replacement
-  and independently accepted Runs on the final source. No second wake owner is permitted.
-- All Schedule Core business facades are retired through actual consumer migration.
-  Compilation does not prove all native/automatic/cross-plugin lifecycle behavior.
-  Complete cross-generation command recovery acceptance remains open.
-
-- Stage 4b implements existing Memory/Schedules consumer invalidation for public
-  commands, including original receipt recovery/uncertainty, with focused evidence.
-  Complete generic plugin-defined notification and final cross-generation/component
-  notice consumption remain open; current feature projections do not close those.
-- Verify restoration of the original Memory/Reviews mutation journal evidence after
-  component/Runtime/window replacement. A retained in-render retry handle is necessary
-  but does not prove recovery in a new UI generation.
-
-- Stage 3x closes the previously missing source consumers: point/requirements/provider
-  manager operations and the actual HTTP resource query projection. The 109/109 static
-  gate passes. Full installed semantics, lifecycle and final source must still be
-  verified; source coverage does not discharge the remaining P01-P48 obligations.
-
-
-- Execute real installed Stage 3p dependency waiting/setup/callback lifetime integration on the final source. Generic Tool call preparation, complete observed dependency states and execution-owned durable retention are still implementation requirements; setup callback references must not substitute for an invoked Tool's original calling context.
-
-- Stage 3p implements the previously missing provider waiting, named setup and frozen session binding seam; a compiled implementation plus SDK-only lifecycle test is not full installed activation/component acceptance.
-
-- The requirements inspection query still resolves metadata without activating code. Stage 3p setup/session binding is its real execution seam; point values/applicability/ordering now have an admitted public owner and actual analyzer consumer; durable scoped composition and executing decoration remain required. Query results alone are not lifecycle evidence.
-
-- Execute final acceptance for Stage 3m original caller retention and restoration through the actual Schedules durable request/occurrence and canonical Run callback, including response loss and restart. The private model and real dispatch path now implement it; compilation alone does not close the review requirement.
-
-- Execute final Memory business-only input/callback/receipt regressions and the missing-metadata fresh-admission guard. Stage 3i removed Grant from the DTO and both durable inputs; this is now a verification obligation, not unfinished removal.
-
-- Bind the verified callable capability/export owner into the installed declaration and activation lifecycle, migrate real Memory/Schedules required contracts and preserve contribution independently of server identity. Callback preparation/notifications are now outside generic source authority; bind that real feature boundary to the new declarations. Reuse existing durable Commands routing for captured contribution/export/target/origin/parent; no second route or receipt owner.
-
-- Unary callbacks now have a public transport and real Memory consumer. Complete installed activation/dependency rendezvous must still replace remaining private feature integration; canonical Delivery binding and actual Schedules acceptance are verified, while decorators/remote next remain open.
-
-- Extend the verified private maintenance admission/publication receipt and original host routing to public contribution bindings. Preserve the distinction between recovering a completed receipt and unknown/canceled original work; never restart its models from host routing alone.
-- Extend the verified immutable input to the complete generic binding: exact contract/contribution, captured target and adapter-established origin/parent, with current declaration and activation handshake. Existing raw JSON and old-format refusal do not prove the missing installed operation/proxy/component paths.
-- Extend the installed unary original-binding/retention owner with concrete target, origin/parent and declared dependencies. Stage 3j removed closed service binding; Stage 3k implements the public unary entrance, while all-consumer integration remains open.
-- Finish generic call/error projections and public TypeScript client/component bindings through Reviews; current Go-owned generation supplies structural contracts and preserves typed outcome vocabulary.
-- Verify the selected MCP/SDK custom method and streaming primitives using real processes.
-- Select and implement actual module/resource loading for Web and Wails, including a management recovery entrance.
-- Actual Schedules is now a real runs.getAcceptance reconciliation caller. The previously tracked graphical source-consumer gate remains separate; do not add a dummy client call or weaken a valid runtime contract to satisfy it.
-- Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
+Graphical interaction remains unexecuted by user instruction. The earlier
+interrupted prohibited UI run is not current acceptance evidence and is not
+claimed resolved. Public artifact qualification uses current-source archives and
+an offline external Go module; registry publication and external deployment are
+not authorized or claimed.
 
 ## Spillover risks
 
-- Stage 5ac replaces the public OpenRPC source signature with variadic callbacks.
-  External method-value/interface consumers require an SDK update and rebuild;
-  ordinary calls remain valid. Core/backend/storage formats are unchanged. No
-  published module release or external consumer deployment was performed.
-- Main's Scope v0.50.0 graph is integrated and workspace compile/boundary checks
-  pass. This is not qualification of old waiting checkpoints, native distributions
-  or an independently published module graph; final acceptance retains those duties.
-
-- Stage 5aa adds logical_purpose to the required database schema. Old databases are
-  refused without conversion or deletion; no data migration was performed.
-  Current-format same-build restart is verified, not an old-layout upgrade.
-
-- The combined merge requires Core .31 client regeneration/rebuild. Steer fields
-  use candidateUserItemId/steerInputs and accepted-versus-retired semantics; journals
-  require steerItemId plus original Run metadata/installed route. Former incomplete
-  entries refuse unchanged; resolve them with their original client before replacement.
-  Backend .2/export3 unchanged, and provider redelivery is not a migration option.
-- Unknown independent attempts now invalidate exact recovered Run/Goal cost and
-  count admitted work without synthetic usage. Root context remains its own primary
-  calibration. Live/normal-terminal totals remain incomplete and cannot be advertised
-  as budget-enforced before the next integration removes that gap.
-
-- Core .30 adds optional segmentId to endpoint observations. External strict
-  clients require regeneration/rebuild. Backend .2 and export schema 3 unchanged;
-  retained columns/JSON require no conversion. Old unassociated observations remain
-  their original facts; no ancestry-based retroactive Run billing is introduced.
-- Internal StartEndpointInvocation now requires an explicit logical owner argument.
-  Existing in-repository consumers are migrated without an old signature. Fresh
-  selected IDs may no longer reuse calling/primary/Tool identities; callers need
-  distinct stable exchange IDs. No provider redelivery migration is authorized.
-
-- Stage 5w adds exact host selected-model callback methods. External consumers
-  requiring them must rebuild/current-host grant. PublishRPC method-value types
-  requiring func(http.Handler) error must migrate to the variadic signature; no
-  old source wrapper remains. Wire/storage epochs stay Core .29/backend .2/export3.
-- Independently admitted descendant consumption is visible in physical evidence
-  and retained usage reports, but its Run/Goal totals/budget enforcement remain open.
-  Do not infer aggregate delivery completion from the per-call callback checks.
-
-- Core .29 changes media refusal timing for well-formed Start/Resume/Steer input.
-  External consumers must observe the accepted Run outcome; structural validation
-  remains before acceptance. Original media/command identity are preserved, with
-  no new storage migration or side-effect redelivery authority.
-
-- Input-transform execution checkpoints require model_inputs and explicit empty
-  capture. Former payloads cannot be silently resumed as the current chain. Internal
-  SelectedChat replaces AuxiliaryModel; all known internal consumers are migrated.
-
-- Core .28 incorporates main's required public Start/Resume identity and retained
-  Run admission metadata. Old journal Run entries lacking that metadata are refused
-  and preserved, without conversion/deletion; affected external clients must retain
-  original keys/namespace/parameters/metadata and rebuild against the current Core.
-- Auxiliary local estimates remain approximations without a provider counter;
-  actual provider capacity failures retain their original failure/observation path.
-
-- Stage 5f removes Memory's private model callback protocol and requires current
-  backend/Runtime rebuild together. Private maintenance/receipt/data formats do not
-  change. Interaction/auxiliary decorators, durable inner evidence and generic
-  embedding parity remain open; complete response transport does not prove those.
-
-- Stage 5e adds client.plugins.stream and bindOperations' generated chunk-map stream
-  entrance. Rebuild shared client/SDK/component resources together. Async consumers
-  must respect the supplied signal; close waits for their returned Promises.
-  Core/backend/storage/receipt formats are unchanged. Unsafe numeric stream values
-  are refused; full wide-number portability and production composition remain open.
-
-- Stage 5d adds public PluginStreamer/PluginStreamingMethod/BindPluginStreamingMethod
-  and PluginCallbackCaller.StreamPlugin. Rebuild Go authors against the generated
-  public API. Core/backend/private data formats do not change. TS/query streams,
-  production models/decorators and published author parity remain open requirements;
-  the current workspace compiler does not establish published dependency availability.
-
-- Stage 5c advances Core to 2026-10-14.21 and adds plugins.stream plus ephemeral
-  chunk/result/refusal notification frames. Rebuild Go/TS consumers together.
-  Existing unary callers retain their proper transport; TS high-level streaming,
-  typed/callback proxies and actual production composition remain implementation
-  requirements. Backend/storage/private receipt formats are unchanged. Transport
-  backpressure/remote fixture proof does not establish full installation lifecycle.
-
-- Public SDK backend streaming APIs require current Go module/transport support.
-  Chunks use the existing call-owned callback and exact descriptor; final receipt
-  ownership remains with the operation, not the SDK. A lost/partial stream is not
-  replayed. Runtime generic installed/component entrances are still unary pending
-  the route/recovery migration. No existing wire version/private data format changes
-  or external module publication occurs in this slice.
-
-- Core .20 adds stream schema metadata; rebuild current Go/TS clients together.
-  Callback stream methods require the actual new stream API and final consumption,
-  with no downgrade/retry. Aggregate byte policy conservatively counts encoded
-  deltas, so callers must allocate their actual response budget accordingly. Existing
-  unary identities, backend protocol/private data formats stay unchanged. Installed
-  duplex/TS/production model composition and independent module publication remain open.
-
-- New public Go model callback APIs require the current module for external authors.
-  No existing Core/backend method or private data format changes; no module is
-  published here. The call owner must enforce its actual budget and original model
-  identity/fencing. Lost callback delivery remains uncertain; no SDK provider retry.
-  Streaming/installation/TS parity and production consumers remain open.
-
-- Core .19 removes agentMemory.changed, schedules.changed and Schedule event IDs.
-  External subscribers must use plugins.dataChanged and reread their business owner;
-  no legacy alias/double publication is retained. Generic plugin signals may refresh
-  multiple plugin readers, but do not invalidate unrelated Core resource topics.
-  Backend wire/storage/receipt formats are unchanged. Full author/lifecycle/streaming
-  and all-workflow acceptance remain open; no external deployment was modified.
-
-- Core .18 removes MaximumAgentMemoryItemsPerTarget. Published Memory pages require
-  Capacity and current request/row bounds. External clients/packages must rebuild
-  against current contracts; old frames have no alias or conversion. Private storage
-  and receipt formats remain unchanged. Business notification migration and final
-  process acceptance remain open; no externally published module is changed here.
-
-- Core .17 removes public Memory records/enums and their wire sample/schema. External
-  clients must consume the publisher contract and own their visible projections.
-  Published Memory identity/content/vocabulary schemas now tighten the actual
-  operation handshake; rebuild packages/Go/TS/ESM together. Private storage/receipts
-  are unchanged, with no legacy conversion or provider retargeting. Core capacity
-  and notification knowledge remain open until their actual consumers migrate.
-
-- Core .16 removes the last Memory mutation and feature. External clients must
-  rebuild and adopt published installed operations; unknown old Core commands
-  receive no retargeting or conversion. Project additions require the caller's
-  captured workspace. Core read-model/limit/topic migration and full native
-  acceptance remain open, with private data/receipt formats unchanged.
-
-- Core .12 removes a public Memory list API/request and workspace convenience read.
-  In-repository callers migrate; external consumers cannot be enumerated here and
-  need the installed contract. CLI/workspace materialization remains bounded by
-  current target scale; future larger contracts must revisit consumer capacity.
-- Core .11 removes the final Schedule method plus all public Schedule transport
-  types, capability and Core error translation. All in-repository consumers migrate;
-  external consumers must adopt publisher contracts/refusals. Existing pending
-  installed intent retains original input and owner; no old-method translation exists.
-- Core .10 removes a public Schedule creation API and its request type; external
-  consumers cannot be enumerated from this checkout and need the documented
-  installed call. Pending creation retains its exact draft when the original owner
-  or replay promise cannot be restored; the CLI will not originate a new creation.
-- Core .9 removes a public Schedule manual-execution method and both DTOs. All
-  in-repository callers and generated projections migrate; external consumers
-  need the published installed operation. Later slices remove Core create/update;
-  no removed-method request is translated through an alias.
-- Stage 4l removes a public Go/Protocol/TS Schedule deletion entrance. In-repository
-  callers and generated contracts are migrated; external consumers cannot be
-  enumerated from this checkout and must adopt the documented public installed call.
-  Unresolved CLI intents deliberately remain visible when the original owner or
-  replay guarantee cannot be restored; they cannot be resubmitted to another owner.
-- Stage 4k advances Core to 2026-10-14.7 and removes schedules.list/public bindings.
-  External consumers must rebuild and bind the installed publisher list operation.
-  Backend wire and private storage/business formats do not change. Generated Go types
-  are schema projections, not another owner; exact capability still validates I/O.
-  Schedule mutations still use Core facades and require original-bound recovery during
-  their next cutover. Independent backend source/publication parity remains open.
-- Stage 4j advances Core to 2026-10-14.6 and removes the plugin rename wrapper/DTO,
-  action enum/array/declaration and CLI subcommand; external Go/TS/CLI consumers must
-  rebuild and use canonical Session editing or the public installed business entrance.
-  Reinstall Trajectory at its new digest. Existing uncertain old wrapper requests are
-  not converted into new sessions.update commands. Private business/storage formats
-  remain unchanged; no data is deleted. Full cross-generation recovery/native execution
-  remains final acceptance work rather than a claim from the focused RPC replay test.
-- Stage 4i advances Core to 2026-10-14.5 and removes readRenderer, the HTML DTO/array
-  and guest IPC; rebuild generated clients and reinstall Tool results. Shared UI theme
-  projection/bootstrap exports are removed; external authors use ordinary provider
-  context. Backend wire, private business formats and recorded outcomes stay unchanged.
-  Direct native compilation warnings require supported platform packaging verification
-  in the final phase. Original read-only draft still documents retired carrier history;
-  it is intentionally untouched and does not govern the current implementation.
-- Stage 4h advances Core to 2026-10-14.4 and adds component file scope/selector;
-  rebuild all generated consumers and reinstall changed packages. Former file HTML
-  metadata is refused without an alias or compatibility reader. Backend wire and
-  private business data are unchanged. Tool-result carrier migration and native
-  acceptance remain open; safe source inspection is a current data presentation.
-- Stage 4g advances Core to .3/backend to 2026-10-14.2 and removes scan/dispatch from
-  the full Schedules contract. Rebuild SDK/clients/installed resources together; original
-  incompatible bindings are unavailable and never converted. Business storage format is
-  unchanged. Enabled background entries each own their own installation; provider selection
-  controls future human Core calls, not another installation's pending recovery. Generic
-  resync is intentionally coarse and carries no business result. Source/short tests do not
-  prove final native process, replacement, non-selected or window-generation behavior.
-
-- Stage 4f advances Core to .2 and backend to 2026-10-14.1, changing complete feature
-  capability identities. Rebuild packages and Go/TS/SDK clients; old captured routes
-  are refused rather than converted. plugin.Failure is removed in favor of
-  capability.Refusal and SetupBinding replaces Core DTO dependency in setup transport;
-  repository-external Go authors must migrate these exported uses. Local source proof
-  still does not establish published module availability. The old host scheduling
-  loop remains explicit next work, not an alternative shipping worker implementation.
-
-- Stage 4e advances Core to 2026-10-14.1 and removes the final business Views and two
-  read operations; rebuild Runtime/CLI/TS/Host and installed package resources together.
-  Renderer HTML, five CLI-consumed Schedule Core facades and the host background driver
-  remain explicit migration work. The new gate credits actual CLI source calls and
-  reports them separately; it does not prove installed equivalence or graphical behavior.
-  Component retry handles do not by themselves prove a new-window/Runtime-generation
-  recovery. Backend protocol .4 and business data formats stay unchanged.
-
-- Stage 4d replaces prepareManual with complete runNow, changing the Schedules
-  capability identity. Rebuild and select matching backend/namespace resources;
-  former original bindings remain unavailable rather than being converted. Root manual
-  request loss with no private receipt remains uncertainty and cannot create another
-  Run. Current selected-role background recovery is retained only until the explicit
-  backend-owned role cutover; full native/cross-generation acceptance is outstanding.
-
-- Stage 4c advances Core to .15 and removes all Skills-specific read/kind/carrier
-  contracts. Rebuild Runtime/CLI/TS/SDK/Host/packages together. Components should use
-  shared SDK error classification to preserve the current client's class identity.
-  Runtime Skill formats remain unchanged; package withdrawal preserves business data.
-  Actual installed notice consumption and new-window/Runtime-generation mutation
-  journal recovery still require final acceptance. The current retained in-render
-  promise/key does not by itself prove cross-generation recovery.
-
-- Stage 4b emits coarse read invalidation for every admitted Memory/Schedules
-  command attempt/reconciliation, including no-change and uncertain outcomes.
-  Consumers must reread their owner, not infer mutation success. Schedule notices
-  no longer narrow to one ID. Current SDK receipts preserve raw original evidence
-  through argument translation; new invocation still enforces the method input
-  schema. Wire/storage formats are unchanged. Integrated process recovery remains
-  a final-execution obligation even though its sources compile.
-
-- Stage 4a advances Core to .14, removes Memory view/read wrappers and adds client
-  component scope. Public WorkspaceContext.focus is optional for client scope; actual
-  workspace focus consumers must narrow it. Rebuild SDK/Host/packages/Go/CLI/TS together.
-  Backend .4 and Memory data formats stay unchanged. Stage 4b closes the existing feature notice seam; cross-generation recovery
-  and final installed/graphical acceptance remain open.
-
-- Stage 3z advances Core to .13, removes clientDiagnostics view metadata and requires
-  the public ComponentContext.telemetry collaborator. Rebuild SDK clients/Host/packages
-  together; no former DTO/HTML/type alias remains. Diagnostics navigation now consumes
-  the valid diagnostics material key. Buffer policy and Runtime storage/accounting stay
-  unchanged. Complete installed/graphical lifetime acceptance remains outstanding.
-
-- Stage 3y advances Core to .12, removes plugins.readTrajectory and sessionTrajectory
-  view metadata, and adds public Session component context/scope. Rebuild clients and
-  packages together; no old HTML/object/operation reader is retained. Backend .4 and
-  trajectory storage/export versions stay unchanged. Disablement withdraws component
-  resources while canonical retained Session history remains available. Full installed
-  and graphical lifecycle qualification remains outstanding.
-
-- Stage 3x advances Core to .11 and changes point contract projection/request fields
-  from objects to canonical JSON strings. Rebuild Go/CLI/TS clients together and retain
-  the raw contract at dispatch; no old reader remains. Backend .4/business storage stay
-  unchanged. The manager inspection is a read snapshot, not a persisted composition
-  or activation. Final lifecycle acceptance remains queued.
-
-- Stage 3w adds shared client methods over existing Core .10/backend .4 and changes
-  graphical provider/read surfaces only. Rebuild the graphical client. Provider choice
-  affects future activation; read snapshots cannot rewrite already captured execution.
-  No storage conversion. Graphical/cross-reload outcome acceptance remains unexecuted.
-
-
-- Stage 3v advances Core to .10, adds workspace/material component metadata and removes
-  the workspaceDiff kind/read wrapper. Rebuild clients and packages. Host baseline
-  preference disappears; a fresh Diff render starts in working-tree mode. Public SDK
-  workspace context is immutable data, not a private store. Business/workspace formats
-  and Git authority stay unchanged; graphical target replacement remains unexecuted.
-
-
-- Stage 3u advances Core to .9 and deletes plugins.readUsage and the usageSummary view
-  kind. Rebuild clients and package resources; use canonical usage.summary. Ordinary
-  component authors need the current SDK library environment. Accounting/storage is
-  unchanged. Complete graphical runtime proof remains unclaimed.
-
-
-- Stage 3t advances Core to .8 and removes the static view kind. Rebuild clients and
-  installed packages together. Components without an own callable expose no binding;
-  authors invoking bindOperations must declare one. Icon code remains private bundled
-  content while React/JSX/UI come from the host graph. No backend/storage migration.
-
-
-- Stage 3s adds required components projection and resource query/subscription, advancing Core to .7. Rebuild all generated clients; backend protocol/private business formats stay unchanged. Current workspace component scope binds one own callable contribution; static/multi-contract components and remaining placements still need their real owner migration. Existing HTML carriers remain implementation debt. ESM evaluation cannot be canceled/unloaded; disablement retires supported resources and a changed evaluated generation requires window reload. Actual graphical qualification is not claimed.
-
-
-- Stage 3r changes the Core call contract field to canonical JSON string and advances Core to .6. Rebuild generated Go/Protocol/CLI/TS consumers and use generated CAPABILITY_JSON; no object reader remains. Backend protocol and private business storage are unchanged. Public component SDK/Board are authoring code and a built artifact; module import mapping, graphical admission/placement, exact-release assets, retirement and full lifecycle proof remain required before claiming component delivery. Independent published dependencies remain open.
-
-
-- Stage 3q adds point output arrays and the public point resolution API; regenerate and rebuild consumers. Reviews' capability changes to include analyzer execution and its optional setup dependency. Rebuild both example packages together. Integrated Core protocol is .5 and backend callable protocol remains .4; rebuild generated clients. This point slice introduces no storage format or retained data changes. Complete installed lifecycle and external published module validation remain open.
-
-
-- Stage 3p requires callable backend packages to expose the new SDK setup method and to register a handler when dependencies are declared. Rebuild code/declarations together; a missing setup method/handler is refused, without an old path. Core/backend protocol remains .4 and no storage format or retained business data changes in this slice. Public SDK adds Setup/OnSetup/Close and Runtime adds the callback caller; independent published module advancement remains open. Full installed execution and changed-owner races are outstanding.
-
-- Stage 3o intentionally refuses callable backends whose published export set or complete method contracts differ from the selected declaration. Rebuild package code/declarations together. Private Registry/Launch constructors changed with in-repository consumers migrated; no Core/backend protocol or storage format changed. Ordinary Tool-only MCP entries retain their normal handshake. Actual publication/retirement behavior still awaits final execution.
-
-- Stage 3n adds required output arrays for contribution requirements and the public requirements query; rebuild generated consumers. Current callable contracts and Core/backend .4 remain unchanged. Fresh managed installed calls now refuse undeclared collaborators. Existing feature consumers have not all migrated to that entrance; final integration must prove declared setup and frozen dependencies. No private stored business facts are converted or deleted.
-
-- Stage 3m deliberately changes private Schedules table/snapshot shapes (required original Invocation, firing invocation_json and manual captured_request_json). Keep former data separately and use a fresh private directory; schema admission provides no conversion or old reader. Full Schedules consumer capability identities change while current Core/backend protocol remains .4. Core acceptance and existing business receipt ownership are preserved; runtime behavior still requires final execution evidence.
-
-- Stage 3l deliberately breaks Core/SDK/declaration contracts (.4) and host command storage (required invocation_json). Rebuild all consumers and packages and use fresh host data directories while retaining previous data separately; no old reader or uncertain-command conversion exists. Independent published Runtime module advancement is still open. Compilation does not establish actual callback/receipt acceptance or durable trigger-origin preservation.
-
-- Stage 3k expands public Go/Protocol/CLI/TS APIs and the operation-kind vocabulary with a resolved unary extension. Rebuild generated consumers. The envelope and typed proxy compile, but origin/parent/concrete target, declared dependencies and streaming are not yet complete; do not label the full platform accepted. Independent published Runtime module metadata remains open. The actual final execution suite must validate the original route/private outcome boundaries and definite-failure projection.
-
-- Stage 3j is a breaking root Flame declaration, Go API, Runtime Protocol and host storage change. Rebuild consumers and packages, use fresh data directories and retain old data separately; no old inline declaration or route reader exists. Generic backend metadata is admitted without activation, but full dependency waiting/cycle diagnostics and client component lifecycle remain required. Core public Protocol is 2026-10-13.3; backend Protocol .3 is unchanged. Published independent Runtime module advancement remains outside the local source proof. Current-source execution acceptance is deliberately outstanding.
-
-- Stage 3i deliberately changes Memory Search/Maintenance input contracts and the host/shared private command format. Rebuild affected backends and consumers and use fresh data directories; exact admission refuses old formats without rewriting or deleting retained data. Existing unknown command evidence cannot be silently transferred into the new format. The internal AdmitCommand signature changes with all current Memory/Schedules callers migrated. Final guard execution/race verification remains queued; generic contribution/public operation migration remains open.
-
-- Stage 3h changes the internal private receipt-registration Go signature and moves feature method metadata to typed factories; in-repository consumers are migrated. Callable input/output/name/kind/target shapes, backend wire .3 and storage are unchanged, while presentation descriptions become readable generated prose. No external published consumers of the internal adapter were modified. Generic contribution exports, component paths and full author parity remain open.
-
-- Stage 3g removes the former public SDK method/capability types, enum constants, pure constructors and BackendProtocol constant without aliases. Go authors must import runtime/capability for those contracts and rebuild; all in-repository consumers are migrated. Wire .3 and saved canonical JSON remain unchanged. The independent fixture proves current source availability, while the real example still names an older published Runtime module; final publication and released dependency advancement remain required.
-
-- Stage 3f changes only internal tool-composition/source-registry contracts and configured Memory collaborator-resolution behavior. Rebuild the Runtime; no Core/backend protocol or persisted-data schema changes are introduced. Failure reading or constructing a configured embedding collaborator now refuses that Tool call before dispatch; an absent role and backend optional embedding-request fallback remain valid. Current Services declarations/closed kind still require the forthcoming generic capability cutover.
-
-- Stage 3e requires BackendProtocol io.github.tangerg.flame/backend/2026-10-13.3 and capability-shaped feature-generator input. External SDK callers/backend binaries require rebuild; former protocol and bare-array generator input are refused. Existing Reviews bare method/receipt callers must use the published reviews capability binding. Core Protocol and private business storage do not change in this slice. Installed declaration/token migration and published module metadata remain open.
-
-- Stage 3d Protocol 2026-10-13.2 changes runs.start target shape and runs.getAcceptance request verification; external compiled clients and Schedules backends require rebuild. Host directories with automation_starts and private Schedules directories without runtime_target are strictly refused and retained; use fresh directories. No original user data was opened, converted or deleted. The native author package remains bounded by 128 MiB aggregate capacity.
-
-- Stage 3b replaces Memory wire grant URLs with typed ephemeral CallbackRef values and removes private Models/BindModels APIs. In-repository producers/consumers are migrated without an old grant reader. External compiled Memory backends require rebuild. The independently verified public SDK archive is a source snapshot; published module metadata, installed callback rendezvous and canonical Delivery linkage remain final-delivery requirements.
-
-- Stage 3a adds plugin_provider_selections and removes exclusive-enable admission. Existing data directories are refused and retained; use a fresh directory. External automation that formerly enabled a backend to select it must explicitly call plugins.selectProvider. Missing/disabled/uninstalled selections remain unavailable instead of following enabled candidates. Public Go/Protocol/CLI consumers are updated; generic declaration/point and graphical selection workflows remain open.
-
-- Stage 2h requires the current backend protocol and exact method fingerprint on invocation. External backend binaries and SDK consumers require rebuild. Host command routes now require contract_json; former directories are refused and retained, with no conversion or old reader. The Runtime Protocol identity is independent of this backend wire change. Full installed declaration/activation protocol admission remains open.
-
-- Stage 2g changes the shared private command schema from completed-only to pending-capable nullable reply. Existing Memory/Schedules directories are refused before conversion; retain them separately and use fresh directories. Unconfirmed original maintenance remains visible pending evidence, even if later independent maintenance folds its ledger; this is not a fabricated recovery.
-- Stage 2f changes SDK registration to explicit Backend assembly/publication, removes per-method client registration/Method.RegisterClient and removes former physical per-operation RPC handlers. External backend authors/compiled callers require rebuild and migration. BackendProtocol is the current public wire identity; declaration and activation matching still need the owning cutover before API freeze.
-- Stage 2e removes public plugin.InputDigest and adds unexported received input to Command; external unkeyed literals/old helper callers require migration. Host digest-only routes, Memory/Schedules digest-only receipts and Reviews re-encoded arguments directories are refused before conversion; retain them separately and use fresh directories. In-repository callers are migrated; independent published dependency metadata and exact public handshake remain open.
-- New schema-bound methods tighten feature input/output admission. Params and Result now retain unexported original wire evidence, so external unkeyed literals require migration; keyed usage and real consumers are updated. Separate Reviews ListMethod/UpdateMethod exports were removed without aliases.
-- Public installation/protocol/storage changes break external compiled clients. Rebuild all in-repository consumers; report any externally used SDK/module contracts.
-- Protocol 2026-10-13.1 removes approve/revoke and replaces installation state with required enabled. All external compiled Runtime clients must rebuild. No externally deployed clients were inventoried or modified in this isolated task.
-- Existing incompatible user data is retained separately and refused; no conversion or deletion is authorized. Stage 2b adds plugin_commands to the exact host schema and replaces private Memory/Schedules commands.result with a value/refusal reply envelope. Existing directories must remain untouched and be replaced with fresh directories for this pre-release cutover.
-- Concurrent user work in main is outside this checkout. Final integration must revalidate the then-current shared branch.
-- The active worktree is required work, not disposable scratch space. Remove only owned scratch artifacts between slices; retire the checkout after safe final delivery.
+- Current Core is `2026-10-15.2`, backend protocol is
+  `io.github.tangerg.flame/backend/2026-10-14.2`, and trajectory export schema is 3.
+  Rebuild affected Go/TS/component/backend consumers together. Old wire shapes,
+  private scope metadata and retired APIs have no reader or compatibility alias.
+- Strict host schema/checkpoint admission refuses former activation-only routing,
+  missing logical purpose and other replaced shapes before writes. Preserve old
+  directories and finish old waiting work with its original binary. No production
+  data conversion, copying or deletion was performed. Unchanged private backend
+  data remains bound to its original owner; retention is not automatic migration.
+- Unknown business/provider outcomes retain original identity, input and source.
+  Missing receipt, disabled source, lost observation or a new selection cannot
+  authorize replay. These guarantees remain in the complete backend suites.
+- Registry/module publication is absent. Independent authors must use the
+  qualified current-source artifacts until an authorized release provides them;
+  older published application module metadata is not evidence of the new SDK.
+- Native package qualification is an arm64 production build and ad-hoc signature
+  check with a macOS 13.0 floor. No UI launch, rendered Hooks/provider identity,
+  remote graphical workflow or graphical reload lifecycle was executed.
 
 ## Deliberately excluded scope
 
