@@ -2,6 +2,19 @@
 
 ## Current stage
 
+Handoff requested by the user on 2026-10-14. Development is stopped for continuation
+in a new session. Read `docs/plugin-refactor-handoff.md` in this managed worktree
+first; it summarizes the committed implementation, remaining full objective,
+verification, failures and concrete entry points. The only uncommitted embedding
+experiment in modelref/endpoint.go was incomplete and has been withdrawn; no
+embedding implementation is delivered by that draft. Runtime go build ./... passes
+on the restored committed source. Original inputs/stash are unchanged. The existing
+worktree/branch and canonical anchor are retained; this goal is being paused at the
+user's request after committing the handoff. No further product work is authorized
+in this session until the user resumes it.
+
+Latest completed product slice follows.
+
 Stage 5ad (13193c2d6) removes the incorrect installation-only prerequisite from
 restoration of an original dispatched plugin command. Background restoration now
 checks its entire persisted invocation and exact installation/release/server before
@@ -708,17 +721,24 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## Next
 
-1. Complete execution-bound background provenance and original effect ownership;
+Resume in a new session using this same managed worktree and the handoff document.
+Preserve the full proposal/review objective and avoid carrying forward static
+percentage estimates.
+
+1. Complete embedding results/evidence/metering through existing source, live
+   accounting, query/export and recovery owners; use the handoff's inspected facts.
+2. Complete execution-bound background provenance and original effect ownership;
    retain canonical RPC, exact frozen continuation and one physical-source owner.
-2. Complete embedding evidence/retention, scoped dependency/status and author work;
-   prove full installed Run/Goal consumption under actual owner-supplied budgets.
-3. Run concentrated final checks and requirement-by-requirement closure, repairing
-   the Schedule handshake and outstanding schema/architecture/format findings.
+3. Complete retention/dependency/status, point/query-stream and independent author
+   qualification, then concentrate final acceptance and P01-P48/review closure.
+   Repair Schedule handshake and schema/architecture/format findings without
+   weakening assertions or running forbidden frontend UI/E2E checks.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Pause this session for handoff; retain the existing managed branch and committed work | The user explicitly wants to continue in a fresh session after this long conversation | Continuing automatic development, recreating from main or leaving an uncompilable partial embedding draft |
 | 2026-10-14 | Withdraw carried-forward percentage estimates and report concrete completed/remaining requirements | The repeated 75% figure was not recalculated against P01-P48/review evidence and could not describe recent progress reliably | Repeating a stale estimate or inventing a higher percentage from commit counts |
 | 2026-10-14 | Validate retained background commands against their complete original target/provider, regardless of target scope | Recorded Session/workspace commands were wrongly refused by an installation-only precondition | Erasing the target, special cases for individual scopes or trusting a current UI selection |
 | 2026-10-14 | Restrict only fresh unrecorded triggers to Automatic/parentless/own-installation attribution | Fresh work has no original route proving a resource target or a human/model parent | Allowing unrecorded resource references or making a retained command acquire a new route |
@@ -1039,6 +1059,12 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Handoff cleanup: the sole owned uncommitted modelref/endpoint.go draft was
+  reversed exactly. Restored Runtime go build ./... passes. No new backend suite,
+  full/native or frontend UI/E2E check was run for documentation-only handoff.
+  Original proposal/review/draft hashes and user stash are verified unchanged;
+  all owned build/test handles are terminal and no new scratch artifact remains.
 
 - Stage 5ad: existing restoration baseline passed (0.825s), focused original resource
   target/reopen/refusal checks passed (1.144s). Whole application/integration/plugins
