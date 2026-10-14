@@ -56,8 +56,16 @@ telemetry are separate facts. Diagnostics is the concrete ordinary component con
 `bindOperations` consumes the owner's generated `CAPABILITY_JSON` and
 `MethodInputs`/`MethodOutputs`. Its query and command functions enter the ordinary
 `plugins.call` endpoint. Runtime admits the exact callable contract and validates
-input/output at the owner boundary. The full contract remains a JSON string in
-the request, so JavaScript cannot round schema integers before admission. Known refusals become `OperationFailure`;
+input/output at the owner boundary. Contracts and feature input/output/chunks
+cross Core as JSON strings, so JavaScript cannot round their numbers before
+admission or receipt recovery. The binding uses the shared exact JSON codec;
+generated numeric fields use `JSONNumber` (`number | bigint | ExactNumber`).
+Safe ordinary numbers stay ordinary; use bigint for wide integers and
+`new ExactNumber("1.0")` to retain another original literal. Render numeric values
+with `String(value)` and choose any arithmetic conversion explicitly. Copy exact
+values through this codec or preserve their JSON source; `structuredClone` does
+not retain an `ExactNumber` prototype.
+Known refusals become `OperationFailure`;
 unconfirmed transport remains the shared Runtime client's uncertainty. The mapped
 command preserves its original idempotency key and explicit retry closure.
 
@@ -115,9 +123,9 @@ Ordinary query/command bindings still refuse stream metadata before delivery.
 The TS stream uses the existing durable intent journal. Missing/invalid terminal,
 consumer/decoder failure and client replacement preserve the original identity,
 binding and input; restoration reads the original receipt without chunk replay or
-current-provider preparation. Unsafe numeric input/stream evidence is refused
-before it can be accepted as a rounded result. Full wide-number parity, query
-streams and installed production model/dependency composition remain open.
+current-provider preparation. Raw JSON source and the shared exact codec preserve
+numeric evidence; already rounded unsafe JS inputs are refused. Installed
+production model/dependency lifecycle and final acceptance remain open.
 
 Streaming query methods use `bound.queryStream(method, input, consume, signal)`.
 Their chunks follow the same shared client backpressure and component lifetime as

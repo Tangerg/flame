@@ -7,6 +7,7 @@ import type {
   RequestMeta,
 } from "../wire.generated";
 import { validateWire } from "../wire.validate.generated";
+import { parseJSON, stringifyJSON } from "./json";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
@@ -174,7 +175,7 @@ function validInstalled(value: JournalEntry["installed"]): boolean {
     return false;
   try {
     const method = pluginDeliveryMethod(value.route);
-    const request = checkRequest(method, { ...value.route, input: null });
+    const request = checkRequest(method, { ...value.route, input: "null" });
     return requestRequiresIdempotency(method, request);
   } catch {
     return false;
@@ -303,33 +304,6 @@ function loadEntries(storage: MutationJournalStorage): JournalEntry[] {
     });
 }
 
-function canonicalJSON(value: unknown): string {
-  if (value === null) return "null";
-  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
-  if (typeof value === "number") return Number.isFinite(value) ? JSON.stringify(value) : "null";
-  if (Array.isArray(value)) {
-    return `[${value
-      .map((item) =>
-        item === undefined || typeof item === "function" || typeof item === "symbol"
-          ? "null"
-          : canonicalJSON(item),
-      )
-      .join(",")}]`;
-  }
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const fields = Object.keys(record)
-      .filter((key) => {
-        const field = record[key];
-        return field !== undefined && typeof field !== "function" && typeof field !== "symbol";
-      })
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJSON(record[key])}`);
-    return `{${fields.join(",")}}`;
-  }
-  return "null";
-}
-
 function fingerprint(value: string): string {
   let h1 = 1_779_033_703;
   let h2 = 3_144_134_277;
@@ -360,15 +334,18 @@ function commandFingerprintInput(
   requestMeta: RequestMeta | null,
   installed: boolean,
 ): string {
+  // A transport representation cannot change the original intent's identity.
+  // Bind the semantic request and retain its exact source lexemes separately.
+  const request = installed
+    ? { ...(params as CallPluginRequest), input: parseJSON((params as CallPluginRequest).input) }
+    : params;
   const command = fingerprintFields(
     method,
-    canonicalJSON(prepareCommand(method, params, requestMeta) ?? params),
+    stringifyJSON(prepareCommand(method, params, requestMeta) ?? request, true),
   );
   if (!installed) return command;
   // Installed receipts bind original input bytes, beyond semantic JSON equality.
-  const input = JSON.stringify((params as CallPluginRequest).input);
-  if (input === undefined)
-    throw new MutationJournalError("plugin command input is not serializable");
+  const input = (params as CallPluginRequest).input;
   return fingerprintFields(command, input);
 }
 
@@ -396,8 +373,8 @@ function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
     left.idempotencyKey === right.idempotencyKey &&
     left.createdAt === right.createdAt &&
     left.expiresAt === right.expiresAt &&
-    canonicalJSON(left.installed) === canonicalJSON(right.installed) &&
-    canonicalJSON(left.command) === canonicalJSON(right.command)
+    stringifyJSON(left.installed ?? null, true) === stringifyJSON(right.installed ?? null, true) &&
+    stringifyJSON(left.command, true) === stringifyJSON(right.command, true)
   );
 }
 

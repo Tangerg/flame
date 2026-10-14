@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/runtime/capability"
-	"maps"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -44,7 +43,7 @@ func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request pro
 	var input struct {
 		ID string `json:"ID"`
 	}
-	if err := json.Unmarshal(request.Input, &input); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		return nil, err
 	}
 	id := input.ID
@@ -67,7 +66,7 @@ func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request pro
 func newScheduleServiceStub() *scheduleServiceStub {
 	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
 	next := now.Add(time.Hour)
-	return &scheduleServiceStub{schedules: []schedule.CreateV1Output{{ID: "sch_review", Title: "Repository review", Instructions: "review the repository", CWD: "/workspace", Cron: "0 * * * *", NextRunAt: next, CreatedAt: now, Revision: 1, ModelSelection: map[string]string{}}}, created: make(chan schedule.CreateV1Input, 1), updated: make(chan schedule.UpdateV1Input, 4), deleted: make(chan string, 1), run: make(chan string, 1), now: now}
+	return &scheduleServiceStub{schedules: []schedule.CreateV1Output{{ID: "sch_review", Title: "Repository review", Instructions: "review the repository", CWD: "/workspace", Cron: "0 * * * *", NextRunAt: next, CreatedAt: now, Revision: 1}}, created: make(chan schedule.CreateV1Input, 1), updated: make(chan schedule.UpdateV1Input, 4), deleted: make(chan string, 1), run: make(chan string, 1), now: now}
 }
 
 func (s *scheduleServiceStub) Schedules(context.Context) ([]schedule.CreateV1Output, error) {
@@ -111,7 +110,7 @@ func (s *scheduleServiceStub) update(request schedule.UpdateV1Input) (schedule.C
 
 func boundScheduleRequest(method string, input any) (protocol.CallPluginRequest, error) {
 	encoded, err := jsoninput.Encode(input)
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: encoded.JSON()}, err
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: string(encoded.JSON())}, err
 }
 func (s *scheduleServiceStub) PrepareCreate(_ context.Context, request schedule.CreateV1Input) (protocol.CallPluginRequest, error) {
 	return boundScheduleRequest(schedule.CreateV1Method, request)
@@ -121,7 +120,7 @@ func (s *scheduleServiceStub) PrepareDelete(_ context.Context, id string) (proto
 }
 func (s *scheduleServiceStub) DecodeCreate(reply *protocol.CallPluginResponse) (schedule.CreateV1Output, error) {
 	var value schedule.CreateV1Output
-	if err := json.Unmarshal(reply.Output, &value); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &value); err != nil {
 		return schedule.CreateV1Output{}, err
 	}
 	return value, nil
@@ -130,7 +129,7 @@ func (s *scheduleServiceStub) DecodeCreate(reply *protocol.CallPluginResponse) (
 func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ replay.CommandID) (*protocol.CallPluginResponse, error) {
 	if request.Method == schedule.CreateV1Method {
 		var input schedule.CreateV1Input
-		if err := json.Unmarshal(request.Input, &input); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			return nil, err
 		}
 		row, err := s.create(input)
@@ -138,11 +137,11 @@ func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.Cal
 			return nil, err
 		}
 		output, err := jsoninput.Encode(schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, CWD: input.CWD, Cron: row.Cron, ModelSelection: input.ModelSelection, NextRunAt: row.NextRunAt, CreatedAt: row.CreatedAt, Revision: row.Revision})
-		return &protocol.CallPluginResponse{Output: output.JSON()}, err
+		return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 	}
 	if request.Method == schedule.UpdateV1Method {
 		var input schedule.UpdateV1Input
-		if err := json.Unmarshal(request.Input, &input); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			return nil, err
 		}
 		value, err := s.update(input)
@@ -150,22 +149,22 @@ func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.Cal
 			return nil, err
 		}
 		encoded, err := jsoninput.Encode(value)
-		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
+		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	var input struct {
 		ID string `json:"ID"`
 	}
-	if err := json.Unmarshal(request.Input, &input); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		return nil, err
 	}
 	if request.Method == "flame.schedules/runNow.v1" {
 		s.run <- input.ID
-		return &protocol.CallPluginResponse{Output: []byte(`{"SessionID":"ses_scheduled","RunID":"run_scheduled"}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{"SessionID":"ses_scheduled","RunID":"run_scheduled"}`}, nil
 	}
 	if err := s.delete(input.ID); err != nil {
 		return nil, err
 	}
-	return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	return &protocol.CallPluginResponse{Output: `{}`}, nil
 }
 func (s *scheduleServiceStub) delete(id string) error {
 	s.deleted <- id
@@ -187,12 +186,11 @@ func (s *scheduleServiceStub) PrepareRunNow(ctx context.Context, id string) (pro
 }
 func (s *scheduleServiceStub) DecodeRunNow(reply *protocol.CallPluginResponse) (conversation.RunReference, error) {
 	var value schedule.RunNowV1Output
-	err := json.Unmarshal(reply.Output, &value)
+	err := json.Unmarshal([]byte(reply.Output), &value)
 	return conversation.RunReference{SessionID: value.SessionID, RunID: value.RunID}, err
 }
 
 func cloneSchedule(value schedule.CreateV1Output) schedule.CreateV1Output {
-	value.ModelSelection = maps.Clone(value.ModelSelection)
 	return value
 }
 
@@ -207,10 +205,10 @@ func applyScheduleUpdate(value *schedule.CreateV1Output, request schedule.Update
 		value.CWD = *request.CWD
 	}
 	if request.ModelSelection.Provider != nil {
-		value.ModelSelection["provider"] = *request.ModelSelection.Provider
+		value.ModelSelection.Provider = *request.ModelSelection.Provider
 	}
 	if request.ModelSelection.Model != nil {
-		value.ModelSelection["model"] = *request.ModelSelection.Model
+		value.ModelSelection.Model = *request.ModelSelection.Model
 	}
 	if request.Cron != nil {
 		value.Cron = *request.Cron
@@ -266,7 +264,7 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	host.Shows(t, "Daily audit")
 	created := awaitValue(t, service.created, "schedule creation")
 	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.CWD == "" ||
-		created.ModelSelection["provider"] != "deepseek" || created.ModelSelection["model"] != "deepseek-v4-flash" {
+		created.ModelSelection.Provider != "deepseek" || created.ModelSelection.Model != "deepseek-v4-flash" {
 		t.Fatalf("created schedule candidate = %+v", created)
 	}
 	stop()
@@ -305,9 +303,10 @@ func TestScheduleFormDoesNotNormalizeModelIdentity(t *testing.T) {
 	}
 
 	original := schedule.CreateV1Output{
-		ID: "sch_review", Instructions: "review the repository", ModelSelection: map[string]string{"provider": "deepseek", "model": "deepseek-v4-flash"},
+		ID: "sch_review", Instructions: "review the repository",
 		Cron: defaultScheduleCron, NextRunAt: time.Now(), Revision: 1,
 	}
+	original.ModelSelection.Provider, original.ModelSelection.Model = "deepseek", "deepseek-v4-flash"
 	update := newScheduleFormDraft(scheduleFormUpdate, original, "")
 	update.provider = " deepseek"
 	if _, _, err := update.patch(original); err == nil {

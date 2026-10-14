@@ -1,3 +1,5 @@
+import { stringifyJSON, parseJSON } from "./json";
+import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
 import { CAPABILITY_JSON } from "../../../../plugins/memory/io.github.tangerg.flame/contracts/methods.generated";
 import type { CallPluginRequest, CallPluginResponse } from "@flame/runtime-contract/wire";
@@ -33,7 +35,11 @@ class Storage implements MutationJournalStorage {
 }
 
 const id = "mem_00000000000000000000000000000001";
-const input = { contract: CAPABILITY_JSON, method: "flame.memory/delete.v1", input: { ID: id } };
+const input = {
+  contract: CAPABILITY_JSON,
+  method: "flame.memory/delete.v1",
+  input: stringifyJSON({ ID: id }),
+};
 const installationId = "12345678-1234-1234-1234-123456789abc";
 const binding = {
   installationId,
@@ -43,6 +49,49 @@ const binding = {
 };
 const intent = `memory-delete:${id}`;
 const journals: MutationJournal[] = [];
+
+it("keeps the shared Go numeric corpus through lost-acknowledgement recovery and fences changed lexemes", async () => {
+  const source = readFileSync(
+    new URL("../../../testdata/plugin-values.json", import.meta.url),
+    "utf8",
+  ).trim();
+  const storage = new Storage();
+  const original = client(storage);
+  const captured = { ...input, input: source };
+  original.dispatch.mockRejectedValue(new RpcTransportError("response lost"));
+  await expect(
+    original.methods.plugins.command(
+      intent,
+      captured,
+      async () => binding,
+      (value) => value,
+    ),
+  ).rejects.toBeInstanceOf(RpcTransportError);
+  const [, request, options] = original.dispatch.mock.calls[0]!;
+  expect(request.input).toBe(source);
+  original.journal.dispose();
+  const successor = client(storage);
+  const prepare = vi.fn(async () => binding);
+  await expect(
+    successor.methods.plugins.command(
+      intent,
+      { ...captured, input: source.replace('"scaled":1.0', '"scaled":1') },
+      prepare,
+      (value) => value,
+    ),
+  ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+  successor.dispatch.mockResolvedValue({ output: source });
+  const recovered = await successor.methods.plugins.command(
+    intent,
+    captured,
+    prepare,
+    (value) => value,
+  );
+  expect(stringifyJSON(recovered)).toBe(source);
+  expect(prepare).not.toHaveBeenCalled();
+  expect(successor.dispatch.mock.calls).toEqual([["plugins.call", request, options]]);
+  expect(storage.keys()).toHaveLength(0);
+});
 afterEach(() => {
   for (const journal of journals.splice(0)) journal.dispose();
 });
@@ -84,7 +133,7 @@ it("recovers the original installed request before provider preparation after cl
   original.journal.dispose();
 
   const successor = client(storage);
-  successor.dispatch.mockResolvedValue({ output: {} });
+  successor.dispatch.mockResolvedValue({ output: stringifyJSON({}) });
   const replacement = vi.fn(async () => ({
     ...binding,
     installationId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -126,7 +175,7 @@ it("keeps original input and guards expired or replaced-store recovery without a
   await expect(
     successor.methods.plugins.command(
       intent,
-      { ...input, input: { ID: "changed" } },
+      { ...input, input: stringifyJSON({ ID: "changed" }) },
       prepare,
       () => undefined,
     ),
@@ -148,7 +197,7 @@ it("keeps original input and guards expired or replaced-store recovery without a
 it("retains a decoder refusal as unknown and retires only a witnessed owner refusal", async () => {
   const storage = new Storage();
   const current = client(storage);
-  current.dispatch.mockResolvedValue({ output: { invalid: true } });
+  current.dispatch.mockResolvedValue({ output: stringifyJSON({ invalid: true }) });
   const prepare = vi.fn(async () => binding);
   const refusal = new OperationFailure("not_found", "decoder cannot confirm");
   await expect(
@@ -176,11 +225,11 @@ it("stages one complete record before dispatch and refuses a failed durable writ
   await expect(
     current.methods.plugins.command(
       intent,
-      { ...input, input: { unserializable: () => undefined } },
+      { ...input, input: "undefined" },
       async () => binding,
       () => undefined,
     ),
-  ).rejects.toMatchObject({ name: "DataCloneError" });
+  ).rejects.toBeInstanceOf(SyntaxError);
   await expect(
     current.methods.plugins.command(
       intent,
@@ -195,7 +244,7 @@ it("stages one complete record before dispatch and refuses a failed durable writ
   await expect(
     current.methods.plugins.command(
       "query-intent",
-      { ...input, method: "flame.memory/list.v1", input: {} },
+      { ...input, method: "flame.memory/list.v1", input: stringifyJSON({}) },
       async () => binding,
       () => undefined,
     ),
@@ -229,9 +278,9 @@ it("does not persist authored input while retaining an unknown acknowledgement",
   const authored = {
     ...input,
     method: "flame.memory/update.v1",
-    input: { ID: id, Content: "do not persist this authored content" },
+    input: stringifyJSON({ ID: id, Content: "do not persist this authored content" }),
   };
-  current.dispatch.mockResolvedValue({ output: {} });
+  current.dispatch.mockResolvedValue({ output: stringifyJSON({}) });
   await expect(
     current.methods.plugins.command(
       intent,
@@ -249,7 +298,13 @@ it("does not persist authored input while retaining an unknown acknowledgement",
   await expect(
     current.methods.plugins.command(
       intent,
-      { ...authored, input: { Content: authored.input.Content, ID: id } },
+      {
+        ...authored,
+        input: stringifyJSON({
+          Content: (parseJSON(authored.input) as { Content: string }).Content,
+          ID: id,
+        }),
+      },
       prepare,
       () => undefined,
     ),

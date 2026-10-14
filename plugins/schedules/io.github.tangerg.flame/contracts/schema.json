@@ -31,6 +31,26 @@
     "Method_flame_2eschedules_2fupdate_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fSnapshot"
     },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_5fselectionJSON_5bstring_5d": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvYXBwbGljYXRpb24_5fRunReference": {
       "additionalProperties": false,
       "properties": {
@@ -63,10 +83,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "type": "object"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_5fselectionJSON_5bstring_5d"
         },
         "Title": {
           "type": "string"
@@ -106,10 +123,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "type": "object"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_5fselectionJSON_5bstring_5d"
         },
         "NextRunAt": {
           "format": "date-time",

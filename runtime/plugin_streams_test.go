@@ -54,7 +54,7 @@ func bindTypedStream(t *testing.T, caller PluginStreamer) *PluginStreamingMethod
 }
 
 func TestTypedInstalledStreamFreezesBeforeLazySingleConsumption(t *testing.T) {
-	caller := &typedStreamCaller{events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: []byte(`18446744073709551615`)}, {Kind: protocol.PluginStreamResult, Value: []byte(`true`)}}}
+	caller := &typedStreamCaller{events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: `18446744073709551615`}, {Kind: protocol.PluginStreamResult, Value: `true`}}}
 	bound := bindTypedStream(t, caller)
 	input := map[string]string{"value": "original"}
 	info := &protocol.ClientInfo{Name: "original", Version: "1"}
@@ -91,9 +91,9 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 		known  bool
 	}{
 		{name: "known refusal", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: "refused", Message: "owner refused"}}}, known: true},
-		{name: "invalid chunk", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: []byte(`"invalid"`)}}},
-		{name: "missing final", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: []byte(`1`)}}},
-		{name: "late failure", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamResult, Value: []byte(`true`)}}, err: errors.Join(ErrAcknowledgementUnknown, errors.New("late source failure"))},
+		{name: "invalid chunk", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: `"invalid"`}}},
+		{name: "missing final", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: `1`}}},
+		{name: "late failure", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamResult, Value: `true`}}, err: errors.Join(ErrAcknowledgementUnknown, errors.New("late source failure"))},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			caller := &typedStreamCaller{events: test.events, err: test.err}
@@ -125,9 +125,9 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 		t.Fatal(err)
 	}
 	for _, complete := range []bool{true, false} {
-		caller := &typedStreamCaller{events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: []byte(`18446744073709551615`)}}}
+		caller := &typedStreamCaller{events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: `18446744073709551615`}}}
 		if complete {
-			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: []byte(`true`)})
+			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`})
 		}
 		id := testsupport.InstallationID(t).String()
 		bound, err := BindPluginStreamingMethod(caller, PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: capability.Target{Scope: "installation", Reference: id}}, method)

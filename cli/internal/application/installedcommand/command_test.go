@@ -1,7 +1,6 @@
 package installedcommand
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io/fs"
@@ -65,7 +64,7 @@ func request(t *testing.T) protocol.CallPluginRequest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: []byte(`{"id":"sch_original"}`)}
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
 }
 
 func execute(ctx context.Context, caller Caller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
@@ -86,11 +85,11 @@ func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 	var capturedID replay.CommandID
 	lost := callerFunc(func(_ context.Context, input protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
 		pending, staged := store.PendingInstalledCommand("schedule-delete:sch_original")
-		if !staged || pending.CommandID != id || !bytes.Equal(input.Input, original.Input) {
+		if !staged || pending.CommandID != id || !(input.Input == original.Input) {
 			t.Fatal("command dispatched before durable intent")
 		}
 		capturedID = id
-		input.Input[0] = ' '
+		input.Input = " " + input.Input[1:]
 		cancel()
 		return nil, conversation.ErrDisconnected
 	})
@@ -112,10 +111,10 @@ func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 	calls := 0
 	recover := callerFunc(func(_ context.Context, input protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
 		calls++
-		if id != capturedID || input.InstallationID != original.InstallationID || input.Digest != original.Digest || input.Contract != original.Contract || input.Method != original.Method || input.Contribution != original.Contribution || input.Target != original.Target || !bytes.Equal(input.Input, original.Input) {
+		if id != capturedID || input.InstallationID != original.InstallationID || input.Digest != original.Digest || input.Contract != original.Contract || input.Method != original.Method || input.Contribution != original.Contribution || input.Target != original.Target || !(input.Input == original.Input) {
 			t.Fatal("recovery changed the captured route, input or identity")
 		}
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	})
 	if err := execute(t.Context(), recover, reopened, "schedule-delete:sch_original", policy(t, "other-store", &now), prepare); err == nil || calls != 0 {
 		t.Fatal("store mismatch dispatched or confirmed the original command")
@@ -174,7 +173,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 		}
 		originalID = id
 		storage.fail = true
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	})
 	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err == nil {
 		t.Fatal("failed retirement became complete cleanup")
@@ -187,7 +186,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 		if id != originalID {
 			t.Fatal("owner receipt was queried under another identity")
 		}
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	})
 	if err := execute(t.Context(), owner, store, "delete", policy(t, "store", &now), prepare); err != nil {
 		t.Fatal(err)
@@ -228,7 +227,7 @@ func TestDecodedAcknowledgementPrecedesIntentRetirement(t *testing.T) {
 			t.Fatal("invalid acknowledgement replaced the original command")
 		}
 		originalID = id
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	})
 	decode := func(*protocol.CallPluginResponse) (string, error) {
 		return "", &capability.Refusal{Code: "invalid_projection", Message: "invalid owner acknowledgement"}

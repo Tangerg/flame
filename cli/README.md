@@ -232,6 +232,13 @@ operations use the public installed call entrance; Core operations use their can
 commands. The CLI owns terminal interaction, while approval, execution and receipts
 retain their Runtime owners.
 
+Installed operation and point requests carry feature input/attributes and complete
+contracts as JSON strings. Returned feature output/values are JSON strings too.
+Typed Go readers decode the original source, preserving full-width integers and
+receipt lexemes. Rebuild CLI with Core `2026-10-15.2`; former inline payloads are
+refused. Existing private receipts and local pending input records retain their
+original format and owner.
+
 Schedule catalog reads capture the selected installation/contribution and full
 required callable contract once, then page through `plugins.call`. The CLI's Go
 request/output projection is generated from the same publisher contracts as TS;

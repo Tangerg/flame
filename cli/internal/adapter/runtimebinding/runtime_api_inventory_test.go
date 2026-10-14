@@ -282,14 +282,19 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		return runtimeAPIConsumption{Area: area, Mode: materializedByAggregate, Entry: entry}
 	}
 	return map[string]runtimeAPIConsumption{
-		"OpenPluginResources":   {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Desktop owns a resource subscription for exact-release ESM loading"},
-		"ReadPluginResource":    {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Core projects the admitted resource query through the leased HTTP module/asset URL"},
-		"ListModelInvocations":  {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
-		"ListSessionTrajectory": {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
-		"ExportTrajectory":      {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
-		"Discover":              lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
-		"NotifyPluginChange":    {Area: "plugin data", Mode: externalReconciliation, Entry: "managed backend background work invalidates canonical readers through its callback"},
-		"Close":                 lifecycle("lifecycle", "process-owned connection shutdown"),
+		"ListModelEndpoints":       {Area: "physical model evidence", Mode: externalReconciliation, Entry: "public Go/TS endpoint evidence query; CLI Run metrics remain aggregate projections"},
+		"ListPluginCompositions":   {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS composition management; no dedicated CLI editor"},
+		"ResolvePluginComposition": {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS concrete ordered-binding query for consumer-owned composition"},
+		"SetPluginComposition":     {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS command for explicit consumer member order; no implicit CLI selection"},
+		"StreamPlugin":             {Area: "installed streams", Mode: externalReconciliation, Entry: "typed Go streams and shared TS/component stream bindings; CLI call remains unary"},
+		"OpenPluginResources":      {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Desktop owns a resource subscription for exact-release ESM loading"},
+		"ReadPluginResource":       {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Core projects the admitted resource query through the leased HTTP module/asset URL"},
+		"ListModelInvocations":     {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
+		"ListSessionTrajectory":    {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
+		"ExportTrajectory":         {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
+		"Discover":                 lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
+		"NotifyPluginChange":       {Area: "plugin data", Mode: externalReconciliation, Entry: "managed backend background work invalidates canonical readers through its callback"},
+		"Close":                    lifecycle("lifecycle", "process-owned connection shutdown"),
 
 		"CreateSession": flow("sessions", "interactive and one-shot session opening"),
 		"DeleteSession": command("sessions", "sessions delete"),

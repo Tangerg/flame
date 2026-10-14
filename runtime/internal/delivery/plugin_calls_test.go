@@ -44,7 +44,7 @@ func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.Stream
 
 func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
 	contract := testsupport.CommandContract(t, "records.stream", "installation")
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: []byte(`{}`), Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
 	owner := &pluginStreamOwner{err: &capability.Refusal{Code: "refused", Message: "owner refused"}}
 	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
@@ -96,7 +96,7 @@ func (s *pluginCallTarget) PreparePluginCall(_ context.Context, request protocol
 			return nil, err
 		}
 		s.invocations = append(s.invocations, invocation)
-		return &protocol.CallPluginResponse{Output: []byte(`{"revision":2}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{"revision":2}`}, nil
 	}, err
 }
 
@@ -105,7 +105,7 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: []byte(`{"revision":2}`)}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
 	ctx := operation.Adopt(t.Context(), "parent-tool", capability.Model, "run_owner")

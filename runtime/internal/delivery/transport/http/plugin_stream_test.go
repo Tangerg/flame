@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,6 +26,46 @@ type streamRuntime struct {
 	identity          string
 	awaitCancellation bool
 	canceled          chan struct{}
+	input             chan string
+}
+
+func (s *streamRuntime) PreparePluginCall(_ context.Context, request protocol.CallPluginRequest) (delivery.OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
+	return delivery.OperationQuery, func(context.Context) (*protocol.CallPluginResponse, error) {
+		s.input <- request.Input
+		return &protocol.CallPluginResponse{Output: request.Input}, nil
+	}, nil
+}
+
+func TestRemotePluginCallPreservesSharedNumericCorpus(t *testing.T) {
+	data, err := os.ReadFile("../../../../testdata/plugin-values.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := strings.TrimSpace(string(data))
+	method, err := pluginsdk.NewMethod[map[string]any, map[string]any](pluginsdk.MethodConfig{Name: "records.echo", Kind: capability.Query, Target: "installation", Description: "Read original JSON evidence."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := capability.New(capability.Config{Reference: "records", Composition: capability.Selection, Scope: "installation"}, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := &streamRuntime{input: make(chan string, 1)}
+	server := newTestServerFor(t, owner)
+	defer server.Close()
+	client, err := flameruntime.Connect(t.Context(), flameruntime.RemoteConfig{Endpoint: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	id := testsupport.InstallationID(t).String()
+	reply, err := client.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: source, Target: capability.Target{Scope: "installation", Reference: id}}, flameruntime.PluginCallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply.Output != source || <-owner.input != source {
+		t.Fatal("Core transport changed original feature numbers or receipt lexemes")
+	}
 }
 
 func (s *streamRuntime) Discover(ctx context.Context) (*protocol.DiscoverResponse, error) {
@@ -55,7 +97,7 @@ func (s *streamRuntime) StreamPlugin(ctx context.Context, _ protocol.CallPluginR
 	s.identity = operation.Identity(ctx)
 	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
 		s.starts.Add(1)
-		if !yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamChunk, Value: []byte(`18446744073709551615`)}, nil) {
+		if !yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamChunk, Value: `18446744073709551615`}, nil) {
 			return
 		}
 		if s.awaitCancellation {
@@ -75,7 +117,7 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 		terminal protocol.PluginStreamEvent
 		unknown  bool
 	}{
-		{name: "result", terminal: protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: []byte(`true`)}},
+		{name: "result", terminal: protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`}},
 		{name: "refusal", terminal: protocol.PluginStreamEvent{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: "refused", Message: "owner refused"}}},
 		{name: "missing terminal", unknown: true},
 	} {
@@ -88,7 +130,7 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 				t.Fatal(err)
 			}
 			defer client.Close()
-			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", "installation").JSON()), Method: "records.stream", Input: []byte(`{}`), Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", "installation").JSON()), Method: "records.stream", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
 			_, events, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{IdempotencyKey: "original"})
 			if err != nil {
 				t.Fatal(err)
@@ -121,7 +163,7 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner := &streamRuntime{terminal: protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: []byte(`true`)}}
+	owner := &streamRuntime{terminal: protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`}}
 	server := newTestServerFor(t, owner)
 	defer server.Close()
 	client, err := flameruntime.Connect(t.Context(), flameruntime.RemoteConfig{Endpoint: server.URL})
@@ -129,7 +171,7 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: "records.query", Input: []byte(`{}`), Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: "records.query", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
 	if _, _, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{IdempotencyKey: "invalid-query-key"}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("query admitted a command identity: %v", err)
 	}

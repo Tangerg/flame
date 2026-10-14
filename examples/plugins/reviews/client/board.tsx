@@ -208,7 +208,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           <section key={review.id} aria-label={review.title}>
             <RecordBody>{review.title}</RecordBody>
             <Metadata>
-              {review.status} · Revision {review.revision} · {review.id}
+              {review.status} · Revision {String(review.revision)} · {review.id}
             </Metadata>
             <Toolbar label={`Change ${review.title}`}>
               <Select
@@ -235,7 +235,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
       </RecordGroup>
       {analysis && (
         <section aria-label="Analyzer findings">
-          <h2>Findings for revision {analysis.review.revision}</h2>
+          <h2>Findings for revision {String(analysis.review.revision)}</h2>
           {!analysis.findings.length && <p>No applicable findings.</p>}
           <ul>
             {analysis.findings.map((finding, index) => (
@@ -243,7 +243,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
                 <RecordBody>{finding.message}</RecordBody>
                 <Metadata>
                   {finding.code} · {finding.reviewId} · Revision{" "}
-                  {finding.revision}
+                  {String(finding.revision)}
                 </Metadata>
               </li>
             ))}

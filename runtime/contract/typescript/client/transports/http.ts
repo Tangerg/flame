@@ -130,7 +130,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
             metadata.requestId,
           );
         }
-        const msg = parseRpcMessage(event.data, method === "plugins.stream");
+        const msg = parseRpcMessage(event.data);
         if (!msg) {
           streamError = new RpcProtocolError(
             "event stream",

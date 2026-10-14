@@ -5,8 +5,9 @@ import {
   type WireParams,
 } from "@flame/runtime-contract/methods";
 import { validateMethodParams, validateWire } from "@flame/runtime-contract/validate";
-import type { Descriptor, RequestMeta, CallPluginRequest } from "@flame/runtime-contract/wire";
+import type { RequestMeta, CallPluginRequest } from "@flame/runtime-contract/wire";
 import { RpcProtocolError } from "./errors";
+import { parseJSON } from "./json";
 
 export function checkRequest<M extends WireMethodName>(
   method: M,
@@ -34,29 +35,66 @@ export function requestRequiresIdempotency<M extends WireMethodName>(
   return pluginMethod(request).kind === "command";
 }
 
-function pluginMethod(request: Pick<CallPluginRequest, "contract" | "method">) {
-  const contract: unknown = JSON.parse(request.contract);
-  const violations = validateWire("Descriptor", contract);
-  if (violations.length) throw new RpcProtocolError("plugin contract", violations);
-  const members = (contract as Descriptor).methods.filter(
-    (member) => member.name === request.method,
+// This projection reads routing metadata without re-encoding the feature's
+// canonical source. Runtime alone admits the complete callable contract.
+export function pluginContract(text: string) {
+  const contract = parseJSON(text);
+  if (
+    contract === null ||
+    typeof contract !== "object" ||
+    !("methods" in contract) ||
+    !Array.isArray(contract.methods) ||
+    !("reference" in contract) ||
+    typeof contract.reference !== "string" ||
+    !("composition" in contract) ||
+    typeof contract.composition !== "string" ||
+    !("scope" in contract) ||
+    typeof contract.scope !== "string"
+  )
+    throw new TypeError("Plugin call requires a callable contract");
+  return {
+    reference: contract.reference,
+    composition: contract.composition,
+    scope: contract.scope,
+    methods: contract.methods as unknown[],
+  };
+}
+
+export function pluginMethod(request: Pick<CallPluginRequest, "contract" | "method">) {
+  const contract = pluginContract(request.contract);
+  const members = contract.methods.filter(
+    (member: unknown): member is Record<string, unknown> =>
+      member !== null &&
+      typeof member === "object" &&
+      "name" in member &&
+      member.name === request.method,
   );
-  if (members.length !== 1 || !["query", "command"].includes(members[0]!.kind)) {
+  const method = members[0];
+  if (
+    members.length !== 1 ||
+    !method ||
+    (method.kind !== "query" && method.kind !== "command") ||
+    typeof method.target !== "string"
+  ) {
     throw new TypeError("Plugin call requires one admitted query or command method");
   }
-  return members[0]!;
+  return {
+    kind: method.kind,
+    target: method.target,
+    streaming: Object.hasOwn(method, "stream"),
+  } as const;
 }
 
 export function pluginDeliveryMethod(
   request: Pick<CallPluginRequest, "contract" | "method">,
 ): "plugins.call" | "plugins.stream" {
   const method = pluginMethod(request);
-  if (method.stream === undefined) return "plugins.call";
+  if (!method.streaming) return "plugins.call";
   return "plugins.stream";
 }
 
 export function pluginOperationKind(
   request: Pick<CallPluginRequest, "contract" | "method">,
 ): "query" | "command" {
-  return pluginMethod(request).kind as "query" | "command";
+  return pluginMethod(request).kind;
 }

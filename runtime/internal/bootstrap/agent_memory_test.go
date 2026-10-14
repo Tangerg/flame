@@ -29,10 +29,10 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = memoryrpc.Update, input
+	request.Method, request.Input = memoryrpc.Update, string(input)
 	reply := r.must(delivery.PluginsCall, request, "edit-memory").(*protocol.CallPluginResponse)
 	var edited memorydomain.ItemSnapshot
-	if err := json.Unmarshal(reply.Output, &edited); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &edited); err != nil {
 		t.Fatal(err)
 	}
 	if edited.ID != item.ID || edited.Content != content || !edited.Pinned || edited.Origin != memorydomain.OriginUser || edited.Status != memorydomain.StatusActive || !edited.CreatedAt.Equal(item.CreatedAt) {

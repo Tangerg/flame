@@ -1,3 +1,4 @@
+import { pluginContract } from "@flame/runtime-contract/client/request";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { MutationPromise } from "@flame/runtime-contract/client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
@@ -23,10 +24,11 @@ export function ProviderSelections({
   const roles = new Set((providers.data ?? []).map((value) => value.role));
   for (const installation of installations)
     for (const contribution of installation.selected.contributions) {
-      if (contribution.contract.composition === "selection")
-        roles.add(contribution.contract.reference);
+      if (pluginContract(contribution.contract).composition === "selection")
+        roles.add(pluginContract(contribution.contract).reference);
       for (const required of contribution.requires)
-        if (required.contract.composition === "selection") roles.add(required.contract.reference);
+        if (pluginContract(required.contract).composition === "selection")
+          roles.add(pluginContract(required.contract).reference);
     }
   return (
     <section aria-label={t("packages.providers.title")}>
@@ -77,7 +79,9 @@ function ProviderRole({
   const candidates: Candidate[] = installations.flatMap((installation) =>
     installation.selected.contributions
       .filter(
-        (value) => value.contract.composition === "selection" && value.contract.reference === role,
+        (value) =>
+          pluginContract(value.contract).composition === "selection" &&
+          pluginContract(value.contract).reference === role,
       )
       .map((value) => ({ installation, contribution: value.id, server: value.server })),
   );

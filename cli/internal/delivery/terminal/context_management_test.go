@@ -53,7 +53,7 @@ func (b *blockingAgentMemoryUpdateService) CallPlugin(ctx context.Context, reque
 		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	}
 	var input memorycontract.UpdateV1Input
-	if err := json.Unmarshal(request.Input, &input); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		return nil, err
 	}
 	b.started <- input
@@ -71,7 +71,7 @@ func (b *blockingAgentMemoryReviewService) CallPlugin(ctx context.Context, reque
 		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	}
 	var input memorycontract.ReviewV1Input
-	if err := json.Unmarshal(request.Input, &input); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		return nil, err
 	}
 	b.started <- memorycontract.ReviewDecision(input.Decision)
@@ -168,7 +168,7 @@ func (*agentMemoryServiceStub) PrepareAdd(_ context.Context, input memorycontrac
 }
 func (*agentMemoryServiceStub) DecodeAdd(reply *protocol.CallPluginResponse) (memorycontract.AddV1Output, error) {
 	var result memorycontract.AddV1Output
-	err := json.Unmarshal(reply.Output, &result)
+	err := json.Unmarshal([]byte(reply.Output), &result)
 	return result, err
 }
 func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycontract.UpdateV1Input) (protocol.CallPluginRequest, error) {
@@ -176,7 +176,7 @@ func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycont
 }
 func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (memorycontract.Item, error) {
 	var row memorycontract.UpdateV1Output
-	if err := json.Unmarshal(reply.Output, &row); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &row); err != nil {
 		return memorycontract.Item{}, err
 	}
 	if row.ID != id {
@@ -196,7 +196,7 @@ func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, e
 		return protocol.CallPluginRequest{}, err
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: input.JSON()}, nil
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: string(input.JSON())}, nil
 }
 
 func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
@@ -205,7 +205,7 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 	}
 	if request.Method == memorycontract.AddV1Method {
 		var input memorycontract.AddV1Input
-		if err := json.Unmarshal(request.Input, &input); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			return nil, err
 		}
 		target, err := conversation.NewMemoryTarget(memorycontract.Scope(input.Scope), input.CWD)
@@ -218,11 +218,11 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		}
 		output := memorycontract.AddV1Output{Item: memorycontract.UpdateV1Output{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsoninput.Encode(output)
-		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
+		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memorycontract.UpdateV1Method {
 		var input memorycontract.UpdateV1Input
-		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
 		saved, err := a.updateItem(context.Background(), input)
@@ -231,26 +231,26 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		}
 		output := memorycontract.UpdateV1Output{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsoninput.Encode(output)
-		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
+		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memorycontract.ReviewV1Method {
 		var input memorycontract.ReviewV1Input
-		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
 		if err := a.reviewItem(context.Background(), input.ID, memorycontract.ReviewDecision(input.Decision)); err != nil {
 			return nil, err
 		}
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
 	var input memorycontract.DeleteV1Input
-	if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	if err := a.delete(input.ID); err != nil {
 		return nil, err
 	}
-	return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+	return &protocol.CallPluginResponse{Output: `{}`}, nil
 }
 
 func (a *agentMemoryServiceStub) delete(id string) error {

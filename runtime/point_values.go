@@ -52,7 +52,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	if order == nil {
 		order = []protocol.PluginPointReference{}
 	}
-	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: string(contract.Identity().JSON()), Target: target, Attributes: contextJSON.JSON(), Order: order}, options)
+	page, err := caller.ResolvePluginPoint(ctx, protocol.ResolvePluginPointRequest{Contract: string(contract.Identity().JSON()), Target: target, Attributes: string(contextJSON.JSON()), Order: order}, options)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	}
 	values := make([]PointValue[T], 0, len(page.Data))
 	for _, binding := range page.Data {
-		input, err := jsoninput.Parse(binding.Value)
+		input, err := jsoninput.Parse([]byte(binding.Value))
 		if err != nil {
 			return nil, errors.Join(ErrInvalidResponse, err)
 		}

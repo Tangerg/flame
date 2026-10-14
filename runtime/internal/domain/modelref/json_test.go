@@ -3,7 +3,26 @@ package modelref
 import (
 	json "encoding/json/v2"
 	"testing"
+
+	"github.com/Tangerg/scope/core/jsonschema"
 )
+
+func TestSelectionSchemaPublishesTheClosedJSONFieldSet(t *testing.T) {
+	schema, err := jsonschema.For[Selection]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{`{"model":"","provider":"","reasoningEffort":""}`, `{"model":"gpt-5","provider":"openai","reasoningEffort":"high"}`} {
+		if err := schema.Validate([]byte(source)); err != nil {
+			t.Fatalf("valid selection schema input %s: %v", source, err)
+		}
+	}
+	for _, source := range []string{`{}`, `null`, `{"model":"gpt-5","provider":"openai"}`, `{"model":null,"provider":"openai","reasoningEffort":""}`, `{"model":"gpt-5","provider":"openai","reasoningEffort":"","extra":""}`} {
+		if err := schema.Validate([]byte(source)); err == nil {
+			t.Fatalf("schema admitted a shape the JSON owner refuses: %s", source)
+		}
+	}
+}
 
 func TestSelectionJSONPreservesExactIdentityAndDefault(t *testing.T) {
 	exact, err := NewWithReasoningEffort("openai", "gpt-5", "high")

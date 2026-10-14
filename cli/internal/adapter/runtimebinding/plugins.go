@@ -70,7 +70,7 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 	if !found {
 		return nil, runtimeContractViolation("plugin call method is absent from the required contract")
 	}
-	if err := method.ValidateOutput(result.Output); err != nil {
+	if err := method.ValidateOutput([]byte(result.Output)); err != nil {
 		return nil, runtimeContractViolation("plugin call returned invalid output: %v", err)
 	}
 	return result, nil

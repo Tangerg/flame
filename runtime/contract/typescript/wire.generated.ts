@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-15.1";
+export const PROTOCOL_VERSION = "2026-10-15.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -338,7 +338,7 @@ export interface CallPluginRequest {
   contract: string;
   contribution: string;
   digest: string;
-  input: unknown;
+  input: string;
   installationId: string;
   method: string;
   target: Target;
@@ -346,7 +346,7 @@ export interface CallPluginRequest {
 
 export interface CallPluginResponse {
   failure?: PluginCallFailure;
-  output?: unknown;
+  output?: string;
 }
 
 export interface CancelRunRequest {
@@ -410,14 +410,6 @@ export interface CreateSessionRequest {
 
 export interface DeleteSessionRequest {
   sessionId: string;
-}
-
-export interface Descriptor {
-  composition: string;
-  methods: MethodDescriptor[];
-  protocol: string;
-  reference: string;
-  scope: string;
 }
 
 export interface Diff {
@@ -987,16 +979,6 @@ export interface ManagedSkill {
 
 export type MessagePhase = "commentary" | "finalAnswer";
 
-export interface MethodDescriptor {
-  description: string;
-  input: unknown;
-  kind: string;
-  name: string;
-  output: unknown;
-  stream?: unknown;
-  target: string;
-}
-
 export type Modality = "text" | "image" | "audio" | "video" | "pdf";
 
 export interface Model {
@@ -1231,7 +1213,7 @@ export interface PluginCompositionMember {
 
 export interface PluginContribution {
   background?: boolean;
-  contract: Descriptor;
+  contract: string;
   export: string;
   id: string;
   requires: PluginRequirement[];
@@ -1277,7 +1259,7 @@ export interface PluginInstallation {
 }
 
 export interface PluginOperationBinding {
-  contract: Descriptor;
+  contract: string;
   contribution: string;
   digest: string;
   installationId: string;
@@ -1292,7 +1274,7 @@ export interface PluginPointBinding {
   contribution: string;
   digest: string;
   installationId: string;
-  value: unknown;
+  value: string;
 }
 
 export interface PluginPointReference {
@@ -1303,7 +1285,7 @@ export interface PluginPointReference {
 export interface PluginPointValue {
   contract: string;
   id: string;
-  value: unknown;
+  value: string;
 }
 
 export type PluginPresentation = "admitted" | "withheld";
@@ -1353,7 +1335,7 @@ export interface PluginRequest {
 }
 
 export interface PluginRequirement {
-  contract: Descriptor;
+  contract: string;
   id: string;
   optional: boolean;
 }
@@ -1383,7 +1365,7 @@ export interface PluginSkill {
 export interface PluginStreamEvent {
   failure?: PluginCallFailure;
   kind: PluginStreamKind;
-  value?: unknown;
+  value?: string;
 }
 
 export type PluginStreamKind = "chunk" | "result" | "failure";
@@ -1562,7 +1544,7 @@ export interface ResolvePluginCompositionRequest {
 }
 
 export interface ResolvePluginPointRequest {
-  attributes: unknown;
+  attributes: string;
   contract: string;
   order: PluginPointReference[];
   target: Target;

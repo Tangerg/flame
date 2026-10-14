@@ -95,12 +95,12 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: input, Target: capability.Target{Scope: "installation", Reference: scheduling.ID}}, PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: string(input), Target: capability.Target{Scope: "installation", Reference: scheduling.ID}}, PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
 	var schedules schedulerpc.Page
-	if err := json.Unmarshal(reply.Output, &schedules); err != nil || len(schedules.Rows) != 0 {
+	if err := json.Unmarshal([]byte(reply.Output), &schedules); err != nil || len(schedules.Rows) != 0 {
 		t.Fatalf("default schedules: %+v, %v", schedules, err)
 	}
 	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: memory.ID, Enabled: false}, CommandOptions{}); err != nil {

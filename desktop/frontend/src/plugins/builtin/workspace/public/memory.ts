@@ -10,7 +10,7 @@ export {
   type AgentMemoryQuery,
 } from "../application/agentMemoryConfig";
 
-import type { FlameClient } from "@flame/runtime-contract/client";
+import { parseJSON, stringifyJSON, type FlameClient } from "@flame/runtime-contract/client";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
@@ -41,28 +41,34 @@ export async function readInstalledMemory(
   const seen = new Set<string>();
   const cursors = new Set<string>();
   let cursor = "";
-  let capacity: number | undefined;
+  let capacity: bigint | undefined;
   for (let pageCount = 0; ; pageCount++) {
     signal?.throwIfAborted();
     const reply = await client.plugins.call(
-      { ...binding, input: { Scope: scope, CWD: cwd, Cursor: cursor } },
+      { ...binding, input: stringifyJSON({ Scope: scope, CWD: cwd, Cursor: cursor }) },
       { signal },
     );
     if (reply.failure) throw new Error(reply.failure.message);
-    const page = reply.output as MemoryPage;
+    const page = parseJSON(reply.output!) as MemoryPage;
+    if (
+      !page ||
+      (typeof page.Capacity !== "bigint" &&
+        (typeof page.Capacity !== "number" || !Number.isSafeInteger(page.Capacity)))
+    )
+      throw new Error("memory page has an invalid integer capacity");
+    const pageCapacity = BigInt(page.Capacity);
     if (
       !page ||
       !Array.isArray(page.Rows) ||
       typeof page.NextCursor !== "string" ||
-      !Number.isSafeInteger(page.Capacity) ||
-      page.Capacity <= 0 ||
-      (capacity !== undefined && capacity !== page.Capacity) ||
-      pageCount >= page.Capacity ||
-      items.length + page.Rows.length > page.Capacity ||
+      pageCapacity <= 0n ||
+      (capacity !== undefined && capacity !== pageCapacity) ||
+      BigInt(pageCount) >= pageCapacity ||
+      BigInt(items.length + page.Rows.length) > pageCapacity ||
       (!page.Rows.length && page.NextCursor)
     )
       throw new Error("memory page exceeds its declared traversal bounds");
-    capacity = page.Capacity;
+    capacity = pageCapacity;
     for (const row of page.Rows) {
       if (
         row.Scope !== scope ||
@@ -121,7 +127,7 @@ export async function deleteInstalledMemory(
   return client.plugins
     .command(
       `memory-delete:${id}`,
-      { contract: CAPABILITY_JSON, method: "flame.memory/delete.v1", input },
+      { contract: CAPABILITY_JSON, method: "flame.memory/delete.v1", input: stringifyJSON(input) },
       () => selectMemoryBinding(client, signal),
       decodeMemoryAcknowledgement,
       signal,
@@ -139,7 +145,7 @@ export function reviewInstalledMemory(
   return client.plugins
     .command(
       `memory-review:${id}`,
-      { contract: CAPABILITY_JSON, method: "flame.memory/review.v1", input },
+      { contract: CAPABILITY_JSON, method: "flame.memory/review.v1", input: stringifyJSON(input) },
       () => selectMemoryBinding(client, signal),
       decodeMemoryAcknowledgement,
       signal,
@@ -172,7 +178,7 @@ export function updateInstalledMemory(
     return Promise.reject(new Error("memory update requires a change"));
   return client.plugins.command(
     `memory-update:${patch.ID}`,
-    { contract: CAPABILITY_JSON, method: "flame.memory/update.v1", input: patch },
+    { contract: CAPABILITY_JSON, method: "flame.memory/update.v1", input: stringifyJSON(patch) },
     () => selectMemoryBinding(client, signal),
     (output) => {
       const item = decodeMemoryItem(output);
@@ -230,7 +236,7 @@ export function addInstalledMemory(
   };
   return client.plugins.command(
     "memory-add",
-    { contract: CAPABILITY_JSON, method: "flame.memory/add.v1", input: request },
+    { contract: CAPABILITY_JSON, method: "flame.memory/add.v1", input: stringifyJSON(request) },
     () => selectMemoryBinding(client, signal),
     (output) => {
       const result = output as MethodOutputs["flame.memory/add.v1"];

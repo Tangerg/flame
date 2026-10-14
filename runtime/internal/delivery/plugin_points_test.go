@@ -51,10 +51,10 @@ func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw := string(contract.Identity().JSON())
-	if projected.Points[0].Contract != raw || projected.PointValues[0].Contract != raw || !strings.Contains(raw, "18446744073709551615") {
+	if projected.Points[0].Contract != raw || projected.PointValues[0].Contract != raw || projected.PointValues[0].Value != "18446744073709551615" || !strings.Contains(raw, "18446744073709551615") {
 		t.Fatal("point projection changed the admitted schema identity")
 	}
-	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: capability.Target{Scope: "workspace", Reference: "/project"}, Attributes: []byte(`{}`), Order: []protocol.PluginPointReference{}}
+	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: capability.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
 	body, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)

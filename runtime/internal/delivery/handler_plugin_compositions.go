@@ -30,7 +30,7 @@ func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.Reso
 	}
 	rows := make([]protocol.PluginOperationBinding, len(bindings))
 	for index, binding := range bindings {
-		rows[index] = protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: contract.Descriptor()}
+		rows[index] = protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: string(binding.Contract.JSON())}
 	}
 	return protocol.NewPage(rows), nil
 }

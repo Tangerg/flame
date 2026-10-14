@@ -42,13 +42,13 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 			return nil, err
 		}
 		request := bound
-		request.Input = input.JSON()
+		request.Input = string(input.JSON())
 		reply, err := r.CallPlugin(ctx, request, "")
 		if err != nil {
 			return nil, classifyError(err)
 		}
 		var page schedule.ListV1Output
-		if err := json.Unmarshal(reply.Output, &page, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(reply.Output), &page, json.RejectUnknownMembers(true)); err != nil {
 			return nil, runtimeContractViolation("list schedules output: %v", err)
 		}
 		if len(page.Rows) > schedulePageLimit {
@@ -91,7 +91,7 @@ func (r *Connection) DecodeCreate(reply *protocol.CallPluginResponse) (schedule.
 		return schedule.CreateV1Output{}, runtimeContractViolation("create schedule returned nil")
 	}
 	var result schedule.CreateV1Output
-	if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true)); err != nil {
 		return schedule.CreateV1Output{}, runtimeContractViolation("create schedule output: %v", err)
 	}
 	if result.ID == "" || result.Revision == 0 || result.CreatedAt.IsZero() || strings.TrimSpace(result.Instructions) == "" || result.Cron == "" {
@@ -158,7 +158,7 @@ func (r *Connection) prepareSchedulesCommand(ctx context.Context, name string, i
 	if err := method.ValidateInput(input); err != nil {
 		return protocol.CallPluginRequest{}, fmt.Errorf("schedule command: %w", err)
 	}
-	bound.Method, bound.Input = name, input.JSON()
+	bound.Method, bound.Input = name, string(input.JSON())
 	return bound, nil
 }
 
@@ -167,7 +167,7 @@ func (r *Connection) DecodeRunNow(reply *protocol.CallPluginResponse) (conversat
 		return conversation.RunReference{}, runtimeContractViolation("run schedule now returned nil")
 	}
 	var result schedule.RunNowV1Output
-	if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true)); err != nil {
 		return conversation.RunReference{}, runtimeContractViolation("run schedule now output: %v", err)
 	}
 	if err := errors.Join(protocol.ValidateSessionID(result.SessionID), protocol.ValidateRunID(result.RunID)); err != nil {

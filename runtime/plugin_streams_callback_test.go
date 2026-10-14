@@ -35,8 +35,8 @@ func (s *streamCallbackTarget) StreamPlugin(ctx context.Context, _ protocol.Call
 	}
 	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
 		s.calls.Add(1)
-		if yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamChunk, Value: []byte(`18446744073709551615`)}, nil) {
-			yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: []byte(`true`)}, nil)
+		if yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamChunk, Value: `18446744073709551615`}, nil) {
+			yield(protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`}, nil)
 		}
 	}, nil
 }

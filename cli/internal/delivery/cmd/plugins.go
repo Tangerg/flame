@@ -140,7 +140,7 @@ func newPluginPointCommand(provider runtimeProvider) *cobra.Command {
 		}
 		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginPointBinding]{Data: values})
 	}}
-	command.Flags().StringVar(&input, "request", "{}", "Consumer point contract, captured target, attributes and explicit order as JSON")
+	command.Flags().StringVar(&input, "request", "{}", "Point request as JSON; contract and attributes contain JSON strings")
 	return command
 }
 
@@ -188,7 +188,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		}
 		return render.WriteJSONLine(cmd.OutOrStdout(), result)
 	}}
-	command.Flags().StringVar(&input, "request", "{}", "Exact installed contribution, required contract, method and input as JSON")
+	command.Flags().StringVar(&input, "request", "{}", "Installed operation request as JSON; contract and input contain JSON strings")
 	command.Flags().StringVar(&key, "command-id", "", "Retain this identity and request to reconcile a command; queries forbid it")
 	return command
 }

@@ -36,7 +36,7 @@ func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.CreateV1Outp
 	if mode == scheduleFormUpdate {
 		return scheduleFormDraft{
 			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduled.CWD,
-			provider: scheduled.ModelSelection["provider"], model: scheduled.ModelSelection["model"], cron: scheduled.Cron, enabled: !scheduled.NextRunAt.IsZero(),
+			provider: scheduled.ModelSelection.Provider, model: scheduled.ModelSelection.Model, cron: scheduled.Cron, enabled: !scheduled.NextRunAt.IsZero(),
 		}
 	}
 	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, enabled: true}
@@ -46,7 +46,8 @@ func (s scheduleFormDraft) candidate() (schedule.CreateV1Input, error) {
 	if err := validateScheduleModelPair(s.provider, s.model); err != nil {
 		return schedule.CreateV1Input{}, err
 	}
-	request := schedule.CreateV1Input{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), Enabled: true, ModelSelection: map[string]string{"provider": s.provider, "model": s.model}}
+	request := schedule.CreateV1Input{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), Enabled: true}
+	request.ModelSelection.Provider, request.ModelSelection.Model = s.provider, s.model
 	if request.Instructions == "" || request.Cron == "" {
 		return schedule.CreateV1Input{}, errors.New("instructions and cron are required")
 	}
@@ -71,7 +72,7 @@ func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.Upd
 		request.CWD = &workspace
 	}
 	provider, model := s.provider, s.model
-	if provider != original.ModelSelection["provider"] || model != original.ModelSelection["model"] {
+	if provider != original.ModelSelection.Provider || model != original.ModelSelection.Model {
 		if err := validateScheduleModelPair(provider, model); err != nil {
 			return schedule.UpdateV1Input{}, false, err
 		}

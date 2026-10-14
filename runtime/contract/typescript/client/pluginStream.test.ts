@@ -1,3 +1,4 @@
+import { stringifyJSON } from "./json";
 import { expect, it, vi } from "vitest";
 import { createFlameClient } from "./sdk";
 import { createHttpTransport } from "./transports/http";
@@ -16,13 +17,13 @@ const contract = JSON.stringify({
       kind: "command",
       target: "installation",
       description: "Stream original records.",
-      input: { type: "object" },
-      output: { type: "boolean" },
+      input: stringifyJSON({ type: "object" }),
+      output: stringifyJSON({ type: "boolean" }),
       stream: { type: "string" },
     },
   ],
 });
-const input = { contract, method: "records.stream", input: {} };
+const input = { contract, method: "records.stream", input: stringifyJSON({}) };
 const binding = {
   installationId: "12345678-1234-1234-1234-123456789abc",
   digest: "1".repeat(64),
@@ -44,7 +45,11 @@ function frame(value: unknown): string {
   return `event: message\ndata: ${JSON.stringify(value)}\n\n`;
 }
 function notification(kind: string, value: unknown): string {
-  return frame({ jsonrpc: "2.0", method: "notifications.plugin.stream", params: { kind, value } });
+  return frame({
+    jsonrpc: "2.0",
+    method: "notifications.plugin.stream",
+    params: { kind, value: stringifyJSON(value) },
+  });
 }
 
 function open(store: MutationJournalStorage, events: string) {
@@ -149,7 +154,7 @@ it("retains unknown output and recovers the original receipt binding after clien
   }
 });
 
-it("refuses unsafe numeric stream evidence without retiring the original command or retrying", async () => {
+it("refuses former inline numeric stream evidence without retiring the original command or retrying", async () => {
   const store = storage();
   const unsafe =
     'event: message\ndata: {"jsonrpc":"2.0","method":"notifications.plugin.stream","params":{"kind":"result","value":18446744073709551615}}\n\n';
@@ -236,6 +241,49 @@ it("reads a query stream without reserving a mutation and permits reentrant read
     await client.close();
   }
 });
+
+it.each(["query", "command"] as const)(
+  "preserves wide numeric input/chunks/final evidence in a %s stream",
+  async (kind) => {
+    const store = storage();
+    const { client, requests } = open(
+      store,
+      notification("chunk", 18446744073709551615n) + notification("result", -9223372036854775808n),
+    );
+    const declaration = contract
+      .replace('"kind":"command"', `"kind":"${kind}"`)
+      .replace('"output":{"type":"boolean"}', '"output":{"type":"integer"}')
+      .replace('"stream":{"type":"string"}', '"stream":{"type":"integer"}');
+    const input = {
+      contract: declaration,
+      method: "records.stream",
+      input: '{"revision":18446744073709551615,"scaled":1.0}',
+    };
+    const consume = vi.fn((chunk: unknown) => {
+      expect(chunk).toBe(18446744073709551615n);
+    });
+    try {
+      const result =
+        kind === "query"
+          ? client.plugins.queryStream({ ...binding, ...input }, consume, (value) => value)
+          : client.plugins.stream(
+              "original",
+              input,
+              async () => binding,
+              consume,
+              (value) => value,
+            );
+      await expect(result).resolves.toBe(-9223372036854775808n);
+      expect(consume).toHaveBeenCalledTimes(1);
+      expect(requests).toHaveLength(1);
+      expect(requests[0]!.params).toMatchObject({ input: input.input, contract: declaration });
+      expect(requests[0]!.key === null).toBe(kind === "query");
+      expect(store.keys()).toHaveLength(0);
+    } finally {
+      await client.close();
+    }
+  },
+);
 
 it("keeps missing query stream evidence a read failure without mutation recovery", async () => {
   const store = storage();

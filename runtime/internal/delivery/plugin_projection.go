@@ -5,7 +5,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -76,21 +75,13 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	}
 	result.PointValues = make([]protocol.PluginPointValue, 0, len(v.PointValues))
 	for _, value := range v.PointValues {
-		result.PointValues = append(result.PointValues, protocol.PluginPointValue{ID: value.ID.String(), Contract: string(value.Contract.JSON()), Value: value.Value.JSON()})
+		result.PointValues = append(result.PointValues, protocol.PluginPointValue{ID: value.ID.String(), Contract: string(value.Contract.JSON()), Value: string(value.Value.JSON())})
 	}
 	result.Contributions = make([]protocol.PluginContribution, 0, len(v.Contributions))
 	for _, value := range v.Contributions {
-		contract, err := capability.Parse(value.Contract.JSON())
-		if err != nil {
-			return protocol.PluginRelease{}, err
-		}
-		presented := protocol.PluginContribution{Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: contract.Descriptor(), Requires: []protocol.PluginRequirement{}}
+		presented := protocol.PluginContribution{Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.JSON()), Requires: []protocol.PluginRequirement{}}
 		for _, requirement := range value.Requires {
-			required, err := capability.Parse(requirement.Contract.JSON())
-			if err != nil {
-				return protocol.PluginRelease{}, err
-			}
-			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: required.Descriptor(), Optional: requirement.Optional})
+			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: string(requirement.Contract.JSON()), Optional: requirement.Optional})
 		}
 		result.Contributions = append(result.Contributions, presented)
 	}

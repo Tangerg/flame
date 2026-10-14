@@ -41,13 +41,13 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 			return nil, err
 		}
 		request := bound
-		request.Input = encoded.JSON()
+		request.Input = string(encoded.JSON())
 		reply, err := r.CallPlugin(ctx, request, "")
 		if err != nil {
 			return nil, classifyError(err)
 		}
 		var result memory.ListV1Output
-		if err := json.Unmarshal(reply.Output, &result, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true)); err != nil {
 			return nil, runtimeContractViolation("list agent memory output: %v", err)
 		}
 		if result.Capacity <= 0 || (capacity != 0 && result.Capacity != capacity) {
@@ -109,7 +109,7 @@ func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse
 		return memory.Item{}, runtimeContractViolation("update agent memory returned nil")
 	}
 	var output memory.UpdateV1Output
-	if err := json.Unmarshal(reply.Output, &output, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &output, json.RejectUnknownMembers(true)); err != nil {
 		return memory.Item{}, runtimeContractViolation("update agent memory output: %v", err)
 	}
 	item := memoryProjection(output)
@@ -144,7 +144,7 @@ func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jso
 	if err := method.ValidateInput(input); err != nil {
 		return protocol.CallPluginRequest{}, fmt.Errorf("agent memory command: %w", err)
 	}
-	bound.Input = input.JSON()
+	bound.Input = string(input.JSON())
 	return bound, nil
 }
 
@@ -168,7 +168,7 @@ func (a *AgentMemory) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddV
 		return memory.AddV1Output{}, runtimeContractViolation("add agent memory returned nil")
 	}
 	var output memory.AddV1Output
-	if err := json.Unmarshal(reply.Output, &output, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &output, json.RejectUnknownMembers(true)); err != nil {
 		return memory.AddV1Output{}, runtimeContractViolation("add agent memory output: %v", err)
 	}
 	item := memoryProjection(output.Item)

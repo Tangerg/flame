@@ -1,5 +1,10 @@
 import type { ClientTelemetry } from "./telemetry";
-import { OperationFailure } from "@flame/runtime-contract/client";
+import {
+  OperationFailure,
+  parseJSON,
+  stringifyJSON,
+} from "@flame/runtime-contract/client";
+import { pluginMethod } from "@flame/runtime-contract/client/request";
 export { OperationFailure } from "@flame/runtime-contract/client";
 import type { ComponentType } from "react";
 import type {
@@ -8,7 +13,6 @@ import type {
 } from "@flame/runtime-contract/client";
 import type {
   CallPluginResponse,
-  Descriptor,
   Session,
   PluginOperationBinding,
   Target,
@@ -96,7 +100,7 @@ function output<R>(reply: CallPluginResponse): R {
     throw new OperationFailure(reply.failure.code, reply.failure.message);
   if (!("output" in reply))
     throw new Error("plugin operation omitted its output");
-  return reply.output as R;
+  return parseJSON(reply.output!) as R;
 }
 
 // Mapping preserves the Runtime client's original mutation identity and retry
@@ -134,7 +138,6 @@ export function bindOperations<
   if (!context.binding)
     throw new Error("component has no declared callable contribution");
   const binding = structuredClone(context.binding);
-  const required = JSON.parse(contract) as Descriptor;
   const captured = structuredClone(target);
   function request<K extends keyof Inputs & string>(
     method: K,
@@ -143,10 +146,9 @@ export function bindOperations<
     delivery: "unary" | "stream",
   ) {
     context.signal.throwIfAborted();
-    const descriptor = required.methods.find((value) => value.name === method);
+    const descriptor = pluginMethod({ contract, method });
     if (
-      !descriptor ||
-      (descriptor.stream !== undefined) !== (delivery === "stream") ||
+      descriptor.streaming !== (delivery === "stream") ||
       descriptor.kind !== kind ||
       descriptor.target !== captured.scope
     ) {
@@ -160,7 +162,7 @@ export function bindOperations<
       contribution: binding.contribution,
       contract,
       method,
-      input: structuredClone(input),
+      input: stringifyJSON(input),
       target: captured,
     };
   }

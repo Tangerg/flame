@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseWireJSON, parseReviewedJSON } from "./json";
+import { parseWireJSON } from "./json";
 
 export const JSONRPC_VERSION = "2.0" as const;
 
@@ -85,10 +85,10 @@ const RpcEnvelopeSchema = z
     }
   });
 
-export function parseRpcMessage(text: string, exactNumbers = false): RpcMessage | null {
+export function parseRpcMessage(text: string): RpcMessage | null {
   let json: unknown;
   try {
-    json = exactNumbers ? parseReviewedJSON(text) : parseWireJSON(text);
+    json = parseWireJSON(text);
   } catch {
     return null;
   }

@@ -832,7 +832,7 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 	t.Helper()
 	create := schedule.CreateV1Input{
 		Title: "Adapter schedule", Instructions: "review the workspace",
-		CWD: workspace, Enabled: true, ModelSelection: map[string]string{}, Cron: "0 9 * * 1-5",
+		CWD: workspace, Enabled: true, Cron: "0 9 * * 1-5",
 	}
 	creation, err := runtime.PrepareCreate(t.Context(), create)
 	if err != nil {

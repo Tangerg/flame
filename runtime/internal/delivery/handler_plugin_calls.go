@@ -43,13 +43,13 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 		}
 		order = append(order, plugins.PointReference{Installation: installation, Contribution: contribution})
 	}
-	values, err := s.pluginCalls.ResolvePoint(ctx, contract, point.Context{Target: in.Target, Attributes: in.Attributes}, order)
+	values, err := s.pluginCalls.ResolvePoint(ctx, contract, point.Context{Target: in.Target, Attributes: []byte(in.Attributes)}, order)
 	if err != nil {
 		return nil, wirePluginError(err)
 	}
 	result := make([]protocol.PluginPointBinding, 0, len(values))
 	for _, value := range values {
-		result = append(result, protocol.PluginPointBinding{InstallationID: value.Reference.Installation.String(), Digest: value.Digest.String(), Contribution: value.Reference.Contribution.String(), Value: value.Value.JSON()})
+		result = append(result, protocol.PluginPointBinding{InstallationID: value.Reference.Installation.String(), Digest: value.Digest.String(), Contribution: value.Reference.Contribution.String(), Value: string(value.Value.JSON())})
 	}
 	return protocol.NewPage(result), nil
 }
@@ -74,11 +74,7 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 	for _, collaborator := range resolved {
 		value := protocol.PluginCollaborator{ID: collaborator.ID.String(), Bindings: []protocol.PluginOperationBinding{}}
 		for _, binding := range collaborator.Bindings {
-			contract, err := capability.Parse(binding.Contract.JSON())
-			if err != nil {
-				return nil, err
-			}
-			value.Bindings = append(value.Bindings, protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: contract.Descriptor()})
+			value.Bindings = append(value.Bindings, protocol.PluginOperationBinding{InstallationID: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Contract: string(binding.Contract.JSON())})
 		}
 		values = append(values, value)
 	}
@@ -124,7 +120,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 		if err != nil {
 			return nil, wirePluginError(err)
 		}
-		return &protocol.CallPluginResponse{Output: output.JSON()}, nil
+		return &protocol.CallPluginResponse{Output: string(output.JSON())}, nil
 	}, nil
 }
 
@@ -141,7 +137,7 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 	if err != nil {
 		return plugins.CallRequest{}, InvalidParameters(err)
 	}
-	input, err := jsoninput.Parse(in.Input)
+	input, err := jsoninput.Parse([]byte(in.Input))
 	if err != nil {
 		return plugins.CallRequest{}, InvalidParameters(err)
 	}
@@ -189,7 +185,7 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 					yield(protocol.PluginStreamEvent{}, wirePluginError(unconfirmed))
 					return
 				}
-				if !yield(protocol.PluginStreamEvent{Kind: kind, Value: value.Value.JSON()}, nil) {
+				if !yield(protocol.PluginStreamEvent{Kind: kind, Value: string(value.Value.JSON())}, nil) {
 					return
 				}
 				if kind == protocol.PluginStreamResult {

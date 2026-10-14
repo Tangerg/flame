@@ -90,7 +90,7 @@ func (a *app) AddAgentMemory(argument string) error {
 	if a.workbench != nil {
 		if pending, found := a.workbench.PendingInstalledCommand(memoryAdditionIntent); found {
 			var input memory.AddV1Input
-			if err := json.Unmarshal(pending.Request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+			if err := json.Unmarshal([]byte(pending.Request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 				return fmt.Errorf("pending agent memory addition input is invalid: %w", err)
 			}
 			a.message("reconciling original " + input.Scope + " memory addition")
@@ -183,7 +183,7 @@ func (a *app) resumeMemoryUpdate(argument string) (bool, error) {
 		return false, err
 	}
 	var input memory.UpdateV1Input
-	if err := json.Unmarshal(pending.Request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(pending.Request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 		return false, fmt.Errorf("pending agent memory update input is invalid: %w", err)
 	}
 	if input.ID != strings.TrimPrefix(pending.Intent, memoryUpdateIntent("")) || (input.Content == nil && input.Pinned == nil) {
@@ -273,7 +273,7 @@ func (a *app) pendingMemoryItemCommand(method, prefix, identity string) (workben
 
 func retainedMemoryReview(request protocol.CallPluginRequest, id string, decision memory.ReviewDecision) (memory.ReviewV1Input, error) {
 	var input memory.ReviewV1Input
-	if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 		return memory.ReviewV1Input{}, fmt.Errorf("pending agent memory review input is invalid: %w", err)
 	}
 	if input.ID != id || (input.Decision != string(memory.ReviewApprove) && input.Decision != string(memory.ReviewReject)) {
@@ -475,7 +475,7 @@ func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memor
 
 func retainedMemoryUpdate(request protocol.CallPluginRequest, desired memory.UpdateV1Input) error {
 	var original memory.UpdateV1Input
-	if err := json.Unmarshal(request.Input, &original, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &original, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("pending agent memory update input is invalid: %w", err)
 	}
 	if !reflect.DeepEqual(original, desired) {
@@ -569,7 +569,7 @@ const memoryAdditionIntent = "memory-add"
 
 func retainedMemoryAddition(request protocol.CallPluginRequest, desired memory.AddV1Input) error {
 	var original memory.AddV1Input
-	if err := json.Unmarshal(request.Input, &original, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &original, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("pending agent memory addition input is invalid: %w", err)
 	}
 	if original != desired {

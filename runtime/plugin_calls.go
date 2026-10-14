@@ -86,7 +86,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options PluginCa
 	if err := m.method.ValidateInput(inputJSON); err != nil {
 		return zero, err
 	}
-	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: inputJSON.JSON(), Target: m.binding.Target}, options)
+	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: string(inputJSON.JSON()), Target: m.binding.Target}, options)
 	if err != nil {
 		return zero, err
 	}
@@ -99,11 +99,11 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options PluginCa
 	if result.Failure != nil {
 		return zero, &capability.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
-	if err := m.method.ValidateOutput(result.Output); err != nil {
+	if err := m.method.ValidateOutput([]byte(result.Output)); err != nil {
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(ErrInvalidResponse, err))
 	}
 	var value R
-	if err := json.Unmarshal(result.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(result.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return zero, errors.Join(ErrInvalidResponse, err)
 	}
 	return value, nil

@@ -1,7 +1,6 @@
 package runtimebinding
 
 import (
-	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -216,7 +215,7 @@ func TestAgentMemoryAdditionPreservesCapturedWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	var captured memory.AddV1Input
-	if err := json.Unmarshal(request.Input, &captured); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &captured); err != nil {
 		t.Fatal(err)
 	}
 	if captured != input {
@@ -302,7 +301,7 @@ func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = (&AgentMemory{}).DecodeUpdate(adapterMemoryIDOne, &protocol.CallPluginResponse{Output: result.JSON()})
+	_, err = (&AgentMemory{}).DecodeUpdate(adapterMemoryIDOne, &protocol.CallPluginResponse{Output: string(result.JSON())})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -371,7 +370,11 @@ func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ flameruntime.C
 	if a.protocolOverride != "" {
 		descriptor.Protocol = a.protocolOverride
 	}
-	return protocol.NewPage([]protocol.PluginInstallation{{ID: memoryInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: descriptor}}}}}), nil
+	encoded, err := json.Marshal(descriptor, json.Deterministic(true))
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	return protocol.NewPage([]protocol.PluginInstallation{{ID: memoryInstallation, Enabled: true, Selected: protocol.PluginRelease{Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contributions: []protocol.PluginContribution{{ID: "memory-provider", Contract: string(encoded)}}}}}), nil
 }
 func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	if request.InstallationID != memoryInstallation || request.Target.Reference != memoryInstallation || request.Contract != memory.CapabilityJSON {
@@ -384,7 +387,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if request.Method == memory.AddV1Method {
 		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		var input memory.AddV1Input
-		if err := json.Unmarshal(request.Input, &input); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "add:"+input.Scope)
@@ -394,12 +397,12 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		}
 		out := memory.AddV1Output{Item: memory.UpdateV1Output{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsoninput.Encode(out)
-		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
+		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memory.UpdateV1Method {
 		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		var input memory.UpdateV1Input
-		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "update:"+input.ID)
@@ -409,31 +412,31 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		}
 		output := memory.UpdateV1Output{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsoninput.Encode(output)
-		return &protocol.CallPluginResponse{Output: encoded.JSON()}, err
+		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memory.ReviewV1Method {
 		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		var input memory.ReviewV1Input
-		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "review:"+input.ID+":"+input.Decision)
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
 	if request.Method == memory.DeleteV1Method {
 		a.assertCommand(flameruntime.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
 		var input memory.DeleteV1Input
-		if err := json.Unmarshal(request.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
 		a.actions = append(a.actions, "delete:"+input.ID)
-		return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
 	if request.Method != memory.ListV1Method || options.IdempotencyKey != "" {
 		a.t.Fatalf("invalid memory query: %+v", request)
 	}
 	var input memory.ListV1Input
-	if err := json.Unmarshal(request.Input, &input); err != nil {
+	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		a.t.Fatal(err)
 	}
 	page, err := a.list(input, flameruntime.CallOptions{RequestMeta: options.RequestMeta})
@@ -451,7 +454,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if err != nil {
 		a.t.Fatal(err)
 	}
-	return &protocol.CallPluginResponse{Output: encoded.JSON()}, nil
+	return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, nil
 }
 
 func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) {
@@ -478,7 +481,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			ctx, cancel := context.WithCancel(t.Context())
 			stub.pluginCall = func(request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 				pending, staged := store.PendingInstalledCommand(intent)
-				if !staged || string(pending.CommandID) != options.IdempotencyKey || !bytes.Equal(request.Input, pending.Request.Input) {
+				if !staged || string(pending.CommandID) != options.IdempotencyKey || !(request.Input == pending.Request.Input) {
 					t.Fatal("delete dispatched before retaining its original identity and input")
 				}
 				cancel()
@@ -530,7 +533,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			})
 			stub.provider = "replacement-installation"
 			stub.pluginCall = func(protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
-				return &protocol.CallPluginResponse{Output: []byte(`{"extra":true}`)}, nil
+				return &protocol.CallPluginResponse{Output: `{"extra":true}`}, nil
 			}
 			if err := execute(t.Context()); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
 				t.Fatalf("invalid acknowledgement confirmed a delete: %v", err)
@@ -539,18 +542,18 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 				t.Fatal("invalid acknowledgement retired the original command")
 			}
 			stub.pluginCall = func(request protocol.CallPluginRequest, options flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
-				if request.InstallationID != pending.Request.InstallationID || request.Digest != pending.Request.Digest || request.Contribution != pending.Request.Contribution || request.Contract != pending.Request.Contract || request.Method != pending.Request.Method || request.Target != pending.Request.Target || !bytes.Equal(request.Input, pending.Request.Input) || options.IdempotencyKey != string(pending.CommandID) {
+				if request.InstallationID != pending.Request.InstallationID || request.Digest != pending.Request.Digest || request.Contribution != pending.Request.Contribution || request.Contract != pending.Request.Contract || request.Method != pending.Request.Method || request.Target != pending.Request.Target || !(request.Input == pending.Request.Input) || options.IdempotencyKey != string(pending.CommandID) {
 					t.Fatal("delete recovery changed its original command or binding")
 				}
 				if method == memory.AddV1Method {
 					output, err := jsoninput.Encode(memory.AddV1Output{Changed: true, Item: memory.UpdateV1Output{ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
-					return &protocol.CallPluginResponse{Output: output.JSON()}, err
+					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
 				if method == memory.UpdateV1Method {
 					output, err := jsoninput.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOne, Scope: "user", Content: "original patch", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
-					return &protocol.CallPluginResponse{Output: output.JSON()}, err
+					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
-				return &protocol.CallPluginResponse{Output: []byte(`{}`)}, nil
+				return &protocol.CallPluginResponse{Output: `{}`}, nil
 			}
 			if err := execute(t.Context()); err != nil || stub.providerReads != 1 || len(stub.calls) != 3 {
 				t.Fatalf("delete recovery: providers=%d calls=%d error=%v", stub.providerReads, len(stub.calls), err)

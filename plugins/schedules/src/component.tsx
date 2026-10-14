@@ -377,7 +377,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
             {edit.basis ? `Edit ${edit.basis.ID}` : "New schedule"}
           </RecordTitle>
           {edit.basis && (
-            <Metadata>Captured revision: {edit.basis.Revision}</Metadata>
+            <Metadata>
+              Captured revision: {String(edit.basis.Revision)}
+            </Metadata>
           )}
           <TextField
             aria-label="Title"
@@ -572,7 +574,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
             <Facts
               values={[
                 ["Schedule", item.ID],
-                ["Revision", item.Revision],
+                ["Revision", String(item.Revision)],
                 ["Cron", item.Cron],
                 ["Workspace", item.CWD || "Runtime default"],
                 [

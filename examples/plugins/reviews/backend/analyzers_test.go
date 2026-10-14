@@ -27,7 +27,7 @@ func (c *analyzerCaller) CallPlugin(_ context.Context, request protocol.CallPlug
 	if err != nil {
 		return nil, err
 	}
-	return &protocol.CallPluginResponse{Output: output.JSON()}, nil
+	return &protocol.CallPluginResponse{Output: string(output.JSON())}, nil
 }
 
 func TestAnalysisUsesTheResolvedReleaseAndRejectsUnrelatedFindingEvidence(t *testing.T) {
@@ -38,7 +38,7 @@ func TestAnalysisUsesTheResolvedReleaseAndRejectsUnrelatedFindingEvidence(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	caller := &analyzerCaller{value: protocol.PluginPointBinding{InstallationID: provider, Digest: strings.Repeat("a", 64), Contribution: "evidence", Value: value.JSON()}, finding: Finding{Code: "open", Message: "Inspect this evidence.", ReviewID: review.ID, Revision: review.Revision}}
+	caller := &analyzerCaller{value: protocol.PluginPointBinding{InstallationID: provider, Digest: strings.Repeat("a", 64), Contribution: "evidence", Value: string(value.JSON())}, finding: Finding{Code: "open", Message: "Inspect this evidence.", ReviewID: review.ID, Revision: review.Revision}}
 	result, err := AnalyzeReview(t.Context(), caller, capability.Target{Scope: "installation", Reference: consumer}, review)
 	if err != nil || result.Review != review || len(result.Findings) != 1 || len(caller.calls) != 1 {
 		t.Fatalf("analysis: %+v, calls=%d, %v", result, len(caller.calls), err)

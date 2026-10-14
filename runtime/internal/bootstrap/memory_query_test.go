@@ -31,7 +31,7 @@ func memoryQuery(r *poMCPRuntime, input memoryrpc.ListInput) (protocol.CallPlugi
 			if !installation.Enabled {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: encoded, Target: capability.Target{Scope: "installation", Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: string(encoded), Target: capability.Target{Scope: "installation", Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
@@ -54,7 +54,7 @@ func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[m
 		r.t.Fatal(reply.Failure)
 	}
 	var page memoryrpc.Page
-	if err := json.Unmarshal(reply.Output, &page); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
 	return protocol.NewPageWithCursor(page.Rows, page.NextCursor)
@@ -70,7 +70,7 @@ func memoryAddRequest(r *poMCPRuntime, input memoryrpc.AddInput) protocol.CallPl
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = memoryrpc.Add, encoded
+	request.Method, request.Input = memoryrpc.Add, string(encoded)
 	return request
 }
 func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorydomain.ItemSnapshot {
@@ -80,7 +80,7 @@ func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key stri
 		r.t.Fatal(reply.Failure)
 	}
 	var result memoryrpc.AddResult
-	if err := json.Unmarshal(reply.Output, &result); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &result); err != nil {
 		r.t.Fatal(err)
 	}
 	return &result.Item

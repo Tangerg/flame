@@ -157,10 +157,14 @@ func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation 
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
 	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
 	for _, contribution := range installed.Selected.Contributions {
-		if contribution.Contract.Composition != capability.Selection {
+		contract, err := capability.Parse([]byte(contribution.Contract))
+		if err != nil {
+			r.t.Fatal(err)
+		}
+		if contract.Descriptor().Composition != capability.Selection {
 			continue
 		}
-		role := contribution.Contract.Reference
+		role := contract.Descriptor().Reference
 		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: role, InstallationID: installed.ID, Contribution: contribution.ID}, "select-"+role)
 	}
 	return installed

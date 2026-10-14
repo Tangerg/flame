@@ -3951,7 +3951,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-15.1\""
+          "value": "\"2026-10-15.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -5346,7 +5346,7 @@
             },
             {
               "name": "Input",
-              "type": "jsontext.Value",
+              "type": "string",
               "tag": "json:\"input\""
             },
             {
@@ -5368,7 +5368,7 @@
           "fields": [
             {
               "name": "Output",
-              "type": "jsontext.Value",
+              "type": "string",
               "tag": "json:\"output,omitzero\""
             },
             {
@@ -8928,7 +8928,7 @@
             },
             {
               "name": "Contract",
-              "type": "capability.Descriptor",
+              "type": "string",
               "tag": "json:\"contract\""
             },
             {
@@ -9128,7 +9128,7 @@
             },
             {
               "name": "Contract",
-              "type": "capability.Descriptor",
+              "type": "string",
               "tag": "json:\"contract\""
             }
           ],
@@ -9182,7 +9182,7 @@
             },
             {
               "name": "Value",
-              "type": "jsontext.Value",
+              "type": "string",
               "tag": "json:\"value\""
             }
           ],
@@ -9231,7 +9231,7 @@
             },
             {
               "name": "Value",
-              "type": "jsontext.Value",
+              "type": "string",
               "tag": "json:\"value\""
             }
           ],
@@ -9449,7 +9449,7 @@
             },
             {
               "name": "Contract",
-              "type": "capability.Descriptor",
+              "type": "string",
               "tag": "json:\"contract\""
             },
             {
@@ -9580,7 +9580,7 @@
             },
             {
               "name": "Value",
-              "type": "jsontext.Value",
+              "type": "string",
               "tag": "json:\"value,omitzero\""
             },
             {
@@ -10164,7 +10164,7 @@
             },
             {
               "name": "Attributes",
-              "type": "jsontext.Value",
+              "type": "string",
               "tag": "json:\"attributes\""
             },
             {

@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -52,11 +51,7 @@ func (r *Connection) selectedInstalledCall(ctx context.Context, requiredJSON, na
 			if contribution.ID != selected.Contribution {
 				continue
 			}
-			encoded, err := json.Marshal(contribution.Contract)
-			if err != nil {
-				return protocol.CallPluginRequest{}, runtimeContractViolation("selected contribution contract: %v", err)
-			}
-			actual, err := capability.Parse(encoded)
+			actual, err := capability.Parse([]byte(contribution.Contract))
 			if err != nil {
 				return protocol.CallPluginRequest{}, errors.Join(protocol.ErrPluginUnavailable, err)
 			}

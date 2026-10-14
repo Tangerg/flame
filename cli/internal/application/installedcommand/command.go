@@ -45,7 +45,6 @@ func Execute[T any](ctx context.Context, caller Caller, store *workbench.Store, 
 	var ownerRefusal *capability.Refusal
 	result, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (T, error) {
 		request := pending.Request
-		request.Input = append(request.Input[:0:0], pending.Request.Input...)
 		reply, err := caller.CallPlugin(ctx, request, pending.CommandID)
 		ownerRefusal = nil
 		if err != nil {

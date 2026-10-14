@@ -11,6 +11,26 @@
       "description": "Create one schedule definition.",
       "input": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_Draft": {
             "additionalProperties": false,
             "properties": {
@@ -27,10 +47,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
               },
               "Title": {
                 "type": "string"
@@ -63,10 +80,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
           },
           "Title": {
             "type": "string"
@@ -84,6 +98,26 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -108,10 +142,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
               },
               "NextRunAt": {
                 "format": "date-time",
@@ -169,10 +200,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
           },
           "NextRunAt": {
             "format": "date-time",
@@ -304,6 +332,26 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -328,10 +376,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
               },
               "NextRunAt": {
                 "format": "date-time",
@@ -579,6 +624,26 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -603,10 +668,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
               },
               "NextRunAt": {
                 "format": "date-time",
@@ -664,10 +726,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "type": "object"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvZG9tYWluL21vZGVscmVm_selectionJSON[string]"
           },
           "NextRunAt": {
             "format": "date-time",

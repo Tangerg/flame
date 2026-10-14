@@ -1,4 +1,5 @@
-import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
+import { pluginContract } from "@flame/runtime-contract/client/request";
+import { parseJSON } from "@flame/runtime-contract/client/json";
 import { checkRequest } from "@flame/runtime-contract/client/request";
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -142,11 +143,11 @@ function PackageRow({
         id: value.id,
         server: value.server,
         export: value.export,
-        contract: value.contract.reference,
-        composition: value.contract.composition,
+        contract: pluginContract(value.contract).reference,
+        composition: pluginContract(value.contract).composition,
         requires: value.requires.map((required) => ({
           id: required.id,
-          contract: required.contract.reference,
+          contract: pluginContract(required.contract).reference,
           optional: required.optional,
         })),
       })),
@@ -173,7 +174,7 @@ function PackageRow({
     if (!edit) return;
     return run(t(EDIT_LABEL[edit.type]), async () => {
       if (edit.type === "configure") {
-        const changes = z.record(z.string(), z.unknown()).parse(parseReviewedJSON(edit.value));
+        const changes = z.record(z.string(), z.unknown()).parse(parseJSON(edit.value));
         for (const field of Object.keys(edit.target)) {
           if (Object.hasOwn(changes, field))
             throw new Error(t("packages.reviewedField", { field }));

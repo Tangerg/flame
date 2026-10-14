@@ -19,13 +19,44 @@ a migration or an old-row reader. Public wire/export epochs are unchanged.
 
 ## Installed query streams
 
-Core `2026-10-15.1` admits query and command streams through `plugins.stream`.
+Core `2026-10-15.2` admits query and command streams through `plugins.stream`.
 The contribution's exact method contract owns that distinction. A query has no
 command idempotency key, route or private receipt; a command retains its original
 route and receipt-only reconciliation. Go `BindPluginStreamingMethod` supports
 both. The shared TS client and component SDK expose `queryStream` for reads and
 retain `stream` for durable commands. Early consumer withdrawal cancels and joins
 the original stream; missing final evidence never synthesizes completion.
+
+## Feature JSON source
+
+Core carries installed call input/output, stream chunk/final values, point values
+and applicability attributes as JSON strings. Callable contracts in release,
+requirement and resolved-binding projections are canonical JSON strings too.
+These fields preserve the feature's numeric ranges and source lexemes; Core does
+not turn them into JavaScript numbers. Former inline-object/number frames are
+refused. Rebuild Go/CLI/TS consumers and ordinary component artifacts together.
+Backend protocol and private command/receipt formats are unchanged.
+
+The shared TS client exports `parseJSON`, `stringifyJSON`, `ExactNumber` and the
+generated feature `JSONNumber` projection. Safe canonical numbers stay ordinary
+numbers, wide integer literals become `bigint`, and other exact literals retain
+their source in `ExactNumber`. This includes decimal precision, exponent spelling
+and `1.0`. No huge exponent is expanded. Encoding refuses unsafe JS integer values,
+non-finite values, unsupported objects, duplicates and malformed Unicode instead
+of silently changing them. Use `bigint` or `new ExactNumber("...")` when authoring
+such values. `bindOperations` owns this encoding/decoding for typed components;
+direct wire clients send JSON strings and decode their returned source explicitly.
+
+The mutation journal uses the same codec for canonical request identity and binds
+the original feature input source separately. Wire string encoding cannot change
+the underlying intent identity. It persists neither authored input nor private
+business results. Refusal, acknowledgement loss and original-route recovery keep
+their existing owners; no former wire reader or replay path is retained.
+
+Model selections publish the same closed `provider`, `model`, `reasoningEffort`
+field set that their Go decoder admits. All three strings are required, including
+empty strings for the default selection. Schedules contracts and typed CLI/TS
+consumers are regenerated from that owner; arbitrary string maps are not accepted.
 
 ## First-party initialization
 
@@ -267,9 +298,9 @@ original record without automatic replay. Recovery derives stream/unary delivery
 from the original contract and restores its exact route before current preparation.
 Each HTTP request waits for its own notification consumption while the shared
 client continues handling nested/unrelated RPC. Stop/client closure releases the
-reader/observers and joins in-flight asynchronous consumers. Unsafe numeric stream input/evidence is refused instead of
-silently rounded; full cross-language wide-number parity remains unfinished.
-Production model chains, query streams and dependency retention remain open.
+reader/observers and joins in-flight asynchronous consumers. Feature JSON text and
+the shared exact numeric codec preserve Go/TS input, chunk and final values.
+Production model/dependency lifecycle and final acceptance remain open.
 Unary entrances continue to refuse stream methods before route creation. Stream
 recovery stores no competing business result or chunk history.
 

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
+import { parseJSON } from "@flame/runtime-contract/client/json";
 import { checkRequest } from "@flame/runtime-contract/client/request";
 import type {
   PluginInstallation,
@@ -76,11 +76,12 @@ function InspectPoint({
       pending: true,
     }));
     try {
+      parseJSON(attributes);
       const request = checkRequest("plugins.resolvePoint", {
         contract: point.contract,
         target: { scope: metadata.scope, reference },
-        attributes: parseReviewedJSON(attributes),
-        order: parseReviewedJSON(order),
+        attributes,
+        order: parseJSON(order),
       });
       const result = await operations.track(operations.resolvePoint(request, signal));
       if (!signal.aborted)

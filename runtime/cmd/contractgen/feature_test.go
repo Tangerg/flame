@@ -125,7 +125,7 @@ func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(generated.methods) != 1 || generated.methods[0].Name != descriptor.Name || !strings.Contains(generated.typescript, `"open" | "resolved"`) || !strings.Contains(generated.typescript, "revision: number;") || !strings.Contains(generated.typescript, "accepted: boolean;") {
+	if len(generated.methods) != 1 || generated.methods[0].Name != descriptor.Name || !strings.Contains(generated.typescript, `"open" | "resolved"`) || !strings.Contains(generated.typescript, "revision: JSONNumber;") || !strings.Contains(generated.typescript, "accepted: boolean;") {
 		t.Fatalf("generated surface lost contract: %+v\n%s", generated.methods, generated.typescript)
 	}
 	contract, err := capability.Parse(data)
@@ -197,7 +197,7 @@ func TestFeatureNullableObjectPreservesRequiredProperties(t *testing.T) {
 	}
 	emitter := tsTypes{set: &schemaSet{defs: make(map[string]*schema)}}
 	value := emitter.typeOf(node)
-	if !strings.Contains(value, "revision: number") || !strings.Contains(value, "null") {
+	if !strings.Contains(value, "revision: JSONNumber") || !strings.Contains(value, "null") {
 		t.Fatalf("nullable object lost its shape: %s", value)
 	}
 }

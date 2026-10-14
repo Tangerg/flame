@@ -42,7 +42,7 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 		t.Fatalf("opposite review did not fence its original decision before current-target work: %v", err)
 	}
 	pending, found := store.PendingInstalledCommand(original.Intent)
-	if !found || pending.CommandID != original.CommandID || !bytes.Equal(pending.Request.Input, original.Request.Input) {
+	if !found || pending.CommandID != original.CommandID || !(pending.Request.Input == original.Request.Input) {
 		t.Fatal("opposite review changed original identity or input")
 	}
 	if _, err := retainedMemoryReview(pending.Request, terminalMemoryPendingID, memory.ReviewApprove); err != nil {
@@ -85,7 +85,7 @@ func TestPendingMemoryUpdateKeepsOriginalPatchAndOmission(t *testing.T) {
 			t.Fatal("changed patch replaced an unconfirmed original update")
 		}
 	}
-	if !bytes.Equal(before, request.Input) {
+	if !bytes.Equal(before, []byte(request.Input)) {
 		t.Fatal("checking a pending update changed original bytes")
 	}
 }

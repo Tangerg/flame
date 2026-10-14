@@ -30,7 +30,7 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 			if err != nil {
 				r.t.Fatal(err)
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installation.ID}, Input: input}
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installation.ID}, Input: string(input)}
 		}
 	}
 	r.t.Fatal("selected schedule contribution unavailable")
@@ -44,7 +44,7 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 		r.t.Fatal(reply.Failure)
 	}
 	var page schedulerpc.Page
-	if err := json.Unmarshal(reply.Output, &page); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
 	values := make([]scheduledomain.Snapshot, 0, len(page.Rows))
@@ -62,7 +62,7 @@ func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = schedulerpc.RunNow, input
+	request.Method, request.Input = schedulerpc.RunNow, string(input)
 	return request
 }
 
@@ -73,7 +73,7 @@ func readScheduleRun(r *poMCPRuntime, request protocol.CallPluginRequest, key st
 		r.t.Fatal(reply.Failure)
 	}
 	var value scheduleapp.RunReference
-	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		r.t.Fatal(err)
 	}
 	return &value
@@ -86,7 +86,7 @@ func scheduleCreateRequest(r *poMCPRuntime, draft scheduledomain.Draft) protocol
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = schedulerpc.Create, input
+	request.Method, request.Input = schedulerpc.Create, string(input)
 	return request
 }
 func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *scheduledomain.Snapshot {
@@ -96,7 +96,7 @@ func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key
 		r.t.Fatal(reply.Failure)
 	}
 	var snapshot scheduledomain.Snapshot
-	if err := json.Unmarshal(reply.Output, &snapshot); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &snapshot); err != nil {
 		r.t.Fatal(err)
 	}
 	row := projectScheduleSnapshot(r, snapshot)
@@ -116,6 +116,6 @@ func scheduleUpdateRequest(r *poMCPRuntime, input schedulerpc.UpdateInput) proto
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = schedulerpc.Update, encoded
+	request.Method, request.Input = schedulerpc.Update, string(encoded)
 	return request
 }

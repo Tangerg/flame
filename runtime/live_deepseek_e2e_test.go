@@ -136,12 +136,12 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: input, Target: capability.Target{Scope: "installation", Reference: target.ID}}, flameruntime.PluginCallOptions{})
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: string(input), Target: capability.Target{Scope: "installation", Reference: target.ID}}, flameruntime.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}
 	var schedules schedulerpc.Page
-	if err := json.Unmarshal(reply.Output, &schedules); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &schedules); err != nil {
 		t.Fatal(err)
 	}
 	if len(schedules.Rows) != 1 {
@@ -858,7 +858,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 		}
 		for _, installation := range installations.Data {
 			if installation.ID == provider.InstallationID {
-				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.RunNow, Input: input, Target: capability.Target{Scope: "installation", Reference: installation.ID}}
+				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.RunNow, Input: string(input), Target: capability.Target{Scope: "installation", Reference: installation.ID}}
 			}
 		}
 	}
@@ -875,7 +875,7 @@ func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPlugi
 		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value scheduleapp.RunReference
-	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	return &value, nil
@@ -888,7 +888,7 @@ func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, dr
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = schedulerpc.Create, input
+	request.Method, request.Input = schedulerpc.Create, string(input)
 	return request
 }
 func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*scheduledomain.Snapshot, error) {
@@ -900,7 +900,7 @@ func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPl
 		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value scheduledomain.Snapshot
-	if err := json.Unmarshal(reply.Output, &value, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	return &value, nil

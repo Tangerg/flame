@@ -59,11 +59,11 @@ func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protoco
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return struct{}{}, nil, err
 	}
-	input, err := jsoninput.Parse(request.Input)
+	input, err := jsoninput.Parse([]byte(request.Input))
 	if err != nil {
 		return struct{}{}, nil, err
 	}
-	request.Input = input.JSON()
+	request.Input = string(input.JSON())
 	options, err = captureStreamOptions(options)
 	if err != nil {
 		return struct{}{}, nil, err

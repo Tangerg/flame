@@ -1,3 +1,4 @@
+import { stringifyJSON } from "./json";
 import { expect, it } from "vitest";
 import type { RpcCallOptions, RpcClient } from "./client";
 import { createMethods } from "./methods";
@@ -20,7 +21,7 @@ it("point inspection sends the admitted contract string without re-encoding sche
       {
         contract,
         target: { scope: "workspace", reference: "/project" },
-        attributes: {},
+        attributes: stringifyJSON({}),
         order: [],
       },
       signal,

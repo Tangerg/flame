@@ -59,11 +59,11 @@ func schedulesDocument(schedules []schedule.CreateV1Output) readerDocument {
 		if scheduled.CWD != "" {
 			metadata = append(metadata, "workspace "+scheduled.CWD)
 		}
-		if scheduled.ModelSelection["provider"] != "" {
-			metadata = append(metadata, "model    "+scheduled.ModelSelection["provider"]+"/"+scheduled.ModelSelection["model"])
+		if scheduled.ModelSelection.Provider != "" {
+			metadata = append(metadata, "model    "+scheduled.ModelSelection.Provider+"/"+scheduled.ModelSelection.Model)
 		}
-		if scheduled.ModelSelection["reasoningEffort"] != "" {
-			metadata = append(metadata, "reasoning "+scheduled.ModelSelection["reasoningEffort"])
+		if scheduled.ModelSelection.ReasoningEffort != "" {
+			metadata = append(metadata, "reasoning "+scheduled.ModelSelection.ReasoningEffort)
 		}
 		if !scheduled.NextRunAt.IsZero() {
 			metadata = append(metadata, "next     "+scheduled.NextRunAt.Format(time.RFC3339))

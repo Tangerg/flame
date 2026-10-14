@@ -414,8 +414,16 @@ kinds; query calls use empty CommandOptions. The TypeScript client exposes
 Component bindings expose `queryStream(method, input, consume, signal)` and keep
 command `stream(intent, method, input, consume, signal)` under the mutation journal.
 Both reuse the existing receiver/backpressure/cancellation owner. Ordinary
-`plugins.call` remains unary. Core is `2026-10-15.1`; backend protocol and private
+`plugins.call` remains unary. Core is `2026-10-15.2`; backend protocol and private
 formats are unchanged.
+
+Core `CallPluginRequest.Input`, `CallPluginResponse.Output`, stream values and
+point attributes/values are JSON text strings. Contribution, requirement and
+resolved-binding contracts retain their canonical JSON strings too. Typed Go
+bindings encode and decode the same original source through `jsoninput` and the
+feature contract, preserving full-width integers and receipt lexemes. Rebuild
+public Go/CLI/TS consumers together; former inline Core payloads are refused.
+The backend's existing MCP value/receipt envelopes are unchanged.
 
 ## Primary Interaction context composition
 

@@ -1,3 +1,4 @@
+import { pluginContract } from "@flame/runtime-contract/client/request";
 import { useEffect, useRef, useState } from "react";
 import type {
   PluginCollaborator,
@@ -105,7 +106,7 @@ function RequirementBindings({
         return (
           <div key={required.id}>
             <Metadata>
-              {required.id} · {required.contract.reference} ·{" "}
+              {required.id} · {pluginContract(required.contract).reference} ·{" "}
               {t(
                 required.optional
                   ? "packages.requirements.optional"

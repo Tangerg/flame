@@ -6,7 +6,7 @@ import { MutationJournalError } from "./durableMutationJournal";
 import type { MutationJournal, PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
 import { pluginDeliveryMethod, pluginOperationKind } from "./request";
-import { parseReviewedJSON } from "./json";
+import { parseJSON } from "./json";
 import {
   NOTIFICATIONS_PLUGIN_STREAM,
   type PluginStreamEvent,
@@ -53,7 +53,7 @@ function observePluginStream(
       if (event.kind === "chunk") {
         consuming = true;
         try {
-          await consume(event.value, signal);
+          await consume(parseJSON(event.value!), signal);
         } catch (error) {
           fail(error);
         } finally {
@@ -67,7 +67,11 @@ function observePluginStream(
         cleanup();
       } else {
         ended = true;
-        done.resolve(event.value);
+        try {
+          done.resolve(parseJSON(event.value!));
+        } catch (error) {
+          done.reject(failure(error));
+        }
         cleanup();
       }
     },
@@ -110,7 +114,7 @@ export async function callPluginStream<T>(
 ): Promise<T> {
   if (pluginDeliveryMethod(input) !== "plugins.stream" || pluginOperationKind(input) !== "command")
     throw new TypeError("Plugin stream requires a streaming command method");
-  parseReviewedJSON(JSON.stringify(input.input));
+  parseJSON(input.input);
   const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
   return reservation.track(() =>
     wire.openMutation(
@@ -174,6 +178,7 @@ export async function queryPluginStream<T>(
     pluginOperationKind(request) !== "query"
   )
     throw new TypeError("Plugin query stream requires a streaming query method");
+  parseJSON(request.input);
   const stream = observePluginStream(client, consume, signal);
   const outcome = stream.result.then(
     (value) => ({ value }),

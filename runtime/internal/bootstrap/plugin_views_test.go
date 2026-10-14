@@ -179,13 +179,13 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: input.JSON(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: string(input.JSON()), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
 		}
 		var page memoryrpc.Page
-		if err := json.Unmarshal(result.Output, &page); err != nil {
+		if err := json.Unmarshal([]byte(result.Output), &page); err != nil {
 			t.Fatal(err)
 		}
 		canonical := readMemoryPage(r, query)
@@ -242,9 +242,9 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: input}, "").(*protocol.CallPluginResponse)
+		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
 		var page schedulerpc.Page
-		if err := json.Unmarshal(installedReply.Output, &page); err != nil {
+		if err := json.Unmarshal([]byte(installedReply.Output), &page); err != nil {
 			t.Fatal(err)
 		}
 		if len(page.Rows) != 1 || page.Rows[0].Title != "Inspect" || page.Rows[0].Instructions != "Inspect current work" || page.Rows[0].Revision != 1 {
@@ -275,7 +275,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: []byte(`{"Cursor":""}`)}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: `{"Cursor":""}`}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}

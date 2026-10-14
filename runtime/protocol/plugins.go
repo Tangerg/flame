@@ -1,25 +1,23 @@
 package protocol
 
-import (
-	"encoding/json/jsontext"
-
-	"github.com/Tangerg/flame/runtime/capability"
-)
+import "github.com/Tangerg/flame/runtime/capability"
 
 // CallPluginRequest binds an installed contribution to the consumer's complete
 // required contract. The implementation determines operation semantics.
+// Contracts and feature values cross Core as JSON text because their numeric
+// ranges and original receipt lexemes belong to the feature, not a JS number.
 type CallPluginRequest struct {
 	InstallationID string            `json:"installationId"`
 	Digest         string            `json:"digest"`
 	Contribution   string            `json:"contribution"`
 	Contract       string            `json:"contract"`
 	Method         string            `json:"method"`
-	Input          jsontext.Value    `json:"input"`
+	Input          string            `json:"input"`
 	Target         capability.Target `json:"target"`
 }
 
 type CallPluginResponse struct {
-	Output  jsontext.Value     `json:"output,omitzero"`
+	Output  string             `json:"output,omitzero"`
 	Failure *PluginCallFailure `json:"failure,omitzero"`
 }
 
@@ -38,7 +36,7 @@ const (
 
 type PluginStreamEvent struct {
 	Kind    PluginStreamKind   `json:"kind"`
-	Value   jsontext.Value     `json:"value,omitzero"`
+	Value   string             `json:"value,omitzero"`
 	Failure *PluginCallFailure `json:"failure,omitzero"`
 }
 
@@ -309,18 +307,18 @@ type PluginValueChange struct {
 }
 
 type PluginContribution struct {
-	Background bool                  `json:"background,omitzero"`
-	ID         string                `json:"id"`
-	Server     string                `json:"server"`
-	Export     string                `json:"export"`
-	Contract   capability.Descriptor `json:"contract"`
-	Requires   []PluginRequirement   `json:"requires"`
+	Background bool                `json:"background,omitzero"`
+	ID         string              `json:"id"`
+	Server     string              `json:"server"`
+	Export     string              `json:"export"`
+	Contract   string              `json:"contract"`
+	Requires   []PluginRequirement `json:"requires"`
 }
 
 type PluginRequirement struct {
-	ID       string                `json:"id"`
-	Contract capability.Descriptor `json:"contract"`
-	Optional bool                  `json:"optional"`
+	ID       string `json:"id"`
+	Contract string `json:"contract"`
+	Optional bool   `json:"optional"`
 }
 
 type ResolvePluginRequirementsRequest struct {
@@ -337,10 +335,10 @@ type PluginCollaborator struct {
 // PluginOperationBinding is immutable public routing evidence without a private
 // backend port or a connection-generation identity.
 type PluginOperationBinding struct {
-	InstallationID string                `json:"installationId"`
-	Digest         string                `json:"digest"`
-	Contribution   string                `json:"contribution"`
-	Contract       capability.Descriptor `json:"contract"`
+	InstallationID string `json:"installationId"`
+	Digest         string `json:"digest"`
+	Contribution   string `json:"contribution"`
+	Contract       string `json:"contract"`
 }
 
 type PluginPoint struct {
@@ -349,9 +347,9 @@ type PluginPoint struct {
 }
 
 type PluginPointValue struct {
-	ID       string         `json:"id"`
-	Contract string         `json:"contract"`
-	Value    jsontext.Value `json:"value"`
+	ID       string `json:"id"`
+	Contract string `json:"contract"`
+	Value    string `json:"value"`
 }
 
 type PluginPointReference struct {
@@ -362,15 +360,15 @@ type PluginPointReference struct {
 type ResolvePluginPointRequest struct {
 	Contract   string                 `json:"contract"`
 	Target     capability.Target      `json:"target"`
-	Attributes jsontext.Value         `json:"attributes"`
+	Attributes string                 `json:"attributes"`
 	Order      []PluginPointReference `json:"order"`
 }
 
 type PluginPointBinding struct {
-	InstallationID string         `json:"installationId"`
-	Digest         string         `json:"digest"`
-	Contribution   string         `json:"contribution"`
-	Value          jsontext.Value `json:"value"`
+	InstallationID string `json:"installationId"`
+	Digest         string `json:"digest"`
+	Contribution   string `json:"contribution"`
+	Value          string `json:"value"`
 }
 
 type PluginClientComponent struct {

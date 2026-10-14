@@ -1,7 +1,6 @@
 package workbench
 
 import (
-	"bytes"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -42,7 +41,7 @@ type installedCommandRecord struct {
 
 func (p PendingInstalledCommand) MarshalJSON() ([]byte, error) {
 	request := p.Request
-	return json.Marshal(installedCommandRecord{Intent: p.Intent, CommandID: p.CommandID, InstallationID: request.InstallationID, Digest: request.Digest, Contribution: request.Contribution, Contract: request.Contract, Method: request.Method, Input: request.Input, Target: request.Target, Replay: p.Replay})
+	return json.Marshal(installedCommandRecord{Intent: p.Intent, CommandID: p.CommandID, InstallationID: request.InstallationID, Digest: request.Digest, Contribution: request.Contribution, Contract: request.Contract, Method: request.Method, Input: []byte(request.Input), Target: request.Target, Replay: p.Replay})
 }
 
 func (p *PendingInstalledCommand) UnmarshalJSON(body []byte) error {
@@ -50,7 +49,7 @@ func (p *PendingInstalledCommand) UnmarshalJSON(body []byte) error {
 	if err := json.Unmarshal(body, &record, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	next := PendingInstalledCommand{Intent: record.Intent, CommandID: record.CommandID, Replay: record.Replay, Request: protocol.CallPluginRequest{InstallationID: record.InstallationID, Digest: record.Digest, Contribution: record.Contribution, Contract: record.Contract, Method: record.Method, Input: record.Input, Target: record.Target}}
+	next := PendingInstalledCommand{Intent: record.Intent, CommandID: record.CommandID, Replay: record.Replay, Request: protocol.CallPluginRequest{InstallationID: record.InstallationID, Digest: record.Digest, Contribution: record.Contribution, Contract: record.Contract, Method: record.Method, Input: string(record.Input), Target: record.Target}}
 	if err := next.validate(); err != nil {
 		return err
 	}
@@ -79,11 +78,6 @@ func (p PendingInstalledCommand) validate() error {
 	return nil
 }
 
-func (p PendingInstalledCommand) clone() PendingInstalledCommand {
-	p.Request.Input = slices.Clone(p.Request.Input)
-	return p
-}
-
 func (s *Store) loadInstalledCommands() error {
 	var commands []PendingInstalledCommand
 	if err := s.loadOptional(installedCommandsName, &commands); err != nil {
@@ -101,7 +95,7 @@ func (s *Store) loadInstalledCommands() error {
 			return errors.New("duplicate installed command identity")
 		}
 		identities[command.CommandID] = struct{}{}
-		s.installedCommands[command.Intent] = command.clone()
+		s.installedCommands[command.Intent] = command
 	}
 	return nil
 }
@@ -110,7 +104,7 @@ func (s *Store) PendingInstalledCommand(intent string) (PendingInstalledCommand,
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pending, found := s.installedCommands[intent]
-	return pending.clone(), found
+	return pending, found
 }
 
 func (s *Store) PendingInstalledCommands() []PendingInstalledCommand {
@@ -137,7 +131,7 @@ func (s *Store) StageInstalledCommand(command PendingInstalledCommand) error {
 		}
 	}
 	next := maps.Clone(s.installedCommands)
-	next[command.Intent] = command.clone()
+	next[command.Intent] = command
 	if err := s.save(installedCommandsName, sortedInstalledCommands(next)); err != nil {
 		return err
 	}
@@ -168,14 +162,14 @@ func installedCommandEqual(left, right PendingInstalledCommand) bool {
 	a, b := left.Request, right.Request
 	return left.Intent == right.Intent && left.CommandID == right.CommandID && left.Replay == right.Replay &&
 		a.InstallationID == b.InstallationID && a.Digest == b.Digest && a.Contribution == b.Contribution &&
-		a.Contract == b.Contract && a.Method == b.Method && a.Target == b.Target && bytes.Equal(a.Input, b.Input)
+		a.Contract == b.Contract && a.Method == b.Method && a.Target == b.Target && a.Input == b.Input
 }
 
 func sortedInstalledCommands(commands map[string]PendingInstalledCommand) []PendingInstalledCommand {
 	keys := slices.Sorted(maps.Keys(commands))
 	result := make([]PendingInstalledCommand, 0, len(keys))
 	for _, key := range keys {
-		result = append(result, commands[key].clone())
+		result = append(result, commands[key])
 	}
 	return result
 }

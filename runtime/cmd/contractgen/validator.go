@@ -181,7 +181,10 @@ func validatorChecks(
 	recv := receiverName(shape)
 	checks := make([]string, 0, len(constraints))
 	for _, constraint := range constraints {
-		if check := constraintCheck(shape, constraint, union); check != "" {
+		requiredByShape := unionRequiresField(union, constraint.Field) || slices.ContainsFunc(rules, func(rule dispatch.ConditionalRule) bool {
+			return slices.Contains(rule.Required, constraint.Field) || slices.Contains(rule.RequiredAny, constraint.Field)
+		})
+		if check := constraintCheck(shape, constraint, requiredByShape); check != "" {
 			checks = append(checks, check)
 		}
 	}
@@ -194,7 +197,7 @@ func validatorChecks(
 func constraintCheck(
 	shape reflect.Type,
 	constraint dispatch.FieldConstraint,
-	union dispatch.UnionSpec,
+	requiredByShape bool,
 ) string {
 	selector, leaf, found := contractshape.GoPath(shape, constraint.Field)
 	if !found {
@@ -203,7 +206,7 @@ func constraintCheck(
 	switch constraint.Kind {
 	case dispatch.ConstraintNonEmpty, dispatch.ConstraintMaxLength, dispatch.ConstraintIdentity,
 		dispatch.ConstraintPrefix, dispatch.ConstraintPattern:
-		return textConstraintCheck(shape, selector, leaf, constraint, union)
+		return textConstraintCheck(shape, selector, leaf, constraint, requiredByShape)
 	case dispatch.ConstraintPositive, dispatch.ConstraintNonNegative,
 		dispatch.ConstraintMinimum, dispatch.ConstraintMaximum:
 		return numericConstraintCheck(shape, selector, leaf, constraint)
@@ -225,12 +228,12 @@ func textConstraintCheck(
 	selector string,
 	leaf contractshape.Field,
 	constraint dispatch.FieldConstraint,
-	union dispatch.UnionSpec,
+	requiredByShape bool,
 ) string {
 	field := strconv.Quote(constraint.Field)
 	switch constraint.Kind {
 	case dispatch.ConstraintNonEmpty:
-		return nonEmptyConstraintCheck(shape, selector, leaf, constraint, union)
+		return nonEmptyConstraintCheck(shape, selector, leaf, constraint, requiredByShape)
 	case dispatch.ConstraintMaxLength:
 		validatorName := "maxLength"
 		if leaf.Type.Kind() == reflect.Pointer {
@@ -263,14 +266,14 @@ func nonEmptyConstraintCheck(
 	selector string,
 	leaf contractshape.Field,
 	constraint dispatch.FieldConstraint,
-	union dispatch.UnionSpec,
+	requiredByShape bool,
 ) string {
 	// A non-pointer scalar cannot distinguish an omitted JSON property from its
-	// zero value after decoding. When a union branch owns the property's
+	// zero value after decoding. When a shape rule owns the property's
 	// requiredness, requiredWhen below already rejects that zero value in the
 	// branch where it is required and accepts it where the property is forbidden.
 	// An unconditional requiredText would reject every other legal branch.
-	if leaf.Optional && leaf.Type.Kind() != reflect.Pointer && unionRequiresField(union, constraint.Field) {
+	if leaf.Optional && leaf.Type.Kind() != reflect.Pointer && requiredByShape {
 		return ""
 	}
 	validatorName := "requiredText"

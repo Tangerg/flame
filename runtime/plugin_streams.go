@@ -60,7 +60,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			yield(pluginsdk.StreamValue[C, R]{}, err)
 			return
 		}
-		request := protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: admitted.JSON(), Target: m.binding.Target}
+		request := protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: string(admitted.JSON()), Target: m.binding.Target}
 		_, events, err := m.caller.StreamPlugin(ctx, request, capturedOptions)
 		if err != nil {
 			yield(pluginsdk.StreamValue[C, R]{}, err)
@@ -89,12 +89,12 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 				yield(pluginsdk.StreamValue[C, R]{}, &capability.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
 				return
 			case protocol.PluginStreamChunk:
-				if err := m.method.ValidateChunk(event.Value); err != nil {
+				if err := m.method.ValidateChunk([]byte(event.Value)); err != nil {
 					fail(errors.Join(ErrInvalidResponse, err))
 					return
 				}
 				var chunk C
-				if err := json.Unmarshal(event.Value, &chunk, json.RejectUnknownMembers(true)); err != nil {
+				if err := json.Unmarshal([]byte(event.Value), &chunk, json.RejectUnknownMembers(true)); err != nil {
 					fail(errors.Join(ErrInvalidResponse, err))
 					return
 				}
@@ -102,12 +102,12 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 					return
 				}
 			case protocol.PluginStreamResult:
-				if err := m.method.ValidateOutput(event.Value); err != nil {
+				if err := m.method.ValidateOutput([]byte(event.Value)); err != nil {
 					fail(errors.Join(ErrInvalidResponse, err))
 					return
 				}
 				final = new(R)
-				if err := json.Unmarshal(event.Value, final, json.RejectUnknownMembers(true)); err != nil {
+				if err := json.Unmarshal([]byte(event.Value), final, json.RejectUnknownMembers(true)); err != nil {
 					fail(errors.Join(ErrInvalidResponse, err))
 					return
 				}
