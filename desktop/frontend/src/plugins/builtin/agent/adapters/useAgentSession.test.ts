@@ -248,9 +248,7 @@ describe("useAgentSession run timing guards", () => {
         sessions: {
           snapshot: readSnapshot,
         },
-        runs: {
-          cancel,
-        },
+        runs: { recoverSteers: async () => [], cancel },
       }) as unknown as FlameClient;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onSettled = vi.fn();
@@ -309,7 +307,8 @@ describe("useAgentSession run timing guards", () => {
   it("does not fold a cancellation response after its Runtime generation retires", async () => {
     const cancellation = Promise.withResolvers<CancelRunResponse>();
     const cancel = vi.fn(() => cancellation.promise);
-    runtimeClient = () => ({ runs: { cancel } }) as unknown as FlameClient;
+    runtimeClient = () =>
+      ({ runs: { recoverSteers: async () => [], cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
@@ -357,7 +356,10 @@ describe("useAgentSession run timing guards", () => {
       successorAccepted = true;
       return response;
     });
-    runtimeClient = () => ({ runs: { cancel: predecessorCancel } }) as unknown as FlameClient;
+    runtimeClient = () =>
+      ({
+        runs: { recoverSteers: async () => [], cancel: predecessorCancel },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
@@ -402,7 +404,7 @@ describe("useAgentSession run timing guards", () => {
             }),
           ),
         },
-        runs: { cancel: successorCancel },
+        runs: { recoverSteers: async () => [], cancel: successorCancel },
       }) as unknown as FlameClient;
 
     let replacement!: Promise<boolean>;
@@ -462,7 +464,8 @@ describe("useAgentSession run timing guards", () => {
         data: { type: "stale_segment", detail: "run already moved" },
       }),
     );
-    runtimeClient = () => ({ runs: { cancel } }) as unknown as FlameClient;
+    runtimeClient = () =>
+      ({ runs: { recoverSteers: async () => [], cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
@@ -512,9 +515,7 @@ describe("useAgentSession run timing guards", () => {
             },
           }),
         },
-        runs: {
-          cancel,
-        },
+        runs: { recoverSteers: async () => [], cancel },
       }) as unknown as FlameClient;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { driver } = parkedDriver();
@@ -576,10 +577,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: {
-          subscribe,
-          ...(runOverrides as object),
-        },
+        runs: { recoverSteers: async () => [], subscribe, ...(runOverrides as object) },
       }) as unknown as FlameClient;
     return { readSnapshot, subscribe };
   }
@@ -902,7 +900,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: { subscribe },
+        runs: { recoverSteers: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
@@ -1004,6 +1002,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
+        runs: { recoverSteers: async () => [] },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
@@ -1085,7 +1084,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: { subscribe },
+        runs: { recoverSteers: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
@@ -1167,7 +1166,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: { subscribe },
+        runs: { recoverSteers: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
@@ -1253,7 +1252,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: { get, subscribe },
+        runs: { recoverSteers: async () => [], get, subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
@@ -1313,7 +1312,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: { subscribe },
+        runs: { recoverSteers: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
@@ -1374,10 +1373,7 @@ describe("useAgentSession durable recovery", () => {
     runtimeClient = () =>
       ({
         sessions: { snapshot: readSnapshot },
-        runs: {
-          subscribe,
-          cancel,
-        },
+        runs: { recoverSteers: async () => [], subscribe, cancel },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
     renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));

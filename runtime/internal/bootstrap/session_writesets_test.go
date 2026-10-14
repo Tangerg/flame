@@ -200,7 +200,8 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		goals:       sqlite.NewGoalStore(db),
 	}
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
-		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
+		CommandAcceptances: persistence.NewCommandAcceptanceStore(db),
+		Sessions:           ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),

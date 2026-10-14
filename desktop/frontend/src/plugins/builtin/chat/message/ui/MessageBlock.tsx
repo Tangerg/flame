@@ -154,13 +154,15 @@ function MessageBlockInner({
           {isUser && msg.steer && (
             <Badge>
               {t(
-                msg.steer.receipt === "accepted"
-                  ? msg.runId === msg.steer.runId
-                    ? "agent.steer.applied"
-                    : "agent.steer.accepted"
-                  : msg.steer.receipt === "unknown"
-                    ? "agent.steer.unknown"
-                    : "agent.steer.pending",
+                msg.steer.receipt === "notApplied"
+                  ? "agent.steer.notApplied"
+                  : msg.steer.receipt === "accepted"
+                    ? msg.runId === msg.steer.runId
+                      ? "agent.steer.applied"
+                      : "agent.steer.accepted"
+                    : msg.steer.receipt === "unknown"
+                      ? "agent.steer.unknown"
+                      : "agent.steer.pending",
               )}
             </Badge>
           )}

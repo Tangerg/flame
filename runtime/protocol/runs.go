@@ -305,6 +305,7 @@ type RunCommandOperation string
 const (
 	RunCommandStart  RunCommandOperation = "start"
 	RunCommandResume RunCommandOperation = "resume"
+	RunCommandSteer  RunCommandOperation = "steer"
 )
 
 // GetRunAcceptanceRequest addresses the original command, independently of the
@@ -323,11 +324,11 @@ type RunAcceptanceType string
 const (
 	// RunAcceptanceNotRecorded carries no proof about an invocation still in flight.
 	RunAcceptanceNotRecorded RunAcceptanceType = "notRecorded"
-	// RunAcceptanceAccepted includes the original opening and current Run material.
+	// RunAcceptanceAccepted includes the original command references and current Run material.
 	RunAcceptanceAccepted RunAcceptanceType = "accepted"
-	// RunAcceptanceRetired — the key opened a run that has since been deleted or
+	// RunAcceptanceRetired — the original Run material has since been deleted or
 	// replaced. The command was accepted, but its run is gone, so there is no
-	// original material to attach to. Its historical opening references remain.
+	// original material to attach to. Its historical command references remain.
 	RunAcceptanceRetired RunAcceptanceType = "retired"
 )
 
@@ -335,12 +336,21 @@ const (
 // is present for accepted and retired. Run is the current owner projection and
 // is present only while the original material association survives.
 type RunAcceptance struct {
-	Type       RunAcceptanceType `json:"type"`
-	RunID      string            `json:"runId,omitempty"`
-	SegmentID  string            `json:"segmentId,omitempty"`
-	SessionID  string            `json:"sessionId,omitempty"`
-	UserItemID string            `json:"userItemId,omitempty"`
-	Run        *RunRef           `json:"run,omitzero"`
+	Type        RunAcceptanceType `json:"type"`
+	RunID       string            `json:"runId,omitempty"`
+	SegmentID   string            `json:"segmentId,omitempty"`
+	SessionID   string            `json:"sessionId,omitempty"`
+	UserItemID  string            `json:"userItemId,omitempty"`
+	Run         *RunRef           `json:"run,omitzero"`
+	Input       []ContentBlock    `json:"input,omitempty"`
+	AppliedItem *Item             `json:"appliedItem,omitzero"`
+}
+
+type PendingSteerInput struct {
+	RunID      string         `json:"runId"`
+	SegmentID  string         `json:"segmentId"`
+	UserItemID string         `json:"userItemId"`
+	Input      []ContentBlock `json:"input"`
 }
 
 // ListInterruptsRequest is the interrupt.list body. Both filters are optional and

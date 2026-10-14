@@ -96,6 +96,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
+		CommandAcceptances:  cfg.Stores.CommandAcceptances,
 		Sessions:            cfg.Stores.Sessions,
 		Transcript:          cfg.Stores.Transcript,
 		Interrupts:          cfg.Stores.Interrupts,

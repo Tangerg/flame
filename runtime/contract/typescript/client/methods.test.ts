@@ -1072,13 +1072,16 @@ describe("methods factory", () => {
   it("runs.steer keeps structured content blocks on the wire", async () => {
     const t = createMemoryTransport();
     const client = createRpcClient(t);
-    const methods = createMethods(client);
+    const methods = createMethods(client, {
+      capabilities: () => discovery.capabilities as import("../wire.generated").ServerCapabilities,
+    });
     const input = [
       { type: "text" as const, text: "compare this" },
       { type: "image" as const, mime: "image/png", data: "aW1hZ2U=" },
     ];
 
     const promise = methods.runs.steer(asRunId("run_1"), asSegmentId("seg_1"), input);
+    await respondNotRecorded(t, "steer");
     const req = await waitForRequest(t, "runs.steer");
     expect(req.params).toEqual({
       runId: "run_1",

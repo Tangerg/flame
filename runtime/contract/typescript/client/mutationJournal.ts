@@ -13,6 +13,7 @@ import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise 
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 
 export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
+import type { SteerRunRequest } from "../wire.generated";
 
 export {
   MutationJournalCapacityError,
@@ -35,8 +36,17 @@ export interface MutationJournal {
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
+  pendingSteers(): PendingSteerCommand[];
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
   dispose(): void;
+}
+
+export interface PendingSteerCommand {
+  readonly params: SteerRunRequest;
+  readonly idempotencyKey: string;
+  readonly namespace: string;
+  settle(): void;
+  reserve(): MutationReservation;
 }
 
 export interface MutationJournalOptions {
@@ -138,6 +148,30 @@ class MutationAuthority implements MutationJournal {
     } finally {
       this.#preparing.delete(intent);
     }
+  }
+  pendingSteers(): PendingSteerCommand[] {
+    this.#assertCurrent();
+    return this.#journal
+      .pendingSteers()
+      .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
+      .map((identity) => ({
+        params: structuredClone(identity.entry.steer!),
+        idempotencyKey: identity.entry.idempotencyKey,
+        namespace: this.#journal.lookupNamespace(identity),
+        settle: () => {
+          this.#assertCurrent();
+          this.#journal.settle(identity);
+        },
+        reserve: () => {
+          this.#assertCurrent();
+          if (this.#claims.has(identity.entry.idempotencyKey))
+            throw new MutationJournalOwnershipError(
+              "Runtime mutation identity is already owned by an active command",
+            );
+          this.#journal.retain(identity);
+          return this.#claim(identity);
+        },
+      }));
   }
 
   reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined {

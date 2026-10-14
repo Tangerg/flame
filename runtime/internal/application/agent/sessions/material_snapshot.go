@@ -16,12 +16,13 @@ import (
 // mounted Session. It is a live read model, so active Runs and open interrupts
 // are valid members and Plan revision metadata is retained.
 type MaterialSnapshot struct {
-	Session    session.Session
-	Items      []transcript.Item
-	Runs       []run.Run
-	Interrupts []runs.Pending
-	Plan       plan.Current
-	Goal       *goal.Goal
+	PendingSteers []runs.CommandAcceptance
+	Session       session.Session
+	Items         []transcript.Item
+	Runs          []run.Run
+	Interrupts    []runs.Pending
+	Plan          plan.Current
+	Goal          *goal.Goal
 }
 
 // MaterialView reads the complete mounted-session projection at one database

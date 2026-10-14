@@ -2,7 +2,7 @@ import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
-import type { MutationJournal } from "./mutationJournal";
+import type { MutationJournal, MutationReservation } from "./mutationJournal";
 import { unnegotiated } from "./preflight";
 import {
   createAutoPagingPromise,
@@ -74,6 +74,7 @@ type OpenMutation = <M extends WireMethodName, Result>(
   signal?: AbortSignal,
   requestedKey?: string,
   journalKey?: string,
+  reserveOriginal?: () => MutationReservation,
 ) => MutationPromise<Result>;
 
 interface MutationDelivery {
@@ -128,6 +129,7 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     signal?: AbortSignal,
     requestedKey?: string,
     journalKey?: string,
+    reserveOriginal?: () => MutationReservation,
   ): MutationPromise<Result> => {
     const preparedParams = structuredClone(params);
     const preferredJournalKey = journalKey ?? crypto.randomUUID();
@@ -137,7 +139,9 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
       reservation =
         requestedKey !== undefined
           ? undefined
-          : options.mutationJournal?.reserve(method, preparedParams, preferredJournalKey);
+          : reserveOriginal
+            ? reserveOriginal()
+            : options.mutationJournal?.reserve(method, preparedParams, preferredJournalKey);
     } catch (error) {
       const failedKey = requestedKey ?? preferredJournalKey;
       const retry = (retryOptions?: { signal?: AbortSignal }): MutationPromise<Result> =>
@@ -148,6 +152,7 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
           retryOptions === undefined ? signal : retryOptions.signal,
           requestedKey,
           preferredJournalKey,
+          reserveOriginal,
         );
       return Object.defineProperties(Promise.reject(error), {
         idempotencyKey: { enumerable: true, value: failedKey },

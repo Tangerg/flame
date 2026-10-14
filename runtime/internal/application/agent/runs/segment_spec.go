@@ -39,8 +39,8 @@ type segmentSpec struct {
 	InitialSession     *session.Session
 	SessionReplacement *session.Replacement
 	Actor              *operation.Actor
-	// CommandAcceptance binds an externally initiated command to this fresh
-	// admission; its run_opening acceptance commits in the opening transaction.
+	// CommandAcceptance binds an externally initiated command to this
+	// admission; its run_acceptance acceptance commits in the opening transaction.
 	CommandAcceptance *CommandIdentity
 	// ResumeAcceptance is the answer write-set a continuation opening consumes in
 	// the same transaction: the open interrupt set and its settled Item

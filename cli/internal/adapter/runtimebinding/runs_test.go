@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -41,7 +42,7 @@ func TestAcceptanceLookupUsesOriginalIdentityAndQueryMetadata(t *testing.T) {
 		return &want, nil
 	}}}
 	got, err := connection.GetRunAcceptance(t.Context(), query)
-	if err != nil || got != want {
+	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("acceptance projection = %+v, %v", got, err)
 	}
 }
@@ -671,7 +672,7 @@ func TestSteerRunReturnsTheExactAcceptanceReceipt(t *testing.T) {
 	got, err := connection.SteerRun(t.Context(), prompt.SteerRun{
 		RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "preserve the receipt"},
 	})
-	if err != nil || got != want {
+	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("steer receipt = %+v, error %v", got, err)
 	}
 }

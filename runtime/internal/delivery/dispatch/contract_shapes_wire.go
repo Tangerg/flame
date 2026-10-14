@@ -233,8 +233,8 @@ func registerRunUnions(s *Shapes) {
 		Discriminator: "type",
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RunAcceptanceNotRecorded)},
-			{Tag: string(protocol.RunAcceptanceAccepted), Required: []string{"runId", "segmentId", "sessionId", "run"}, Optional: []string{"userItemId"}},
-			{Tag: string(protocol.RunAcceptanceRetired), Required: []string{"runId", "segmentId", "sessionId"}, Optional: []string{"userItemId"}},
+			{Tag: string(protocol.RunAcceptanceAccepted), Required: []string{"runId", "segmentId", "sessionId", "run"}, Optional: []string{"userItemId", "input", "appliedItem"}},
+			{Tag: string(protocol.RunAcceptanceRetired), Required: []string{"runId", "segmentId", "sessionId"}, Optional: []string{"userItemId", "input"}},
 		},
 	})
 

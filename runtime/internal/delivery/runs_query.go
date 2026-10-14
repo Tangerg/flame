@@ -36,7 +36,7 @@ func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*proto
 	return &ref, nil
 }
 
-// GetRunAcceptance reads the original opening and its current material in one
+// GetRunAcceptance reads the original command and its current material in one
 // snapshot. It never redelivers a command or fills a retired material reference.
 func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error) {
 	if in.Namespace != s.idempotency.Namespace {
@@ -75,6 +75,13 @@ func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcce
 		Type: protocol.RunAcceptanceRetired, RunID: record.Acceptance.RunID,
 		SegmentID: record.Acceptance.SegmentID, SessionID: record.Acceptance.SessionID,
 		UserItemID: record.Acceptance.UserItemID,
+	}
+	for _, block := range record.Acceptance.SteerInput {
+		response.Input = append(response.Input, presentContent(block))
+	}
+	if record.AppliedItem != nil {
+		item := presentItem(*record.AppliedItem)
+		response.AppliedItem = &item
 	}
 	if record.CurrentRun != nil {
 		current := presentRun(*record.CurrentRun)

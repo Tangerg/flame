@@ -388,7 +388,8 @@ func (f *fakeExecutionPorts) PrepareWaitingSubtreeCancellation(
 	return f.prepareWaiting(request)
 }
 
-func (f *fakeExecutionPorts) SubmitSteer(_ context.Context, ref ExecutorRef, input []transcript.ContentBlock) (string, error) {
+func (f *fakeExecutionPorts) SubmitSteer(_ context.Context, ref ExecutorRef, prepared PreparedSteer) (string, error) {
+	input := prepared.Input
 	f.steered = append(f.steered, ref)
 	f.steerInput = append([]transcript.ContentBlock(nil), input...)
 	return "item_steer", nil

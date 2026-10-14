@@ -57,9 +57,18 @@ type interactionModelContextWire struct {
 }
 
 type interactionPendingSteerWire struct {
+	Command  *interactionSteerCommandWire  `json:"command,omitzero"`
 	ItemID   string                        `json:"item_id"`
 	SignalID string                        `json:"signal_id"`
 	Content  []interactionContentBlockWire `json:"content"`
+}
+
+type interactionSteerCommandWire struct {
+	Key         string `json:"key"`
+	Fingerprint string `json:"fingerprint"`
+	SessionID   string `json:"session_id"`
+	RunID       string `json:"run_id"`
+	SegmentID   string `json:"segment_id"`
 }
 
 type interactionPendingContinuationWire struct {
@@ -268,9 +277,21 @@ func encodeInteractionPendingSteer(
 		}
 		content[index] = value
 	}
-	return interactionPendingSteerWire{
+	wire := interactionPendingSteerWire{
 		SignalID: signalID.String(), ItemID: steer.itemID, Content: content,
-	}, nil
+	}
+	if steer.acceptance != nil {
+		if err := steer.acceptance.Validate(); err != nil {
+			return interactionPendingSteerWire{}, err
+		}
+		expected := steer.acceptance.Clone()
+		expected.Operation, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, steer.itemID, steer.content
+		if !expected.Equal(*steer.acceptance) || signalID.String() != "steer:"+steer.itemID {
+			return interactionPendingSteerWire{}, errors.New("pending steer command does not name its attributed input")
+		}
+		wire.Command = &interactionSteerCommandWire{Key: steer.acceptance.Key, Fingerprint: steer.acceptance.Fingerprint, SessionID: steer.acceptance.SessionID, RunID: steer.acceptance.RunID, SegmentID: steer.acceptance.SegmentID}
+	}
+	return wire, nil
 }
 
 func encodeInteractionPendingContinuation(
@@ -553,7 +574,17 @@ func (w interactionPendingSteerWire) decode(
 			)
 		}
 	}
-	return signalID, pendingInteractionSteer{itemID: w.ItemID, content: content}, nil
+	pending := pendingInteractionSteer{itemID: w.ItemID, content: content}
+	if w.Command != nil {
+		if w.SignalID != "steer:"+w.ItemID {
+			return zeroSignalID, pendingInteractionSteer{}, errors.New("pending steer command does not name its Signal")
+		}
+		pending.acceptance = &runs.CommandAcceptance{Key: w.Command.Key, Fingerprint: w.Command.Fingerprint, Operation: runs.CommandSteerInput, SessionID: w.Command.SessionID, RunID: w.Command.RunID, SegmentID: w.Command.SegmentID, UserItemID: w.ItemID, SteerInput: transcript.CloneContent(content)}
+		if err := pending.acceptance.Validate(); err != nil {
+			return zeroSignalID, pendingInteractionSteer{}, err
+		}
+	}
+	return signalID, pending, nil
 }
 
 func decodeInteractionPendingContinuation(

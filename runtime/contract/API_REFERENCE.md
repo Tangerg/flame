@@ -26,11 +26,11 @@ Protocol `2026-10-14.26` · 100 methods
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
-| `runs.resume` | command | stream | ownerRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
-| `runs.steer` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment` |
+| `runs.steer` | command | unary | ownerRun | none | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment` |
 | `runs.get` | query | unary | none | none | none | — | — | `run_not_found`, `capability_not_negotiated` |
 | `runs.getAcceptance` | query | unary | none | none | none | — | — | — |
 | `runs.list` | query | unary | none | none | cursor | — | `subagents` | `capability_not_negotiated` |
@@ -229,8 +229,8 @@ publish one namespaced pattern branch without weakening first-party tags.
 | tag | required | optional |
 | --- | --- | --- |
 | `notRecorded` | — | — |
-| `accepted` | `runId`, `segmentId`, `sessionId`, `run` | `userItemId` |
-| `retired` | `runId`, `segmentId`, `sessionId` | `userItemId` |
+| `accepted` | `runId`, `segmentId`, `sessionId`, `run` | `userItemId`, `input`, `appliedItem` |
+| `retired` | `runId`, `segmentId`, `sessionId` | `userItemId`, `input` |
 
 ### `RunOutcome`
 

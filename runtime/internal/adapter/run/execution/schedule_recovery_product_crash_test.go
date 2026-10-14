@@ -224,7 +224,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			defer stores.Close()
 			current, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-			if err != nil || current.Acceptance != receipt.Acceptance {
+			if err != nil || !current.Acceptance.Equal(receipt.Acceptance) {
 				t.Fatalf("recovery changed opening identity: %+v,%v", current, err)
 			}
 			steps := 3

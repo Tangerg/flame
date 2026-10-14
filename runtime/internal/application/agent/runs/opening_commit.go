@@ -184,7 +184,7 @@ func (o OpeningCommit) validateCommandAcceptance() error {
 	if err != nil {
 		return err
 	}
-	if expected != *o.commandAcceptance {
+	if !expected.Equal(*o.commandAcceptance) {
 		return errors.New("runs: command acceptance differs from its opening")
 	}
 	return nil

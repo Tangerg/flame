@@ -20,7 +20,7 @@ func TestMethodPoliciesIncludeOwnerCommittedRunStreams(t *testing.T) {
 			break
 		}
 	}
-	if !strings.Contains(union, strconv.Quote(delivery.IdempotencyOwnerRunStream.String())) {
+	if !strings.Contains(union, strconv.Quote(delivery.IdempotencyOwnerRun.String())) {
 		t.Fatalf("owner-committed Run stream has no generated policy type: %s", union)
 	}
 	for _, meta := range registry.Metas() {

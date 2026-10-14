@@ -99,15 +99,15 @@ const (
 	// path. Runtime retains no competing business outcome or stream chunk history.
 	IdempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
-	// IdempotencyOwnerRunStream records the command acceptance atomically with
-	// its opening. Delivery never keeps a competing response or reservation.
-	IdempotencyOwnerRunStream IdempotencyPolicy = "ownerRunStream"
+	// IdempotencyOwnerRun records the command acceptance atomically with
+	// its opening or input-admission head. Delivery keeps no competing reservation.
+	IdempotencyOwnerRun IdempotencyPolicy = "ownerRun"
 )
 
 // Valid reports whether i is one supported retry contract.
 func (i IdempotencyPolicy) Valid() bool {
 	return i == IdempotencyNone || i == IdempotencyReplayResponse ||
-		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRunStream
+		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
 // Replays reports whether this policy has durable replay semantics. Unknown
@@ -115,14 +115,14 @@ func (i IdempotencyPolicy) Valid() bool {
 // them before invocation starts.
 func (i IdempotencyPolicy) Replays() bool {
 	return i == IdempotencyReplayResponse ||
-		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRunStream
+		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
 // OwnsOutcome reports whether the backend commits this command's mutation and its
 // settlement together, so delivery keeps no competing replay record and routes a
 // keyed retry straight back to the handler.
 func (i IdempotencyPolicy) OwnsOutcome() bool {
-	return i == IdempotencyOwnerResponse || i == IdempotencyOwnerRunStream
+	return i == IdempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
 // ReplayCursorPolicy says whether a streaming method accepts the opaque run
@@ -340,7 +340,7 @@ func (m MethodMeta) validateIdentity() error {
 	}
 	switch m.Idempotency {
 	case IdempotencyNone, IdempotencyReplayResponse,
-		IdempotencyOwnerResponse, IdempotencyOwnerRunStream:
+		IdempotencyOwnerResponse, IdempotencyOwnerRun:
 	default:
 		return fmt.Errorf(
 			"%s: invalid idempotency policy %s; expected %s, %s, %s or %s",
@@ -349,7 +349,7 @@ func (m MethodMeta) validateIdentity() error {
 			IdempotencyNone,
 			IdempotencyReplayResponse,
 			IdempotencyOwnerResponse,
-			IdempotencyOwnerRunStream,
+			IdempotencyOwnerRun,
 		)
 	}
 	switch m.ReplayCursor {
@@ -412,10 +412,10 @@ func (m MethodMeta) validateOperationPolicy() error {
 			return fmt.Errorf("%s: a subscription must stream and must not keep an idempotency replay", m.Name)
 		}
 	case OperationCommand:
-		if m.Kind == KindUnary && m.Idempotency != IdempotencyReplayResponse && m.Idempotency != IdempotencyOwnerResponse {
+		if m.Kind == KindUnary && m.Idempotency != IdempotencyReplayResponse && m.Idempotency != IdempotencyOwnerResponse && m.Idempotency != IdempotencyOwnerRun {
 			return fmt.Errorf("%s: a unary command must replay its first response", m.Name)
 		}
-		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRunStream && m.Idempotency != IdempotencyOwnerResponse {
+		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRun && m.Idempotency != IdempotencyOwnerResponse {
 			return fmt.Errorf("%s: a streaming command must own its outcome", m.Name)
 		}
 	}
@@ -423,7 +423,7 @@ func (m MethodMeta) validateOperationPolicy() error {
 		switch {
 		case m.Kind != KindStream:
 			return fmt.Errorf("%s: only a streaming method may accept a run replay cursor", m.Name)
-		case m.Operation == OperationCommand && m.Idempotency != IdempotencyOwnerRunStream:
+		case m.Operation == OperationCommand && m.Idempotency != IdempotencyOwnerRun:
 			return fmt.Errorf("%s: a cursor-aware command must own its run opening", m.Name)
 		case m.Operation != OperationCommand && m.Operation != OperationSubscription:
 			return fmt.Errorf("%s: only a run command or subscription may accept a run replay cursor", m.Name)

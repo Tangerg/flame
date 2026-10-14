@@ -6350,6 +6350,32 @@
         "sessionId"
       ]
     },
+    "PendingSteerInput": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContentBlock"
+          }
+        },
+        "runId": {
+          "type": "string"
+        },
+        "segmentId": {
+          "type": "string"
+        },
+        "userItemId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "input",
+        "runId",
+        "segmentId",
+        "userItemId"
+      ]
+    },
     "Plan": {
       "type": "object",
       "properties": {
@@ -8965,6 +8991,15 @@
     "RunAcceptance": {
       "type": "object",
       "properties": {
+        "appliedItem": {
+          "$ref": "#/$defs/Item"
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContentBlock"
+          }
+        },
         "run": {
           "$ref": "#/$defs/RunRef"
         },
@@ -8995,6 +9030,8 @@
       "oneOf": [
         {
           "properties": {
+            "appliedItem": false,
+            "input": false,
             "run": false,
             "runId": false,
             "segmentId": false,
@@ -9024,6 +9061,7 @@
         },
         {
           "properties": {
+            "appliedItem": false,
             "run": false,
             "type": {
               "const": "retired"
@@ -9050,7 +9088,8 @@
       "type": "string",
       "enum": [
         "start",
-        "resume"
+        "resume",
+        "steer"
       ]
     },
     "RunEvent": {
@@ -10537,6 +10576,12 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Item"
+          }
+        },
+        "pendingSteers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PendingSteerInput"
           }
         },
         "plan": {

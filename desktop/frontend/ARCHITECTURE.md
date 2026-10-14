@@ -293,16 +293,22 @@ unconfirmed receipts remain local observations, including through snapshot refre
 and Run termination. Only a definite refusal removes the provisional input. An
 accepted receipt binds the reserved Item identity, and that exact committed Item
 proves model-context application. Connection replacement retires local observation
-and retry actions while the SDK preserves its unresolved journal identity. This
-does not persist input bodies or promise to restore pending bubbles after a full
-application restart.
+and retry actions while the SDK preserves its unresolved journal. Its concrete
+Steer descriptor retains the frozen original body and target before dispatch.
+After application restart, Session mounting queries original command handles
+without dispatch and projects unknown submissions with their original retry
+authority. Runtime snapshot pending inputs remain visible after client settlement;
+only the exact User Item proves application, and a terminal Run with a pending
+accepted input renders it as not applied. Desktop stores no second receipt or
+input-application ledger.
 
 Start and Resume query `runs.getAcceptance` with their original namespace, key,
 and operation before delivery. The journal reserves identity independently of
 dispatch admission: replay expiry and a replaced Runtime store forbid a write,
 but do not prevent a receipt read or renew the original deadline. A failed read
-retains uncertainty; `notRecorded` never grants a fresh key. Journal records keep
-their existing format and do not persist prompt or answer bodies. A cold retry
+retains uncertainty; `notRecorded` never grants a fresh key. Journal records use
+the current strict shape. Start and Resume do not persist prompt or answer bodies;
+Steer retains its concrete frozen request. A cold retry
 must supply the exact prepared parameters to reclaim their fingerprint; a known
 identity can be queried without those parameters.
 

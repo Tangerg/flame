@@ -104,6 +104,7 @@ describe("mutation journal", () => {
       "idempotencyKey",
       "namespace",
       "salt",
+      "steer",
     ]);
     expect(JSON.stringify(entry)).not.toContain("never persist me");
     expect(entry).not.toHaveProperty("owner");

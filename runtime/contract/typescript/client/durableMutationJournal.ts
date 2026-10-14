@@ -1,10 +1,11 @@
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
+import type { SteerRunRequest } from "../wire.generated";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 6;
+const JOURNAL_ENTRY_FIELD_COUNT = 7;
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -53,6 +54,7 @@ interface JournalEntry {
     intentFingerprint: string;
     route: Omit<CallPluginRequest, "input">;
   };
+  steer: SteerRunRequest | null;
 }
 
 export type PluginCommandInput = Pick<CallPluginRequest, "contract" | "method" | "input">;
@@ -78,6 +80,7 @@ export interface DurableMutationJournal {
     request: CallPluginRequest,
     claimed: (idempotencyKey: string) => boolean,
   ): CapturedPluginCommand;
+  pendingSteers(): DurableMutationIdentity[];
   reserve(
     method: string,
     params: unknown,
@@ -105,6 +108,16 @@ function validText(value: unknown, maximum: number): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= maximum;
 }
 
+function validSteer(value: unknown, entry: JournalEntry): boolean {
+  if (value === null) return true;
+  try {
+    checkRequest("runs.steer", value);
+    return matchesCommand(entry, "runs.steer", value);
+  } catch {
+    return false;
+  }
+}
+
 function validEntry(value: unknown): value is JournalEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const entry = value as Partial<JournalEntry>;
@@ -121,7 +134,9 @@ function validEntry(value: unknown): value is JournalEntry {
     typeof entry.expiresAt === "number" &&
     Number.isFinite(entry.expiresAt) &&
     entry.expiresAt > entry.createdAt &&
-    (entry.installed === undefined || validInstalled(entry.installed))
+    (entry.installed === undefined || validInstalled(entry.installed)) &&
+    validSteer(entry.steer, entry as JournalEntry) &&
+    (entry.steer === null || entry.installed === undefined)
   );
 }
 
@@ -288,7 +303,8 @@ function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
     left.idempotencyKey === right.idempotencyKey &&
     left.createdAt === right.createdAt &&
     left.expiresAt === right.expiresAt &&
-    canonicalJSON(left.installed) === canonicalJSON(right.installed)
+    canonicalJSON(left.installed) === canonicalJSON(right.installed) &&
+    canonicalJSON(left.steer) === canonicalJSON(right.steer)
   );
 }
 
@@ -375,6 +391,7 @@ export function openDurableMutationJournal(
               route: installed.route,
             },
           }),
+      steer: method === "runs.steer" ? structuredClone(params as SteerRunRequest) : null,
     };
     persistEntry(entry);
     return entry;
@@ -427,6 +444,11 @@ export function openDurableMutationJournal(
         route,
       });
       return { identity: { entry }, request: structuredClone(request) };
+    },
+    pendingSteers() {
+      return loadEntries(options.storage)
+        .filter((entry) => entry.steer !== null)
+        .map((entry) => ({ entry: structuredClone(entry) }));
     },
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();

@@ -1,15 +1,15 @@
-import { ExactSequence } from "@/foundation/exactSequence";
 import { t } from "@/lib/i18n";
 import { describeRpcError } from "@/lib/rpcErrors";
 import { notifyError, notifyInfo } from "@/plugins/sdk";
 import type { AgentInput } from "../../domain/input";
 import { agentCommandOwner } from "../agentCommandOwner";
-import { agentRuntime, type AgentSteerSubmission } from "../ports/runtimeGateway";
+import {
+  agentRuntime,
+  type AgentSteerSubmission,
+  type AgentUnresolvedSteer,
+} from "../ports/runtimeGateway";
 import { agentSessionView } from "../ports/sessionView";
-import { synchronizeMountedAgentSession } from "../session/refreshSessionProjection";
 import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "../view/optimisticMessageIdentity";
-
-const steerBubbleIds = new ExactSequence();
 
 export function steerRunningTurn({
   sessionId,
@@ -23,12 +23,53 @@ export function steerRunningTurn({
   input: AgentInput;
 }): boolean {
   if (input.parts.length === 0) return false;
+  const prepared = structuredClone(input);
+  let submission: AgentSteerSubmission;
+  try {
+    submission = agentRuntime().steerRun(runId, segmentId, prepared);
+  } catch (error) {
+    notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+    return false;
+  }
+  observeSteer(sessionId, runId, prepared, submission.idempotencyKey, () => submission);
+  return true;
+}
+
+export function restoreUnresolvedSteers(sessionId: string, commands: AgentUnresolvedSteer[]): void {
+  for (const command of commands) {
+    const localId = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${command.idempotencyKey}`;
+    if (
+      agentSessionView()
+        .getSession(sessionId)
+        ?.view.messages.some((message) => message.id === localId)
+    )
+      continue;
+    observeSteer(
+      sessionId,
+      command.runId,
+      command.input,
+      command.idempotencyKey,
+      command.retry,
+      true,
+    );
+  }
+}
+
+function observeSteer(
+  sessionId: string,
+  runId: string,
+  input: AgentInput,
+  key: string,
+  open: () => AgentSteerSubmission,
+  restored = false,
+): void {
   const owner = agentCommandOwner();
   const runtime = agentRuntime();
   const view = agentSessionView();
   const prepared = structuredClone(input);
-  const localId = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${steerBubbleIds.issue()}`;
-  view.appendLocalUserMessage(sessionId, localId, prepared);
+  const localId = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${key}`;
+  if (!view.getSession(sessionId)?.view.messages.some((message) => message.id === localId))
+    view.appendLocalUserMessage(sessionId, localId, prepared);
   const effect = owner.trackEffect(() => view.dropMessage(sessionId, localId));
 
   function retainUnknown(submission: AgentSteerSubmission): void {
@@ -63,9 +104,12 @@ export function steerRunningTurn({
         }
         view.reconcileMessageIdentity(sessionId, localId, result.userItemId, runId);
         effect.settle();
-        void synchronizeMountedAgentSession(sessionId, "after-live").catch((error: unknown) => {
-          console.warn("[session] steer reconciliation failed:", sessionId, error);
-        });
+        void view
+          .getSession(sessionId)
+          ?.synchronize?.("after-live")
+          .catch((error: unknown) => {
+            console.warn("[session] steer reconciliation failed:", sessionId, error);
+          });
       },
       (error: unknown) => {
         if (!owner.isCurrent()) return;
@@ -79,8 +123,10 @@ export function steerRunningTurn({
     );
   }
 
-  attempt(() => runtime.steerRun(runId, segmentId, prepared));
-  return true;
+  if (restored) {
+    view.projectSteerReceipt(sessionId, localId, { runId, receipt: "unknown" });
+    owner.retainSteerRetry(localId, () => attempt(open));
+  } else attempt(open);
 }
 
 export function retrySteerInput(messageId: string): boolean {

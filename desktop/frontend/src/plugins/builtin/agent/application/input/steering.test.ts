@@ -6,6 +6,14 @@ import {
   type RunRef,
 } from "@flame/runtime-contract/client";
 import { createMutationPromise } from "@flame/runtime-contract/client/mutation";
+import {
+  createMutationJournal,
+  type MutationJournalStorage,
+} from "@flame/runtime-contract/client/mutationJournal";
+import { createMethods } from "@flame/runtime-contract/client/methods";
+import type { RpcClient } from "@flame/runtime-contract/client/client";
+import { asRunId, asSegmentId } from "@flame/runtime-contract/client/ids";
+import { agentRuntime } from "../ports/runtimeGateway";
 import { installAgentRuntimeGateway } from "../../adapters/agentRuntimeGateway";
 import { useAgentStore } from "../../adapters/agentStore";
 import { runtimeRunFact } from "../../adapters/runtimeAgentFacts";
@@ -45,6 +53,136 @@ afterEach(() => {
 const messages = () => agentSessionView().getSession(sessionId)!.view.messages;
 
 describe("steer command observation", () => {
+  it.each([true, false])(
+    "restores accepted guidance and folds only its exact applied Item (applied=%s)",
+    async (applied) => {
+      const body = [{ type: "text" as const, text: "durable original guidance" }];
+      const snapshot = vi.fn().mockResolvedValue({
+        items: [],
+        runs: [root],
+        interrupts: [],
+        pendingSteers: [{ runId, segmentId, userItemId: "item_accepted", input: body }],
+      });
+      gateway = installAgentRuntimeGateway(
+        () =>
+          ({
+            runs: { recoverSteers: async () => [] },
+            sessions: { snapshot },
+          }) as unknown as FlameClient,
+      );
+      await revalidateAgentSessionMaterial(sessionId, () =>
+        agentRuntime().loadSessionSnapshot(sessionId),
+      );
+      expect(messages()[0]).toMatchObject({
+        id: "item_accepted",
+        runId: null,
+        steer: { runId, receipt: "accepted" },
+      });
+      snapshot.mockResolvedValue({
+        items: applied
+          ? [
+              {
+                id: "item_accepted",
+                runId,
+                type: "userMessage",
+                status: "completed",
+                createdAt: root.createdAt,
+                content: body,
+              },
+            ]
+          : [],
+        runs: [
+          {
+            ...root,
+            status: "finished",
+            activeSegmentId: undefined,
+            finishedAt: root.createdAt,
+            outcome: { type: "completed" },
+          },
+        ],
+        interrupts: [],
+        pendingSteers: applied
+          ? []
+          : [{ runId, segmentId, userItemId: "item_accepted", input: body }],
+      });
+      await revalidateAgentSessionMaterial(sessionId, () =>
+        agentRuntime().loadSessionSnapshot(sessionId),
+      );
+      expect(messages()).toHaveLength(1);
+      expect(messages()[0]).toMatchObject({
+        id: "item_accepted",
+        runId: applied ? runId : null,
+        steer: { runId, receipt: applied ? "accepted" : "notApplied" },
+      });
+      expect(messages()[0]!.blocks).toMatchObject([
+        { kind: "text", text: "durable original guidance" },
+      ]);
+    },
+  );
+  it("restores the original frozen submission after all application owners are recreated", async () => {
+    const values = new Map<string, unknown>();
+    const storage: MutationJournalStorage = {
+      get: (key) => structuredClone(values.get(key)),
+      set: (key, value) => void values.set(key, structuredClone(value)),
+      remove: (key) => void values.delete(key),
+      keys: () => [...values.keys()],
+    };
+    const scope = () => ({ namespace: "idp_cold_steer", retentionSeconds: 86400 });
+    const lostCall = vi.fn(async (method: string) => {
+      if (method === "runs.getAcceptance") return { type: "notRecorded" };
+      throw new RpcTransportError("application died with an unresolved steer");
+    });
+    const predecessor = createMutationJournal({ storage, scope });
+    const first = createMethods({ call: lostCall } as unknown as RpcClient, {
+      mutationJournal: predecessor,
+    });
+    const input = [{ type: "text" as const, text: "the original authored input" }];
+    const pending = first.runs.steer(asRunId(runId), asSegmentId(segmentId), input);
+    await expect(pending).rejects.toBeInstanceOf(RpcTransportError);
+    input[0]!.text = "a changed draft after restart";
+    predecessor.dispose();
+    useAgentStore.setState({ sessions: {} });
+    useAgentStore.getState().ensureSession(sessionId);
+    useAgentStore.getState().setSynchronize(sessionId, async () => false);
+    const call = vi.fn(async (method: string) =>
+      method === "runs.getAcceptance" ? { type: "notRecorded" } : { userItemId: "item_original" },
+    );
+    const successor = createMutationJournal({ storage, scope });
+    const methods = createMethods({ call } as unknown as RpcClient, { mutationJournal: successor });
+    const snapshot = vi.fn().mockResolvedValue({
+      items: [],
+      runs: [{ ...root, activeSegmentId: "seg_replacement" }],
+      interrupts: [],
+    });
+    gateway = installAgentRuntimeGateway(
+      () => ({ runs: methods.runs, sessions: { snapshot } }) as unknown as FlameClient,
+    );
+    await revalidateAgentSessionMaterial(sessionId, () =>
+      agentRuntime().loadSessionSnapshot(sessionId),
+    );
+    expect(call.mock.calls.map(([method]) => method)).toEqual(["runs.getAcceptance"]);
+    expect(messages()).toHaveLength(1);
+    const restored = messages()[0]!;
+    expect(restored.steer).toEqual({ runId, receipt: "unknown" });
+    expect(restored.blocks).toMatchObject([{ kind: "text", text: "the original authored input" }]);
+    expect(retrySteerInput(restored.id)).toBe(true);
+    expect(retrySteerInput(restored.id)).toBe(false);
+    await vi.waitFor(() => expect(messages()[0]?.id).toBe("item_original"));
+    expect(call.mock.calls[2]).toEqual([
+      "runs.steer",
+      {
+        runId,
+        expectedSegmentId: segmentId,
+        input: [{ type: "text", text: "the original authored input" }],
+      },
+      expect.objectContaining({
+        idempotencyKey: pending.idempotencyKey,
+        idempotencyNamespace: "idp_cold_steer",
+      }),
+    ]);
+    expect(values.size).toBe(0);
+    successor.dispose();
+  });
   it("retains a lost ACK and retries the original command after a cold read and Segment change", async () => {
     const accepted = new Map<string, string>();
     let admissions = 0;

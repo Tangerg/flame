@@ -117,7 +117,8 @@ func registerRuns(registry *Registry) {
 	// asks the user again rather than delivering an instruction to work they never
 	// saw.
 	registry.command(MethodMeta{
-		Name: RunsSteer,
+		Name:        RunsSteer,
+		Idempotency: IdempotencyOwnerRun,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrRunNotRoot.Error(),

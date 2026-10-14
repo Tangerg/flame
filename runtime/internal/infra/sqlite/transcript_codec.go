@@ -3,6 +3,7 @@ package sqlite
 import (
 	"encoding/base64"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -10,6 +11,40 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
+
+func EncodeUserContent(content []transcript.ContentBlock) ([]byte, error) {
+	payload := make([]contentPayload, len(content))
+	for index, block := range content {
+		if err := block.Validate(); err != nil {
+			return nil, err
+		}
+		var err error
+		payload[index], err = encodeContentPayload(block)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(payload)
+}
+
+func DecodeUserContent(encoded []byte) ([]transcript.ContentBlock, error) {
+	var payload []contentPayload
+	if err := json.Unmarshal(encoded, &payload, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	content := make([]transcript.ContentBlock, len(payload))
+	for index, block := range payload {
+		var err error
+		content[index], err = decodeContentPayload(block)
+		if err != nil {
+			return nil, err
+		}
+		if err := content[index].Validate(); err != nil {
+			return nil, err
+		}
+	}
+	return content, nil
+}
 
 type transcriptItemPayload struct {
 	Status                 transcript.ItemStatus   `json:"status"`

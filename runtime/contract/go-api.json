@@ -3903,6 +3903,11 @@
           "value": "\"start\""
         },
         {
+          "name": "RunCommandSteer",
+          "type": "RunCommandOperation",
+          "value": "\"steer\""
+        },
+        {
           "name": "RunProtocolFeatureSubagents",
           "type": "RunProtocolFeature",
           "value": "\"subagents\""
@@ -8388,6 +8393,32 @@
           ]
         },
         {
+          "name": "PendingSteerInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "SegmentID",
+              "type": "string",
+              "tag": "json:\"segmentId\""
+            },
+            {
+              "name": "UserItemID",
+              "type": "string",
+              "tag": "json:\"userItemId\""
+            },
+            {
+              "name": "Input",
+              "type": "[]ContentBlock",
+              "tag": "json:\"input\""
+            }
+          ]
+        },
+        {
           "name": "Plan",
           "kind": "struct",
           "fields": [
@@ -10086,6 +10117,16 @@
               "name": "Run",
               "type": "*RunRef",
               "tag": "json:\"run,omitzero\""
+            },
+            {
+              "name": "Input",
+              "type": "[]ContentBlock",
+              "tag": "json:\"input,omitempty\""
+            },
+            {
+              "name": "AppliedItem",
+              "type": "*Item",
+              "tag": "json:\"appliedItem,omitzero\""
             }
           ],
           "methods": [
@@ -10822,6 +10863,11 @@
           "name": "SessionSnapshot",
           "kind": "struct",
           "fields": [
+            {
+              "name": "PendingSteers",
+              "type": "[]PendingSteerInput",
+              "tag": "json:\"pendingSteers,omitempty\""
+            },
             {
               "name": "Session",
               "type": "Session",

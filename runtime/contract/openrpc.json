@@ -1266,7 +1266,7 @@
       ],
       "x-flame-kind": "stream",
       "x-flame-operation": "command",
-      "x-flame-idempotency": "ownerRunStream",
+      "x-flame-idempotency": "ownerRun",
       "x-flame-replayCursor": "run",
       "x-flame-pagination": "none",
       "x-flame-streamEvent": {
@@ -1382,7 +1382,7 @@
       ],
       "x-flame-kind": "stream",
       "x-flame-operation": "command",
-      "x-flame-idempotency": "ownerRunStream",
+      "x-flame-idempotency": "ownerRun",
       "x-flame-replayCursor": "run",
       "x-flame-pagination": "none",
       "x-flame-streamEvent": {
@@ -1667,7 +1667,7 @@
       ],
       "x-flame-kind": "unary",
       "x-flame-operation": "command",
-      "x-flame-idempotency": "replayResponse",
+      "x-flame-idempotency": "ownerRun",
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "none",
       "x-flame-requestFrame": {

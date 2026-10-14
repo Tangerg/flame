@@ -572,7 +572,7 @@ func (executionStub) PrepareWaitingSubtreeCancellation(
 	return runs.PreparedWaitingSubtreeCancellation{}, errors.New("test execution: waiting subtree cancellation is unavailable")
 }
 
-func (executionStub) SubmitSteer(context.Context, runs.ExecutorRef, []transcript.ContentBlock) (string, error) {
+func (executionStub) SubmitSteer(context.Context, runs.ExecutorRef, runs.PreparedSteer) (string, error) {
 	return "item_steer", nil
 }
 
@@ -654,7 +654,7 @@ func (s stubRuntime) PrepareWaitingSubtreeCancellation(
 	)
 }
 
-func (s stubRuntime) SubmitSteer(ctx context.Context, ref runs.ExecutorRef, input []transcript.ContentBlock) (string, error) {
+func (s stubRuntime) SubmitSteer(ctx context.Context, ref runs.ExecutorRef, input runs.PreparedSteer) (string, error) {
 	return s.executionController().SubmitSteer(ctx, ref, input)
 }
 
@@ -1526,6 +1526,9 @@ func (inertSegmentActor) Admit(context.Context, operation.Actor) error { return 
 type inertSegmentCommandAcceptances struct{}
 
 func (inertSegmentCommandAcceptances) Save(context.Context, runs.CommandAcceptance) error { return nil }
+func (inertSegmentCommandAcceptances) Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error) {
+	return runs.CommandAcceptanceRecord{}, nil
+}
 
 type inertSegmentGoalRuns struct{}
 

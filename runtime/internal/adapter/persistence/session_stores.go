@@ -22,6 +22,7 @@ import (
 // snapshot and atomic write-set ports. Each operation applies the complete
 // application-decided mutation inside one storage transaction.
 type SessionStores struct {
+	commandAcceptances  *CommandAcceptanceStore
 	sessions            *sqlitestore.SessionStore
 	transcript          *sqlitestore.TranscriptStore
 	interrupts          *InterruptStore
@@ -40,6 +41,7 @@ type SessionStores struct {
 
 // SessionStoresConfig is the durable collaborator set for SessionStores.
 type SessionStoresConfig struct {
+	CommandAcceptances  *CommandAcceptanceStore
 	Sessions            *sqlitestore.SessionStore
 	Transcript          *sqlitestore.TranscriptStore
 	Interrupts          *InterruptStore
@@ -106,6 +108,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		value any
 	}{
 		{name: "session store", value: cfg.Sessions},
+		{name: "command acceptance store", value: cfg.CommandAcceptances},
 		{name: "transcript store", value: cfg.Transcript},
 		{name: "interrupt store", value: cfg.Interrupts},
 		{name: "Run store", value: cfg.Runs},
@@ -125,6 +128,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		}
 	}
 	return &SessionStores{
+		commandAcceptances:  cfg.CommandAcceptances,
 		sessions:            cfg.Sessions,
 		transcript:          cfg.Transcript,
 		interrupts:          cfg.Interrupts,
@@ -159,6 +163,10 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		if err != nil {
 			return err
 		}
+		pendingSteers, err := s.commandAcceptances.PendingSessionInputs(ctx, sessionID)
+		if err != nil {
+			return err
+		}
 		runs, err := s.runs.ListRuns(ctx, sessionID)
 		if err != nil {
 			return err
@@ -181,7 +189,8 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 			currentGoal = &stored
 		}
 		snapshot = sessions.MaterialSnapshot{
-			Session: ses, Items: items, Runs: runs, Interrupts: interrupts, Plan: state,
+			PendingSteers: pendingSteers,
+			Session:       ses, Items: items, Runs: runs, Interrupts: interrupts, Plan: state,
 			Goal: currentGoal,
 		}
 		return nil

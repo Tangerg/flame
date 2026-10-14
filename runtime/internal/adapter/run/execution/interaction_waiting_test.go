@@ -890,15 +890,15 @@ func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	<-model.started
-	firstID, err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
+	firstID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_first", Input: []transcript.ContentBlock{{
 		Kind: transcript.TextContent, Text: "add evidence",
-	}})
+	}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondID, err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
+	secondID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_second", Input: []transcript.ContentBlock{{
 		Kind: transcript.TextContent, Text: "add evidence",
-	}})
+	}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -966,9 +966,9 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 		t.Fatal(err)
 	}
 	<-model.started
-	if _, err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
+	if _, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_failed", Input: []transcript.ContentBlock{{
 		Kind: transcript.TextContent, Text: "do not lose this",
-	}}); err != nil {
+	}}}); err != nil {
 		t.Fatal(err)
 	}
 	close(model.release)

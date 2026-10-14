@@ -83,8 +83,9 @@ type interactionState struct {
 }
 
 type pendingInteractionSteer struct {
-	itemID  string
-	content []transcript.ContentBlock
+	itemID     string
+	content    []transcript.ContentBlock
+	acceptance *runs.CommandAcceptance
 }
 
 // pendingInteractionContinuation is Runtime-owned input that already has a
