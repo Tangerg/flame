@@ -106,6 +106,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
+	embedding, err := pluginservices.EmbeddingRoleCallback(deps.modelServices.liveEmbedder.Resolve)
+	if err != nil {
+		return environment, err
+	}
+	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
 	utility, err := modeladapter.LiveUtilityModel(deps.modelServices.chatResolver, deps.modelServices.defaultSelection, deps.modelServices.utilityRoleState, environment.modelComposition)
 	if err != nil {
 		return environment, err

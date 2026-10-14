@@ -634,6 +634,12 @@ is its corresponding float32 vector array. Empty, missing and inconsistent vecto
 sets are refused. This is an explicit vector projection; the provider adapter
 retains its complete response, usage and endpoint evidence. Each physical exchange
 has its own original child identity and retains the caller's origin/parent.
+On ordinary installed Runtime callbacks, this method resolves the configured
+embedding role for the exchange. An absent role returns the explicit
+`model_role_unconfigured` refusal; a configured resolution failure stays an error.
+Neither path selects another provider. An independent exchange cannot reuse its
+calling or executing owner's logical identity.
+
 Call admission, resource budgets and workflow counts belong to its caller; the
 shared SDK has no Memory-specific two-call limit and never retries provider work.
 

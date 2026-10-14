@@ -46,6 +46,9 @@ func NewTextEmbeddingCallback(call func(context.Context, Command[[]string]) ([][
 		if len(command.Input) == 0 {
 			return nil, errors.New("embedding call: texts are required")
 		}
+		if parent, err := InvocationFromContext(ctx); err == nil && parent.ID == command.ID {
+			return nil, errors.New("embedding call: independent invocation requires a distinct identity")
+		}
 		ctx, err := modelCallContext(ctx, command.ID)
 		if err != nil {
 			return nil, err

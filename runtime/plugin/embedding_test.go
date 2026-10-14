@@ -52,6 +52,9 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 			t.Fatalf("exchange %s: %+v, %v", id, vectors, err)
 		}
 	}
+	if _, err := CallTextEmbedding(t.Context(), ref, owner.ID, []string{"captured text"}); err == nil {
+		t.Error("independent embedding reused its calling owner's identity")
+	}
 	if calls.Load() != 3 {
 		t.Fatalf("physical calls = %d", calls.Load())
 	}
