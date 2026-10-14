@@ -2,52 +2,69 @@
 
 ## Current stage
 
-Stage 5t (6f5deb32d) supplies the public ordered model input transformation
-contract and its complete auxiliary integration. ModelInputContract publishes
-flame.model-input.v1; a query receives captured provider/model/reasoning and the
-current Scope request, and returns a valid transformed Scope request. It grants
-no next/model execution/routing authority. Output preserves model-owned options,
-Tool definitions/choice and output-envelope presence; an existing output limit
-may only decrease. Canonical Tool identity retains numeric lexemes and treats
-empty/nil definition lists as the same absent set.
+Stage 5u (48ecd6fd6) connects public input transforms to primary Interaction.
+Captured input order joins the execution configuration, required model_inputs
+checkpoint field and ordinary installation dependencies. Waiting/cold restoration
+validates original exact bindings, without selecting a current transform chain.
+Missing former checkpoint fields are refused without compatibility interpretation.
 
-Auxiliary capture freezes context/input-transform/observer bindings together.
-Context composition precedes ordered transforms; later transforms see earlier
-results. Final text/output and selected token capacity check that final request
-before observer and physical generation. Invalid output, request replacement,
-query failure, withdrawal or exceeded text/token budgets refuse with no fallback
-or retry. Original messages/options remain unchanged, and successive calls do
-not accumulate prior transformations. Input dependencies join the existing held
-release owner and cancel/join lifetime. Shared exact composition binding validation
-has one implementation for context/input query consumers.
+Canonical reduction/compaction still owns retained conversation. After that
+reduction, the model-visible context/tail is transformed once under the original
+logical model-call/effect attribution, validated against routing/Tool/output owners,
+and admitted against selected model media/output/token capacity. Over-capacity or
+failed transforms refuse before provider generation. No plugin retry/recompaction
+loop is added. Input transformations remain ephemeral; authored messages and Options
+are not adopted from their output.
 
-Passed: SDK message/lowered-output admission and route/reasoning/Tool/schema/output
-refusal; real installed ordered query/original caller and target; repeated-call
-nonaccumulation/original request; failure/withdrawal/text/output/token refusal;
-held release and release cleanup; final counter observes transformed input; related
-context/auxiliary regressions. Runtime build and scoped dependency/domain/protocol/
-public-package gates passed. No UI/E2E/screenshot tests were authored or run.
+The existing per-call preparation record now holds the complete final Scope request,
+instead of instructions/trailer fragments assembled later. Both observed Call and
+Stream consume that exact prepared request. Accounting calibration uses the final
+transformed request estimate, while actual token/cost accounting still comes from
+physical endpoint evidence. This repairs request-option loss and prevents a counted
+request from differing from what the physical endpoint receives.
 
-Main 0886453d9 is integrated in 9535e180b, preserving its Goal stopping explanation
-source, translations and existing tests. Merge had no conflicts. Desktop typecheck
-passed, without executing the incoming UI tests. Original proposal/review/background
-draft hashes and user stash are unchanged. Core 2026-10-14.28, backend .2 and export
-schema 3 are unchanged; no generator change was necessary for this installed SDK
-contract. Owned test/build/typecheck handles have settled and no temporary files
-or extra processes remain.
+The former AuxiliaryModel type/constructor is replaced by SelectedChat because
+primary and auxiliary consumers now share captured selection/provider/counter/token
+limits and final input admission. All internal consumers migrate without an alias.
+The shared capacity method admits optional output reservation for primary policy;
+auxiliary's existing caller budget still requires explicit positive output. The
+selected model's media capability also checks transformed output before dispatch.
 
-Primary Interaction input transformation is still unfinished: it needs a complete
-single-call prepared request, final capacity/accounting and immutable captured
-checkpoint/dependency integration. The public SDK plus auxiliary proof does not
-close the whole Runtime transformation requirement. Next finish that primary path,
-then multiple independently routed/admitted calls, embedding/retention and remaining
-lifecycle/author/acceptance work. Six last-known architecture failures, Memory
-formatting and the prior untriaged/interrupted UI findings remain final obligations.
-Full/native/vet/race/all-workflow and P01-P48/review closure remain unproven. Overall
-estimate remains roughly 65-70% full delivery and 75% implementation, not counted
-acceptance. The full goal remains active.
+Passed: direct/compacted two-call primary transformations of messages and Options,
+original retained context, failure-before-provider; final provider count includes
+transformed input and exact/over-capacity boundaries; waiting recovery preserves
+transform order/Options without reselection; calibration equals final request estimate;
+existing primary context/auxiliary/captured binding checks. Runtime build and
+Runtime/bootstrap test-source compilation passed, plus scoped dependency/domain/
+protocol/public-package checks. Initial checkpoint argument/state wiring errors
+were repaired. The waiting calibration expectation now derives from actual final
+input; its previous fixed pre-transform estimate was intentionally replaced, without
+weakening original conversation/continuation/usage/recovery assertions.
+
+One full transformation requirement is still open: fresh Start admits authored
+current/composed media before executor staging, so a transform cannot yet convert
+otherwise unsupported input to a supported modality. Next migrate that admission
+boundary consistently across fresh/resumed/delegated paths, with observable refusal
+and original evidence intact. Primary integration on already-admitted input is not
+proof that this broader cross-modality requirement is achieved. Multiple separately
+routed/admitted calls, embeddings/retention and lifecycle/author acceptance remain open.
+
+Main 0886453d9 remains integrated; git merge main reports already up to date.
+Original proposal/review/background draft hashes and user stash are unchanged.
+Core .28/backend .2/export schema 3 unchanged. Owned handles/temporary compile outputs
+are settled; no UI/E2E/screenshot tests authored or run. Full/native/vet/race/all-workflow
+and P01-P48/review closure remain open. Last-known older architecture/Memory format
+and prior untriaged interrupted UI findings remain final obligations. Rough estimate
+remains 65-70% full delivery/75% implementation, not counted acceptance. Full goal active.
 
 ## Completed
+
+- Stage 5u (48ecd6fd6): primary captured input chain/configuration/checkpoint/
+  dependency/recovery and complete per-call request projection into Call/Stream.
+- Stage 5u: final transformed media/capacity/calibration, original conversation/
+  Options preserved; shared SelectedChat replaces the narrower auxiliary type.
+- Stage 5u: direct/compacted repetition, refusal, exact counter boundaries and
+  original waiting recovery proof; main up to date, originals/stash preserved.
 
 - Stage 5t (6f5deb32d): public ordered input query, frozen selection/Tool/output
   authority and canonical contracts; complete auxiliary transformation integration.
@@ -591,9 +608,10 @@ acceptance. The full goal remains active.
 
 ## In progress
 
-- Stage 5t closes the public input contract and auxiliary path. Implement primary
-  full-request preparation/final admission/accounting/captured checkpoint order;
-  do not treat the auxiliary proof as completed primary execution support.
+- Stage 5t/5u implement public/auxiliary/primary input transformation and complete
+  prepared requests. Fresh Start's earlier authored-media admission still needs
+  migration for conversion from unsupported to supported modalities, along with
+  full resumed/delegated/streaming/native acceptance and multiple-call semantics.
 
 - Stage 5p/5q close primary/auxiliary context capture; Stage 5r closes public
   selection at accepted execution and auxiliary use-case boundaries. Complete
@@ -621,9 +639,9 @@ acceptance. The full goal remains active.
 
 ## Next
 
-1. Complete primary Interaction input transformation with final immutable request
-   preparation, capacity/accounting and recovery; then independently routed/admitted
-   multiple calls, embeddings and retention. Exact billing never uses estimates.
+1. Complete original versus final media admission for transformed input across
+   fresh/resumed/delegated/streaming paths; then multiple independently routed/
+   admitted calls, embeddings and retention. Exact billing never uses estimates.
 2. Complete scoped point/dependency lifecycle, observed status/retention and actual
    Tool/automatic/cross-plugin consumers with original command/Run ownership.
 3. Complete all-workflow generation recovery, independent author/module packaging,
@@ -633,6 +651,10 @@ acceptance. The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Primary prepares one complete transformed provider request while Scope retains canonical conversation/Options | Fragment assembly after reduction could lose transformed Options or send a different request than was admitted | Persisting transformed working context, separate prepared projections, post-count mutations or implicit retries/recompaction |
+| 2026-10-14 | Input order is part of the original configuration/checkpoint/dependency set | Restoration must retain the contributors accepted by that execution | Current-chain reselection, missing-field empty fallback, independent held registry or legacy checkpoint adapter |
+| 2026-10-14 | SelectedChat owns the immutable selection/model/counter/token envelope for both execution kinds | Final transformed primary capacity now needs the same guarantee as auxiliary work | Duplicate capacity captures/algorithms, keeping the misleading auxiliary-only type as an alias or mandatory output for primary default policy |
+| 2026-10-14 | Calibration baseline derives from complete final transformed request, actual billing from endpoint source | Pre-transform token estimates disagree with observed provider usage when messages/Options change | Keeping stale estimate 100, billing from estimates or weakening response/usage/recovery evidence |
 | 2026-10-14 | Input transformation is a query before final admission, preserving captured routing, Tool contracts and caller output authority | Request/message changes are not authority over provider selection, execution, preparation/approval or another resource budget | Observer-side mutation, model-next grants, replacement Tools/model, output expansion or rewriting authored conversation |
 | 2026-10-14 | Auxiliary context precedes ordered transforms, then final byte/output/token admission before observation/physical dispatch | The counted request must include every admitted change and repeated calls must retain the original source | Counting pre-transform input, adopting transformed conversation, failure fallback/retry or reselecting transform order between phases |
 | 2026-10-14 | Reuse exact binding validation and existing captured dependency/lifetime owner for input contributors | Context and input share the same immutable installed export/contract guarantee | Duplicate validation rules, separate held registries or a second lifecycle owner |
@@ -861,7 +883,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
-| Model input transformation before final admission | Stage 5t SDK/public query and complete auxiliary order/failure/resource/lifetime proof verified; primary Interaction and multiple-call integration remain open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
+| Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; original-media preflight conversion, multiple-call and final acceptance remain open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
 | Auxiliary complete-input capacity and original model-owned options | Stage 5s final context/provider count/local estimate, output reservation, known/unknown/error semantics, reasoning, request equality and cancel/join verified; final native/all-workflow acceptance open | model/auxiliary.go; auxiliary_capacity_test.go; pluginservices/auxiliary_model_observers.go/tests; modeltext/request_estimate.go; maintenance/compaction_trigger.go/tests |
 | Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; per-call routes/multiple invocations/final native acceptance remain open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
 | Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; Stage 5s auxiliary token preflight now verified; per-call routes/general transformation/final acceptance remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
@@ -901,6 +923,21 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5u initial source compilation passed after correcting checkpoint argument/
+  restored-state wiring. Related primary context/waiting/captured/auxiliary checks
+  passed (execution 2.096s; model 2.261s; pluginservices 2.941s).
+- Stage 5u direct/compacted primary repetition/failure passed (execution 1.264s;
+  selected capacity regressions 1.672s). Waiting original input/Options/order proof
+  passed (1.813s) after deriving calibration from actual final request rather than
+  its old pre-transform fixed estimate. Final primary exact/over-count boundary,
+  no-generation refusal and waiting checks passed (2.554s).
+- Stage 5u Runtime/bootstrap go test -c and Runtime go build ./... passed. Scoped
+  dependency/domain purity/JSON-tag/protocol/public-package gates passed (0.963s).
+  Full/native/vet/race/all-workflow acceptance deferred; no UI/E2E/screenshot work.
+- Stage 5u changed gofmt/diff/original hashes passed; no old AuxiliaryModel/New
+  constructor source remains, main up to date and user stash retained. Temporary
+  compile outputs/owned handles settled; Core/backend/export versions unchanged.
 
 - Stage 5t SDK and auxiliary/context/regression checks passed (plugin 0.555s;
   pluginservices 5.961s initial, 0.486s/2.256s after explicit selection and canonical
@@ -2284,9 +2321,10 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Stage 5t public/auxiliary model input transformation is implemented. Primary
-  Interaction still needs the full prepared request/final capacity/accounting and
-  captured recovery/dependency path; no whole-Runtime completion claim is made.
+- Stage 5t/5u public/auxiliary/primary request transformation is implemented.
+  Original-media preflight still prevents conversion of otherwise unsupported
+  authored input before primary staging. Migrate the actual admission owner and
+  relevant fresh/resume/delegate/streaming paths; full transformation remains open.
 
 - Primary/auxiliary context and accepted execution/use-case model selection are
   implemented. Stage 5s adds known auxiliary capacity preflight using its actual
@@ -2361,6 +2399,10 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Input-transform execution checkpoints require model_inputs and explicit empty
+  capture. Former payloads cannot be silently resumed as the current chain. Internal
+  SelectedChat replaces AuxiliaryModel; all known internal consumers are migrated.
 
 - Core .28 incorporates main's required public Start/Resume identity and retained
   Run admission metadata. Old journal Run entries lacking that metadata are refused
