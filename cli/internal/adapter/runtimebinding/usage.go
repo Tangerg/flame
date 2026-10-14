@@ -28,8 +28,9 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (conver
 	}
 	return conversation.SessionUsageReport{
 		SessionID: request.SessionID,
-		Total:     result.ModelUsage,
-		ByModel:   result.ByModel,
+		Total:     result.Total,
+		Coverage:  result.Coverage, RecordedCostUSD: result.RecordedCostUSD,
+		ByModel: result.ByModel,
 	}, nil
 }
 
@@ -54,11 +55,12 @@ func (r *Connection) Summary(ctx context.Context, period conversation.UsageSumma
 		return conversation.UsageSummary{}, runtimeContractViolation("usage summary returned nil")
 	}
 	summary := conversation.UsageSummary{
-		Period: period, Total: result.Total,
+		Period: period, Total: result.Total, Coverage: result.Coverage, RecordedCostUSD: result.RecordedCostUSD,
 		ByProvider: result.ByProvider,
 		ByModel:    result.ByModel,
 		ByDay:      result.ByDay,
-		Sessions:   result.Sessions, Runs: result.Runs,
+		ByOrigin:   result.ByOrigin, ByScope: result.ByScope,
+		Sessions: result.Sessions, Runs: result.Runs,
 	}
 	return summary, nil
 }

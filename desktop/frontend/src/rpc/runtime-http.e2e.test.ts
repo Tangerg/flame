@@ -4244,11 +4244,14 @@ for await (const line of lines) {
     const usage = await client.usage.session(asSessionId(session.id));
     expect(usage.byModel).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: "openai-compatible/e2e-model", runs: 1 }),
+        expect.objectContaining({
+          key: "openai-compatible/e2e-model",
+          coverage: expect.objectContaining({ calls: 1 }),
+        }),
       ]),
     );
-    expect(usage.inputTokens).toBeGreaterThan(0);
-    expect(usage.outputTokens).toBeGreaterThan(0);
+    expect(usage.total.inputTokens).toBeGreaterThan(0);
+    expect(usage.total.outputTokens).toBeGreaterThan(0);
 
     const summary = await client.usage.summary({ sinceDays: 30 });
     expect(summary).toMatchObject({
@@ -4259,10 +4262,16 @@ for await (const line of lines) {
       sessions: expect.any(Number),
       runs: expect.any(Number),
       byProvider: expect.arrayContaining([
-        expect.objectContaining({ key: "openai-compatible", runs: expect.any(Number) }),
+        expect.objectContaining({
+          key: "openai-compatible",
+          coverage: expect.objectContaining({ calls: expect.any(Number) }),
+        }),
       ]),
       byModel: expect.arrayContaining([
-        expect.objectContaining({ key: "openai-compatible/e2e-model", runs: expect.any(Number) }),
+        expect.objectContaining({
+          key: "openai-compatible/e2e-model",
+          coverage: expect.objectContaining({ calls: expect.any(Number) }),
+        }),
       ]),
     });
     expect(summary.total.inputTokens).toBeGreaterThan(0);

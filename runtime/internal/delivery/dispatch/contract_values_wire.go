@@ -561,7 +561,6 @@ func registerUsageValues(s *Shapes) {
 		GoType: typeOf[protocol.UsageBucket](),
 		Constraints: []FieldConstraint{
 			{Field: "key", Kind: ConstraintNonEmpty},
-			{Field: "runs", Kind: ConstraintNonNegative},
 		},
 	})
 	nonNegative[protocol.UsageSummary](s, "sessions", "runs")
@@ -954,6 +953,11 @@ func registerRuntimeValues(s *Shapes) {
 }
 
 func registerTrajectoryValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.UsageCoverage](), Constraints: []FieldConstraint{
+		{Field: "calls", Kind: ConstraintNonNegative}, {Field: "reportedCalls", Kind: ConstraintNonNegative}, {Field: "pricedCalls", Kind: ConstraintNonNegative}, {Field: "startedCalls", Kind: ConstraintNonNegative}, {Field: "completedCalls", Kind: ConstraintNonNegative}, {Field: "failedCalls", Kind: ConstraintNonNegative}, {Field: "unknownCalls", Kind: ConstraintNonNegative},
+	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RecordedUsage](), Constraints: []FieldConstraint{{Field: "recordedCostUsd", Kind: ConstraintNonNegative}}})
+
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListModelInvocationsRequest](), Constraints: requiredResourceIdentity("runId")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListModelEndpointsRequest](), Constraints: []FieldConstraint{
 		{Field: "parentCallId", Kind: ConstraintNonEmpty}, {Field: "parentCallId", Kind: ConstraintIdentity}, {Field: "parentCallId", Kind: ConstraintMaxLength, Limit: 256},

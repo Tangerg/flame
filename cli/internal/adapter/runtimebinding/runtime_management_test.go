@@ -34,10 +34,10 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 				t.Fatalf("session usage request = %+v, options = %+v", request, options)
 			}
 			return &protocol.SessionUsage{
-				ModelUsage: protocol.ModelUsage{InputTokens: 12, CostUSD: new(cost)},
+				RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 12, CostUSD: new(cost)}, Coverage: protocol.UsageCoverage{Calls: 1, ReportedCalls: 1, PricedCalls: 1, CompletedCalls: 1}},
 				ByModel: []protocol.UsageBucket{
-					{Key: "z/model", ModelUsage: protocol.ModelUsage{OutputTokens: 2}},
-					{Key: "a/model", ModelUsage: protocol.ModelUsage{InputTokens: 3}},
+					{Key: "z/model", RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{OutputTokens: 2}}},
+					{Key: "a/model", RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 3}}},
 				},
 			}, nil
 		},
@@ -46,8 +46,8 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 				t.Fatalf("summary request = %+v", request)
 			}
 			return &protocol.UsageSummary{
-				Total: protocol.ModelUsage{InputTokens: 20}, Sessions: 2, Runs: 4,
-				ByProvider: []protocol.UsageBucket{{Key: "deepseek", Runs: 4}},
+				RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 20}}, Sessions: 2, Runs: 4,
+				ByProvider: []protocol.UsageBucket{{Key: "deepseek", RecordedUsage: protocol.RecordedUsage{Coverage: protocol.UsageCoverage{Calls: 4}}}},
 			}, nil
 		},
 	}

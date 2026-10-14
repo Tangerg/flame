@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.26",
+  "protocolVersion": "2026-10-14.27",
   "features": [
     "reasoning",
     "multimodal",
@@ -7856,6 +7856,48 @@
       ]
     },
     {
+      "type": "UsageCoverage",
+      "rules": [
+        {
+          "field": "calls",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "reportedCalls",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "pricedCalls",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "startedCalls",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "completedCalls",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "failedCalls",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "unknownCalls",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "RecordedUsage",
+      "rules": [
+        {
+          "field": "recordedCostUsd",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
       "type": "ListModelInvocationsRequest",
       "rules": [
         {
@@ -8323,10 +8365,6 @@
         {
           "field": "key",
           "constraint": "nonEmpty"
-        },
-        {
-          "field": "runs",
-          "constraint": "nonNegative"
         }
       ]
     },

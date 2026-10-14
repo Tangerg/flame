@@ -3725,7 +3725,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.26\""
+          "value": "\"2026-10-14.27\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -9842,6 +9842,33 @@
           ]
         },
         {
+          "name": "RecordedUsage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Total",
+              "type": "ModelUsage",
+              "tag": "json:\"total\""
+            },
+            {
+              "name": "RecordedCostUSD",
+              "type": "*float64",
+              "tag": "json:\"recordedCostUsd,omitzero\""
+            },
+            {
+              "name": "Coverage",
+              "type": "UsageCoverage",
+              "tag": "json:\"coverage\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "RecoveryAction",
           "kind": "defined",
           "underlying": "string",
@@ -10987,13 +11014,13 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "ModelUsage",
-              "type": "ModelUsage"
+              "name": "RecordedUsage",
+              "type": "RecordedUsage"
             },
             {
               "name": "ByModel",
               "type": "[]UsageBucket",
-              "tag": "json:\"byModel,omitempty\""
+              "tag": "json:\"byModel\""
             }
           ],
           "methods": [
@@ -12191,13 +12218,55 @@
               "tag": "json:\"key\""
             },
             {
-              "name": "ModelUsage",
-              "type": "ModelUsage"
+              "name": "RecordedUsage",
+              "type": "RecordedUsage"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "UsageCoverage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Calls",
+              "type": "int",
+              "tag": "json:\"calls\""
             },
             {
-              "name": "Runs",
+              "name": "ReportedCalls",
               "type": "int",
-              "tag": "json:\"runs,omitzero\""
+              "tag": "json:\"reportedCalls\""
+            },
+            {
+              "name": "PricedCalls",
+              "type": "int",
+              "tag": "json:\"pricedCalls\""
+            },
+            {
+              "name": "StartedCalls",
+              "type": "int",
+              "tag": "json:\"startedCalls\""
+            },
+            {
+              "name": "CompletedCalls",
+              "type": "int",
+              "tag": "json:\"completedCalls\""
+            },
+            {
+              "name": "FailedCalls",
+              "type": "int",
+              "tag": "json:\"failedCalls\""
+            },
+            {
+              "name": "UnknownCalls",
+              "type": "int",
+              "tag": "json:\"unknownCalls\""
             }
           ],
           "methods": [
@@ -12212,34 +12281,43 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Total",
-              "type": "ModelUsage",
-              "tag": "json:\"total\""
+              "name": "RecordedUsage",
+              "type": "RecordedUsage"
             },
             {
               "name": "ByProvider",
               "type": "[]UsageBucket",
-              "tag": "json:\"byProvider,omitempty\""
+              "tag": "json:\"byProvider\""
             },
             {
               "name": "ByModel",
               "type": "[]UsageBucket",
-              "tag": "json:\"byModel,omitempty\""
+              "tag": "json:\"byModel\""
             },
             {
               "name": "ByDay",
               "type": "[]UsageBucket",
-              "tag": "json:\"byDay,omitempty\""
+              "tag": "json:\"byDay\""
+            },
+            {
+              "name": "ByOrigin",
+              "type": "[]UsageBucket",
+              "tag": "json:\"byOrigin\""
+            },
+            {
+              "name": "ByScope",
+              "type": "[]UsageBucket",
+              "tag": "json:\"byScope\""
             },
             {
               "name": "Sessions",
               "type": "int",
-              "tag": "json:\"sessions,omitzero\""
+              "tag": "json:\"sessions\""
             },
             {
               "name": "Runs",
               "type": "int",
-              "tag": "json:\"runs,omitzero\""
+              "tag": "json:\"runs\""
             }
           ],
           "methods": [

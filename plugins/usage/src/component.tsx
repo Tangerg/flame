@@ -31,21 +31,27 @@ const options = [
   { value: "byProvider", label: "Provider" },
   { value: "byModel", label: "Model" },
   { value: "byDay", label: "UTC day" },
+  { value: "byOrigin", label: "Calling origin" },
+  { value: "byScope", label: "Association" },
 ];
 const cost = (amount?: number) =>
   amount === undefined ? "Not reported" : dollars.format(amount);
 export function UsageReport({ report }: { report: UsageSummary }) {
   const [group, setGroup] = useState("byProvider");
   const [filter, setFilter] = useState("");
-  const buckets = report[group as "byProvider" | "byModel" | "byDay"] ?? [];
+  const buckets =
+    report[
+      group as "byProvider" | "byModel" | "byDay" | "byOrigin" | "byScope"
+    ] ?? [];
   const matching = buckets.filter((bucket) =>
     bucket.key.toLocaleLowerCase().includes(filter.toLocaleLowerCase()),
   );
   const rows = matching.map((bucket: UsageBucket) => [
     bucket.key,
-    cost(bucket.costUsd),
-    number.format(bucket.runs ?? 0),
-    ...fields.map(([, key]) => number.format(bucket[key] ?? 0)),
+    cost(bucket.recordedCostUsd),
+    `${bucket.coverage.reportedCalls}/${bucket.coverage.calls}`,
+    `${bucket.coverage.pricedCalls}/${bucket.coverage.calls}`,
+    ...fields.map(([, key]) => number.format(bucket.total[key] ?? 0)),
   ]);
   return (
     <>
@@ -53,27 +59,42 @@ export function UsageReport({ report }: { report: UsageSummary }) {
         id="totals"
         aria-label="Recorded usage totals"
         values={[
-          ["Recorded cost (USD)", cost(report.total.costUsd)],
+          ["Known price subtotal (USD)", cost(report.recordedCostUsd)],
+          ["Total cost (USD)", cost(report.total.costUsd)],
           ...fields.map(
             ([label, key]) =>
-              [label, number.format(report.total[key] ?? 0)] as const,
+              [
+                `Known ${label.toLowerCase()}`,
+                number.format(report.total[key] ?? 0),
+              ] as const,
           ),
-          ["Sessions", number.format(report.sessions ?? 0)],
-          ["Finished Runs", number.format(report.runs ?? 0)],
+          ["Model attempts", number.format(report.coverage.calls)],
+          [
+            "Usage recorded",
+            `${report.coverage.reportedCalls}/${report.coverage.calls}`,
+          ],
+          [
+            "Priced attempts",
+            `${report.coverage.pricedCalls}/${report.coverage.calls}`,
+          ],
+          ["In progress", number.format(report.coverage.startedCalls)],
+          ["Outcome unknown", number.format(report.coverage.unknownCalls)],
+          ["Associated Sessions", number.format(report.sessions)],
+          ["Associated Runs", number.format(report.runs)],
         ]}
       />
-      <div id="empty" hidden={(report.runs ?? 0) !== 0}>
+      <div id="empty" hidden={report.coverage.calls !== 0}>
         <EmptyState
           icon={ChartColumn}
           size="compact"
-          title="No finished Runs with reported usage in this period."
-          sub="Choose another period above or refresh after a Run finishes."
+          title="No retained model attempts in this period."
+          sub="Choose another period above or refresh after model activity."
         />
       </div>
       <section
         id="breakdown"
         aria-label="Usage breakdown"
-        hidden={(report.runs ?? 0) === 0}
+        hidden={report.coverage.calls === 0}
       >
         <Toolbar label="Usage filters">
           <Select
@@ -96,8 +117,9 @@ export function UsageReport({ report }: { report: UsageSummary }) {
           columns={[
             { label: "Source" },
             ...[
-              "Cost (USD)",
-              "Runs",
+              "Known cost (USD)",
+              "Usage / attempts",
+              "Priced / attempts",
               "Input",
               "Output",
               "Cache read",
@@ -115,8 +137,11 @@ export function UsageReport({ report }: { report: UsageSummary }) {
           />
         )}
         <Metadata>
-          Scroll horizontally to read every token column. Filtering rows does
-          not change recorded totals.
+          Token totals include reported usage only. Unknown outcomes and
+          unreported usage may add consumption. The known price subtotal
+          includes priced attempts only; total cost requires every attempt to be
+          priced. Filtering rows does not change the report. Deleted or never
+          recorded calls cannot be reconstructed.
         </Metadata>
       </section>
       <Metadata>
@@ -189,7 +214,8 @@ export function Usage({ context }: { context: ComponentContext }) {
         </Button>
       </Toolbar>
       <Metadata>
-        Recorded usage from finished Runs in the selected period.
+        Retained model attempts in the selected period, including auxiliary and
+        unattached calls.
       </Metadata>
       {read.loading && <p role="status">Reading usage…</p>}
       {read.error && (

@@ -164,7 +164,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		t.Fatal(usageRead.Failure)
 	}
 	usage := usageRead.Value.(*protocol.SessionUsage)
-	if usage.InputTokens != 8 || usage.OutputTokens != 4 {
+	if usage.Total.InputTokens != 8 || usage.Total.OutputTokens != 4 {
 		t.Fatalf("session lost process-owned usage: %+v, want 8 input and 4 output tokens", usage)
 	}
 	summaryRead := endpoint.Invoke(ctx, delivery.UsageSummary, protocol.UsageSummaryRequest{}, options)

@@ -280,6 +280,7 @@ export type WireTypeName =
   | "ReadFileRequest"
   | "ReadPluginResourceRequest"
   | "ReadinessStatus"
+  | "RecordedUsage"
   | "RememberScope"
   | "RememberScopeKind"
   | "RequestMeta"
@@ -380,6 +381,7 @@ export type WireTypeName =
   | "UpdateSessionRequest"
   | "Usage"
   | "UsageBucket"
+  | "UsageCoverage"
   | "UsageSummary"
   | "UsageSummaryRequest"
   | "UtilityRole"
@@ -3223,6 +3225,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     instanceId: text(),
     status: ref(() => CHECKS.HealthStatus),
   }, ["instanceId", "status"]),
+  RecordedUsage: object({
+    coverage: ref(() => CHECKS.UsageCoverage),
+    recordedCostUsd: allOf([numeric(), minimum(0)]),
+    total: ref(() => CHECKS.ModelUsage),
+  }, ["coverage", "total"]),
   RememberScope: object({
     scope: ref(() => CHECKS.RememberScopeKind),
   }, ["scope"]),
@@ -3807,13 +3814,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["collectedAt", "feedback", "items", "limitations", "messages", "modelEndpoints", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
   SessionUsage: object({
     byModel: array(ref(() => CHECKS.UsageBucket)),
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    costUsd: allOf([numeric(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
-  }, []),
+    coverage: ref(() => CHECKS.UsageCoverage),
+    recordedCostUsd: allOf([numeric(), minimum(0)]),
+    total: ref(() => CHECKS.ModelUsage),
+  }, ["byModel", "coverage", "total"]),
   SessionUsageRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -4289,23 +4293,32 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     reasoningTokens: allOf([integer(), minimum(0)]),
   }, []),
   UsageBucket: object({
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    costUsd: allOf([numeric(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
+    coverage: ref(() => CHECKS.UsageCoverage),
     key: allOf([text(), minLength(1)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
-    runs: allOf([integer(), minimum(0)]),
-  }, ["key"]),
+    recordedCostUsd: allOf([numeric(), minimum(0)]),
+    total: ref(() => CHECKS.ModelUsage),
+  }, ["coverage", "key", "total"]),
+  UsageCoverage: object({
+    calls: allOf([integer(), minimum(0)]),
+    completedCalls: allOf([integer(), minimum(0)]),
+    failedCalls: allOf([integer(), minimum(0)]),
+    pricedCalls: allOf([integer(), minimum(0)]),
+    reportedCalls: allOf([integer(), minimum(0)]),
+    startedCalls: allOf([integer(), minimum(0)]),
+    unknownCalls: allOf([integer(), minimum(0)]),
+  }, ["calls", "completedCalls", "failedCalls", "pricedCalls", "reportedCalls", "startedCalls", "unknownCalls"]),
   UsageSummary: object({
     byDay: array(ref(() => CHECKS.UsageBucket)),
     byModel: array(ref(() => CHECKS.UsageBucket)),
+    byOrigin: array(ref(() => CHECKS.UsageBucket)),
     byProvider: array(ref(() => CHECKS.UsageBucket)),
+    byScope: array(ref(() => CHECKS.UsageBucket)),
+    coverage: ref(() => CHECKS.UsageCoverage),
+    recordedCostUsd: allOf([numeric(), minimum(0)]),
     runs: allOf([integer(), minimum(0)]),
     sessions: allOf([integer(), minimum(0)]),
     total: ref(() => CHECKS.ModelUsage),
-  }, ["total"]),
+  }, ["byDay", "byModel", "byOrigin", "byProvider", "byScope", "coverage", "runs", "sessions", "total"]),
   UsageSummaryRequest: object({
     sinceDays: allOf([integer(), minimum(1)]),
   }, []),

@@ -8,12 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) {
@@ -64,17 +66,28 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		if err := stores.Runs.Restore(t.Context(), value); err != nil {
 			t.Fatal(err)
 		}
+		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
+		id := fmt.Sprintf("usage_model_%d", index)
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: id, Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
+		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation); err != nil {
+			t.Fatal(err)
+		}
+		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+		response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: &chat.Usage{InputTokens: 10}}}
+		if err := stores.ModelInvocations.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, FinishedAt: now}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	read := endpoint.Invoke(t.Context(), delivery.UsageSession, protocol.SessionUsageRequest{SessionID: sessionID}, options)
 	if read.Failure != nil {
 		t.Fatal(read.Failure)
 	}
 	usage := read.Value.(*protocol.SessionUsage)
-	if usage.InputTokens != 20 || len(usage.ByModel) != 2 {
+	if usage.Total.InputTokens != 20 || len(usage.ByModel) != 2 {
 		t.Fatalf("Session usage = %+v", usage)
 	}
 	for index, bucket := range usage.ByModel {
-		if bucket.Key != providers[index]+"/"+model || bucket.InputTokens != 10 || bucket.Runs != 1 {
+		if bucket.Key != providers[index]+"/"+model || bucket.Total.InputTokens != 10 || bucket.Coverage.Calls != 1 {
 			t.Fatalf("model bucket lost its identity or contribution: %+v", bucket)
 		}
 	}

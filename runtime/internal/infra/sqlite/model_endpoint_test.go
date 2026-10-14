@@ -7,10 +7,12 @@ import (
 
 	"errors"
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
+	"reflect"
 )
 
 func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *testing.T) {
@@ -123,5 +125,93 @@ func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
 	}
 	if _, _, err := store.EndpointForCaller(t.Context(), invocation.Caller.ID); err == nil {
 		t.Fatal("usage projection competed with original response")
+	}
+}
+
+func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.db")
+	db, err := sqlite.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	insertTrajectorySession(t, t.Context(), db, "ses_usage")
+	insertTrajectorySession(t, t.Context(), db, "ses_other")
+	draft := runDraft("run_usage", "ses_usage")
+	if err := sqlite.NewRunStore(db).Admit(t.Context(), draft); err != nil {
+		t.Fatal(err)
+	}
+	store := sqlite.NewModelInvocationStore(db)
+	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_usage", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
+	for _, source := range []struct {
+		id, caller, session string
+		input               int64
+		price               *float64
+		unknown, failed     bool
+	}{
+		{id: "primary", caller: "logical_usage", input: 12, price: new(1.25)},
+		{id: "auxiliary", caller: "utility_usage", session: "ses_usage", input: 4, price: new(0.0), failed: true},
+		{id: "unattached", caller: "utility_global", unknown: true},
+		{id: "other", caller: "utility_other", session: "ses_other", input: 2},
+	} {
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: draft.ModelSelection.Provider(), Model: draft.ModelSelection.Model(), SessionID: source.session, Request: request, StartedAt: draft.CreatedAt}
+		if err := store.StartEndpointInvocation(t.Context(), invocation); err != nil {
+			t.Fatal(err)
+		}
+		outcome := modelref.EndpointOutcome{FinishedAt: draft.CreatedAt.Add(time.Second), CostUSD: source.price}
+		if source.unknown {
+			outcome.Failure = "unobserved result"
+		} else {
+			message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+			outcome.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: source.input, OutputTokens: 1}}}
+			if source.failed {
+				outcome.Failure = "outer failure"
+			}
+		}
+		if err := store.SettleEndpointInvocation(t.Context(), invocation, outcome); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reporter, err := sessions.NewUsageReporter(sessions.UsageDependencies{Source: store})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := reporter.Summary(t.Context(), sessions.AllTimeUsage())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.Coverage.Calls != 4 || before.Coverage.ReportedCalls != 3 || before.Coverage.PricedCalls != 2 || before.Coverage.UnknownCalls != 1 || before.Total.InputTokens != 18 || before.Total.OutputTokens != 3 || before.Total.CostUSD != nil || before.RecordedCostUSD == nil || *before.RecordedCostUSD != 1.25 || before.Sessions != 2 || before.Runs != 1 {
+		t.Fatalf("logical/physical or unattached usage changed: %+v", before)
+	}
+	own, err := reporter.Session(t.Context(), "ses_usage")
+	if err != nil || own.Coverage.Calls != 2 || own.Total.InputTokens != 16 || own.Total.CostUSD == nil || *own.Total.CostUSD != 1.25 {
+		t.Fatalf("auxiliary missing from Session report: %+v %v", own, err)
+	}
+	if _, err := reporter.Session(t.Context(), "ses_absent"); !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("missing Session report: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reporter, err = sessions.NewUsageReporter(sessions.UsageDependencies{Source: sqlite.NewModelInvocationStore(db)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := reporter.Summary(t.Context(), sessions.AllTimeUsage())
+	if err != nil || !reflect.DeepEqual(after, before) {
+		t.Fatalf("restart changed recorded consumption: %v", err)
+	}
+	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET session_id='ses_other' WHERE call_id='endpoint_primary'`); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := reporter.Summary(t.Context(), sessions.AllTimeUsage()); err == nil || value.Coverage.Calls != 0 {
+		t.Fatal("foreign ownership produced partial usage")
 	}
 }

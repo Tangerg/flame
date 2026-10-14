@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.26";
+export const PROTOCOL_VERSION = "2026-10-14.27";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1542,6 +1542,12 @@ export interface ReadinessStatus {
   status: HealthStatus;
 }
 
+export interface RecordedUsage {
+  coverage: UsageCoverage;
+  recordedCostUsd?: number;
+  total: ModelUsage;
+}
+
 export interface RememberScope {
   scope: RememberScopeKind;
 }
@@ -1845,13 +1851,10 @@ export interface SessionTrajectory {
 }
 
 export interface SessionUsage {
-  byModel?: UsageBucket[];
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  costUsd?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  reasoningTokens?: number;
+  byModel: UsageBucket[];
+  coverage: UsageCoverage;
+  recordedCostUsd?: number;
+  total: ModelUsage;
 }
 
 export interface SessionUsageRequest {
@@ -2134,22 +2137,32 @@ export interface Usage {
 }
 
 export interface UsageBucket {
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  costUsd?: number;
-  inputTokens?: number;
+  coverage: UsageCoverage;
   key: string;
-  outputTokens?: number;
-  reasoningTokens?: number;
-  runs?: number;
+  recordedCostUsd?: number;
+  total: ModelUsage;
+}
+
+export interface UsageCoverage {
+  calls: number;
+  completedCalls: number;
+  failedCalls: number;
+  pricedCalls: number;
+  reportedCalls: number;
+  startedCalls: number;
+  unknownCalls: number;
 }
 
 export interface UsageSummary {
-  byDay?: UsageBucket[];
-  byModel?: UsageBucket[];
-  byProvider?: UsageBucket[];
-  runs?: number;
-  sessions?: number;
+  byDay: UsageBucket[];
+  byModel: UsageBucket[];
+  byOrigin: UsageBucket[];
+  byProvider: UsageBucket[];
+  byScope: UsageBucket[];
+  coverage: UsageCoverage;
+  recordedCostUsd?: number;
+  runs: number;
+  sessions: number;
   total: ModelUsage;
 }
 

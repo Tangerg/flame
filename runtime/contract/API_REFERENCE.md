@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.26` · 100 methods
+Protocol `2026-10-14.27` · 100 methods
 
 ## Methods
 
@@ -811,6 +811,14 @@ TypeScript validator from this single registry projection.
 | `ItemListScope` | `runId` | `maxLength(256)` |
 | `StreamEvent` | `itemId` | `identity` |
 | `StreamEvent` | `itemId` | `maxLength(256)` |
+| `UsageCoverage` | `calls` | `nonNegative` |
+| `UsageCoverage` | `reportedCalls` | `nonNegative` |
+| `UsageCoverage` | `pricedCalls` | `nonNegative` |
+| `UsageCoverage` | `startedCalls` | `nonNegative` |
+| `UsageCoverage` | `completedCalls` | `nonNegative` |
+| `UsageCoverage` | `failedCalls` | `nonNegative` |
+| `UsageCoverage` | `unknownCalls` | `nonNegative` |
+| `RecordedUsage` | `recordedCostUsd` | `nonNegative` |
 | `ListModelInvocationsRequest` | `runId` | `nonEmpty` |
 | `ListModelInvocationsRequest` | `runId` | `identity` |
 | `ListModelInvocationsRequest` | `runId` | `maxLength(256)` |
@@ -895,7 +903,6 @@ TypeScript validator from this single registry projection.
 | `GrepRequest` | `query` | `nonEmpty` |
 | `GrepRequest` | `limit` | `positive` |
 | `UsageBucket` | `key` | `nonEmpty` |
-| `UsageBucket` | `runs` | `nonNegative` |
 | `UsageSummary` | `sessions` | `nonNegative` |
 | `UsageSummary` | `runs` | `nonNegative` |
 | `SessionUsageRequest` | `sessionId` | `nonEmpty` |

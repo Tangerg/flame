@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -13,7 +14,7 @@ import (
 func (s *Handler) SessionUsage(ctx context.Context, sessionID string) (*protocol.SessionUsage, error) {
 	report, err := s.usage.Session(ctx, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, wireSessionErr(err)
 	}
 	return presentSessionUsage(report), nil
 }
@@ -34,23 +35,29 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 		return nil, err
 	}
 	return &protocol.UsageSummary{
-		Total:      presentModelUsage(report.Total),
-		ByProvider: presentUsageBuckets(report.ByProvider),
-		ByModel:    presentUsageBuckets(report.ByModel),
-		ByDay:      presentUsageBuckets(report.ByDay),
-		Sessions:   report.Sessions,
-		Runs:       report.Runs,
+		RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCostUSD, report.Coverage),
+		ByProvider:    presentUsageBuckets(report.ByProvider),
+		ByModel:       presentUsageBuckets(report.ByModel),
+		ByDay:         presentUsageBuckets(report.ByDay),
+		ByOrigin:      presentUsageBuckets(report.ByOrigin),
+		ByScope:       presentUsageBuckets(report.ByScope),
+		Sessions:      report.Sessions,
+		Runs:          report.Runs,
 	}, nil
 }
 
 func presentSessionUsage(report sessions.UsageReport) *protocol.SessionUsage {
-	return &protocol.SessionUsage{ModelUsage: presentModelUsage(report.Total), ByModel: presentUsageBuckets(report.ByModel)}
+	return &protocol.SessionUsage{RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCostUSD, report.Coverage), ByModel: presentUsageBuckets(report.ByModel)}
 }
 
 func presentUsageBuckets(buckets []sessions.UsageBucket) []protocol.UsageBucket {
 	out := make([]protocol.UsageBucket, 0, len(buckets))
 	for _, bucket := range buckets {
-		out = append(out, protocol.UsageBucket{Key: bucket.Key, ModelUsage: presentModelUsage(bucket.Usage), Runs: bucket.Runs})
+		out = append(out, protocol.UsageBucket{Key: bucket.Key, RecordedUsage: presentRecordedUsage(bucket.Usage, bucket.RecordedCostUSD, bucket.Coverage)})
 	}
 	return out
+}
+
+func presentRecordedUsage(total accounting.Totals, cost *float64, coverage sessions.UsageCoverage) protocol.RecordedUsage {
+	return protocol.RecordedUsage{Total: presentModelUsage(total), RecordedCostUSD: cost, Coverage: protocol.UsageCoverage{Calls: coverage.Calls, ReportedCalls: coverage.ReportedCalls, PricedCalls: coverage.PricedCalls, StartedCalls: coverage.StartedCalls, CompletedCalls: coverage.CompletedCalls, FailedCalls: coverage.FailedCalls, UnknownCalls: coverage.UnknownCalls}}
 }

@@ -2404,6 +2404,24 @@ func (s SteerRunResponse) ValidateWire() error {
 	)
 }
 
+func (u UsageCoverage) ValidateWire() error {
+	return collectWireViolations("UsageCoverage",
+		nonNegativeNumber("calls", u.Calls),
+		nonNegativeNumber("reportedCalls", u.ReportedCalls),
+		nonNegativeNumber("pricedCalls", u.PricedCalls),
+		nonNegativeNumber("startedCalls", u.StartedCalls),
+		nonNegativeNumber("completedCalls", u.CompletedCalls),
+		nonNegativeNumber("failedCalls", u.FailedCalls),
+		nonNegativeNumber("unknownCalls", u.UnknownCalls),
+	)
+}
+
+func (r RecordedUsage) ValidateWire() error {
+	return collectWireViolations("RecordedUsage",
+		optionalNonNegativeNumber("recordedCostUsd", r.RecordedCostUSD),
+	)
+}
+
 func (m ModelInvocationUsage) ValidateWire() error {
 	return collectWireViolations("ModelInvocationUsage",
 		nonNegativeNumber("inputTokens", m.InputTokens),
@@ -2481,13 +2499,7 @@ func (g GrepMatch) ValidateWire() error {
 func (u UsageBucket) ValidateWire() error {
 	return collectWireViolations("UsageBucket",
 		requiredText("key", u.Key),
-		nonNegativeNumber("runs", u.Runs),
-		nonNegativeNumber("inputTokens", u.InputTokens),
-		nonNegativeNumber("outputTokens", u.OutputTokens),
-		nonNegativeNumber("cacheReadTokens", u.CacheReadTokens),
-		nonNegativeNumber("cacheWriteTokens", u.CacheWriteTokens),
-		nonNegativeNumber("reasoningTokens", u.ReasoningTokens),
-		optionalNonNegativeNumber("costUsd", u.CostUSD),
+		optionalNonNegativeNumber("recordedCostUsd", u.RecordedCostUSD),
 	)
 }
 
@@ -2495,6 +2507,7 @@ func (u UsageSummary) ValidateWire() error {
 	return collectWireViolations("UsageSummary",
 		nonNegativeNumber("sessions", u.Sessions),
 		nonNegativeNumber("runs", u.Runs),
+		optionalNonNegativeNumber("recordedCostUsd", u.RecordedCostUSD),
 	)
 }
 
@@ -2919,12 +2932,7 @@ func (r RememberScope) ValidateWire() error {
 
 func (s SessionUsage) ValidateWire() error {
 	return collectWireViolations("SessionUsage",
-		nonNegativeNumber("inputTokens", s.InputTokens),
-		nonNegativeNumber("outputTokens", s.OutputTokens),
-		nonNegativeNumber("cacheReadTokens", s.CacheReadTokens),
-		nonNegativeNumber("cacheWriteTokens", s.CacheWriteTokens),
-		nonNegativeNumber("reasoningTokens", s.ReasoningTokens),
-		optionalNonNegativeNumber("costUsd", s.CostUSD),
+		optionalNonNegativeNumber("recordedCostUsd", s.RecordedCostUSD),
 	)
 }
 

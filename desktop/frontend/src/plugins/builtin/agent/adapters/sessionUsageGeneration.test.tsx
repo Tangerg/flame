@@ -86,7 +86,19 @@ describe("mounted Session usage generation", () => {
     const hook = renderHook(() => useAgentSessionUsage("ses_future"), { wrapper });
     unmountHook = hook.unmount;
     const request = await waitForUsageRequest(0);
-    respondSuccess(transport, request.id, { inputTokens: 13, outputTokens: 5 });
+    respondSuccess(transport, request.id, {
+      total: { inputTokens: 13, outputTokens: 5 },
+      coverage: {
+        calls: 1,
+        reportedCalls: 1,
+        pricedCalls: 0,
+        startedCalls: 0,
+        completedCalls: 1,
+        failedCalls: 0,
+        unknownCalls: 0,
+      },
+      byModel: [],
+    });
     await waitFor(() => expect(hook.result.current.data?.inputTokens).toBe(13));
 
     await act(async () => {
@@ -118,9 +130,33 @@ describe("mounted Session usage generation", () => {
     });
 
     const second = await waitForUsageRequest(1);
-    respondSuccess(transport, second.id, { inputTokens: 21, outputTokens: 8 });
+    respondSuccess(transport, second.id, {
+      total: { inputTokens: 21, outputTokens: 8 },
+      coverage: {
+        calls: 1,
+        reportedCalls: 1,
+        pricedCalls: 0,
+        startedCalls: 0,
+        completedCalls: 1,
+        failedCalls: 0,
+        unknownCalls: 0,
+      },
+      byModel: [],
+    });
     await waitFor(() => expect(hook.result.current.data?.inputTokens).toBe(21));
-    respondSuccess(transport, first.id, { inputTokens: 1, outputTokens: 1 });
+    respondSuccess(transport, first.id, {
+      total: { inputTokens: 1, outputTokens: 1 },
+      coverage: {
+        calls: 1,
+        reportedCalls: 1,
+        pricedCalls: 0,
+        startedCalls: 0,
+        completedCalls: 1,
+        failedCalls: 0,
+        unknownCalls: 0,
+      },
+      byModel: [],
+    });
     await act(async () => Promise.resolve());
 
     expect(firstSignal).toBeInstanceOf(AbortSignal);
@@ -150,14 +186,35 @@ describe("mounted Session usage generation", () => {
     try {
       const successorRequest = await waitForUsageRequest(0, successorTransport);
       respondSuccess(successorTransport, successorRequest.id, {
-        inputTokens: 34,
-        outputTokens: 13,
+        total: { inputTokens: 34, outputTokens: 13 },
+        coverage: {
+          calls: 1,
+          reportedCalls: 1,
+          pricedCalls: 0,
+          startedCalls: 0,
+          completedCalls: 1,
+          failedCalls: 0,
+          unknownCalls: 0,
+        },
+        byModel: [],
       });
       await waitFor(() => expect(hook.result.current.data?.inputTokens).toBe(34));
 
       expect(retiredSignal?.aborted).toBe(true);
       expect(successorSend.mock.calls[0]?.[1]?.aborted).toBe(false);
-      respondSuccess(transport, retiredRequest.id, { inputTokens: 1, outputTokens: 1 });
+      respondSuccess(transport, retiredRequest.id, {
+        total: { inputTokens: 1, outputTokens: 1 },
+        coverage: {
+          calls: 1,
+          reportedCalls: 1,
+          pricedCalls: 0,
+          startedCalls: 0,
+          completedCalls: 1,
+          failedCalls: 0,
+          unknownCalls: 0,
+        },
+        byModel: [],
+      });
       await act(async () => Promise.resolve());
       expect(hook.result.current.data?.inputTokens).toBe(34);
     } finally {

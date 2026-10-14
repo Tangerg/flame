@@ -400,7 +400,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct session queries: %w", err)
 	}
 	usage, err := sessions.NewUsageReporter(sessions.UsageDependencies{
-		Runs: cfg.Stores.Runs, Sessions: sessionCoordinator,
+		Source: cfg.Stores.ModelInvocations,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)

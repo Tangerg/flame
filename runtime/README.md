@@ -707,10 +707,12 @@ replaces the input committed by Run admission. Durable-context equality remains 
 
 The optional [Usage package](../plugins/usage/plugin.json) reads the existing public
 `usage.summary` owner. Runtime interprets all-time, seven-day and thirty-day periods
-and counts finished Runs with recorded usage, including delegated process usage;
-detached utility-model work is excluded. The component renders canonical totals and
-provider/model/UTC-day buckets. Recorded zero remains zero and absent pricing remains
-unreported. Local grouping/filtering cannot change accounting.
+and folds retained physical model attempts once, including main/delegated,
+auxiliary, active, Session-only and unattached calls. The component renders known
+token totals, a priced subtotal and coverage counts, grouped by exact provider/
+served model, admission UTC day, calling origin or Run/Session association.
+Unreported usage, unknown outcomes and absent pricing remain explicit; recorded
+zero stays zero. Local grouping/filtering cannot change accounting.
 
 An owned request cancels when its selected period changes or the component retires.
 Failed reads retain the last accepted report and label its actual period. Refresh
@@ -2373,3 +2375,34 @@ This covers current single-call Interaction accrual and boot loss recovery. Glob
 unattached retention and aggregation, auxiliary attribution to usage totals,
 multiple explicitly admitted requests, embedding metering and semantic model
 selection/input transformation contracts remain under development.
+
+
+## Retained physical usage reports
+
+Core 2026-10-14.27 replaces Run-derived `usage.session`/`usage.summary` folds with
+one snapshot of the existing physical model journal. Run accounting remains the
+execution and Goal projection; these reports never add it to the same endpoint
+consumption. Session reads include auxiliary calls bound to that Session without
+a Run. Global reads also include unattached attempts and active/unknown outcomes.
+
+Every report and bucket has `total`, `coverage` and optional `recordedCostUsd`.
+Coverage includes attempts, reported usage, priced attempts and the four observed
+states. Token fields are known reported subtotals. `recordedCostUsd` is the known
+priced subtotal; `total.costUsd` is available only when every selected retained
+attempt is priced. Empty, unreported and reported-zero evidence are distinguishable
+through coverage. Missing/deleted historical records cannot establish zero spend.
+
+Provider/model/day/origin/association buckets use the same source records. Model
+keys retain exact provider plus served model; timestamps come from admission,
+not Run completion. Recent windows subtract positive calendar days at one UTC
+observation. Runs/Sessions are distinct associated owners, including active Runs;
+bucket attempt counts reconcile, owner counts need not add across buckets.
+
+The source scan, Session existence and ownership checks share one transaction;
+only one source body is materialized at a time. Later corruption, invalid ownership
+or overflow refuses the entire report. No cached report, aggregate writer, Run
+fallback, legacy reader or inferred auxiliary Run association exists. Retention
+follows existing source deletion: Run-associated evidence ends with its Run,
+Session-only evidence ends with its Session, and unattached evidence remains in
+the journal. Automatic historical pruning and embedding/multi-call metering remain
+open. Rebuild Runtime/Go/TS/CLI and select rebuilt component bytes together.

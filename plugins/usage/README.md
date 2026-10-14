@@ -22,3 +22,11 @@ npm run check:resources --prefix plugins
 Edit `src/component.tsx` and rebuild the tracked prebuilt ESM. Installation admits
 exact release resources without evaluating code. Install/enable the package and
 explicitly select an updated release; an evaluated replacement requires window reload.
+
+Reports fold retained physical model attempts once, including auxiliary, active,
+Session-only and unattached calls. Run totals are not added again. Coverage counts
+distinguish reported usage/prices from missing evidence and expose started/unknown
+outcomes. Known price subtotal may be incomplete; total cost is exact only when
+every retained attempt is priced. Grouping by provider, served model, admission UTC
+day, calling origin or Session/Run association reconciles with the same sources.
+Deleted or never recorded calls cannot be reconstructed from an empty report.

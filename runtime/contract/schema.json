@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-14.26",
+  "protocolVersion": "2026-10-14.27",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -8749,6 +8749,25 @@
         "status"
       ]
     },
+    "RecordedUsage": {
+      "type": "object",
+      "properties": {
+        "coverage": {
+          "$ref": "#/$defs/UsageCoverage"
+        },
+        "recordedCostUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total": {
+          "$ref": "#/$defs/ModelUsage"
+        }
+      },
+      "required": [
+        "coverage",
+        "total"
+      ]
+    },
     "RememberScope": {
       "type": "object",
       "properties": {
@@ -10711,31 +10730,22 @@
             "$ref": "#/$defs/UsageBucket"
           }
         },
-        "cacheReadTokens": {
-          "type": "integer",
-          "minimum": 0
+        "coverage": {
+          "$ref": "#/$defs/UsageCoverage"
         },
-        "cacheWriteTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "costUsd": {
+        "recordedCostUsd": {
           "type": "number",
           "minimum": 0
         },
-        "inputTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "outputTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "reasoningTokens": {
-          "type": "integer",
-          "minimum": 0
+        "total": {
+          "$ref": "#/$defs/ModelUsage"
         }
-      }
+      },
+      "required": [
+        "byModel",
+        "coverage",
+        "total"
+      ]
     },
     "SessionUsageRequest": {
       "type": "object",
@@ -12356,41 +12366,67 @@
     "UsageBucket": {
       "type": "object",
       "properties": {
-        "cacheReadTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "cacheWriteTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "costUsd": {
-          "type": "number",
-          "minimum": 0
-        },
-        "inputTokens": {
-          "type": "integer",
-          "minimum": 0
+        "coverage": {
+          "$ref": "#/$defs/UsageCoverage"
         },
         "key": {
           "type": "string",
           "minLength": 1
         },
-        "outputTokens": {
+        "recordedCostUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total": {
+          "$ref": "#/$defs/ModelUsage"
+        }
+      },
+      "required": [
+        "coverage",
+        "key",
+        "total"
+      ]
+    },
+    "UsageCoverage": {
+      "type": "object",
+      "properties": {
+        "calls": {
           "type": "integer",
           "minimum": 0
         },
-        "reasoningTokens": {
+        "completedCalls": {
           "type": "integer",
           "minimum": 0
         },
-        "runs": {
+        "failedCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pricedCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reportedCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "startedCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknownCalls": {
           "type": "integer",
           "minimum": 0
         }
       },
       "required": [
-        "key"
+        "calls",
+        "completedCalls",
+        "failedCalls",
+        "pricedCalls",
+        "reportedCalls",
+        "startedCalls",
+        "unknownCalls"
       ]
     },
     "UsageSummary": {
@@ -12408,11 +12444,30 @@
             "$ref": "#/$defs/UsageBucket"
           }
         },
+        "byOrigin": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UsageBucket"
+          }
+        },
         "byProvider": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/UsageBucket"
           }
+        },
+        "byScope": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UsageBucket"
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/UsageCoverage"
+        },
+        "recordedCostUsd": {
+          "type": "number",
+          "minimum": 0
         },
         "runs": {
           "type": "integer",
@@ -12427,6 +12482,14 @@
         }
       },
       "required": [
+        "byDay",
+        "byModel",
+        "byOrigin",
+        "byProvider",
+        "byScope",
+        "coverage",
+        "runs",
+        "sessions",
         "total"
       ]
     },

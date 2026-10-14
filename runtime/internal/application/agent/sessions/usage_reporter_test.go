@@ -5,34 +5,37 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/scope/core/chat"
 )
 
-type usageRunReaderStub struct{ runs []run.Run }
-
-func (s usageRunReaderStub) ListRuns(context.Context, string) ([]run.Run, error) {
-	return s.runs, nil
+type usageSourceStub struct {
+	values  []modelref.EndpointObservation
+	failure error
 }
 
-type usageSessionListerStub struct{}
-
-func (usageSessionListerStub) List(context.Context) ([]session.Session, error) { return nil, nil }
-
-func TestNewUsageReporterRequiresCompleteProjections(t *testing.T) {
-	if _, err := NewUsageReporter(UsageDependencies{Sessions: usageSessionListerStub{}}); err == nil {
-		t.Fatal("missing Run reader was accepted")
+func (s usageSourceStub) VisitEndpointInvocations(_ context.Context, sessionID string, since time.Time, yield func(modelref.EndpointObservation) error) error {
+	for _, value := range s.values {
+		if (sessionID == "" || value.SessionID == sessionID) && (since.IsZero() || !value.Invocation.StartedAt.Before(since)) {
+			if err := yield(value); err != nil {
+				return err
+			}
+		}
 	}
-	var typedNilRuns *usageRunReaderStub
-	if _, err := NewUsageReporter(UsageDependencies{
-		Runs: typedNilRuns, Sessions: usageSessionListerStub{},
-	}); err == nil {
-		t.Fatal("typed-nil Run reader was accepted")
+	return s.failure
+}
+func TestNewUsageReporterRequiresPhysicalSource(t *testing.T) {
+	if _, err := NewUsageReporter(UsageDependencies{}); err == nil {
+		t.Fatal("missing source accepted")
+	}
+	var source *usageSourceStub
+	if _, err := NewUsageReporter(UsageDependencies{Source: source}); err == nil {
+		t.Fatal("typed nil source accepted")
 	}
 }
 
@@ -59,234 +62,105 @@ func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 	}
 }
 
-func usd(v float64) *float64 { return &v }
-
-func mustUsageCost(t *testing.T, usd float64) accounting.Cost {
-	t.Helper()
-	cost, err := accounting.NewCost(usd)
-	if err != nil {
-		t.Fatalf("NewCost(%g): %v", usd, err)
+func usd(value float64) *float64 { return &value }
+func usageSource(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
+	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: capability.Invocation{Origin: capability.Automatic}}, State: state, CostUSD: cost}
+	if state == "completed" || state == "failed" {
+		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+		value.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}}
 	}
-	return cost
+	return value
 }
-
-func finishedRun(t *testing.T, provider, model string, at time.Time, usage accounting.Usage) run.Run {
-	t.Helper()
-	return testsupport.MustRestoreRun(run.Snapshot{ID: fmt.Sprintf("run_%d", at.UnixNano()), SessionID: "session-1", ModelSelection: testsupport.MustModelSelection(provider, model), State: run.Completed,
-		FinishedAt: at, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &usage})})
-}
-
-func TestFoldRunFoldsAllDimensions(t *testing.T) {
-	day := time.Date(2026, 6, 21, 10, 0, 0, 0, time.UTC)
-	run := finishedRun(t, "anthropic", "claude-opus-4-8", day, accounting.Usage{
-		Total: accounting.Totals{InputTokens: 100, OutputTokens: 40, CostUSD: usd(1.5)},
-	})
-
-	total := usageAccumulator{}
-	byProvider := map[string]*usageAccumulator{}
-	byModel := map[string]*usageAccumulator{}
-	byDay := map[string]*usageAccumulator{}
-	if err := foldRun(run, time.Time{}, &total, byProvider, byModel, byDay); err != nil {
-		t.Fatal(err)
-	}
-
-	cost, costAvailable := total.cost.USD()
-	if total.runs != 1 || total.tokens.InputTokens != 100 || !costAvailable || cost != 1.5 {
-		t.Fatalf("total = %+v", total)
-	}
-	if byProvider["anthropic"] == nil || byProvider["anthropic"].tokens.OutputTokens != 40 {
-		t.Errorf("byProvider missing anthropic: %+v", byProvider)
-	}
-	if byModel["anthropic/claude-opus-4-8"] == nil {
-		t.Errorf("byModel missing model: %+v", byModel)
-	}
-	if byDay["2026-06-21"] == nil {
-		t.Errorf("byDay missing 2026-06-21: %+v", byDay)
-	}
-}
-
-func TestFoldRunPrefersByModelSplit(t *testing.T) {
-	run := finishedRun(t, "anthropic", "claude-opus-4-8", time.Now().UTC(), accounting.Usage{
-		Total: accounting.Totals{InputTokens: 120, CostUSD: usd(2)},
-		ByModel: map[string]accounting.Totals{
-			"claude-opus-4-8":  {InputTokens: 100, CostUSD: usd(1.8)},
-			"claude-haiku-4-5": {InputTokens: 20, CostUSD: usd(0.2)},
-		},
-	})
-	byModel := map[string]*usageAccumulator{}
-	if err := foldRun(run, time.Time{}, nil, nil, byModel, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(byModel) != 2 {
-		t.Fatalf("expected 2 model buckets, got %+v", byModel)
-	}
-	if byModel["anthropic/claude-haiku-4-5"] == nil || byModel["anthropic/claude-haiku-4-5"].tokens.InputTokens != 20 {
-		t.Errorf("utility model not split out: %+v", byModel)
-	}
-}
-
-func TestFoldRunSkipsUnfinishedAndOld(t *testing.T) {
-	total := usageAccumulator{}
-
-	if err := foldRun(testsupport.MustRestoreRun(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil); err != nil {
-		t.Fatal(err)
-	}
-	noUsage := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed})
-	if err := foldRun(noUsage, time.Time{}, &total, nil, nil, nil); err != nil {
-		t.Fatal(err)
-	}
-	old := finishedRun(t, "anthropic", "m", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-		accounting.Usage{Total: accounting.Totals{InputTokens: 99}})
-	if err := foldRun(old, time.Now().UTC().AddDate(0, 0, -1), &total, nil, nil, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	if total.runs != 0 {
-		t.Errorf("expected nothing folded, got runs=%d tokens=%d", total.runs, total.tokens.InputTokens)
-	}
-}
-
-func TestFoldRunQualifiesServedModelsWithTheirProvider(t *testing.T) {
-	current := finishedRun(t, "openai-compatible", "shared-model", time.Now().UTC(), accounting.Usage{
-		Total: accounting.Totals{InputTokens: 10},
-		ByModel: map[string]accounting.Totals{
-			"shared-model": {InputTokens: 10},
-		},
-	})
-	byModel := map[string]*usageAccumulator{}
-	if err := foldRun(current, time.Time{}, nil, nil, byModel, nil); err != nil {
-		t.Fatal(err)
-	}
-	if byModel["openai-compatible/shared-model"] == nil || byModel["shared-model"] != nil {
-		t.Fatalf("summary model buckets = %+v", byModel)
-	}
-}
-
-func TestAccumulatorOmitsCostWhenUnpriced(t *testing.T) {
-	a := usageAccumulator{}
-	if err := a.addRun(accounting.Totals{InputTokens: 10}); err != nil {
-		t.Fatal(err)
-	}
-	if got := a.usage(); got.CostUSD != nil {
-		t.Errorf("CostUSD = %v, want nil", *got.CostUSD)
-	}
-	if err := a.addRun(accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)}); err != nil {
-		t.Fatal(err)
-	}
-	if got := a.usage(); got.CostUSD != nil {
-		t.Errorf("CostUSD = %v, want nil after an unpriced component", *got.CostUSD)
-	}
-
-	priced := usageAccumulator{}
-	if err := priced.addRun(accounting.Totals{CostUSD: usd(0)}); err != nil {
-		t.Fatal(err)
-	}
-	if err := priced.addRun(accounting.Totals{CostUSD: usd(0.3)}); err != nil {
-		t.Fatal(err)
-	}
-	if got := priced.usage(); got.CostUSD == nil || *got.CostUSD != 0.3 {
-		t.Errorf("priced CostUSD = %v, want 0.3", got.CostUSD)
-	}
-}
-
-func TestSessionUsageDoesNotPresentKnownPartialCostAsTotal(t *testing.T) {
-	now := time.Now().UTC()
-	reporter, err := NewUsageReporter(UsageDependencies{
-		Runs: usageRunReaderStub{runs: []run.Run{
-			finishedRun(t, "private", "served-alias", now, accounting.Usage{
-				Total: accounting.Totals{InputTokens: 10},
-			}),
-			finishedRun(t, "private", "served-alias", now.Add(time.Second), accounting.Usage{
-				Total: accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)},
-			}),
-		}}, Sessions: usageSessionListerStub{},
-	})
+func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting(t *testing.T) {
+	at := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	primary := usageSource("primary", "provider-a", "selected", "completed", at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
+	primary.SessionID = "ses_one"
+	primary.RunID = "run_one"
+	primary.Response.Metadata.Model = "served"
+	auxiliary := usageSource("title", "provider-b", "served", "failed", at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
+	auxiliary.SessionID = "ses_one"
+	unknown := usageSource("global", "provider-a", "served", "unknown", at.Add(2*time.Second), nil, nil)
+	unreported := usageSource("unreported", "provider-a", "served", "completed", at.Add(3*time.Second), nil, nil)
+	started := usageSource("started", "provider-b", "served", "started", at.Add(4*time.Second), nil, nil)
+	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{primary, auxiliary, unknown, unreported, started}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, err := reporter.Session(t.Context(), "session-1")
+	report, err := reporter.Summary(t.Context(), AllTimeUsage())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Total.InputTokens != 15 || report.Total.CostUSD != nil {
-		t.Fatalf("Session usage = %+v, want 15 input tokens with unknown total cost", report.Total)
+	want := UsageCoverage{Calls: 5, ReportedCalls: 2, PricedCalls: 2, CompletedCalls: 2, FailedCalls: 1, UnknownCalls: 1, StartedCalls: 1}
+	if report.Coverage != want || report.Total.InputTokens != 110 || report.Total.OutputTokens != 42 || report.Total.CacheReadTokens != 3 || report.Total.ReasoningTokens != 2 || report.Total.CostUSD != nil || report.RecordedCostUSD == nil || *report.RecordedCostUSD != 1.5 || report.Runs != 1 || report.Sessions != 1 {
+		t.Fatalf("physical total changed or hid incomplete coverage: %+v", report)
 	}
-	if len(report.ByModel) != 1 || report.ByModel[0].Key != "private/served-alias" || report.ByModel[0].Usage.InputTokens != 15 || report.ByModel[0].Usage.CostUSD != nil {
-		t.Fatalf("model usage = %+v, want 15 input tokens with unknown total cost", report.ByModel)
+	if len(report.ByModel) != 2 || report.ByModel[0].Key != "provider-a/served" || report.ByModel[1].Key != "provider-b/served" {
+		t.Fatalf("served provider/model identity lost: %+v", report.ByModel)
 	}
-}
-
-func TestSessionUsageKeepsProviderModelIdentity(t *testing.T) {
-	now := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
-	reporter, err := NewUsageReporter(UsageDependencies{
-		Runs: usageRunReaderStub{runs: []run.Run{
-			finishedRun(t, "anthropic", "shared-model", now, accounting.Usage{
-				Total: accounting.Totals{InputTokens: 10},
-			}),
-			finishedRun(t, "openai", "shared-model", now.Add(time.Second), accounting.Usage{
-				Total: accounting.Totals{InputTokens: 5},
-			}),
-		}}, Sessions: usageSessionListerStub{},
-	})
+	for _, groups := range [][]UsageBucket{report.ByProvider, report.ByModel, report.ByDay, report.ByOrigin, report.ByScope} {
+		calls := 0
+		var input int64
+		for _, group := range groups {
+			calls += group.Coverage.Calls
+			input += group.Usage.InputTokens
+		}
+		if calls != report.Coverage.Calls || input != report.Total.InputTokens {
+			t.Fatalf("grouping does not reconcile: %+v", groups)
+		}
+	}
+	session, err := reporter.Session(t.Context(), "ses_one")
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, err := reporter.Session(t.Context(), "session-1")
+	if session.Coverage.Calls != 2 || session.Total.CostUSD == nil || *session.Total.CostUSD != 1.5 || session.Total.InputTokens != 110 {
+		t.Fatalf("Session-only auxiliary missing: %+v", session)
+	}
+}
+func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
+	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	current := usageSource("current", "provider", "model", "completed", now, &chat.Usage{}, usd(0))
+	old := usageSource("old", "provider", "model", "completed", now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
+	reader, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{old, current}}, Now: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report.ByModel) != 2 || report.ByModel[0].Key != "anthropic/shared-model" || report.ByModel[0].Usage.InputTokens != 10 || report.ByModel[1].Key != "openai/shared-model" || report.ByModel[1].Usage.InputTokens != 5 {
-		t.Fatalf("session merged different providers' models: %+v", report.ByModel)
+	period, _ := RecentUsageDays(7)
+	report, err := reader.Summary(t.Context(), period)
+	if err != nil || report.Coverage.Calls != 1 || report.Coverage.ReportedCalls != 1 || report.Total.CostUSD == nil || *report.Total.CostUSD != 0 {
+		t.Fatalf("window or reported zero lost: %+v %v", report, err)
+	}
+	reader, err = NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{current}, failure: errors.New("later source is corrupt")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report, err := reader.Summary(t.Context(), AllTimeUsage()); err == nil || report.Coverage.Calls != 0 {
+		t.Fatal("partial usage returned as complete")
 	}
 }
-
-func TestBucketsBySpendBreaksTiesByIdentity(t *testing.T) {
-	buckets := map[string]*usageAccumulator{
-		"z/model": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), runs: 1},
-		"a/model": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), runs: 1},
-	}
-	ordered := bucketsBySpend(buckets)
-	if ordered[0].Key != "a/model" || ordered[1].Key != "z/model" {
-		t.Fatalf("tied buckets = %+v", ordered)
-	}
-}
-
-func TestBucketsBySpendRanksByCostDesc(t *testing.T) {
-	m := map[string]*usageAccumulator{
-		"cheap": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), runs: 1},
-		"dear":  {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 9), runs: 1},
-	}
-	out := bucketsBySpend(m)
-	if out[0].Key != "dear" {
-		t.Errorf("expected dear first (spend-ranked), got %+v", out)
-	}
-}
-
 func TestAccumulatorRejectsOverflowWithoutMutation(t *testing.T) {
-	// A cost that overflows refuses the fold on its own, so the token ceiling
-	// has to be reached carrying a cost the accumulator can still add.
-	tokens := usageAccumulator{}
-	if err := tokens.addRun(accounting.Totals{InputTokens: math.MaxInt64, CostUSD: usd(1)}); err != nil {
+	value := usageAccumulator{}
+	first := usageSource("first", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
+	if err := value.addCall(first); err != nil {
 		t.Fatal(err)
 	}
-	beforeTokens := tokens
-	if err := tokens.addRun(accounting.Totals{InputTokens: 1, CostUSD: usd(1)}); err == nil {
-		t.Fatal("overflowing token total was accepted")
+	before := value
+	if err := value.addCall(usageSource("next", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))); err == nil || !reflect.DeepEqual(before, value) {
+		t.Fatal("overflow mutated aggregate")
 	}
-	if tokens != beforeTokens {
-		t.Fatalf("failed token aggregation mutated accumulator: before=%+v after=%+v", beforeTokens, tokens)
+}
+func TestBucketsBySpendRankCostThenUsageThenIdentity(t *testing.T) {
+	values := map[string]*usageAccumulator{}
+	for index, name := range []string{"z", "a", "highest"} {
+		value := usageSource(fmt.Sprint(index), "provider", name, "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
+		if name == "highest" {
+			value.CostUSD = usd(2)
+		}
+		if err := accumulatorFor(values, name).addCall(value); err != nil {
+			t.Fatal(err)
+		}
 	}
-
-	cost := usageAccumulator{}
-	if err := cost.addRun(accounting.Totals{CostUSD: usd(math.MaxFloat64)}); err != nil {
-		t.Fatal(err)
-	}
-	beforeCost := cost
-	if err := cost.addRun(accounting.Totals{CostUSD: usd(math.MaxFloat64)}); err == nil {
-		t.Fatal("overflowing cost was accepted")
-	}
-	if cost != beforeCost {
-		t.Fatalf("failed cost aggregation mutated accumulator: before=%+v after=%+v", beforeCost, cost)
+	groups := bucketsBySpend(values)
+	if groups[0].Key != "highest" || groups[1].Key != "a" || groups[2].Key != "z" {
+		t.Fatalf("unstable spend ordering: %+v", groups)
 	}
 }

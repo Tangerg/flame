@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -377,4 +378,78 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 		return errors.New("sqlite: recovered endpoint or logical call changed before settlement")
 	}
 	return nil
+}
+
+// VisitEndpointInvocations reads one coherent retained source snapshot with one
+// body materialized at a time. It includes Session-only and unattached calls;
+// aggregate consumers never fold the logical Run projections a second time.
+func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, sessionID string, since time.Time, yield func(modelref.EndpointObservation) error) error {
+	if yield == nil {
+		return errors.New("sqlite: endpoint usage consumer is required")
+	}
+	if sessionID != "" {
+		if err := resourceid.ValidateSession(sessionID); err != nil {
+			return err
+		}
+	}
+	if !since.IsZero() {
+		if err := instant.Validate(since); err != nil {
+			return err
+		}
+	}
+	return RunInTx(ctx, m.db, func(ctx context.Context) error {
+		if sessionID != "" {
+			var exists bool
+			if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {
+				return err
+			}
+			if !exists {
+				return session.ErrNotFound
+			}
+		}
+		ownership := `SELECT EXISTS(SELECT 1 FROM model_invocations source LEFT JOIN runs owner ON owner.run_id=source.run_id LEFT JOIN sessions scope ON scope.id=source.session_id WHERE source.endpoint_json IS NOT NULL AND ((source.run_id IS NOT NULL AND (owner.run_id IS NULL OR source.session_id IS NULL OR source.session_id!=owner.session_id)) OR (source.session_id IS NOT NULL AND scope.id IS NULL))`
+		var ownershipArgs []any
+		if sessionID != "" {
+			ownership += ` AND (source.session_id=? OR owner.session_id=?)`
+			ownershipArgs = append(ownershipArgs, sessionID, sessionID)
+		}
+		if !since.IsZero() {
+			ownership += ` AND source.started_at>=?`
+			ownershipArgs = append(ownershipArgs, since.UTC().UnixNano())
+		}
+		ownership += `)`
+		var invalid bool
+		if err := Connection(ctx, m.db).QueryRowContext(ctx, ownership, ownershipArgs...).Scan(&invalid); err != nil {
+			return err
+		}
+		if invalid {
+			return errors.New("sqlite: physical usage source has inconsistent ownership")
+		}
+		query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL`
+		var args []any
+		if sessionID != "" {
+			query += ` AND session_id=?`
+			args = append(args, sessionID)
+		}
+		if !since.IsZero() {
+			query += ` AND started_at>=?`
+			args = append(args, since.UTC().UnixNano())
+		}
+		query += ` ORDER BY started_at,call_id`
+		rows, err := Connection(ctx, m.db).QueryContext(ctx, query, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			value, err := scanEndpointObservation(rows, "")
+			if err != nil {
+				return err
+			}
+			if err := yield(value); err != nil {
+				return err
+			}
+		}
+		return rows.Err()
+	})
 }

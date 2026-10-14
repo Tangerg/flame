@@ -27,16 +27,16 @@ type usageServiceStub struct{}
 func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (conversation.SessionUsageReport, error) {
 	cost := 0.25
 	return conversation.SessionUsageReport{
-		SessionID: sessionID, Total: protocol.ModelUsage{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
-		ByModel: []protocol.UsageBucket{{Key: "deepseek/model", ModelUsage: protocol.ModelUsage{InputTokens: 1_200}}},
+		SessionID: sessionID, Coverage: protocol.UsageCoverage{Calls: 1, ReportedCalls: 1, PricedCalls: 1, CompletedCalls: 1}, RecordedCostUSD: &cost, Total: protocol.ModelUsage{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
+		ByModel: []protocol.UsageBucket{{Key: "deepseek/model", RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 1_200}}}},
 	}, nil
 }
 
 func (usageServiceStub) Summary(_ context.Context, period conversation.UsageSummaryPeriod) (conversation.UsageSummary, error) {
 	cost := 1.5
 	return conversation.UsageSummary{
-		Period: period, Total: protocol.ModelUsage{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
-		ByProvider: []protocol.UsageBucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
+		Period: period, Coverage: protocol.UsageCoverage{Calls: 4, ReportedCalls: 4, PricedCalls: 4, CompletedCalls: 4}, RecordedCostUSD: &cost, Total: protocol.ModelUsage{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
+		ByProvider: []protocol.UsageBucket{{Key: "deepseek", RecordedUsage: protocol.RecordedUsage{Coverage: protocol.UsageCoverage{Calls: 4}}}}, Sessions: 2, Runs: 4,
 	}, nil
 }
 
@@ -63,7 +63,7 @@ func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	host.Type("/usage 30")
 	host.Press(input.Enter)
 	host.Shows(t, "Runtime usage")
-	host.Shows(t, "last 30 days · 2 sessions · 4 runs")
+	host.Shows(t, "last 30 days · 4 attempts · 2 associated sessions · 4 associated runs")
 	host.Shows(t, "input 1,200")
 	host.Press(input.Esc)
 	host.Shows(t, "Ask flame")

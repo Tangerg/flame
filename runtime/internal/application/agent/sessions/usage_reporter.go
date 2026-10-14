@@ -10,283 +10,249 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/scope/core/chat"
 )
 
-// UsageSessionLister lists the Sessions whose process-owned Run usage contributes
-// to the aggregate report.
-type UsageSessionLister interface {
-	List(ctx context.Context) ([]session.Session, error)
+// UsageSource reads retained physical evidence from one snapshot. The callback
+// must not perform storage I/O while that snapshot owns the database connection.
+type UsageSource interface {
+	VisitEndpointInvocations(context.Context, string, time.Time, func(modelref.EndpointObservation) error) error
 }
 
-// UsageBucket is one named portion of an aggregate report.
+type UsageCoverage struct {
+	Calls          int
+	ReportedCalls  int
+	PricedCalls    int
+	StartedCalls   int
+	CompletedCalls int
+	FailedCalls    int
+	UnknownCalls   int
+}
+
 type UsageBucket struct {
-	Key   string
-	Usage accounting.Totals
-	Runs  int
+	Key             string
+	Usage           accounting.Totals
+	RecordedCostUSD *float64
+	Coverage        UsageCoverage
 }
 
-// UsageReport is one session's cumulative metering and per-model split.
 type UsageReport struct {
-	Total   accounting.Totals
-	ByModel []UsageBucket
+	Total           accounting.Totals
+	RecordedCostUSD *float64
+	Coverage        UsageCoverage
+	ByModel         []UsageBucket
 }
 
-// UsageSummary is a cross-session report. Provider and day buckets reconcile with
-// Total because each terminal Run contributes its recorded process usage once.
 type UsageSummary struct {
-	Total      accounting.Totals
+	UsageReport
 	ByProvider []UsageBucket
-	ByModel    []UsageBucket
 	ByDay      []UsageBucket
+	ByOrigin   []UsageBucket
+	ByScope    []UsageBucket
 	Sessions   int
 	Runs       int
 }
 
-// UsageDependencies are the durable projections and clock a UsageReporter needs.
 type UsageDependencies struct {
-	Runs     RunReader
-	Sessions UsageSessionLister
-	Now      func() time.Time
+	Source UsageSource
+	Now    func() time.Time
 }
 
-// UsageReporter folds durable terminal run records into read-only usage reports.
 type UsageReporter struct {
-	runs     RunReader
-	sessions UsageSessionLister
-	now      func() time.Time
+	source UsageSource
+	now    func() time.Time
 }
 
-// NewUsageReporter constructs a complete usage reporter over the supplied projections.
 func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
-	if dependency.Missing(deps.Runs) {
-		return nil, errors.New("sessions: usage Run reader is required")
-	}
-	if dependency.Missing(deps.Sessions) {
-		return nil, errors.New("sessions: usage session lister is required")
+	if dependency.Missing(deps.Source) {
+		return nil, errors.New("sessions: physical usage source is required")
 	}
 	now := deps.Now
 	if now == nil {
 		now = time.Now
 	}
-	return &UsageReporter{
-		runs: deps.Runs, sessions: deps.Sessions, now: now,
-	}, nil
+	return &UsageReporter{source: deps.Source, now: now}, nil
 }
 
-// Session returns one session's cumulative metering and per-model split.
 func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageReport, error) {
-	runs, err := r.runs.ListRuns(ctx, sessionID)
+	if err := resourceid.ValidateSession(sessionID); err != nil {
+		return UsageReport{}, err
+	}
+	report, err := r.collect(ctx, sessionID, time.Time{})
 	if err != nil {
 		return UsageReport{}, err
 	}
-	total := usageAccumulator{}
-	byModel := map[string]*usageAccumulator{}
-	for _, current := range runs {
-		if err := foldRun(current, time.Time{}, &total, nil, byModel, nil); err != nil {
-			return UsageReport{}, err
-		}
-	}
-	return UsageReport{Total: total.usage(), ByModel: bucketsBySpend(byModel)}, nil
+	return report.UsageReport, nil
 }
 
-// Summary returns usage across user-facing sessions under the requested
-// all-time or recent calendar-day period.
 func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) (UsageSummary, error) {
 	since, err := period.Since(r.now())
 	if err != nil {
 		return UsageSummary{}, err
 	}
-	sessions, err := r.sessions.List(ctx)
+	return r.collect(ctx, "", since)
+}
+
+func (r *UsageReporter) collect(ctx context.Context, sessionID string, since time.Time) (UsageSummary, error) {
+	total := usageAccumulator{}
+	groups := []map[string]*usageAccumulator{{}, {}, {}, {}, {}}
+	sessions := map[string]struct{}{}
+	runs := map[string]struct{}{}
+	err := r.source.VisitEndpointInvocations(ctx, sessionID, since, func(source modelref.EndpointObservation) error {
+		if err := total.addCall(source); err != nil {
+			return fmt.Errorf("sessions: aggregate endpoint %q: %w", source.Invocation.ID, err)
+		}
+		model := source.Invocation.Model
+		if source.Response != nil && source.Response.Metadata != nil && source.Response.Metadata.Model != "" {
+			model = source.Response.Metadata.Model
+		}
+		if _, err := modelref.New(source.Invocation.Provider, model); err != nil {
+			return err
+		}
+		scope := "unattached"
+		if source.SessionID != "" {
+			sessions[source.SessionID] = struct{}{}
+			scope = "session"
+		}
+		if source.RunID != "" {
+			runs[source.RunID] = struct{}{}
+			scope = "run"
+		}
+		keys := []string{source.Invocation.Provider, source.Invocation.Provider + "/" + model, source.Invocation.StartedAt.UTC().Format(time.DateOnly), string(source.Invocation.Caller.Origin), scope}
+		for index, key := range keys {
+			if err := accumulatorFor(groups[index], key).addCall(source); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return UsageSummary{}, err
 	}
-
-	total := usageAccumulator{}
-	byProvider := map[string]*usageAccumulator{}
-	byModel := map[string]*usageAccumulator{}
-	byDay := map[string]*usageAccumulator{}
-	sessionCount := 0
-	for _, sess := range sessions {
-		runs, err := r.runs.ListRuns(ctx, sess.ID())
-		if err != nil {
-			return UsageSummary{}, err
-		}
-		before := total.runs
-		for _, current := range runs {
-			if err := foldRun(current, since, &total, byProvider, byModel, byDay); err != nil {
-				return UsageSummary{}, err
-			}
-		}
-		if total.runs > before {
-			sessionCount++
-		}
-	}
-
-	return UsageSummary{
-		Total:      total.usage(),
-		ByProvider: bucketsBySpend(byProvider),
-		ByModel:    bucketsBySpend(byModel),
-		ByDay:      bucketsByKey(byDay),
-		Sessions:   sessionCount,
-		Runs:       total.runs,
-	}, nil
+	return UsageSummary{UsageReport: UsageReport{Total: total.usage(), RecordedCostUSD: total.recordedCost(), Coverage: total.coverage, ByModel: bucketsBySpend(groups[1])}, ByProvider: bucketsBySpend(groups[0]), ByDay: bucketsByKey(groups[2]), ByOrigin: bucketsByKey(groups[3]), ByScope: bucketsByKey(groups[4]), Sessions: len(sessions), Runs: len(runs)}, nil
 }
 
-func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvider, byModel, byDay map[string]*usageAccumulator) error {
-	usage, reported := current.Metrics().Usage()
-	if !current.State().IsTerminal() || !reported {
-		return nil
-	}
-	if !since.IsZero() && !current.FinishedAt().IsZero() && current.FinishedAt().Before(since) {
-		return nil
-	}
-	if total != nil {
-		if err := total.addRun(usage.Total); err != nil {
-			return fmt.Errorf("sessions: aggregate Run %q usage: %w", current.ID(), err)
-		}
-	}
-	if byProvider != nil {
-		bucket := accumulatorFor(byProvider, current.ModelSelection().Provider())
-		if err := bucket.addRun(usage.Total); err != nil {
-			return fmt.Errorf("sessions: aggregate provider %q usage: %w", current.ModelSelection().Provider(), err)
-		}
-	}
-	if byDay != nil && !current.FinishedAt().IsZero() {
-		day := current.FinishedAt().UTC().Format(time.DateOnly)
-		bucket := accumulatorFor(byDay, day)
-		if err := bucket.addRun(usage.Total); err != nil {
-			return fmt.Errorf("sessions: aggregate day %q usage: %w", day, err)
-		}
-	}
-	if byModel == nil {
-		return nil
-	}
-	if len(usage.ByModel) > 0 {
-		for name, split := range usage.ByModel {
-			key := usageModelKey(current.ModelSelection().Provider(), name)
-			bucket := accumulatorFor(byModel, key)
-			if err := bucket.addRun(split); err != nil {
-				return fmt.Errorf("sessions: aggregate model %q usage: %w", key, err)
-			}
-		}
-		return nil
-	}
-	key := usageModelKey(current.ModelSelection().Provider(), current.ModelSelection().Model())
-	bucket := accumulatorFor(byModel, key)
-	if err := bucket.addRun(usage.Total); err != nil {
-		return fmt.Errorf("sessions: aggregate model %q usage: %w", key, err)
-	}
-	return nil
-}
-
-func usageModelKey(provider, model string) string {
-	return provider + "/" + model
-}
-
-// usageAccumulator preserves the metering fields needed while folding Run
-// records into one report bucket.
 type usageAccumulator struct {
-	tokens accounting.Totals
-	// cost is meaningful only once runs is positive: the first Run sets it and
-	// each later Run adds to it, so one unpriced Run leaves the bucket unpriced.
-	cost accounting.Cost
-	runs int
+	tokens   accounting.Tokens
+	cost     accounting.Cost
+	coverage UsageCoverage
 }
 
-// addRun folds one Run's metering into this bucket. The bucket starts at its
-// zero value and no one else writes it, and this method commits a fold only
-// after proving every addition, so what it reads back is what it last proved.
-// Only the incoming totals are unproven here, and the sums below need them
-// non-negative.
-func (u *usageAccumulator) addRun(usage accounting.Totals) error {
-	if err := usage.Validate(); err != nil {
-		return err
-	}
-	if u.runs == math.MaxInt {
-		return errors.New("usage Run count overflows")
-	}
+func (u *usageAccumulator) addCall(source modelref.EndpointObservation) error {
 	next := *u
-	fields := []struct {
-		name  string
-		value *int64
-		add   int64
-	}{
-		{name: "input tokens", value: &next.tokens.InputTokens, add: usage.InputTokens},
-		{name: "output tokens", value: &next.tokens.OutputTokens, add: usage.OutputTokens},
-		{name: "cache-read tokens", value: &next.tokens.CacheReadTokens, add: usage.CacheReadTokens},
-		{name: "cache-write tokens", value: &next.tokens.CacheWriteTokens, add: usage.CacheWriteTokens},
-		{name: "reasoning tokens", value: &next.tokens.ReasoningTokens, add: usage.ReasoningTokens},
+	if next.coverage.Calls == math.MaxInt {
+		return errors.New("usage call count overflows")
 	}
-	for _, field := range fields {
-		if field.add > math.MaxInt64-*field.value {
-			return fmt.Errorf("usage %s overflow", field.name)
+	next.coverage.Calls++
+	switch source.State {
+	case "started":
+		next.coverage.StartedCalls++
+	case "completed":
+		next.coverage.CompletedCalls++
+	case "failed":
+		next.coverage.FailedCalls++
+	case "unknown":
+		next.coverage.UnknownCalls++
+	default:
+		return errors.New("usage source has an unknown state")
+	}
+	if (source.State == "completed" || source.State == "failed") != (source.Response != nil) {
+		return errors.New("usage source outcome differs from its state")
+	}
+	var reported *chat.Usage
+	if source.Response != nil {
+		if err := source.Response.Validate(); err != nil {
+			return err
 		}
-		*field.value += field.add
+		if source.Response.Metadata != nil {
+			reported = source.Response.Metadata.Usage
+		}
 	}
-	cost, err := accounting.CostFromOptional(usage.CostUSD)
-	if err != nil {
-		return err
-	}
-	if next.runs > 0 {
-		next.cost, err = next.cost.Add(cost)
+	if reported != nil {
+		tokens, err := accounting.NewTokens(*reported)
 		if err != nil {
 			return err
 		}
-	} else {
-		next.cost = cost
+		next.tokens, err = next.tokens.Add(tokens)
+		if err != nil {
+			return err
+		}
+		next.coverage.ReportedCalls++
 	}
-	next.runs++
+	cost, err := accounting.CostFromOptional(source.CostUSD)
+	if err != nil {
+		return err
+	}
+	if source.CostUSD != nil {
+		if reported == nil {
+			return errors.New("usage source price has no reported usage")
+		}
+		if next.coverage.PricedCalls == 0 {
+			next.cost = cost
+		} else {
+			next.cost, err = next.cost.Add(cost)
+			if err != nil {
+				return err
+			}
+		}
+		next.coverage.PricedCalls++
+	}
 	*u = next
 	return nil
 }
 
+func (u usageAccumulator) recordedCost() *float64 {
+	if u.coverage.PricedCalls == 0 {
+		return nil
+	}
+	return u.cost.OptionalUSD()
+}
+
 func (u usageAccumulator) usage() accounting.Totals {
-	out := u.tokens
-	out.CostUSD = u.cost.OptionalUSD()
-	return out
-}
-
-func accumulatorFor(byKey map[string]*usageAccumulator, key string) *usageAccumulator {
-	bucket := byKey[key]
-	if bucket == nil {
-		bucket = &usageAccumulator{}
-		byKey[key] = bucket
+	value := accounting.Totals{Tokens: u.tokens}
+	if u.coverage.Calls > 0 && u.coverage.PricedCalls == u.coverage.Calls {
+		value.CostUSD = u.recordedCost()
 	}
-	return bucket
+	return value
 }
 
-func bucketsBySpend(byKey map[string]*usageAccumulator) []UsageBucket {
-	buckets := bucketsOf(byKey)
-	slices.SortFunc(buckets, func(a, b UsageBucket) int {
-		return cmp.Or(
-			cmp.Compare(costOf(b.Usage.CostUSD), costOf(a.Usage.CostUSD)),
-			cmp.Compare(b.Usage.InputTokens, a.Usage.InputTokens),
-			cmp.Compare(a.Key, b.Key),
-		)
+func accumulatorFor(groups map[string]*usageAccumulator, key string) *usageAccumulator {
+	value := groups[key]
+	if value == nil {
+		value = &usageAccumulator{}
+		groups[key] = value
+	}
+	return value
+}
+
+func bucketsOf(groups map[string]*usageAccumulator) []UsageBucket {
+	result := make([]UsageBucket, 0, len(groups))
+	for key, value := range groups {
+		result = append(result, UsageBucket{Key: key, Usage: value.usage(), RecordedCostUSD: value.recordedCost(), Coverage: value.coverage})
+	}
+	return result
+}
+
+func bucketsBySpend(groups map[string]*usageAccumulator) []UsageBucket {
+	result := bucketsOf(groups)
+	slices.SortFunc(result, func(a, b UsageBucket) int {
+		return cmp.Or(cmp.Compare(costOf(b.RecordedCostUSD), costOf(a.RecordedCostUSD)), cmp.Compare(b.Usage.InputTokens, a.Usage.InputTokens), cmp.Compare(a.Key, b.Key))
 	})
-	return buckets
+	return result
 }
 
-func bucketsByKey(byKey map[string]*usageAccumulator) []UsageBucket {
-	buckets := bucketsOf(byKey)
-	slices.SortFunc(buckets, func(a, b UsageBucket) int { return cmp.Compare(a.Key, b.Key) })
-	return buckets
+func bucketsByKey(groups map[string]*usageAccumulator) []UsageBucket {
+	result := bucketsOf(groups)
+	slices.SortFunc(result, func(a, b UsageBucket) int { return cmp.Compare(a.Key, b.Key) })
+	return result
 }
 
-func bucketsOf(byKey map[string]*usageAccumulator) []UsageBucket {
-	buckets := make([]UsageBucket, 0, len(byKey))
-	for key, accumulated := range byKey {
-		buckets = append(buckets, UsageBucket{Key: key, Usage: accumulated.usage(), Runs: accumulated.runs})
-	}
-	return buckets
-}
-
-func costOf(cost *float64) float64 {
-	if cost == nil {
+func costOf(value *float64) float64 {
+	if value == nil {
 		return 0
 	}
-	return *cost
+	return *value
 }

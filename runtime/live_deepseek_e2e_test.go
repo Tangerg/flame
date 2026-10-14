@@ -550,11 +550,11 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cost := 0.0
-	if usage.CostUSD != nil {
-		cost = *usage.CostUSD
+	if usage.Total.CostUSD != nil {
+		t.Logf("13 real turns compacted once: known input=%d total cost=$%.6f", usage.Total.InputTokens, *usage.Total.CostUSD)
+	} else {
+		t.Logf("13 real turns compacted once: known input=%d total cost unavailable; usage recorded %d/%d, priced %d/%d", usage.Total.InputTokens, usage.Coverage.ReportedCalls, usage.Coverage.Calls, usage.Coverage.PricedCalls, usage.Coverage.Calls)
 	}
-	t.Logf("13 real turns compacted once: input=%d cost=$%.6f", usage.InputTokens, cost)
 }
 
 type liveDeepSeekFixture struct {

@@ -1948,7 +1948,7 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 		{shape: "FileDiff", field: "added", value: FileDiff{Added: &negative}},
 		{shape: "WorkspaceFileChange", field: "removed", value: WorkspaceFileChange{Removed: &negative}},
 		{shape: "DiffRow", field: "leftLine", value: DiffRow{LeftLine: -1}},
-		{shape: "UsageBucket", field: "runs", value: UsageBucket{Key: "deepseek", Runs: -1}},
+		{shape: "UsageCoverage", field: "calls", value: UsageCoverage{Calls: -1}},
 		{shape: "UsageSummary", field: "sessions", value: UsageSummary{Sessions: -1}},
 		{shape: "UsageSummary", field: "runs", value: UsageSummary{Runs: -1}},
 		{shape: "HookInfo", field: "timeoutMillis", value: HookInfo{TimeoutMillis: -1}},

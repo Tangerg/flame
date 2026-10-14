@@ -62,14 +62,16 @@ func usageDocument(report usageReport) (readerDocument, error) {
 		window = fmt.Sprintf("last %d days", days)
 	}
 	sections := []ToolSection{
-		{Title: "Current session", Style: toolSectionCode, Text: usageTotalsText(report.session.Total)},
-		{Title: "Runtime total", Style: toolSectionCode, Text: usageTotalsText(report.summary.Total)},
+		{Title: "Current session", Style: toolSectionCode, Text: usageReportText(report.session.Total, report.session.RecordedCostUSD, report.session.Coverage)},
+		{Title: "Runtime total", Style: toolSectionCode, Text: usageReportText(report.summary.Total, report.summary.RecordedCostUSD, report.summary.Coverage)},
 	}
 	sections = appendUsageBreakdown(sections, "By provider", report.summary.ByProvider)
 	sections = appendUsageBreakdown(sections, "By model", report.summary.ByModel)
 	sections = appendUsageBreakdown(sections, "By day", report.summary.ByDay)
+	sections = appendUsageBreakdown(sections, "By origin", report.summary.ByOrigin)
+	sections = appendUsageBreakdown(sections, "By scope", report.summary.ByScope)
 	return readerDocument{
-		Title: "Runtime usage", Detail: fmt.Sprintf("%s · %d sessions · %d runs", window, report.summary.Sessions, report.summary.Runs),
+		Title: "Runtime usage", Detail: fmt.Sprintf("%s · %d attempts · %d associated sessions · %d associated runs", window, report.summary.Coverage.Calls, report.summary.Sessions, report.summary.Runs),
 		Sections: sections,
 	}, nil
 }
@@ -80,10 +82,7 @@ func appendUsageBreakdown(sections []ToolSection, title string, buckets []protoc
 	}
 	lines := make([]string, 0, len(buckets))
 	for _, bucket := range buckets {
-		line := bucket.Key + "  " + usageTotalsText(bucket.ModelUsage)
-		if bucket.Runs > 0 {
-			line += fmt.Sprintf("  · %d runs", bucket.Runs)
-		}
+		line := bucket.Key + "  " + usageReportText(bucket.Total, bucket.RecordedCostUSD, bucket.Coverage)
 		lines = append(lines, line)
 	}
 	return append(sections, ToolSection{Title: title, Style: toolSectionCode, Text: strings.Join(lines, "\n")})
@@ -109,4 +108,12 @@ func usageTotalsText(totals protocol.ModelUsage) string {
 		parts = append(parts, "cost unavailable")
 	}
 	return strings.Join(parts, "  · ")
+}
+
+func usageReportText(total protocol.ModelUsage, cost *float64, coverage protocol.UsageCoverage) string {
+	text := "known " + usageTotalsText(total)
+	if cost != nil {
+		text += "  · recorded price subtotal $" + strconv.FormatFloat(*cost, 'f', 4, 64)
+	}
+	return text + fmt.Sprintf("  · usage recorded %d/%d  · priced %d/%d  · started %d  · unknown %d", coverage.ReportedCalls, coverage.Calls, coverage.PricedCalls, coverage.Calls, coverage.StartedCalls, coverage.UnknownCalls)
 }

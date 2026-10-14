@@ -119,8 +119,9 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     }
   }
 
-  loadSessionUsage(sessionId: string, signal?: AbortSignal) {
-    return this.runtimeClient().usage.session(asSessionId(sessionId), signal);
+  async loadSessionUsage(sessionId: string, signal?: AbortSignal) {
+    const report = await this.runtimeClient().usage.session(asSessionId(sessionId), signal);
+    return report.total;
   }
 
   async rollbackSession(input: Parameters<AgentRuntimeGateway["rollbackSession"]>[0]) {
