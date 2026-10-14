@@ -9,7 +9,7 @@ Memory/Schedules.
 This portable package provides `list_reviews`, `update_review`, and the `review`
 Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.
-It declares no graphical view or host action.
+It declares an ordinary React board bound to the same operations.
 
 The backend uses the public Go binding in `github.com/Tangerg/flame/runtime/plugin`.
 Its typed list and update operations share the same private use cases and receipt
@@ -36,7 +36,7 @@ resolution, original-binding restoration and the generated TypeScript token.
 Schema and method references are presentation projections. Capability calls and
 receipt queries carry the original export identity; omitting it is refused before
 the business owner. The package declares its generic installed contribution and analyzer point.
-The ordinary graphical component remains an outstanding part of the full slice.
+The ordinary board is compiled from `client/board.tsx` through the public SDK.
 
 The backend owns one example review in `PLUGIN_DATA/reviews.sqlite`. Runtime
 owns execution and approval; its stored Tool results are historical observations,
@@ -113,9 +113,14 @@ Call `io.github.tangerg.flame.examples/reviews.analyzers` on
 digest, generated capability descriptor, an installation target and `{}` input.
 This uses the same public invocation path as other installed operations.
 
-Complete installed process/callback acceptance, graphical interaction and
-independent published module validation remain required; compilation is not
-proof of those lifecycles.
+The backend acceptance `TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime`
+builds and installs both executables, calls the analyzer through Core callbacks,
+checks disable/reenable and refuses newly discovered contributors outside captured
+setup authority. Reconnecting the consumer explicitly admits its new collection.
+Point declaration availability belongs to the target consumer installation; another
+enabled copy cannot keep a disabled consumer's point available. This backend proof
+does not execute the board. Graphical/native qualification and independent published
+module validation remain required.
 
 ## Mutation and recovery
 

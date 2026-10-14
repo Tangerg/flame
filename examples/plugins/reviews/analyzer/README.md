@@ -28,6 +28,10 @@ referenced namespace declaration binds `analyzer` plus the point value
 generated from the Reviews consumer's Go types. Do not edit a generated schema
 or add an analyzer branch to the generic package loader.
 
-The final acceptance phase must exercise both installed executables and their
-Core callback route. The current repository workspace build does not claim the
-new SDK is available at the older published Runtime version in `go.mod`.
+`TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime` in
+Runtime bootstrap builds both installed executables and exercises their actual
+Core callback route. It verifies original review identity/revision, optional absence
+on disable, reenable, frozen setup authority and explicit collection refresh.
+The current workspace proof does not establish that the new SDK is available at
+the older published Runtime version in `go.mod`; independent published-module and
+native component qualification remain separate work.

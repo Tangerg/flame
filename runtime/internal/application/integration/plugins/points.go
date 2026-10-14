@@ -46,8 +46,9 @@ func ResolvePoint(ctx context.Context, store Store, contract *point.Contract, ta
 			continue
 		}
 		declaration := snapshot.Selected.Declaration()
+		declaresTarget := target.Target.Scope != "installation" || target.Target.Reference == snapshot.Installation.ID().String()
 		for _, definition := range declaration.Points {
-			if definition.Contract == contract.Identity() {
+			if definition.Contract == contract.Identity() && declaresTarget {
 				declared = true
 			}
 		}

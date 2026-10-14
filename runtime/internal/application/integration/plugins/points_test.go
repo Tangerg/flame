@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/json/jsontext"
+	"errors"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
@@ -42,6 +43,20 @@ func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t 
 	bindings, err := ResolvePoint(t.Context(), store, contract, context, nil)
 	if err != nil || len(bindings) != 1 || bindings[0].Reference.Installation != producer.Installation.ID() || bindings[0].Digest != producer.Selected.Digest() || bindings[0].Value != value {
 		t.Fatalf("installed point binding: %+v, %v", bindings, err)
+	}
+	foreign := context
+	foreign.Target.Reference = producer.Installation.ID().String()
+	if _, err := ResolvePoint(t.Context(), store, contract, foreign, nil); !errors.Is(err, plugin.ErrUnavailable) {
+		t.Fatalf("another installation borrowed the consumer's point declaration: %v", err)
+	}
+	otherConsumer := makeSnapshot("other-reviews", plugin.Declaration{Points: []plugin.Point{{ID: "analyzers", Contract: contract.Identity()}}})
+	consumer.Installation.Disable()
+	store.snapshots = []plugin.Snapshot{producer, consumer, otherConsumer}
+	if _, err := ResolvePoint(t.Context(), store, contract, context, nil); !errors.Is(err, plugin.ErrUnavailable) {
+		t.Fatalf("disabled target borrowed another consumer's declaration: %v", err)
+	}
+	if err := consumer.Installation.Enable(consumer.Selected); err != nil {
+		t.Fatal(err)
 	}
 	store.snapshots = []plugin.Snapshot{producer}
 	if _, err := ResolvePoint(t.Context(), store, contract, context, nil); err == nil {

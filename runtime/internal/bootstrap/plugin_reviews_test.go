@@ -22,17 +22,22 @@ import (
 )
 
 func reviewExamplePackage(t *testing.T) string {
+	return reviewAuthorPackage(t, "package", "reviews")
+}
+
+func reviewAuthorPackage(t *testing.T, packagePath, executable string) string {
 	t.Helper()
 	source := t.TempDir()
-	packageRoot := filepath.Join("..", "..", "..", "examples", "plugins", "reviews", "package")
+	authorRoot := filepath.Join("..", "..", "..", "examples", "plugins", "reviews")
+	packageRoot := filepath.Join(authorRoot, packagePath)
 	if err := os.CopyFS(source, os.DirFS(packageRoot)); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(source, "bin"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", "reviews"), "./cmd/reviews")
-	command.Dir = filepath.Join(packageRoot, "..", "backend")
+	command := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", executable), "./cmd/"+executable)
+	command.Dir = filepath.Join(authorRoot, "backend")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build review backend: %s, %v", output, err)
 	}
