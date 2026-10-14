@@ -571,7 +571,7 @@ func TestRootAndDelegateCompleteLongExecution(t *testing.T) {
 		}
 		return interactionUsageTextResponse("finished", 1_000_000, 1_000), nil
 	})
-	executor = newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{Pricing: fixedInteractionPricing(100), ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "tick")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+	executor = newPricedObservedTestInteractionExecutor(t, model, fixedInteractionPricing(100), InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "tick")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 	coordinator := scopeTestCoordinator(t, executor)
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true}, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "long root"}}})
 	if err != nil {

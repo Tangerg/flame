@@ -25,7 +25,7 @@ type modelEnvironment struct {
 }
 
 func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
-	chatResolver, err := modeladapter.NewObservedResolver(cfg.ChatResolver, cfg.Stores.ModelInvocations)
+	chatResolver, err := modeladapter.NewObservedResolver(cfg.ChatResolver, cfg.Stores.ModelInvocations, cfg.Pricing)
 	if err != nil {
 		return modelEnvironment{}, err
 	}

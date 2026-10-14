@@ -26,7 +26,6 @@ type interactionAccounting struct {
 	contextByProcess         map[agent.ProcessID]ModelContextTokenCalibration
 	preparedContextByProcess map[agent.ProcessID]preparedModelContext
 	selection                modelref.Selection
-	pricing                  accounting.Pricing
 	toolCalls                int
 }
 
@@ -48,14 +47,12 @@ type modelCallAccountingInput struct {
 
 func newInteractionAccounting(
 	selection modelref.Selection,
-	pricing accounting.Pricing,
 ) interactionAccounting {
 	return interactionAccounting{
 		usageByProcess:           make(map[agent.ProcessID]map[string]accounting.ModelUsage),
 		contextByProcess:         make(map[agent.ProcessID]ModelContextTokenCalibration),
 		preparedContextByProcess: make(map[agent.ProcessID]preparedModelContext),
 		selection:                selection,
-		pricing:                  pricing,
 	}
 }
 
@@ -255,8 +252,9 @@ func (i *interactionAccounting) accountModelCall(
 	invocation interaction.ModelInvocation,
 	callID string,
 	response *corechat.Response,
+	cost accounting.Cost,
 ) (runs.ModelCallCompleted, error) {
-	input, err := newModelCallAccountingInput(response, i.selection, i.pricing)
+	input, err := newModelCallAccountingInput(response, i.selection, cost)
 	if err != nil {
 		return runs.ModelCallCompleted{}, err
 	}
@@ -268,7 +266,7 @@ func (i *interactionAccounting) accountModelCall(
 func newModelCallAccountingInput(
 	response *corechat.Response,
 	selection modelref.Selection,
-	pricing accounting.Pricing,
+	cost accounting.Cost,
 ) (modelCallAccountingInput, error) {
 	if response == nil || response.Output == nil {
 		return modelCallAccountingInput{}, errors.New("execution: account model call without a response output")
@@ -277,7 +275,7 @@ func newModelCallAccountingInput(
 	if response.Output.Message != nil {
 		message = new(response.Output.Message.Clone())
 	}
-	delta, err := modelUsage(response, selection, pricing)
+	delta, err := modelUsage(response, selection, cost)
 	if err != nil {
 		return modelCallAccountingInput{}, err
 	}

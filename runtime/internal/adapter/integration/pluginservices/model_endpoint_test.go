@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -33,7 +34,13 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	var calls atomic.Int32
 	message := chat.NewAssistantMessage(chat.NewTextPart("durable inner"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 11, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	resolver, err := models.NewObservedResolver(endpointResolver{model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) { calls.Add(1); return response, nil })}, sqlite.NewModelInvocationStore(db))
+	resolver, err := models.NewObservedResolver(endpointResolver{model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) { calls.Add(1); return response, nil })}, sqlite.NewModelInvocationStore(db), func(provider, served string, usage *chat.Usage) accounting.Cost {
+		if provider != "anthropic" || served != "served-model" || usage.InputTokens != 11 {
+			t.Fatal("pricing replaced captured provider/served identity")
+		}
+		value, _ := accounting.NewCost(1.5)
+		return value
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,6 +70,10 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewModelInvocationStore(db)
+	source, found, err := store.EndpointForCaller(t.Context(), "original-endpoint-parent")
+	if err != nil || !found || source.CostUSD == nil || *source.CostUSD != 1.5 {
+		t.Fatalf("restart lost captured source price: %+v %v", source, err)
+	}
 	rows, err := store.PageEndpointInvocations(t.Context(), "original-endpoint-parent", 0, "", 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("persisted inner evidence: %+v, %v", rows, err)

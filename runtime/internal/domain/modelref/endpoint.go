@@ -45,19 +45,31 @@ func (i EndpointInvocation) Validate() error {
 }
 
 type EndpointOutcome struct {
+	CostUSD    *float64
 	Response   *chat.Response
 	FinishedAt time.Time
 	Failure    string
 }
 
 type EndpointObservation struct {
-	SessionID    string
-	RunID        string
-	Invocation   EndpointInvocation
-	Response     *chat.Response
-	State        string
-	Failure      string
-	FinishedAt   time.Time
-	RequestJSON  jsoninput.Input
-	ResponseJSON jsoninput.Input
+	CostUSD        *float64
+	SessionID      string
+	RunID          string
+	Invocation     EndpointInvocation
+	Response       *chat.Response
+	State          string
+	Failure        string
+	FinishedAt     time.Time
+	InvocationJSON jsoninput.Input
+	RequestJSON    jsoninput.Input
+	ResponseJSON   jsoninput.Input
+}
+
+func (o EndpointObservation) Clone() EndpointObservation {
+	o.Invocation.Request = o.Invocation.Request.Clone()
+	o.Response = o.Response.Clone()
+	if o.CostUSD != nil {
+		o.CostUSD = new(*o.CostUSD)
+	}
+	return o
 }

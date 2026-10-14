@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
@@ -24,13 +25,14 @@ type EndpointJournal interface {
 type ObservedResolver struct {
 	resolver ChatModelResolver
 	journal  EndpointJournal
+	pricing  accounting.Pricing
 }
 
-func NewObservedResolver(resolver ChatModelResolver, journal EndpointJournal) (*ObservedResolver, error) {
+func NewObservedResolver(resolver ChatModelResolver, journal EndpointJournal, pricing accounting.Pricing) (*ObservedResolver, error) {
 	if dependency.Missing(resolver) || dependency.Missing(journal) {
 		return nil, errors.New("model: resolver and endpoint journal are required")
 	}
-	return &ObservedResolver{resolver: resolver, journal: journal}, nil
+	return &ObservedResolver{resolver: resolver, journal: journal, pricing: pricing}, nil
 }
 
 func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (ResolvedChat, error) {
@@ -41,7 +43,7 @@ func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelref.S
 	if dependency.Missing(resolved.Model()) {
 		return ResolvedChat{}, errors.New("model: resolver returned no endpoint model")
 	}
-	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection}
+	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection, pricing: r.pricing}
 	var bound chat.Model = model
 	if stream, ok := resolved.Streamer(); ok {
 		bound = &streamedEndpoint{observedEndpoint: model, stream: stream}
@@ -63,6 +65,7 @@ type observedEndpoint struct {
 	inner     chat.Model
 	journal   EndpointJournal
 	selection modelref.Selection
+	pricing   accounting.Pricing
 }
 
 func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (modelref.EndpointInvocation, error) {
@@ -95,7 +98,15 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 	if cause != nil {
 		failure = cause.Error()
 	}
-	return m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{Response: response.Clone(), FinishedAt: time.Now().UTC(), Failure: failure})
+	var cost accounting.Cost
+	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && m.pricing != nil {
+		served := response.Metadata.Model
+		if served == "" {
+			served = invocation.Model
+		}
+		cost = m.pricing(invocation.Provider, served, response.Metadata.Usage)
+	}
+	return m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), Response: response.Clone(), FinishedAt: time.Now().UTC(), Failure: failure})
 }
 
 func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {

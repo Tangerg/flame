@@ -14,9 +14,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 var testTreeStores sync.Map
@@ -48,7 +50,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 		}
 		t.Cleanup(func() { _ = db.Close() })
 		journal := sqlite.NewModelInvocationStore(db)
-		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, fixtureEndpointJournal{ModelInvocationStore: journal, db: db})
+		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -199,4 +201,31 @@ func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, inv
 		}
 	}
 	return j.ModelInvocationStore.StartEndpointInvocation(ctx, invocation)
+}
+
+func newPricedObservedTestInteractionExecutor(t *testing.T, model chat.Model, pricing accounting.Pricing, config InteractionExecutorConfig) *InteractionExecutor {
+	t.Helper()
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "priced-model-evidence.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	journal := sqlite.NewModelInvocationStore(db)
+	var counter modeladapter.InputTokenCounter
+	if value, ok := model.(modeladapter.InputTokenCounter); ok {
+		counter = value
+	}
+	resolver, err := modeladapter.NewObservedResolver(interactionChatResolver(model, counter), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, pricing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.ModelEvidence = journal
+	config.ChatResolver = resolver
+	config.Lifetime = t.Context()
+	config.BuildID = interactionTestBuildID
+	executor, err := newTestConfiguredInteractionExecutor(t, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return executor
 }

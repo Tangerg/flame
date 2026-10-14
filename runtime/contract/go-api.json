@@ -3725,7 +3725,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.25\""
+          "value": "\"2026-10-14.26\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8001,6 +8001,11 @@
           "name": "ModelEndpointInvocation",
           "kind": "struct",
           "fields": [
+            {
+              "name": "CostUSD",
+              "type": "*float64",
+              "tag": "json:\"costUSD,omitzero\""
+            },
             {
               "name": "ID",
               "type": "string",

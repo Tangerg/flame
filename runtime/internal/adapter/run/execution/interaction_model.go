@@ -175,13 +175,13 @@ func (o *observedInteractionModel) finishFailedCall(
 		return o.stopFailedCall(ctx, invocation, cause, err)
 	}
 	if response != nil {
-		return o.finishKnownFailedCall(ctx, invocation, callID, response, firstOutputLatencyMillis, cause)
+		return o.finishKnownFailedCall(ctx, invocation, callID, response.Response, firstOutputLatencyMillis, cause)
 	}
 	projectionErr := o.fail(ctx, invocation, callID, observation, firstOutputLatencyMillis)
 	return o.stopFailedCall(ctx, invocation, cause, projectionErr)
 }
 
-func (o *observedInteractionModel) knownEndpoint(ctx context.Context, callID string) (*corechat.Response, error) {
+func (o *observedInteractionModel) knownEndpoint(ctx context.Context, callID string) (*modelref.EndpointObservation, error) {
 	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
 	row, found, err := o.session.modelEvidence.EndpointForCaller(projectionCtx, callID)
@@ -200,7 +200,8 @@ func (o *observedInteractionModel) knownEndpoint(ctx context.Context, callID str
 	if err := row.Response.Validate(); err != nil {
 		return nil, err
 	}
-	return row.Response.Clone(), nil
+	value := row.Clone()
+	return &value, nil
 }
 
 func (o *observedInteractionModel) accountEndpoint(ctx context.Context, invocation interaction.ModelInvocation, callID string) (runs.ModelCallCompleted, error) {
@@ -211,7 +212,11 @@ func (o *observedInteractionModel) accountEndpoint(ctx context.Context, invocati
 	if response == nil {
 		return runs.ModelCallCompleted{}, errors.New("execution: completed model operation has no known physical endpoint evidence")
 	}
-	return o.session.accounting.accountModelCall(invocation, callID, response)
+	cost, err := accounting.CostFromOptional(response.CostUSD)
+	if err != nil {
+		return runs.ModelCallCompleted{}, err
+	}
+	return o.session.accounting.accountModelCall(invocation, callID, response.Response, cost)
 }
 
 func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation interaction.ModelInvocation, cause, projectionErr error) error {
@@ -364,7 +369,7 @@ func (o *observedInteractionModel) Streams() bool { return !dependency.Missing(o
 func modelUsage(
 	response *corechat.Response,
 	selection modelref.Selection,
-	pricing accounting.Pricing,
+	cost accounting.Cost,
 ) (accounting.ModelUsage, error) {
 	var metadata corechat.ResponseMetadata
 	if response.Metadata != nil {
@@ -373,10 +378,6 @@ func modelUsage(
 	servedModel := metadata.Model
 	if servedModel == "" {
 		servedModel = selection.Model()
-	}
-	var cost accounting.Cost
-	if pricing != nil {
-		cost = pricing(selection.Provider(), servedModel, metadata.Usage)
 	}
 	var reported corechat.Usage
 	if metadata.Usage != nil {

@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -88,7 +87,6 @@ type InteractionExecutorConfig struct {
 	LifecycleHooks            InteractionLifecycleHooks
 	ToolResultStore           toolResultOffloader
 	ToolResultOffload         ToolResultOffloadPolicyValues
-	Pricing                   accounting.Pricing
 	UnknownEffectPollInterval *time.Duration
 	StatePollInterval         *time.Duration
 }

@@ -2137,6 +2137,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ModelEndpointInvocation: allOf([
     object({
       caller: ref(() => CHECKS.Invocation),
+      costUSD: allOf([numeric(), minimum(0)]),
       failure: text(),
       id: allOf([text(), minLength(1), pattern("^[^\\p{C}\\p{Z}]*$")]),
       model: allOf([text(), minLength(1)]),
@@ -2158,6 +2159,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         state: literal("started"),
       }, ["state"]),
       fields({
+        costUSD: absent(),
         failure: absent(),
         response: absent(),
         settledAt: absent(),
@@ -2182,6 +2184,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         state: literal("unknown"),
       }, ["state"]),
       fields({
+        costUSD: absent(),
         response: absent(),
       }, ["failure", "settledAt"]),
     ),

@@ -47,11 +47,10 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		interactionUsageTextResponse("done", 11, 3),
 	}}
 	hooks := &recordingInteractionHooks{}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+	executor := newPricedObservedTestInteractionExecutor(t, model, fixedInteractionPricing(0.25), InteractionExecutorConfig{
 		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolPresenter: testInteractionToolPresenter{},
 		ToolAuthorizer: allowInteractionTools{}, ToolHooks: hooks,
-		Pricing: fixedInteractionPricing(0.25),
 	})
 
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)

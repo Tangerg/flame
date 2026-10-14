@@ -79,6 +79,32 @@ func (t Totals) Equal(other Totals) bool {
 	return *t.CostUSD == *other.CostUSD
 }
 
+func (t Totals) Add(other Totals) (Totals, error) {
+	if err := t.Validate(); err != nil {
+		return Totals{}, err
+	}
+	if err := other.Validate(); err != nil {
+		return Totals{}, err
+	}
+	tokens, err := t.Tokens.Add(other.Tokens)
+	if err != nil {
+		return Totals{}, err
+	}
+	left, err := CostFromOptional(t.CostUSD)
+	if err != nil {
+		return Totals{}, err
+	}
+	right, err := CostFromOptional(other.CostUSD)
+	if err != nil {
+		return Totals{}, err
+	}
+	cost, err := left.Add(right)
+	if err != nil {
+		return Totals{}, err
+	}
+	return Totals{Tokens: tokens, CostUSD: cost.OptionalUSD()}, nil
+}
+
 // Usage is cumulative accounting for a Run. Total remains authoritative when
 // a provider cannot attribute usage to individual models; ByModel is the
 // optional breakdown and never replaces the total.

@@ -2334,3 +2334,33 @@ compaction input or the transcript. Compaction budgets count it. Restoring a wai
 rebuilds the same deferred set, which the deployment configuration digest already binds,
 so the catalog is the same projection after restore or compaction. A layer with no
 deferred tools has neither `search_tools` nor the catalog message.
+
+
+## Physical model pricing and interrupted accounting
+
+Core 2026-10-14.26 adds optional `costUSD` to physical endpoint observations.
+The endpoint records the exact provider and served model's known price beside
+its response in the existing invocation journal. An absent price stays absent;
+reported zero remains zero. Interaction consumes this source price and no longer
+has an independent pricing callback. Auxiliary completions use the same recorder.
+
+Restart recovery may find a known physical result behind an open logical call.
+The existing recovery planner includes that immutable evidence, adds its previously
+uncommitted usage/call count/cost to the original Run and settles the logical call
+as failed with a known response. The logical settlement and Run replacement share
+one transaction and source identity/value checks. Failure rolls both back; a later
+pass cannot charge the settled call twice. No model request, Tool proposal or
+semantic response continuation is reconstructed from that evidence. Calls with
+no known result remain unknown. Missing reported usage and prices are not guessed
+or recalculated from the current catalog.
+
+The SQLite endpoint price column changes the pre-release schema. Rebuild clients
+and use a fresh data directory; incompatible directories are refused and must be
+retained separately. There is no conversion, old-schema reader or dual write. Stored
+admission/response values use the existing canonical JSON input codec so exact
+recovery checks retain numeric evidence instead of re-encoding a read DTO.
+
+This covers current single-call Interaction accrual and boot loss recovery. Global/
+unattached retention and aggregation, auxiliary attribution to usage totals,
+multiple explicitly admitted requests, embedding metering and semantic model
+selection/input transformation contracts remain under development.

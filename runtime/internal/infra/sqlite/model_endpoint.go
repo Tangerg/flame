@@ -6,15 +6,19 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),endpoint_cost_usd,usage`
 
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
@@ -27,7 +31,15 @@ type storedEndpointInvocation struct {
 }
 
 func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error) {
-	return encodeStoredJSON(storedEndpointInvocation{ID: value.ID, Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, Request: value.Request, StartedAt: value.StartedAt})
+	data, err := encodeStoredJSON(storedEndpointInvocation{ID: value.ID, Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, Request: value.Request, StartedAt: value.StartedAt})
+	if err != nil {
+		return nil, err
+	}
+	input, err := jsoninput.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(input.String()), nil
 }
 
 func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation) error {
@@ -71,6 +83,12 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if err := invocation.Validate(); err != nil {
 		return err
 	}
+	if _, err := accounting.CostFromOptional(outcome.CostUSD); err != nil {
+		return err
+	}
+	if outcome.CostUSD != nil && (outcome.Response == nil || outcome.Response.Metadata == nil || outcome.Response.Metadata.Usage == nil) {
+		return errors.New("sqlite: endpoint price requires known reported usage")
+	}
 	if outcome.Response == nil && outcome.Failure == "" {
 		return errors.New("sqlite: missing endpoint response requires uncertainty evidence")
 	}
@@ -82,6 +100,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	}
 	state := modelInvocationUnknown.databaseValue()
 	var response *string
+	var encodedUsage *string
 	var usage *chat.Usage
 	if outcome.Response != nil {
 		if err := outcome.Response.Validate(); err != nil {
@@ -91,7 +110,11 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 		if err != nil {
 			return err
 		}
-		response = new(string(data))
+		input, err := jsoninput.Parse(data)
+		if err != nil {
+			return err
+		}
+		response = new(input.String())
 		if outcome.Response.Metadata != nil {
 			usage = outcome.Response.Metadata.Usage
 		}
@@ -108,8 +131,8 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if err != nil {
 		return err
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?
-		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure,
+	result, err := Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
+		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.CostUSD,
 		invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded))
 	if err != nil {
 		return err
@@ -125,7 +148,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 }
 
 func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, parent string, before int64, beforeID string, limit int) ([]modelref.EndpointObservation, error) {
-	query := `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
+	query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
 	args := []any{parent, parent}
 	if beforeID != "" {
 		query += ` AND (started_at,call_id)<(?,?)`
@@ -158,7 +181,12 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var startedAt int64
 	var finishedAt *int64
 	var response *string
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID); err != nil {
+	var encodedUsage *string
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.CostUSD, &encodedUsage); err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	value.InvocationJSON, err = jsoninput.Parse([]byte(encoded))
+	if err != nil {
 		return modelref.EndpointObservation{}, err
 	}
 	var admission storedEndpointInvocation
@@ -208,6 +236,26 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 			return modelref.EndpointObservation{}, fmt.Errorf("sqlite: endpoint response evidence is invalid")
 		}
 	}
+	var usage *chat.Usage
+	if encodedUsage != nil {
+		usage, err = decodeModelInvocationUsage(*encodedUsage)
+		if err != nil {
+			return modelref.EndpointObservation{}, err
+		}
+	}
+	var reported *chat.Usage
+	if value.Response != nil && value.Response.Metadata != nil {
+		reported = value.Response.Metadata.Usage
+	}
+	if !reflect.DeepEqual(usage, reported) {
+		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint usage differs from known response")
+	}
+	if _, err := accounting.CostFromOptional(value.CostUSD); err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	if value.CostUSD != nil && (value.Response == nil || value.Response.Metadata == nil || value.Response.Metadata.Usage == nil) {
+		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint price has no reported usage")
+	}
 	if finishedAt != nil {
 		value.FinishedAt = time.Unix(0, *finishedAt).UTC()
 		if value.FinishedAt.Before(value.Invocation.StartedAt) {
@@ -246,7 +294,7 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 }
 
 func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
+	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
 	value, err := scanEndpointObservation(row, caller)
 	if errors.Is(err, sql.ErrNoRows) {
 		return modelref.EndpointObservation{}, false, nil
@@ -260,7 +308,7 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return nil, err
 	}
-	rows, err := Connection(ctx, m.db).QueryContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,session_id,COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
+	rows, err := Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +325,56 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 }
 
 func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID, id string) (modelref.EndpointObservation, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,session_id,COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
+	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
 	return scanEndpointObservation(row, "")
+}
+
+// RecoverModelInvocation projects known physical evidence into a failed logical
+// attempt, or closes an unobserved attempt as unknown. The source CAS joins the
+// existing Run recovery transaction and never permits replay or continuation.
+func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessionID, runID, segmentID, callID string, startedAt, finishedAt time.Time, source *modelref.EndpointObservation) error {
+	if source == nil {
+		return m.MarkModelInvocationUnknown(ctx, sessionID, runID, segmentID, callID, startedAt, finishedAt)
+	}
+	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
+		return err
+	}
+	if err := instant.Validate(startedAt, finishedAt); err != nil {
+		return err
+	}
+	if source.RunID != runID || source.SessionID != sessionID || source.Invocation.Caller.ID != callID || source.Response == nil || finishedAt.Before(source.FinishedAt) || source.Invocation.StartedAt.Before(startedAt) {
+		return errors.New("sqlite: recovered endpoint differs from original call")
+	}
+	if err := source.ResponseJSON.Validate(); err != nil {
+		return err
+	}
+	if err := source.InvocationJSON.Validate(); err != nil {
+		return err
+	}
+	var reported *chat.Usage
+	if source.Response.Metadata != nil {
+		reported = source.Response.Metadata.Usage
+	}
+	usage, err := encodeModelInvocationUsage(reported)
+	if err != nil {
+		return err
+	}
+	result, err := Connection(ctx, m.db).ExecContext(ctx, `WITH evidence AS (
+	 SELECT usage,known_response FROM model_invocations WHERE call_id=? AND endpoint_json=? AND session_id=? AND run_id=? AND segment_id=?
+	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_usd IS ? AND endpoint_failure=? AND usage IS ?)
+	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
+	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`,
+		source.Invocation.ID, source.InvocationJSON.String(), sessionID, runID, segmentID, source.State, source.FinishedAt.UTC().UnixNano(), source.ResponseJSON.String(), source.CostUSD, source.Failure, usage,
+		modelInvocationFailed.databaseValue(), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, modelInvocationStarted.databaseValue(), startedAt.UTC().UnixNano())
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return errors.New("sqlite: recovered endpoint or logical call changed before settlement")
+	}
+	return nil
 }

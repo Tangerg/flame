@@ -305,7 +305,6 @@ func buildExecutionComposition(
 		ModelContextCompactor:   modelContextCompactor,
 		ModelContextState:       workingContexts,
 		LifecycleHooks:          workingContexts,
-		Pricing:                 cfg.Pricing,
 	}
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver

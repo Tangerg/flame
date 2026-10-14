@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.25",
+  "protocolVersion": "2026-10-14.26",
   "features": [
     "reasoning",
     "multimodal",
@@ -4622,7 +4622,8 @@
           "forbidden": [
             "settledAt",
             "response",
-            "failure"
+            "failure",
+            "costUSD"
           ]
         },
         {
@@ -4668,7 +4669,8 @@
             "failure"
           ],
           "forbidden": [
-            "response"
+            "response",
+            "costUSD"
           ]
         }
       ]
@@ -7902,6 +7904,10 @@
         {
           "field": "runId",
           "constraint": "maxLength(256)"
+        },
+        {
+          "field": "costUSD",
+          "constraint": "nonNegative"
         },
         {
           "field": "id",

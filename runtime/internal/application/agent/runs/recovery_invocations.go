@@ -12,7 +12,13 @@ import (
 // Validate checks one incomplete provider attempt before it can influence boot
 // recovery planning.
 func (o OpenModelInvocation) Validate() error {
-	return validateOpenInvocation(o.SessionID, o.RunID, o.SegmentID, o.CallID, o.StartedAt)
+	if err := validateOpenInvocation(o.SessionID, o.RunID, o.SegmentID, o.CallID, o.StartedAt); err != nil {
+		return err
+	}
+	if o.Endpoint != nil {
+		return validateRecoveryEndpoint(o.Endpoint, o.SessionID, o.RunID, o.CallID, o.StartedAt, o.Endpoint.FinishedAt)
+	}
+	return nil
 }
 
 // Validate checks one incomplete Tool attempt and its Transcript Item identity
@@ -104,6 +110,13 @@ func validateOpenInvocationOwners(
 		}
 	}
 	for index, invocation := range models {
+		if invocation.Endpoint != nil {
+			for _, tree := range trees {
+				if active, ok := tree.runsByID[invocation.RunID]; ok && (invocation.Endpoint.Invocation.Provider != active.ModelSelection().Provider() || invocation.Endpoint.Invocation.Model != active.ModelSelection().Model()) {
+					return errors.New("runs: recovery endpoint differs from captured model selection")
+				}
+			}
+		}
 		if err := validateOpenInvocationOwner(
 			"model", index, invocation.SessionID, invocation.RunID, invocation.SegmentID, activeRuns,
 		); err != nil {

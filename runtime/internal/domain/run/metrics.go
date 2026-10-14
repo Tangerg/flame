@@ -3,6 +3,9 @@ package run
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/scope/core/chat"
+	"math"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -100,3 +103,59 @@ func (m Metrics) Steps() int { return m.steps }
 
 // ActiveDuration returns the cumulative time spent executing.
 func (m Metrics) ActiveDuration() time.Duration { return m.activeDuration }
+
+// AccrueModelCall adds only a known, not-yet-committed provider call. The journal
+// transition and Run replacement commit together; a restarted pass cannot add it twice.
+func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *float64) (Metrics, error) {
+	if err := m.Validate(); err != nil {
+		return Metrics{}, err
+	}
+	if _, err := modelref.NewModelIdentity(model); err != nil {
+		return Metrics{}, err
+	}
+	cost, err := accounting.CostFromOptional(costUSD)
+	if err != nil {
+		return Metrics{}, err
+	}
+	if m.steps == math.MaxInt {
+		return Metrics{}, errors.New("run: recovered model call count overflows")
+	}
+	if reported == nil {
+		if costUSD != nil {
+			return Metrics{}, errors.New("run: model price requires reported usage")
+		}
+		if m.usage != nil {
+			usage := m.usage.Clone()
+			usage.Total.CostUSD = nil
+			if value, ok := usage.ByModel[model]; ok {
+				value.CostUSD = nil
+				usage.ByModel[model] = value
+			}
+			m.usage = &usage
+		}
+		return NewMetrics(m.usage, m.steps+1, m.activeDuration)
+	}
+	tokens, err := accounting.NewTokens(*reported)
+	if err != nil {
+		return Metrics{}, err
+	}
+	delta := accounting.Totals{Tokens: tokens, CostUSD: cost.OptionalUSD()}
+	usage := accounting.Usage{Total: delta, ByModel: map[string]accounting.Totals{model: delta}}
+	if m.usage != nil {
+		usage = m.usage.Clone()
+		usage.Total, err = usage.Total.Add(delta)
+		if err != nil {
+			return Metrics{}, err
+		}
+		if usage.ByModel != nil {
+			if current, exists := usage.ByModel[model]; exists {
+				delta, err = current.Add(delta)
+				if err != nil {
+					return Metrics{}, err
+				}
+			}
+			usage.ByModel[model] = delta
+		}
+	}
+	return NewMetrics(&usage, m.steps+1, m.activeDuration)
+}

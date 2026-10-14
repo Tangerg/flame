@@ -6,8 +6,10 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -27,7 +29,7 @@ func cloneRecoveryCommitInput(state RecoveryCommitInput) RecoveryCommitInput {
 	state.LostRuns = slices.Clone(state.LostRuns)
 	state.ItemReplacements = slices.Clone(state.ItemReplacements)
 	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)
-	state.ModelInvocations = slices.Clone(state.ModelInvocations)
+	state.ModelInvocations = cloneRecoveryModels(state.ModelInvocations)
 	state.ToolInvocations = slices.Clone(state.ToolInvocations)
 	state.DeleteInterrupts = slices.Clone(state.DeleteInterrupts)
 	state.PreservedSessionIDs = slices.Clone(state.PreservedSessionIDs)
@@ -60,9 +62,10 @@ func (r RecoveryCommit) ConversationTransitions() []RecoveryConversationTransiti
 	return cloneRecoveryConversationTransitions(r.state.ConversationTransitions)
 }
 
-// ModelInvocations returns provider attempts closed as unknown.
+// ModelInvocations returns abandoned logical attempts with their known physical
+// evidence, if any. It never authorizes continuation or provider replay.
 func (r RecoveryCommit) ModelInvocations() []ModelInvocationRecovery {
-	return slices.Clone(r.state.ModelInvocations)
+	return cloneRecoveryModels(r.state.ModelInvocations)
 }
 
 // ToolInvocations returns Tool attempts closed as incomplete.
@@ -235,6 +238,9 @@ func validateRecoveryModelInvocations(
 			recoveredSessions,
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
+		}
+		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.SessionID, invocation.RunID, invocation.CallID, invocation.StartedAt, invocation.FinishedAt); err != nil {
+			return err
 		}
 		if _, duplicate := seen[invocation.CallID]; duplicate {
 			return fmt.Errorf("runs: recovery commit repeats model invocation %q", invocation.CallID)
@@ -533,4 +539,40 @@ func (r RecoveryCommit) RecoveredSessionIDs() []string {
 	values := append(r.lostRootSessionIDs(), r.state.PreservedSessionIDs...)
 	slices.Sort(values)
 	return values
+}
+
+func cloneRecoveryModels(values []ModelInvocationRecovery) []ModelInvocationRecovery {
+	cloned := slices.Clone(values)
+	for index, value := range cloned {
+		if value.Endpoint != nil {
+			source := value.Endpoint.Clone()
+			cloned[index].Endpoint = &source
+		}
+	}
+	return cloned
+}
+
+func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, runID, callID string, startedAt, finishedAt time.Time) error {
+	if source == nil {
+		return nil
+	}
+	if err := source.Invocation.Validate(); err != nil {
+		return err
+	}
+	if source.Response == nil || (source.State != "completed" && source.State != "failed") {
+		return errors.New("runs: recovery endpoint has no known outcome")
+	}
+	if err := source.Response.Validate(); err != nil {
+		return err
+	}
+	if source.SessionID != sessionID || source.RunID != runID || source.Invocation.Caller.ID != callID || source.Invocation.StartedAt.Before(startedAt) || source.FinishedAt.Before(source.Invocation.StartedAt) || source.FinishedAt.After(finishedAt) {
+		return errors.New("runs: recovery endpoint differs from its original call")
+	}
+	if _, err := accounting.CostFromOptional(source.CostUSD); err != nil {
+		return err
+	}
+	if source.CostUSD != nil && (source.Response.Metadata == nil || source.Response.Metadata.Usage == nil) {
+		return errors.New("runs: recovery endpoint price has no reported usage")
+	}
+	return nil
 }

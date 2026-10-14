@@ -35,7 +35,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewModelInvocationStore(db)
-	resolve, err := NewObservedResolver(recordingChatResolver{resolve: func(_ modelref.Selection) (ResolvedChat, error) { return NewResolvedChat(endpointStreamFixture{}, nil) }}, store)
+	resolve, err := NewObservedResolver(recordingChatResolver{resolve: func(_ modelref.Selection) (ResolvedChat, error) { return NewResolvedChat(endpointStreamFixture{}, nil) }}, store, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

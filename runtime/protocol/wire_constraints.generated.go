@@ -1746,6 +1746,7 @@ func (m ModelEndpointInvocation) ValidateWire() error {
 		maxLength("sessionId", m.SessionID, 256),
 		identity("runId", m.RunID),
 		maxLength("runId", m.RunID, 256),
+		optionalNonNegativeNumber("costUSD", m.CostUSD),
 		identity("id", m.ID),
 		requiredText("id", m.ID),
 		requiredText("provider", m.Provider),
@@ -1756,6 +1757,7 @@ func (m ModelEndpointInvocation) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "response", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "failure", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "costUSD", m),
 		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
 		requiredWhen(wireFieldEquals(m, "state", "completed"), "response", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "completed"), "failure", m),
@@ -1765,6 +1767,7 @@ func (m ModelEndpointInvocation) ValidateWire() error {
 		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
 		requiredWhen(wireFieldEquals(m, "state", "unknown"), "failure", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "response", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "costUSD", m),
 	)
 }
 

@@ -12,6 +12,7 @@ type ListModelEndpointsRequest struct {
 }
 
 type ModelEndpointInvocation struct {
+	CostUSD   *float64              `json:"costUSD,omitzero"`
 	ID        string                `json:"id"`
 	SessionID string                `json:"sessionId,omitzero"`
 	RunID     string                `json:"runId,omitzero"`

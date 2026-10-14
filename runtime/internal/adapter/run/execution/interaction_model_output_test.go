@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -31,7 +32,7 @@ func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *t
 			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return interactionUsageTextResponse("physical answer", 12, 3), nil
 			})
-			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db})
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) accounting.Cost { value, _ := accounting.NewCost(0.25); return value })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,6 +59,18 @@ func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *t
 				t.Fatal(err)
 			}
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			for _, fact := range payloadsOf[runs.ModelCallCompleted](events) {
+				if usd, known := fact.Cost.USD(); !known || usd != 0.25 {
+					t.Fatal("outer completion replaced source price")
+				}
+			}
+			for _, fact := range payloadsOf[runs.ModelCallFailed](events) {
+				if fact.Accounting != nil {
+					if usd, known := fact.Accounting.Cost.USD(); !known || usd != 0.25 {
+						t.Fatal("outer failure lost source price")
+					}
+				}
+			}
 			if withhold {
 				failed := payloadsOf[runs.ModelCallFailed](events)
 				if len(failed) != 1 || failed[0].Accounting == nil || failed[0].Accounting.ReportedUsage.InputTokens != 12 || failed[0].Accounting.ReportedUsage.OutputTokens != 3 || failed[0].Accounting.Steps != 1 || failed[0].KnownResponse.Text() != "physical answer" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {

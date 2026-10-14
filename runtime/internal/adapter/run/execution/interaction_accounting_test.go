@@ -42,7 +42,7 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
 	runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
 
-	ledger := newInteractionAccounting(testDefaultSelection(), nil)
+	ledger := newInteractionAccounting(testDefaultSelection())
 	processID := invocation.Relation().ProcessID()
 	ledger.usageByProcess[processID] = map[string]accounting.ModelUsage{
 		"test-model": {Model: "test-model", Calls: 1},
@@ -52,7 +52,7 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	}
 	before := maps.Clone(ledger.usageByProcess[processID])
 
-	_, err := ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1))
+	_, err := ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1), accounting.Cost{})
 	if err == nil || !strings.Contains(err.Error(), "differs from accounted calls") {
 		t.Fatalf("account duplicate call error = %v", err)
 	}

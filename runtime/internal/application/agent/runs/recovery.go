@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -82,9 +83,10 @@ type RecoveryCommitInput struct {
 }
 
 // OpenModelInvocation is an operational provider attempt that crossed the
-// external boundary but has no durable terminal observation. Because boot
-// recovery runs before executor admission, no live process can still own it.
+// external boundary but has no durable outer settlement. A physical result
+// may already be known. Boot recovery precedes new executor admission.
 type OpenModelInvocation struct {
+	Endpoint  *modelref.EndpointObservation
 	SessionID string
 	RunID     string
 	SegmentID string
@@ -104,10 +106,12 @@ type OpenToolInvocation struct {
 	StartedAt time.Time
 }
 
-// ModelInvocationRecovery marks one boot-abandoned provider attempt unknown.
+// ModelInvocationRecovery closes a boot-abandoned outer operation. A known
+// physical response remains evidence under failure; absence remains unknown.
 // The state is implied by the recovery operation rather than stored as an
 // application enum in the persistence port.
 type ModelInvocationRecovery struct {
+	Endpoint   *modelref.EndpointObservation
 	SessionID  string
 	RunID      string
 	SegmentID  string
@@ -428,6 +432,9 @@ func newRecoveryPlanner(
 	}
 	for _, invocation := range modelInvocations {
 		planner.observeTime(invocation.StartedAt)
+		if invocation.Endpoint != nil {
+			planner.observeTime(invocation.Endpoint.FinishedAt)
+		}
 	}
 	for _, invocation := range toolInvocations {
 		planner.observeTime(invocation.StartedAt)
@@ -447,7 +454,7 @@ func newRecoveryPlanner(
 	for _, invocation := range modelInvocations {
 		planner.commit.ModelInvocations = append(planner.commit.ModelInvocations, ModelInvocationRecovery{
 			SessionID: invocation.SessionID, RunID: invocation.RunID, SegmentID: invocation.SegmentID,
-			CallID: invocation.CallID, StartedAt: invocation.StartedAt, FinishedAt: planner.finishedAt,
+			CallID: invocation.CallID, StartedAt: invocation.StartedAt, FinishedAt: planner.finishedAt, Endpoint: invocation.Endpoint,
 		})
 	}
 	for _, invocation := range toolInvocations {
@@ -567,7 +574,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		)
 	}
 	messageMark := history.Count() + len(closure)
-	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss)
+	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss, r.commit.ModelInvocations)
 	if err != nil {
 		return err
 	}
@@ -650,6 +657,7 @@ func recoverLostTree(
 	messageMark int,
 	finishedAt time.Time,
 	loss Loss,
+	models []ModelInvocationRecovery,
 ) ([]rundomain.Replacement, []transcript.Replacement, error) {
 	failure, err := loss.failure()
 	if err != nil {
@@ -677,6 +685,32 @@ func recoverLostTree(
 		}
 
 		replacement, err := rundomain.Replace(active, func(active rundomain.Run) (rundomain.Run, error) {
+			for _, invocation := range models {
+				if invocation.RunID != active.ID() || invocation.Endpoint == nil {
+					continue
+				}
+				source := invocation.Endpoint
+				served := source.Invocation.Model
+				var reported *corechat.Usage
+				if source.Response.Metadata != nil {
+					reported = source.Response.Metadata.Usage
+					if source.Response.Metadata.Model != "" {
+						served = source.Response.Metadata.Model
+					}
+				}
+				metrics, err := active.Metrics().AccrueModelCall(served, reported, source.CostUSD)
+				if err != nil {
+					return rundomain.Run{}, err
+				}
+				contextTokens := active.ContextTokens()
+				if reported != nil && reported.InputTokens > 0 {
+					contextTokens = reported.InputTokens
+				}
+				active, err = active.AdvanceProgress(metrics, contextTokens, finishedAt)
+				if err != nil {
+					return rundomain.Run{}, err
+				}
+			}
 			return active.RecoverLost(failure, finishedAt, active.Lineage().MessageMark(messageMark))
 		})
 		if err != nil {

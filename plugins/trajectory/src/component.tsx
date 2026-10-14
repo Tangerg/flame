@@ -111,6 +111,7 @@ function Observation({ row }: { row: TrajectoryEntry }) {
       ["Calling operation", row.endpoint.caller.id],
       ["Parent operation", row.endpoint.caller.parent ?? "Unrecorded"],
       ["Origin", row.endpoint.caller.origin],
+      ["Cost (USD)", row.endpoint.costUSD ?? "Unpriced"],
       ["Recorded settlement", row.endpoint.settledAt ?? "Unrecorded"],
     );
     if (row.endpoint.failure) notes.push(row.endpoint.failure);

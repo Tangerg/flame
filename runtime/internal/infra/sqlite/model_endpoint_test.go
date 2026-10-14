@@ -100,3 +100,28 @@ func TestSessionEndpointDeletionIsAtomicAndRetainsUnrelatedEvidence(t *testing.T
 		t.Fatalf("deleted Session trajectory: %v", err)
 	}
 }
+
+func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
+	invocation := modelref.EndpointInvocation{ID: "endpoint_usage", Caller: capability.Invocation{ID: "caller_usage", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "caller_usage"}}, Provider: "anthropic", Model: "captured-model", Request: request, StartedAt: time.Now().UTC()}
+	store := sqlite.NewModelInvocationStore(db)
+	if err := store.StartEndpointInvocation(t.Context(), invocation); err != nil {
+		t.Fatal(err)
+	}
+	message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}}
+	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, FinishedAt: invocation.StartedAt.Add(time.Second), CostUSD: new(0.0)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET usage=json_set(usage,'$.inputTokens',13) WHERE call_id=?`, invocation.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := store.EndpointForCaller(t.Context(), invocation.Caller.ID); err == nil {
+		t.Fatal("usage projection competed with original response")
+	}
+}

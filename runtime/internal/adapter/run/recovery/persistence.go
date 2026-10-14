@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -57,11 +58,8 @@ type ModelInvocationStore interface {
 		ctx context.Context,
 		yield func(sessionID, runID, segmentID, callID string, startedAt time.Time) error,
 	) error
-	MarkModelInvocationUnknown(
-		ctx context.Context,
-		sessionID, runID, segmentID, callID string,
-		startedAt, finishedAt time.Time,
-	) error
+	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
+	RecoverModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *modelref.EndpointObservation) error
 }
 
 type ToolInvocationStore interface {
@@ -176,6 +174,22 @@ func (p *Persistence) ListOpenModelInvocations(ctx context.Context) ([]runs.Open
 	if err != nil {
 		return nil, fmt.Errorf("recovery: list open model invocations: %w", err)
 	}
+	for index, invocation := range invocations {
+		source, found, err := p.modelInvocations.EndpointForCaller(ctx, invocation.CallID)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			continue
+		}
+		if source.SessionID != invocation.SessionID || source.RunID != invocation.RunID || source.Invocation.Caller.ID != invocation.CallID {
+			return nil, errors.New("recovery: endpoint differs from its logical call ownership")
+		}
+		if source.Response != nil {
+			value := source.Clone()
+			invocations[index].Endpoint = &value
+		}
+	}
 	return invocations, nil
 }
 
@@ -224,7 +238,7 @@ func (p *Persistence) CommitRecovery(ctx context.Context, commit runs.RecoveryCo
 }
 
 func (p *Persistence) applyRecovery(ctx context.Context, commit runs.RecoveryCommit) error {
-	if err := p.markModelInvocationsUnknown(ctx, commit); err != nil {
+	if err := p.recoverModelInvocations(ctx, commit); err != nil {
 		return err
 	}
 	if err := p.markToolInvocationsIncomplete(ctx, commit); err != nil {
@@ -251,9 +265,9 @@ func (p *Persistence) applyRecovery(ctx context.Context, commit runs.RecoveryCom
 	return p.deleteChildRunStartReservations(ctx, commit)
 }
 
-func (p *Persistence) markModelInvocationsUnknown(ctx context.Context, commit runs.RecoveryCommit) error {
+func (p *Persistence) recoverModelInvocations(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, invocation := range commit.ModelInvocations() {
-		if err := p.modelInvocations.MarkModelInvocationUnknown(
+		if err := p.modelInvocations.RecoverModelInvocation(
 			ctx,
 			invocation.SessionID,
 			invocation.RunID,
@@ -261,9 +275,10 @@ func (p *Persistence) markModelInvocationsUnknown(ctx context.Context, commit ru
 			invocation.CallID,
 			invocation.StartedAt,
 			invocation.FinishedAt,
+			invocation.Endpoint,
 		); err != nil {
 			return fmt.Errorf(
-				"recovery: mark model invocation %q unknown: %w",
+				"recovery: settle abandoned model invocation %q: %w",
 				invocation.CallID,
 				err,
 			)

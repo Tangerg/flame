@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.25` · 100 methods
+Protocol `2026-10-14.26` · 100 methods
 
 ## Methods
 
@@ -821,6 +821,7 @@ TypeScript validator from this single registry projection.
 | `ModelEndpointInvocation` | `sessionId` | `maxLength(256)` |
 | `ModelEndpointInvocation` | `runId` | `identity` |
 | `ModelEndpointInvocation` | `runId` | `maxLength(256)` |
+| `ModelEndpointInvocation` | `costUSD` | `nonNegative` |
 | `ModelEndpointInvocation` | `id` | `identity` |
 | `ModelEndpointInvocation` | `id` | `nonEmpty` |
 | `ModelEndpointInvocation` | `provider` | `nonEmpty` |
