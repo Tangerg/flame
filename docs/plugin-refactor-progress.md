@@ -2,57 +2,73 @@
 
 ## Current stage
 
-Stage 5o (fce9dd9af) replaces the Run-derived usage.session/usage.summary paths
-with one read of the retained physical model journal. Primary/delegated, auxiliary,
-active, Session-only and unattached calls now participate without adding Run usage
-again. Provider/served-model/admission-day/origin/association groupings reconcile
-with the same attempts. Run metrics retain execution and Goal ownership.
+Stage 5p (41076eb45) implements the public ordered primary Interaction context
+contribution boundary before capacity admission. Installed backends register
+ModelContextMethod/ModelContextContract and return valid Scope system messages.
+Each query carries the captured provider/model, complete current request and
+original automatic model-call/parent/target attribution without a command ID.
+Later contributors see earlier material in explicit captured order. Invalid,
+failed, withdrawn or changed contributors refuse before provider dispatch.
 
-Every report/bucket carries known token totals, recorded price subtotal and
-coverage (attempts, reported usage, priced attempts and four observed states).
-Total cost is available only when all selected retained attempts are priced;
-missing usage/price and unknown outcomes cannot look like recorded zero. Runs/
-Sessions count distinct associated owners and include active Runs. Recent windows
-use admission time and the existing positive calendar-day period owner.
+Context bindings freeze with the execution configuration/checkpoint and join the
+existing installation dependency owner. Waiting/cold restoration validates the
+original exact installation, release, contribution, export and contract; it does
+not select a replacement chain. Checkpoints require model_contexts, including
+explicit empty arrays. Former payloads are refused as an intentional pre-release
+break, without compatibility interpretation or data mutation.
 
-Source scan, Session existence and ownership checks share one transaction; one
-source body is materialized at a time. Invalid ownership, later corruption or
-overflow refuses the entire report. Old Run folds/listers/accumulator APIs are
-removed, with no fallback, cached writer, compatibility alias or fake auxiliary
-Run. Existing deletion owns retention: Run/Session deletion removes its evidence,
-and unattached records remain retained. Automatic historical pruning remains open.
+The existing per-call Session-tail preparation record now transfers both the
+contributed instruction prefix and Runtime tail. Capacity/compaction measures
+that complete request; the provider receives those exact prepared values. Scope
+adopts only original instructions plus the compacted authored conversation.
+Contributions cannot accumulate in WorkingContext/checkpoints or compete with
+conversation ownership. No extra journal, model execution authority or listener
+was introduced. Internal ModelComposition naming replaces the obsolete narrower
+ModelObservers owner type; transparent observer contracts remain independent.
 
-Core is 2026-10-14.27; backend 2026-10-14.2 and trajectory export schema 3 remain
-unchanged. Public Go/TS shapes, CLI binding/presentation, usage component and
-agent gateway's narrow totals projection are migrated. Existing frontend wire/
-visual/generation fixtures only changed their contract shape; no new UI scenario
-or UI/E2E/screenshot execution was added. Retired unbound Core schedule.json is
-removed rather than kept as fake canonical coverage.
+Passed: public contract validation; real installed MCP query attribution/order,
+invalid/failure/withdrawal/export replacement; two successive primary requests
+with/without compaction; capacity ownership and pre-provider refusal; frozen
+binding order/contract/dependency; waiting recovery without re-resolution; related
+observer/calibration/checkpoint regressions; Runtime build and Runtime/bootstrap
+test-source compilation; scoped dependency/domain/protocol/public-package gates.
+Initial test constructor/accessor errors, the old waiting fixture's input position
+and a renamed bootstrap field were corrected before these checks passed.
 
-Passed: application physical folds/coverage/provider identity/window/zero/partial
-failure/overflow/order; real SQL global/Session auxiliary/unattached/unknown,
-restart and foreign-owner rejection; Protocol bounds, canonical usage sample and
-sample catalog checks; Runtime/CLI builds, Runtime/bootstrap source compilation,
-CLI binding and terminal presentation checks; generation, shared TS/desktop type,
-plugin type/lint/resource reproduction/changed formatting, scoped dependency/
-domain/protocol gates, diff and original hashes. Introduced generation bootstrap,
-source compile and old terminal-text fixture errors were corrected before passing.
+Main 414668baa is integrated in fb525f9a9. Six shared-client merge conflicts were
+resolved by retaining installed command capture alongside the new original
+Start/Resume/Steer command union in the same durable journal. The obsolete Steer
+record/validator/pending API are removed; mixed installed/Run command records are
+refused. Shared client typecheck/lint/changed formatting and 76 focused command,
+stream, mutation, opening/Steer recovery and SDK checks passed. Incoming frontend
+source/tests are retained. Frontend typecheck/lint/format passed before an accidental
+aggregate npm run check entered prohibited UI tests; that process was immediately
+interrupted after discovery (exit 130). It exposed untriaged failures in theme
+schema, workspace topic invalidation and Memory application tests. This is not a
+passed UI suite and not evidence those failures predated this merge. Do not rerun
+UI/E2E/screenshot tests; inspect owners during the remaining acceptance audit.
 
-Main 1d5d98774 remains integrated (merge already up to date), originals/user stash
-are preserved and owned handles/temporary outputs are settled. The six earlier
-full architecture failures and unchanged Memory formatting failure remain final
-consolidated obligations. Full/native/vet/race/all-workflow/P01-P48 acceptance is
-still unproven. No credentialed live provider check was run.
+Original proposal/review/background draft hashes and the user's main stash remain
+unchanged. Owned processes/compile temporary directories have settled. Core
+2026-10-14.27, backend 2026-10-14.2 and export schema 3 are unchanged. Six earlier
+full architecture failures and the unchanged Memory formatting failure remain
+final obligations. Full/native/vet/race/all-workflow/P01-P48 acceptance is unproven.
 
-This closes retained physical chat usage reporting, including auxiliary/global
-attribution and truthful coverage. Embedding metering, multiple separately admitted
-calls, semantic model selection/input transformation, transitive dependencies,
-public author parity and complete retention policy remain open. Next implement
-the semantic model execution boundaries before consolidated final verification.
-Overall estimate remains approximately 65-70% full delivery and 75% implementation,
-not counted P01-P48 closure. The full goal remains active.
+Primary context composition closes this boundary only. Auxiliary context,
+model selection, general request transformation, multiple independently admitted
+calls, embeddings, transitive lifecycle, author parity and complete retention
+remain open. Next finish model-selection and auxiliary/context contracts before
+consolidated verification. Overall estimate remains 65-70% full delivery and
+approximately 75% implementation, not counted P01-P48 closure. Full goal active.
 
 ## Completed
+
+- Stage 5p (41076eb45): public ordered primary model context query, exact installed
+  admission/original attribution and failure before provider dispatch.
+- Stage 5p: one measured/sent ephemeral prefix+tail record, authored conversation
+  preserved across repeated calls, checkpoint/recovery and dependency retention.
+- Stage 5p: main 414668baa integrated in fb525f9a9, one shared durable installed/
+  Start/Resume/Steer command owner with no old Steer-only representation.
 
 - Stage 5o (fce9dd9af): retained physical chat evidence is the usage report source;
   no Run aggregation fallback or duplicate primary accounting remains.
@@ -561,6 +577,11 @@ not counted P01-P48 closure. The full goal remains active.
 
 ## In progress
 
+- Stage 5p closes primary pre-admission context contributions. Complete equivalent
+  auxiliary composition, public model route selection before exact selection and
+  capacity/metering, general admitted input transforms and separate multiple calls.
+  Do not claim the transparent observer path supplies those semantics.
+
 - All actual CLI/workspace Memory reads and human mutations now use the public
   installed publisher contract. Core business methods/DTOs and the Memory feature
   are removed, including Core records/enums. Business topics/record IDs and contract-specific notification routing are also
@@ -581,9 +602,9 @@ not counted P01-P48 closure. The full goal remains active.
 
 ## Next
 
-1. Complete semantic model selection/input transformations and multiple admitted
-   requests with original identity/budget ownership; then embedding metering and
-   complete evidence retention policy without adding another fact owner.
+1. Complete public model route selection, auxiliary context composition, general
+   input transformations and multiple independently admitted requests with exact
+   identity/capacity/budget ownership; then embeddings and complete retention.
 2. Complete scoped point/dependency lifecycle, observed status/retention and actual
    Tool/automatic/cross-plugin consumers with original command/Run ownership.
 3. Complete all-workflow generation recovery, independent author/module packaging,
@@ -593,6 +614,10 @@ not counted P01-P48 closure. The full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Primary input contributions are ordered query material before capacity admission; original exact bindings survive recovery | Retrieval/instructions must reach the semantic admission boundary without authority over routing or authored conversation | Observer-side mutation, persisted plugin messages, replacement resolution on restore or a separate contribution fact store |
+| 2026-10-14 | Extend the existing single-call prepared tail into ephemeral prefix/trailer material | Scope adopts reducer output; including plugin context there would accumulate messages and change conversation ownership | Returning ephemeral contributions as WorkingContext, independent request state, re-reading contributors after measurement |
+| 2026-10-14 | Require model_contexts in retained checkpoints with explicit empty capture | Missing captured order cannot prove which contributors belonged to the accepted execution | Silent empty fallback, compatibility adapter or current-provider reselection |
+| 2026-10-14 | Merge main's original RunCommand union with installed capture in the same client journal | Start/Resume/Steer and installed mutations retain their existing original request/receipt authority | Dropping either recovery path, retaining old Steer-only state/API, mixed installed/Run records or a second journal |
 | 2026-10-14 | Usage reports fold retained physical endpoints once; Run accounting stays the execution/Goal projection | Finished Run-only reads omit auxiliary/global/active work and combining both sources double-counts primary calls | Run fallback, summing logical and physical usage, completed-only reports or new aggregate storage/writer |
 | 2026-10-14 | Known token/price subtotals carry explicit source coverage; exact cost requires every selected attempt priced | Missing usage, price and unknown outcomes are evidence gaps, not recorded zero | Silent zero defaults, hiding unpriced/unknown attempts, presenting partial known cost as the complete bill or pricing at query time |
 | 2026-10-14 | Source admission time and actual provider/served model/origin/association own grouping | Run completion/selection cannot attribute detached work or establish actual model timing | Completion-date grouping, same-name model collapse across providers, invented auxiliary Run or separate grouping data |
@@ -802,6 +827,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| Primary model context contribution before admission | Stage 5p primary installed query/order/attribution/capacity/nonpersistence/waiting recovery and exact held release verified; auxiliary, selection and general transformation remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; corresponding tests |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory capacity removed with publisher bounds; business topics/record IDs and contract-specific notice routing removed; full Tool/dependency/streaming and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
@@ -838,6 +864,24 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5p: focused SDK/installed/execution contracts and related observer,
+  calibration, checkpoint checks passed (0.572s/1.070s/2.968s). New waiting
+  restoration assertion passed (1.231s) after accounting for the intentional
+  ephemeral system prefix while preserving original user/follow-up assertions.
+- Stage 5p: Runtime go build ./... and go test -c for Runtime/bootstrap passed.
+  Scoped dependency/domain purity/JSON-tag/protocol/public-package gates passed
+  (0.723s). Full native TestMain, vet/race and full architecture deferred.
+- Stage 5p main merge: shared client typecheck, conflict-file lint/format and 76
+  backend/client protocol unit checks passed in two focused runs (48 + 28).
+- Stage 5p deviation: aggregate frontend npm run check inadvertently entered UI
+  unit tests after typecheck/lint/format passed; interrupted with exit 130. Theme
+  schema (1), workspace topic invalidation (1), Memory configuration (3) and
+  Memory mutation owner (2) failures were observed in partial output; their
+  origin is untriaged and the suite was not completed. No UI/E2E test authored.
+  Future frontend verification uses independent static commands only.
+- Stage 5p: diff checks and original SHA-256 checks passed; user stash retained;
+  test/build compile temporary directories and owned processes settled.
 
 - Stage 5o: application physical usage/window/coverage/price/ordering/overflow
   checks passed (0.773s, final 0.456s). Real SQL main+auxiliary+unattached+unknown
@@ -2132,6 +2176,12 @@ Stage 2a verification:
 - No remote push, publication, main-history mutation, production operation or credentialed action was performed.
 
 ## Unresolved questions
+
+- Primary context is implemented; auxiliary use cases do not yet capture context
+  contributors. Model route selection and multiple-call semantics remain open.
+- The interrupted prohibited UI run exposed seven failures in partial output.
+  Attribution is unproven; inspect merged feature contracts and consumers without
+  authoring/running UI tests. This does not waive final integration requirements.
 
 - Stage 4p proves actual public read compilation, CLI contracts and binding refusal,
   not the complete native selection/withdrawal/restart matrix or rendered context
