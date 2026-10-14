@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "capability", "jsoninput", "localruntime", "plugin", "point", "protocol"}
+	want := []string{".", "capability", "jsoninput", "localruntime", "plugin", "point", "protocol", "storage"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -90,16 +90,19 @@ require (
 	source := `package runtimeconsumer
 
 import (
-	"context"
-	"testing"
+"context"
+"testing"
+"path/filepath"
 
-	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	"github.com/Tangerg/flame/runtime/localruntime"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	"github.com/Tangerg/flame/runtime/point"
-	"github.com/Tangerg/flame/runtime/protocol"
+flameruntime "github.com/Tangerg/flame/runtime"
+"github.com/Tangerg/flame/runtime/capability"
+"github.com/Tangerg/flame/runtime/jsoninput"
+"github.com/Tangerg/flame/runtime/localruntime"
+pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
+sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+"github.com/Tangerg/flame/runtime/point"
+"github.com/Tangerg/flame/runtime/protocol"
 )
 
 var _ = flameruntime.Open
@@ -165,6 +168,28 @@ func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	}
 	return runtime.Close()
 }
+
+func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
+ schema := []string{pluginstorage.CommandsSchema, "CREATE TABLE IF NOT EXISTS records (value TEXT NOT NULL)"}
+ db, err := sqlitebase.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), schema)
+ if err != nil { t.Fatal(err) }
+ defer db.Close()
+ input, err := jsoninput.Encode(struct{}{})
+ if err != nil { t.Fatal(err) }
+ calls := 0
+ for range 2 {
+  value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", struct{}{}, input, nil, func(ctx context.Context, _ struct{}) (bool, error) {
+   calls++
+   _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
+   return err == nil, err
+  })
+  if err != nil || !value { t.Fatalf("owned command = %v, %v", value, err) }
+ }
+ var count int
+ if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count); err != nil { t.Fatal(err) }
+ if calls != 1 || count != 1 { t.Fatalf("receipt repeated business mutation: calls=%d records=%d", calls, count) }
+}
+
 `
 	writeConsumerFile(t, filepath.Join(directory, "go.mod"), goMod)
 	writeConsumerFile(t, filepath.Join(directory, "consumer_test.go"), source)

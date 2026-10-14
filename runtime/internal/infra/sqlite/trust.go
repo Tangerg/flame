@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // TrustStore records which project roots are trusted to run their project-scope
@@ -22,7 +24,7 @@ func NewTrustStore(db *sql.DB) *TrustStore {
 // IsTrusted reports whether projectRoot has been granted hook trust.
 func (t *TrustStore) IsTrusted(ctx context.Context, projectRoot string) (bool, error) {
 	var one int
-	err := Connection(ctx, t.db).QueryRowContext(ctx,
+	err := sqlitebase.Connection(ctx, t.db).QueryRowContext(ctx,
 		`SELECT 1 FROM trusted_projects WHERE project_root = ?`, projectRoot).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
@@ -35,7 +37,7 @@ func (t *TrustStore) IsTrusted(ctx context.Context, projectRoot string) (bool, e
 
 // Trust grants hook trust to projectRoot. Repeated grants are idempotent.
 func (t *TrustStore) Trust(ctx context.Context, projectRoot string) error {
-	_, err := Connection(ctx, t.db).ExecContext(ctx,
+	_, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO trusted_projects (project_root) VALUES (?)
 		 ON CONFLICT(project_root) DO NOTHING`,
 		projectRoot)
@@ -47,7 +49,7 @@ func (t *TrustStore) Trust(ctx context.Context, projectRoot string) error {
 
 // Untrust revokes hook trust for projectRoot. Idempotent.
 func (t *TrustStore) Untrust(ctx context.Context, projectRoot string) error {
-	_, err := Connection(ctx, t.db).ExecContext(ctx,
+	_, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`DELETE FROM trusted_projects WHERE project_root = ?`, projectRoot)
 	if err != nil {
 		return fmt.Errorf("sqlite: untrust project: %w", err)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type ProviderSelectionStore struct{ db *sql.DB }
@@ -17,7 +18,7 @@ func NewProviderSelectionStore(db *sql.DB) *ProviderSelectionStore {
 
 func (s *ProviderSelectionStore) Get(ctx context.Context, role string) (plugin.ProviderSelection, bool, error) {
 	var installation, contribution string
-	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT installation_id,contribution_id FROM plugin_provider_selections WHERE role=?`, role).Scan(&installation, &contribution)
+	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT installation_id,contribution_id FROM plugin_provider_selections WHERE role=?`, role).Scan(&installation, &contribution)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plugin.ProviderSelection{}, false, nil
 	}
@@ -29,7 +30,7 @@ func (s *ProviderSelectionStore) Get(ctx context.Context, role string) (plugin.P
 }
 
 func (s *ProviderSelectionStore) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
-	rows, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT role,installation_id,contribution_id FROM plugin_provider_selections ORDER BY role`)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT role,installation_id,contribution_id FROM plugin_provider_selections ORDER BY role`)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +67,6 @@ func (s *ProviderSelectionStore) Save(ctx context.Context, selection plugin.Prov
 		return err
 	}
 	record := selection.Snapshot()
-	_, err := Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_provider_selections(role,installation_id,contribution_id) VALUES(?,?,?) ON CONFLICT(role) DO UPDATE SET installation_id=excluded.installation_id,contribution_id=excluded.contribution_id`, record.Role, record.Installation.String(), record.Contribution.String())
+	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_provider_selections(role,installation_id,contribution_id) VALUES(?,?,?) ON CONFLICT(role) DO UPDATE SET installation_id=excluded.installation_id,contribution_id=excluded.contribution_id`, record.Role, record.Installation.String(), record.Contribution.String())
 	return err
 }

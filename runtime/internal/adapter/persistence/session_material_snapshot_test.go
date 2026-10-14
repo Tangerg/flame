@@ -3,13 +3,13 @@ package persistence
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"path/filepath"
 	"testing"
 	"time"
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type blockingGoalProjection struct {
@@ -106,7 +107,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		mustConversationStore(t, readerMessages),
 		sqlite.NewRunStore(readerDB),
 		func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, readerDB, fn)
+			return sqlitebase.RunInTx(ctx, readerDB, fn)
 		},
 	)
 	if err != nil {
@@ -132,7 +133,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		Goals:               blockingGoal,
 		GoalRuns:            mustGoalRuns(t, writerGoalStore),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, readerDB, fn)
+			return sqlitebase.RunInTx(ctx, readerDB, fn)
 		},
 	})
 	if err != nil {
@@ -171,7 +172,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	}
 	writerDone := make(chan error, 1)
 	go func() {
-		writerDone <- sqlite.RunInTx(ctx, writerDB, func(ctx context.Context) error {
+		writerDone <- sqlitebase.RunInTx(ctx, writerDB, func(ctx context.Context) error {
 			replacement, replacementErr := session.NextReplacement(original, updatedSession)
 			if replacementErr != nil {
 				return replacementErr

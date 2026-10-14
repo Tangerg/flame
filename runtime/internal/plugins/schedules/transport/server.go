@@ -8,12 +8,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/tools"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/google/uuid"
 )
@@ -56,7 +56,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 		return nil, err
 	}
 	if err := errors.Join(
-		managedmcp.RegisterReceipts(backend, db),
+		pluginstorage.RegisterReceipts(backend, db),
 		contracts.List.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()
@@ -74,15 +74,15 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			}
 			return rpc.Page{Rows: rows, NextCursor: page.NextCursor}, err
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Create, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input schedule.Draft) (schedule.Snapshot, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Create, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input schedule.Draft) (schedule.Snapshot, error) {
 			value, err := coordinator.Create(ctx, input)
 			return value.Snapshot(), err
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (schedule.Snapshot, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (schedule.Snapshot, error) {
 			value, err := coordinator.Update(ctx, app.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: app.Patch{Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
 			return value.Snapshot(), err
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, coordinator.Delete(ctx, input.ID)
 		}),
 		contracts.RunNow.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (app.RunReference, error) {
@@ -147,7 +147,7 @@ func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedul
 	if err != nil {
 		return schedule.Schedule{}, rpc.DecodeError(err)
 	}
-	value, err := managedmcp.Command(ctx, t.db, rpc.Create, id, input, admitted, rpc.Classify, func(ctx context.Context, input schedule.Draft) (schedule.Snapshot, error) {
+	value, err := pluginstorage.Command(ctx, t.db, rpc.Create, id, input, admitted, rpc.Classify, func(ctx context.Context, input schedule.Draft) (schedule.Snapshot, error) {
 		value, err := t.coordinator.Create(ctx, input)
 		return value.Snapshot(), err
 	})
@@ -165,7 +165,7 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = managedmcp.Command(ctx, t.db, rpc.Delete, invocation, rpc.ItemInput{ID: id}, admitted, rpc.Classify, func(ctx context.Context, input rpc.ItemInput) (rpc.Ack, error) {
+	_, err = pluginstorage.Command(ctx, t.db, rpc.Delete, invocation, rpc.ItemInput{ID: id}, admitted, rpc.Classify, func(ctx context.Context, input rpc.ItemInput) (rpc.Ack, error) {
 		return rpc.Ack{}, t.coordinator.Delete(ctx, id)
 	})
 	return rpc.DecodeError(err)

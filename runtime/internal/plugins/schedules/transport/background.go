@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -147,7 +147,7 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store Store, host RunHost, 
 	}
 	dispatchStore := app.DispatchStore(store)
 	if _, manual := request.ManualRecord(); manual {
-		prepared, input, original, err := managedmcp.ResumeCommand(ctx, db, rpc.RunNow, request.Invocation().ID)
+		prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, rpc.RunNow, request.Invocation().ID)
 		if err != nil {
 			return app.RunReference{}, err
 		}

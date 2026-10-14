@@ -17,6 +17,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // Bundle holds Runtime's host stores in one SQLite database under DataDirectory.
@@ -176,7 +177,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		DataDirectory:        config.DataDirectory,
 		IdempotencyNamespace: idempotencyNamespace,
 		Transactor: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitestore.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 		Sessions:              sqlitestore.NewSessionStore(db),
 		Runs:                  sqlitestore.NewRunStore(db),

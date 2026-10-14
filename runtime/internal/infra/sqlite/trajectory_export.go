@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 	"fmt"
+
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 const sessionFeedbackPredicate = `session_id = ?
@@ -43,7 +45,7 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 	for i := range args {
 		args[i] = sessionID
 	}
-	if err = Connection(ctx, s.db).QueryRowContext(ctx, query, args...).Scan(&records, &bytes); err != nil {
+	if err = sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, query, args...).Scan(&records, &bytes); err != nil {
 		err = fmt.Errorf("sqlite: measure trajectory export: %w", err)
 	}
 	return records, bytes, err
@@ -60,7 +62,7 @@ func (s *SessionStore) validateTrajectoryJournalOwnership(ctx context.Context, s
 		}
 		query += `)`
 		var invalid bool
-		if err := Connection(ctx, s.db).QueryRowContext(ctx, query, sessionID, sessionID).Scan(&invalid); err != nil {
+		if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, query, sessionID, sessionID).Scan(&invalid); err != nil {
 			return fmt.Errorf("sqlite: inspect trajectory journal ownership: %w", err)
 		}
 		if invalid {

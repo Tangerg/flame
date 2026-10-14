@@ -2154,6 +2154,20 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 
 ## SQLite transaction lifetime
 
+`runtime/storage/sqlite` is the public schema/transaction owner used by Runtime
+and plugin authors. `runtime/plugin/sqlite` owns reusable private command admission
+and atomic receipts. Their former private implementations and entrances are
+removed; Core stores and both bundled backends use the same public mechanisms.
+Host business tables remain in Runtime, and private business tables stay with their
+plugins. This source move changes no database schema or backend protocol.
+
+Transaction context binds the exact `*sql.DB`, so work for another database cannot
+accidentally enter the first owner's write-set. Nested work for one database joins
+its transaction; an independent transaction for that same active database is
+refused before connection acquisition. Separate owners do not become a distributed
+transaction. See [SQLite ownership](storage/sqlite/README.md) and
+[private receipt ownership](plugin/sqlite/README.md).
+
 The SQLite transaction boundary owns connection admission, commit and joined
 rollback. Connection acquisition and statements retain the caller's context;
 transaction lifetime is independent so cancellation cannot start a competing

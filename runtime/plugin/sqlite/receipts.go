@@ -1,4 +1,4 @@
-package managedmcp
+package sqlite
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -28,8 +28,8 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 		return zero, err
 	}
 	var reply []byte
-	err := sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
-		connection := sqlitedb.Connection(ctx, db)
+	err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+		connection := sqlitebase.Connection(ctx, db)
 		var previousMethod, previousInput string
 		err := connection.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
@@ -96,7 +96,7 @@ func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
 	}, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
 		var method, encoded string
 		var reply []byte
-		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
+		err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
 		if errors.Is(err, sql.ErrNoRows) {
 			return pluginsdk.Receipt{}, nil
 		}

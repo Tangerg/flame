@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // ProviderStore persists only stored provider configuration. Effective
@@ -56,7 +57,7 @@ func scanProvider(row scanRow) (provider.Provider, error) {
 }
 
 func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
-	rows, err := Connection(ctx, p.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, p.db).QueryContext(ctx,
 		`SELECT id, api_key, base_url FROM providers ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list providers: %w", err)
@@ -78,7 +79,7 @@ func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
 }
 
 func (p *ProviderStore) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
-	entry, err := scanProvider(Connection(ctx, p.db).QueryRowContext(ctx,
+	entry, err := scanProvider(sqlitebase.Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT id, api_key, base_url FROM providers WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return provider.Provider{}, false, nil
@@ -104,7 +105,7 @@ func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 // to the storage adapter.
 func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
 	var updated provider.Provider
-	err := RunInTx(ctx, p.db, func(txCtx context.Context) error {
+	err := sqlitebase.RunInTx(ctx, p.db, func(txCtx context.Context) error {
 		current, found, getErr := p.Get(txCtx, id)
 		if getErr != nil {
 			return getErr
@@ -122,7 +123,7 @@ func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Pa
 			return applyErr
 		}
 		apiKey, baseURL := storedProviderValues(updated)
-		_, writeErr := Connection(txCtx, p.db).ExecContext(txCtx,
+		_, writeErr := sqlitebase.Connection(txCtx, p.db).ExecContext(txCtx,
 			`INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET
 			   api_key = excluded.api_key,

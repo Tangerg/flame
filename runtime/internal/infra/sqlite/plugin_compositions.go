@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type CompositionStore struct{ db *sql.DB }
@@ -27,7 +28,7 @@ func NewCompositionStore(db *sql.DB) *CompositionStore { return &CompositionStor
 
 func (s *CompositionStore) Get(ctx context.Context, reference string) (plugin.OrderedComposition, bool, error) {
 	var encoded string
-	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT composition_json FROM plugin_compositions WHERE reference=?`, reference).Scan(&encoded)
+	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT composition_json FROM plugin_compositions WHERE reference=?`, reference).Scan(&encoded)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plugin.OrderedComposition{}, false, nil
 	}
@@ -39,7 +40,7 @@ func (s *CompositionStore) Get(ctx context.Context, reference string) (plugin.Or
 }
 
 func (s *CompositionStore) List(ctx context.Context) ([]plugin.OrderedComposition, error) {
-	rows, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT reference,composition_json FROM plugin_compositions ORDER BY reference`)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT reference,composition_json FROM plugin_compositions ORDER BY reference`)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +106,6 @@ func (s *CompositionStore) Save(ctx context.Context, value plugin.OrderedComposi
 	if err != nil {
 		return err
 	}
-	_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_compositions(reference,composition_json) VALUES(?,?) ON CONFLICT(reference) DO UPDATE SET composition_json=excluded.composition_json`, contract.Descriptor().Reference, string(encoded))
+	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_compositions(reference,composition_json) VALUES(?,?) ON CONFLICT(reference) DO UPDATE SET composition_json=excluded.composition_json`, contract.Descriptor().Reference, string(encoded))
 	return err
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -38,7 +39,9 @@ func TestCommitEventRollsBackAllProjectionsWhenProgressIsStale(t *testing.T) {
 	conversation := mustConversationStore(t, messages)
 	effects := mustNewEffects(Config{
 		Transcript: history, Conversation: conversation, State: state, RunProgress: state,
-		Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	commit := runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,

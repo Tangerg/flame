@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	history "github.com/Tangerg/scope/core/history"
 	"github.com/Tangerg/scope/core/history/storetest"
@@ -166,7 +167,7 @@ func TestMessageStore_ReplaceRollsBackAsOneStep(t *testing.T) {
 	}
 
 	abandoned := errors.New("rewrite abandoned")
-	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+	if err := sqlitebase.RunInTx(t.Context(), db, func(ctx context.Context) error {
 		if replaceErr := store.Replace(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("replacement"))); replaceErr != nil {
 			return replaceErr
 		}

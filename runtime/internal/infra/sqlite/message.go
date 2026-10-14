@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	history "github.com/Tangerg/scope/core/history"
 )
@@ -45,7 +46,7 @@ func (m *MessageStore) Read(ctx context.Context, conversationID history.Conversa
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return nil, err
 	}
-	rows, err := Connection(ctx, m.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx,
 		`SELECT seq, message FROM messages WHERE conversation_id = ? ORDER BY seq`, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read messages: %w", err)
@@ -99,8 +100,8 @@ func (m *MessageStore) Write(
 	// RunInTx so the batch is atomic standalone, and folds into a caller's
 	// cross-store transaction (portable restore seeds history inside one) instead
 	// of opening its own — which would deadlock under MaxOpenConns(1).
-	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
-		q := Connection(ctx, m.db)
+	err := sqlitebase.RunInTx(ctx, m.db, func(ctx context.Context) error {
+		q := sqlitebase.Connection(ctx, m.db)
 		for _, msg := range messages {
 			data, err := encodeStoredJSON(msg)
 			if err != nil {
@@ -140,7 +141,7 @@ func (m *MessageStore) Replace(
 	// Clear and Write fold into this transaction rather than committing on
 	// their own, so the rewrite is the single atomic step the contract above
 	// describes.
-	return RunInTx(ctx, m.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, m.db, func(ctx context.Context) error {
 		if err := m.Clear(ctx, conversationID); err != nil {
 			return err
 		}
@@ -161,7 +162,7 @@ func (m *MessageStore) Truncate(ctx context.Context, conversationID history.Conv
 	if keepN < 0 {
 		return fmt.Errorf("sqlite: truncate messages: keep count %d is negative", keepN)
 	}
-	if _, err := Connection(ctx, m.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
 		`DELETE FROM messages
 		  WHERE conversation_id = ?
 		    AND seq IN (
@@ -185,7 +186,7 @@ func (m *MessageStore) Count(ctx context.Context, conversationID history.Convers
 		return 0, err
 	}
 	var n int
-	if err := Connection(ctx, m.db).QueryRowContext(ctx,
+	if err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, conversationID,
 	).Scan(&n); err != nil {
 		return 0, fmt.Errorf("sqlite: count messages: %w", err)
@@ -199,7 +200,7 @@ func (m *MessageStore) Clear(ctx context.Context, conversationID history.Convers
 	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
-	if _, err := Connection(ctx, m.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
 		`DELETE FROM messages WHERE conversation_id = ?`, conversationID,
 	); err != nil {
 		return fmt.Errorf("sqlite: clear messages: %w", err)

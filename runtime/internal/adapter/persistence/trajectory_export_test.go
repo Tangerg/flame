@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,8 +16,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
-	"strings"
 )
 
 type exportSnapshotReader struct {
@@ -53,7 +54,9 @@ func trajectoryExportFixture(t *testing.T) (*TrajectoryExportReader, *sql.DB, *e
 	reader, err := NewTrajectoryExportReader(TrajectoryExportConfig{
 		Snapshots: snapshots, Sessions: sqlite.NewSessionStore(db), ModelInvocations: modelReader,
 		ToolInvocations: sqlite.NewToolInvocationStore(db), Feedback: sqlite.NewFeedbackStore(db),
-		Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	if err != nil {
 		t.Fatal(err)

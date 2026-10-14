@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // ToolResultStore is the single full-body source for oversized tool outputs.
@@ -31,7 +32,7 @@ func (t *ToolResultStore) Stage(ctx context.Context, stage toolresult.Stage) err
 	if err := stage.Validate(); err != nil {
 		return fmt.Errorf("sqlite: stage tool result: %w", err)
 	}
-	_, err := Connection(ctx, t.db).ExecContext(ctx,
+	_, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_result_blobs(id, session_id, body)
 		 VALUES (?, ?, ?)`,
 		stage.ID, stage.SessionID, stage.Body)
@@ -52,7 +53,7 @@ func (t *ToolResultStore) Fetch(ctx context.Context, sessionID string, id toolre
 	if validateErr := id.Validate(); validateErr != nil {
 		return "", false, fmt.Errorf("sqlite: fetch tool result: %w", validateErr)
 	}
-	err = Connection(ctx, t.db).QueryRowContext(ctx,
+	err = sqlitebase.Connection(ctx, t.db).QueryRowContext(ctx,
 		`SELECT body FROM tool_result_blobs WHERE id = ? AND session_id = ?`,
 		id, sessionID).Scan(&body)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -69,7 +70,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 	}
-	rows, err := Connection(ctx, t.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, t.db).QueryContext(ctx,
 		`SELECT id, session_id, body, created_at_ns
 		 FROM tool_result_blobs AS b
 		 WHERE session_id = ? AND EXISTS (
@@ -111,7 +112,7 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 	if err := blob.Validate(); err != nil {
 		return fmt.Errorf("sqlite: restore tool result: %w", err)
 	}
-	result, err := Connection(ctx, t.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_result_blobs(id, session_id, body, created_at_ns)
 		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT(session_id, id) DO NOTHING`,
@@ -143,7 +144,7 @@ func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref too
 	if err := ref.Validate(); err != nil {
 		return fmt.Errorf("sqlite: discard tool result: %w", err)
 	}
-	if _, err := Connection(ctx, t.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`DELETE FROM tool_result_blobs WHERE id = ? AND session_id = ? AND `+unboundToolResult,
 		ref.ID, sessionID,
 	); err != nil {
@@ -155,7 +156,7 @@ func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref too
 // PurgeUnbound removes abandoned staging bodies during startup, before new
 // execution begins. Item and checkpoint references are both durable owners.
 func (t *ToolResultStore) PurgeUnbound(ctx context.Context) (int64, error) {
-	result, err := Connection(ctx, t.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`DELETE FROM tool_result_blobs WHERE `+unboundToolResult,
 	)
 	if err != nil {
@@ -170,12 +171,12 @@ func (t *ToolResultStore) PurgeUnbound(ctx context.Context) (int64, error) {
 
 // DropSession removes every offloaded body owned by sessionID — the blob half
 // of the session-delete cascade. It joins an ambient lifecycle write-set
-// transaction through Connection(ctx).
+// transaction through sqlitebase.Connection(ctx).
 func (t *ToolResultStore) DropSession(ctx context.Context, sessionID string) error {
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("sqlite: drop tool results: %w", err)
 	}
-	if _, err := Connection(ctx, t.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
 		`DELETE FROM tool_result_blobs WHERE session_id = ?`, sessionID); err != nil {
 		return fmt.Errorf("sqlite: drop session tool results: %w", err)
 	}

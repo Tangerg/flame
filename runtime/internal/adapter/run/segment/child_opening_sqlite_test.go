@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
@@ -43,7 +44,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		State:      runStore,
 		Transcript: transcriptStore,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, apply)
+			return sqlitebase.RunInTx(ctx, db, apply)
 		},
 	})
 	arguments, err := tool.ParseArguments(`{"description":"delegate"}`)
@@ -106,7 +107,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 			err:   rollbackErr,
 		},
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, apply)
+			return sqlitebase.RunInTx(ctx, db, apply)
 		},
 	})
 	rolledBackItem := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -194,7 +195,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 		State: runStore, Transcript: transcriptStore, ChildRunStarts: childStarts,
 		ExecutionTrees: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+			runInTxErr := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 				if err := apply(ctx); err != nil {
 					return err
 				}

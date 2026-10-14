@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func Open(ctx context.Context, path string) (*sql.DB, error) {
-	return sqlitedb.OpenSchema(ctx, path, []string{managedmcp.CommandsSchema,
+	return sqlitebase.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema,
 		// Digest uniqueness is independent of batch membership so re-extracting old facts cannot discard new ones.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_ledger (
 			seq         INTEGER PRIMARY KEY AUTOINCREMENT,

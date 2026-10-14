@@ -7,13 +7,13 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/maintenance"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/tools"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -61,7 +61,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 		return err
 	}
 	if err := errors.Join(
-		managedmcp.RegisterReceipts(backend, db),
+		pluginstorage.RegisterReceipts(backend, db),
 		contracts.List.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()
@@ -75,7 +75,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			page, err := review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
 			return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, err
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Add, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Add, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
 			changed := false
 			owner, err := app.New(app.Config{Store: store, Roots: roots, Invalidations: func(invalidation.Notice) { changed = true }})
 			if err != nil {
@@ -84,14 +84,14 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 			item, err := owner.Add(ctx, input.Scope, input.CWD, input.Content)
 			return rpc.AddResult{Item: item.Snapshot(), Changed: changed}, err
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Update, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
 			item, err := review.Update(ctx, input.ID, input.Content, input.Pinned)
 			return item.Snapshot(), err
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Delete, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, review.Delete(ctx, input.ID)
 		}),
-		managedmcp.RegisterCommand(backend, db, contracts.Review, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
+		pluginstorage.RegisterCommand(backend, db, contracts.Review, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
 			return rpc.Ack{}, review.Review(ctx, input.ID, input.Decision)
 		}),
 		contracts.Items.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
@@ -125,7 +125,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 				return rpc.MaintenanceResult{}, err
 			}
 			var grant pluginsdk.CallbackRef
-			prepared, original, err := managedmcp.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func(ctx context.Context) error {
+			prepared, original, err := pluginstorage.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func(ctx context.Context) error {
 				if !input.Compacted {
 					return nil
 				}
@@ -140,7 +140,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 				return pluginsdk.DecodeReply[rpc.MaintenanceResult](original)
 			}
 			if !prepared.NewlyAdmitted() {
-				return rpc.MaintenanceResult{}, managedmcp.ErrCommandUnconfirmed
+				return rpc.MaintenanceResult{}, pluginstorage.ErrCommandUnconfirmed
 			}
 			if !input.Compacted {
 				reply, err := maintenanceReply(false)

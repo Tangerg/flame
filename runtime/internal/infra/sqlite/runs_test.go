@@ -19,6 +19,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func newRunStores(t *testing.T) (*sqlite.RunStore, *persistence.InterruptStore) {
@@ -236,7 +237,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	// A park commit that fails after both writes leaves NEITHER: no interrupt, and
 	// the row stays running (a second admit is still rejected as busy).
 	boom := errors.New("boom")
-	if err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	if err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		if err := park(ctx); err != nil {
 			return err
 		}
@@ -256,7 +257,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	}
 
 	// A successful park commit persists BOTH the interrupt and the suspended state.
-	if err := sqlite.RunInTx(ctx, db, park); err != nil {
+	if err := sqlitebase.RunInTx(ctx, db, park); err != nil {
 		t.Fatalf("park commit: %v", err)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 1 {

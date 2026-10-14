@@ -17,12 +17,15 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func endpointRecovery(t *testing.T, db *sql.DB) *runs.Recovery {
 	t.Helper()
-	store, err := New(Config{Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db), Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: mustGoalRuns(t, sqlite.NewGoalStore(db)), ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)), ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db), ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }})
+	store, err := New(Config{Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db), Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: mustGoalRuns(t, sqlite.NewGoalStore(db)), ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)), ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db), ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Tx: func(ctx context.Context, fn func(context.Context) error) error {
+		return sqlitebase.RunInTx(ctx, db, fn)
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}

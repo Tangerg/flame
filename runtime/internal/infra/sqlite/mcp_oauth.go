@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // MCPAuthorizationStore keeps at most one credential per MCP source, bound to
@@ -24,7 +25,7 @@ func NewMCPAuthorizationStore(db *sql.DB) *MCPAuthorizationStore {
 func (m *MCPAuthorizationStore) BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
 	var binding string
 	args := append([]any{target.Fingerprint().String()}, mcpSourceArgs(target.ID())...)
-	err := Connection(ctx, m.db).QueryRowContext(ctx,
+	err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx,
 		`INSERT INTO mcp_oauth_sessions(source_id, target_fingerprint, binding, payload)
 		 SELECT id, ?, lower(hex(randomblob(16))), x'' FROM mcp_sources WHERE origin = ? AND installation_id IS ? AND name = ?
 		 ON CONFLICT(source_id) DO UPDATE SET
@@ -43,7 +44,7 @@ func (m *MCPAuthorizationStore) LoadOAuthSession(ctx context.Context, target mcp
 	var payload []byte
 	var binding string
 	args := append(mcpSourceArgs(target.ID()), target.Fingerprint().String())
-	err := Connection(ctx, m.db).QueryRowContext(ctx,
+	err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx,
 		`SELECT payload, binding FROM mcp_oauth_sessions
 		 WHERE source_id = `+mcpSourceIDQuery+` AND target_fingerprint = ? AND length(payload) > 0`,
 		args...).Scan(&payload, &binding)
@@ -66,7 +67,7 @@ func (m *MCPAuthorizationStore) SaveOAuthSession(ctx context.Context, server mcp
 	if len(payload) == 0 {
 		return errors.New("sqlite: mcp oauth session requires a payload")
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
 		`UPDATE mcp_oauth_sessions SET payload = ? WHERE source_id = `+mcpSourceIDQuery+` AND binding = ?`,
 		append(append([]any{payload}, mcpSourceArgs(server)...), binding)...)
 	if err != nil {
@@ -79,7 +80,7 @@ func (m *MCPAuthorizationStore) RemoveOAuthSession(ctx context.Context, server m
 	if binding == "" {
 		return mcpserver.ErrOAuthSessionSuperseded
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
 		`DELETE FROM mcp_oauth_sessions WHERE source_id = `+mcpSourceIDQuery+` AND binding = ?`, append(mcpSourceArgs(server), binding)...)
 	if err != nil {
 		return fmt.Errorf("sqlite: remove mcp oauth session: %w", err)

@@ -1,4 +1,4 @@
-package managedmcp_test
+package sqlite_test
 
 import (
 	"context"

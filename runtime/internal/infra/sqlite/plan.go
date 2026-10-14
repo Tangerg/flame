@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // PlanStore persists one complete ordered Plan per session. Plans are replaced
@@ -41,7 +42,7 @@ func (p *PlanStore) State(ctx context.Context, sessionID string) (plan.Current, 
 		revision  uint64
 		updatedNs int64
 	)
-	err := Connection(ctx, p.db).QueryRowContext(ctx,
+	err := sqlitebase.Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT steps, revision, updated_at FROM session_plans WHERE session_id = ?`, sessionID,
 	).Scan(&stepsJSON, &revision, &updatedNs)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -104,7 +105,7 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 	}
 	var result sql.Result
 	if expected.IsUnwritten() {
-		result, err = Connection(ctx, p.db).ExecContext(ctx,
+		result, err = sqlitebase.Connection(ctx, p.db).ExecContext(ctx,
 			`INSERT INTO session_plans(session_id, steps, revision, updated_at)
 			 VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO NOTHING`,
 			sessionID, string(data), replacement.Revision(), replacement.UpdatedAt().UnixNano(),
@@ -114,7 +115,7 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 		if !committed {
 			return fmt.Errorf("sqlite: Plan expected version lost committed revision: %w", plan.ErrInvalid)
 		}
-		result, err = Connection(ctx, p.db).ExecContext(ctx,
+		result, err = sqlitebase.Connection(ctx, p.db).ExecContext(ctx,
 			`UPDATE session_plans SET steps = ?, revision = ?, updated_at = ?
 			 WHERE session_id = ? AND revision = ?`,
 			string(data), replacement.Revision(), replacement.UpdatedAt().UnixNano(), sessionID, expectedRevision,
@@ -141,7 +142,7 @@ func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID, runID string
 	if err := validateRunResource("capture Plan boundary", runID); err != nil {
 		return err
 	}
-	if _, err := Connection(ctx, p.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, p.db).ExecContext(ctx,
 		`INSERT INTO plan_boundaries(run_id, steps)
 		 VALUES (?, COALESCE((SELECT steps FROM session_plans WHERE session_id = ?), '[]'))`,
 		runID, sessionID,
@@ -158,7 +159,7 @@ func (p *PlanStore) Boundary(ctx context.Context, runID string) ([]plan.Step, bo
 		return nil, false, err
 	}
 	var stepsJSON string
-	err := Connection(ctx, p.db).QueryRowContext(ctx,
+	err := sqlitebase.Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT steps FROM plan_boundaries WHERE run_id = ?`, runID,
 	).Scan(&stepsJSON)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -178,7 +179,7 @@ func (p *PlanStore) DeleteSession(ctx context.Context, sessionID string) error {
 	if err := validateSessionResource("delete Session Plan", sessionID); err != nil {
 		return err
 	}
-	if _, err := Connection(ctx, p.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, p.db).ExecContext(ctx,
 		`DELETE FROM session_plans WHERE session_id = ?`, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete session Plan: %w", err)

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -44,7 +45,7 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 	if yield == nil {
 		return errors.New("sqlite: model invocation reader is required")
 	}
-	rows, err := Connection(ctx, m.db).QueryContext(ctx, `
+	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, started_at, logical_purpose
 		  FROM model_invocations
 		 WHERE state = ? AND endpoint_json IS NULL
@@ -95,7 +96,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: model invocation start time: %w", err)
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
 		`INSERT INTO model_invocations(
 		   call_id, session_id, run_id, segment_id, state, started_at, finished_at, logical_purpose)
 		 SELECT ?, session_id, run_id, ?, ?, ?, NULL, ?
@@ -211,7 +212,7 @@ func (m *ModelInvocationStore) finish(
 	} else if state == modelInvocationFailed.databaseValue() && usage != nil {
 		return errors.New("sqlite: failed model usage requires a known response")
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
 		`UPDATE model_invocations
 		    SET state = ?, finished_at = ?, first_output_latency_millis = ?, usage = ?, known_response = ?
 		  WHERE call_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
@@ -278,7 +279,7 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 	}
 	query += ` ORDER BY started_at DESC, call_id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := Connection(ctx, m.db).QueryContext(ctx, query, args...)
+	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page model invocations: %w", err)
 	}

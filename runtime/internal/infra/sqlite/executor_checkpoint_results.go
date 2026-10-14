@@ -5,16 +5,17 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // References and payload advance in the same checkpoint transaction. A waiting
 // checkpoint is a durable owner even before result publication binds an Item.
 func (e *ExecutorCheckpointStore) replaceToolResultReferences(ctx context.Context, checkpoint ExecutorCheckpointRecord) error {
-	if _, err := Connection(ctx, e.db).ExecContext(ctx, `DELETE FROM executor_checkpoint_tool_results WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
+	if _, err := sqlitebase.Connection(ctx, e.db).ExecContext(ctx, `DELETE FROM executor_checkpoint_tool_results WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
 		return err
 	}
 	for _, id := range checkpoint.ToolResultIDs {
-		result, err := Connection(ctx, e.db).ExecContext(ctx, `INSERT INTO executor_checkpoint_tool_results(root_member_id, session_id, result_id) SELECT ?, session_id, id FROM tool_result_blobs WHERE id = ? AND session_id = ?`, checkpoint.RootMemberID, id, checkpoint.SessionID)
+		result, err := sqlitebase.Connection(ctx, e.db).ExecContext(ctx, `INSERT INTO executor_checkpoint_tool_results(root_member_id, session_id, result_id) SELECT ?, session_id, id FROM tool_result_blobs WHERE id = ? AND session_id = ?`, checkpoint.RootMemberID, id, checkpoint.SessionID)
 		if err != nil {
 			return err
 		}
@@ -30,7 +31,7 @@ func (e *ExecutorCheckpointStore) replaceToolResultReferences(ctx context.Contex
 }
 
 func (e *ExecutorCheckpointStore) toolResultReferences(ctx context.Context, rootID string) ([]toolresult.ID, error) {
-	rows, err := Connection(ctx, e.db).QueryContext(ctx, `SELECT result_id FROM executor_checkpoint_tool_results WHERE root_member_id = ? ORDER BY result_id`, rootID)
+	rows, err := sqlitebase.Connection(ctx, e.db).QueryContext(ctx, `SELECT result_id FROM executor_checkpoint_tool_results WHERE root_member_id = ? ORDER BY result_id`, rootID)
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -33,7 +34,7 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore
 		messages,
 		runs,
 		func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	)
 	if err != nil {

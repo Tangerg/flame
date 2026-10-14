@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // ErrWorkspaceMutationPending reports that an unfinished rollback still owns the
@@ -24,7 +26,7 @@ type WorkspaceMutationRecord struct {
 // WorkspaceMutationStore is the recoverable operation log for file rollbacks,
 // backed by the pending_workspace_mutations table. Unlike the write-set
 // stores, its writes deliberately do NOT join an ambient transaction (they use
-// the *sql.DB directly, never Connection(ctx)): the intent must commit on its own
+// the *sql.DB directly, never sqlitebase.Connection(ctx)): the intent must commit on its own
 // before the working tree is touched, and the completion on its own after the
 // requested effects commit. The row protects a non-atomic multi-path Git checkout
 // and, when requested, the separate SQLite history transaction.
@@ -60,8 +62,8 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 		return false, err
 	}
 	created := false
-	err := runTransaction(ctx, w.db, func(ctx context.Context) error {
-		tx := Connection(ctx, w.db)
+	err := sqlitebase.RunIndependentTx(ctx, w.db, func(ctx context.Context) error {
+		tx := sqlitebase.Connection(ctx, w.db)
 		recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
 		if err != nil || recorded {
 			return err
@@ -95,7 +97,7 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	return created, nil
 }
 
-func ownsPendingWorkspaceMutation(ctx context.Context, tx execer, m WorkspaceMutationRecord) (bool, error) {
+func ownsPendingWorkspaceMutation(ctx context.Context, tx sqlitebase.Executor, m WorkspaceMutationRecord) (bool, error) {
 	rows, err := tx.QueryContext(ctx,
 		`SELECT session_id, cwd, to_run_id, restore_history
 		   FROM pending_workspace_mutations

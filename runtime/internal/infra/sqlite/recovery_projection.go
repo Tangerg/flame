@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // ListNonTerminalRuns projects complete durable Run aggregates for application
 // recovery. Storage exposes facts only; it does not decide which Run tree may
 // survive a restart.
 func (r *RunStore) ListNonTerminalRuns(ctx context.Context) ([]run.Run, error) {
-	rows, err := Connection(ctx, r.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, r.db).QueryContext(ctx,
 		`SELECT `+runColumns+`
 		   FROM runs AS r
 		   `+runReadJoins+`

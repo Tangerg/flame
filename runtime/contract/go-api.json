@@ -2615,6 +2615,67 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/runtime/plugin/sqlite",
+      "imports": [
+        "context",
+        "database/sql",
+        "github.com/Tangerg/flame/runtime/jsoninput",
+        "github.com/Tangerg/flame/runtime/plugin",
+        "github.com/Tangerg/go-sdk/mcp"
+      ],
+      "constants": [
+        {
+          "name": "CommandsSchema",
+          "type": "untyped string",
+          "value": "\"CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, business_input_json TEXT NOT NULL CHECK(json_valid(business_input_json)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrCommandUnconfirmed",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "AdmitCommand",
+          "signature": "func(ctx context.Context, db *sql.DB, method string, id string, input jsoninput.Input, validateNew func(context.Context) error) (*PreparedCommand, []byte, error)"
+        },
+        {
+          "name": "Command",
+          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, input P, admitted jsoninput.Input, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error)"
+        },
+        {
+          "name": "RegisterCommand",
+          "signature": "func[P, R any](server *plugin.Backend, db *sql.DB, method *plugin.Method[P, R], classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
+        },
+        {
+          "name": "RegisterReceipts",
+          "signature": "func(server *plugin.Backend, db *sql.DB) error"
+        },
+        {
+          "name": "ResumeCommand",
+          "signature": "func(ctx context.Context, db *sql.DB, method string, id string) (*PreparedCommand, jsoninput.Input, []byte, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "PreparedCommand",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Complete",
+              "signature": "func(ctx context.Context, reply []byte) error"
+            },
+            {
+              "name": "NewlyAdmitted",
+              "signature": "func() bool"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime/point",
       "imports": [
         "encoding/json/jsontext",
@@ -12774,6 +12835,55 @@
             {
               "name": "ValidateWire",
               "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/runtime/storage/sqlite",
+      "imports": [
+        "context",
+        "database/sql"
+      ],
+      "functions": [
+        {
+          "name": "Connection",
+          "signature": "func(ctx context.Context, db *sql.DB) Executor"
+        },
+        {
+          "name": "InstallSchema",
+          "signature": "func(ctx context.Context, db *sql.DB, stmts []string) error"
+        },
+        {
+          "name": "OpenSchema",
+          "signature": "func(ctx context.Context, path string, statements []string) (*sql.DB, error)"
+        },
+        {
+          "name": "RunInTx",
+          "signature": "func(ctx context.Context, db *sql.DB, fn func(context.Context) error) error"
+        },
+        {
+          "name": "RunIndependentTx",
+          "signature": "func(ctx context.Context, db *sql.DB, fn func(context.Context) error) (err error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Executor",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "ExecContext",
+              "signature": "func(ctx context.Context, query string, args ...any) (sql.Result, error)"
+            },
+            {
+              "name": "QueryContext",
+              "signature": "func(ctx context.Context, query string, args ...any) (*sql.Rows, error)"
+            },
+            {
+              "name": "QueryRowContext",
+              "signature": "func(ctx context.Context, query string, args ...any) *sql.Row"
             }
           ]
         }

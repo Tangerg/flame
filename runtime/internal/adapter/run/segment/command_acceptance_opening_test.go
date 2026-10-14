@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func acceptedRootOpening(t *testing.T, commitRaw string, draft run.Draft, key, fingerprint, userItemID string) runs.OpeningCommit {
@@ -48,7 +49,7 @@ func TestResponseOnlyResumeAcceptanceCommitsWithAnswersAndRejectsKeyReuse(t *tes
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: interrupts, transcript: items}, Config{
 		State: state, CommandAcceptances: commands, AcceptedContinuations: bindings,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, apply)
+			return sqlitebase.RunInTx(ctx, db, apply)
 		},
 	})
 	for index := range 2 {
@@ -122,7 +123,7 @@ func TestCommandAcceptanceCommitsAndRollsBackWithTheOpening(t *testing.T) {
 		Transcript:         sqlite.NewTranscriptStore(db),
 		CommandAcceptances: acceptances,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, apply)
+			return sqlitebase.RunInTx(ctx, db, apply)
 		},
 	})
 	fingerprint := strings.Repeat("a", 64)

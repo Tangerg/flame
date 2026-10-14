@@ -1914,7 +1914,7 @@ func layerOf(rel string) string {
 		return ringProtocol
 	case "internal/contractcatalog":
 		return ringGenerator
-	case "plugin":
+	case "plugin", "plugin/sqlite", "storage/sqlite":
 		return ringInfra
 	}
 	switch {

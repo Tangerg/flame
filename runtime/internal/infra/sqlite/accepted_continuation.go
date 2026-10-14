@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 	"fmt"
+
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // AcceptedContinuationStore persists the Run-owned binding that lets boot recovery
@@ -44,7 +46,7 @@ func (a *AcceptedContinuationStore) Put(ctx context.Context, record AcceptedCont
 	if err != nil {
 		return err
 	}
-	_, err = Connection(ctx, a.db).ExecContext(ctx,
+	_, err = sqlitebase.Connection(ctx, a.db).ExecContext(ctx,
 		`INSERT INTO accepted_continuations(root_run_id, session_id, interrupt, segments, input_item_id)
 		 VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(root_run_id) DO UPDATE SET
@@ -58,7 +60,7 @@ func (a *AcceptedContinuationStore) Put(ctx context.Context, record AcceptedCont
 }
 
 func (a *AcceptedContinuationStore) Delete(ctx context.Context, rootRunID string) error {
-	_, err := Connection(ctx, a.db).ExecContext(ctx,
+	_, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx,
 		`DELETE FROM accepted_continuations WHERE root_run_id = ?`, rootRunID)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete accepted continuation: %w", err)
@@ -67,7 +69,7 @@ func (a *AcceptedContinuationStore) Delete(ctx context.Context, rootRunID string
 }
 
 func (a *AcceptedContinuationStore) List(ctx context.Context) ([]AcceptedContinuationRecord, error) {
-	rows, err := Connection(ctx, a.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT root_run_id, session_id, interrupt, segments, input_item_id FROM accepted_continuations ORDER BY root_run_id`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list accepted continuations: %w", err)

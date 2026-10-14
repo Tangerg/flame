@@ -10,9 +10,8 @@ import (
 	"math"
 	"time"
 
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func newMemoryItemID() agentmemory.ItemID {
@@ -53,7 +52,7 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, c
 		return fmt.Errorf("sqlite: plan agent memory fold: %w", err)
 	}
 	for _, id := range plan.PruneIDs {
-		if _, execContextErr := sqlitedb.Connection(ctx, a.db).ExecContext(ctx, `DELETE FROM agent_memory_items WHERE id = ?`, id.String()); execContextErr != nil {
+		if _, execContextErr := sqlitebase.Connection(ctx, a.db).ExecContext(ctx, `DELETE FROM agent_memory_items WHERE id = ?`, id.String()); execContextErr != nil {
 			return fmt.Errorf("sqlite: prune agent memory item: %w", execContextErr)
 		}
 	}
@@ -82,7 +81,7 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, c
 }
 
 func (a *AgentMemoryStore) autoItems(ctx context.Context, project string) ([]agentmemory.Item, error) {
-	rows, err := sqlitedb.Connection(ctx, a.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items
 		 WHERE scope = 'project' AND project = ? AND origin = 'auto'
 		   AND (pinned = 0 OR status = 'rejected')
@@ -118,7 +117,7 @@ func (a *AgentMemoryStore) autoItems(ctx context.Context, project string) ([]age
 
 // Pinned and user-authored facts may already occupy the content identity; insertion must preserve them.
 func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item) (bool, error) {
-	result, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx,
 		`INSERT OR IGNORE INTO agent_memory_items(
 			id, scope, project, content, digest, origin, status, pinned, session_id, day, created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -208,7 +207,7 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 	if _, err := memoryPartition(agentmemory.ScopeProject, project); err != nil {
 		return nil, err
 	}
-	rows, err := sqlitedb.Connection(ctx, a.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+`, embedding_space, embedding
 		 FROM agent_memory_items
 		 WHERE status = 'active' AND (
@@ -281,7 +280,7 @@ func (a *AgentMemoryStore) listItems(
 	args ...any,
 ) ([]agentmemory.Item, error) {
 	args = append(args, maximum+1)
-	rows, err := sqlitedb.Connection(ctx, a.db).QueryContext(ctx, query, args...)
+	rows, err := sqlitebase.Connection(ctx, a.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list %s: %w", operation, err)
 	}
@@ -304,7 +303,7 @@ func (a *AgentMemoryStore) listItems(
 }
 
 func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agentmemory.Item, bool, error) {
-	item, err := scanItem(sqlitedb.Connection(ctx, a.db).QueryRowContext(ctx,
+	item, err := scanItem(sqlitebase.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE id = ?`, id.String()))
 	if errors.Is(err, sql.ErrNoRows) {
 		return agentmemory.Item{}, false, nil
@@ -317,7 +316,7 @@ func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agen
 
 func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	var updated agentmemory.Item
-	err := sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err := sqlitebase.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
@@ -346,7 +345,7 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, co
 }
 
 func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, decision agentmemory.ReviewDecision, now time.Time) error {
-	return sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
@@ -358,7 +357,7 @@ func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, de
 		if err != nil {
 			return err
 		}
-		result, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx,
+		result, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx,
 			`UPDATE agent_memory_items SET status = ?, updated_at = ? WHERE id = ? AND status = 'pending'`,
 			replacement.Status().String(), replacement.UpdatedAt().UnixNano(), id.String())
 		if err != nil {
@@ -379,7 +378,7 @@ func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, de
 }
 
 func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved agentmemory.Item) error {
-	if _, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx, `
+	if _, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx, `
 		DELETE FROM agent_memory_items
 		WHERE id IN (
 			SELECT id FROM agent_memory_items
@@ -393,7 +392,7 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved age
 }
 
 func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) error {
-	return sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		item, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
@@ -404,7 +403,7 @@ func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) er
 		if err := item.ValidateVisible(); err != nil {
 			return err
 		}
-		result, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx,
+		result, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx,
 			`DELETE FROM agent_memory_items WHERE id = ?`, id.String())
 		if err != nil {
 			return fmt.Errorf("sqlite: delete agent memory: %w", err)
@@ -419,7 +418,7 @@ func (a *AgentMemoryStore) Add(ctx context.Context, scope agentmemory.Scope, pro
 		return agentmemory.Item{}, false, fmt.Errorf("sqlite: add agent memory: %w", err)
 	}
 	addition := userMemoryAddition{store: a, scope: scope, project: project, content: content, now: now.UTC()}
-	err = sqlitedb.RunInTx(ctx, a.db, addition.apply)
+	err = sqlitebase.RunInTx(ctx, a.db, addition.apply)
 	if err != nil {
 		return agentmemory.Item{}, false, err
 	}
@@ -519,7 +518,7 @@ func (a *AgentMemoryStore) replaceItem(
 ) error {
 	item := change.Item()
 	discardEmbedding := boolToInt(change.DiscardsEmbedding())
-	result, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx, `
+	result, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx, `
 		UPDATE agent_memory_items
 		SET content = ?, digest = ?, origin = ?, status = ?, pinned = ?,
 			session_id = ?, day = ?,
@@ -554,7 +553,7 @@ func (a *AgentMemoryStore) countVisibleItems(
 		return 0, err
 	}
 	var count int
-	if err := sqlitedb.Connection(ctx, a.db).QueryRowContext(ctx, `
+	if err := sqlitebase.Connection(ctx, a.db).QueryRowContext(ctx, `
 		SELECT count(*) FROM agent_memory_items
 		WHERE scope = ? AND project = ? AND status IN ('active','pending')`,
 		token, project).Scan(&count); err != nil {
@@ -574,7 +573,7 @@ func (a *AgentMemoryStore) itemByDigest(ctx context.Context, scope agentmemory.S
 	if err != nil {
 		return agentmemory.Item{}, false, err
 	}
-	item, err := scanItem(sqlitedb.Connection(ctx, a.db).QueryRowContext(ctx,
+	item, err := scanItem(sqlitebase.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE scope = ? AND project = ? AND digest = ?`,
 		token, project, digest))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -619,9 +618,9 @@ func (a *AgentMemoryStore) SetEmbeddings(ctx context.Context, updates []agentmem
 		}
 		seen[update.ItemID] = struct{}{}
 	}
-	return sqlitedb.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		for _, update := range updates {
-			if _, err := sqlitedb.Connection(ctx, a.db).ExecContext(ctx,
+			if _, err := sqlitebase.Connection(ctx, a.db).ExecContext(ctx,
 				`UPDATE agent_memory_items SET embedding_space = ?, embedding = ?
 				 WHERE id = ? AND digest = ? AND status = 'active'`,
 				update.Space, encodeVec(update.Vector), update.ItemID.String(), update.ContentDigest); err != nil {

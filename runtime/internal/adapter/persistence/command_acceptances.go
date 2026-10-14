@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // CommandAcceptanceStore writes immutable Run-owned receipts in their product
@@ -63,7 +64,7 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 			return runs.ErrStaleSegment
 		}
 	}
-	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
+	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 		`INSERT INTO idempotency_records(
 			key, kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
 		) VALUES (?, 'run_acceptance', ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -83,7 +84,7 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 // absent key reports neither. It performs no mutation and starts no Run.
 func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	var record runs.CommandAcceptanceRecord
-	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var err error
 		record, err = s.lookup(ctx, key)
 		return err
@@ -95,7 +96,7 @@ func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.C
 }
 
 func (s *CommandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT key FROM idempotency_records
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT key FROM idempotency_records
 		WHERE kind='run_acceptance' AND operation='steer' AND session_id=? AND material_run_id IS NOT NULL
 		ORDER BY key`, sessionID)
 	if err != nil {
@@ -139,7 +140,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		materialRun sql.NullString
 		steerInput  []byte
 	)
-	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
+	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
 		   FROM idempotency_records WHERE key = ?`, key,
 	).Scan(&kind, &digest, &operation, &sessionID, &runID, &segmentID, &userItemID, &materialRun, &steerInput)

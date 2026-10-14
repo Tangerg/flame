@@ -3,13 +3,13 @@ package recovery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -19,6 +19,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -104,7 +105,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 			return cleanupFailure
 		}),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if err != nil {
@@ -137,7 +138,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
 		ChildRunStarts:      childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if err != nil {
@@ -283,7 +284,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		ToolInvocations:     toolInvocations,
 		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(db),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if err != nil {
@@ -331,7 +332,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		ToolInvocations:     toolInvocations,
 		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(db),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if err != nil {
@@ -462,7 +463,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db),
 		ChildRunStarts: sqlite.NewChildRunStartReservationStore(db),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if err != nil {

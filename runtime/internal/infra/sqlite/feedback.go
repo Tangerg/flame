@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // FeedbackStore persists the append-only quality ledger. The DB must have been
@@ -27,7 +28,7 @@ func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error 
 	if err := entry.Validate(); err != nil {
 		return err
 	}
-	if _, err := Connection(ctx, f.db).ExecContext(ctx,
+	if _, err := sqlitebase.Connection(ctx, f.db).ExecContext(ctx,
 		`INSERT INTO feedback_entries(session_id, run_id, item_id, rating, text, created_at_ns)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		entry.SessionID, entry.RunID, entry.ItemID, entry.Rating, entry.Text, entry.CreatedAt.UnixNano()); err != nil {
@@ -39,7 +40,7 @@ func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error 
 // ListSession includes observations whose optional references name the Session
 // or its retained Runs and Items. References remain user claims, not foreign keys.
 func (f *FeedbackStore) ListSession(ctx context.Context, sessionID string) ([]feedback.Entry, error) {
-	rows, err := Connection(ctx, f.db).QueryContext(ctx,
+	rows, err := sqlitebase.Connection(ctx, f.db).QueryContext(ctx,
 		`SELECT session_id, run_id, item_id, rating, text, created_at_ns FROM feedback_entries WHERE `+
 			sessionFeedbackPredicate+` ORDER BY created_at_ns, id`, sessionID, sessionID, sessionID)
 	if err != nil {

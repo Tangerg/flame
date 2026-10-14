@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // Only publication is transactional here. Ledger facts survive failed model
@@ -18,12 +18,12 @@ import (
 type maintenancePublication struct {
 	app.CurationStore
 	db      *sql.DB
-	command *managedmcp.PreparedCommand
+	command *pluginstorage.PreparedCommand
 }
 
 func (s maintenancePublication) Reconcile(ctx context.Context, publication memory.Publication) (bool, error) {
 	var published bool
-	err := sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var err error
 		published, err = s.CurationStore.Reconcile(ctx, publication)
 		if err != nil {

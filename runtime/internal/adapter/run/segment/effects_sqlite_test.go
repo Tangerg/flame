@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -25,6 +24,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 )
@@ -111,7 +111,9 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
-		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	resume := testsupport.MustResumeRuns(
 		time.Now().UTC(), []run.Run{parkedRunRecord("run_stale", "ses_1", createdAt)}, []string{"seg_next"},
@@ -164,7 +166,9 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
-		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	parked, found, err := state.Run(ctx, "run_1")
 	if err != nil || !found {
@@ -253,7 +257,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	effects := mustNewEffects(Config{
 		State: state, Transcript: history,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			runInTxErr := sqlite.RunInTx(ctx, db, fn)
+			runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -316,7 +320,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		State:            runState,
 		RunProgress:      runState,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	start := runs.ModelInvocationCommit{
@@ -434,7 +438,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	effects := mustNewEffects(Config{
 		State: store,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
@@ -490,7 +494,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	effects := mustNewEffects(Config{
 		State: store, Transcript: history, Conversation: mustConversationStore(t, messages),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -542,7 +546,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 	effects := mustNewEffects(Config{
 		Transcript: history, ToolInvocations: invocations, State: runState, RunProgress: runState,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	starts := []runs.ToolInvocationCommit{
@@ -746,7 +750,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: interruptStore, transcript: transcriptStore}, Config{
 		State: runStore,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, database, fn)
+			return sqlitebase.RunInTx(ctx, database, fn)
 		},
 	})
 	return openingResumeFixture{
@@ -838,7 +842,9 @@ func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 			state := sqlite.NewRunStore(db)
 			receipts := persistence.NewCommandAcceptanceStore(db)
 			authority := actorAuthority{withdrawn: withdrawn}
-			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, CommandAcceptances: receipts, ActorAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }})
+			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, CommandAcceptances: receipts, ActorAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error {
+				return sqlitebase.RunInTx(ctx, db, fn)
+			}})
 			now := time.Now().UTC()
 			initial := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_automation", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: now, UpdatedAt: now, Revision: 1})
 			draft := testsupport.RunDraft(run.Draft{RunID: "run_automation", SessionID: initial.ID(), SegmentID: "seg_automation", CreatedAt: now})
@@ -947,7 +953,9 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
 		GoalRuns: mustGoalRuns(t, goals),
 		State:    state,
-		Tx:       func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	costUSD := 0.25
 	updated, err := run.Admit(draft)
@@ -1037,7 +1045,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		ExecutorCheckpoints: checkpointStore,
 		ToolInvocations:     toolInvocations,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			runInTxErr := sqlite.RunInTx(ctx, db, fn)
+			runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -1141,7 +1149,7 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 		State:               sqlite.NewRunStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	pending := singleRunPending(
@@ -1278,7 +1286,7 @@ func newTerminalCheckpointFixture(
 		State: runStore, Interrupts: interruptStore, ExecutorCheckpoints: checkpointDeleter,
 		ChildRunStarts: childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, database, fn)
+			return sqlitebase.RunInTx(ctx, database, fn)
 		},
 	})
 	return terminalCheckpointFixture{
@@ -1449,7 +1457,7 @@ func TestCommitWaitingSubtreeCancellationReconcilesAmbiguousCommit(t *testing.T)
 					State:               fixture.runState,
 					ExecutorCheckpoints: fixture.checkpoints,
 					Tx: func(ctx context.Context, fn func(context.Context) error) error {
-						err := sqlite.RunInTx(ctx, fixture.db, fn)
+						err := sqlitebase.RunInTx(ctx, fixture.db, fn)
 						if err == nil && loseReceipt {
 							loseReceipt = false
 							cancelCommit()
@@ -1921,7 +1929,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 			State:               state,
 			ExecutorCheckpoints: checkpointStore,
 			Tx: func(ctx context.Context, fn func(context.Context) error) error {
-				return sqlite.RunInTx(ctx, db, fn)
+				return sqlitebase.RunInTx(ctx, db, fn)
 			},
 		},
 	)
@@ -2020,7 +2028,9 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
 		Conversation: mustConversationStore(t, messages),
 		State:        state,
-		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
 	opening := mustAdmissionOpening(
@@ -2078,7 +2088,9 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 	effects := mustNewEffects(Config{
 		Conversation: mustConversationStore(t, messages),
 		State:        state,
-		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
@@ -2129,7 +2141,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			runInTxErr := sqlite.RunInTx(ctx, db, fn)
+			runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -2277,7 +2289,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		State: state, RunProgress: state,
 	}
 	baseConfig.Tx = func(ctx context.Context, fn func(context.Context) error) error {
-		return sqlite.RunInTx(ctx, db, fn)
+		return sqlitebase.RunInTx(ctx, db, fn)
 	}
 	effects := mustNewEffects(baseConfig)
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
@@ -2297,7 +2309,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	t.Cleanup(cancelCommit)
 	ambiguousConfig := baseConfig
 	ambiguousConfig.Tx = func(ctx context.Context, fn func(context.Context) error) error {
-		runInTxErr := sqlite.RunInTx(ctx, db, fn)
+		runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
 		if runInTxErr == nil && loseReceipt {
 			loseReceipt = false
 			cancelCommit()
@@ -2440,7 +2452,7 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 		ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 		ChildRunStarts:      childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
@@ -2492,7 +2504,9 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
 		State: state,
-		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeFailed)
 	updated := mutatedRun(*finished, func(snapshot *run.Snapshot) {

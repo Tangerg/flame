@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"time"
 
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type ScheduleStore struct {
@@ -33,7 +32,7 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 		return fmt.Errorf("sqlite: initial schedule revision is %d: %w", scheduled.Revision(), schedule.ErrRevisionConflict)
 	}
 	snapshot := scheduled.Snapshot()
-	_, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
@@ -49,7 +48,7 @@ func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replace
 	expectedRevision := replacement.ExpectedRevision()
 	sc := replacement.State()
 	snapshot := sc.Snapshot()
-	res, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+	res, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules
 		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, next_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
@@ -76,7 +75,7 @@ func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, 
 	if err := schedule.ValidateID(id); err != nil {
 		return schedule.Schedule{}, err
 	}
-	row := sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx,
+	row := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT `+scheduleColumns+`
 		 FROM schedules WHERE id = ?`, id)
 	sc, err := scanSchedule(row.Scan)
@@ -140,8 +139,8 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 	if err != nil {
 		return false, err
 	}
-	err = sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		res, execContextErr := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+	err = sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		res, execContextErr := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 			`UPDATE schedules SET next_run_at = ?, revision = ?
 				 WHERE id = ? AND revision = ? AND next_run_at = ?
 				   AND NOT EXISTS (
@@ -160,7 +159,7 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 		if changed == 0 {
 			return nil
 		}
-		_, execContextErr = sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+		_, execContextErr = sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 			`INSERT INTO schedule_firings(
 				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort,
 				due_at, fired_at, next_run_at, session_id, run_id, invocation_json, state
@@ -192,7 +191,7 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 	}
 	query += ` ORDER BY due_at, id LIMIT ?`
 	args = append(args, limit)
-	rows, err := sqlitedb.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
 	}
@@ -216,8 +215,8 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 		return fmt.Errorf("sqlite: invalid schedule acceptance: %w", err)
 	}
 	occurrenceID, runID := acceptance.OccurrenceID(), acceptance.RunID()
-	return sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		res, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		res, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 			`UPDATE schedule_firings SET state = ?
 			  WHERE id = ? AND run_id = ? AND state = ?`,
 			scheduleFiringAccepted.databaseValue(), occurrenceID, runID,
@@ -232,7 +231,7 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 		if changed != 0 {
 			var scheduleID string
 			var firedAt int64
-			if scanErr := sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx,
+			if scanErr := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
 				`SELECT schedule_id, fired_at FROM schedule_firings WHERE id = ? AND run_id = ?`, occurrenceID, runID).Scan(&scheduleID, &firedAt); scanErr != nil {
 				return fmt.Errorf("sqlite: load accepted schedule occurrence: %w", scanErr)
 			}
@@ -240,7 +239,7 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 			return err
 		}
 		var storedRunID, rawState string
-		err = sqlitedb.Connection(ctx, s.db).QueryRowContext(ctx,
+		err = sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
 			`SELECT run_id, state FROM schedule_firings WHERE id = ?`, occurrenceID).Scan(&storedRunID, &rawState)
 		if errors.Is(err, sql.ErrNoRows) {
 			return errors.New("sqlite: schedule occurrence not found")
@@ -275,7 +274,7 @@ func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt 
 	if err != nil {
 		return false, err
 	}
-	result, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx,
+	result, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules
 		 SET last_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
@@ -297,7 +296,7 @@ func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
 	if err := schedule.ValidateID(id); err != nil {
 		return false, err
 	}
-	result, err := sqlitedb.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM schedules WHERE id = ?`, id)
+	result, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM schedules WHERE id = ?`, id)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: delete schedule: %w", err)
 	}
@@ -309,7 +308,7 @@ func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
 }
 
 func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...any) ([]schedule.Schedule, error) {
-	rows, err := sqlitedb.Connection(ctx, s.db).QueryContext(ctx, q, args...)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: %s: %w", operation, err)
 	}

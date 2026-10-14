@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -28,7 +29,7 @@ func TestResultPublicationsFollowTheExactConversationRound(t *testing.T) {
 	}
 	first := chat.ToolResult{ID: "reused_call", Name: "inspect", Output: chat.NewTextToolOutput("first exact result")}
 	cause := errors.New("publication transaction failed")
-	err = sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+	err = sqlitebase.RunInTx(t.Context(), db, func(ctx context.Context) error {
 		if err := runs.RecordResultPublication(ctx, sessionID, runID, segmentID, "pub_rollback", "digest_rollback", []chat.ToolResult{first}); err != nil {
 			return err
 		}

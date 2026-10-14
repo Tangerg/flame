@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // Measure the coherent storage read and application validation together. Network
@@ -26,7 +27,9 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 				b.Fatal(err)
 			}
 			b.Cleanup(func() { _ = db.Close() })
-			tx := func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }
+			tx := func(ctx context.Context, fn func(context.Context) error) error {
+				return sqlitebase.RunInTx(ctx, db, fn)
+			}
 			messages := sqlite.NewMessageStore(db)
 			runs := sqlite.NewRunStore(db)
 			compactions, err := NewConversationCompactions(mustConversationStore(b, messages), runs, tx)

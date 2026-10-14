@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type TrajectoryPosition struct {
@@ -53,9 +54,9 @@ func (s *TrajectoryStore) Page(ctx context.Context, sessionID string, includeDes
 		return nil, errors.New("sqlite: trajectory page requires a positive limit")
 	}
 	var result []TrajectoryRecord
-	err := RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var exists bool
-		if err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
+		if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
 			return fmt.Errorf("sqlite: trajectory Session: %w", err)
 		}
 		if !exists {
@@ -102,7 +103,7 @@ func (s *TrajectoryStore) positions(ctx context.Context, sessionID string, inclu
 	}
 	query += ` ORDER BY occurred_at DESC, kind DESC, id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page trajectory: %w", err)
 	}
@@ -170,7 +171,7 @@ func (s *TrajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 }
 
 func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, sessionID, runID, callID string) (ModelInvocationRecord, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
+	row := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
 	record, err := scanModelInvocation(row)
 	if err != nil {
 		return ModelInvocationRecord{}, err

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestAgentMemoryQueriesJoinCallerTransaction(t *testing.T) {
@@ -39,7 +39,7 @@ func TestAgentMemoryQueriesJoinCallerTransaction(t *testing.T) {
 		}},
 	}
 
-	if err := sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
+	if err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		for _, query := range queries {
 			items, err := query.list(ctx)
 			if err != nil {

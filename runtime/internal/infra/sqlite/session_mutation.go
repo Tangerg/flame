@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // Insert persists one already-decided initial Session. Identity, timestamps,
@@ -16,7 +17,7 @@ func (s *SessionStore) Insert(ctx context.Context, value session.Session) error 
 	if value.Revision() != firstRevision {
 		return fmt.Errorf("sqlite: initial Session revision is %d, want %d: %w", value.Revision(), firstRevision, session.ErrInvalid)
 	}
-	if err := s.execInsert(ctx, Connection(ctx, s.db), value); err != nil {
+	if err := s.execInsert(ctx, sqlitebase.Connection(ctx, s.db), value); err != nil {
 		return err
 	}
 	return nil
@@ -43,7 +44,7 @@ func (s *SessionStore) Save(
 	if err != nil {
 		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
 	}
-	result, err := Connection(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
+	result, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
 		title = ?, title_search = ?, workspace_path = ?, workspace_search = ?, parent_id = ?, created_at = ?, updated_at = ?,
 		provider = ?, model = ?, reasoning_effort = ?, favorite = ?, isolated = ?, revision = ?
 		WHERE id = ? AND revision = ?`,
@@ -71,23 +72,23 @@ func (s *SessionStore) Save(
 	return session.ErrRevisionConflict
 }
 
-// Delete is idempotent. It joins an ambient transaction through Connection(ctx).
+// Delete is idempotent. It joins an ambient transaction through sqlitebase.Connection(ctx).
 func (s *SessionStore) Delete(ctx context.Context, id string) error {
 	if err := validateSessionResource("delete Session", id); err != nil {
 		return err
 	}
-	return RunInTx(ctx, s.db, func(ctx context.Context) error {
-		if _, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM model_invocations WHERE session_id=? AND endpoint_json IS NOT NULL`, id); err != nil {
+	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		if _, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM model_invocations WHERE session_id=? AND endpoint_json IS NOT NULL`, id); err != nil {
 			return fmt.Errorf("sqlite: delete Session endpoints: %w", err)
 		}
-		if _, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
+		if _, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
 			return fmt.Errorf("sqlite: delete Session: %w", err)
 		}
 		return nil
 	})
 }
 
-func (s *SessionStore) execInsert(ctx context.Context, executor execer, value session.Session) error {
+func (s *SessionStore) execInsert(ctx context.Context, executor sqlitebase.Executor, value session.Session) error {
 	snapshot := value.Snapshot()
 	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
 	if err != nil {

@@ -16,41 +16,34 @@ import (
 // state.
 //
 // A caller-supplied transaction is carried on the context: [RunInTx] begins it
-// (or joins an outer one) and stashes it under txKey; every store statement
-// runs through [conn], which uses that transaction when present and the shared
+// (or joins an outer one) and binds it to that exact database; every store statement
+// runs through [Connection], which uses that transaction when present and the shared
 // pool otherwise. This is mandatory rather than an optimization: the pool runs
 // at MaxOpenConns(1), so a store that opened its OWN BeginTx while a context
 // transaction was live would deadlock — the single connection is already held.
 
-// execer is the statement surface shared by *sql.DB and *sql.Tx, so a store
-// method can run on either the pool or a caller's transaction unchanged.
-type execer interface {
+// Executor is the statement surface shared by *sql.DB and *sql.Tx. Statements
+// join a caller transaction only when they name the same database owner.
+type Executor interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// scanRow is the row surface shared by *sql.Row (QueryRow) and *sql.Rows (Query
-// iteration), so one scan helper covers both a single Get and a List loop. Used
-// by the goal / interrupt / agent-memory decoders.
-type scanRow interface {
-	Scan(dest ...any) error
-}
+type txKey struct{ database *sql.DB }
 
-type txKey struct{}
-
-// conn returns the transaction carried on ctx by [RunInTx] if one is live,
+// Connection returns the transaction carried by [RunInTx] for this exact database,
 // else the shared pool db. A store method MUST route through this (not the bare
 // s.db) for any statement that should join a caller's cross-store transaction.
-func Connection(ctx context.Context, db *sql.DB) execer {
-	if tx, ok := ctx.Value(txKey{}).(*sql.Tx); ok {
+func Connection(ctx context.Context, db *sql.DB) Executor {
+	if tx, ok := ctx.Value(txKey{database: db}).(*sql.Tx); ok {
 		return tx
 	}
 	return db
 }
 
 // RunInTx runs fn inside a single transaction exposed to fn's store calls via
-// the returned context (they pick it up through [conn]). It commits on success
+// the returned context (they pick it up through [Connection]). It commits on success
 // and joins rollback on error or panic, so a multi-step write-set is atomic. A
 // nested RunInTx joins the outer transaction (a single connection can't nest
 // transactions, and the outer owns the commit), so a store method that wraps
@@ -60,22 +53,27 @@ func RunInTx(ctx context.Context, db *sql.DB, fn func(context.Context) error) er
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
-	if _, ok := ctx.Value(txKey{}).(*sql.Tx); ok {
+	if _, ok := ctx.Value(txKey{database: db}).(*sql.Tx); ok {
 		if err := fn(ctx); err != nil {
 			return errors.Join(err, cancellation.Err(ctx))
 		}
 		return nil
 	}
-	return runTransaction(ctx, db, fn)
+	return RunIndependentTx(ctx, db, fn)
 }
 
+// RunIndependentTx owns a fresh write-set and refuses an active transaction for
+// the same database. Another database remains an independent fact owner.
 // Acquisition and statements retain caller cancellation. The transaction has
 // an owned lifetime so database/sql cannot race this boundary's rollback and
 // discard its diagnostic. Workspace intents and schema admission deliberately
 // enter here rather than joining an ambient write-set.
-func runTransaction(ctx context.Context, db *sql.DB, fn func(context.Context) error) (err error) {
+func RunIndependentTx(ctx context.Context, db *sql.DB, fn func(context.Context) error) (err error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return err
+	}
+	if _, active := ctx.Value(txKey{database: db}).(*sql.Tx); active {
+		return errors.Join(errors.New("sqlite: independent transaction cannot enter an active database transaction"), cancellation.Err(ctx))
 	}
 	connection, err := db.Conn(ctx)
 	if err != nil {
@@ -111,7 +109,7 @@ func runTransaction(ctx context.Context, db *sql.DB, fn func(context.Context) er
 		err = errors.Join(err, rollbackErr)
 	}()
 	if err = cancellation.Err(ctx); err == nil {
-		err = fn(context.WithValue(ctx, txKey{}, tx))
+		err = fn(context.WithValue(ctx, txKey{database: db}, tx))
 	}
 	err = errors.Join(err, cancellation.Err(ctx))
 	if err != nil {

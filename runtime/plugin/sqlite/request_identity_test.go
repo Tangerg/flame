@@ -1,4 +1,4 @@
-package managedmcp
+package sqlite
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
 	schema := []string{CommandsSchema, `CREATE TABLE IF NOT EXISTS counter(value INTEGER NOT NULL)`, `INSERT INTO counter SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM counter)`}
-	db, err := sqlitedb.OpenSchema(t.Context(), path, schema)
+	db, err := sqlitebase.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 			t.Fatal(err)
 		}
 		if err := RegisterCommand(binding, db, method, nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
-			_, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
+			_, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
 			return "saved", err
 		}); err != nil {
 			t.Fatal(err)
@@ -79,7 +79,7 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := sqlitedb.OpenSchema(t.Context(), path, schema)
+	reopened, err := sqlitebase.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,8 +18,10 @@ var publicPackagePaths = []string{
 	runtimeModulePath + "/jsoninput",
 	runtimeModulePath + "/localruntime",
 	runtimeModulePath + "/plugin",
+	runtimeModulePath + "/plugin/sqlite",
 	runtimeModulePath + "/point",
 	runtimeModulePath + "/protocol",
+	runtimeModulePath + "/storage/sqlite",
 }
 
 type publicGoAPI struct {

@@ -1,17 +1,17 @@
-package managedmcp
+package sqlite
 
 import (
 	"bytes"
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Tangerg/flame/runtime/capability"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // PreparedCommand is a projection of a durable private command admission.
@@ -35,9 +35,9 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 	}
 	var reply []byte
 	started := false
-	err := sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
+	err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		var previousMethod, previousInput string
-		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
 				return idempotency.ErrKeyConflict
@@ -52,7 +52,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 				return err
 			}
 		}
-		if _, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
+		if _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
 			return err
 		}
 		started = true
@@ -71,7 +71,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, jsoninput.Input, []byte, error) {
 	var storedMethod, raw string
 	var reply []byte
-	if err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
+	if err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
 		return nil, jsoninput.Input{}, nil, err
 	}
 	if storedMethod != method {
@@ -103,10 +103,10 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 			return err
 		}
 	}
-	return sqlitedb.RunInTx(ctx, c.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, c.db, func(ctx context.Context) error {
 		var method, input string
 		var original []byte
-		if err := sqlitedb.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
+		if err := sqlitebase.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
 			return err
 		}
 		if method != c.method || input != c.input.String() {
@@ -118,7 +118,7 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 			}
 			return nil
 		}
-		_, err := sqlitedb.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
+		_, err := sqlitebase.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
 		return err
 	})
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestTransactionFailureRetainsRollbackDiagnostic(t *testing.T) {
@@ -22,7 +23,7 @@ func TestTransactionFailureRetainsRollbackDiagnostic(t *testing.T) {
 	retirement := errors.New("transaction rollback failed")
 	faults := &transactionFaults{rollback: func() error { return retirement }}
 	db := settlementDatabase(t, faults)
-	err := RunInTx(t.Context(), db, func(context.Context) error { return failure })
+	err := sqlitebase.RunInTx(t.Context(), db, func(context.Context) error { return failure })
 	if !errors.Is(err, failure) || !errors.Is(err, retirement) {
 		t.Fatalf("transaction = %v, want write-set and rollback failures", err)
 	}
@@ -44,7 +45,7 @@ func TestFailedTransactionSettlementCannotRecycleItsConnection(t *testing.T) {
 				faults.commitFailure = failure
 			}
 			db := settlementDatabase(t, faults)
-			err := RunInTx(t.Context(), db, body)
+			err := sqlitebase.RunInTx(t.Context(), db, body)
 			if !errors.Is(err, failure) || db.Stats().Idle != 0 || db.Stats().InUse != 0 {
 				t.Fatalf("settlement = %v, idle=%d, in-use=%d; want retained failure and discarded connection", err, db.Stats().Idle, db.Stats().InUse)
 			}
@@ -66,7 +67,7 @@ func TestTransactionCancellationJoinsOwnedRollback(t *testing.T) {
 		finishBody := make(chan struct{})
 		done := make(chan error, 1)
 		go func() {
-			done <- RunInTx(ctx, db, func(context.Context) error {
+			done <- sqlitebase.RunInTx(ctx, db, func(context.Context) error {
 				close(entered)
 				<-finishBody
 				return failure
@@ -109,7 +110,7 @@ func TestTransactionAcquisitionRetainsCancellation(t *testing.T) {
 		cause := errors.New("connection acquisition stopped")
 		done := make(chan error, 1)
 		go func() {
-			done <- RunInTx(ctx, db, func(context.Context) error {
+			done <- sqlitebase.RunInTx(ctx, db, func(context.Context) error {
 				t.Error("canceled acquisition started a write-set")
 				return nil
 			})
@@ -133,10 +134,10 @@ func TestTransactionRejectsUnstartedPhasesAfterCancellation(t *testing.T) {
 				faults.afterBegin = func() { stop(cause) }
 			}
 			db := settlementDatabase(t, faults)
-			err := RunInTx(ctx, db, func(ctx context.Context) error {
+			err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 				if phase == "nested write-set" {
 					stop(cause)
-					return RunInTx(ctx, db, func(context.Context) error {
+					return sqlitebase.RunInTx(ctx, db, func(context.Context) error {
 						t.Error("canceled transaction started a nested write-set")
 						return nil
 					})
@@ -157,7 +158,7 @@ func TestTransactionBeginFailureRetainsCancellation(t *testing.T) {
 	cause := errors.New("write request stopped")
 	failure := errors.New("begin failed")
 	db := settlementDatabase(t, &transactionFaults{beforeBegin: func() error { stop(cause); return failure }})
-	err := RunInTx(ctx, db, func(context.Context) error {
+	err := sqlitebase.RunInTx(ctx, db, func(context.Context) error {
 		t.Error("failed begin started a write-set")
 		return nil
 	})
@@ -172,8 +173,8 @@ func TestTransactionRetainsAcceptedCommitAfterLateCancellation(t *testing.T) {
 	cause := errors.New("write request stopped during commit")
 	faults := &transactionFaults{beforeCommit: func() { stop(cause) }}
 	db := settlementDatabase(t, faults)
-	err := RunInTx(ctx, db, func(ctx context.Context) error {
-		_, err := Connection(ctx, db).ExecContext(ctx, `CREATE TABLE accepted_commit (id INTEGER PRIMARY KEY)`)
+	err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+		_, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `CREATE TABLE accepted_commit (id INTEGER PRIMARY KEY)`)
 		return err
 	})
 	if err != nil {
@@ -199,7 +200,7 @@ func TestTransactionPanicRetainsRollbackFailure(t *testing.T) {
 				t.Errorf("panic = %v, want write-set and rollback failures", recovered)
 			}
 		}()
-		_ = RunInTx(t.Context(), db, func(context.Context) error { panic(failure) })
+		_ = sqlitebase.RunInTx(t.Context(), db, func(context.Context) error { panic(failure) })
 	}()
 	if faults.rollbacks.Load() != 1 || db.Stats().InUse != 0 {
 		t.Fatal("panic retained its transaction resource")
@@ -216,7 +217,7 @@ func TestTransactionPreservesPanicAfterSuccessfulRollback(t *testing.T) {
 					t.Errorf("panic = %v, want original %v", recovered, value)
 				}
 			}()
-			_ = RunInTx(t.Context(), db, func(context.Context) error { panic(value) })
+			_ = sqlitebase.RunInTx(t.Context(), db, func(context.Context) error { panic(value) })
 		}()
 		if faults.rollbacks.Load() != 1 || db.Stats().InUse != 0 {
 			t.Fatal("panic retained its transaction resource")
@@ -232,8 +233,8 @@ func TestTransactionSettlesBeforeGoroutineExit(t *testing.T) {
 		finished := make(chan struct{})
 		go func() {
 			defer close(finished)
-			_ = RunInTx(t.Context(), db, func(ctx context.Context) error {
-				transaction <- Connection(ctx, db).(*sql.Tx)
+			_ = sqlitebase.RunInTx(t.Context(), db, func(ctx context.Context) error {
+				transaction <- sqlitebase.Connection(ctx, db).(*sql.Tx)
 				runtime.Goexit()
 				return nil
 			})
@@ -299,7 +300,7 @@ func TestSchemaRejectionRetainsRollbackFailure(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `CREATE TABLE obsolete_schema (id INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
-	err := InstallSchema(t.Context(), db, currentSchema())
+	err := sqlitebase.InstallSchema(t.Context(), db, currentSchema())
 	if !errors.Is(err, retirement) || !strings.Contains(err.Error(), "incompatible schema") {
 		t.Fatalf("schema rejection = %v, want admission and rollback failures", err)
 	}

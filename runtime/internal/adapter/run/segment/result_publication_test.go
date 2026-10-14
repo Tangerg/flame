@@ -21,6 +21,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 	"github.com/Tangerg/scope/core/metadata"
@@ -52,7 +53,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 				ExecutionTrees: trees, State: state, Transcript: history, Conversation: mustConversationStore(t, messages), ToolInvocations: sqlite.NewToolInvocationStore(db),
 				Tx: func(ctx context.Context, fn func(context.Context) error) error {
 					transactions++
-					err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+					err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 						if err := fn(ctx); err != nil {
 							return err
 						}
@@ -179,7 +180,9 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 				state, messages = sqlite.NewRunStore(db), sqlite.NewMessageStore(db)
 				effects = mustNewEffects(Config{
 					State: state, Transcript: sqlite.NewTranscriptStore(db), Conversation: mustConversationStore(t, messages), ToolInvocations: sqlite.NewToolInvocationStore(db),
-					Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+					Tx: func(ctx context.Context, fn func(context.Context) error) error {
+						return sqlitebase.RunInTx(ctx, db, fn)
+					},
 				})
 			}
 			open()

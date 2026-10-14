@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // roleStore is the shared persistence primitive for single-row role tables,
@@ -24,7 +25,7 @@ func newRoleStore(db *sql.DB, table, label string) *roleStore {
 func (r *roleStore) load(ctx context.Context) (modelref.Role, bool, error) {
 	query := fmt.Sprintf("SELECT provider, model FROM %s WHERE id = 1", r.table)
 	var provider, model string
-	err := Connection(ctx, r.db).QueryRowContext(ctx, query).Scan(&provider, &model)
+	err := sqlitebase.Connection(ctx, r.db).QueryRowContext(ctx, query).Scan(&provider, &model)
 	if errors.Is(err, sql.ErrNoRows) {
 		return modelref.Role{}, false, nil
 	}
@@ -43,7 +44,7 @@ func (r *roleStore) save(ctx context.Context, role modelref.Role) error {
 		`INSERT INTO %s (id, provider, model) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, model = excluded.model`,
 		r.table,
 	)
-	_, err := Connection(ctx, r.db).ExecContext(ctx, query, role.Provider(), role.Model())
+	_, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx, query, role.Provider(), role.Model())
 	if err != nil {
 		return fmt.Errorf("sqlite: save %s: %w", r.label, err)
 	}

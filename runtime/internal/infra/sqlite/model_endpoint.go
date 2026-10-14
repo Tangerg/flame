@@ -6,7 +6,6 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"reflect"
 	"time"
 
@@ -14,10 +13,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -195,7 +196,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 	parameters := []any{invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
 	parameters = append(parameters, args...)
 	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
-	result, err := Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
 	if err != nil {
 		return err
 	}
@@ -247,7 +248,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if err != nil {
 		return err
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
 		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.CostUSD,
 		invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded))
 	if err != nil {
@@ -272,7 +273,7 @@ func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, pare
 	}
 	query += ` ORDER BY started_at DESC,call_id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := Connection(ctx, m.db).QueryContext(ctx, query, args...)
+	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -421,12 +422,12 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 	if err := instant.Validate(settledAt); err != nil {
 		return err
 	}
-	_, err := Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelInvocationUnknown.databaseValue(), settledAt.UTC().UnixNano(), modelInvocationStarted.databaseValue())
+	_, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelInvocationUnknown.databaseValue(), settledAt.UTC().UnixNano(), modelInvocationStarted.databaseValue())
 	return err
 }
 
 func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
+	row := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
 	value, err := scanEndpointObservation(row, caller)
 	if errors.Is(err, sql.ErrNoRows) {
 		return modelref.EndpointObservation{}, false, nil
@@ -440,7 +441,7 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return nil, err
 	}
-	rows, err := Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
+	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +458,7 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 }
 
 func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID, id string) (modelref.EndpointObservation, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
+	row := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
 	return scanEndpointObservation(row, "")
 }
 
@@ -469,7 +470,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 		return err
 	}
 	var actualPurpose string
-	if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
+	if err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
 		return err
 	}
 	if actualPurpose != purpose.String() {
@@ -502,7 +503,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	if err != nil {
 		return err
 	}
-	result, err := Connection(ctx, m.db).ExecContext(ctx, `WITH evidence AS (
+	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx, `WITH evidence AS (
 	 SELECT usage,known_response FROM model_invocations WHERE call_id=? AND endpoint_json=? AND session_id=? AND run_id=? AND segment_id=?
 	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_usd IS ? AND endpoint_failure=? AND usage IS ?)
 	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
@@ -539,10 +540,10 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 			return err
 		}
 	}
-	return RunInTx(ctx, m.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, m.db, func(ctx context.Context) error {
 		if sessionID != "" {
 			var exists bool
-			if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {
+			if err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {
 				return err
 			}
 			if !exists {
@@ -561,7 +562,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 		}
 		ownership += `)`
 		var invalid bool
-		if err := Connection(ctx, m.db).QueryRowContext(ctx, ownership, ownershipArgs...).Scan(&invalid); err != nil {
+		if err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, ownership, ownershipArgs...).Scan(&invalid); err != nil {
 			return err
 		}
 		if invalid {
@@ -578,7 +579,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 			args = append(args, since.UTC().UnixNano())
 		}
 		query += ` ORDER BY started_at,call_id`
-		rows, err := Connection(ctx, m.db).QueryContext(ctx, query, args...)
+		rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, query, args...)
 		if err != nil {
 			return err
 		}
@@ -599,7 +600,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 // ListIndependentEndpoints returns retained descendant attempts not projected
 // through a logical Model receipt. Active Run recovery owns its one accrual.
 func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]modelref.EndpointObservation, error) {
-	rows, err := Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
+	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
  WHERE endpoint_json IS NOT NULL AND run_id IN (SELECT run_id FROM runs WHERE state!=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations logical WHERE logical.endpoint_json IS NULL AND logical.call_id=json_extract(model_invocations.endpoint_json,'$.caller.id'))
  ORDER BY session_id,run_id,call_id`, runStateTerminal.databaseValue())
@@ -644,7 +645,7 @@ func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, 
 	}
 
 	var logical int
-	if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Invocation.Caller.ID).Scan(&logical); err != nil {
+	if err := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Invocation.Caller.ID).Scan(&logical); err != nil {
 		return err
 	}
 	if logical != 0 {

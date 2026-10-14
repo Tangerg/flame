@@ -1,4 +1,4 @@
-package managedmcp
+package sqlite
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
-	db, err := sqlitedb.OpenSchema(t.Context(), path, []string{CommandsSchema})
+	db, err := sqlitebase.OpenSchema(t.Context(), path, []string{CommandsSchema})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	db, err = sqlitedb.OpenSchema(t.Context(), path, []string{CommandsSchema})
+	db, err = sqlitebase.OpenSchema(t.Context(), path, []string{CommandsSchema})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 }
 
 func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
-	db, err := sqlitedb.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema, `CREATE TABLE counter(value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`})
+	db, err := sqlitebase.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema, `CREATE TABLE counter(value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,12 +72,12 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	mutate := func(ctx context.Context) error {
-		if _, err := sqlitedb.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
+		if _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return err
 		}
 		return prepared.Complete(ctx, reply)
 	}
-	if err := sqlitedb.RunInTx(t.Context(), db, mutate); err == nil {
+	if err := sqlitebase.RunInTx(t.Context(), db, mutate); err == nil {
 		t.Fatal("receipt failure committed mutation")
 	}
 	var count int
@@ -91,7 +91,7 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER abort_completion`); err != nil {
 		t.Fatal(err)
 	}
-	if err := sqlitedb.RunInTx(t.Context(), db, mutate); err != nil {
+	if err := sqlitebase.RunInTx(t.Context(), db, mutate); err != nil {
 		t.Fatal(err)
 	}
 	if err := prepared.Complete(t.Context(), reply); err != nil {

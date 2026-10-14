@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type pausedInterruptPage struct {
@@ -97,7 +98,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, reader, read)
+			return sqlitebase.RunInTx(ctx, reader, read)
 		},
 		Transcript: sqlite.NewTranscriptStore(reader), Interrupts: pages,
 		Runs: sqlite.NewRunStore(reader), Sessions: sqlite.NewSessionStore(reader), Plan: sqlite.NewPlanStore(reader),
@@ -127,7 +128,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
+	err = sqlitebase.RunInTx(t.Context(), writer, func(ctx context.Context) error {
 		if _, found, err := sqlite.NewInterruptStore(writer).Consume(ctx, root.ID()); err != nil || !found {
 			return fmt.Errorf("consume interrupt: found=%t: %w", found, err)
 		}

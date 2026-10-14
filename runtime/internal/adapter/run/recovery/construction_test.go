@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestRecoveryRejectsMissingCollaborators(t *testing.T) {
@@ -27,7 +28,9 @@ func TestRecoveryRejectsMissingCollaborators(t *testing.T) {
 		ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 		ModelInvocations:    sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db),
 		ChildRunStarts: sqlite.NewChildRunStartReservationStore(db),
-		Tx:             func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlitebase.RunInTx(ctx, db, fn)
+		},
 	}
 	for _, test := range []struct {
 		name   string

@@ -608,3 +608,11 @@ operation and host-owned Model/Tool boundary. An existing logical Model/Tool ID
 cannot be repurposed as a fresh physical caller. The host captures execution ownership;
 wire invocation headers and parent fields cannot select another Run or Segment.
 Endpoint observations expose the original optional Segment in Core .30.
+
+## Private SQLite receipts
+
+Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input
+admission, nullable unknown settlement and atomic mutation/receipt handling. The
+same implementation serves the bundled backends. Strict schema admission and
+per-database transaction lifetime live in [`storage/sqlite`](../storage/sqlite/README.md).
+No private Runtime store or host business schema is part of the author API.

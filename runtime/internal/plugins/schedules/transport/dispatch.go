@@ -6,10 +6,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type RunHost interface {
@@ -43,11 +43,11 @@ func connectRuntime(ctx context.Context, db *sql.DB, connect RunConnector) (RunH
 }
 
 func bindRuntime(ctx context.Context, db *sql.DB, namespace string) error {
-	return sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		var original string
-		err := sqlitedb.Connection(ctx, db).QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original)
+		err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original)
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = sqlitedb.Connection(ctx, db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?)`, namespace)
+			_, err = sqlitebase.Connection(ctx, db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?)`, namespace)
 			return err
 		}
 		if err != nil {
@@ -63,11 +63,11 @@ func bindRuntime(ctx context.Context, db *sql.DB, namespace string) error {
 type dispatchCommit struct {
 	app.DispatchStore
 	db      *sql.DB
-	command *managedmcp.PreparedCommand
+	command *pluginstorage.PreparedCommand
 }
 
 func (s dispatchCommit) AcceptRun(ctx context.Context, id string) error {
-	return sqlitedb.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		request, err := s.DispatchStore.CapturedRun(ctx, id)
 		if err != nil {
 			return err

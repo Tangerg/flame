@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // The separate writer commits after the Goal row is read and before usage is
@@ -55,7 +56,7 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 			snapshotDriver := goalSnapshotDriver{
 				Driver: writer.Driver(),
 				afterGoalRead: func() error {
-					return sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
+					return sqlitebase.RunInTx(t.Context(), writer, func(ctx context.Context) error {
 						if err := sqlite.NewRunStore(writer).Restore(ctx, terminal); err != nil {
 							return err
 						}

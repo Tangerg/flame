@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -24,6 +24,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -176,7 +177,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		t.Fatal(err)
 	}
 	compactions, err := persistence.NewConversationCompactions(messages, runs, func(ctx context.Context, fn func(context.Context) error) error {
-		return sqlite.RunInTx(ctx, db, fn)
+		return sqlitebase.RunInTx(ctx, db, fn)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -206,7 +207,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, db, fn)
+			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 	})
 	if err != nil {

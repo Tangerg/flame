@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // TestRunInTx_AtomicAcrossStores is the guarantee sessions.import / rollback
@@ -36,7 +36,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 
 	// A multi-store write-set that fails mid-way must leave NO partial state.
 	boom := errors.New("boom")
-	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	err = sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Title: "t"})
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
@@ -57,7 +57,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 	}
 
 	// A successful write-set commits both stores.
-	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	if runInTxErr := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Title: "t"})
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
@@ -86,7 +86,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		time.Unix(2, 0).UTC(),
 	)
 	seedParkedRuns(t, db, "s2", pendingSet)
-	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	if runInTxErr := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		if openErr := ints.Open(ctx, pendingSet); openErr != nil {
 			return openErr
 		}

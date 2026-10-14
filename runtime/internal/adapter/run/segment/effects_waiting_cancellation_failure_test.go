@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type failingWaitingCheckpointStore struct {
@@ -288,7 +288,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {
 				fixture.replaceEffects(func(config *Config) {
 					config.Tx = func(ctx context.Context, fn func(context.Context) error) error {
-						return sqlite.RunInTx(ctx, fixture.db, func(txCtx context.Context) error {
+						return sqlitebase.RunInTx(ctx, fixture.db, func(txCtx context.Context) error {
 							if err := fn(txCtx); err != nil {
 								return err
 							}
@@ -345,7 +345,7 @@ func (w *waitingCancellationSQLiteFixture) replaceEffects(
 		State:               w.runState,
 		ExecutorCheckpoints: w.checkpoints,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlite.RunInTx(ctx, w.db, fn)
+			return sqlitebase.RunInTx(ctx, w.db, fn)
 		},
 	}
 	configure(&config)

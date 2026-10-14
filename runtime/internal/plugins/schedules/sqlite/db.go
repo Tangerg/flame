@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func Open(ctx context.Context, path string) (*sql.DB, error) {
 	firstExactInteger := exactint.First().Value()
-	return sqlitedb.OpenSchema(ctx, path, []string{managedmcp.CommandsSchema, manualSchema,
+	return sqlitebase.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, manualSchema,
 		`CREATE TABLE IF NOT EXISTS runtime_target (id INTEGER PRIMARY KEY CHECK(id=1), namespace TEXT NOT NULL)`,
 
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedules (

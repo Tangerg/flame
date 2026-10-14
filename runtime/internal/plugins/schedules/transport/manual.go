@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/managedmcp"
-	sqlitedb "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // Captured execution remains in the private queue. Stable identities locate that
@@ -40,11 +40,11 @@ func runNow(ctx context.Context, db *sql.DB, store Store, connect RunConnector, 
 	suffix := hex.EncodeToString(digest[:])
 	sessionID, runID := identity.SessionPrefix+suffix, identity.RunPrefix+suffix
 	var captured schedule.RunRequest
-	var prepared *managedmcp.PreparedCommand
+	var prepared *pluginstorage.PreparedCommand
 	var original []byte
-	err = sqlitedb.RunInTx(ctx, db, func(ctx context.Context) error {
+	err = sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 		var err error
-		prepared, original, err = managedmcp.AdmitCommand(ctx, db, rpc.RunNow, command.ID, input, func(ctx context.Context) error {
+		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, rpc.RunNow, command.ID, input, func(ctx context.Context) error {
 			_, err := pluginsdk.CallbackFromContext(ctx)
 			return err
 		})

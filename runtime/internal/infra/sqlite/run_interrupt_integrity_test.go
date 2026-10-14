@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 // TestWaitingRunReadRejectsACorruptPendingSet covers the reason the Run read
@@ -36,7 +37,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 		}
 		return suspendRun(ctx, runStore, parkedRunFromDraft(parkableDraft("run_1", "ses_A")), "seg_open")
 	}
-	if err := sqlite.RunInTx(ctx, db, park); err != nil {
+	if err := sqlitebase.RunInTx(ctx, db, park); err != nil {
 		t.Fatalf("park commit: %v", err)
 	}
 	if _, found, readErr := runStore.Run(ctx, "run_1"); readErr != nil || !found {

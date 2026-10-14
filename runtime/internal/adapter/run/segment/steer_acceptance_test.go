@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestSteerAcceptanceSharesTreeTransactionAndExactApplication(t *testing.T) {
@@ -40,7 +41,7 @@ func TestSteerAcceptanceSharesTreeTransactionAndExactApplication(t *testing.T) {
 	transactions := 0
 	effects := mustNewEffects(Config{State: state, Transcript: history, ExecutionTrees: trees, ExecutorCheckpoints: trees, CommandAcceptances: commands, Tx: func(ctx context.Context, apply func(context.Context) error) error {
 		transactions++
-		err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+		err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
 			if err := apply(ctx); err != nil {
 				return err
 			}
