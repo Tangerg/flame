@@ -23,7 +23,9 @@ Core `2026-10-15.2` admits query and command streams through `plugins.stream`.
 The contribution's exact method contract owns that distinction. A query has no
 command idempotency key, route or private receipt; a command retains its original
 route and receipt-only reconciliation. Go `BindPluginStreamingMethod` supports
-both. The shared TS client and component SDK expose `queryStream` for reads and
+both with `PluginCallOptions`, as does unary `CallPlugin`. Former Go stream
+`CommandOptions` signatures are removed; typed/callback consumers migrate together.
+The shared TS client and component SDK expose `queryStream` for reads and
 retain `stream` for durable commands. Early consumer withdrawal cancels and joins
 the original stream; missing final evidence never synthesizes completion.
 

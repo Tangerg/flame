@@ -15,7 +15,7 @@ import (
 )
 
 type PluginStreamer interface {
-	StreamPlugin(context.Context, protocol.CallPluginRequest, CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)
+	StreamPlugin(context.Context, protocol.CallPluginRequest, PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)
 }
 
 type PluginStreamingMethod[P, C, R any] struct {
@@ -37,7 +37,7 @@ func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding Plugi
 
 // Stream freezes input and options before lazy delivery. The returned sequence
 // has one consumer and never resubmits or changes its captured binding.
-func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options CommandOptions) iter.Seq2[pluginsdk.StreamValue[C, R], error] {
+func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options PluginCallOptions) iter.Seq2[pluginsdk.StreamValue[C, R], error] {
 	admitted, inputErr := jsoninput.Encode(input)
 	capturedOptions, optionsErr := captureStreamOptions(options)
 	var consumed atomic.Bool
@@ -121,12 +121,12 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 	}
 }
 
-func captureStreamOptions(options CommandOptions) (CommandOptions, error) {
+func captureStreamOptions(options PluginCallOptions) (PluginCallOptions, error) {
 	encoded, err := json.Marshal(options)
 	if err != nil {
-		return CommandOptions{}, err
+		return PluginCallOptions{}, err
 	}
-	var captured CommandOptions
+	var captured PluginCallOptions
 	err = json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true))
 	return captured, err
 }

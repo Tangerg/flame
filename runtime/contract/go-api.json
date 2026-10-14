@@ -439,7 +439,7 @@
             },
             {
               "name": "StreamPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
             },
             {
               "name": "SubscribeRun",
@@ -573,7 +573,7 @@
             },
             {
               "name": "StreamPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
             }
           ]
         },
@@ -603,7 +603,7 @@
           "methods": [
             {
               "name": "StreamPlugin",
-              "signature": "func(context.Context, protocol.CallPluginRequest, CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+              "signature": "func(context.Context, protocol.CallPluginRequest, PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
             }
           ]
         },
@@ -613,7 +613,7 @@
           "methods": [
             {
               "name": "Stream",
-              "signature": "func(ctx context.Context, input P, options CommandOptions) iter.Seq2[plugin.StreamValue[C, R], error]"
+              "signature": "func(ctx context.Context, input P, options PluginCallOptions) iter.Seq2[plugin.StreamValue[C, R], error]"
             }
           ]
         },
@@ -1073,7 +1073,7 @@
             },
             {
               "name": "StreamPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
             },
             {
               "name": "SubscribeRun",

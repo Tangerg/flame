@@ -115,7 +115,7 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 }
 
 func mayImportRuntime(relative, imported string) bool {
-	if imported == runtimePath+"/protocol" || strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
+	if imported == runtimePath+"/protocol" || imported == runtimePath+"/capability" || strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
 		return true
 	}
 	return imported == runtimePath+"/localruntime" && ringOf(relative) == ringComposition
@@ -127,6 +127,11 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		allowed            bool
 	}{
 		{consumer: "main.go", imported: runtimePath + "/localruntime", allowed: true},
+		{consumer: "internal/application/installedcommand/command.go", imported: runtimePath + "/capability", allowed: true},
+		{consumer: "internal/application/workbench/installed_commands.go", imported: runtimePath + "/capability", allowed: true},
+		{consumer: "internal/delivery/cmd/plugins.go", imported: runtimePath + "/capability", allowed: true},
+		{consumer: "internal/application/installedcommand/command.go", imported: runtimePath + "/plugin"},
+		{consumer: "internal/application/workbench/installed_commands.go", imported: runtimePath + "/storage/sqlite"},
 		{consumer: "main.go", imported: runtimePath},
 		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath, allowed: true},
 		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath + "/localruntime", allowed: true},

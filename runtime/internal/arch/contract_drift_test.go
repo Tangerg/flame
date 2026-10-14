@@ -776,6 +776,21 @@ func expectedCompiledConstraint(
 		if field.Optional && unionRequiresField(union, constraint.Field) {
 			return compiledConstraintExpectation{"minLength", "requiredWhen"}
 		}
+		if field.Optional && field.Type.Kind() != reflect.Pointer {
+			for _, object := range dispatch.WireShapes().Constraints() {
+				if object.GoType != goType {
+					continue
+				}
+				for _, rule := range object.Rules {
+					if slices.Contains(rule.Required, constraint.Field) {
+						return compiledConstraintExpectation{"minLength", "requiredWhen"}
+					}
+					if slices.Contains(rule.RequiredAny, constraint.Field) {
+						return compiledConstraintExpectation{"minLength", "requiredAnyWhen"}
+					}
+				}
+			}
+		}
 		return compiledConstraintExpectation{"minLength", "requiredText"}
 	case dispatch.ConstraintPositive:
 		field := leaf()
@@ -974,6 +989,14 @@ func statesGoConstraint(source, shape, helper, field string, constraint dispatch
 		fieldArgument := `, "` + field + `", ` + receiver + `)`
 		for line := range strings.SplitSeq(source, "\n") {
 			if strings.Contains(line, "requiredWhen(") && strings.Contains(line, fieldArgument) {
+				return true
+			}
+		}
+		return false
+	}
+	if helper == "requiredAnyWhen" {
+		for line := range strings.SplitSeq(source, "\n") {
+			if strings.Contains(line, "requiredAnyWhen(") && strings.Contains(line, strconv.Quote(field)) && strings.Contains(line, ", "+receiver+")") {
 				return true
 			}
 		}

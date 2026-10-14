@@ -19,10 +19,10 @@ func (r *binding) CallPlugin(ctx context.Context, request protocol.CallPluginReq
 	return r.invoke[protocol.CallPluginRequest, *protocol.CallPluginResponse](ctx, delivery.PluginsCall, request, pluginCallOptions(options))
 }
 
-// StreamPlugin opens an installed command stream. The opening response conveys
+// StreamPlugin opens an installed query or command stream. The opening response conveys
 // no business outcome; only a terminal event or the original receipt does.
-func (r *binding) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
-	return r.invokeStream[protocol.CallPluginRequest, struct{}, protocol.PluginStreamEvent](ctx, delivery.PluginsStream, request, commandOptions(options))
+func (r *binding) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+	return r.invokeStream[protocol.CallPluginRequest, struct{}, protocol.PluginStreamEvent](ctx, delivery.PluginsStream, request, pluginCallOptions(options))
 }
 
 func (r *binding) ResolvePluginRequirements(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options CallOptions) (*protocol.Page[protocol.PluginCollaborator], error) {

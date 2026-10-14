@@ -68,7 +68,7 @@ Managed nested calls are checked against the session's immutable bindings, not a
 later selection. Actual Tool/automatic/UI consumer migration, complete point
 policies and durable execution projections remain open.
 
-`runtime.BindPluginStreamingMethod` admits a typed mutation stream from the same
+`runtime.BindPluginStreamingMethod` admits a typed query or mutation stream from the same
 immutable binding used by unary calls. Its Stream freezes input/options before lazy
 delivery and returns one consumable sequence of SDK StreamValue chunks/final result.
 Chunk/output schemas and strict decoding precede delivery; final publication follows
@@ -409,7 +409,7 @@ replay cursor. Explicit owner refusal is final evidence, while missing command
 terminal delivery remains unconfirmed. The empty opening conveys no business result.
 
 Public Runtime/Client.StreamPlugin and BindPluginStreamingMethod support both
-kinds; query calls use empty CommandOptions. The TypeScript client exposes
+kinds with `PluginCallOptions`; query calls carry no command identity. The TypeScript client exposes
 `plugins.queryStream` beside the durable `plugins.stream` command entrance.
 Component bindings expose `queryStream(method, input, consume, signal)` and keep
 command `stream(intent, method, input, consume, signal)` under the mutation journal.

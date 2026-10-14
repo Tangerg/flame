@@ -51,7 +51,7 @@ func (c *PluginCallbackCaller) reference(ctx context.Context) (pluginsdk.Callbac
 
 // StreamPlugin captures the original callback and envelope before returning a
 // lazy sequence. Its empty opening conveys no remote business acknowledgement.
-func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	ref, err := c.reference(ctx)
 	if err != nil {
 		return struct{}{}, nil, err

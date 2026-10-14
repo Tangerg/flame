@@ -69,7 +69,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 		t.Fatal(err)
 	}
 	bound := bindTypedStream(t, caller)
-	stream := bound.Stream(t.Context(), map[string]string{}, CommandOptions{IdempotencyKey: "original"})
+	stream := bound.Stream(t.Context(), map[string]string{}, PluginCallOptions{IdempotencyKey: "original"})
 	if target.calls.Load() != 0 {
 		t.Fatal("lazy callback performed I/O before consumption")
 	}
@@ -92,12 +92,12 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, err := range bound.Stream(invoked, map[string]string{}, CommandOptions{IdempotencyKey: "original"}) {
+	for _, err := range bound.Stream(invoked, map[string]string{}, PluginCallOptions{IdempotencyKey: "original"}) {
 		if err == nil || errors.Is(err, ErrAcknowledgementUnknown) {
 			t.Fatalf("missing calling-owner context was treated as dispatched: %v", err)
 		}
 	}
-	retained := bound.Stream(t.Context(), map[string]string{}, CommandOptions{IdempotencyKey: "original"})
+	retained := bound.Stream(t.Context(), map[string]string{}, PluginCallOptions{IdempotencyKey: "original"})
 	release()
 	for _, err := range retained {
 		if !errors.Is(err, pluginsdk.ErrStaleCall) || errors.Is(err, ErrAcknowledgementUnknown) {

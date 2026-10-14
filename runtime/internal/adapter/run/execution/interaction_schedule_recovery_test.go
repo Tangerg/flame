@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -30,6 +31,12 @@ func (s scheduleReceiptTool) SourceConfig() mcp.ServerConfig { return s.configur
 func (s scheduleReceiptTool) SourceFingerprint() fingerprint.Digest {
 	return s.configuration.AuthorityFingerprint()
 }
+func (s scheduleReceiptTool) InstallationActivation() (plugin.Activation, error) {
+	id, _ := s.configuration.Source.Origin().Installation()
+	digest, _, _ := s.configuration.Source.Release()
+	return plugin.Activation{Identity: testsupport.Digest("schedule receipt activation"), Dependencies: []plugin.Dependency{{InstallationID: id, Digest: digest}}}, nil
+}
+
 func (s scheduleReceiptTool) MCPToolIdentity() (string, string) {
 	return s.configuration.Name.String(), "create_schedule"
 }

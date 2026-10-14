@@ -131,7 +131,7 @@ func TestRemotePluginCommandStreamDistinguishesFinalRefusalAndMissingTerminal(t 
 			}
 			defer client.Close()
 			request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(testsupport.CommandContract(t, "records.stream", "installation").JSON()), Method: "records.stream", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
-			_, events, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{IdempotencyKey: "original"})
+			_, events, err := client.StreamPlugin(t.Context(), request, flameruntime.PluginCallOptions{IdempotencyKey: "original"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,10 +172,10 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 	}
 	defer client.Close()
 	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.Identity().JSON()), Method: "records.query", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
-	if _, _, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{IdempotencyKey: "invalid-query-key"}); !errors.Is(err, protocol.ErrInvalidParams) {
+	if _, _, err := client.StreamPlugin(t.Context(), request, flameruntime.PluginCallOptions{IdempotencyKey: "invalid-query-key"}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("query admitted a command identity: %v", err)
 	}
-	_, events, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{})
+	_, events, err := client.StreamPlugin(t.Context(), request, flameruntime.PluginCallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 		t.Fatalf("query stream=%+v calls=%d", received, owner.starts.Load())
 	}
 	owner.terminal = protocol.PluginStreamEvent{}
-	_, missing, err := client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{})
+	_, missing, err := client.StreamPlugin(t.Context(), request, flameruntime.PluginCallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestRemotePluginQueryStreamUsesReadAdmissionAndCancellation(t *testing.T) {
 
 	owner.awaitCancellation = true
 	owner.canceled = make(chan struct{})
-	_, events, err = client.StreamPlugin(t.Context(), request, flameruntime.CommandOptions{})
+	_, events, err = client.StreamPlugin(t.Context(), request, flameruntime.PluginCallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

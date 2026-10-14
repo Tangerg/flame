@@ -14,13 +14,13 @@ import (
 
 type typedStreamCaller struct {
 	request protocol.CallPluginRequest
-	options CommandOptions
+	options PluginCallOptions
 	calls   int
 	events  []protocol.PluginStreamEvent
 	err     error
 }
 
-func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	c.calls++
 	c.request, c.options = request, options
 	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
@@ -58,7 +58,7 @@ func TestTypedInstalledStreamFreezesBeforeLazySingleConsumption(t *testing.T) {
 	bound := bindTypedStream(t, caller)
 	input := map[string]string{"value": "original"}
 	info := &protocol.ClientInfo{Name: "original", Version: "1"}
-	stream := bound.Stream(t.Context(), input, CommandOptions{IdempotencyKey: "original", RequestMeta: protocol.RequestMeta{ClientInfo: info}})
+	stream := bound.Stream(t.Context(), input, PluginCallOptions{IdempotencyKey: "original", RequestMeta: protocol.RequestMeta{ClientInfo: info}})
 	input["value"], info.Name = "replacement", "replacement"
 	if caller.calls != 0 {
 		t.Fatal("lazy stream performed I/O before consumption")
@@ -97,7 +97,7 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			caller := &typedStreamCaller{events: test.events, err: test.err}
-			stream := bindTypedStream(t, caller).Stream(t.Context(), map[string]string{}, CommandOptions{IdempotencyKey: "original"})
+			stream := bindTypedStream(t, caller).Stream(t.Context(), map[string]string{}, PluginCallOptions{IdempotencyKey: "original"})
 			var failure error
 			for value, err := range stream {
 				if value.Result != nil {
@@ -136,7 +136,7 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 		}
 		chunks, finals := 0, 0
 		var streamErr error
-		for value, err := range bound.Stream(t.Context(), struct{}{}, CommandOptions{}) {
+		for value, err := range bound.Stream(t.Context(), struct{}{}, PluginCallOptions{}) {
 			if err != nil {
 				streamErr = err
 				break
