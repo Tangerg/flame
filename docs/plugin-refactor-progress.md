@@ -3,9 +3,46 @@
 ## Current stage
 
 Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
-failure is resolved by `8e32d9c35`; the next product slice is priority #3. Main
+failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
+`67e7801c1`. Wide-number parity and the remaining lifecycle work are next. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Installed query streams (2026-10-15)
+
+- The same `plugins.stream` endpoint derives query/command policy from the exact
+  consumer contract before idempotency and lifecycle admission. Unary and streaming
+  extension registration now share that policy owner; the command-only streaming
+  registration path was deleted. Core Protocol is `2026-10-15.1`; backend protocol
+  and private receipt formats are unchanged.
+- Installed queries use a fresh captured invocation and current exact export,
+  Actor, target, Session and callback authority. They carry no command key and
+  create no command route, retained command dependency or private receipt. Command
+  streams preserve their original binding and acknowledgement-loss recovery.
+- Public typed Go streams and shared TS/component query streams support the same
+  path. Remote Go failure classification now uses the admitted operation instead
+  of inferring mutation uncertainty from a shared event type. Query disconnects
+  remain read failures; command disconnects retain unknown-acknowledgement meaning.
+- Regressions cover repeated read dispatch, zero command storage/dependencies,
+  exact uint64 Go delivery, key refusal, terminal-loss classification and source
+  cancellation on consumer withdrawal. TS query streams leave no mutation journal
+  while existing command refusal/recovery checks retain their assertions.
+- Passed: complete affected delivery/pluginservices/contractgen packages; focused
+  public typed/callback/client and HTTP streaming checks; shared TS typecheck,
+  lint and four protocol test files (27 tests); SDK, portable plugins and Desktop
+  typechecks; changed-source Prettier, gofmt and diff checks. No frontend UI/E2E/
+  screenshot tests or Desktop aggregate check were run. Global/native/vet/race/
+  closure remain concentrated final work.
+- Restoring the externally removed worktree required reinstalling ignored local
+  dependencies. `59c826ec6` adds only two missing optional transitive peers to the
+  shared contract lock; `npm ci` and a subsequent dry run pass. Existing locked
+  versions/integrities are preserved. Necessary ignored dependency/build artifacts
+  remain for continuation; owned temporary resources are gone. Staged checks ran
+  with `--no-stash`, plus commitlint, so the user's original stash was preserved.
+- This slice does not close Go/TS wide-number parity: Go already preserves large
+  plugin values, while TS needs one exact codec and migrated generated consumers.
+  Retention/pruning, transitive status, point lifetimes, independent author/native
+  qualification and individual P01-P48/review acceptance remain open.
 
 ### Recovery availability and observer lifetime (2026-10-15)
 
@@ -958,7 +995,9 @@ Continue in the same worktree and branch. Preserve the complete proposal/review
 objective and report concrete remaining paths rather than a static completion count.
 
 1. Priority #3: retention/pruning, transitive dependency status and scoped release,
-   point lifetimes, query streams and Go/TS wide-number parity. Audit actual Tool,
+   point lifetimes and Go/TS wide-number parity. Query streams are implemented;
+   retain their cancellation/command-ownership checks during final acceptance.
+   Audit actual Tool,
    automatic and cross-plugin target/origin/parent/original-route consumers.
 2. Priority #4: independent author/component/native packaging qualification.
    Workspace compilation alone does not prove public module availability; no
