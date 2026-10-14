@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { RpcError } from "@flame/runtime-contract/client";
 import { createRunCancellationController } from "./runCancellationController";
 
 describe("run cancellation controller", () => {
@@ -15,6 +16,7 @@ describe("run cancellation controller", () => {
       revalidateTerminal: vi.fn(),
       onSettled,
       onFailure: vi.fn(),
+      onSynchronizationFailed: vi.fn(),
     });
 
     controller.cancel("run_1");
@@ -27,8 +29,11 @@ describe("run cancellation controller", () => {
     });
   });
 
-  it("suppresses a command failure when authoritative projection is terminal", async () => {
-    const commandFailure = new Error("another client won");
+  it("settles an already-finished refusal after reading the terminal Run", async () => {
+    const commandFailure = new RpcError({
+      message: "already finished",
+      data: { type: "run_finished" },
+    });
     const onFailure = vi.fn();
     const onSettled = vi.fn();
     const controller = createRunCancellationController({
@@ -39,6 +44,7 @@ describe("run cancellation controller", () => {
       revalidateTerminal: vi.fn().mockResolvedValue(true),
       onSettled,
       onFailure,
+      onSynchronizationFailed: vi.fn(),
     });
 
     controller.cancel("run_1");
@@ -58,6 +64,7 @@ describe("run cancellation controller", () => {
       revalidateTerminal: vi.fn().mockRejectedValue(new Error("offline")),
       onSettled: vi.fn(),
       onFailure,
+      onSynchronizationFailed: vi.fn(),
     });
 
     controller.cancel("run_1");
@@ -81,6 +88,7 @@ describe("run cancellation controller", () => {
       revalidateTerminal: vi.fn(),
       onSettled: vi.fn(),
       onFailure: vi.fn(),
+      onSynchronizationFailed: vi.fn(),
     });
 
     controller.cancel("run_1");
@@ -110,6 +118,7 @@ describe("run cancellation controller", () => {
       revalidateTerminal: vi.fn(),
       onSettled,
       onFailure,
+      onSynchronizationFailed: vi.fn(),
     });
 
     controller.cancel("run_retired");
@@ -134,11 +143,50 @@ describe("run cancellation controller", () => {
       revalidateTerminal: vi.fn(),
       onSettled: vi.fn(),
       onFailure: vi.fn(),
+      onSynchronizationFailed: vi.fn(),
     });
 
     controller.retire();
     controller.cancel("run_retired");
 
     expect(execute).not.toHaveBeenCalled();
+  });
+  it("preserves an unexpected cancellation failure even when the Run is terminal", async () => {
+    const failure = new Error("terminal cleanup failed");
+    const onFailure = vi.fn();
+    const onSettled = vi.fn();
+    const controller = createRunCancellationController({
+      markInteracted: vi.fn(),
+      readTarget: () => ({ terminal: false, viewEpoch: 1n, viewRevision: 2n }),
+      execute: vi.fn().mockRejectedValue(failure),
+      commitIfCurrent: vi.fn(),
+      revalidateTerminal: vi.fn().mockResolvedValue(true),
+      onSettled,
+      onFailure,
+      onSynchronizationFailed: vi.fn(),
+    });
+    controller.cancel("run_1");
+    await vi.waitFor(() => expect(onFailure).toHaveBeenCalledWith("run_1", failure));
+    expect(onSettled).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed terminal query without discarding the original cancellation failure", async () => {
+    const commandError = new Error("cancel failed");
+    const readError = new Error("terminal query unavailable");
+    const onFailure = vi.fn();
+    const onSynchronizationFailed = vi.fn();
+    const controller = createRunCancellationController({
+      markInteracted: vi.fn(),
+      readTarget: () => ({ terminal: false, viewEpoch: 1n, viewRevision: 2n }),
+      execute: vi.fn().mockRejectedValue(commandError),
+      commitIfCurrent: vi.fn(),
+      revalidateTerminal: vi.fn().mockRejectedValue(readError),
+      onSettled: vi.fn(),
+      onFailure,
+      onSynchronizationFailed,
+    });
+    controller.cancel("run_1");
+    await vi.waitFor(() => expect(onFailure).toHaveBeenCalledWith("run_1", commandError));
+    expect(onSynchronizationFailed).toHaveBeenCalledWith(readError);
   });
 });

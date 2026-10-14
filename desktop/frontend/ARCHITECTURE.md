@@ -295,6 +295,13 @@ replay rules; the graphical application supplies its storage lifetime and render
 the outcome. A delayed result may settle its original command, but cannot
 advance a retired view generation.
 
+Cancellation projects the Runtime's committed canceled Run. A `run_finished`
+refusal followed by a successful terminal read preserves the committed outcome;
+other command failures remain visible even when a terminal Run is readable.
+Terminal-query failures belong to synchronization and are reported separately.
+Neither a Stop click nor a command failure authors a Run outcome. Full Session
+reads restore the same terminal evidence when the interface is reopened.
+
 Steering retains the SDK's original mutation and retry authority. The SDK caches
 Runtime's opaque Item nomination before dispatch and exposes it before ACK; the
 Agent binds the authored message to that identity without inferring acceptance.

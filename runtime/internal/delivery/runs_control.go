@@ -21,7 +21,10 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 		Reason:        in.Reason,
 		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureSubagents),
 	})
+	_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 	switch {
+	case settlementFailed:
+		return nil, NewFailure(errors.Join(protocol.ErrInternalError, err), "cancellation settlement could not be confirmed")
 	case errors.Is(err, runs.ErrRunNotFound):
 		return nil, protocol.ErrRunNotFound
 	case errors.Is(err, runs.ErrRunFinished):

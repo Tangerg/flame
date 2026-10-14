@@ -100,3 +100,12 @@ func TestCancelRunNamesTheCapabilityNeededForAChild(t *testing.T) {
 		t.Fatalf("capability gap = %+v, want feature/subagents", gap)
 	}
 }
+
+func TestCancelRunDoesNotEraseSettlementFailureBehindFinishedRefusal(t *testing.T) {
+	cleanupErr := errors.New("terminal cleanup failed")
+	server := &Handler{runs: &cancelRunUseCaseStub{err: &runs.CancellationSettlementError{Cause: errors.Join(runs.ErrRunFinished, cleanupErr)}}}
+	result, err := server.CancelRun(t.Context(), protocol.CancelRunRequest{RunID: "run_1"})
+	if result != nil || !errors.Is(err, cleanupErr) || ProjectError(err).Problem().Type != protocol.ProblemInternalError {
+		t.Fatalf("cancel lost its failed settlement: result=%+v, error=%v", result, err)
+	}
+}

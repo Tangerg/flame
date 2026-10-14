@@ -29,6 +29,7 @@ import {
   type MutationJournalStorage,
 } from "@flame/runtime-contract/client/mutationJournal";
 import type { Item, RunEvent, StreamEvent } from "@flame/runtime-contract/wire";
+import { PROBLEM_CODES } from "@flame/runtime-contract/wire";
 import { RUN_EVENT_METHOD, RUNTIME_EVENT_METHOD } from "@flame/runtime-contract/client/stream";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import {
@@ -76,6 +77,27 @@ function agentMessageItem(
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
+  it.each(["run_finished", "internal_error"] as const)(
+    "preserves a %s cancel refusal without manufacturing cancellation or replay",
+    async (type) => {
+      const transport = createMemoryTransport();
+      const client = createRpcClient(transport);
+      const methods = createMethods(client);
+      const cancellation = methods.runs.cancel(asRunId("run_1"), "operator stopped");
+      const request = await waitForRequest(transport, "runs.cancel");
+      transport.inject({
+        jsonrpc: JSONRPC_VERSION,
+        id: request.id,
+        error: { code: PROBLEM_CODES[type], message: type, data: { type } },
+      } as RpcMessage);
+      await expect(cancellation).rejects.toMatchObject({ data: { type } });
+      expect(transport.outbox().filter((message) => message.method === "runs.cancel")).toHaveLength(
+        1,
+      );
+      await client.close();
+    },
+  );
+
   it("replays a Session edit with its captured revision and command key", async () => {
     const attempts: { params: unknown; key: string | undefined }[] = [];
     const call = vi.fn(async (_method: string, params: unknown, options?: RpcCallOptions) => {
