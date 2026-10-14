@@ -210,6 +210,67 @@ describe("Goal status surface", () => {
     expect(screen.getByText("Paused goal")).toBeTruthy();
   });
 
+  it("shows the Runtime stop reason and safe model detail without starting work", () => {
+    model.goal = {
+      ...model.goal,
+      status: "blocked",
+      reason: {
+        code: "blockedByModel",
+        detail: "Provide the release target.\nThen I can continue.",
+      },
+    };
+    render(<GoalStatusSurface />);
+
+    const explanation = screen.getByRole("button", {
+      name: "The agent reported that it cannot continue.",
+    });
+    expect(explanation.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText(/Provide the release target/)).toBeNull();
+    fireEvent.click(explanation);
+    expect(explanation.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText(/Provide the release target/)).toBeTruthy();
+    expect(model.resumeGoal).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Resume goal" })).toBeTruthy();
+  });
+
+  it("replaces the explanation from current material and removes it when the owner resumes", () => {
+    model.goal = { ...model.goal, status: "paused", reason: { code: "runtimeRestarted" } };
+    const { rerender } = render(<GoalStatusSurface />);
+    expect(screen.getByText("Paused after the execution service restarted.")).toBeTruthy();
+
+    model.goal = { ...model.goal, reason: { code: "awaitingInput" } };
+    rerender(<GoalStatusSurface />);
+    expect(screen.queryByText("Paused after the execution service restarted.")).toBeNull();
+    expect(screen.getByText("Waiting for your answer or approval.")).toBeTruthy();
+
+    const { reason: _reason, ...active } = model.goal;
+    model.goal = { ...active, status: "active" };
+    rerender(<GoalStatusSurface />);
+    expect(screen.queryByText("Waiting for your answer or approval.")).toBeNull();
+    expect(screen.getByText("Pursuing goal")).toBeTruthy();
+    expect(model.resumeGoal).not.toHaveBeenCalled();
+  });
+
+  it("keeps an old Goal explanation out of a replacement Session", () => {
+    model.goal = {
+      ...model.goal,
+      status: "paused",
+      reason: { code: "runNotCompleted", detail: "canceled" },
+    };
+    const { rerender } = render(<GoalStatusSurface />);
+    expect(screen.getByText("The previous run did not finish successfully.")).toBeTruthy();
+    model.goal = {
+      sessionId: "session-b",
+      objective: "Ship beta",
+      status: "active",
+      used: { runs: 0, steps: 0 },
+      createdAt: "2026-10-14T00:00:00Z",
+    };
+    rerender(<GoalStatusSurface />);
+    expect(screen.queryByText("The previous run did not finish successfully.")).toBeNull();
+    expect(screen.getByText("Ship beta")).toBeTruthy();
+  });
+
   it("presents only Goal status and objective, without usage counters", () => {
     render(<GoalStatusSurface />);
 

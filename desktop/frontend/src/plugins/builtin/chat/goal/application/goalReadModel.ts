@@ -1,4 +1,4 @@
-import type { GoalStatus } from "@flame/runtime-contract/wire";
+import type { GoalStatus, GoalReason } from "@flame/runtime-contract/wire";
 import {
   useAgentSessionSharedMaterial,
   type AgentProjectionMaterial,
@@ -16,6 +16,7 @@ export interface GoalReadModel {
   sessionId: string;
   objective: string;
   status: GoalStatus;
+  reason?: GoalReason;
   used: GoalUsage;
   createdAt: string;
 }
