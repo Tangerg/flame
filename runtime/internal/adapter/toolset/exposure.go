@@ -99,24 +99,31 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 	if m.err != nil {
 		return Manifest{}, m.err
 	}
-	visible, err := instrumentTools(telemetry, m.visible)
-	if err != nil {
-		return Manifest{}, err
-	}
-	deferred, err := instrumentTools(telemetry, m.deferred)
-	if err != nil {
-		return Manifest{}, err
-	}
 	installations := slices.Clone(m.installations)
-	for _, executable := range append(slices.Clone(m.visible), m.deferred...) {
-		dependency, found, err := InstallationDependency(executable)
-		if err != nil {
-			return Manifest{}, err
+	freeze := func(tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
+		frozen := make([]toolcontract.Tool, len(tools))
+		for index, executable := range tools {
+			dependencies, err := InstallationDependencies(executable)
+			if err != nil {
+				return nil, err
+			}
+			installations = append(installations, dependencies...)
+			if len(dependencies) > 0 {
+				executable = frozenInstallationTool{Tool: executable, dependencies: slices.Clone(dependencies)}
+			}
+			frozen[index] = executable
 		}
-		if found {
-			installations = append(installations, dependency)
-		}
+		return instrumentTools(telemetry, frozen)
 	}
+	visible, err := freeze(m.visible)
+	if err != nil {
+		return Manifest{}, err
+	}
+	deferred, err := freeze(m.deferred)
+	if err != nil {
+		return Manifest{}, err
+	}
+
 	return Manifest{Installations: plugin.CompactDependencies(installations), Visible: visible, Deferred: deferred, PendingMCP: slices.Clone(m.pendingMCP), discovery: m.discovery, close: m.close}, nil
 }
 

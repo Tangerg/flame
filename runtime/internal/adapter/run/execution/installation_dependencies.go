@@ -85,11 +85,8 @@ func (i *InteractionExecutor) heldDependencies(ctx context.Context) ([]plugin.De
 func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
+	dependencies := slices.Clone(i.modelDependencies)
 	i.state.mu.Unlock()
-	var dependencies []plugin.Dependency
-	for _, binding := range append(append(slices.Clone(i.modelObservers), i.modelContexts...), i.modelInputs...) {
-		dependencies = append(dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
-	}
 	if deployments != nil {
 		for _, manifest := range deployments.manifests {
 			dependencies = append(dependencies, manifest.Installations...)

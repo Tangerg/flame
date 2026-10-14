@@ -198,3 +198,27 @@ func TestWaitingCheckpointCarriesTheDependencyProjection(t *testing.T) {
 		t.Fatal("continuation payload duplicates the dependency projection")
 	}
 }
+
+func TestStagedModelTransitiveDependenciesBlockReplacementUntilRelease(t *testing.T) {
+	leaf := plugin.Dependency{InstallationID: unrelatedInstallation, Digest: testsupport.Digest("transitive leaf")}
+	owner := &contextCaptureComposition{t: t, dependencies: []plugin.Dependency{leaf}}
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		t.Fatal("dependency admission invoked a provider")
+		return nil, nil
+	}), InteractionExecutorConfig{ModelComposition: owner, InstallationCheckpoints: pendingInstallationCheckpoints{}})
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = executor.Release(context.Background(), ref) })
+	change := func(held []plugin.Dependency) (bool, error) { return true, nil }
+	if err := executor.ChangeInstallation(t.Context(), leaf.InstallationID, plugins.RequireQuiescent, change); !errors.Is(err, plugin.ErrInUse) {
+		t.Fatalf("transitive replacement admitted: %v", err)
+	}
+	if err := executor.Release(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	if err := executor.ChangeInstallation(t.Context(), leaf.InstallationID, plugins.RequireQuiescent, change); err != nil {
+		t.Fatalf("released graph still held its leaf: %v", err)
+	}
+}

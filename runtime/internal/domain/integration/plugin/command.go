@@ -3,6 +3,7 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/capability"
@@ -33,6 +34,7 @@ type CommandBinding struct {
 	Contribution ContributionID
 	Export       string
 	Provider     Dependency
+	Dependencies []Dependency
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
 	Invocation   capability.Invocation
@@ -76,6 +78,13 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if err := record.Provider.Validate(); err != nil {
 		return nil, err
 	}
+	if err := ValidateDependencies(record.Dependencies); err != nil {
+		return nil, err
+	}
+	if !slices.Contains(record.Dependencies, record.Provider) {
+		return nil, fmt.Errorf("%w: command dependencies omit the original provider", ErrInvalid)
+	}
+	record.Dependencies = slices.Clone(record.Dependencies)
 	if record.Invocation.Target.Scope == "installation" && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
 		return nil, fmt.Errorf("%w: command target differs from its installation", ErrInvalid)
 	}
@@ -90,7 +99,11 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	return &Command{record: record}, nil
 }
 
-func (c *Command) Snapshot() CommandBinding { return c.record }
+func (c *Command) Snapshot() CommandBinding {
+	record := c.record
+	record.Dependencies = slices.Clone(record.Dependencies)
+	return record
+}
 func (c *Command) Matches(method string, input jsoninput.Input) bool {
 	return c.record.Method == method && c.record.Input == input
 }

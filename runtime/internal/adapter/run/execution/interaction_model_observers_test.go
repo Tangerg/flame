@@ -36,7 +36,7 @@ func TestCapturedModelObserversRetainIdentityOrderAndInstallationDependencies(t 
 	if err != nil || restored[0].ContributionID != "outer" || restored[1].ContributionID != "inner" || restored[0].ServerID != id {
 		t.Fatalf("restore changed captured chain: %+v, %v", restored, err)
 	}
-	session := &interactionSession{modelObservers: restored}
+	session := &interactionSession{modelObservers: restored, modelDependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release")}}}
 	if actual := session.installationDependencies(); !reflect.DeepEqual(actual, []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release")}}) {
 		t.Fatalf("observer release is not held: %+v", actual)
 	}
@@ -73,7 +73,7 @@ func TestCapturedModelContextRetainsExactContractOrderAndRelease(t *testing.T) {
 	if _, err := decodeModelBindings(wire, observerContract); err == nil {
 		t.Fatal("context was reinterpreted as observer")
 	}
-	session := &interactionSession{modelContexts: restored, modelObservers: restored[:1]}
+	session := &interactionSession{modelContexts: restored, modelObservers: restored[:1], modelDependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release")}}}
 	want := []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release")}}
 	if actual := session.installationDependencies(); !reflect.DeepEqual(actual, want) {
 		t.Fatalf("context release not held once: %+v", actual)

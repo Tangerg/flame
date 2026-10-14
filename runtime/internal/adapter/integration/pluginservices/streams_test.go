@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -37,6 +38,21 @@ type streamFixture struct {
 	mu          sync.Mutex
 	receipt     pluginsdk.Receipt
 	digest      string
+}
+
+func TestInstalledCommandBindingPersistenceFailurePreventsDispatch(t *testing.T) {
+	f := newStreamFixture(t, "complete")
+	if _, err := f.host.ExecContext(t.Context(), `CREATE TRIGGER refuse_command BEFORE INSERT ON plugin_commands BEGIN SELECT RAISE(ABORT,'binding storage refused'); END`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.run(t, operation.Bind(t.Context(), "records.stream", "storage-failure"))
+	if err == nil || !strings.Contains(err.Error(), "binding storage refused") || f.invocations.Load() != 0 {
+		t.Fatalf("binding failure escaped admission: calls=%d, %v", f.invocations.Load(), err)
+	}
+	var count int
+	if err := f.host.QueryRowContext(t.Context(), `SELECT count(*) FROM plugin_commands`).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("failed binding left a command: %d, %v", count, err)
+	}
 }
 
 func newStreamFixture(t *testing.T, mode string) *streamFixture {

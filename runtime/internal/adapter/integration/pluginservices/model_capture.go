@@ -41,10 +41,14 @@ func (o *ModelComposition) capture(ctx context.Context, resolved models.Selected
 		if err != nil {
 			return err
 		}
+		dependencies, err := o.Dependencies(ctx, append(append(slices.Clone(bindings), contexts...), inputs...))
+		if err != nil {
+			return err
+		}
 		streamer, _ := resolved.Model().(chat.Streamer)
 		bound, stream := o.Bind(resolved.Model(), streamer, bindings)
 		lifetime, cancel := context.WithCancelCause(ctx)
-		capture = &modelCapture{owner: o, bindings: bindings, contexts: contexts, inputs: inputs, resolved: resolved, admit: admit, model: bound, stream: stream, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
+		capture = &modelCapture{dependencies: dependencies, owner: o, bindings: bindings, contexts: contexts, inputs: inputs, resolved: resolved, admit: admit, model: bound, stream: stream, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
 		o.mu.Lock()
 		o.captures[capture] = struct{}{}
 		o.mu.Unlock()
@@ -66,34 +70,48 @@ func (o *ModelComposition) capture(ctx context.Context, resolved models.Selected
 	return result, capture.close, nil
 }
 
+func (o *ModelComposition) Dependencies(ctx context.Context, bindings []plugins.ContributionBinding) ([]plugin.Dependency, error) {
+	var dependencies []plugin.Dependency
+	for _, binding := range bindings {
+		values, err := o.calls.pool.InstallationDependencies(ctx, binding.ServerID)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Contains(values, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}) {
+			return nil, plugin.ErrStale
+		}
+		dependencies = append(dependencies, values...)
+	}
+	return plugin.CompactDependencies(dependencies), nil
+}
+
 func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	var values []plugin.Dependency
 	for capture := range o.captures {
-		for _, binding := range append(append(slices.Clone(capture.bindings), capture.contexts...), capture.inputs...) {
-			values = append(values, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
-		}
+		values = append(values, capture.dependencies...)
 	}
 	return plugin.CompactDependencies(values)
 }
 
 type modelCapture struct {
-	owner    *ModelComposition
-	bindings []plugins.ContributionBinding
-	contexts []plugins.ContributionBinding
-	inputs   []plugins.ContributionBinding
-	resolved models.SelectedChat
-	admit    func(*chat.Request) error
-	model    chat.Model
-	stream   chat.Streamer
-	lifetime context.Context
-	cancel   context.CancelCauseFunc
-	release  func()
-	mu       sync.Mutex
-	closed   bool
-	active   sync.WaitGroup
-	done     chan struct{}
+	dependencies []plugin.Dependency
+	owner        *ModelComposition
+	bindings     []plugins.ContributionBinding
+	contexts     []plugins.ContributionBinding
+	inputs       []plugins.ContributionBinding
+	resolved     models.SelectedChat
+	admit        func(*chat.Request) error
+	model        chat.Model
+	stream       chat.Streamer
+	lifetime     context.Context
+	cancel       context.CancelCauseFunc
+	release      func()
+	mu           sync.Mutex
+	closed       bool
+	active       sync.WaitGroup
+	done         chan struct{}
 }
 
 func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
@@ -113,6 +131,13 @@ func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), erro
 	return calling, func() { stop(); cancel(nil); c.active.Done() }, nil
 }
 func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*chat.Request, error) {
+	dependencies, err := c.owner.Dependencies(ctx, append(append(slices.Clone(c.bindings), c.contexts...), c.inputs...))
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(dependencies, c.dependencies) {
+		return nil, plugin.ErrStale
+	}
 	prepared, err := c.resolved.PrepareRequest(request)
 	if err != nil {
 		return nil, err

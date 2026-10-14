@@ -194,6 +194,72 @@ func (c *Connections) Requirements(session *sdkmcp.ClientSession) (*plugin.Requi
 	return nil, ErrUnavailable
 }
 
+// Dependencies projects the exact live activation graph, including optional
+// collaborators that were bound. Re-reading current selections would retarget a
+// waiting execution after a collaborator changed its own selection.
+func (c *Connections) Dependencies(session *sdkmcp.ClientSession) ([]plugin.Dependency, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed || session == nil {
+		return nil, ErrUnavailable
+	}
+	var root *server
+	for _, candidate := range c.servers {
+		if candidate.session == session {
+			root = candidate
+			break
+		}
+	}
+	var dependencies []plugin.Dependency
+	visited := map[*server]bool{}
+	var collect func(*server) error
+	collect = func(current *server) error {
+		if current == nil || current.session == nil {
+			return ErrUnavailable
+		}
+		if visited[current] {
+			return nil
+		}
+		visited[current] = true
+		owned := c.sessions[current.session]
+		if owned == nil || owned.close != nil {
+			return ErrUnavailable
+		}
+		if digest, _, installed := current.config.Source.Release(); installed {
+			id, _ := current.id.Origin().Installation()
+			dependencies = append(dependencies, plugin.Dependency{InstallationID: id, Digest: digest})
+		}
+		for _, required := range owned.bindings.Snapshot() {
+			for _, binding := range required.Bindings {
+				origin, err := mcpserver.InstallationOrigin(binding.Provider.InstallationID)
+				if err != nil {
+					return err
+				}
+				id, err := mcpserver.NewID(origin, binding.Server)
+				if err != nil {
+					return err
+				}
+				provider := c.find(id)
+				if provider == nil {
+					return ErrUnavailable
+				}
+				digest, _, installed := provider.config.Source.Release()
+				if !installed || digest != binding.Provider.Digest {
+					return ErrUnavailable
+				}
+				if err := collect(provider); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if err := collect(root); err != nil {
+		return nil, err
+	}
+	return plugin.CompactDependencies(dependencies), nil
+}
+
 func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

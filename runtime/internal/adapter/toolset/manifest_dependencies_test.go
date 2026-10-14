@@ -2,6 +2,7 @@ package toolset
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 
@@ -21,6 +22,12 @@ type releasedMCPToolStub struct {
 
 func (r releasedMCPToolStub) SourceConfig() mcp.ServerConfig {
 	return mcp.ServerConfig{Server: mcpserver.Server{Source: r.source, Name: testsupport.ServerName(r.server)}}
+}
+
+func (r releasedMCPToolStub) InstallationDependencies() ([]plugin.Dependency, error) {
+	id, _ := r.source.Origin().Installation()
+	digest, _, _ := r.source.Release()
+	return []plugin.Dependency{{InstallationID: id, Digest: digest}}, nil
 }
 
 // unrealizedMCPTool reports a remote identity without the connection that
@@ -66,5 +73,41 @@ func TestManifestProjectsEveryInstallationRelease(t *testing.T) {
 	builder.deferred = []toolcontract.Tool{unrealizedMCPTool{name: "reviews_record", remote: "record"}}
 	if _, err := builder.manifest(telemetry); err == nil {
 		t.Fatal("an MCP tool without a realized connection entered the manifest")
+	}
+}
+
+type transitiveMCPToolStub struct {
+	releasedMCPToolStub
+	dependencies *[]plugin.Dependency
+}
+
+func (r transitiveMCPToolStub) InstallationDependencies() ([]plugin.Dependency, error) {
+	return slices.Clone(*r.dependencies), nil
+}
+
+func TestManifestRetainsTransitiveReleasesAndRefusesAChangedGraph(t *testing.T) {
+	installation := testsupport.InstallationID(t)
+	root := plugin.Dependency{InstallationID: installation, Digest: testsupport.Digest("root")}
+	leaf := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("leaf")}
+	source, err := mcpserver.InstallationSource(installation, root.Digest, testsupport.Digest("authority"), testsupport.Digest("recipient"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependencies := plugin.CompactDependencies([]plugin.Dependency{root, leaf})
+	executable := transitiveMCPToolStub{releasedMCPToolStub{mcpToolStub{name: "reviews_record", server: "reviews", remote: "record"}, source}, &dependencies}
+	telemetry, err := oteltool.NewMiddleware(oteltool.MiddlewareConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := (manifestBuilder{visible: []toolcontract.Tool{executable}}).manifest(telemetry)
+	if err != nil || !slices.Equal(manifest.Installations, dependencies) {
+		t.Fatalf("manifest lost transitive release: %v, %v", manifest.Installations, err)
+	}
+	dependencies = []plugin.Dependency{root}
+	if _, err := manifest.Visible[0].Call(t.Context(), toolcontract.Invocation{}); !errors.Is(err, plugin.ErrStale) {
+		t.Fatalf("changed activation graph dispatched: %v", err)
+	}
+	if !slices.Contains(manifest.Installations, leaf) {
+		t.Fatal("source change rewrote frozen dependencies")
 	}
 }

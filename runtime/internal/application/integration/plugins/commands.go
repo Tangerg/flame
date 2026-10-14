@@ -67,7 +67,14 @@ func (c *Commands) Find(ctx context.Context, id, method string, input jsoninput.
 	return command, found, err
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (ContributionBinding, error), capture func(ContributionBinding) (capability.Invocation, error)) (*plugin.Command, error) {
+// CommandAdmission captures routing and its actual activation dependencies at the
+// same serialization point. It carries no private business settlement.
+type CommandAdmission struct {
+	Binding      ContributionBinding
+	Dependencies []plugin.Dependency
+}
+
+func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (capability.Invocation, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Under(ctx, func() error {
 		previous, found, err := c.store.Get(ctx, id)
@@ -81,18 +88,19 @@ func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.
 			command = previous
 			return nil
 		}
-		binding, err := resolve(ctx)
+		admitted, err := resolve(ctx)
 		if err != nil {
 			return err
 		}
 		if capture == nil {
 			return plugin.ErrInvalid
 		}
+		binding := admitted.Binding
 		invocation, err := capture(binding)
 		if err != nil {
 			return err
 		}
-		command, err = plugin.NewCommand(plugin.CommandBinding{ID: id, Method: method, Input: input, Contract: binding.Contract, Contribution: binding.ContributionID, Export: binding.Export, Provider: plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, Server: binding.ServerName, Invocation: invocation})
+		command, err = plugin.NewCommand(plugin.CommandBinding{ID: id, Method: method, Input: input, Contract: binding.Contract, Contribution: binding.ContributionID, Export: binding.Export, Provider: plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, Dependencies: admitted.Dependencies, Server: binding.ServerName, Invocation: invocation})
 		if err != nil {
 			return err
 		}

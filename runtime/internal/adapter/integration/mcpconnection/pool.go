@@ -323,6 +323,14 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 	return p.inner.ServiceSession(ctx, descriptor)
 }
 
+func (p *Pool) InstallationDependencies(ctx context.Context, id mcpserver.ID) ([]plugin.Dependency, error) {
+	session, err := p.ServiceSession(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return p.inner.Dependencies(session)
+}
+
 func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority fingerprint.Digest) (*sdk.ClientSession, error) {
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {

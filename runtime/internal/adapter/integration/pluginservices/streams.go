@@ -78,10 +78,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			}
 			defer release()
 
-			if err := c.calls.routing.Dispatch(ctx, record.ID, func(ctx context.Context, record plugin.CommandBinding) error {
-				_, err := c.calls.original(ctx, record)
-				return err
-			}); err != nil {
+			if err := c.calls.routing.Dispatch(ctx, record.ID, c.calls.admitDispatch); err != nil {
 				yield(plugins.StreamEvent{}, err)
 				return
 			}

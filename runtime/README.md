@@ -1254,6 +1254,21 @@ checkpoint or unresolved installed command depends on it; every other release, i
 reclaimed at the admission point when a change commits and at startup. A release whose
 removal fails stays admitted and is retried by the next reclamation.
 
+Execution dependency projection follows the actual frozen MCP setup bindings,
+including transitively bound optional collaborators. It does not resolve current
+provider choices to reconstruct a previous activation. Manifest Tools, model
+captures and unresolved installed commands retain the resulting canonical release
+set; a declared bound provider that is unavailable is an error, not optional absence.
+Changed release sets refuse fresh dispatch. Known command receipt lookup remains
+with its original business owner and does not require replaying collaborators.
+Command observation releases its dependencies without erasing the original route.
+
+`plugin_commands.dependencies_json` is now required immutable routing evidence.
+Former Runtime databases are refused before writes; retain them separately and use
+a fresh Runtime data directory. Private plugin databases are unchanged. Existing
+waiting executions must finish under their original binary: model dependencies also
+participate in deployment identity, and no continuation migration is provided.
+
 Restoration resolves the selected and staged definitions from the admitted catalog
 before constructing an installation. The aggregate enforces the same input, header,
 component, required-value and staged-package rules used by its transitions. Unknown

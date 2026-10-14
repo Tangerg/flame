@@ -5,12 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -79,6 +81,16 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 ) ([]corechat.Message, error) {
 	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
 		return nil, errors.New("execution: model-context reduction requires an attributed Interaction request")
+	}
+	if i.session.modelComposition != nil {
+		bindings := append(append(slices.Clone(i.session.modelObservers), i.session.modelContexts...), i.session.modelInputs...)
+		dependencies, err := i.session.modelComposition.Dependencies(ctx, bindings)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Equal(dependencies, i.session.modelDependencies) {
+			return nil, plugin.ErrStale
+		}
 	}
 	prefixMatches, err := sameInteractionMessages(
 		request.Messages[:min(len(request.Messages), len(i.instructions))],

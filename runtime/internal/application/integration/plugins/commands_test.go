@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"testing/synctest"
 
@@ -27,7 +28,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
-	resolve := func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }
+	resolve := func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }
 	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve, capturedCommand)
 	if err != nil {
 		t.Fatal(err)
@@ -36,11 +37,11 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 		t.Fatalf("observation before dispatch = %v", err)
 	}
 	provider.Digest = testsupport.Digest("3")
-	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) {
+	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) {
 		t.Fatal("same identity resolved a current provider")
-		return provider, nil
+		return commandAdmission(provider), nil
 	}, capturedCommand)
-	if err != nil || replay.Snapshot() != bound.Snapshot() {
+	if err != nil || !reflect.DeepEqual(replay.Snapshot(), bound.Snapshot()) {
 		t.Fatalf("original binding = %v, %v", replay, err)
 	}
 	if _, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":4}`), resolve, capturedCommand); !errors.Is(err, plugin.ErrCommandConflict) {
@@ -55,7 +56,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 		t.Fatalf("rejected admission advanced evidence = %v, %v", prepared, err)
 	}
 	if err := commands.Dispatch(t.Context(), "command", func(_ context.Context, route plugin.CommandBinding) error {
-		if route != bound.Snapshot() {
+		if !reflect.DeepEqual(route, bound.Snapshot()) {
 			t.Fatal("dispatch changed the route")
 		}
 		return nil
@@ -107,7 +108,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
 		bound := make(chan error, 1)
 		go func() {
-			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }, capturedCommand)
+			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, capturedCommand)
 			bound <- err
 		}()
 		synctest.Wait()
@@ -158,7 +159,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 		t.Fatal(err)
 	}
 	original.Parent = "original-parent"
-	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }, func(plugins.ContributionBinding) (capability.Invocation, error) { return original, nil })
+	command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (capability.Invocation, error) { return original, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +224,7 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 				}
 				provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", target.Scope), ContributionID: "owner", Export: "operations"}
 				original := capability.Invocation{ID: "original-command", Origin: origin, Parent: "original-parent", Target: target}
-				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }, func(plugins.ContributionBinding) (capability.Invocation, error) { return original, nil })
+				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, func(plugins.ContributionBinding) (capability.Invocation, error) { return original, nil })
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -285,4 +286,8 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 			})
 		}
 	}
+}
+
+func commandAdmission(binding plugins.ContributionBinding) plugins.CommandAdmission {
+	return plugins.CommandAdmission{Binding: binding, Dependencies: []plugin.Dependency{{InstallationID: binding.InstallationID, Digest: binding.Digest}}}
 }

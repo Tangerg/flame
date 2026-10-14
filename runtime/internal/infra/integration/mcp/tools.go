@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
@@ -111,4 +112,11 @@ func (t Executable) CallbackSession() (*sdkmcp.ClientSession, error) {
 		return nil, fmt.Errorf("mcp: callback authority connection was withdrawn")
 	}
 	return t.session, nil
+}
+
+func (t Executable) InstallationDependencies() ([]plugin.Dependency, error) {
+	if t.owner == nil {
+		return nil, ErrUnavailable
+	}
+	return t.owner.Dependencies(t.session)
 }

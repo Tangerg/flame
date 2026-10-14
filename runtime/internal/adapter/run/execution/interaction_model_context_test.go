@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -66,10 +67,11 @@ func TestInteractionContextFailureRefusesBeforeProviderDispatch(t *testing.T) {
 }
 
 type contextCaptureComposition struct {
-	t        *testing.T
-	calls    int
-	resolved int
-	failure  error
+	t            *testing.T
+	calls        int
+	resolved     int
+	failure      error
+	dependencies []plugin.Dependency
 }
 
 func (c *contextCaptureComposition) ResolveContext(context.Context) ([]plugins.ContributionBinding, error) {
@@ -150,4 +152,12 @@ func (*contextCaptureComposition) ValidateInput(context.Context, []plugins.Contr
 }
 func (*contextCaptureComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelref.Selection, request *chat.Request) (*chat.Request, error) {
 	return request.Clone(), nil
+}
+
+func (c *contextCaptureComposition) Dependencies(_ context.Context, bindings []plugins.ContributionBinding) ([]plugin.Dependency, error) {
+	dependencies := slices.Clone(c.dependencies)
+	for _, binding := range bindings {
+		dependencies = append(dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
+	}
+	return plugin.CompactDependencies(dependencies), nil
 }

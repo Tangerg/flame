@@ -1,12 +1,15 @@
 package toolset
 
 import (
+	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -99,4 +102,58 @@ func InstallationDependency(executable toolcontract.Tool) (plugin.Dependency, bo
 		return plugin.Dependency{}, false, fmt.Errorf("toolset: installation tool %s: %w", ref, err)
 	}
 	return dependency, true, nil
+}
+
+type installationDependencies interface {
+	InstallationDependencies() ([]plugin.Dependency, error)
+}
+
+// The source owns the activation graph; the manifest only freezes its projection.
+func InstallationDependencies(executable toolcontract.Tool) ([]plugin.Dependency, error) {
+	root, installed, err := InstallationDependency(executable)
+	if err != nil || !installed {
+		return nil, err
+	}
+	source, found, err := toolcontract.Capability[installationDependencies](executable)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("toolset: installation tool has no activation dependencies")
+	}
+	dependencies, err := source.InstallationDependencies()
+	if err != nil {
+		return nil, err
+	}
+	if err := plugin.ValidateDependencies(dependencies); err != nil {
+		return nil, err
+	}
+	for _, dependency := range dependencies {
+		if dependency == root {
+			return dependencies, nil
+		}
+	}
+	return nil, fmt.Errorf("toolset: activation dependencies omit their source release")
+}
+
+// A manifest keeps its admitted release set until all Tool calls join. A
+// reconnected collaborator cannot silently expand that execution's authority.
+type frozenInstallationTool struct {
+	toolcontract.Tool
+	dependencies []plugin.Dependency
+}
+
+func (t frozenInstallationTool) Unwrap() toolcontract.Tool { return t.Tool }
+func (t frozenInstallationTool) InstallationDependencies() ([]plugin.Dependency, error) {
+	return slices.Clone(t.dependencies), nil
+}
+func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	current, err := InstallationDependencies(t.Tool)
+	if err != nil {
+		return chat.ToolOutput{}, err
+	}
+	if !slices.Equal(current, t.dependencies) {
+		return chat.ToolOutput{}, plugin.ErrStale
+	}
+	return t.Tool.Call(ctx, invocation)
 }

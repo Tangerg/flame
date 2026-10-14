@@ -311,6 +311,16 @@ func (i *InteractionExecutor) assembleInteraction(
 			return nil, err
 		}
 	}
+	if i.config.ModelComposition != nil {
+		bindings := append(append(slices.Clone(session.modelObservers), session.modelContexts...), session.modelInputs...)
+		dependencies, err := i.config.ModelComposition.Dependencies(ctx, bindings)
+		if err != nil {
+			return nil, err
+		}
+		session.state.mu.Lock()
+		session.modelDependencies = dependencies
+		session.state.mu.Unlock()
+	}
 	if len(session.modelInputs) > 0 {
 		if i.config.ModelComposition == nil {
 			return nil, errors.New("execution: captured model input is unavailable")
@@ -380,18 +390,19 @@ func (i *InteractionExecutor) interactionConfiguration(
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := agent.EncodePayload(struct {
-		Provider               string                  `json:"provider"`
-		Model                  string                  `json:"model"`
-		Streaming              bool                    `json:"streaming"`
-		MaxConcurrentToolCalls int                     `json:"maxConcurrentToolCalls"`
-		ContextCompaction      bool                    `json:"contextCompaction"`
-		Group                  domaintool.Group        `json:"group"`
-		Depth                  uint32                  `json:"depth"`
-		DelegateOptions        corechat.Options        `json:"delegateOptions"`
-		Instructions           []corechat.Message      `json:"instructions,omitempty"`
-		ModelObservers         []modelContributionWire `json:"modelObservers"`
-		ModelContexts          []modelContributionWire `json:"modelContexts"`
-		ModelInputs            []modelContributionWire `json:"modelInputs"`
+		Provider               string                       `json:"provider"`
+		Model                  string                       `json:"model"`
+		Streaming              bool                         `json:"streaming"`
+		MaxConcurrentToolCalls int                          `json:"maxConcurrentToolCalls"`
+		ContextCompaction      bool                         `json:"contextCompaction"`
+		Group                  domaintool.Group             `json:"group"`
+		Depth                  uint32                       `json:"depth"`
+		DelegateOptions        corechat.Options             `json:"delegateOptions"`
+		Instructions           []corechat.Message           `json:"instructions,omitempty"`
+		ModelObservers         []modelContributionWire      `json:"modelObservers"`
+		ModelDependencies      []installationDependencyWire `json:"modelDependencies"`
+		ModelContexts          []modelContributionWire      `json:"modelContexts"`
+		ModelInputs            []modelContributionWire      `json:"modelInputs"`
 	}{
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		Streaming:              i.config.StreamModelResponses,
@@ -399,9 +410,10 @@ func (i *InteractionExecutor) interactionConfiguration(
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
 		Group:                  group, Depth: depth,
 		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
-		ModelObservers: modelBindingsWire(session.modelObservers),
-		ModelContexts:  modelBindingsWire(session.modelContexts),
-		ModelInputs:    modelBindingsWire(session.modelInputs),
+		ModelObservers:    modelBindingsWire(session.modelObservers),
+		ModelDependencies: installationDependencies(session.modelDependencies),
+		ModelContexts:     modelBindingsWire(session.modelContexts),
+		ModelInputs:       modelBindingsWire(session.modelInputs),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction configuration identity: %w", err)

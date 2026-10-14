@@ -3,6 +3,8 @@ package sqlite_test
 import (
 	"errors"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
@@ -20,7 +22,9 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	store := sqlite.NewPluginCommandStore(db)
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	contract := testsupport.CommandContract(t, "review.update", "workspace")
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: capability.Invocation{ID: "command", Origin: capability.Human, Target: capability.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	leaf := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("leaf")}
+	dependencies := plugin.CompactDependencies([]plugin.Dependency{provider, leaf})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: capability.Invocation{ID: "command", Origin: capability.Human, Target: capability.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Dependencies: dependencies, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,15 +45,33 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store = sqlite.NewPluginCommandStore(db)
 	restored, found, err := store.Get(t.Context(), "command")
-	if err != nil || !found || restored.Snapshot() != command.Snapshot() {
+	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), command.Snapshot()) {
 		t.Fatalf("original binding=%v, %v, %v", restored, found, err)
 	}
 	held, err := store.PendingCommandDependencies(t.Context())
-	if err != nil || len(held) != 1 || held[0] != provider {
+	if err != nil || !slices.Equal(held, dependencies) {
 		t.Fatalf("durable dependency=%v, %v", held, err)
+	}
+	copy := restored.Snapshot()
+	copy.Dependencies[0] = plugin.Dependency{}
+	if !slices.Equal(restored.Snapshot().Dependencies, dependencies) {
+		t.Fatal("caller changed retained dependencies")
+	}
+	changedDependencies := command.Snapshot()
+	changedDependencies.Dependencies = []plugin.Dependency{provider}
+	otherGraph, err := plugin.RestoreCommand(changedDependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(t.Context(), otherGraph); !errors.Is(err, plugin.ErrCommandConflict) {
+		t.Fatalf("transitive dependencies changed: %v", err)
+	}
+	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_commands SET dependencies_json='[]' WHERE id='command'`); err == nil {
+		t.Fatal("SQL rewrote the original activation dependencies")
 	}
 	changed := command.Snapshot()
 	changed.Provider.Digest = testsupport.Digest("3")
+	changed.Dependencies = []plugin.Dependency{changed.Provider}
 	other, err := plugin.RestoreCommand(changed)
 	if err != nil {
 		t.Fatal(err)
@@ -97,12 +119,12 @@ func TestPluginCommandHistoryNeverEvictsEarlierIdentityOrCapsLifetimeUsage(t *te
 	t.Cleanup(func() { _ = db.Close() })
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	_, err = db.ExecContext(t.Context(), `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
-INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,phase) SELECT 'command-'||n,'review.update',?,?,?,?,'backend','original-provider','operations',json_object('id','command-'||n,'origin','human','target',json_object('scope','installation','reference',?)),'dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", "installation").String(), provider.InstallationID.String(), provider.Digest.String(), provider.InstallationID.String())
+INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,dependencies_json,phase) SELECT 'command-'||n,'review.update',?,?,?,?,'backend','original-provider','operations',json_object('id','command-'||n,'origin','human','target',json_object('scope','installation','reference',?)),json_array(json_object('installation',?,'digest',?)),'dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", "installation").String(), provider.InstallationID.String(), provider.Digest.String(), provider.InstallationID.String(), provider.InstallationID.String(), provider.Digest.String())
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := sqlite.NewPluginCommandStore(db)
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: capability.Invocation{ID: "new", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: capability.Invocation{ID: "new", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Dependencies: []plugin.Dependency{provider}, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

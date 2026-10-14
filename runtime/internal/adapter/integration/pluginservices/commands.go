@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
@@ -144,10 +145,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 			}
 			defer release()
 		}
-		err = c.routing.Dispatch(ctx, id, func(ctx context.Context, record plugin.CommandBinding) error {
-			_, err := c.original(ctx, record)
-			return err
-		})
+		err = c.routing.Dispatch(ctx, id, c.admitDispatch)
 		if err != nil {
 			return zero, err
 		}
@@ -173,6 +171,23 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, observeErr)
 	}
 	return commandReply[jsoninput.Input]{value: result, binding: binding, session: session}, err
+}
+
+// Prepared work may dispatch only with its original activation releases. A receipt
+// read deliberately needs only the original owner and never replays that graph.
+func (c *CommandCalls) admitDispatch(ctx context.Context, record plugin.CommandBinding) error {
+	binding, err := c.original(ctx, record)
+	if err != nil {
+		return err
+	}
+	dependencies, err := c.pool.InstallationDependencies(ctx, binding.ServerID)
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(record.Dependencies, dependencies) {
+		return plugin.ErrStale
+	}
+	return nil
 }
 
 // NotifyChange carries no result and cannot advance another owner's data.
@@ -201,8 +216,8 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 	capture := func(binding plugins.ContributionBinding) (capability.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
 	}
-	command, found, err := c.routing.Find(ctx, id, method, admitted)
-	if err == nil && !found {
+	command, found, routeErr := c.routing.Find(ctx, id, method, admitted)
+	if routeErr == nil && !found {
 		// Discovery is network I/O outside installation admission. Under that
 		// boundary, recheck the exact provider before persisting its contract.
 		candidate, resolveErr := resolve(ctx)
@@ -234,25 +249,29 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if err := binding.ValidateInput(admitted); err != nil {
 			return plugin.CommandBinding{}, err
 		}
-		command, err = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.ContributionBinding, error) {
+		command, routeErr = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.CommandAdmission, error) {
 			current, err := resolve(ctx)
 			if err != nil {
-				return current, err
+				return plugins.CommandAdmission{}, err
 			}
 			if current.InstallationID != candidate.InstallationID || current.Digest != candidate.Digest || current.ServerName != candidate.ServerName || current.ServerID != candidate.ServerID || current.ContributionID != candidate.ContributionID || current.Export != candidate.Export || current.Contract != candidate.Contract {
-				return current, plugin.ErrUnavailable
+				return plugins.CommandAdmission{}, plugin.ErrUnavailable
 			}
 			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
-				return current, err
+				return plugins.CommandAdmission{}, err
 			}
-			return current, nil
+			dependencies, err := c.pool.InstallationDependencies(ctx, candidate.ServerID)
+			if err != nil {
+				return plugins.CommandAdmission{}, err
+			}
+			return plugins.CommandAdmission{Binding: current, Dependencies: dependencies}, nil
 		}, capture)
 	}
-	if errors.Is(err, plugin.ErrCommandConflict) {
-		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, err))
+	if errors.Is(routeErr, plugin.ErrCommandConflict) {
+		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, routeErr))
 	}
-	if err != nil {
-		return plugin.CommandBinding{}, err
+	if routeErr != nil {
+		return plugin.CommandBinding{}, routeErr
 	}
 	record := command.Snapshot()
 	invocation, err := capture(plugins.ContributionBinding{InstallationID: record.Provider.InstallationID})
