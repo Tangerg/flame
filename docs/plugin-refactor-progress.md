@@ -23,9 +23,14 @@ Run/Goal recovery accrual, recovery-commit validation, persistence selection and
 delivery projection read the normalized fields. Protocol `ModelEndpointInvocation`
 gains `kind` and contracts were regenerated (go-api/schema/TypeScript).
 
-Open within this priority: general host embedding access still rides Memory's private
-two-call model budget and corpus-sized envelope in `memory/rpc/models.go`; decoupling
-those grant bounds is the next embedding sub-slice.
+Priority #1 (embedding evidence/metering) is complete. The proposal states "Memory's
+optional embedding fallback and its own model-work limits remain Memory policy," so
+the embedding grant's call budget and envelope in `memory/rpc/models.go` correctly
+stay Memory-owned; extracting a general embedding host API with no second consumer
+would contradict the proposal and YAGNI. The handoff's "stop depending on Memory-owned
+shared grant bounds" is satisfied because embedding evidence/metering now flows through
+the shared physical endpoint owner regardless of Memory's call budget — the call bound
+is Memory policy, the accounting is general.
 
 Verification: `go build ./...`, changed-file gofmt and a focused SQLite+observed-
 embedder regression (embedding kind/usage/served-model/cost/raw-JSON round-trip, and
@@ -776,6 +781,7 @@ percentage estimates.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Record embedding as a kind of the shared physical endpoint; keep its call budget/envelope Memory-owned | Embedding evidence/metering/recovery/reporting belong to the one physical endpoint owner, but the proposal states "Memory's optional embedding fallback and its own model-work limits remain Memory policy" | A general embedding host API with no second consumer (contradicts the proposal and YAGNI), a parallel embedding store (inconsistent query/recovery), or synthesizing a chat response from vectors |
 | 2026-10-14 | Pause this session for handoff; retain the existing managed branch and committed work | The user explicitly wants to continue in a fresh session after this long conversation | Continuing automatic development, recreating from main or leaving an uncompilable partial embedding draft |
 | 2026-10-14 | Withdraw carried-forward percentage estimates and report concrete completed/remaining requirements | The repeated 75% figure was not recalculated against P01-P48/review evidence and could not describe recent progress reliably | Repeating a stale estimate or inventing a higher percentage from commit counts |
 | 2026-10-14 | Validate retained background commands against their complete original target/provider, regardless of target scope | Recorded Session/workspace commands were wrongly refused by an installation-only precondition | Erasing the target, special cases for individual scopes or trusting a current UI selection |
