@@ -42,21 +42,71 @@ describe("RootRunOutcome", () => {
           detail: "connection closed before a response",
         },
       ];
-      run.outcome = { type, error: { code: "run_lost" }, unresolvedEffects };
+      run.outcome =
+        type === "failed" || type === "timedOut" || type === "lost"
+          ? { type, error: { code: "run_lost" }, unresolvedEffects }
+          : { type, unresolvedEffects };
       const material = CurrentRootMaterial.from(run);
       const { rerender } = render(<RootRunOutcome material={material} />);
+      expect(
+        screen.getByText(
+          "This run has ended. The outcomes of these external operations are still unconfirmed.",
+        ),
+      ).toBeTruthy();
       const details = screen.getByRole("button", { name: "Operations with unconfirmed outcomes" });
       expect(screen.queryByText(/effect-with-no-receipt/)).toBeNull();
       fireEvent.click(details);
-      expect(screen.getByText(/effect-with-no-receipt/).textContent).toBe(
-        JSON.stringify(unresolvedEffects, null, 2),
-      );
+      expect(details.getAttribute("aria-expanded")).toBe("true");
+      expect(screen.getByText("effect-with-no-receipt")).toBeTruthy();
+      expect(screen.getByText("process-external")).toBeTruthy();
+      expect(screen.getByText("response_lost")).toBeTruthy();
+      expect(screen.getByText("connection closed before a response")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /retry|resume/i })).toBeNull();
+      expect(material.outcome?.type).toBe(type);
       rerender(<RootRunOutcome material={material} />);
       expect(
         screen.getAllByRole("button", { name: "Operations with unconfirmed outcomes" }),
       ).toHaveLength(1);
     },
   );
+
+  it("keeps current owner evidence exact across remounts", () => {
+    const output = '{"receipt":9007199254740993,"text":"<script>unexpected()</script>"}';
+    const run: AgentRunView = {
+      ...completedRun(),
+      outcome: {
+        type: "canceled",
+        unresolvedEffects: [
+          {
+            processId: "process-a",
+            effectId: "effect-a",
+            cause: "unknown",
+            detail: "No final settlement was observed.",
+            output,
+          },
+          { processId: "process-b", effectId: "effect-b", cause: "unknown" },
+        ],
+      },
+    };
+    const original = structuredClone(run);
+    for (let mount = 0; mount < 2; mount += 1) {
+      const { container, unmount } = render(
+        <RootRunOutcome material={CurrentRootMaterial.from(run)} />,
+      );
+      expect(screen.getByText("Canceled")).toBeTruthy();
+      expect(screen.getByText(/This run has ended/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Operations with unconfirmed outcomes" }));
+      expect(screen.getByText("effect-a")).toBeTruthy();
+      expect(screen.getByText("effect-b")).toBeTruthy();
+      expect(screen.queryByText("Reason code")).toBeNull();
+      expect(
+        screen.getByRole("region", { name: "Observed output (outcome unconfirmed)" }).textContent,
+      ).toBe(output);
+      expect(container.querySelector("script")).toBeNull();
+      unmount();
+    }
+    expect(run).toEqual(original);
+  });
 
   it("does not append a completion-and-accounting footer after an ordinary turn", () => {
     const { container } = render(

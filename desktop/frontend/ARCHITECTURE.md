@@ -265,6 +265,11 @@ Goal presentation preserves the Runtime's stopping code and safe detail from the
 same Session snapshot. Status wording and stopping explanations are derived from
 that material; renderer state and connection failures cannot author a new reason.
 
+Terminal Run presentation distinguishes the published local outcome from unresolved
+external effects. Root and delegated narratives render the same read-only evidence;
+observed output stays an exact document and never becomes a final ToolResult or an
+instruction to resume the finished Run.
+
 The client owns authoring facts: drafts, attachment preparation, queued intent,
 and unresolved command identity. Changing the endpoint scopes this local state
 to the selected Runtime. A remote path describes the Runtime machine; a browser

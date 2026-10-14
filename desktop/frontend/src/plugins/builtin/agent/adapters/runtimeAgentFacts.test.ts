@@ -4,6 +4,7 @@ import type {
   RunOutcome,
   RunProtocolProfile,
   RunRef,
+  SessionSnapshot,
 } from "@flame/runtime-contract/client";
 import {
   runtimeAgentEvent,
@@ -12,6 +13,9 @@ import {
   runtimePendingInterruptSet,
   runtimeRunFact,
 } from "./runtimeAgentFacts";
+import { runtimeSessionMaterial } from "./runtimeSessionMaterial";
+import { projectAgentSessionSnapshot } from "../application/session/sessionSnapshot";
+import { CurrentRootMaterial } from "../application/run/runReadModel";
 
 const PROFILE: RunProtocolProfile = { interruptTypes: [], requiredFeatures: [] };
 const METRICS = { steps: 2, activeDurationMillis: 25 };
@@ -42,6 +46,60 @@ function event(value: RunEvent["event"]): RunEvent {
 }
 
 describe("Runtime → Agent fact adapter", () => {
+  it("rebuilds terminal material and exact unresolved evidence from independent cold snapshots", () => {
+    const output = '{"receipt":9007199254740993,"observation":"unconfirmed"}';
+    const createdAt = "2026-08-12T08:00:00Z";
+    const finishedAt = "2026-08-12T08:00:01Z";
+    const run = runningRoot({
+      status: "finished",
+      createdAt,
+      activeSegmentId: undefined,
+      finishedAt,
+      outcome: {
+        type: "canceled",
+        unresolvedEffects: [
+          { processId: "process-a", effectId: "effect-a", cause: "unknown", output },
+        ],
+      },
+    });
+    const snapshot: SessionSnapshot = {
+      session: {
+        id: run.sessionId,
+        title: "Unconfirmed operation",
+        status: "idle",
+        provider: run.provider,
+        model: run.model,
+        revision: 1,
+        workspace: { ref: { path: "/workspace" }, availability: "available" },
+        createdAt,
+        updatedAt: finishedAt,
+      },
+      items: [],
+      runs: [run],
+      interrupts: [],
+    };
+    const original = structuredClone(snapshot);
+    const read = () => {
+      const material = runtimeSessionMaterial(run.sessionId, snapshot);
+      const view = projectAgentSessionSnapshot(material.snapshot);
+      return CurrentRootMaterial.from(view.runsById[run.id]!);
+    };
+    const first = read();
+    const reopened = read();
+    expect(reopened).toEqual(first);
+    expect(reopened).toMatchObject({
+      runId: run.id,
+      status: "finished",
+      outcome: {
+        type: "canceled",
+        unresolvedEffects: [
+          { processId: "process-a", effectId: "effect-a", cause: "unknown", output },
+        ],
+      },
+    });
+    expect(snapshot).toEqual(original);
+  });
+
   it.each(["completed", "canceled", "failed", "timedOut", "lost"] as const)(
     "retains unresolved effects for %s through live, cold, and cancellation projections",
     (type) => {
