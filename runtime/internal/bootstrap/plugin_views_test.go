@@ -43,7 +43,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "trajectory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	if len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "session" || len(installed.Selected.Diagnostics) != 0 {
+	if len(installed.Selected.Components) != 2 || installed.Selected.Components[0].Scope != "session" || len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("first-party admission: %+v", installed.Selected)
 	}
 	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "trajectory"}, Path: installed.Selected.Components[0].Entry}

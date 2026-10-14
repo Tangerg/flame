@@ -82,6 +82,13 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	}
 	t.Cleanup(func() { _ = host.Close() })
 
+	// Revival is the post-callback-RPC recovery phase; production runs it after
+	// publishing delivery. This lost Run has no plugin-backed effect, so it revives
+	// without a live plugin session.
+	if err := host.application.recoverUncertainExecutions(ctx); err != nil {
+		t.Fatalf("recover uncertain executions: %v", err)
+	}
+
 	storedRuns, err := cfg.Stores.Runs.ListRuns(ctx, sessionID)
 	if err != nil || len(storedRuns) != 1 {
 		t.Fatalf("runs after recovery = (%+v, %v), want one", storedRuns, err)
@@ -115,6 +122,10 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("second assemble: %v", err)
 	}
 	t.Cleanup(func() { _ = secondHost.Close() })
+
+	if err := secondHost.application.recoverUncertainExecutions(ctx); err != nil {
+		t.Fatalf("recover uncertain executions: %v", err)
+	}
 
 	rebooted, exists, err := readBootstrapGoal(ctx, cfg.Stores.Goals, sessionID)
 	if err != nil || !exists {
@@ -181,6 +192,10 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		t.Fatalf("assemble: %v", err)
 	}
 	t.Cleanup(func() { _ = host.Close() })
+
+	if err := host.application.recoverUncertainExecutions(ctx); err != nil {
+		t.Fatalf("recover uncertain executions: %v", err)
+	}
 
 	recovered, exists, err := readBootstrapGoal(ctx, cfg.Stores.Goals, sessionID)
 	if err != nil || !exists {

@@ -425,7 +425,7 @@ func TestDeferredCatalogSurvivesWaitingRestoreUnchanged(t *testing.T) {
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
 			ID: "shell_approval", Name: "shell", Arguments: `{"command":"printf ok > ok.txt","description":"Write ok"}`,
 		}))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion:    protocol.ProtocolVersion,

@@ -407,6 +407,12 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 					t.Error(err)
 				}
 			})
+			// Revival is the post-callback-RPC recovery phase; this unsafe boundary
+			// has no plugin-backed effect, so rejection resolves without a live plugin
+			// session. Production runs it after publishing delivery.
+			if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
+				t.Fatalf("recover uncertain executions: %v", err)
+			}
 			value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID()})
 			if err != nil || value.Outcome == nil || value.Outcome.Type != expected {
 				t.Fatalf("Run=%+v,outcome=%+v,%v", value, value.Outcome, err)

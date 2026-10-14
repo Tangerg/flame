@@ -74,7 +74,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 			}
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
 	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {

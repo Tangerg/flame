@@ -98,7 +98,12 @@ func parseInstallationRelease(id, digest string) (resourceid.InstallationID, fin
 func wirePluginError(err error) error {
 	switch {
 	case errors.Is(err, plugin.ErrCommandUnconfirmed):
-		return err
+		// A lost acknowledgement leaves the command's outcome unknown: it must not be
+		// resubmitted or retargeted, so the category stays the non-retryable internal
+		// failure. The generic command path projects through ProjectError, which has
+		// no plugin spec and would otherwise mint a fresh internal error that drops
+		// the cause; join it so the unconfirmed cause stays reachable.
+		return NewFailure(errors.Join(protocol.ErrInternalError, err), err.Error())
 	case errors.Is(err, plugin.ErrInvalid):
 		return InvalidParameters(err)
 	case errors.Is(err, plugin.ErrUnavailable):

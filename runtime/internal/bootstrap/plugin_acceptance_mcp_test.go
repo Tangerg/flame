@@ -46,6 +46,13 @@ func poMCPOpen(t *testing.T, cfg Config) *poMCPRuntime {
 		_ = host.Close()
 		t.Fatal(err)
 	}
+	// Uncertain-execution revival is the post-callback-RPC recovery phase production
+	// runs after publishing delivery (instance.go). A reopen after a crash relies on
+	// it to reconcile the Run left in flight.
+	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
+		_ = host.Close()
+		t.Fatal(err)
+	}
 	runtime := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 	t.Cleanup(runtime.close)
 	return runtime

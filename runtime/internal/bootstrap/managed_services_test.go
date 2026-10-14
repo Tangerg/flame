@@ -218,9 +218,18 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("original command binding missing: %t, %v", found, err)
 	}
 	contract := original.Snapshot().Contract
-	var descriptor capability.MethodDescriptor
-	if err := json.Unmarshal(contract.JSON(), &descriptor); err != nil || descriptor.Name != "flame.memory/add.v1" || descriptor.Kind != capability.Mutation || len(descriptor.Input) == 0 || len(descriptor.Output) == 0 {
-		t.Fatalf("original contract not captured: %+v, %v", descriptor, err)
+	var document capability.Descriptor
+	if err := json.Unmarshal(contract.JSON(), &document); err != nil {
+		t.Fatalf("original contract not captured: %v", err)
+	}
+	var add capability.MethodDescriptor
+	for _, method := range document.Methods {
+		if method.Name == "flame.memory/add.v1" {
+			add = method
+		}
+	}
+	if add.Kind != capability.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
+		t.Fatalf("original contract did not capture flame.memory/add.v1: %+v", document.Methods)
 	}
 	requireManagedServiceChange(t, changed)
 	installed = stageCommandReplacement(t, r, installed, source)
