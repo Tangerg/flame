@@ -13,6 +13,8 @@ type ListModelEndpointsRequest struct {
 
 type ModelEndpointInvocation struct {
 	ID        string                `json:"id"`
+	SessionID string                `json:"sessionId,omitzero"`
+	RunID     string                `json:"runId,omitzero"`
 	Caller    capability.Invocation `json:"caller"`
 	Provider  string                `json:"provider"`
 	Model     string                `json:"model"`

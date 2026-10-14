@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 const (
@@ -30,6 +31,7 @@ type RecordedToolAttempt struct {
 type TrajectoryEvidence struct {
 	Snapshot         Snapshot
 	ModelInvocations []RecordedModelInvocation
+	ModelEndpoints   []modelref.EndpointObservation
 	ToolAttempts     []RecordedToolAttempt
 	Feedback         []feedback.Entry
 }

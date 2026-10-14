@@ -1646,11 +1646,17 @@ The optional `usage` records provider-reported tokens for that call before Run a
 ## Session trajectory
 
 `sessions.trajectory` / `ListSessionTrajectory` reads one bounded page of durable
-Run, model-invocation, and transcript Item observations for a Session. The default
+Run, logical model-invocation, physical model-endpoint, and transcript Item
+observations for a Session. The default
 and maximum page size is 100. `includeDescendants` defaults to false; requesting
 true includes the complete Run tree and requires the subagent capability.
 
-Entries reuse `RunRef`, `ModelInvocation`, and `Item`. Their discriminated source
+Entries reuse `RunRef`, `ModelInvocation`, `ModelEndpointInvocation`, and `Item`.
+Session-associated endpoints without a Run remain included with either descendant
+filter. Endpoint request/response JSON strings retain original numeric evidence;
+logical calls and physical endpoints can describe the same consumption and must
+not be added together. Session deletion removes its endpoint records atomically;
+new calls cannot attach to a missing Session. Unattached calls are not included. Their discriminated source
 and original identity identify the row; there is no additional trajectory journal
 or execution state machine. Run records retain outcomes, unresolved effects,
 accounting, and parent/root edges. Model records retain the exact call and Segment
@@ -1687,7 +1693,7 @@ not reclassified by inference. Explicit review can retain an existing pending co
 
 Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
 
-Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Persistence and retention depend on the configured telemetry exporter; they do not survive restart through the invocation journal.
+Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Telemetry retention depends on the configured exporter. Physical requests and known outcomes are separately recorded by the same endpoint observer used for Interaction, in the existing invocation journal. Session-associated records participate in trajectory/export and Session deletion; calls without that association are accessible by their original caller ancestry. Aggregate auxiliary accounting and unattached retention remain under development.
 
 Auxiliary text generation uses Scope's `Client.Output` with its `Text` contract. Scope admits only naturally completed text and reasoning; refusals, media, and Tool calls cannot become summaries, memory, skill proposals, or titles by dropping their non-text parts. Runtime additionally rejects blank text and retains its resource limits and observation policy.
 
@@ -1698,7 +1704,8 @@ Title generation is nested under `run segment maintenance`, with `run.id`, `gen_
 `sessions.exportTrajectory` / `Runtime.ExportTrajectory` exports one JSON evaluation
 document with `schemaVersion` (`protocol.SessionTrajectoryVersion`) and a collection timestamp. It includes the Session,
 all root and child Runs, Items, retained conversation messages, offloaded Tool bodies,
-current Plan, model attempts, Tool attempts, and matching user feedback. Child evidence
+current Plan, logical model attempts, Session-associated physical model endpoints,
+Tool attempts, and matching user feedback. Child evidence
 requires negotiated `subagents`; the export never silently omits it. The existing
 `sessions.export` / `sessions.import` portable artifact keeps its own version and
 separate import contract.
@@ -1712,7 +1719,11 @@ document. These bounds apply to evidence export, not ordinary trajectory paginat
 
 The export contains all currently retained evidence, not every historical state
 transition or every provider request. Compaction can replace old conversation context;
-per-call prompts, provider request bodies, and auxiliary telemetry spans are absent.
+retained Session-associated Scope requests and known responses are included in
+`modelEndpoints`. Raw provider HTTP bodies, unattached calls, and auxiliary telemetry
+spans are absent. Schema version 3 introduces this collection; rebuild Go/TS/Core
+consumers together. Original JSON strings must not be decoded and re-encoded through
+a lossy numeric representation.
 Model and Tool journal records survive terminal Runs and Runtime restart until
 their Run is deleted. Tool attempts preserve separate
 Segments: `completed` means an observed definite result, `incomplete` includes

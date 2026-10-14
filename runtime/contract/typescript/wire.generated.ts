@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.24";
+export const PROTOCOL_VERSION = "2026-10-14.25";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1030,6 +1030,8 @@ export interface ModelEndpointInvocation {
   provider: string;
   request: string;
   response?: string;
+  runId?: string;
+  sessionId?: string;
   settledAt?: string;
   startedAt: string;
   state: ModelInvocationState;
@@ -1823,6 +1825,7 @@ export interface SessionTrajectory {
   items: Item[];
   limitations: string[];
   messages: unknown[];
+  modelEndpoints: ModelEndpointInvocation[];
   modelInvocations: ModelInvocation[];
   plan: PlanStep[];
   runs: RunRef[];
@@ -2064,9 +2067,10 @@ export interface ToolSpec {
 export type TrajectoryEntry =
   | { type: "run"; occurredAt: string; run: RunRef }
   | { type: "model"; model: ModelInvocation; occurredAt: string }
+  | { type: "endpoint"; endpoint: ModelEndpointInvocation; occurredAt: string }
   | { type: "item"; item: Item; occurredAt: string };
 
-export type TrajectoryEntryType = "run" | "model" | "item";
+export type TrajectoryEntryType = "run" | "model" | "endpoint" | "item";
 
 export type TransportKind = "http";
 
@@ -2283,7 +2287,7 @@ export const WIRE_ENUMS = {
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],
   ToolRefType: ["builtIn", "mcp", "a2a"],
-  TrajectoryEntryType: ["run", "model", "item"],
+  TrajectoryEntryType: ["run", "model", "endpoint", "item"],
   TransportKind: ["http"],
   WorkspaceAvailability: ["available", "missing"],
 } as const;

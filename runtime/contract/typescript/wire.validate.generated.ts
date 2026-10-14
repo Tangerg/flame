@@ -2143,10 +2143,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       provider: allOf([text(), minLength(1)]),
       request: allOf([text(), minLength(1)]),
       response: text(),
+      runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       settledAt: text(),
       startedAt: text(),
       state: ref(() => CHECKS.ModelInvocationState),
     }, ["caller", "id", "model", "provider", "request", "startedAt", "state"]),
+    ifThen(
+      fields({}, ["runId"]),
+      fields({}, ["sessionId"]),
+    ),
     ifThen(
       fields({
         state: literal("started"),
@@ -3774,14 +3780,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     items: array(ref(() => CHECKS.Item)),
     limitations: array(text()),
     messages: array(anything()),
+    modelEndpoints: array(ref(() => CHECKS.ModelEndpointInvocation)),
     modelInvocations: array(ref(() => CHECKS.ModelInvocation)),
     plan: array(ref(() => CHECKS.PlanStep)),
     runs: array(ref(() => CHECKS.RunRef)),
-    schemaVersion: allOf([integer(), minimum(2), maximum(2)]),
+    schemaVersion: allOf([integer(), minimum(3), maximum(3)]),
     session: ref(() => CHECKS.Session),
     toolAttempts: array(ref(() => CHECKS.ToolAttempt)),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-  }, ["collectedAt", "feedback", "items", "limitations", "messages", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
+  }, ["collectedAt", "feedback", "items", "limitations", "messages", "modelEndpoints", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
   SessionUsage: object({
     byModel: array(ref(() => CHECKS.UsageBucket)),
     cacheReadTokens: allOf([integer(), minimum(0)]),
@@ -4175,6 +4182,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["name"]),
   TrajectoryEntry: allOf([
     object({
+      endpoint: ref(() => CHECKS.ModelEndpointInvocation),
       item: ref(() => CHECKS.Item),
       model: ref(() => CHECKS.ModelInvocation),
       occurredAt: text(),
@@ -4183,23 +4191,32 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
+        endpoint: absent(),
         item: absent(),
         model: absent(),
         type: literal("run"),
       }, ["occurredAt", "run", "type"]),
       fields({
+        endpoint: absent(),
         item: absent(),
         run: absent(),
         type: literal("model"),
       }, ["model", "occurredAt", "type"]),
       fields({
+        item: absent(),
+        model: absent(),
+        run: absent(),
+        type: literal("endpoint"),
+      }, ["endpoint", "occurredAt", "type"]),
+      fields({
+        endpoint: absent(),
         model: absent(),
         run: absent(),
         type: literal("item"),
       }, ["item", "occurredAt", "type"]),
     ]),
   ]),
-  TrajectoryEntryType: enumOf(["run", "model", "item"]),
+  TrajectoryEntryType: enumOf(["run", "model", "endpoint", "item"]),
   TransportKind: enumOf(["http"]),
   UnresolvedEffect: object({
     cause: text(),

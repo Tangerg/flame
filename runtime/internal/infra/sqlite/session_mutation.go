@@ -76,10 +76,15 @@ func (s *SessionStore) Delete(ctx context.Context, id string) error {
 	if err := validateSessionResource("delete Session", id); err != nil {
 		return err
 	}
-	if _, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
-		return fmt.Errorf("sqlite: delete Session: %w", err)
-	}
-	return nil
+	return RunInTx(ctx, s.db, func(ctx context.Context) error {
+		if _, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM model_invocations WHERE session_id=? AND endpoint_json IS NOT NULL`, id); err != nil {
+			return fmt.Errorf("sqlite: delete Session endpoints: %w", err)
+		}
+		if _, err := Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id); err != nil {
+			return fmt.Errorf("sqlite: delete Session: %w", err)
+		}
+		return nil
+	})
 }
 
 func (s *SessionStore) execInsert(ctx context.Context, executor execer, value session.Session) error {

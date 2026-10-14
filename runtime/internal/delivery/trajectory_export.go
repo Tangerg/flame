@@ -78,15 +78,16 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		ToolResults:      make([]protocol.ArtifactToolResult, 0, len(snapshot.ToolResults)),
 		Plan:             presentPlanStepList(snapshot.Plan),
 		ModelInvocations: make([]protocol.ModelInvocation, 0, len(result.Evidence.ModelInvocations)),
+		ModelEndpoints:   make([]protocol.ModelEndpointInvocation, 0, len(result.Evidence.ModelEndpoints)),
 		ToolAttempts:     make([]protocol.ToolAttempt, 0, len(result.Evidence.ToolAttempts)),
 		Feedback:         make([]protocol.FeedbackEntry, 0, len(result.Evidence.Feedback)),
 		Limitations: []string{
 			"This document contains all retained records from one idle Session snapshot, including child Runs; it is not a transition log or an execution checkpoint.",
 			"Model and Tool attempts deleted or never recorded by earlier versions cannot be reconstructed; missing records and usage do not mean zero calls or zero consumption.",
-			"Messages are the current retained conversation after compaction; per-call prompts, provider request bodies, and auxiliary model spans are not recorded here.",
+			"Messages are the retained conversation after compaction. Model endpoints include recorded Session-associated Scope requests and known responses; raw provider HTTP bodies and calls without a Session association are not included.",
 			"Feedback contains user-supplied signals whose references match this Session or its retained Runs and Items; references are unverified and may outlive their targets.",
 			"Run completion and model-call completion describe execution outcomes, not answer quality or successful task evaluation.",
-			"Each Run records its own process's usage; tree totals include the root and every descendant. Combining Run totals with the same per-call usage double-counts consumption.",
+			"Each Run records its own process's usage; tree totals include the root and every descendant. Logical calls and physical endpoints may project the same consumption. Combining their usage with Run totals double-counts consumption; absent usage is unrecorded.",
 			"Tool duration describes its final execution segment and excludes approval waits. Model timestamps measure Runtime observation boundaries; unknown settlements do not measure provider duration.",
 			"Tool attempts retain each Segment separately: completed means a definite result was observed, incomplete may mean suspension for input, and started has no recorded settlement. These states do not rate result quality.",
 		},
@@ -125,6 +126,13 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 			return protocol.SessionTrajectory{}, err
 		}
 		out.ModelInvocations = append(out.ModelInvocations, model)
+	}
+	for _, row := range result.Evidence.ModelEndpoints {
+		value, err := presentModelEndpoint(row)
+		if err != nil {
+			return protocol.SessionTrajectory{}, err
+		}
+		out.ModelEndpoints = append(out.ModelEndpoints, value)
 	}
 	for _, row := range result.Evidence.ToolAttempts {
 		attempt := row.Invocation

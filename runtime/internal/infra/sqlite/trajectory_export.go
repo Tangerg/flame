@@ -32,7 +32,8 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 			+ length(CAST(id AS BLOB))) FROM tool_result_blobs WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(steps AS BLOB))) FROM session_plans WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(COALESCE(length(CAST(usage AS BLOB)), 0) + COALESCE(length(CAST(known_response AS BLOB)), 0) + length(CAST(call_id AS BLOB))
-			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM model_invocations WHERE session_id = ? AND endpoint_json IS NULL
+			+ COALESCE(length(CAST(run_id AS BLOB)),0) + COALESCE(length(CAST(segment_id AS BLOB)),0) + length(CAST(state AS BLOB))
+			+ COALESCE(length(CAST(endpoint_json AS BLOB)),0) + length(CAST(endpoint_failure AS BLOB))) FROM model_invocations WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(call_id AS BLOB)) + length(CAST(item_id AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM tool_invocations WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(text AS BLOB)) + length(CAST(session_id AS BLOB))
@@ -54,7 +55,8 @@ func (s *SessionStore) validateTrajectoryJournalOwnership(ctx context.Context, s
 			WHERE (attempt.session_id = ? OR owner.session_id = ?)
 			AND (owner.run_id IS NULL OR attempt.session_id != owner.session_id)`
 		if table == "model_invocations" {
-			query += ` AND endpoint_json IS NULL`
+			query = `SELECT EXISTS(SELECT 1 FROM model_invocations attempt LEFT JOIN runs owner ON owner.run_id=attempt.run_id
+			WHERE (attempt.session_id=? OR owner.session_id=?) AND ((attempt.run_id IS NOT NULL AND (owner.run_id IS NULL OR attempt.session_id IS NULL OR attempt.session_id!=owner.session_id)) OR (attempt.endpoint_json IS NULL AND owner.run_id IS NULL))`
 		}
 		query += `)`
 		var invalid bool

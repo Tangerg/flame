@@ -3725,7 +3725,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.24\""
+          "value": "\"2026-10-14.25\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -4035,7 +4035,7 @@
         {
           "name": "SessionTrajectoryVersion",
           "type": "untyped int",
-          "value": "2"
+          "value": "3"
         },
         {
           "name": "SkillLifecycleActive",
@@ -4221,6 +4221,11 @@
           "name": "TopicSkillsChanged",
           "type": "RuntimeTopic",
           "value": "\"skills.changed\""
+        },
+        {
+          "name": "TrajectoryEntryEndpoint",
+          "type": "TrajectoryEntryType",
+          "value": "\"endpoint\""
         },
         {
           "name": "TrajectoryEntryItem",
@@ -8002,6 +8007,16 @@
               "tag": "json:\"id\""
             },
             {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitzero\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId,omitzero\""
+            },
+            {
               "name": "Caller",
               "type": "capability.Invocation",
               "tag": "json:\"caller\""
@@ -10889,6 +10904,11 @@
               "tag": "json:\"modelInvocations\""
             },
             {
+              "name": "ModelEndpoints",
+              "type": "[]ModelEndpointInvocation",
+              "tag": "json:\"modelEndpoints\""
+            },
+            {
               "name": "ToolAttempts",
               "type": "[]ToolAttempt",
               "tag": "json:\"toolAttempts\""
@@ -11892,6 +11912,11 @@
               "name": "Model",
               "type": "*ModelInvocation",
               "tag": "json:\"model,omitzero\""
+            },
+            {
+              "name": "Endpoint",
+              "type": "*ModelEndpointInvocation",
+              "tag": "json:\"endpoint,omitzero\""
             },
             {
               "name": "Item",

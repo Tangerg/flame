@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-14.24",
+  "protocolVersion": "2026-10-14.25",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -5419,6 +5419,16 @@
         "response": {
           "type": "string"
         },
+        "runId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "settledAt": {
           "type": "string",
           "format": "date-time"
@@ -5441,6 +5451,18 @@
         "state"
       ],
       "allOf": [
+        {
+          "if": {
+            "required": [
+              "runId"
+            ]
+          },
+          "then": {
+            "required": [
+              "sessionId"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {
@@ -10568,6 +10590,12 @@
           "type": "array",
           "items": {}
         },
+        "modelEndpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelEndpointInvocation"
+          }
+        },
         "modelInvocations": {
           "type": "array",
           "items": {
@@ -10588,8 +10616,8 @@
         },
         "schemaVersion": {
           "type": "integer",
-          "minimum": 2,
-          "maximum": 2
+          "minimum": 3,
+          "maximum": 3
         },
         "session": {
           "$ref": "#/$defs/Session"
@@ -10613,6 +10641,7 @@
         "items",
         "limitations",
         "messages",
+        "modelEndpoints",
         "modelInvocations",
         "plan",
         "runs",
@@ -11971,6 +12000,9 @@
     "TrajectoryEntry": {
       "type": "object",
       "properties": {
+        "endpoint": {
+          "$ref": "#/$defs/ModelEndpointInvocation"
+        },
         "item": {
           "$ref": "#/$defs/Item"
         },
@@ -11991,6 +12023,7 @@
       "oneOf": [
         {
           "properties": {
+            "endpoint": false,
             "item": false,
             "model": false,
             "type": {
@@ -12005,6 +12038,7 @@
         },
         {
           "properties": {
+            "endpoint": false,
             "item": false,
             "run": false,
             "type": {
@@ -12019,6 +12053,22 @@
         },
         {
           "properties": {
+            "item": false,
+            "model": false,
+            "run": false,
+            "type": {
+              "const": "endpoint"
+            }
+          },
+          "required": [
+            "endpoint",
+            "occurredAt",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "endpoint": false,
             "model": false,
             "run": false,
             "type": {
@@ -12038,6 +12088,7 @@
       "enum": [
         "run",
         "model",
+        "endpoint",
         "item"
       ]
     },

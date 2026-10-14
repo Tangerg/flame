@@ -10,11 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func insertTrajectorySession(t testing.TB, ctx context.Context, db *sql.DB, id string) {
@@ -42,6 +45,8 @@ func trajectoryPosition(row sqlite.TrajectoryRecord) sqlite.TrajectoryPosition {
 		position.Kind, position.ID = "run", row.Run.ID()
 	case row.Model != nil:
 		position.Kind, position.ID = "model", row.Model.CallID
+	case row.Endpoint != nil:
+		position.Kind, position.ID = "endpoint", row.Endpoint.Invocation.ID
 	case row.Item != nil:
 		position.Kind, position.ID = "item", row.Item.ID()
 	}
@@ -161,18 +166,29 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
+	for _, source := range []struct{ id, caller, session string }{
+		{"endpoint_root", "call_run_root", ""}, {"endpoint_child", "call_run_child", ""},
+		{"endpoint_session", "utility_session", root.SessionID}, {"endpoint_other", "utility_other", other.SessionID},
+		{"endpoint_global", "utility_global", ""},
+	} {
+		value := modelref.EndpointInvocation{ID: source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: request, StartedAt: root.CreatedAt}
+		if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(ctx, value); err != nil {
+			t.Fatal(err)
+		}
+	}
 	reader := sqlite.NewTrajectoryStore(db)
 	for _, includeDescendants := range []bool{false, true} {
 		page, err := reader.Page(ctx, root.SessionID, includeDescendants, nil, 100)
-		want := 3
+		want := 5
 		if includeDescendants {
-			want = 6
+			want = 9
 		}
 		if err != nil || len(page) != want {
 			t.Fatalf("descendants=%t: %d entries, %v", includeDescendants, len(page), err)
 		}
 		for _, row := range page {
-			if row.RunID == other.RunID || (!includeDescendants && row.RunID != root.RunID) {
+			if row.RunID == other.RunID || (!includeDescendants && row.RunID != "" && row.RunID != root.RunID) {
 				t.Fatalf("out-of-scope trajectory entry: %+v", row)
 			}
 		}

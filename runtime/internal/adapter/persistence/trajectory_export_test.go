@@ -8,11 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
+	"strings"
 )
 
 type exportSnapshotReader struct {
@@ -66,6 +70,11 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 		{
 			name: "source bytes",
 			sql:  `INSERT INTO feedback_entries(session_id,text,created_at_ns) VALUES('ses_export',zeroblob(?),1)`,
+			args: []any{sessions.MaximumTrajectoryExportBytes + 1},
+		},
+		{
+			name: "endpoint failure bytes",
+			sql:  `INSERT INTO model_invocations(call_id,session_id,state,started_at,finished_at,endpoint_json,endpoint_failure) VALUES('endpoint_large','ses_export','unknown',1,2,'{}',zeroblob(?))`,
 			args: []any{sessions.MaximumTrajectoryExportBytes + 1},
 		},
 		{
@@ -125,5 +134,37 @@ func TestTrajectoryExportRejectsMismatchedJournalOwnershipBeforeLoading(t *testi
 		if err == nil || snapshots.reads != 0 || value.Snapshot.Session.ID() != "" {
 			t.Fatalf("foreign journal bypassed source admission: reads=%d, error=%v", snapshots.reads, err)
 		}
+	}
+}
+
+func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) {
+	reader, db, _ := trajectoryExportFixture(t)
+	store := sqlite.NewModelInvocationStore(db)
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original prompt")))
+	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"))
+	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
+	for index, scope := range []string{"ses_export", ""} {
+		id := []string{"session", "global"}[index]
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: capability.Invocation{ID: "utility_" + id, Origin: capability.Automatic, Parent: "maintenance", Target: capability.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
+		if err := store.StartEndpointInvocation(t.Context(), invocation); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, FinishedAt: invocation.StartedAt.Add(time.Second), Failure: "outer rejected text"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	evidence, err := reader.ReadTrajectoryExport(t.Context(), "ses_export")
+	if err != nil || len(evidence.ModelEndpoints) != 1 {
+		t.Fatalf("Session endpoint export: %+v %v", evidence.ModelEndpoints, err)
+	}
+	value := evidence.ModelEndpoints[0]
+	if value.SessionID != "ses_export" || value.RunID != "" || value.State != "failed" || value.Response.Metadata.Usage.InputTokens != 9007199254740993 || !strings.Contains(value.ResponseJSON.String(), "9007199254740993") || !strings.Contains(value.RequestJSON.String(), "original prompt") {
+		t.Fatalf("export changed known endpoint evidence: %+v", value)
+	}
+	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET endpoint_json=json_set(endpoint_json,'$.sessionId','ses_other') WHERE call_id='endpoint_session'`); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := reader.ReadTrajectoryExport(t.Context(), "ses_export"); err == nil || len(value.ModelEndpoints) != 0 {
+		t.Fatal("corrupt Session association exported partial evidence")
 	}
 }

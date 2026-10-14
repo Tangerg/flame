@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -28,6 +29,7 @@ type TrajectoryRecord struct {
 	OccurredAt time.Time
 	RunID      string
 	Run        *run.Run
+	Endpoint   *modelref.EndpointObservation
 	Model      *ModelInvocationRecord
 	Item       *transcript.Item
 }
@@ -85,11 +87,13 @@ func (s *TrajectoryStore) positions(ctx context.Context, sessionID string, inclu
 		UNION ALL
 		SELECT started_at, 'model', call_id, run_id FROM model_invocations WHERE session_id = ? AND endpoint_json IS NULL
 		UNION ALL
+		SELECT started_at, 'endpoint', call_id, COALESCE(run_id,'') FROM model_invocations WHERE session_id = ? AND endpoint_json IS NOT NULL
+		UNION ALL
 		SELECT occurred_at, 'item', item_id, run_id FROM history_items WHERE session_id = ?
 	) WHERE 1 = 1`
-	args := []any{sessionID, sessionID, sessionID}
+	args := []any{sessionID, sessionID, sessionID, sessionID}
 	if !includeDescendants {
-		query += ` AND run_id IN (SELECT run_id FROM runs WHERE session_id = ? AND root_run_id = '')`
+		query += ` AND (run_id = '' OR run_id IN (SELECT run_id FROM runs WHERE session_id = ? AND root_run_id = ''))`
 		args = append(args, sessionID)
 	}
 	if anchor != nil {
@@ -135,6 +139,12 @@ func (s *TrajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 			return TrajectoryRecord{}, err
 		}
 		entry.Model, entry.RunID = &value, position.runID
+	case "endpoint":
+		value, err := s.models.trajectoryEndpoint(ctx, sessionID, position.ID)
+		if err != nil {
+			return TrajectoryRecord{}, err
+		}
+		entry.Endpoint, entry.RunID = &value, value.RunID
 	case "item":
 		value, found, err := s.transcript.Item(ctx, position.ID)
 		if err != nil {
@@ -147,7 +157,7 @@ func (s *TrajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 	default:
 		return TrajectoryRecord{}, errors.New("sqlite: unknown trajectory source")
 	}
-	if entry.Run == nil {
+	if entry.Run == nil && (entry.Endpoint == nil || entry.RunID != "") {
 		owner, found, err := s.runs.Run(ctx, entry.RunID)
 		if err != nil {
 			return TrajectoryRecord{}, err

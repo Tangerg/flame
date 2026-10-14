@@ -8,11 +8,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+type storedEndpointInvocation struct {
+	ID        string                `json:"id"`
+	Caller    capability.Invocation `json:"caller"`
+	Provider  string                `json:"provider"`
+	Model     string                `json:"model"`
+	SessionID string                `json:"sessionId,omitzero"`
+	Request   *chat.Request         `json:"request"`
+	StartedAt time.Time             `json:"startedAt"`
+}
+
+func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error) {
+	return encodeStoredJSON(storedEndpointInvocation{ID: value.ID, Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, Request: value.Request, StartedAt: value.StartedAt})
+}
 
 func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation) error {
 	if err := invocation.Validate(); err != nil {
@@ -21,7 +37,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 	if err := instant.Validate(invocation.StartedAt); err != nil {
 		return err
 	}
-	encoded, err := encodeStoredJSON(invocation)
+	encoded, err := encodeEndpointInvocation(invocation)
 	if err != nil {
 		return err
 	}
@@ -29,11 +45,26 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 	if invocation.SessionID != "" {
 		session = invocation.SessionID
 	}
-	_, err = Connection(ctx, m.db).ExecContext(ctx, `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json)
-		VALUES(?,COALESCE((SELECT session_id FROM model_invocations WHERE call_id=?),?),
-		(SELECT run_id FROM model_invocations WHERE call_id=?),(SELECT segment_id FROM model_invocations WHERE call_id=?),?,?,?)`,
-		invocation.ID, invocation.Caller.ID, session, invocation.Caller.ID, invocation.Caller.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded))
-	return err
+	result, err := Connection(ctx, m.db).ExecContext(ctx, `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json)
+		SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,? FROM (
+		SELECT COALESCE((SELECT session_id FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL),?) session_id,
+		(SELECT run_id FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL) run_id,
+		(SELECT segment_id FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL) segment_id) scope
+		WHERE (scope.session_id IS NULL OR EXISTS(SELECT 1 FROM sessions WHERE id=scope.session_id))
+		AND (? IS NULL OR scope.session_id=?)`,
+		invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded),
+		invocation.Caller.ID, session, invocation.Caller.ID, invocation.Caller.ID, session, session)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return errors.New("sqlite: endpoint has no matching owning Session")
+	}
+	return nil
 }
 
 func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) error {
@@ -73,7 +104,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if err != nil {
 		return err
 	}
-	encoded, err := encodeStoredJSON(invocation)
+	encoded, err := encodeEndpointInvocation(invocation)
 	if err != nil {
 		return err
 	}
@@ -94,7 +125,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 }
 
 func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, parent string, before int64, beforeID string, limit int) ([]modelref.EndpointObservation, error) {
-	query := `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
+	query := `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`
 	args := []any{parent, parent}
 	if beforeID != "" {
 		query += ` AND (started_at,call_id)<(?,?)`
@@ -127,12 +158,14 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var startedAt int64
 	var finishedAt *int64
 	var response *string
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure); err != nil {
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	if err := decodeStoredJSON([]byte(encoded), &value.Invocation); err != nil {
+	var admission storedEndpointInvocation
+	if err := decodeStoredJSON([]byte(encoded), &admission); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
+	value.Invocation = modelref.EndpointInvocation{ID: admission.ID, Caller: admission.Caller, Provider: admission.Provider, Model: admission.Model, SessionID: admission.SessionID, Request: admission.Request, StartedAt: admission.StartedAt}
 	var fields map[string]jsontext.Value
 	if err := decodeStoredJSON([]byte(encoded), &fields); err != nil {
 		return modelref.EndpointObservation{}, err
@@ -144,8 +177,24 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if err := value.Invocation.Validate(); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt || (value.Invocation.Caller.ID != parent && value.Invocation.Caller.Parent != parent) {
+	if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt || (parent != "" && value.Invocation.Caller.ID != parent && value.Invocation.Caller.Parent != parent) {
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint observation identity differs from its row")
+	}
+	if value.Invocation.SessionID != "" && value.Invocation.SessionID != value.SessionID {
+		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint Session differs from its admission")
+	}
+	if value.SessionID != "" {
+		if err := resourceid.ValidateSession(value.SessionID); err != nil {
+			return modelref.EndpointObservation{}, err
+		}
+	}
+	if value.RunID != "" {
+		if value.SessionID == "" {
+			return modelref.EndpointObservation{}, errors.New("sqlite: endpoint Run has no Session")
+		}
+		if err := resourceid.ValidateRun(value.RunID); err != nil {
+			return modelref.EndpointObservation{}, err
+		}
 	}
 	if response != nil {
 		value.ResponseJSON, err = jsoninput.Parse([]byte(*response))
@@ -161,6 +210,9 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	}
 	if finishedAt != nil {
 		value.FinishedAt = time.Unix(0, *finishedAt).UTC()
+		if value.FinishedAt.Before(value.Invocation.StartedAt) {
+			return modelref.EndpointObservation{}, errors.New("sqlite: endpoint settlement precedes admission")
+		}
 	}
 	switch value.State {
 	case modelInvocationStarted.databaseValue():
@@ -194,10 +246,37 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 }
 
 func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
-	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
+	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
 	value, err := scanEndpointObservation(row, caller)
 	if errors.Is(err, sql.ErrNoRows) {
 		return modelref.EndpointObservation{}, false, nil
 	}
 	return value, err == nil, err
+}
+
+// ListSessionEndpoints materializes evidence after the export caller checks
+// source limits in the same transaction. Ordinary inspection uses bounded pages.
+func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, sessionID string) ([]modelref.EndpointObservation, error) {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
+		return nil, err
+	}
+	rows, err := Connection(ctx, m.db).QueryContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,session_id,COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	values := []modelref.EndpointObservation{}
+	for rows.Next() {
+		value, err := scanEndpointObservation(rows, "")
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, rows.Err()
+}
+
+func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID, id string) (modelref.EndpointObservation, error) {
+	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,session_id,COALESCE(run_id,'') FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
+	return scanEndpointObservation(row, "")
 }

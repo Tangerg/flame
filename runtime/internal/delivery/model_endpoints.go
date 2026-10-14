@@ -26,17 +26,25 @@ func (s *Handler) ListModelEndpoints(ctx context.Context, in protocol.ListModelE
 	}
 	values := make([]protocol.ModelEndpointInvocation, len(page.Rows))
 	for index, row := range page.Rows {
-		if err := row.RequestJSON.Validate(); err != nil {
+		value, err := presentModelEndpoint(row)
+		if err != nil {
 			return nil, err
-		}
-		value := protocol.ModelEndpointInvocation{ID: row.Invocation.ID, Caller: row.Invocation.Caller, Provider: row.Invocation.Provider, Model: row.Invocation.Model, Request: row.RequestJSON.String(), Failure: row.Failure, State: protocol.ModelInvocationState(row.State), StartedAt: row.Invocation.StartedAt, SettledAt: row.FinishedAt}
-		if row.Response != nil {
-			if err := row.ResponseJSON.Validate(); err != nil {
-				return nil, err
-			}
-			value.Response = row.ResponseJSON.String()
 		}
 		values[index] = value
 	}
 	return protocol.NewPageWithCursor(values, page.NextCursor), nil
+}
+
+func presentModelEndpoint(row modelref.EndpointObservation) (protocol.ModelEndpointInvocation, error) {
+	if err := row.RequestJSON.Validate(); err != nil {
+		return protocol.ModelEndpointInvocation{}, err
+	}
+	value := protocol.ModelEndpointInvocation{ID: row.Invocation.ID, Caller: row.Invocation.Caller, Provider: row.Invocation.Provider, Model: row.Invocation.Model, SessionID: row.SessionID, RunID: row.RunID, Request: row.RequestJSON.String(), Failure: row.Failure, State: protocol.ModelInvocationState(row.State), StartedAt: row.Invocation.StartedAt, SettledAt: row.FinishedAt}
+	if row.Response != nil {
+		if err := row.ResponseJSON.Validate(); err != nil {
+			return protocol.ModelEndpointInvocation{}, err
+		}
+		value.Response = row.ResponseJSON.String()
+	}
+	return value, nil
 }

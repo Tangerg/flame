@@ -35,10 +35,14 @@ const runId = (row: TrajectoryEntry) =>
     ? row.run.id
     : row.type === "model"
       ? row.model.runId
-      : row.item.runId;
+      : row.type === "endpoint"
+        ? (row.endpoint.runId ?? "")
+        : row.item.runId;
 function needsAttention(row: TrajectoryEntry): boolean {
-  if (row.type === "model")
-    return row.model.state === "failed" || row.model.state === "unknown";
+  if (row.type === "model" || row.type === "endpoint") {
+    const source = row.type === "model" ? row.model : row.endpoint;
+    return source.state === "failed" || source.state === "unknown";
+  }
   if (row.type === "run")
     return (
       row.run.status === "waiting" ||
@@ -65,11 +69,13 @@ function title(row: TrajectoryEntry): string {
     return `Run · ${row.run.id} · ${row.run.provider}/${row.run.model} · ${row.run.outcome?.type ?? row.run.status}`;
   if (row.type === "model")
     return `Model call · ${row.model.callId} · ${row.model.state}`;
+  if (row.type === "endpoint")
+    return `Model endpoint · ${row.endpoint.id} · ${row.endpoint.provider}/${row.endpoint.model} · ${row.endpoint.state}`;
   const item = row.item;
   return `${item.type} · ${item.id} · ${item.type === "toolCall" ? item.tool.name : item.status}${item.type === "toolCall" && item.approvalDecision ? ` · ${item.approvalDecision}` : ""}`;
 }
 function Observation({ row }: { row: TrajectoryEntry }) {
-  const facts: Fact[] = [["Run ID", runId(row)]];
+  const facts: Fact[] = [["Run ID", runId(row) || "Session only"]];
   const notes: ReactNode[] = [];
   if (row.type === "model") {
     const source = row.model;
@@ -99,6 +105,18 @@ function Observation({ row }: { row: TrajectoryEntry }) {
     if (source.state === "unknown")
       notes.push(
         "The final outcome was not observed. Settlement time is not measured execution time.",
+      );
+  } else if (row.type === "endpoint") {
+    facts.push(
+      ["Calling operation", row.endpoint.caller.id],
+      ["Parent operation", row.endpoint.caller.parent ?? "Unrecorded"],
+      ["Origin", row.endpoint.caller.origin],
+      ["Recorded settlement", row.endpoint.settledAt ?? "Unrecorded"],
+    );
+    if (row.endpoint.failure) notes.push(row.endpoint.failure);
+    if (row.endpoint.state === "unknown")
+      notes.push(
+        "The provider outcome was not observed. Missing usage does not mean zero consumption.",
       );
   } else if (row.type === "run") {
     facts.push(["Root Run ID", row.run.rootRunId ?? "Unrecorded"]);
@@ -147,7 +165,7 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
     { value: "all", label: "All Runs" },
     ...Array.from(new Set(rows.map(runId))).map((id) => ({
       value: id,
-      label: id,
+      label: id || "Session only",
     })),
   ];
   const selectedRun = runOptions.some((option) => option.value === run)
@@ -178,7 +196,14 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
         aria-label="Current page observations"
         values={[
           ["Page records", rows.length],
-          ["Model calls", rows.filter((row) => row.type === "model").length],
+          [
+            "Logical model calls",
+            rows.filter((row) => row.type === "model").length,
+          ],
+          [
+            "Model endpoints",
+            rows.filter((row) => row.type === "endpoint").length,
+          ],
           [
             "Tool calls",
             rows.filter(
@@ -197,7 +222,8 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
           options={[
             { value: "all", label: "All observations" },
             { value: "run", label: "Runs" },
-            { value: "model", label: "Model calls" },
+            { value: "model", label: "Logical model calls" },
+            { value: "endpoint", label: "Model endpoints" },
             { value: "toolCall", label: "Tool calls" },
             { value: "message", label: "Messages" },
             { value: "attention", label: "Needs attention" },
@@ -221,8 +247,8 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
       <RecordGroup id="records" aria-label="Trajectory observations">
         {matching.map((row) => (
           <Disclosure
-            key={`${row.type}:${row.type === "model" ? row.model.callId : row.type === "run" ? row.run.id : row.item.id}`}
-            data-trajectory-record={`${row.type}:${row.type === "model" ? row.model.callId : row.type === "run" ? row.run.id : row.item.id}`}
+            key={`${row.type}:${row.type === "model" ? row.model.callId : row.type === "run" ? row.run.id : row.type === "endpoint" ? row.endpoint.id : row.item.id}`}
+            data-trajectory-record={`${row.type}:${row.type === "model" ? row.model.callId : row.type === "run" ? row.run.id : row.type === "endpoint" ? row.endpoint.id : row.item.id}`}
             data-trajectory-kind={
               row.type === "item" ? row.item.type : row.type
             }

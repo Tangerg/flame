@@ -14,6 +14,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -567,7 +568,8 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 			sess:    testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo")}),
 			renamed: renamed,
 		},
-		title: "Generated title",
+		title:      "Generated title",
+		titleScope: make(chan string, 1),
 	}
 	effects := testFinalizer(stores, FinalizerConfig{
 		Checkpoints: fakeCheckpoints{snapshotted: snapshotted},
@@ -579,6 +581,9 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 
 	if got := waitString(t, snapshotted); got != "ses_1:/run-cwd:run_1" {
 		t.Fatalf("snapshot = %q", got)
+	}
+	if got := waitString(t, stores.titleScope); got != "ses_1" {
+		t.Fatalf("title evidence Session = %q", got)
 	}
 	if got := waitString(t, renamed); got != "Generated title" {
 		t.Fatalf("title = %q", got)
@@ -754,6 +759,7 @@ func waitString(t *testing.T, ch <-chan string) string {
 }
 
 type fakeStores struct {
+	titleScope  chan string
 	transcript  *fakeTranscript
 	interrupts  *fakeInterrupts
 	session     *fakeSession
@@ -792,7 +798,10 @@ func (f *fakeStores) Count(context.Context, string) (int, error) {
 	return f.mark, f.markErr
 }
 func (*fakeStores) Write(context.Context, string, ...chat.Message) error { return nil }
-func (f *fakeStores) Generate(context.Context, string) (string, error) {
+func (f *fakeStores) Generate(ctx context.Context, _ string) (string, error) {
+	if f.titleScope != nil {
+		f.titleScope <- executionctx.SessionID(ctx)
+	}
 	if f.operations != nil {
 		*f.operations = append(*f.operations, "title.generate")
 	}
@@ -1131,4 +1140,11 @@ func (*recordingExecutionTrees) ExecutionResultCommitted(context.Context, string
 
 func (*fakeChildRunStarts) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {
 	return false, nil
+}
+
+func TestTitleRejectsReplacingCapturedSession(t *testing.T) {
+	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "ses_original"})
+	if err := (&Finalizer{}).title(ctx, "ses_replacement", "opening"); err == nil {
+		t.Fatal("title replaced its captured Session")
+	}
 }

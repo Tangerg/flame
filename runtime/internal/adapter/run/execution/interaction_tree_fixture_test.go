@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"iter"
 	"path/filepath"
@@ -12,7 +13,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 var testTreeStores sync.Map
@@ -44,7 +48,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 		}
 		t.Cleanup(func() { _ = db.Close() })
 		journal := sqlite.NewModelInvocationStore(db)
-		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, journal)
+		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, fixtureEndpointJournal{ModelInvocationStore: journal, db: db})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -174,4 +178,25 @@ func observeTestInteraction(t *testing.T, executor *InteractionExecutor, ctx con
 			commit.Complete(commitErr)
 		}
 	}, nil
+}
+
+// The execution harness owns Session facts in memory; its separate physical
+// evidence database needs the same Session admission before recording a call.
+type fixtureEndpointJournal struct {
+	*sqlite.ModelInvocationStore
+	db *sql.DB
+}
+
+func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation) error {
+	if invocation.SessionID != "" {
+		sessions := sqlite.NewSessionStore(j.db)
+		if _, err := sessions.Get(ctx, invocation.SessionID); errors.Is(err, session.ErrNotFound) {
+			if err := sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{ID: invocation.SessionID})); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+	}
+	return j.ModelInvocationStore.StartEndpointInvocation(ctx, invocation)
 }

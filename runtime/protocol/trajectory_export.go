@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const SessionTrajectoryVersion = 2
+const SessionTrajectoryVersion = 3
 
 var ErrExportTooLarge = errors.New("export_too_large")
 
@@ -21,18 +21,19 @@ type ExportTrajectoryResponse struct {
 // SessionTrajectory contains the complete retained evidence at one idle Session
 // snapshot. It is an evaluation document, not an importable execution checkpoint.
 type SessionTrajectory struct {
-	SchemaVersion    int                  `json:"schemaVersion"`
-	CollectedAt      time.Time            `json:"collectedAt"`
-	Session          Session              `json:"session"`
-	Runs             []RunRef             `json:"runs"`
-	Items            []Item               `json:"items"`
-	Messages         []jsontext.Value     `json:"messages"`
-	ToolResults      []ArtifactToolResult `json:"toolResults"`
-	Plan             []PlanStep           `json:"plan"`
-	ModelInvocations []ModelInvocation    `json:"modelInvocations"`
-	ToolAttempts     []ToolAttempt        `json:"toolAttempts"`
-	Feedback         []FeedbackEntry      `json:"feedback"`
-	Limitations      []string             `json:"limitations"`
+	SchemaVersion    int                       `json:"schemaVersion"`
+	CollectedAt      time.Time                 `json:"collectedAt"`
+	Session          Session                   `json:"session"`
+	Runs             []RunRef                  `json:"runs"`
+	Items            []Item                    `json:"items"`
+	Messages         []jsontext.Value          `json:"messages"`
+	ToolResults      []ArtifactToolResult      `json:"toolResults"`
+	Plan             []PlanStep                `json:"plan"`
+	ModelInvocations []ModelInvocation         `json:"modelInvocations"`
+	ModelEndpoints   []ModelEndpointInvocation `json:"modelEndpoints"`
+	ToolAttempts     []ToolAttempt             `json:"toolAttempts"`
+	Feedback         []FeedbackEntry           `json:"feedback"`
+	Limitations      []string                  `json:"limitations"`
 }
 
 type ToolAttemptState string

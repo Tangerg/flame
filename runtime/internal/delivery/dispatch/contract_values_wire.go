@@ -958,9 +958,9 @@ func registerTrajectoryValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListModelEndpointsRequest](), Constraints: []FieldConstraint{
 		{Field: "parentCallId", Kind: ConstraintNonEmpty}, {Field: "parentCallId", Kind: ConstraintIdentity}, {Field: "parentCallId", Kind: ConstraintMaxLength, Limit: 256},
 	}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ModelEndpointInvocation](), Constraints: []FieldConstraint{
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ModelEndpointInvocation](), Constraints: append(append(resourceIdentity("sessionId"), resourceIdentity("runId")...), []FieldConstraint{
 		{Field: "id", Kind: ConstraintIdentity}, {Field: "id", Kind: ConstraintNonEmpty}, {Field: "provider", Kind: ConstraintNonEmpty}, {Field: "model", Kind: ConstraintNonEmpty}, {Field: "request", Kind: ConstraintNonEmpty},
-	}})
+	}...)})
 	for _, owner := range []reflect.Type{typeOf[protocol.ModelInvocation](), typeOf[protocol.ToolAttempt]()} {
 		constraints := append(requiredResourceIdentity("runId"), requiredResourceIdentity("segmentId")...)
 		constraints = append(constraints,

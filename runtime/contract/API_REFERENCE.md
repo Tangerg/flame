@@ -5,14 +5,14 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.24` · 100 methods
+Protocol `2026-10-14.25` · 100 methods
 
 ## Methods
 
 | method | operation | response | retry | run replay cursor | pagination | materializes | features | documented errors |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.discover` | query | unary | none | none | none | — | — | — |
-| `sessions.trajectory` | query | unary | none | none | cursor | `runs.list`, `items.list`, `modelInvocations.list` | `subagents` | `session_not_found`, `capability_not_negotiated` |
+| `sessions.trajectory` | query | unary | none | none | cursor | `runs.list`, `items.list`, `modelInvocations.list`, `modelInvocations.endpoints` | `subagents` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.exportTrajectory` | query | unary | none | none | none | `sessions.get`, `runs.list`, `items.list`, `modelInvocations.list`, `plan.get` | `sessionExport` | `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.list` | query | unary | none | none | cursor | — | — | — |
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
@@ -248,6 +248,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | --- | --- | --- |
 | `run` | `occurredAt`, `run` | — |
 | `model` | `occurredAt`, `model` | — |
+| `endpoint` | `occurredAt`, `endpoint` | — |
 | `item` | `occurredAt`, `item` | — |
 
 ### `Item`
@@ -583,8 +584,8 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
-| `SessionTrajectory` | `schemaVersion` | `minimum(2)` |
-| `SessionTrajectory` | `schemaVersion` | `maximum(2)` |
+| `SessionTrajectory` | `schemaVersion` | `minimum(3)` |
+| `SessionTrajectory` | `schemaVersion` | `maximum(3)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
 | `ArtifactSession` | `id` | `identity` |
 | `ArtifactSession` | `id` | `maxLength(256)` |
@@ -816,6 +817,10 @@ TypeScript validator from this single registry projection.
 | `ListModelEndpointsRequest` | `parentCallId` | `nonEmpty` |
 | `ListModelEndpointsRequest` | `parentCallId` | `identity` |
 | `ListModelEndpointsRequest` | `parentCallId` | `maxLength(256)` |
+| `ModelEndpointInvocation` | `sessionId` | `identity` |
+| `ModelEndpointInvocation` | `sessionId` | `maxLength(256)` |
+| `ModelEndpointInvocation` | `runId` | `identity` |
+| `ModelEndpointInvocation` | `runId` | `maxLength(256)` |
 | `ModelEndpointInvocation` | `id` | `identity` |
 | `ModelEndpointInvocation` | `id` | `nonEmpty` |
 | `ModelEndpointInvocation` | `provider` | `nonEmpty` |

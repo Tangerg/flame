@@ -31,7 +31,7 @@ func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *t
 			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return interactionUsageTextResponse("physical answer", 12, 3), nil
 			})
-			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), journal)
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db})
 			if err != nil {
 				t.Fatal(err)
 			}

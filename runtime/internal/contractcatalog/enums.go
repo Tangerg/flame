@@ -22,7 +22,7 @@ import (
 var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.PluginRendererSelectorType]():        {string(protocol.PluginRendererToolName), string(protocol.PluginRendererResultShape), string(protocol.PluginRendererFileExtension)},
 	reflect.TypeFor[protocol.ToolAttemptState]():                  {string(protocol.ToolAttemptStarted), string(protocol.ToolAttemptCompleted), string(protocol.ToolAttemptIncomplete)},
-	reflect.TypeFor[protocol.TrajectoryEntryType]():               {string(protocol.TrajectoryEntryRun), string(protocol.TrajectoryEntryModel), string(protocol.TrajectoryEntryItem)},
+	reflect.TypeFor[protocol.TrajectoryEntryType]():               {string(protocol.TrajectoryEntryRun), string(protocol.TrajectoryEntryModel), string(protocol.TrajectoryEntryEndpoint), string(protocol.TrajectoryEntryItem)},
 	reflect.TypeFor[protocol.ModelInvocationState]():              {string(protocol.ModelInvocationStarted), string(protocol.ModelInvocationCompleted), string(protocol.ModelInvocationFailed), string(protocol.ModelInvocationUnknown)},
 	reflect.TypeFor[protocol.AgentDocScope]():                     {string(protocol.AgentDocScopeCWD), string(protocol.AgentDocScopeProjectRoot), string(protocol.AgentDocScopeHome)},
 	reflect.TypeFor[protocol.ApprovalDecision]():                  {string(protocol.ApprovalApprove), string(protocol.ApprovalDeny)},

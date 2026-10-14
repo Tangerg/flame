@@ -14,13 +14,13 @@ import (
 // EndpointInvocation is admission of one real provider request, distinct from
 // its logical calling operation. Its immutable input is persisted before I/O.
 type EndpointInvocation struct {
-	ID        string                `json:"id"`
-	Caller    capability.Invocation `json:"caller"`
-	Provider  string                `json:"provider"`
-	Model     string                `json:"model"`
-	SessionID string                `json:"sessionId,omitzero"`
-	Request   *chat.Request         `json:"request"`
-	StartedAt time.Time             `json:"startedAt"`
+	ID        string
+	Caller    capability.Invocation
+	Provider  string
+	Model     string
+	SessionID string
+	Request   *chat.Request
+	StartedAt time.Time
 }
 
 func (i EndpointInvocation) Validate() error {
@@ -51,6 +51,8 @@ type EndpointOutcome struct {
 }
 
 type EndpointObservation struct {
+	SessionID    string
+	RunID        string
 	Invocation   EndpointInvocation
 	Response     *chat.Response
 	State        string

@@ -872,19 +872,27 @@ func (r RunOutcome) ValidateWire() error {
 
 func (t TrajectoryEntry) ValidateWire() error {
 	return collectWireViolations("TrajectoryEntry",
-		closedEnum("type", string(t.Type), []string{"run", "model", "item"}, false),
+		closedEnum("type", string(t.Type), []string{"run", "model", "endpoint", "item"}, false),
 		requiredWhen(wireFieldEquals(t, "type", "run"), "occurredAt", t),
 		requiredWhen(wireFieldEquals(t, "type", "run"), "run", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "run"), "model", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "run"), "endpoint", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "run"), "item", t),
 		requiredWhen(wireFieldEquals(t, "type", "model"), "occurredAt", t),
 		requiredWhen(wireFieldEquals(t, "type", "model"), "model", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "model"), "run", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "model"), "endpoint", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "model"), "item", t),
+		requiredWhen(wireFieldEquals(t, "type", "endpoint"), "occurredAt", t),
+		requiredWhen(wireFieldEquals(t, "type", "endpoint"), "endpoint", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "endpoint"), "run", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "endpoint"), "model", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "endpoint"), "item", t),
 		requiredWhen(wireFieldEquals(t, "type", "item"), "occurredAt", t),
 		requiredWhen(wireFieldEquals(t, "type", "item"), "item", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "item"), "run", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "item"), "model", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "item"), "endpoint", t),
 	)
 }
 
@@ -1734,12 +1742,17 @@ func (d DiffRow) ValidateWire() error {
 
 func (m ModelEndpointInvocation) ValidateWire() error {
 	return collectWireViolations("ModelEndpointInvocation",
+		identity("sessionId", m.SessionID),
+		maxLength("sessionId", m.SessionID, 256),
+		identity("runId", m.RunID),
+		maxLength("runId", m.RunID, 256),
 		identity("id", m.ID),
 		requiredText("id", m.ID),
 		requiredText("provider", m.Provider),
 		requiredText("model", m.Model),
 		requiredText("request", m.Request),
 		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
+		requiredWhen(wireFieldPresent(m, "runId"), "sessionId", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "response", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "failure", m),
@@ -2232,8 +2245,8 @@ func (p PageQuery) ValidateWire() error {
 
 func (s SessionTrajectory) ValidateWire() error {
 	return collectWireViolations("SessionTrajectory",
-		minimumNumber("schemaVersion", s.SchemaVersion, 2),
-		maximumNumber("schemaVersion", s.SchemaVersion, 2),
+		minimumNumber("schemaVersion", s.SchemaVersion, 3),
+		maximumNumber("schemaVersion", s.SchemaVersion, 3),
 	)
 }
 

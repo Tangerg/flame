@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.24",
+  "protocolVersion": "2026-10-14.25",
   "features": [
     "reasoning",
     "multimodal",
@@ -44,7 +44,8 @@
       "materializes": [
         "runs.list",
         "items.list",
-        "modelInvocations.list"
+        "modelInvocations.list",
+        "modelInvocations.endpoints"
       ]
     },
     {
@@ -3398,6 +3399,13 @@
           ]
         },
         {
+          "tag": "endpoint",
+          "required": [
+            "occurredAt",
+            "endpoint"
+          ]
+        },
+        {
           "tag": "item",
           "required": [
             "occurredAt",
@@ -4592,6 +4600,17 @@
     {
       "type": "ModelEndpointInvocation",
       "rules": [
+        {
+          "when": [
+            {
+              "field": "runId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "sessionId"
+          ]
+        },
         {
           "when": [
             {
@@ -6718,11 +6737,11 @@
       "rules": [
         {
           "field": "schemaVersion",
-          "constraint": "minimum(2)"
+          "constraint": "minimum(3)"
         },
         {
           "field": "schemaVersion",
-          "constraint": "maximum(2)"
+          "constraint": "maximum(3)"
         }
       ]
     },
@@ -7868,6 +7887,22 @@
     {
       "type": "ModelEndpointInvocation",
       "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
         {
           "field": "id",
           "constraint": "identity"

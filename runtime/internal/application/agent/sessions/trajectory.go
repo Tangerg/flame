@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -17,9 +18,10 @@ import (
 type TrajectoryKind string
 
 const (
-	TrajectoryRun   TrajectoryKind = "run"
-	TrajectoryModel TrajectoryKind = "model"
-	TrajectoryItem  TrajectoryKind = "item"
+	TrajectoryRun      TrajectoryKind = "run"
+	TrajectoryEndpoint TrajectoryKind = "endpoint"
+	TrajectoryModel    TrajectoryKind = "model"
+	TrajectoryItem     TrajectoryKind = "item"
 )
 
 type TrajectoryModelInvocation struct {
@@ -30,6 +32,7 @@ type TrajectoryModelInvocation struct {
 type TrajectoryEntry struct {
 	OccurredAt time.Time
 	Run        *run.Run
+	Endpoint   *modelref.EndpointObservation
 	Model      *TrajectoryModelInvocation
 	Item       *transcript.Item
 }
@@ -40,6 +43,8 @@ func (e TrajectoryEntry) Position() TrajectoryPosition {
 		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryRun, ID: e.Run.ID()}
 	case e.Model != nil:
 		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryModel, ID: e.Model.CallID}
+	case e.Endpoint != nil:
+		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryEndpoint, ID: e.Endpoint.Invocation.ID}
 	case e.Item != nil:
 		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryItem, ID: e.Item.ID()}
 	default:
@@ -57,7 +62,7 @@ func (p TrajectoryPosition) validate() error {
 	switch p.Kind {
 	case TrajectoryRun:
 		return resourceid.ValidateRun(p.ID)
-	case TrajectoryModel:
+	case TrajectoryModel, TrajectoryEndpoint:
 		return runtimeidentity.ValidateEffect(p.ID)
 	case TrajectoryItem:
 		return resourceid.ValidateItem(p.ID)

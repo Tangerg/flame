@@ -74,6 +74,10 @@ func (r *TrajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessi
 				return err
 			}
 		}
+		evidence.ModelEndpoints, err = r.modelInvocations.store.ListSessionEndpoints(ctx, sessionID)
+		if err != nil {
+			return err
+		}
 		if err := r.readToolAttempts(ctx, sessionID, &evidence); err != nil {
 			return err
 		}

@@ -25,3 +25,9 @@ Rebuild with `node plugins/build-components.mjs`; use `--check` for exact ESM
 reproduction. Reinstall/select changed package bytes. React, SDK and UI come from
 actual shared Host modules; code replacement can require a window reload. No guest
 or historical script installation path exists.
+
+The trajectory distinguishes logical model calls from physical provider endpoints.
+Endpoints retain request and known response JSON as strings, preserve original
+caller/parent/origin, and may belong to a Session without a Run. The Session-only
+filter includes them; unknown outcome and failure remain visible. Counts are record
+counts, not additive billing totals.

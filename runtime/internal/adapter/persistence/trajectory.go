@@ -20,7 +20,7 @@ func (r *TrajectoryReader) PageTrajectory(ctx context.Context, sessionID string,
 	}
 	entries := make([]sessions.TrajectoryEntry, len(rows))
 	for index, row := range rows {
-		entry := sessions.TrajectoryEntry{OccurredAt: row.OccurredAt, Run: row.Run, Item: row.Item}
+		entry := sessions.TrajectoryEntry{OccurredAt: row.OccurredAt, Run: row.Run, Item: row.Item, Endpoint: row.Endpoint}
 		if model := row.Model; model != nil {
 			invocation, err := modelInvocationFromRecord(*model)
 			if err != nil {

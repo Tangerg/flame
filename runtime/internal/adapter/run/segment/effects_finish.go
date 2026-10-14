@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
@@ -156,6 +157,12 @@ func (f *Finalizer) snapshot(ctx context.Context, sessionID, cwd, runID string) 
 // when they are set and the opening text has content, so what is left here is
 // the generation itself.
 func (f *Finalizer) title(ctx context.Context, sessionID, prompt string) error {
+	scope, _ := executionctx.Scope(ctx)
+	if scope.SessionID != "" && scope.SessionID != sessionID {
+		return errors.New("segment: title Session differs from captured execution scope")
+	}
+	scope.SessionID = sessionID
+	ctx = executionctx.WithScope(ctx, scope)
 	needed, err := f.sessionTitles.NeedsGeneratedTitle(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("segment: inspect Session %q for title generation: %w", sessionID, err)

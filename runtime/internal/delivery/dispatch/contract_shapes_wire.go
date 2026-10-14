@@ -1050,6 +1050,7 @@ func registerTrajectoryUnion(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.TrajectoryEntryRun), Required: []string{"occurredAt", "run"}},
 			{Tag: string(protocol.TrajectoryEntryModel), Required: []string{"occurredAt", "model"}},
+			{Tag: string(protocol.TrajectoryEntryEndpoint), Required: []string{"occurredAt", "endpoint"}},
 			{Tag: string(protocol.TrajectoryEntryItem), Required: []string{"occurredAt", "item"}},
 		},
 	})
@@ -1057,6 +1058,7 @@ func registerTrajectoryUnion(s *Shapes) {
 
 func registerTrajectoryObservationConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.ModelEndpointInvocation](), Rules: []ConditionalRule{
+		{When: []delivery.FieldCondition{{Field: "runId", Operator: delivery.OperatorPresent}}, Required: []string{"sessionId"}},
 		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationStarted)}}, Forbidden: []string{"settledAt", "response", "failure"}},
 		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationCompleted)}}, Required: []string{"settledAt", "response"}, Forbidden: []string{"failure"}},
 		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationFailed)}}, Required: []string{"settledAt", "response", "failure"}},
