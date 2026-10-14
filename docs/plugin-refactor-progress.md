@@ -2,64 +2,76 @@
 
 ## Current stage
 
-Stage 5x (b7c6f3c14) fixes the execution association needed before descendant
-Run/Goal accounting. The previous physical admission inferred Run/Segment only
-when caller ID equaled a logical Model ID. Independent calls therefore lost the
-executing Run, while wire identity could also claim another logical namespace.
-That inference is removed. Primary Call/Stream and Tool boundaries capture the
-admitted logical owner in immutable host context; nested callbacks preserve it.
+Stage 5y (6839e9c6e) connects independent physical attempts to the existing lost-
+Run/Goal recovery accounting. The physical journal snapshots nonterminal-Run
+attempts whose caller has no logical Model accounting projection. Already accounted
+logical Models are excluded; standalone/Session-only sources are outside this Run
+collection. Claimed Session filtering and lost-tree planning preserve waiting trees
+that remain recoverable. No fake logical Model, invoice ledger or provider replay.
 
-The endpoint journal now receives that owner explicitly. It resolves the existing
-logical Model/Tool admission, matching Session, running Run and original active
-Segment before provider generation. The source cannot precede the admitted owner.
-Missing/foreign ownership, waiting Run and an old Segment after resume refuse
-without inventing a dispatched observation. Absent owner is explicitly standalone/
-Session-only work; wire caller and parent cannot infer a Run. There is no separate
-Run mapping, provider receipt, compatibility reader or implicit current-Session path.
+Known independent responses retain their captured usage/price even under outer
+failure. Unknown attempts count admitted work without fabricated tokens/price and
+make exact aggregate cost unknown. The existing Run metrics transition consumes
+those source facts without changing primary ContextTokens. Original source JSON,
+association/state/price, admission identity and served-model/usage projections are
+validated in the same transaction as the lost Run and Goal replacement. Failed
+transactions advance neither; terminal Run exclusion prevents a second boot charge.
 
-Fresh calls cannot claim logical Model/Tool namespaces or their original calling
-operation ID. A captured primary Model may use its actual owner ID; independent
-selected calls require distinct IDs and cannot impersonate that owner. Original
-Run/Segment columns remain immutable physical facts. Endpoint reads/projected
-trajectory/export now carry Segment, reject incomplete association, and known
-recovery validates original Segment before consuming a physical source.
+Actual SQLite/Goal proof covers two known independent calls plus one unknown,
+large numeric input (9007199254740993), already-completed primary exclusion, outer
+failure, changed typed usage/price refusal, rejected Run transaction rollback,
+correct Goal Run/step/unknown-cost projection, unchanged primary context and a
+second database-open recovery with no repeat accrual. A first whole-struct compare
+mistook Scope clone nil/empty normalization for source change; it now compares
+canonical evidence and actual billing projections, preserving the stricter stale/
+changed-source refusal. No expected assertion was removed or weakened.
 
-Core 2026-10-14.30 adds optional segmentId to public endpoint observations. Public
-Go/API/schema/TS artifacts and canonical version samples are regenerated. Existing
-relational columns and retained endpoint JSON are unchanged, so no storage epoch,
-conversion or old-record reassociation is added. Backend .2/export schema 3 remain.
-External strict clients must regenerate/rebuild. All internal journal callers are
-migrated to the explicit-owner signature; no old-signature alias remains.
+Main 67c9f498f is integrated in ec8b986e0. Its Steer nomination/applied-evidence and
+steerInputs contracts are retained with the installed-plugin journal and original
+Run metadata/fingerprint checks. Shared wire dispatch still registers a lazy promise
+before execution; new Steer identity getters/binding use that same owner. API consumer
+inspection keeps installed components/HTTP consumers and credits actual RPC
+interfaces rather than command-handle members. Existing incoming UI tests preserved;
+none authored or executed. Source conflicts are resolved without a legacy reader.
 
-Passed: actual SQLite primary/independent Model and Tool association, no wire-parent
-Run inference, reserved logical-ID refusal, foreign/missing owner, chronological
-admission, waiting refusal and stale Segment after resume; real callback generation
-sees its committed Run/Segment before provider work; forged client context cannot
-replace captured origin/ownership; new selected calls cannot reuse primary/operation
-IDs. Related media/auxiliary/evidence/usage/export checks and known recovery accrual
-passed. Runtime build and Runtime/bootstrap test-source compilation, generation,
-shared/desktop typecheck and scoped architecture/drift/version gates passed.
-The initial new fixture accidentally made its own ID its parent; corrected to a
-valid distinct parent without weakening the no-inference assertion. Some first
-filters selected no recovery/context tests; the real recovery regression was then
-run explicitly. Session-only execution fixtures do not prove relational association.
+The merged public graph advances Core to 2026-10-14.31, superseding this branch's
+.30 and main's .3; all generator-owned artifacts/canonical samples are regenerated.
+Journal entries now require steerItemId (null for non-Steer), original Run metadata,
+and the original installed route where applicable. Old incomplete journal entries
+are refused/preserved, without conversion. Backend .2/export schema3 unchanged.
+External strict clients must regenerate/rebuild for the merged Core/Steer shapes.
+Original proposal/review/draft hashes and user stash remain unchanged.
 
-Main 3d897dfb6 remains integrated; merge after b7c6f3c14 reports up to date. Original
-proposal/review/draft hashes and user stash unchanged. No frontend UI/E2E/screenshot
-authorship/execution; typecheck only. Owned processes, generation handles and temporary
-compile outputs settled. Required final full/native/vet/race/all-workflow checks,
-four previously observed orphan schemas and older architecture/format/UI findings
-remain open. The schema failure gate was not repeated in this development slice.
+Passed: backend recovery/source/Goal regression and existing recovery commits;
+Runtime build and Runtime/bootstrap test-source compilation; scoped architecture/
+drift/version; merged delivery/Steer/acceptance/source recovery; shared/desktop
+TypeScript typecheck; 64 shared command/method/plugin-stream tests and 11 Steer
+recovery tests; three static AST API-consumer checks (no UI rendering). An initial
+textual test-file splice was syntactically invalid; repaired from both complete
+original test blocks, then static syntax/behavior checks passed. Commit hooks only
+formatted/linted incoming source; no UI/E2E/screenshot run or authorship occurred.
 
-Full goal remains active. This slice fixes source ownership rather than claiming
-aggregate completion. Current Interaction accrual still consumes only its exact
-primary endpoint; independent descendants must enter the existing Run/Goal totals,
-budget and crash-accrual owner without double counting or estimates-as-billing.
-General policy-phase RPC grants, background execution restoration, optional counter
-admission and all-native/author qualification remain open. Rough 65-70% full delivery/
-75% implementation remains an estimate, not counted P01-P48 acceptance.
+Full goal active. This is the recovery slice of multi-call accounting; live child
+accrual, normal-terminal closure and generation-time total-work/Run/Goal budget are
+still open and must converge on the same logical/physical accounting classification.
+Adding live charges while still treating those sources as unaccounted at boot would
+double count and is prohibited. General policy/background grants, embeddings,
+retention/author/dependency and concentrated full/native/vet/race/P01-P48 acceptance
+remain open. Known orphan-schema/older architecture/format/interrupted UI findings
+are not cleared by bounded passes. Rough 65-70% delivery/75% implementation is still
+an estimate. Owned process handles and temporary compile/hook outputs have settled;
+worktree is clean before this progress-only commit.
 
 ## Completed
+
+- Stage 5y (6839e9c6e): independent physical source snapshot and immutable proof
+  in atomic lost Run/Goal recovery; known/failed/unknown consumption without replay.
+- Stage 5y: actual SQLite/Goal large-number/source/rollback/context/restart proof,
+  primary exclusion and no repeated accrual; existing recovery checks pass.
+- Stage 5y: main 67c9f498f merged in ec8b986e0; original Steer nomination/application
+  evidence, metadata/installed route, lazy dispatch and public consumer checks kept.
+- Stage 5y: combined Core .31 regenerated; shared/desktop typecheck, 75 shared SDK
+  units and three static AST checks pass; originals/stash preserved, no UI execution.
 
 - Stage 5x (b7c6f3c14): host-captured logical Model/Tool ownership replaces caller-ID
   inference; actual Session/Run/Segment active/chronological admission before generation.
@@ -637,6 +649,11 @@ admission and all-native/author qualification remain open. Rough 65-70% full del
 
 ## In progress
 
+- Stage 5y closes independent lost-tree accrual at its source/transaction boundary.
+  Complete live Run/Goal consumption, normal terminal and total-work admission.
+  The boot collection classification must change atomically with live integration;
+  physical persistence plus boot loss is not full model-budget delivery.
+
 - Stage 5x fixes the prerequisite physical execution association. Complete the
   actual descendant Run/Goal totals/budgets/recovery owner: current Interaction
   exact-primary lookup remains, and no second billing tally may be introduced.
@@ -675,19 +692,23 @@ admission and all-native/author qualification remain open. Rough 65-70% full del
 
 ## Next
 
-1. Project known descendant physical consumption into the existing Run/Goal
-   accounting/budget owner, with original Segment and transactional crash accrual.
-   Remove the exact-primary-only consumption assumption without another tally.
-2. Complete general policy/background grants and ownership, embedding full-response/
-   usage evidence, retention, scoped dependency status/lifecycle and actual consumers.
-3. Complete independent author/module packaging, deletion audit and concentrated
-   native/full/vet/race/all-workflow/P01-P48/review acceptance. Fix required schema/
-   architecture/format obligations; frontend UI/E2E/screenshot execution stays excluded.
+1. Complete live and normal-terminal consumption of independent physical work,
+   followed by aggregate Run/Goal admission. Use the same accounting owner and
+   evidence classification as recovery; no second tally, guessed cost or replay.
+2. Complete policy/background grants/ownership, embedding evidence/retention,
+   scoped dependencies/status, every consumer and independent author/module work.
+3. Concentrate native/full/vet/race/all-workflow/P01-P48/review and deletion audits;
+   fix required schema/architecture/format obligations. UI/E2E/screenshot excluded.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Lost Run/Goal recovery consumes independent physical sources through the existing atomic replacement | Primary-only recovery omitted separately admitted effects; logical completed calls already have their original projection | Fake logical Model receipts, a second invoice ledger, repricing or source replay |
+| 2026-10-14 | Unknown independent attempts retain missing tokens/price and invalidate exact total cost | Admission is known; provider usage/outcome cannot be invented | Zero usage/cost substitution, dropping uncertainty, or child input recalibrating the main context |
+| 2026-10-14 | Compare original JSON and billing-relevant source projections in the recovery transaction | Scope clones can normalize nil/empty containers; true usage/price changes must still refuse | Whole-struct DTO equality, trusting only altered DTO values, or weakening original evidence checks |
+| 2026-10-14 | Merge main Steer evidence with original Run/installed journal and lazy registration; publish combined Core .31 | Both branches changed public contracts independently; a new combined epoch owns the merged graph | Selecting one protocol branch, metadata loss, installed route removal, eager promise execution or legacy journal conversion |
+| 2026-10-14 | Keep live/normal-terminal/aggregate budget completion open after boot proof | Recovery alone does not update live totals or enforce the next external request's work budget | Claiming full accounting from the boot regression or adding live charges without changing boot classification |
 | 2026-10-14 | Capture the original logical Model/Tool owner; derive Run/Segment from its admitted record | Exact caller-ID inference lost descendants and gave wire naming execution authority | Guessing from caller/parent/current Session, a parallel Run mapping, or rewriting old observations |
 | 2026-10-14 | Require matching Session, active Run/Segment and chronological owner at generation admission | Old callbacks must not retarget paused/resumed work or start generation under a foreign fact | Silent Session-only fallback for a missing supplied owner, old-Segment dispatch or blind replay |
 | 2026-10-14 | Protect logical namespaces and require distinct independent exchange IDs | Fresh calls must not impersonate the primary source later consumed by accounting | Reusing operation/primary/Tool IDs or trusting arbitrary wire ancestry as evidence |
@@ -934,6 +955,7 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| Known independent inner consumption under lost outer execution | Stage 5y source/Run/Goal atomic recovery, unknown cost, primary exclusion, rollback/context/restart proof verified; live/normal-terminal/aggregate admission and native acceptance open | sqlite/model_endpoint.go; application/runs/recovery.go/recovery_commit.go; adapter/run/recovery/persistence.go/model_evidence_test.go |
 | Original executing Run/Segment for multiple physical model calls | Stage 5x active Model/Tool ownership, namespace/chronology/Session/wait/resume refusal and real callback source association verified; aggregate budgets/native/background/policy phases remain open | executionctx/scope.go; execution/interaction_model.go; interaction_tool.go; model/endpoint_observation.go; sqlite/model_endpoint.go/tests; pluginservices/model_calls.go/tests; plugin/model_call.go; protocol/model_invocations.go/version.go |
 | Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; stream.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
 | Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
@@ -977,6 +999,29 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5y initial recovery checks passed (adapter 1.322s; Application 0.794s).
+  New source clone comparison failed correctly while diagnosing nil/empty DTO
+  normalization; canonical-source and billing-projection comparison fixed it.
+- Stage 5y known independent/source-change/rollback/reopen proof passed (0.789s).
+  Actual Goal and unknown-attempt projection then passed (adapter 0.790s;
+  Application 0.956s). Final recovery/commit selection passed (0.632s/0.972s).
+- Stage 5y Runtime/bootstrap go test -c and Runtime go build ./... passed; temporary
+  outputs removed. Scoped dependency/public-package/protocol/drift passed (3.275s).
+  No pre-merge public wire/schema signature changed; no extra generator was needed.
+- Merge ec8b986e0 includes main 67c9f498f. Resolved 16 conflicted files, preserved
+  both semantic changes and regenerated merged Core .31 artifacts/samples. Invalid
+  textual static-test splice repaired by retaining complete original test blocks.
+- Post-merge delivery/Steer/acceptance/recovery checks passed (1.173/2.170/1.597s);
+  scoped drift/version gates passed (2.483s); shared and desktop typecheck passed.
+  Methods/mutation journal/plugin stream 64 tests passed (541ms); Steer recovery
+  11 tests passed (591ms). Three static API-consumer AST tests passed (662ms), no UI.
+- Post-hook desktop typecheck, Runtime build and Runtime/bootstrap source compile
+  passed. Hook formatting/oxlint settled and its temporary backup was removed;
+  original user stash unchanged. Changed format/diff checks pass; original hashes match.
+- Full/native/all-workflow/vet/race, orphan schemas/older architecture/format and
+  interrupted UI findings remain deferred for concentrated final acceptance. UI/
+  E2E/screenshot authoring/execution remains excluded; incoming tests only preserved.
 
 - Stage 5x initial owner fixture self-parent validation failed, corrected to a
   distinct valid parent. The original no-inference assertion is retained and
@@ -2446,6 +2491,14 @@ Stage 2a verification:
 
 ## Unresolved questions
 
+- Stage 5y recovery is not live budget closure. Independent sources currently
+  lack a logical accounting projection and are consumed on lost-tree replacement;
+  live integration must update that same classification before it can accrue them.
+  Otherwise boot could charge a live-accounted source twice.
+- Complete normal-terminal independent consumption and generation-time aggregate
+  Run/Goal budget, including unknown pricing and optional count-provider work.
+  No per-call estimate or newly created report may become another billing owner.
+
 - Stage 5x repairs active Model/Tool endpoint association. General policy-phase
   grants and background restoration still need original effect ownership before
   their external work. Session-only harnesses and compilation are not native proof.
@@ -2541,6 +2594,16 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- The combined merge requires Core .31 client regeneration/rebuild. Steer fields
+  use candidateUserItemId/steerInputs and accepted-versus-retired semantics; journals
+  require steerItemId plus original Run metadata/installed route. Former incomplete
+  entries refuse unchanged; resolve them with their original client before replacement.
+  Backend .2/export3 unchanged, and provider redelivery is not a migration option.
+- Unknown independent attempts now invalidate exact recovered Run/Goal cost and
+  count admitted work without synthetic usage. Root context remains its own primary
+  calibration. Live/normal-terminal totals remain incomplete and cannot be advertised
+  as budget-enforced before the next integration removes that gap.
 
 - Core .30 adds optional segmentId to endpoint observations. External strict
   clients require regeneration/rebuild. Backend .2 and export schema 3 unchanged;
