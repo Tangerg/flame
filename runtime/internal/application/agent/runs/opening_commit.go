@@ -329,16 +329,26 @@ func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
 	return optional.Present(o.commandAcceptance)
 }
 
-// rootRunID is the Run that owns this opening's user input: the admitted Run, or
-// the resumed tree's root. Child admissions carry no root user input.
-func (o OpeningCommit) rootRunID() (string, error) {
+// ownerIdentity is the Session, Run, and Segment this opening opens: the admitted
+// Run, or the resumed tree's root. It is the one rule for the opening's owner, so
+// the acceptance record, the commit receipt, and the input-item scan cannot name
+// different Runs for the same opening.
+func (o OpeningCommit) ownerIdentity() (sessionID, runID, segmentID string, err error) {
 	if o.admit != nil {
-		return o.admit.RunID, nil
+		return o.admit.SessionID, o.admit.RunID, o.admit.SegmentID, nil
 	}
 	if o.resume != nil && len(o.resume.Runs) > 0 {
-		return o.resume.Runs[len(o.resume.Runs)-1].State().ID(), nil
+		root := o.resume.Runs[len(o.resume.Runs)-1].State()
+		return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
 	}
-	return "", errors.New("runs: opening has no root run")
+	return "", "", "", errors.New("runs: opening has no owner")
+}
+
+// OwnerIdentity exposes the Session, Run, and Segment this opening opens for the
+// adapter that records its commit receipt, so the receipt and the acceptance
+// record name the same Run from one rule.
+func (o OpeningCommit) OwnerIdentity() (sessionID, runID, segmentID string, err error) {
+	return o.ownerIdentity()
 }
 
 // UserInputItemID is the single user input Item this opening appends to its root
@@ -347,7 +357,7 @@ func (o OpeningCommit) rootRunID() (string, error) {
 // continuation binding cannot name different Items for the same opening. More than
 // one root user input is rejected rather than silently resolved to one.
 func (o OpeningCommit) UserInputItemID() (string, error) {
-	root, err := o.rootRunID()
+	_, root, _, err := o.ownerIdentity()
 	if err != nil {
 		return "", err
 	}

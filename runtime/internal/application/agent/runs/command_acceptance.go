@@ -151,16 +151,18 @@ func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (Comma
 		Key:         key,
 		Fingerprint: requestFingerprint,
 	}
-	if admission, present := opening.Admission(); present {
+	if _, present := opening.Admission(); present {
 		acceptance.Operation = CommandStartOpening
-		acceptance.SessionID, acceptance.RunID, acceptance.SegmentID = admission.SessionID, admission.RunID, admission.SegmentID
-	} else if resume, present := opening.Resume(); present {
-		root := resume.Runs[len(resume.Runs)-1].State()
+	} else if _, present := opening.Resume(); present {
 		acceptance.Operation = CommandResumeOpening
-		acceptance.SessionID, acceptance.RunID, acceptance.SegmentID = root.SessionID(), root.ID(), root.ActiveSegmentID()
 	} else {
 		return CommandAcceptance{}, errors.New("runs: command acceptance has no opening")
 	}
+	sessionID, runID, segmentID, err := opening.ownerIdentity()
+	if err != nil {
+		return CommandAcceptance{}, err
+	}
+	acceptance.SessionID, acceptance.RunID, acceptance.SegmentID = sessionID, runID, segmentID
 	userItemID, err := opening.UserInputItemID()
 	if err != nil {
 		return CommandAcceptance{}, err
