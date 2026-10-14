@@ -6,10 +6,33 @@ Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
 failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
 `67e7801c1`; exact Go/TS feature JSON is implemented by `6a2f30440`. Remaining
 lifecycle work now includes transitive release retention (`6ef5b7961`) and full
-activation identity fencing (`18ddce955`);
+activation identity fencing (`18ddce955`) and actual installed point/analyzer
+lifetimes (`6e23f4d00`);
 independent/native qualification and final closure remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Installed point and analyzer lifecycle (2026-10-15)
+
+- `6e23f4d00` qualifies the actual Reviews/analyzer stdio processes through the
+  public operation and Core callback path. Findings retain the inspected review
+  identity/revision. Disable yields explicit optional absence; reenable restores
+  the same contributor. A newly installed point value cannot bypass the consumer's
+  original named setup authority; explicit consumer reconnect captures the new set.
+- A regression first failed because an installation-scoped point could borrow an
+  enabled declaration from another installation. Resolution now requires the
+  target installation itself to declare that exact contract while enabled. A
+  second enabled Reviews installation cannot keep a disabled target's point alive.
+- Passed: new real installed dual-process bootstrap proof (13.888s), existing
+  Reviews Run/approval/CLI/recovery proof after shared author build extraction
+  (17.396s), focused Application/point/delivery/HTTP point-resource checks
+  (0.789/0.498/1.640/0.836s), gofmt and diff checks. The original failed assertion
+  remains intact. Both author packages build into test-owned temporary directories;
+  all processes/listeners/databases close. Stash-free staged checks/commitlint pass.
+- No UI/E2E/screenshot or Desktop aggregate test ran. Installed backend evidence
+  does not prove board rendering, outside-private-source first-party builds,
+  published-module availability or native packaging. Current author documentation
+  now distinguishes those boundaries. Full/native/vet/race/closure remain final work.
 
 ### Same-release activation identity fencing (2026-10-15)
 
@@ -1105,8 +1128,9 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 Continue in the same worktree and branch. Preserve the complete proposal/review
 objective and report concrete remaining paths rather than a static completion count.
 
-1. Priority #3: real installed point/callback lifetimes, transitive availability
-   diagnostics and evidence retention/pruning. Transitive release retention and
+1. Priority #3: finish transitive availability diagnostics and evidence
+   retention/pruning policy audit. Actual installed point/callback lifetimes are
+   qualified in `6e23f4d00`. Transitive release retention and
    same-release activation identity are implemented in `6ef5b7961`/`18ddce955`. Query streams and exact Go/TS feature JSON are implemented;
    retain their cancellation/command-ownership checks during final acceptance.
    Audit actual Tool,

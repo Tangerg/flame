@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 activation identity slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 installed point/analyzer lifecycle slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,9 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `18ddce955` (same-release activation identity fencing);
+- Latest product commit: `6e23f4d00` (target-owned point availability and actual
+  installed Reviews/analyzer callbacks); `18ddce955` fences same-release activation
+  identity;
   `6ef5b7961` adds transitive release retention;
   preceding `6a2f30440` implements exact feature JSON and closed Selection schema;
   query-stream commit: `67e7801c1`; preceding recovery
@@ -119,8 +121,11 @@ or deletion. Captured primary context and independent billing remain distinct.
    ownership. Restored caller attribution does not restore Session/Run/Segment,
    a model publisher, an expired next or stopped Scope effects. Never infer them
    from parent IDs or an ambient current Session.
-3. Complete real installed point/callback lifetimes, transitive availability
-   diagnostics and evidence retention/pruning. Same-release activation identity is
+3. Complete transitive availability diagnostics and evidence retention/pruning
+   policy audit. `6e23f4d00` proves the actual installed Reviews/analyzer Core
+   callback path, optional disable/reenable and setup refresh; target-owned point
+   declarations cannot borrow another enabled installation. Backend/point/resource
+   checks and the original Reviews Run/approval/CLI/recovery proof pass. Same-release activation identity is
    implemented in `18ddce955`: one session-owned proof includes ordered bindings
    and source authorities. Frozen dispatch and deployment restoration check it.
    `6ef5b7961` retains actual transitive session release sets in frozen Tools/models
