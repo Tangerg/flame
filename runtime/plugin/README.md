@@ -450,3 +450,26 @@ not proof of provider-exact tokenization. A catalog miss keeps capacity unknown;
 existing caller text-byte/output budgets still apply. Decorators preserve frozen
 limits, selection and counter, and capture release cancels/joins counting before
 releasing its dependencies. The counted composed request is the one dispatched.
+
+## Model input transformation
+
+`ModelInputContract` declares ordered `flame.model-input.v1` input transformers.
+An installed backend registers `ModelInputMethod`, receiving the captured complete
+selection and a Scope request, and returns a transformed Scope request. This query
+has the original call target/origin/parent and no command identity or model-next
+reference. Output must preserve model/reasoning, Tool definitions/choice and the
+original presence of an output reservation; it may lower an existing output limit.
+Tools are compared using canonical JSON with numeric lexemes retained. Message and
+other request-option changes require final admission by the owning consumer.
+
+Auxiliary captures now freeze context, input-transform and observer order together.
+Context is composed first, then each transformer sees the prior transform's request.
+The final text/output and selected-model token capacity checks run before observers
+or the physical endpoint. Invalid output, failure, withdrawal or exceeded bounds
+refuse generation; no fallback/retry or model routing is implied. Caller conversation
+is independently retained and never adopts transformed messages. The same use-case
+lifetime cancels/joins requests and retains all participating installation releases.
+
+Primary Interaction transformation is not yet connected to this contract. Its
+single-call prepared request and final capacity/accounting integration must be
+completed before this capability is claimed for the whole Runtime.

@@ -2461,3 +2461,11 @@ non-positive results refusing; otherwise the shared request estimate is a local
 preflight approximation. Unknown catalog limits remain unknown, with the caller's
 existing byte/output envelope retained. Captured reasoning effort is applied before
 context, counting and provider I/O; original request/selection cannot be replaced.
+
+Auxiliary model-visible input can now be transformed through the public ordered
+`plugin.ModelInputContract` point. The captured selection, Tool contracts/choice and
+original output-envelope presence remain authoritative. Context precedes transforms;
+final byte/output/token capacity admission precedes observer/physical execution.
+Transform output never rewrites authored conversation, and transformer installations
+share the existing captured dependency/cancel/join lifetime. Primary Interaction
+integration of this public contract remains in progress.

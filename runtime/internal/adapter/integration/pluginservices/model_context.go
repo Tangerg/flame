@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/capability"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -26,6 +27,10 @@ func (o *ModelComposition) ValidateContext(ctx context.Context, bindings []plugi
 	if err != nil {
 		return err
 	}
+	return o.validateCompositionBindings(ctx, contract, bindings)
+}
+
+func (o *ModelComposition) validateCompositionBindings(ctx context.Context, contract *capability.Contract, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
 		call := installedCall{calls: o.calls, request: plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract}}
 		captured, err := call.resolve(ctx)

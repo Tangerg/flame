@@ -45,9 +45,13 @@ func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Au
 			if err != nil {
 				return err
 			}
+			inputs, err := o.ResolveInput(ctx)
+			if err != nil {
+				return err
+			}
 			bound, _ := o.Bind(resolved.Model(), nil, bindings)
 			lifetime, cancel := context.WithCancelCause(ctx)
-			capture = &auxiliaryModelCapture{owner: o, bindings: bindings, contexts: contexts, resolved: resolved, budget: budget, model: bound, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
+			capture = &auxiliaryModelCapture{owner: o, bindings: bindings, contexts: contexts, inputs: inputs, resolved: resolved, budget: budget, model: bound, lifetime: lifetime, cancel: cancel, release: release, done: make(chan struct{})}
 			o.mu.Lock()
 			o.auxiliary[capture] = struct{}{}
 			o.mu.Unlock()
@@ -71,7 +75,7 @@ func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 	defer o.mu.Unlock()
 	var values []plugin.Dependency
 	for capture := range o.auxiliary {
-		for _, binding := range append(slices.Clone(capture.bindings), capture.contexts...) {
+		for _, binding := range append(append(slices.Clone(capture.bindings), capture.contexts...), capture.inputs...) {
 			values = append(values, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
 		}
 	}
@@ -82,6 +86,7 @@ type auxiliaryModelCapture struct {
 	owner    *ModelComposition
 	bindings []plugins.ContributionBinding
 	contexts []plugins.ContributionBinding
+	inputs   []plugins.ContributionBinding
 	resolved models.AuxiliaryModel
 	budget   models.AuxiliaryBudget
 	model    chat.Model
@@ -130,6 +135,10 @@ func (c *auxiliaryModelCapture) Call(ctx context.Context, request *chat.Request)
 	}
 	sent.Messages = append(cloneContextMessages(request.Messages[:prefix]), material...)
 	sent.Messages = append(sent.Messages, cloneContextMessages(request.Messages[prefix:])...)
+	sent, err = c.owner.PrepareInput(calling, c.inputs, c.resolved.Selection(), sent)
+	if err != nil {
+		return nil, err
+	}
 	if err := c.admit(sent); err != nil {
 		return nil, err
 	}
