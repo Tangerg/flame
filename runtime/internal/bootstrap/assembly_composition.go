@@ -292,6 +292,7 @@ func buildExecutionComposition(
 		InstallationCommands:    cfg.Stores.PluginCommands,
 		BuildID:                 cfg.BuildID,
 		ChatResolver:            cfg.ChatResolver,
+		ModelObservers:          toolRuntime.modelObservers,
 		StreamModelResponses:    true,
 		MaxConcurrentToolCalls:  &maxConcurrentToolCalls,
 		ToolInterpreter:         toolInterpreter,

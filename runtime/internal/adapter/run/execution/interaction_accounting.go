@@ -247,6 +247,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		executionOptions(i.start.ModelSelection, i.start.Options),
 		references,
 		handoff,
+		i.modelObservers,
 	)
 }
 

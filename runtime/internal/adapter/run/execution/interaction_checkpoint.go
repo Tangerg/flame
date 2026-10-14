@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -27,6 +28,7 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	ModelObservers      *[]modelObserverWire                `json:"model_observers"`
 	MCPReferences       *[]string                           `json:"mcp_references"`
 	Options             *corechat.Options                   `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
@@ -74,6 +76,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	modelObservers      []plugins.ContributionBinding
 	mcpSources          []mcpserver.ID
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
@@ -135,6 +138,7 @@ func encodeInteractionCheckpointPayload(
 	options corechat.Options,
 	mcpReferences []string,
 	handoff *interactionHandoffWire,
+	observers []plugins.ContributionBinding,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
@@ -144,8 +148,9 @@ func encodeInteractionCheckpointPayload(
 		frozenInstructions = []corechat.Message{}
 	}
 	wire := interactionCheckpointPayloadWire{
-		MCPReferences: new(mcpReferences),
-		ToolMetadata:  toolMetadata, Options: new(options.Clone()),
+		ModelObservers: new(observerBindingsWire(observers)),
+		MCPReferences:  new(mcpReferences),
+		ToolMetadata:   toolMetadata, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
 	}
 	wire.Handoff = handoff
@@ -349,6 +354,13 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if wire.MCPReferences == nil {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP dependencies are required")
 	}
+	if wire.ModelObservers == nil {
+		return interactionCheckpointState{}, errors.New("execution: frozen model observers are required")
+	}
+	observers, err := decodeObserverBindings(*wire.ModelObservers)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
 	if wire.Options == nil || wire.Instructions == nil {
 		return interactionCheckpointState{}, errors.New("execution: frozen options and instructions are required")
 	}
@@ -400,8 +412,9 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	return interactionCheckpointState{
-		mcpSources: sources,
-		handoff:    handoff, callsByProcess: callsByProcess,
+		modelObservers: observers,
+		mcpSources:     sources,
+		handoff:        handoff, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil

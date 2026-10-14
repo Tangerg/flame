@@ -1686,6 +1686,10 @@
           "signature": "func() (*Method[chat.Request, ModelResult], error)"
         },
         {
+          "name": "ModelObserverContract",
+          "signature": "func() (*capability.Contract, error)"
+        },
+        {
           "name": "ModelStreamMethod",
           "signature": "func() (*StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error)"
         },

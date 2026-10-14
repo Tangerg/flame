@@ -256,6 +256,26 @@ Session without a Goal returns null through `goals.get` in both bindings. Receip
 and remote decoders require the declared fields before accepting typed values.
 Diagnostic Tool results remain opaque JSON, where null is a valid value.
 
+Interaction consumes the public flame.model-observers.v1 decoration contract.
+Staging captures its stored outer-to-inner installation/release/contribution/export
+bindings and folds them into deployment identity and installation retention.
+Checkpoint model_observers records the same order; restoration validates those
+original bindings without reading current composition choice. Former checkpoints
+without this field are refused without conversion or deletion.
+
+The first production contract is transparent observation. Each layer receives a
+call-bound next to the remaining captured chain on the existing callback endpoint.
+It permits one unchanged request/continuation, exact response and ordered canonical
+chunks; another request or changed outcome is refused. This restriction belongs to
+this observer contract, not all decoration. No independent command receipt, Tool
+loop or model history is added. Unary inner evidence survives outer failure; stream
+chunks retain actual consumer backpressure, usage and cancellation. Early stop
+cancels and joins the original producer. Non-streaming providers remain non-streaming.
+The physical adapter is checked with real SDK HTTP callbacks and installed release
+identity; full native production qualification remains final work. Auxiliary model
+consumers, admitted request transformation and multiple separate inner invocations
+remain open.
+
 Core 2026-10-14.23 adds plugins.listCompositions, plugins.setComposition and
 plugins.resolveComposition. The consumer supplies the complete decoration contract
 and explicit outer-to-inner members; Runtime persists one atomic ordered choice.
@@ -265,8 +285,8 @@ contract-mismatched selected member refuses the whole composition, including an
 optional declared dependency; it never silently removes a member. Empty configured
 chains are explicit, and required dependencies refuse absent or empty chains.
 Named setup dependencies use the same ordered composition owner and existing
-activation-cycle checks. Go and TS management entrances share Delivery. Actual
-production model decoration and remote-next invocation remain the next integration.
+activation-cycle checks. Go and TS management entrances share Delivery. Interaction
+now consumes this ordered choice through transparent production model observation.
 
 The exact host schema adds plugin_compositions. Preserve former host data separately
 and use a fresh data directory; Runtime refuses former schemas without conversion

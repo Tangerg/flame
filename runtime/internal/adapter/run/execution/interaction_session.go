@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -44,6 +45,7 @@ type interactionSession struct {
 	buildID             runtimeidentity.BuildID
 	start               runs.RootExecutionStart
 	modelFailures       interactionModelFailures
+	modelObservers      []plugins.ContributionBinding
 	effectFailures      interactionEffectFailures
 	segmentClock        interactionSegmentClock
 	// telemetry observes Framework facts only. It owns Process, Step, and

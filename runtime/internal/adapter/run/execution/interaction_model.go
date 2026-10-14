@@ -8,10 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -57,6 +59,10 @@ func (o *observedInteractionModel) Call(
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
+	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: callID}})
+	if err != nil {
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
+	}
 	response, err := o.model.Call(ctx, sent)
 	if err != nil {
 		if response != nil && response.Validate() == nil {
@@ -94,6 +100,11 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		dispatchedAt := time.Now()
+		ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: callID}})
+		if err != nil {
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err))
+			return
+		}
 		sequence := o.streamer.Stream(ctx, sent)
 		if sequence == nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil,

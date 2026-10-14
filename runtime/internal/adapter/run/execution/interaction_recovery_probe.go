@@ -89,7 +89,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	}
 	start := state.restoredStart(continuation)
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
-	assembled, err := i.assembleInteraction(ctx, ref, start)
+	assembled, err := i.assembleInteraction(ctx, ref, start, &state.modelObservers)
 	if err != nil {
 		return runs.WaitingResumption{}, fmt.Errorf("execution: assemble Interaction checkpoint probe: %w", err)
 	}

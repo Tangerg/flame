@@ -83,12 +83,14 @@ func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
-	if deployments == nil {
-		return nil
-	}
 	var dependencies []plugin.Dependency
-	for _, manifest := range deployments.manifests {
-		dependencies = append(dependencies, manifest.Installations...)
+	for _, binding := range i.modelObservers {
+		dependencies = append(dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
+	}
+	if deployments != nil {
+		for _, manifest := range deployments.manifests {
+			dependencies = append(dependencies, manifest.Installations...)
+		}
 	}
 	return plugin.CompactDependencies(dependencies)
 }
