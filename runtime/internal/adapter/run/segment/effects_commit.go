@@ -160,7 +160,7 @@ func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit)
 			return fmt.Errorf("segment: record command acceptance: %w", err)
 		}
 	}
-	sessionID, runID, segmentID, err := openingCommitOwner(opening)
+	sessionID, runID, segmentID, err := opening.OwnerIdentity()
 	if err != nil {
 		return err
 	}
@@ -170,23 +170,8 @@ func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit)
 	return nil
 }
 
-func openingCommitOwner(opening runs.OpeningCommit) (sessionID, runID, segmentID string, err error) {
-	if admission, found := opening.Admission(); found {
-		return admission.SessionID, admission.RunID, admission.SegmentID, nil
-	}
-	resume, found := opening.Resume()
-	if !found {
-		return "", "", "", errors.New("segment: opening has no owner")
-	}
-	if err := resume.Validate(); err != nil {
-		return "", "", "", fmt.Errorf("segment: resumed opening: %w", err)
-	}
-	root := resume.Runs[len(resume.Runs)-1].State()
-	return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
-}
-
 func (e *Effects) reconcileOpeningCommit(ctx context.Context, opening runs.OpeningCommit) (bool, error) {
-	sessionID, runID, segmentID, err := openingCommitOwner(opening)
+	sessionID, runID, segmentID, err := opening.OwnerIdentity()
 	if err != nil {
 		return false, err
 	}
@@ -583,13 +568,9 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 	// tree for boot revival. The next durable waiting/terminal boundary retires it;
 	// a local Resume acknowledgement alone cannot prove the head left this cut.
 	resume, _ := opening.Resume()
-	var inputItemID string
-	for _, event := range opening.Events() {
-		for _, item := range event.Items {
-			if item.Kind() == transcript.UserMessage {
-				inputItemID = item.ID()
-			}
-		}
+	inputItemID, err := opening.UserInputItemID()
+	if err != nil {
+		return fmt.Errorf("segment: derive accepted continuation input: %w", err)
 	}
 	accepted, err := runs.NewAcceptedContinuation(acceptance.SessionID(), consumed, resume, inputItemID)
 	if err != nil {

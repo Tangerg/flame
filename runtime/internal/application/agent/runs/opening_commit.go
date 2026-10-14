@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -276,10 +277,8 @@ func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 	return errors.New("event belongs to a Run outside the resumed tree")
 }
 
-// CommitID returns the stable admission or resume transaction identity.
 func (o OpeningCommit) CommitID() runtimeidentity.CommitID { return o.commitID }
 
-// Admission returns an isolated fresh-Run admission when this is an admission opening.
 func (o OpeningCommit) Admission() (run.Draft, bool) {
 	if o.admit == nil {
 		return run.Draft{}, false
@@ -287,7 +286,6 @@ func (o OpeningCommit) Admission() (run.Draft, bool) {
 	return cloneOpeningAdmission(*o.admit), true
 }
 
-// Resume returns an isolated tree continuation when this is a resume opening.
 func (o OpeningCommit) Resume() (run.TreeResumeDraft, bool) {
 	if o.resume == nil {
 		return run.TreeResumeDraft{}, false
@@ -295,8 +293,6 @@ func (o OpeningCommit) Resume() (run.TreeResumeDraft, bool) {
 	return cloneOpeningResume(*o.resume), true
 }
 
-// ResumeAcceptance returns the answer write-set committed with a continuation
-// opening, when one was supplied.
 func (o OpeningCommit) ResumeAcceptance() (ResumeAcceptance, bool) {
 	if o.resumeAcceptance == nil {
 		return ResumeAcceptance{}, false
@@ -304,25 +300,61 @@ func (o OpeningCommit) ResumeAcceptance() (ResumeAcceptance, bool) {
 	return *o.resumeAcceptance, true
 }
 
-// InitialSession returns the new Session inserted with a root admission.
 func (o OpeningCommit) InitialSession() (session.Session, bool) {
 	return optional.Present(o.initialSession)
 }
 
-// SessionReplacement returns the existing Session revision written with an admission.
 func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
 	return optional.Present(o.sessionReplacement)
 }
 
-// Actor returns the managed source authority checked in the opening transaction.
 func (o OpeningCommit) Actor() (operation.Actor, bool) {
 	return optional.Present(o.actor)
 }
 
-// CommandAcceptance returns the externally initiated command's immutable
-// acceptance reference committed with this admission, when one was supplied.
 func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
 	return optional.Present(o.commandAcceptance)
+}
+
+// ownerIdentity is the one rule for which Session, Run, and Segment an opening
+// opens, so the acceptance record, the commit receipt, and the input-item scan
+// cannot name different Runs for it.
+func (o OpeningCommit) ownerIdentity() (sessionID, runID, segmentID string, err error) {
+	if o.admit != nil {
+		return o.admit.SessionID, o.admit.RunID, o.admit.SegmentID, nil
+	}
+	if o.resume != nil && len(o.resume.Runs) > 0 {
+		root := o.resume.Runs[len(o.resume.Runs)-1].State()
+		return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
+	}
+	return "", "", "", errors.New("runs: opening has no owner")
+}
+
+func (o OpeningCommit) OwnerIdentity() (sessionID, runID, segmentID string, err error) {
+	return o.ownerIdentity()
+}
+
+// UserInputItemID is the one rule for which Item an opening accepted as its input,
+// so the acceptance record and the continuation binding cannot name different
+// Items. More than one root user input is a fault, not silently narrowed to one.
+func (o OpeningCommit) UserInputItemID() (string, error) {
+	_, root, _, err := o.ownerIdentity()
+	if err != nil {
+		return "", err
+	}
+	var id string
+	for _, event := range o.events {
+		for _, item := range event.Items {
+			if item.Kind() != transcript.UserMessage || item.RunID() != root {
+				continue
+			}
+			if id != "" {
+				return "", errors.New("runs: opening repeats its user input")
+			}
+			id = item.ID()
+		}
+	}
+	return id, nil
 }
 
 // Events returns isolated opening projections in their canonical order.
