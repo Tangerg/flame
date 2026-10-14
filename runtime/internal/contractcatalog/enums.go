@@ -24,6 +24,7 @@ var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.ToolAttemptState]():                  {string(protocol.ToolAttemptStarted), string(protocol.ToolAttemptCompleted), string(protocol.ToolAttemptIncomplete)},
 	reflect.TypeFor[protocol.TrajectoryEntryType]():               {string(protocol.TrajectoryEntryRun), string(protocol.TrajectoryEntryModel), string(protocol.TrajectoryEntryEndpoint), string(protocol.TrajectoryEntryItem)},
 	reflect.TypeFor[protocol.ModelInvocationState]():              {string(protocol.ModelInvocationStarted), string(protocol.ModelInvocationCompleted), string(protocol.ModelInvocationFailed), string(protocol.ModelInvocationUnknown)},
+	reflect.TypeFor[protocol.ModelEndpointKind]():                 {string(protocol.ModelEndpointChat), string(protocol.ModelEndpointEmbedding)},
 	reflect.TypeFor[protocol.AgentDocScope]():                     {string(protocol.AgentDocScopeCWD), string(protocol.AgentDocScopeProjectRoot), string(protocol.AgentDocScopeHome)},
 	reflect.TypeFor[protocol.ApprovalDecision]():                  {string(protocol.ApprovalApprove), string(protocol.ApprovalDeny)},
 	reflect.TypeFor[protocol.ApprovalGate]():                      {string(protocol.ApprovalGatePass), string(protocol.ApprovalGatePrompt), string(protocol.ApprovalGateDeny)},

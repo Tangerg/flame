@@ -5409,7 +5409,7 @@
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "kind": {
-          "type": "string"
+          "$ref": "#/$defs/ModelEndpointKind"
         },
         "model": {
           "type": "string",
@@ -5556,6 +5556,13 @@
             ]
           }
         }
+      ]
+    },
+    "ModelEndpointKind": {
+      "type": "string",
+      "enum": [
+        "chat",
+        "embedding"
       ]
     },
     "ModelInvocation": {

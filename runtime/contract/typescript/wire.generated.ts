@@ -1027,7 +1027,7 @@ export interface ModelEndpointInvocation {
   costUSD?: number;
   failure?: string;
   id: string;
-  kind: string;
+  kind: ModelEndpointKind;
   model: string;
   provider: string;
   request: string;
@@ -1039,6 +1039,8 @@ export interface ModelEndpointInvocation {
   startedAt: string;
   state: ModelInvocationState;
 }
+
+export type ModelEndpointKind = "chat" | "embedding";
 
 export interface ModelInvocation {
   callId: string;
@@ -2273,6 +2275,7 @@ export const WIRE_ENUMS = {
   MCPTransport: ["stdio", "streamableHttp"],
   MessagePhase: ["commentary", "finalAnswer"],
   Modality: ["text", "image", "audio", "video", "pdf"],
+  ModelEndpointKind: ["chat", "embedding"],
   ModelInvocationState: ["started", "completed", "failed", "unknown"],
   PlanStatus: ["pending", "in_progress", "completed"],
   PluginComponentChange: ["enable", "disable"],

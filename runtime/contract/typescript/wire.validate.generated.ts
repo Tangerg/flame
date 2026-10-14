@@ -180,6 +180,7 @@ export type WireTypeName =
   | "Model"
   | "ModelCapabilities"
   | "ModelEndpointInvocation"
+  | "ModelEndpointKind"
   | "ModelInvocation"
   | "ModelInvocationState"
   | "ModelInvocationUsage"
@@ -2143,7 +2144,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       costUSD: allOf([numeric(), minimum(0)]),
       failure: text(),
       id: allOf([text(), minLength(1), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      kind: text(),
+      kind: ref(() => CHECKS.ModelEndpointKind),
       model: allOf([text(), minLength(1)]),
       provider: allOf([text(), minLength(1)]),
       request: allOf([text(), minLength(1)]),
@@ -2194,6 +2195,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["failure", "settledAt"]),
     ),
   ]),
+  ModelEndpointKind: enumOf(["chat", "embedding"]),
   ModelInvocation: allOf([
     object({
       callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._:-]+$")]),
