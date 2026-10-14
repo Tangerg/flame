@@ -4214,10 +4214,12 @@
       "type": "object",
       "properties": {
         "cursor": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 65536
         },
         "limit": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "parentCallId": {
           "type": "string",
@@ -5862,15 +5864,6 @@
         "installationId"
       ]
     },
-    "PageContinuation": {
-      "type": "object",
-      "properties": {
-        "nextCursor": {
-          "type": "string",
-          "maxLength": 65536
-        }
-      }
-    },
     "PageOfAgentDoc": {
       "type": "object",
       "properties": {
@@ -5896,24 +5889,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/FileEntry"
-          }
-        },
-        "nextCursor": {
-          "type": "string",
-          "maxLength": 65536
-        }
-      },
-      "required": [
-        "data"
-      ]
-    },
-    "PageOfItem": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Item"
           }
         },
         "nextCursor": {
@@ -6302,19 +6277,6 @@
       "required": [
         "data"
       ]
-    },
-    "PageQuery": {
-      "type": "object",
-      "properties": {
-        "cursor": {
-          "type": "string",
-          "maxLength": 65536
-        },
-        "limit": {
-          "type": "integer",
-          "minimum": 1
-        }
-      }
     },
     "PatchResult": {
       "type": "object",
@@ -8735,25 +8697,6 @@
       "required": [
         "instanceId",
         "status"
-      ]
-    },
-    "RecordedUsage": {
-      "type": "object",
-      "properties": {
-        "coverage": {
-          "$ref": "#/$defs/UsageCoverage"
-        },
-        "recordedCostUsd": {
-          "type": "number",
-          "minimum": 0
-        },
-        "total": {
-          "$ref": "#/$defs/ModelUsage"
-        }
-      },
-      "required": [
-        "coverage",
-        "total"
       ]
     },
     "RememberScope": {

@@ -7360,14 +7360,8 @@
               "tag": "json:\"parentCallId\""
             },
             {
-              "name": "Cursor",
-              "type": "string",
-              "tag": "json:\"cursor,omitzero\""
-            },
-            {
-              "name": "Limit",
-              "type": "*int",
-              "tag": "json:\"limit,omitzero\""
+              "name": "PageQuery",
+              "type": "PageQuery"
             }
           ],
           "methods": [

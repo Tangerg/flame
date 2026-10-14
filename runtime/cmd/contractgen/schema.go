@@ -101,6 +101,18 @@ type schemaSet struct {
 	origin map[string]reflect.Type
 	enums  map[reflect.Type][]string
 
+	// embedded names every definition reached by being embedded into another
+	// struct; referenced names every definition reached by a standalone $ref — a
+	// field, element, variant, result, or request shape. encoding/json inlines an
+	// embedded owner's fields into its carrier, so an owner reached ONLY through
+	// embedding is never a standalone JSON frame and no document cites it; a type
+	// that is also referenced standalone (ModelUsage behind a map, a request a
+	// composing request embeds) still is. The walk defines both so carriers inherit
+	// field constraints and the Go validator is generated from one graph, but
+	// Definitions withholds the embedded-only owners from the published bundle.
+	embedded   map[string]bool
+	referenced map[string]bool
+
 	unions      map[reflect.Type]dispatch.UnionSpec
 	constraints map[reflect.Type][]dispatch.ConditionalRule
 	values      map[reflect.Type][]dispatch.FieldConstraint
@@ -111,6 +123,8 @@ func newSchemaSet(shapes *dispatch.Shapes) *schemaSet {
 		defs:        make(map[string]*schema),
 		origin:      make(map[string]reflect.Type),
 		enums:       make(map[reflect.Type][]string),
+		embedded:    make(map[string]bool),
+		referenced:  make(map[string]bool),
 		unions:      make(map[reflect.Type]dispatch.UnionSpec),
 		constraints: make(map[reflect.Type][]dispatch.ConditionalRule),
 		values:      make(map[reflect.Type][]dispatch.FieldConstraint),
@@ -127,9 +141,20 @@ func newSchemaSet(shapes *dispatch.Shapes) *schemaSet {
 	return set
 }
 
-// Definitions returns the walked definitions keyed by name. Names are sorted by
-// the JSON encoder, so the bundle's diff is stable across runs.
-func (s *schemaSet) Definitions() map[string]*schema { return s.defs }
+// Definitions returns the definitions the bundle publishes, keyed by name: every
+// walked definition except the embedded owners, whose fields are inlined into
+// their carriers and which therefore name no standalone JSON frame. Names are
+// sorted by the JSON encoder, so the bundle's diff is stable across runs.
+func (s *schemaSet) Definitions() map[string]*schema {
+	out := make(map[string]*schema, len(s.defs))
+	for name, def := range s.defs {
+		if s.embedded[name] && !s.referenced[name] {
+			continue
+		}
+		out[name] = def
+	}
+	return out
+}
 
 func (s *schemaSet) registerEnum(t reflect.Type, values []string) {
 	if t.Kind() != reflect.String || t.Name() == "" || len(values) == 0 {
@@ -199,18 +224,39 @@ func (s *schemaSet) walk(t reflect.Type) *schema {
 // instead of recursing forever.
 func (s *schemaSet) define(t reflect.Type, body *schema) *schema {
 	name := defName(t)
+	// define is the standalone-reference path: a $ref to this name is being placed
+	// into a shape, which keeps the definition in the published bundle even if the
+	// same type is also embedded elsewhere.
+	s.referenced[name] = true
 	if existing, ok := s.origin[name]; ok {
 		if existing != t {
 			panic(fmt.Sprintf("contractgen: %s and %s would both be published as %q", existing, t, name))
 		}
 		return &schema{Ref: refPrefix + name}
 	}
-	s.origin[name] = t
+	s.reserve(t, body)
+	return &schema{Ref: refPrefix + name}
+}
+
+// defineEmbedded records that an owner is flattened into a carrier and walks it so
+// its field types and Go validator are reached, WITHOUT recording a standalone
+// reference: JSON inlines the owner's fields, so no frame $refs the owner itself.
+func (s *schemaSet) defineEmbedded(t reflect.Type) {
+	s.embedded[defName(t)] = true
+	if _, ok := s.origin[defName(t)]; ok {
+		return
+	}
+	s.reserve(t, nil)
+}
+
+// reserve fills a definition, reserving its name before the body is walked so a
+// type that reaches itself resolves to a reference instead of recursing forever.
+func (s *schemaSet) reserve(t reflect.Type, body *schema) {
+	s.origin[defName(t)] = t
 	if body == nil {
 		body = s.object(t)
 	}
-	s.defs[name] = body
-	return &schema{Ref: refPrefix + name}
+	s.defs[defName(t)] = body
 }
 
 // object walks a struct's fields. Optionality starts with the json tag, then an
@@ -227,7 +273,7 @@ func (s *schemaSet) object(t reflect.Type) *schema {
 				embedded = embedded.Elem()
 			}
 			if embedded.Kind() == reflect.Struct && embedded.PkgPath() == t.PkgPath() {
-				s.walk(embedded)
+				s.defineEmbedded(embedded)
 			}
 		}
 	}

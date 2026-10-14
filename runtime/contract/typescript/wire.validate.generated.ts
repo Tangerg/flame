@@ -1769,8 +1769,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.RunSummary)),
   }, ["data", "runs"]),
   ListModelEndpointsRequest: object({
-    cursor: text(),
-    limit: integer(),
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum(1)]),
     parentCallId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["parentCallId"]),
   ListModelInvocationsRequest: object({

@@ -562,6 +562,8 @@ var notOnTheWire = map[string]string{
 	"Feature":          "the published capability vocabulary's registry entry; its wire projection is FeatureCapability",
 	"ConstraintError":  "the Go validator's error carrier; its wire projection is ProblemData.errors",
 	"PageContinuation": "a composed value owner flattened into every Page instantiation, never a standalone JSON frame",
+	"PageQuery":        "a composed cursor-query owner flattened into each paginated request, never a standalone JSON frame",
+	"RecordedUsage":    "a composed usage block flattened into each usage report, never a standalone JSON frame",
 }
 
 // TestEveryWireStructIsPublished checks the bundle against the protocol package.

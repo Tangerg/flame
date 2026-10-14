@@ -109,6 +109,8 @@ func (l ListModelEndpointsRequest) ValidateWire() error {
 		requiredText("parentCallId", l.ParentCallID),
 		identity("parentCallId", l.ParentCallID),
 		maxLength("parentCallId", l.ParentCallID, 256),
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
 	)
 }
 
@@ -1759,6 +1761,7 @@ func (m ModelEndpointInvocation) ValidateWire() error {
 		requiredText("provider", m.Provider),
 		requiredText("model", m.Model),
 		requiredText("request", m.Request),
+		closedEnum("kind", string(m.Kind), []string{"chat", "embedding"}, false),
 		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
 		requiredWhen(wireFieldPresent(m, "runId"), "sessionId", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),

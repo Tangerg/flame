@@ -7,8 +7,7 @@ import (
 
 type ListModelEndpointsRequest struct {
 	ParentCallID string `json:"parentCallId"`
-	Cursor       string `json:"cursor,omitzero"`
-	Limit        *int   `json:"limit,omitzero"`
+	PageQuery
 }
 
 // ModelEndpointKind names the provider operation one endpoint recorded. Chat and
