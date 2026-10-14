@@ -2,52 +2,56 @@
 
 ## Current stage
 
-Stage 5i (574a3e183) binds installed transparent model observers to production
-Interaction. The public SDK publishes flame.model-observers.v1; the consumer
-resolves the stored outer-to-inner choice during staging, wraps the exact provider
-instance and includes concrete installation/release/contribution/export/contract
-bindings in deployment identity and held dependencies. Non-streaming providers do
-not gain a fabricated optional streaming capability.
+Stage 5j (23f6e12e7) migrates auxiliary title, compaction, skill mining and Memory
+utility work to the same frozen installed observer choice. AuxiliaryResolver now
+returns model plus explicit release. Complete owns one captured request; Memory
+retains one capture across extraction/curation, then closes its callback grant
+before releasing the model. Original receipt recovery does not resolve/reinvoke it.
+All in-scope resolver consumers and fixtures migrate with no former signature alias.
 
-Every layer receives a transient next to its remaining frozen chain through the
-existing callback endpoint. This contract admits one unchanged request, unchanged
-response and canonical ordered chunks; repetition or transformation refuses before
-another provider call. Equality uses canonical lossless JSON at the wire boundary,
-avoiding nil/empty Go projection differences. Known unary inner response/usage and
-failure survive outer transport failure; stream completion/failure retains the
-existing Interaction evidence boundary. There is no model command receipt/replay.
+Auxiliary captures register exact observer releases under the existing installation
+admission gate. HeldDependencies is their live read projection for installation
+quiescence/retention, not a refcount or another business state owner. Capture release
+first closes admission to new calls, cancels/joins active calls, then drops retained
+sources. A released capture refuses reuse and preserves cancellation causes.
+Choice changes affect subsequent captures, never the original multi-call use case.
 
-Stream producer progress now waits for actual outer chunk consumption, not merely
-callback frame writing. One pending chunk stays bounded; early consumer stop
-cancels and joins the original producer. Checkpoint model_observers retains the
-same ordered bindings. Waiting/cold recovery validates and rebinds those originals,
-never current composition choice; former checkpoints without the field are refused
-without conversion/deletion. Request-transform and multiple-call contracts remain
-separate unfinished work, not capabilities claimed by this transparent contract.
+Public model Call/Stream callbacks project each command as a concrete call while
+preserving origin and parent; an already matching next keeps its identity. Actual
+Memory extraction/curation now have separate model call identities under one original
+maintenance parent. Private two-external-call budgeting and business receipts remain
+unchanged. This does not yet establish durable per-inner-invocation observations or
+multi-effect replayable composition.
 
-Passed: final real SDK HTTP installed observer unary/stream/stop group (2.054s),
-request/repeat refusal, original known outcome, withdrawal/restore validation,
-actual consumption backpressure and joined producer. Captured identity/order/
-retention plus affected checkpoint/Interaction failure group passed (1.201s).
-Runtime/CLI builds, Runtime/bootstrap test-source compilation, generated API drift
-(2.293s), formatting/diff and input hashes pass. Initial stream bridge exposed a
-forwarding gap; acknowledgement now waits for actual outer delivery. One existing
-malformed-checkpoint fixture now supplies the new required field. No active executed
-failure remains. Full native production, race/vet and all-workflow checks stay final.
+Passed: auxiliary original-choice/release/join HTTP group (1.425s), utility/resource
+and live role group (1.706s), Memory full-response callback group (1.121s), SDK child
+identity/callback/stream group (0.795s), actual production Memory original-input/
+separate-call/single-release check (1.243s), Runtime/CLI builds, affected bootstrap/
+maintenance test-source compilation, generated drift (2.113s), formatting/diff and
+original hashes. One old fixture return count and a Stage 5f removed Completion
+type were corrected; the Memory fixture now implements its current completion port.
+Maintenance source compilation succeeds; an earlier selected group had no matching
+maintenance tests and is not counted as behavior evidence. No active failure remains.
 
-Core remains 2026-10-14.23, backend 2026-10-14.2; host schema/private receipts are
-unchanged this slice, but checkpoint JSON changes explicitly. Main 993eb865f is
-integrated. Original proposal/review/draft and user stash are unchanged; temporary
-compilation outputs removed and all handles terminal. No UI/E2E/screenshot work.
+Core remains 2026-10-14.23, backend 2026-10-14.2; host schema/checkpoint/private
+receipt formats unchanged this slice. Main 993eb865f is integrated; original inputs
+and user stash are unchanged. Temporary compilation outputs removed, owned handles
+terminal. No UI/E2E/screenshot checks. Full/vet/race/native acceptance remains final.
 
-Next complete auxiliary/Memory observer consumers, separate durable inner-invocation
-identity/evidence including completion withheld by an outer observer, admitted
-request transformation/multiple-call composition, scoped status/retention and
-remaining consumer/author parity. Overall estimate stays approximately 65-70% of
-full delivery and 75% of implementation; P01-P48/final acceptance remain open.
-Full goal remains active.
+Next give every actual inner model invocation durable identity/evidence and preserve
+completion withheld by outer observation, then admitted transformed input/multiple
+external calls, transitive scoped dependency status/retention and remaining author/
+consumer parity. Overall estimate stays approximately 65-70% full delivery and 75%
+implementation; final requirement-level P01-P48 acceptance is open. Goal remains active.
 
 ## Completed
+
+- Stage 5j (23f6e12e7): auxiliary and Memory utility consumers freeze the public
+  observer choice with caller-owned release; one Memory capture spans both calls.
+- Stage 5j: active captures contribute held releases through existing admission;
+  close cancels/joins before retirement and original captures reject later reuse.
+- Stage 5j: public model Call/Stream callbacks preserve ancestry with per-command
+  call identity; actual Memory extraction/curation have separate original children.
 
 - Stage 5i (574a3e183): installed transparent observer chain is wired to production
   Interaction, exact provider instance, staged identity and installation retention.
@@ -527,7 +531,7 @@ Full goal remains active.
 - Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Stage 5h adds stored ordered decoration choices and named setup integration with required/optional absence and withdrawal refusal. Complete point lifecycle, durable execution composition, observed dependency status/retention and integrated process acceptance remain open.
 - Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
 - Business View/renderer HTML carriers and closed contextual action wrappers are removed. Complete actual CLI/Core business facade migration through public installed operations with original binding, command/receipt and lifecycle owners. No frontend UI/E2E execution is authorized.
-- Public Go model callback streams now pass actual lazy/cancel/backpressure/aggregate/inner-failure and external frozen remaining-chain checks. SDK backend duplex/real stdio decorator-next streaming now passes. Internal mutation-stream original route/recovery is now implemented and verified. Public Go/Protocol mutation-stream delivery is now implemented and verified at its boundaries. Typed/callback Go streams are now implemented and verified at their boundary. TS mutation streaming is now implemented and verified at its boundary. Stage 5g preserves complete known response/accounting under an outer failed attempt; Stage 5i now wires transparent installed observers to Interaction with frozen checkpoint order and held releases. Complete auxiliary consumers, admitted transformed input/multiple actual calls and separate durable inner observations; SDK probes do not close installed production requirements.
+- Public Go model callback streams now pass actual lazy/cancel/backpressure/aggregate/inner-failure and external frozen remaining-chain checks. SDK backend duplex/real stdio decorator-next streaming now passes. Internal mutation-stream original route/recovery is now implemented and verified. Public Go/Protocol mutation-stream delivery is now implemented and verified at its boundaries. Typed/callback Go streams are now implemented and verified at their boundary. TS mutation streaming is now implemented and verified at its boundary. Stage 5g preserves complete known response/accounting under an outer failed attempt; Stage 5i now wires transparent installed observers to Interaction with frozen checkpoint order and held releases. Stage 5j migrates auxiliary/Memory utility consumers and retains their captured releases until cancellation/join. Complete admitted transformed input/multiple actual calls, transitive dependency lifecycle and separate durable inner observations; SDK probes do not close installed production requirements.
 - Retain and execute final acceptance for Stage 3i business-only Memory input and missing-callback admission; Stage 3k installed public calls/refusal/recovery; Stage 3l original target/caller metadata; Stage 3m durable Schedules trigger propagation; Stage 3n dependency resolution/cycles; Stage 3o activation publication/retirement; Stage 3p provider waiting, setup/callback/authority/lifetime integration. Compilation is not runtime acceptance. Stage 3m has implemented the earlier durable handoff gap.
 - Complete public independent-author/module packaging, final declaration/activation/package integrity audit, deletion audit and all requirement-level verification. Current-source author builds do not establish availability of a published Runtime module.
 - Preserve unrelated main work, existing Memory ledger and Schedules business facts, source/credential/integrity checks and the management recovery entrance throughout remaining changes.
@@ -545,6 +549,9 @@ Full goal remains active.
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Auxiliary resolver returns an explicit captured model release; Memory holds it across the whole maintenance use case | A multi-call use case must keep the same observer choice and release only after callback work joins | Per-prompt re-selection, implicit closable capability, leaked captures or another maintenance replay path |
+| 2026-10-14 | Active auxiliary captures register under installation admission and project held releases until actual closure | Quiescence and source retention must include non-Interaction model work without copying installation state | An unrelated installation refcount, forgetting pending in-flight calls, dropping retention before cancellation/join or retargeting closed models |
+| 2026-10-14 | Public model callbacks project each admitted command as a call child with unchanged origin/parent | Separate real extraction/curation must not reuse the maintenance operation as one model invocation | Losing original origin, installation target at the model boundary or assigning every real request the same parent identity |
 | 2026-10-14 | Production Interaction captures installed transparent observers at staging and checkpoints the original ordered bindings | Configuration changes must affect new executions without retargeting existing or restored next chains; held releases share execution retention | Resolving current observers after restart, ignoring observers in deployment identity/retention, first-party direct pointers or a model command receipt |
 | 2026-10-14 | One unchanged next delivery belongs specifically to the transparent observer contract | The first shipped observer must preserve admitted input, exact endpoint/usage and canonical chunks; other compositions need independent identities/admission | A universal once-only decoration rule, silent request/output mutation, extra untracked provider I/O or suppressing known inner failure |
 | 2026-10-14 | Inner stream production waits for outer consumer delivery, with one pending chunk | A callback SSE write can complete before the remote observer forwards it; actual consumer backpressure must govern continuation | Treating frame writing as chain consumption, unbounded queues or detached producer shutdown |
@@ -742,7 +749,7 @@ Status is open until code and appropriate verification prove the requirement.
 | Preserve origin, parent identity and concrete target | Unary/Tool/callback original context, Schedules durable trigger and authenticated background caller restoration implemented/compiled; final execution remains open | runtime/capability/invocation.go; application/operation/identity.go; delivery/handler_plugin_calls.go; plugin/invocation.go; mcpconnection/authority.go; Interaction tool; plugin_commands.go |
 | Public React/TS components and shared module instances | Contextual Session naming, file-scoped Markdown, recorded Tool results, Reviews, own-bound editable Schedules, canonical editable Skills, bound editable Memory, client-local Diagnostics, Session-scoped Trajectory, workspace-scoped Diff, Usage and the component-only Icon gallery use actual ESM/resource loading; production graph exposes real host shared-module entries. Rendered Hooks/provider proof and full lifecycle acceptance remain open | plugin-sdk; Reviews Board/declaration; desktop/frontend/pluginModules.vite.mjs; componentModules.ts; InstalledComponent.tsx; Core plugin_resources.go |
 | Consumer-owned collection/selection/decoration and plugin-defined points | Pure callable contract admission, exact export identity and composition metadata verified with actual Reviews; named callable dependencies and required entry-cycle checking now compile; named setup/frozen bindings and provider-attempt waiting now implemented; point value/schema/applicability/optionality/order and the Reviews analyzer consumer/producer now compile with focused checks; actual graphical point inspection and lossless raw contract transport now implemented; Stage 5h explicit ordered decoration choice and named setup required-member admission now verified; scoped execution composition, lifecycle/observed status/retention and full installed acceptance remain open | runtime/point; runtime/point_values.go; application/integration/plugins/points.go; pluginpackage/points_test.go; examples/plugins/reviews/backend/analyzers.go; examples/plugins/reviews/analyzer |
-| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; typed callback streaming, canonical Scope aggregate, transport backpressure/cancellation, byte budget and external frozen remaining-chain proof now pass; SDK backend register/bind and acknowledged duplex streaming now pass with a real stdio decorator/model-next executable; Internal Runtime mutation-stream original route/recovery is verified in Stage 5b; public Go/Protocol stream delivery is verified in Stage 5c; typed/callback Go streaming is verified in Stage 5d; TS mutation streaming is verified in Stage 5e; Memory production completion is migrated in Stage 5f; Stage 5g Interaction known-response/accounting survives outer failure and host reopen without continuation; Stage 5i installed transparent Interaction chain, original checkpoint bindings and held releases are implemented with real SDK HTTP boundary evidence; auxiliary consumers, transformed-input/multiple-invocation contracts, separate inner observations and full native acceptance remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go; plugin/stream.go; model_stream.go; model_stream_external_test.go; plugin/backend_stream.go; backend_stream_test.go; backend_stream_external_test.go; pluginservices/streams.go; streams_test.go; commands.go; mcpconnection/pool.go; delivery/handler_plugin_calls.go; registry.go; transport/http/stream.go; plugin_stream_test.go; client_stream.go; plugin_streams.go; plugin_streams_test.go; plugin_streams_callback_test.go; plugin_callback_caller.go; TS client/pluginStream.ts; client.ts; transports/http.ts; durableMutationJournal.ts; plugin-sdk/src/index.ts; execution/interaction_model.go; runs/reducer.go; sqlite/model_invocation.go |
+| Real callback, remote next, backpressure, cancellation and inner evidence | Unary transport and canonical Core RPC/SSE seams verified with real headless backends; captured context, protocol/refusal gates and joined subscription closure verified. Actual Schedules Core acceptance and installed source admission are now verified; actual consumer-owned Tool callback capture/retirement verified; public Scope model unary callback/full valid inner response plus outer failure and real cancellation now verified with an external-package subprocess; typed callback streaming, canonical Scope aggregate, transport backpressure/cancellation, byte budget and external frozen remaining-chain proof now pass; SDK backend register/bind and acknowledged duplex streaming now pass with a real stdio decorator/model-next executable; Internal Runtime mutation-stream original route/recovery is verified in Stage 5b; public Go/Protocol stream delivery is verified in Stage 5c; typed/callback Go streaming is verified in Stage 5d; TS mutation streaming is verified in Stage 5e; Memory production completion is migrated in Stage 5f; Stage 5g Interaction known-response/accounting survives outer failure and host reopen without continuation; Stage 5i installed transparent Interaction chain, original checkpoint bindings and held releases are implemented with real SDK HTTP boundary evidence; Stage 5j auxiliary/Memory utility capture, child identity and held-release lifetime are implemented/verified at their real boundaries; transformed-input/multiple-invocation contracts, transitive dependency lifecycle, durable inner observations and full native acceptance remain open | runtime/plugin/callbacks.go; callbacks_test.go; client_callback_test.go; delivery/transport/http/rpc.go; stream.go; bootstrap/delivery.go; Memory rpc/models.go; plugin/model.go; model_test.go; model_external_test.go; plugin/stream.go; model_stream.go; model_stream_external_test.go; plugin/backend_stream.go; backend_stream_test.go; backend_stream_external_test.go; pluginservices/streams.go; streams_test.go; commands.go; mcpconnection/pool.go; delivery/handler_plugin_calls.go; registry.go; transport/http/stream.go; plugin_stream_test.go; client_stream.go; plugin_streams.go; plugin_streams_test.go; plugin_streams_callback_test.go; plugin_callback_caller.go; TS client/pluginStream.ts; client.ts; transports/http.ts; durableMutationJournal.ts; plugin-sdk/src/index.ts; execution/interaction_model.go; runs/reducer.go; sqlite/model_invocation.go |
 | No-Run unresolved human command pins original binding and recovery evidence | Stage 4l-4o all actual CLI Schedule mutations retain original request/owner/revision before I/O; pending creation/edit/enablement precede new form/provider/revision reads. Capture/byte/store/owner/persistence/decoder checks pass. Native process replacement acceptance, remaining Memory/other entrances and cross-generation recovery open | cli/internal/application/workbench/installed_commands.go; cli/internal/application/installedcommand/command.go and command_test.go; cli/internal/delivery/terminal/schedule_management.go; runtime/internal/application/integration/plugins/commands.go; runtime/internal/infra/sqlite/plugin_commands.go; runtime/internal/bootstrap/plugin_command_recovery_test.go; examples/plugins/reviews/backend/receipts_test.go |
 | One executable contract generation source | Canonical feature CAPABILITY_JSON is now emitted from the same pure identity for lossless TS calls; Go/Scope Schema/TypeScript data, canonical capability/TS token and live Reviews export matching verified through one pure owner; actual Memory/Schedules typed source/live method matching and packaged artifact generation verified; typed CLI Schedule Go projection now generated; complete author/consumer binding generation still open | runtime/internal/plugins/{memory,schedules}/rpc/contracts.go; plugins/{memory,schedules}/io.github.tangerg.flame/contracts; runtime/capability; runtime/plugin/contract.go; cmd/contractgen/feature.go; examples/plugins/reviews/backend/contracts.go; generated contracts and contract tests |
 | Typed business refusal versus transport uncertainty across entrances | Pure capability.Refusal now owns typed business outcome independently of MCP; public backend evidence retained; installed refusal/unknown-ack projections implemented and receipt conflicts classified at their existing owner; final all-entrance execution acceptance open | runtime/plugin/method.go; method_test.go; Memory/Schedules classifiers; Reviews server_test.go |
@@ -764,13 +771,26 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | Cases | Required evidence | Status |
 | --- | --- | --- |
 | P01-P09 | Author parity, selected roles, plugin-defined points, declaration failure, provisional resources and available management | Open |
-| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy/retirement and public Go Scope model callback/full valid inner result plus outer failure/cancellation subset verified; actual callback stream/aggregate/cancel/backpressure/external frozen remaining-chain subset now verified; SDK duplex/export/real stdio decorator-next subset now verified; Internal Runtime mutation-stream original route/recovery is now verified; public Go/Protocol stream delivery is now verified; typed/callback Go streaming is now verified; TS mutation streaming is now verified; Stage 5g production failed-outer known-response/accounting and host reopen are verified; Stage 5i transparent installed Interaction chain and original checkpoint/retention are implemented with HTTP boundary evidence; auxiliary/transform/multiple-call contracts, separate inner observations and full native acceptance still open |
+| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy/retirement and public Go Scope model callback/full valid inner result plus outer failure/cancellation subset verified; actual callback stream/aggregate/cancel/backpressure/external frozen remaining-chain subset now verified; SDK duplex/export/real stdio decorator-next subset now verified; Internal Runtime mutation-stream original route/recovery is now verified; public Go/Protocol stream delivery is now verified; typed/callback Go streaming is now verified; TS mutation streaming is now verified; Stage 5g production failed-outer known-response/accounting and host reopen are verified; Stage 5i transparent installed Interaction chain and original checkpoint/retention are implemented with HTTP boundary evidence; Stage 5j auxiliary/Memory consumers and captured lifetime are implemented/verified at their boundaries; transform/multiple-call contracts, transitive lifecycle, durable inner observations and full native acceptance still open |
 | P21-P28 | Shared operation entrances, receipts/conflicts, scheduling acceptance/capture, independent Run lifetime and Memory owner invariants | Actual Schedules acceptance/capture/retirement and independent Run lifetime verified; full shared installed entrances remain open |
 | P29-P35 | Shared React binding, recoverable UI failure, target capture, shared resource owner, applicability, capacity and appearance owner | Open; UI/E2E execution excluded by user |
 | P36-P41 | Generation safety, waiting dependencies, retained data, generic history, remote environment and headless host calls | Open |
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5j: actual frozen auxiliary original-choice/close/join checks passed
+  (1.425s), auxiliary/live role/resource group (1.706s), Memory complete-response
+  callback group (1.121s), SDK model child ancestry/callback/stream group (0.795s).
+  Actual Memory maintenance/input/receipt and distinct extraction/curation identities
+  with one released capture pass (1.243s).
+- Stage 5j: Runtime/CLI builds, bootstrap/run maintenance/Memory maintenance test
+  source compilation, generation drift (2.113s), gofmt/diff and immutable hashes
+  pass. Old fixture signature/Completion type failures corrected. A selected run
+  maintenance group had no matching tests; compilation is not behavior acceptance.
+  Full/vet/race/native remains final work, with no UI/E2E/screenshot checks.
+- Stage 5j: product 23f6e12e7 committed, main 993eb865f remains integrated, user
+  stash/original inputs preserved, temporary outputs removed and handles terminal.
 
 - Stage 5i: final installed observer real SDK HTTP Call/Stream/stop group passed
   (2.054s), including repeat/transform refusal before provider I/O, inner known
