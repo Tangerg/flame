@@ -2,64 +2,76 @@
 
 ## Current stage
 
-Stage 5r (c69190524) implements the public installed model-selection boundary
-before fresh execution and auxiliary provider binding. ModelSelectionContract is
-an explicit selection role (flame.model-selection.v1), with one query method and
-complete provider/model/model-owned reasoning effort. Its request contains the
-caller's proposal and optional initial Scope request; absence is real when an
-auxiliary use case captures its model before authoring later prompts.
+Stage 5s (b93555e64) admits complete auxiliary requests against the token envelope
+of their captured selected model. AuxiliaryModel freezes published catalog limits,
+provider construction and optional counter with one exact selection. WithModel
+changes only the call projection and preserves those facts instead of querying
+current limits again. Unknown catalog capacity remains unknown; the existing
+caller text-byte/output budget continues to apply without an invented token cap.
 
-The ordinary selected-provider owner chooses the publisher. No selected role
-preserves the proposal without discovery; an explicitly selected but disabled,
-missing, invalid or failing publisher refuses without fallback. Binding capture
-uses the existing admission gate, but no lock crosses plugin I/O. The query checks
-the exact release/export/contract and live actor and retains original calling
-origin/parent plus a concrete query call target, with no command ID or next grant.
+Before context contributors, PrepareRequest applies the selected model-owned
+reasoning effort and refuses request-side replacement. This repairs the discovered
+auxiliary option gap: previously a selected effort could remain absent in provider
+input. Caller messages/options remain unchanged. After contribution, the final
+request reserves output through the existing Domain InputCeiling rule, including
+independent maximum input/output and shared context semantics. The selected provider
+counter receives a clone of this complete request; a failure, cancellation or
+non-positive count refuses generation without local fallback. Without a provider
+counter, the shared local estimate is a preflight approximation, not exact token
+proof. Exceeded input/output capacity dispatches no provider generation.
 
-Fresh Start selects after composing its initial input and before final model
-media/output-capacity validation, provider construction or Run acceptance. Current
-input and composed history are both admitted under the selected route. The same
-value reaches executor staging and the original durable Run opening. The Session
-keeps its independently owned user preference/proposal; selection does not rewrite
-user input or the original command fingerprint. Accepted Start retries and waiting
-Resume preserve their original Run/checkpoint and do not query selection again.
-Descendant execution inherits the accepted tree selection under its existing owner.
+The existing complete-request estimator is moved from maintenance into modeltext.
+Primary compaction and auxiliary capacity use that single implementation, preserving
+all Scope framing/options/metadata and media-payload normalization. The old estimator
+function is removed; existing estimator/compaction regressions call the shared owner.
+No extra token ledger, writer, retry/compaction loop or model source is added.
+Auxiliary context/counter I/O stays inside the existing capture lifetime; release
+cancels and joins counting before dropping its original model and dependencies.
+The counted composed request and dispatched request are equal.
 
-Auxiliary roles select before ResolveChat, then retain the selected identity with
-the actual resolved model and context/observer capture. Selection failure performs
-no construction and never falls back to the original role. Bootstrap builds this
-utility resolver once when the installed selection owner is available, rather than
-constructing and replacing an unused preliminary resolver. The selector has no
-later invocation after its query returns, so no artificial execution dependency or
-selector checkpoint state is added. Accepted selection is the calling owner's fact.
+Passed: exact-ceiling/overflow, shared output reservation and independent published
+limits; provider counter versus local estimate; error/cancel/negative/zero refusal;
+unknown-capacity semantics; clone isolation and selected reasoning; actual installed
+context included in counting and generation refusal; cancel/join/held dependencies;
+related Memory/role/text and primary compaction/estimator regressions. Runtime build,
+Runtime/bootstrap test-source compilation and scoped dependency/domain/protocol
+checks passed. A ReasoningEffort type conversion was repaired before passing.
+No UI/E2E/screenshot test authored or executed.
 
-Passed: public selection contract/optional input; real installed MCP query origin,
-parent, original proposal, explicit absence, selected refusal/invalid/withdrawal;
-fresh Run selected identity with unchanged Session preference and original input;
-selection-before-validation/staging/opening; original accepted Start retry and
-waiting Resume without reselection; auxiliary selection-before-construction and
-no fallback. Existing installed context/observer/auxiliary checks pass after
-consolidating their duplicated managed connection/installation setup into one real
-fixture. Runtime build and Runtime/bootstrap test-source compilation pass. Scoped
-dependency/domain/protocol/public-package gates pass. Initial test field/new-session
-command setup and admission ordering errors were fixed without weakening existing
-unsupported-media or composed-history assertions. No UI/E2E/screenshot tests run.
+Main 8bb503512 is integrated in 611ff1749. Fourteen source/generated merge conflicts
+were resolved by preserving Run's original command admission metadata alongside
+installed original binding and input bytes, within the same client journal. The
+superseded independent fingerprint helper is removed. Lazy tracked mutation creation
+continues to retain synchronous delivery uncertainty. PluginCallOptions is retained;
+public Start/Resume key requirements from main remain intact. Core version is
+2026-10-14.28 and generated contracts/samples are rebuilt from the merged registry;
+backend 2026-10-14.2/export schema 3 are unchanged. Shared client 80 focused checks,
+type/lint/changed formatting, desktop typecheck, Run owner identity checks, protocol
+version/schema rules and generated drift check passed. First broad test patterns
+matched no Delivery/Protocol/generator tests; they establish compilation only. The
+exact Run owner pattern subsequently ran and passed. No tests were skipped to pass.
 
-Main 414668baa remains integrated; merging main reports already up to date.
-Original proposal/review/background draft SHA-256 and the user stash are unchanged.
-Core 2026-10-14.27, backend 2026-10-14.2 and export schema 3 are unchanged. Owned
-handles and temporary compile outputs have settled. Full/native/vet/race/all-workflow
-and P01-P48 acceptance remain open. Six known older architecture failures, unchanged
-Memory formatting and the prior interrupted/untriaged UI failures remain obligations.
+Original proposal/review/background draft hashes and user stash remain unchanged.
+Owned handles/temporary compile outputs settled. Full/native/vet/race/all-workflow
+and P01-P48 acceptance remain open. Six last-known older full architecture failures,
+unchanged Memory formatting and prior interrupted/untriaged UI failures remain
+explicit final obligations; scoped gates do not prove the whole suite is clean.
 
-Selection is now real at accepted execution/auxiliary capture boundaries; it is
-not dynamic per already-bound model call. Next finish auxiliary token-capacity
-admission, general input transforms and independently routed multiple calls. Complete
-embedding metering/retention, transitive dependency lifecycle, author parity and all
-review/P01-P48 closure remain part of the goal. Overall estimate stays approximately
-65-70% full delivery and 75% implementation, not counted acceptance. Full goal active.
+Context, accepted selection and auxiliary preflight capacity are implemented. Next
+finish general model input transformations and multiple independently routed/admitted
+calls, then embeddings/retention and remaining dependency/author/acceptance work.
+Do not turn local estimation into a claim of provider-exact capacity. Overall
+estimate remains roughly 65-70% full delivery and 75% implementation, not counted
+P01-P48 closure. The full goal is active.
 
 ## Completed
+
+- Stage 5s (b93555e64): frozen auxiliary token envelope and selected-model counter,
+  output reservation/final context capacity admission before provider generation.
+- Stage 5s: selected reasoning applied without request mutation; shared complete
+  request estimator, known/unknown/count-failure semantics and counting cancel/join.
+- Stage 5s: main 8bb503512 integrated in 611ff1749 with original Run admission and
+  installed receipts retained; Core .28 generated contracts/samples and client gates.
 
 - Stage 5r (c69190524): public explicit installed selection query, exact live
   binding/original caller and refusal instead of implicit discovery/fallback.
@@ -591,8 +603,9 @@ review/P01-P48 closure remain part of the goal. Overall estimate stays approxima
 
 - Stage 5p/5q close primary/auxiliary context capture; Stage 5r closes public
   selection at accepted execution and auxiliary use-case boundaries. Complete
-  auxiliary provider token capacity, general transforms and separate per-call
-  routes/physical identities. The transparent observer does not supply these.
+  general transforms and separate per-call routes/physical identities. Stage 5s
+  completes auxiliary known-capacity preflight with provider counting or the shared
+  estimate; final integrated provider-exact acceptance remains unproven. The transparent observer does not supply these.
 
 - All actual CLI/workspace Memory reads and human mutations now use the public
   installed publisher contract. Core business methods/DTOs and the Memory feature
@@ -614,9 +627,9 @@ review/P01-P48 closure remain part of the goal. Overall estimate stays approxima
 
 ## Next
 
-1. Complete auxiliary token-capacity admission, general input transformation
-   and independently routed/admitted multiple physical calls; then embeddings
-   and complete retention. Accepted executions never silently reselect.
+1. Complete general model input transformation and independently routed/admitted
+   multiple physical calls; then embeddings and complete retention. Accepted
+   executions never silently reselect, and exact billing never derives from estimates.
 2. Complete scoped point/dependency lifecycle, observed status/retention and actual
    Tool/automatic/cross-plugin consumers with original command/Run ownership.
 3. Complete all-workflow generation recovery, independent author/module packaging,
@@ -626,6 +639,11 @@ review/P01-P48 closure remain part of the goal. Overall estimate stays approxima
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Auxiliary capture freezes catalog token limits and preserves them/counter when its call projection is decorated | Capacity must belong to the selected model instance and remain coherent for the owning use case | Looking up new limits on every call, recapturing on decoration, independent token ledgers or byte-to-token default limits |
+| 2026-10-14 | Final auxiliary context reserves output and uses the selected counter when present, else the existing request estimate | Context contributions and model-owned options must be admitted together before provider generation | Counting original input only, counter failure/zero fallback, silently dropping context or claiming estimates are exact |
+| 2026-10-14 | Apply captured auxiliary reasoning before context, counting and generation | The selected effort had not been projected into the actual auxiliary request | Ignoring selected effort, request-side replacement, mutating caller-owned options or post-count option changes |
+| 2026-10-14 | One complete-request estimator lives in the existing shared modeltext projection | Primary compaction and auxiliary admission must not diverge in framing/media/metadata estimates | Copying the algorithm, flattening to rendered transcript or a compatibility estimator wrapper |
+| 2026-10-14 | Merge original Run metadata and installed input identity under one journal/fingerprint function; Core .28 | New main freezes Run admission metadata while installed private receipts still require their original input bytes | Dropping either recovery path, eager delivery before tracking, duplicate helpers/stores or retaining the conflicting Core version |
 | 2026-10-14 | Public selection is an explicit installed query before fresh Run/auxiliary exact binding | Routing inside an already-bound model would disagree with media/capacity, construction and recovery | Post-admission provider swap, implicit discovery, selected-provider failure fallback or model-next grants at selection |
 | 2026-10-14 | Session user preference and accepted Run route are distinct facts with distinct existing owners | Routing can choose a model for this execution without rewriting the user's persistent default or original command | Overwriting Session preference with automatic routing, changing command fingerprints or keeping two mutable Run selections |
 | 2026-10-14 | Accepted Start retries/Resume restore the original route; selector query results require no later invocation binding | Durable Run/checkpoint already owns exact selection and a completed query has no future dependency | Reselecting after restart, retaining a fake selector execution dependency or adding a second selection store |
@@ -846,8 +864,9 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
+| Auxiliary complete-input capacity and original model-owned options | Stage 5s final context/provider count/local estimate, output reservation, known/unknown/error semantics, reasoning, request equality and cancel/join verified; final native/all-workflow acceptance open | model/auxiliary.go; auxiliary_capacity_test.go; pluginservices/auxiliary_model_observers.go/tests; modeltext/request_estimate.go; maintenance/compaction_trigger.go/tests |
 | Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; per-call routes/multiple invocations/final native acceptance remain open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
-| Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; auxiliary token capacity, per-call routes and general transformation remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
+| Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; Stage 5s auxiliary token preflight now verified; per-call routes/general transformation/final acceptance remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
 | Baseline calibration and accurate old/new comparison | Resolved in planning | Current stage and decisions; external inputs preserved |
 | Runtime/Scope single authority and private business fact ownership | Open; preserve throughout | runtime delivery, run execution, private plugin owners |
 | Remove business-specific service/view knowledge from substrate | Generic MCP authorization/preparation, Registry.Service and closed Services candidacy removed; actual contract/export contribution cutover compiles; all business View kinds/templates/read wrappers removed in Stage 4e and all HTML renderer/guest machinery in Stage 4i and closed action wrappers in Stage 4j; Core Memory capacity removed with publisher bounds; business topics/record IDs and contract-specific notice routing removed; full Tool/dependency/streaming and final execution remain open | mcpconnection/authority.go; pool.go; pluginservices/tool_preparation.go; generic contribution contracts |
@@ -884,6 +903,26 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5s initial capacity/context/estimator regression checks passed (model
+  1.458s; pluginservices 3.308s; maintenance 3.275s). Final cancellation/selected
+  reasoning/Memory/role checks passed (pluginservices 3.651s; model 1.879s), and
+  explicit error/cancel/negative/zero counter checks passed (1.576s).
+- Stage 5s primary ModelContext/compactor checks passed (0.955s). Provider counter
+  observes context and selected reasoning, and its complete request equals what
+  generation receives; failed/counting-canceled calls dispatch zero generation.
+- Stage 5s Runtime/bootstrap test-source compilation and Runtime build passed;
+  scoped dependency/domain/JSON-tag/protocol checks passed (0.942s). Full/native/
+  vet/race/full architecture are deferred to consolidated acceptance.
+- Stage 5s main merge: generation, source compile/build, shared client typecheck/
+  lint/changed formatting and desktop typecheck passed. 80 shared command/recovery/
+  stream/journal checks passed (1.52s). Exact Run owner command checks passed
+  (1.171s), protocol/version/schema rule gates passed, generated drift passed
+  (4.285s). Earlier broad patterns had no Delivery/Protocol/generator matches and
+  prove source compilation only, not those tests' execution.
+- Stage 5s changed gofmt/diff/original hashes passed; user stash preserved and
+  main merged. Temporary compile directories/owned processes settled. No UI/E2E/
+  screenshot authoring or execution. Core .28, backend .2, export schema 3.
 
 - Stage 5r: public SDK selection contract passed (0.901s); real installed selection,
   explicit absence and related context/observer checks passed (3.122s initial;
@@ -2234,8 +2273,9 @@ Stage 2a verification:
 ## Unresolved questions
 
 - Primary/auxiliary context and accepted execution/use-case model selection are
-  implemented. Auxiliary token capacity, general input transforms and per-call
-  routes/multiple independently admitted model calls remain open.
+  implemented. Stage 5s adds known auxiliary capacity preflight using its actual
+  counter or the shared estimate. General transforms/per-call routes/multiple
+  independently admitted calls and complete final acceptance remain open.
 - Internal AuxiliaryResolver now requires an explicit budget and returns exact
   AuxiliaryModel capture. All known internal consumers are migrated; no public
   plugin SDK or protocol type changed in this slice.
@@ -2305,6 +2345,13 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Core .28 incorporates main's required public Start/Resume identity and retained
+  Run admission metadata. Old journal Run entries lacking that metadata are refused
+  and preserved, without conversion/deletion; affected external clients must retain
+  original keys/namespace/parameters/metadata and rebuild against the current Core.
+- Auxiliary local estimates remain approximations without a provider counter;
+  actual provider capacity failures retain their original failure/observation path.
 
 - Stage 5f removes Memory's private model callback protocol and requires current
   backend/Runtime rebuild together. Private maintenance/receipt/data formats do not
