@@ -119,6 +119,7 @@ export type WireTypeName =
   | "InterruptResponseType"
   | "InterruptResponseValue"
   | "InterruptType"
+  | "Invocation"
   | "InvokeToolRequest"
   | "Item"
   | "ItemDelta"
@@ -135,6 +136,7 @@ export type WireTypeName =
   | "ListInterruptsRequest"
   | "ListItemsRequest"
   | "ListItemsResponse"
+  | "ListModelEndpointsRequest"
   | "ListModelInvocationsRequest"
   | "ListModelsRequest"
   | "ListRunsRequest"
@@ -177,6 +179,7 @@ export type WireTypeName =
   | "Modality"
   | "Model"
   | "ModelCapabilities"
+  | "ModelEndpointInvocation"
   | "ModelInvocation"
   | "ModelInvocationState"
   | "ModelInvocationUsage"
@@ -192,6 +195,7 @@ export type WireTypeName =
   | "PageOfMCPTool"
   | "PageOfManagedSkill"
   | "PageOfModel"
+  | "PageOfModelEndpointInvocation"
   | "PageOfModelInvocation"
   | "PageOfPendingInterruptSet"
   | "PageOfPluginCollaborator"
@@ -1483,6 +1487,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   InterruptType: enumOf(["approval", "question"]),
+  Invocation: object({
+    id: text(),
+    origin: text(),
+    parent: text(),
+    target: ref(() => CHECKS.Target),
+  }, ["id", "origin", "target"]),
   InvokeToolRequest: object({
     arguments: record(anything()),
     name: allOf([text(), minLength(1)]),
@@ -1754,6 +1764,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     nextCursor: allOf([text(), maxLength(65536)]),
     runs: array(ref(() => CHECKS.RunSummary)),
   }, ["data", "runs"]),
+  ListModelEndpointsRequest: object({
+    cursor: text(),
+    limit: integer(),
+    parentCallId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["parentCallId"]),
   ListModelInvocationsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     limit: allOf([integer(), minimum(1)]),
@@ -2119,6 +2134,52 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     structuredOutput: flag(),
     toolUse: flag(),
   }, []),
+  ModelEndpointInvocation: allOf([
+    object({
+      caller: ref(() => CHECKS.Invocation),
+      failure: text(),
+      id: allOf([text(), minLength(1), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      model: allOf([text(), minLength(1)]),
+      provider: allOf([text(), minLength(1)]),
+      request: allOf([text(), minLength(1)]),
+      response: text(),
+      settledAt: text(),
+      startedAt: text(),
+      state: ref(() => CHECKS.ModelInvocationState),
+    }, ["caller", "id", "model", "provider", "request", "startedAt", "state"]),
+    ifThen(
+      fields({
+        state: literal("started"),
+      }, ["state"]),
+      fields({
+        failure: absent(),
+        response: absent(),
+        settledAt: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        state: literal("completed"),
+      }, ["state"]),
+      fields({
+        failure: absent(),
+      }, ["response", "settledAt"]),
+    ),
+    ifThen(
+      fields({
+        state: literal("failed"),
+      }, ["state"]),
+      fields({}, ["failure", "response", "settledAt"]),
+    ),
+    ifThen(
+      fields({
+        state: literal("unknown"),
+      }, ["state"]),
+      fields({
+        response: absent(),
+      }, ["failure", "settledAt"]),
+    ),
+  ]),
   ModelInvocation: allOf([
     object({
       callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._:-]+$")]),
@@ -2237,6 +2298,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageOfModel: object({
     data: array(ref(() => CHECKS.Model)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["data"]),
+  PageOfModelEndpointInvocation: object({
+    data: array(ref(() => CHECKS.ModelEndpointInvocation)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfModelInvocation: object({
@@ -4318,6 +4383,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionRequest),
   "sessions.export": ref(() => CHECKS.ExportSessionRequest),
   "sessions.import": ref(() => CHECKS.ImportSessionRequest),
+  "modelInvocations.endpoints": ref(() => CHECKS.ListModelEndpointsRequest),
   "modelInvocations.list": ref(() => CHECKS.ListModelInvocationsRequest),
   "runs.start": ref(() => CHECKS.StartRunRequest),
   "runs.resume": ref(() => CHECKS.ResumeRunRequest),
@@ -4427,6 +4493,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionResponse),
   "sessions.export": ref(() => CHECKS.ExportSessionResponse),
   "sessions.import": ref(() => CHECKS.ImportSessionResponse),
+  "modelInvocations.endpoints": ref(() => CHECKS.PageOfModelEndpointInvocation),
   "modelInvocations.list": ref(() => CHECKS.PageOfModelInvocation),
   "runs.start": ref(() => CHECKS.StartRunResponse),
   "runs.resume": ref(() => CHECKS.ResumeRunResponse),

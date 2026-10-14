@@ -21,6 +21,7 @@ type HandlerConfig struct {
 	PluginCalls        pluginCallUseCases
 	Approvals          approvalUseCases
 	Models             modelUseCases
+	ModelEndpoints     endpointObservationUseCases
 	Tools              toolUseCases
 	Runs               runUseCases
 	Queries            queryUseCases
@@ -69,6 +70,7 @@ type Handler struct {
 	pluginCalls        pluginCallUseCases
 	approvals          approvalUseCases
 	models             modelUseCases
+	modelEndpoints     endpointObservationUseCases
 	tools              toolUseCases
 	runs               runUseCases
 	queries            queryUseCases
@@ -223,6 +225,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		pluginCalls:              cfg.PluginCalls,
 		approvals:                cfg.Approvals,
 		models:                   cfg.Models,
+		modelEndpoints:           cfg.ModelEndpoints,
 		tools:                    cfg.Tools,
 		runs:                     cfg.Runs,
 		queries:                  cfg.Queries,

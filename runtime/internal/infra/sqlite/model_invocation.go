@@ -24,10 +24,9 @@ const (
 
 func (m modelInvocationState) databaseValue() string { return string(m) }
 
-// ModelInvocationStore is the SQLite operational journal for provider-call
-// attempts. Semantic messages and aggregate accounting stay in history_items
-// and runs. Attempt timing, outcomes, and per-call usage remain available until
-// the owning Run is deleted.
+// ModelInvocationStore records logical Interaction observations and distinct
+// physical chat endpoints. Semantic continuation and aggregate accounting remain
+// with history_items and runs; these observations never authorize provider replay.
 type ModelInvocationStore struct{ db *sql.DB }
 
 func NewModelInvocationStore(db *sql.DB) *ModelInvocationStore {
@@ -47,7 +46,7 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 	rows, err := Connection(ctx, m.db).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, started_at
 		  FROM model_invocations
-		 WHERE state = ?
+		 WHERE state = ? AND endpoint_json IS NULL
 		 ORDER BY session_id, run_id, segment_id, call_id
 	`, modelInvocationStarted.databaseValue())
 	if err != nil {
@@ -261,7 +260,7 @@ type ModelInvocationRecord struct {
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
 func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]ModelInvocationRecord, error) {
-	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE run_id = ?`
+	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE run_id = ? AND endpoint_json IS NULL`
 	args := []any{runID}
 	if beforeCallID != "" {
 		query += ` AND (started_at, call_id) < (?, ?)`

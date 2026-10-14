@@ -258,6 +258,10 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
             },
             {
+              "name": "ListModelEndpoints",
+              "signature": "func(ctx context.Context, request protocol.ListModelEndpointsRequest, options CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error)"
+            },
+            {
               "name": "ListModelInvocations",
               "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
             },
@@ -886,6 +890,10 @@
             {
               "name": "ListManagedSkills",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
+            },
+            {
+              "name": "ListModelEndpoints",
+              "signature": "func(ctx context.Context, request protocol.ListModelEndpointsRequest, options CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error)"
             },
             {
               "name": "ListModelInvocations",
@@ -3717,7 +3725,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.23\""
+          "value": "\"2026-10-14.24\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7107,6 +7115,33 @@
           ]
         },
         {
+          "name": "ListModelEndpointsRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ParentCallID",
+              "type": "string",
+              "tag": "json:\"parentCallId\""
+            },
+            {
+              "name": "Cursor",
+              "type": "string",
+              "tag": "json:\"cursor,omitzero\""
+            },
+            {
+              "name": "Limit",
+              "type": "*int",
+              "tag": "json:\"limit,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "ListModelInvocationsRequest",
           "kind": "struct",
           "fields": [
@@ -7948,6 +7983,68 @@
               "name": "StructuredOutput",
               "type": "bool",
               "tag": "json:\"structuredOutput,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ModelEndpointInvocation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Caller",
+              "type": "capability.Invocation",
+              "tag": "json:\"caller\""
+            },
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "Request",
+              "type": "string",
+              "tag": "json:\"request\""
+            },
+            {
+              "name": "Response",
+              "type": "string",
+              "tag": "json:\"response,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "string",
+              "tag": "json:\"failure,omitzero\""
+            },
+            {
+              "name": "State",
+              "type": "ModelInvocationState",
+              "tag": "json:\"state\""
+            },
+            {
+              "name": "StartedAt",
+              "type": "time.Time",
+              "tag": "json:\"startedAt\""
+            },
+            {
+              "name": "SettledAt",
+              "type": "time.Time",
+              "tag": "json:\"settledAt,omitzero\""
             }
           ],
           "methods": [

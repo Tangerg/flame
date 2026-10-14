@@ -104,6 +104,14 @@ func (e ExportSessionRequest) ValidateWire() error {
 	)
 }
 
+func (l ListModelEndpointsRequest) ValidateWire() error {
+	return collectWireViolations("ListModelEndpointsRequest",
+		requiredText("parentCallId", l.ParentCallID),
+		identity("parentCallId", l.ParentCallID),
+		maxLength("parentCallId", l.ParentCallID, 256),
+	)
+}
+
 func (l ListModelInvocationsRequest) ValidateWire() error {
 	return collectWireViolations("ListModelInvocationsRequest",
 		requiredText("runId", l.RunID),
@@ -1721,6 +1729,29 @@ func (d DiffRow) ValidateWire() error {
 		requiredWhen(wireFieldEquals(d, "type", "deleted"), "leftLine", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "deleted"), "text", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "deleted"), "rightLine", d),
+	)
+}
+
+func (m ModelEndpointInvocation) ValidateWire() error {
+	return collectWireViolations("ModelEndpointInvocation",
+		identity("id", m.ID),
+		requiredText("id", m.ID),
+		requiredText("provider", m.Provider),
+		requiredText("model", m.Model),
+		requiredText("request", m.Request),
+		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "response", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "failure", m),
+		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
+		requiredWhen(wireFieldEquals(m, "state", "completed"), "response", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "completed"), "failure", m),
+		requiredWhen(wireFieldEquals(m, "state", "failed"), "settledAt", m),
+		requiredWhen(wireFieldEquals(m, "state", "failed"), "response", m),
+		requiredWhen(wireFieldEquals(m, "state", "failed"), "failure", m),
+		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
+		requiredWhen(wireFieldEquals(m, "state", "unknown"), "failure", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "response", m),
 	)
 }
 

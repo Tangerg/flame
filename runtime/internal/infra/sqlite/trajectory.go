@@ -83,7 +83,7 @@ func (s *TrajectoryStore) positions(ctx context.Context, sessionID string, inclu
 	query := `SELECT occurred_at, kind, id, run_id FROM (
 		SELECT created_at AS occurred_at, 'run' AS kind, run_id AS id, run_id FROM runs WHERE session_id = ?
 		UNION ALL
-		SELECT started_at, 'model', call_id, run_id FROM model_invocations WHERE session_id = ?
+		SELECT started_at, 'model', call_id, run_id FROM model_invocations WHERE session_id = ? AND endpoint_json IS NULL
 		UNION ALL
 		SELECT occurred_at, 'item', item_id, run_id FROM history_items WHERE session_id = ?
 	) WHERE 1 = 1`

@@ -35,6 +35,8 @@ import type { RunId, SegmentId, SessionId } from "./ids";
 import type {
   ModelInvocation,
   ListModelInvocationsRequest,
+  ListModelEndpointsRequest,
+  ModelEndpointInvocation,
   ApprovalMode,
   ApprovalModeResult,
   CancelRunResponse,
@@ -216,6 +218,10 @@ export interface Methods {
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
   modelInvocations: {
+    endpoints: (
+      query: ListModelEndpointsRequest,
+      signal?: AbortSignal,
+    ) => AutoPagingPromise<Page<ModelEndpointInvocation>>;
     list: (
       query: ListModelInvocationsRequest,
       signal?: AbortSignal,
@@ -564,6 +570,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         }),
     },
     modelInvocations: {
+      endpoints: (query, signal) => call("modelInvocations.endpoints", query, { signal }),
       list: (query, signal) => call("modelInvocations.list", query, { signal }),
     },
     runs: {

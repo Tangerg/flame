@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.23";
+export const PROTOCOL_VERSION = "2026-10-14.24";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -726,6 +726,13 @@ export type InterruptResponseValue =
 
 export type InterruptType = "approval" | "question";
 
+export interface Invocation {
+  id: string;
+  origin: string;
+  parent?: string;
+  target: Target;
+}
+
 export interface InvokeToolRequest {
   arguments: Record<string, unknown>;
   name: string;
@@ -800,6 +807,12 @@ export interface ListItemsResponse {
   data: Item[];
   nextCursor?: string;
   runs: RunSummary[];
+}
+
+export interface ListModelEndpointsRequest {
+  cursor?: string;
+  limit?: number;
+  parentCallId: string;
 }
 
 export interface ListModelInvocationsRequest {
@@ -1009,6 +1022,19 @@ export interface ModelCapabilities {
   toolUse?: boolean;
 }
 
+export interface ModelEndpointInvocation {
+  caller: Invocation;
+  failure?: string;
+  id: string;
+  model: string;
+  provider: string;
+  request: string;
+  response?: string;
+  settledAt?: string;
+  startedAt: string;
+  state: ModelInvocationState;
+}
+
 export interface ModelInvocation {
   callId: string;
   firstOutputLatencyMillis?: number;
@@ -1076,6 +1102,8 @@ export type PageOfMCPTool = Page<MCPTool>;
 export type PageOfManagedSkill = Page<ManagedSkill>;
 
 export type PageOfModel = Page<Model>;
+
+export type PageOfModelEndpointInvocation = Page<ModelEndpointInvocation>;
 
 export type PageOfModelInvocation = Page<ModelInvocation>;
 

@@ -1056,6 +1056,12 @@ func registerTrajectoryUnion(s *Shapes) {
 }
 
 func registerTrajectoryObservationConstraints(s *Shapes) {
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.ModelEndpointInvocation](), Rules: []ConditionalRule{
+		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationStarted)}}, Forbidden: []string{"settledAt", "response", "failure"}},
+		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationCompleted)}}, Required: []string{"settledAt", "response"}, Forbidden: []string{"failure"}},
+		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationFailed)}}, Required: []string{"settledAt", "response", "failure"}},
+		{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationUnknown)}}, Required: []string{"settledAt", "failure"}, Forbidden: []string{"response"}},
+	}})
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ModelInvocation](),
 		Rules: []ConditionalRule{

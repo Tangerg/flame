@@ -32,7 +32,7 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 			+ length(CAST(id AS BLOB))) FROM tool_result_blobs WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(steps AS BLOB))) FROM session_plans WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(COALESCE(length(CAST(usage AS BLOB)), 0) + COALESCE(length(CAST(known_response AS BLOB)), 0) + length(CAST(call_id AS BLOB))
-			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM model_invocations WHERE session_id = ?
+			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM model_invocations WHERE session_id = ? AND endpoint_json IS NULL
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(call_id AS BLOB)) + length(CAST(item_id AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM tool_invocations WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(text AS BLOB)) + length(CAST(session_id AS BLOB))
@@ -52,7 +52,11 @@ func (s *SessionStore) validateTrajectoryJournalOwnership(ctx context.Context, s
 	for _, table := range []string{"model_invocations", "tool_invocations"} {
 		query := `SELECT EXISTS(SELECT 1 FROM ` + table + ` attempt LEFT JOIN runs owner ON owner.run_id = attempt.run_id
 			WHERE (attempt.session_id = ? OR owner.session_id = ?)
-			AND (owner.run_id IS NULL OR attempt.session_id != owner.session_id))`
+			AND (owner.run_id IS NULL OR attempt.session_id != owner.session_id)`
+		if table == "model_invocations" {
+			query += ` AND endpoint_json IS NULL`
+		}
+		query += `)`
 		var invalid bool
 		if err := Connection(ctx, s.db).QueryRowContext(ctx, query, sessionID, sessionID).Scan(&invalid); err != nil {
 			return fmt.Errorf("sqlite: inspect trajectory journal ownership: %w", err)

@@ -8,18 +8,24 @@ import (
 )
 
 const (
-	RunsStart            Name = "runs.start"
-	RunsResume           Name = "runs.resume"
-	RunsSubscribe        Name = "runs.subscribe"
-	RunsCancel           Name = "runs.cancel"
-	RunsSteer            Name = "runs.steer"
-	RunsGet              Name = "runs.get"
-	RunsGetAcceptance    Name = "runs.getAcceptance"
-	RunsList             Name = "runs.list"
-	ModelInvocationsList Name = "modelInvocations.list"
+	RunsStart                 Name = "runs.start"
+	RunsResume                Name = "runs.resume"
+	RunsSubscribe             Name = "runs.subscribe"
+	RunsCancel                Name = "runs.cancel"
+	RunsSteer                 Name = "runs.steer"
+	RunsGet                   Name = "runs.get"
+	RunsGetAcceptance         Name = "runs.getAcceptance"
+	RunsList                  Name = "runs.list"
+	ModelInvocationsList      Name = "modelInvocations.list"
+	ModelInvocationsEndpoints Name = "modelInvocations.endpoints"
 )
 
 func registerRuns(registry *Registry) {
+	registry.query(MethodMeta{Name: ModelInvocationsEndpoints, Errors: []string{protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
+		ListModelEndpoints(context.Context, protocol.ListModelEndpointsRequest) (*protocol.Page[protocol.ModelEndpointInvocation], error)
+	}, ctx context.Context, request protocol.ListModelEndpointsRequest) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
+		return service.ListModelEndpoints(ctx, request)
+	})
 	registry.query(MethodMeta{Name: ModelInvocationsList, Errors: []string{protocol.ErrRunNotFound.Error(), protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
 		ListModelInvocations(context.Context, protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error)
 	}, ctx context.Context, request protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error) {

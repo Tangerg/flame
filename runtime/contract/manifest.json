@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.23",
+  "protocolVersion": "2026-10-14.24",
   "features": [
     "reasoning",
     "multimodal",
@@ -210,6 +210,17 @@
       ],
       "features": [
         "sessionExport"
+      ]
+    },
+    {
+      "name": "modelInvocations.endpoints",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor",
+      "errors": [
+        "capability_not_negotiated"
       ]
     },
     {
@@ -1520,6 +1531,7 @@
           "mcp.tools.exposure",
           "mcp.tools.list",
           "mcp.tools.setExposure",
+          "modelInvocations.endpoints",
           "modelInvocations.list",
           "plan.get",
           "plugins.call",
@@ -4577,6 +4589,71 @@
     }
   ],
   "objectConstraints": [
+    {
+      "type": "ModelEndpointInvocation",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "started"
+            }
+          ],
+          "forbidden": [
+            "settledAt",
+            "response",
+            "failure"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "completed"
+            }
+          ],
+          "required": [
+            "settledAt",
+            "response"
+          ],
+          "forbidden": [
+            "failure"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "failed"
+            }
+          ],
+          "required": [
+            "settledAt",
+            "response",
+            "failure"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "unknown"
+            }
+          ],
+          "required": [
+            "settledAt",
+            "failure"
+          ],
+          "forbidden": [
+            "response"
+          ]
+        }
+      ]
+    },
     {
       "type": "ModelInvocation",
       "rules": [
@@ -7768,6 +7845,48 @@
         {
           "field": "runId",
           "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ListModelEndpointsRequest",
+      "rules": [
+        {
+          "field": "parentCallId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "parentCallId",
+          "constraint": "identity"
+        },
+        {
+          "field": "parentCallId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ModelEndpointInvocation",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "model",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "request",
+          "constraint": "nonEmpty"
         }
       ]
     },

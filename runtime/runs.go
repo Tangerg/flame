@@ -52,3 +52,7 @@ func (r *binding) ListRuns(ctx context.Context, request protocol.ListRunsRequest
 func (r *binding) ListModelInvocations(ctx context.Context, request protocol.ListModelInvocationsRequest, options CallOptions) (*protocol.Page[protocol.ModelInvocation], error) {
 	return r.invoke[protocol.ListModelInvocationsRequest, *protocol.Page[protocol.ModelInvocation]](ctx, delivery.ModelInvocationsList, request, callOptions(options))
 }
+
+func (r *binding) ListModelEndpoints(ctx context.Context, request protocol.ListModelEndpointsRequest, options CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
+	return r.invoke[protocol.ListModelEndpointsRequest, *protocol.Page[protocol.ModelEndpointInvocation]](ctx, delivery.ModelInvocationsEndpoints, request, callOptions(options))
+}

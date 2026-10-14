@@ -256,6 +256,31 @@ Session without a Goal returns null through `goals.get` in both bindings. Receip
 and remote decoders require the declared fields before accepting typed values.
 Diagnostic Tool results remain opaque JSON, where null is a valid value.
 
+Core 2026-10-14.24 adds modelInvocations.endpoints, with parentCallId identifying
+the logical caller or its immediate parent. The same model_invocations journal
+now distinguishes logical Interaction observations from actual endpoint admission
+through endpoint_json. Every real primary/auxiliary/Memory chat request is
+recorded before I/O with its own identity, original caller/origin/parent, exact
+provider/model and frozen Scope request. Reusing the same logical model call cannot
+start another endpoint. Request model overrides cannot replace the captured route.
+
+Endpoint response, usage and reasoning are committed beneath remote observation;
+outer observer failure cannot rewrite a known completed endpoint. The original
+request/response JSON remains available through public Go/TS query without another
+numeric conversion. A complete source response accompanied by failure remains
+failed with known evidence; absence of a complete response remains unknown. Lazy
+streams publish nothing before consumption. Early stop retains a complete known
+response where available, but never asserts operation success. Startup reconciles
+unobserved endpoints as unknown before Run recovery and never replays them.
+
+The exact host schema adds endpoint metadata/ancestry and permits observations
+without a Run. Former schemas are refused without conversion/deletion; preserve
+them separately and use a fresh directory. Backend/private receipts are unchanged.
+Existing Run list/trajectory/export retain their logical observation contract;
+endpoint export/lifecycle retention and Run accounting from actual physical calls
+remain explicit follow-up work. The operational journal does not authorize Tool
+or conversation continuation and is not a recoverable provider receipt.
+
 Auxiliary title, compaction, skill mining and Memory utility work now consume the
 same public observer choice. AuxiliaryResolver returns a captured model and a
 required release function. Complete releases after response validation; Memory

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-14.23",
+  "protocolVersion": "2026-10-14.24",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -3427,6 +3427,28 @@
         "question"
       ]
     },
+    "Invocation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "target"
+      ]
+    },
     "InvokeToolRequest": {
       "type": "object",
       "properties": {
@@ -4186,6 +4208,26 @@
       "required": [
         "data",
         "runs"
+      ]
+    },
+    "ListModelEndpointsRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "parentCallId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "parentCallId"
       ]
     },
     "ListModelInvocationsRequest": {
@@ -5348,6 +5390,139 @@
         }
       }
     },
+    "ModelEndpointInvocation": {
+      "type": "object",
+      "properties": {
+        "caller": {
+          "$ref": "#/$defs/Invocation"
+        },
+        "failure": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request": {
+          "type": "string",
+          "minLength": 1
+        },
+        "response": {
+          "type": "string"
+        },
+        "settledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "$ref": "#/$defs/ModelInvocationState"
+        }
+      },
+      "required": [
+        "caller",
+        "id",
+        "model",
+        "provider",
+        "request",
+        "startedAt",
+        "state"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "started"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "failure": false,
+              "response": false,
+              "settledAt": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "failure": false
+            },
+            "required": [
+              "response",
+              "settledAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "failed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "failure",
+              "response",
+              "settledAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "response": false
+            },
+            "required": [
+              "failure",
+              "settledAt"
+            ]
+          }
+        }
+      ]
+    },
     "ModelInvocation": {
       "type": "object",
       "properties": {
@@ -5769,6 +5944,24 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Model"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
+    "PageOfModelEndpointInvocation": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelEndpointInvocation"
           }
         },
         "nextCursor": {

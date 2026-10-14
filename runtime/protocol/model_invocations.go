@@ -1,6 +1,28 @@
 package protocol
 
-import "time"
+import (
+	"github.com/Tangerg/flame/runtime/capability"
+	"time"
+)
+
+type ListModelEndpointsRequest struct {
+	ParentCallID string `json:"parentCallId"`
+	Cursor       string `json:"cursor,omitzero"`
+	Limit        *int   `json:"limit,omitzero"`
+}
+
+type ModelEndpointInvocation struct {
+	ID        string                `json:"id"`
+	Caller    capability.Invocation `json:"caller"`
+	Provider  string                `json:"provider"`
+	Model     string                `json:"model"`
+	Request   string                `json:"request"`
+	Response  string                `json:"response,omitzero"`
+	Failure   string                `json:"failure,omitzero"`
+	State     ModelInvocationState  `json:"state"`
+	StartedAt time.Time             `json:"startedAt"`
+	SettledAt time.Time             `json:"settledAt,omitzero"`
+}
 
 type ModelInvocationState string
 

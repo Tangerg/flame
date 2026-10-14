@@ -216,15 +216,18 @@ func currentSchema() []string {
 		// and runs; deleting the owning Run also removes its invocation records.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
 			call_id     TEXT    PRIMARY KEY,
-			session_id  TEXT    NOT NULL,
-			run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
-			segment_id  TEXT    NOT NULL,
+			session_id  TEXT,
+			run_id      TEXT REFERENCES runs(run_id) ON DELETE CASCADE,
+			segment_id  TEXT,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER,
 			%[5]s,
 			%[6]s,
-			known_response TEXT CHECK (known_response IS NULL OR (state = '%[3]s' AND json_valid(known_response))),
+			endpoint_json TEXT CHECK (endpoint_json IS NULL OR json_valid(endpoint_json)),
+			endpoint_failure TEXT NOT NULL DEFAULT '',
+			known_response TEXT CHECK (known_response IS NULL OR ((state = '%[3]s' OR (state = '%[2]s' AND endpoint_json IS NOT NULL)) AND json_valid(known_response))),
+			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL)),
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
 				(state = '%[1]s' AND finished_at IS NULL) OR
@@ -240,6 +243,8 @@ func currentSchema() []string {
 		),
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
 			ON model_invocations(run_id, started_at DESC, call_id DESC)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_model_endpoint_parent ON model_invocations(json_extract(endpoint_json,'$.caller.id')) WHERE endpoint_json IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_model_endpoint_ancestry ON model_invocations(json_extract(endpoint_json,'$.caller.parent'),started_at DESC,call_id DESC) WHERE endpoint_json IS NOT NULL`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
 			ON model_invocations(state) WHERE state = '%s'`, modelInvocationStarted.databaseValue()),
 		// Attempts retain their Segment identity across waits; the final Tool Item

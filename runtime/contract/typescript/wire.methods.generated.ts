@@ -51,6 +51,7 @@ import type {
   ListInterruptsRequest,
   ListItemsRequest,
   ListItemsResponse,
+  ListModelEndpointsRequest,
   ListModelInvocationsRequest,
   ListModelsRequest,
   ListRunsRequest,
@@ -71,6 +72,7 @@ import type {
   PageOfMCPTool,
   PageOfManagedSkill,
   PageOfModel,
+  PageOfModelEndpointInvocation,
   PageOfModelInvocation,
   PageOfPendingInterruptSet,
   PageOfPluginCollaborator,
@@ -187,6 +189,7 @@ const METHOD_NAMES = [
   "sessions.rollback",
   "sessions.export",
   "sessions.import",
+  "modelInvocations.endpoints",
   "modelInvocations.list",
   "runs.start",
   "runs.resume",
@@ -310,6 +313,7 @@ const VALUE_METHOD_NAMES = [
   "sessions.rollback",
   "sessions.export",
   "sessions.import",
+  "modelInvocations.endpoints",
   "modelInvocations.list",
   "runs.start",
   "runs.resume",
@@ -497,6 +501,13 @@ export const WIRE_METHOD_POLICY = {
     idempotency: "replayResponse",
     replayCursor: "none",
     pagination: "none",
+  },
+  "modelInvocations.endpoints": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "cursor",
   },
   "modelInvocations.list": {
     operation: "query",
@@ -1348,6 +1359,7 @@ export interface WireShapes {
   "sessions.rollback": { params: RollbackSessionRequest; result: RollbackSessionResponse };
   "sessions.export": { params: ExportSessionRequest; result: ExportSessionResponse };
   "sessions.import": { params: ImportSessionRequest; result: ImportSessionResponse };
+  "modelInvocations.endpoints": { params: ListModelEndpointsRequest; result: PageOfModelEndpointInvocation };
   "modelInvocations.list": { params: ListModelInvocationsRequest; result: PageOfModelInvocation };
   "runs.start": { params: StartRunRequest; result: StartRunResponse };
   "runs.resume": { params: ResumeRunRequest; result: ResumeRunResponse };

@@ -381,6 +381,10 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct model invocation reader: %w", err)
 	}
+	modelEndpoints, err := models.NewEndpointObservations(cfg.Stores.ModelInvocations)
+	if err != nil {
+		return nil, err
+	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
 		ReadSnapshot:     cfg.Stores.Transactor,
 		Trajectory:       cfg.Stores.Trajectory,
@@ -431,6 +435,9 @@ func buildAssemblyCore(
 	if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: revive accepted continuations: %w", err)
 	}
+	if err := cfg.Stores.ModelInvocations.ReconcileEndpointInvocations(ctx, time.Now().UTC()); err != nil {
+		return nil, err
+	}
 	if err := runCoordinator.ReviveUncertainExecutions(ctx, recoveryPersistence, cfg.Stores.ExecutorCheckpoints, execution.executor); err != nil {
 		return nil, fmt.Errorf("runtime: revive uncertain executions: %w", err)
 	}
@@ -448,6 +455,7 @@ func buildAssemblyCore(
 				PluginCalls:            execution.tools.pluginCalls,
 				Approvals:              approvalCoordinator,
 				Models:                 modelCoordinator,
+				ModelEndpoints:         modelEndpoints,
 				Tools:                  toolCoordinator,
 				Runs:                   runCoordinator,
 				FileChanges:            fileChanges.Observe,

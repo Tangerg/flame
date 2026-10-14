@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-14.23` · 99 methods
+Protocol `2026-10-14.24` · 100 methods
 
 ## Methods
 
@@ -24,6 +24,7 @@ Protocol `2026-10-14.23` · 99 methods
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
+| `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
 | `runs.start` | command | stream | ownerRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
@@ -812,6 +813,14 @@ TypeScript validator from this single registry projection.
 | `ListModelInvocationsRequest` | `runId` | `nonEmpty` |
 | `ListModelInvocationsRequest` | `runId` | `identity` |
 | `ListModelInvocationsRequest` | `runId` | `maxLength(256)` |
+| `ListModelEndpointsRequest` | `parentCallId` | `nonEmpty` |
+| `ListModelEndpointsRequest` | `parentCallId` | `identity` |
+| `ListModelEndpointsRequest` | `parentCallId` | `maxLength(256)` |
+| `ModelEndpointInvocation` | `id` | `identity` |
+| `ModelEndpointInvocation` | `id` | `nonEmpty` |
+| `ModelEndpointInvocation` | `provider` | `nonEmpty` |
+| `ModelEndpointInvocation` | `model` | `nonEmpty` |
+| `ModelEndpointInvocation` | `request` | `nonEmpty` |
 | `ModelInvocation` | `runId` | `nonEmpty` |
 | `ModelInvocation` | `runId` | `identity` |
 | `ModelInvocation` | `runId` | `maxLength(256)` |
