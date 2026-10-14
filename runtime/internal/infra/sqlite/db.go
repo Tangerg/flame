@@ -405,6 +405,10 @@ func currentSchema() []string {
             enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))
         )`,
 		// Removing an installation cannot silently choose another provider.
+		`CREATE TABLE IF NOT EXISTS plugin_compositions (
+			reference TEXT PRIMARY KEY,
+			composition_json TEXT NOT NULL CHECK (json_valid(composition_json))
+		)`,
 		`CREATE TABLE IF NOT EXISTS plugin_provider_selections (
             role TEXT PRIMARY KEY CHECK (length(role) BETWEEN 1 AND 256),
             installation_id TEXT NOT NULL,

@@ -13,6 +13,10 @@ import type {
   PluginCollaborator,
   PluginProviderSelection,
   SelectPluginProviderRequest,
+  PluginComposition,
+  SetPluginCompositionRequest,
+  ResolvePluginCompositionRequest,
+  PluginOperationBinding,
   PluginInstallation,
   InstallPluginRequest,
   StagePluginRequest,
@@ -317,6 +321,15 @@ export interface Methods {
       signal?: AbortSignal,
     ) => Promise<T>;
     listProviders: (signal?: AbortSignal) => Promise<Page<PluginProviderSelection>>;
+    listCompositions: (signal?: AbortSignal) => Promise<Page<PluginComposition>>;
+    setComposition: (
+      request: SetPluginCompositionRequest,
+      signal?: AbortSignal,
+    ) => MutationPromise<PluginComposition>;
+    resolveComposition: (
+      request: ResolvePluginCompositionRequest,
+      signal?: AbortSignal,
+    ) => Promise<Page<PluginOperationBinding>>;
     selectProvider: (
       request: SelectPluginProviderRequest,
       signal?: AbortSignal,
@@ -648,6 +661,10 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           signal,
         ),
       listProviders: (signal) => call("plugins.listProviders", {}, { signal }),
+      listCompositions: (signal) => call("plugins.listCompositions", {}, { signal }),
+      setComposition: (request, signal) => call("plugins.setComposition", request, { signal }),
+      resolveComposition: (request, signal) =>
+        call("plugins.resolveComposition", request, { signal }),
       selectProvider: (request, signal) => call("plugins.selectProvider", request, { signal }),
       openResources: (request, signal) => openResourceLease(client, call, request, signal),
       readResource: (request, signal) => call("plugins.readResource", request, { signal }),

@@ -13,19 +13,20 @@ import (
 // HandlerConfig declares the application use cases, notification sources, and
 // contract facts required to construct a Handler.
 type HandlerConfig struct {
-	Sessions          sessionUseCases
-	MCP               mcpUseCases
-	Plugins           pluginUseCases
-	PluginSelections  selectionUseCases
-	PluginCalls       pluginCallUseCases
-	Approvals         approvalUseCases
-	Models            modelUseCases
-	Tools             toolUseCases
-	Runs              runUseCases
-	Queries           queryUseCases
-	Usage             usageUseCases
-	Feedback          feedbackUseCases
-	TrajectoryExports trajectoryExportUseCases
+	Sessions           sessionUseCases
+	MCP                mcpUseCases
+	Plugins            pluginUseCases
+	PluginSelections   selectionUseCases
+	PluginCompositions compositionUseCases
+	PluginCalls        pluginCallUseCases
+	Approvals          approvalUseCases
+	Models             modelUseCases
+	Tools              toolUseCases
+	Runs               runUseCases
+	Queries            queryUseCases
+	Usage              usageUseCases
+	Feedback           feedbackUseCases
+	TrajectoryExports  trajectoryExportUseCases
 
 	FileChanges func(func(workspaceapp.FileChangeNotice))
 
@@ -60,19 +61,20 @@ type HandlerConfig struct {
 type Handler struct {
 	serverInfo protocol.ServerInfo
 
-	sessions          sessionUseCases
-	mcp               mcpUseCases
-	plugins           pluginUseCases
-	pluginSelections  selectionUseCases
-	pluginCalls       pluginCallUseCases
-	approvals         approvalUseCases
-	models            modelUseCases
-	tools             toolUseCases
-	runs              runUseCases
-	queries           queryUseCases
-	usage             usageUseCases
-	feedback          feedbackUseCases
-	trajectoryExports trajectoryExportUseCases
+	sessions           sessionUseCases
+	mcp                mcpUseCases
+	plugins            pluginUseCases
+	pluginSelections   selectionUseCases
+	pluginCompositions compositionUseCases
+	pluginCalls        pluginCallUseCases
+	approvals          approvalUseCases
+	models             modelUseCases
+	tools              toolUseCases
+	runs               runUseCases
+	queries            queryUseCases
+	usage              usageUseCases
+	feedback           feedbackUseCases
+	trajectoryExports  trajectoryExportUseCases
 
 	goals goalUseCases
 
@@ -217,6 +219,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		mcp:                      cfg.MCP,
 		plugins:                  cfg.Plugins,
 		pluginSelections:         cfg.PluginSelections,
+		pluginCompositions:       cfg.PluginCompositions,
 		pluginCalls:              cfg.PluginCalls,
 		approvals:                cfg.Approvals,
 		models:                   cfg.Models,

@@ -53,7 +53,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: construct package skills: %w", err)
 	}
-	registry, err := plugins.NewRegistry(cfg.Stores.MCPServers, cfg.Stores.Installations, packages, cfg.Stores.ProviderSelections)
+	registry, err := plugins.NewRegistry(cfg.Stores.MCPServers, cfg.Stores.Installations, packages, cfg.Stores.ProviderSelections, cfg.Stores.PluginCompositions)
 	if err != nil {
 		return policyComposition{}, err
 	}

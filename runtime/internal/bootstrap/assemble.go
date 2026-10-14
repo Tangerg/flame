@@ -296,6 +296,10 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, err
 	}
+	pluginCompositions, err := plugins.NewCompositions(cfg.Stores.PluginCompositions, cfg.Stores.Installations, execution.tools.admission, policy.invalidations.Publish)
+	if err != nil {
+		return nil, err
+	}
 
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.
 	goalDriver, err := goals.NewDriver(
@@ -440,6 +444,7 @@ func buildAssemblyCore(
 				MCP:                    mcpCoordinator,
 				Plugins:                pluginCoordinator,
 				PluginSelections:       pluginSelections,
+				PluginCompositions:     pluginCompositions,
 				PluginCalls:            execution.tools.pluginCalls,
 				Approvals:              approvalCoordinator,
 				Models:                 modelCoordinator,

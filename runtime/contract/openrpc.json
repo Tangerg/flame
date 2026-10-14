@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-10-14.22",
+    "version": "2026-10-14.23",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -5217,6 +5217,263 @@
       }
     },
     {
+      "name": "plugins.listCompositions",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/PageOfPluginComposition"
+        }
+      },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32040,
+          "message": "plugin_not_found"
+        },
+        {
+          "code": -32041,
+          "message": "plugin_in_use"
+        },
+        {
+          "code": -32042,
+          "message": "plugin_disabled"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "plugins"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "name": "plugins.setComposition",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "contract",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "name": "members",
+          "required": true,
+          "schema": {
+            "items": {
+              "$ref": "#/components/schemas/PluginCompositionMember"
+            },
+            "allOf": [
+              {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "schema.json#/$defs/PluginCompositionMember"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/PluginComposition"
+        }
+      },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32040,
+          "message": "plugin_not_found"
+        },
+        {
+          "code": -32041,
+          "message": "plugin_in_use"
+        },
+        {
+          "code": -32042,
+          "message": "plugin_disabled"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "plugins"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "contract": {},
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PluginCompositionMember"
+            }
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SetPluginCompositionRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "plugins.resolveComposition",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "contract",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/PageOfPluginOperationBinding"
+        }
+      },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32040,
+          "message": "plugin_not_found"
+        },
+        {
+          "code": -32041,
+          "message": "plugin_in_use"
+        },
+        {
+          "code": -32042,
+          "message": "plugin_disabled"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "plugins"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "contract": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ResolvePluginCompositionRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "plugins.list",
       "paramStructure": "by-name",
       "params": [
@@ -7784,6 +8041,18 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/PlanStep"
+          }
+        ]
+      },
+      "PluginCompositionMember": {
+        "properties": {
+          "contribution": {},
+          "installationId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/PluginCompositionMember"
           }
         ]
       },

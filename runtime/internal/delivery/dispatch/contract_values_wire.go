@@ -1066,6 +1066,17 @@ func registerPluginValues(s *Shapes) {
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCompositionMember](), Constraints: []FieldConstraint{
+		{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+		{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+	}})
+	for _, shape := range []reflect.Type{typeOf[protocol.PluginComposition](), typeOf[protocol.SetPluginCompositionRequest](), typeOf[protocol.ResolvePluginCompositionRequest]()} {
+		constraints := []FieldConstraint{{Field: "contract", Kind: ConstraintNonEmpty}}
+		if shape != typeOf[protocol.ResolvePluginCompositionRequest]() {
+			constraints = append(constraints, FieldConstraint{Field: "members", Kind: ConstraintUniqueItems})
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	}
 	for _, shape := range []reflect.Type{typeOf[protocol.StagePluginRequest](), typeOf[protocol.PluginRequest](), typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.SetPluginEnablementRequest](), typeOf[protocol.ConfigurePluginRequest]()} {
 		constraints := []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()}}
 		switch shape {

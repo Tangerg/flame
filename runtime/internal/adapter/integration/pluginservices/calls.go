@@ -33,7 +33,7 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 }
 
 func (c *CommandCalls) Resolve(ctx context.Context, installation resourceid.InstallationID, digest fingerprint.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
-	return plugins.ResolveRequirements(ctx, c.installations, c.selections, installation, digest, contribution)
+	return plugins.ResolveRequirements(ctx, c.installations, c.selections, c.compositions, installation, digest, contribution)
 }
 
 func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *point.Contract, target point.Context, order []plugins.PointReference) ([]plugins.PointBinding, error) {

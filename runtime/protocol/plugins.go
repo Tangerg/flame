@@ -48,6 +48,27 @@ type PluginProviderSelection struct {
 	Contribution   string `json:"contribution"`
 }
 
+// PluginComposition freezes consumer-selected outer-to-inner member order.
+// Concrete releases are captured when an execution binds this choice.
+type PluginComposition struct {
+	Contract string                    `json:"contract"`
+	Members  []PluginCompositionMember `json:"members"`
+}
+
+type PluginCompositionMember struct {
+	InstallationID string `json:"installationId"`
+	Contribution   string `json:"contribution"`
+}
+
+type SetPluginCompositionRequest struct {
+	Contract string                    `json:"contract"`
+	Members  []PluginCompositionMember `json:"members"`
+}
+
+type ResolvePluginCompositionRequest struct {
+	Contract string `json:"contract"`
+}
+
 type SelectPluginProviderRequest struct {
 	Role           string `json:"role"`
 	InstallationID string `json:"installationId"`

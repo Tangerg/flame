@@ -162,7 +162,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.calls, err = NewCommandCalls(f.store, hostsqlite.NewProviderSelectionStore(f.host), pool, routing, nil)
+	f.calls, err = NewCommandCalls(f.store, hostsqlite.NewProviderSelectionStore(f.host), hostsqlite.NewCompositionStore(f.host), pool, routing, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestInstalledStreamObservesFinalAndRestoresOnlyOriginalReceipt(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.calls, err = NewCommandCalls(f.store, hostsqlite.NewProviderSelectionStore(f.host), f.calls.pool, routing, nil)
+	f.calls, err = NewCommandCalls(f.store, hostsqlite.NewProviderSelectionStore(f.host), hostsqlite.NewCompositionStore(f.host), f.calls.pool, routing, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

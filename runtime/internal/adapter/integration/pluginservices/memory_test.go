@@ -111,7 +111,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	}
 	var notices []invalidation.Notice
 	publication := invalidation.Publish(func(notice invalidation.Notice) { notices = append(notices, notice) })
-	calls, err := NewCommandCalls(store, selections, pool, routing, publication)
+	calls, err := NewCommandCalls(store, selections, hostsqlite.NewCompositionStore(host), pool, routing, publication)
 	if err != nil {
 		t.Fatal(err)
 	}

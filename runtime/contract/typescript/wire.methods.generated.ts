@@ -74,7 +74,9 @@ import type {
   PageOfModelInvocation,
   PageOfPendingInterruptSet,
   PageOfPluginCollaborator,
+  PageOfPluginComposition,
   PageOfPluginInstallation,
+  PageOfPluginOperationBinding,
   PageOfPluginPointBinding,
   PageOfPluginProviderSelection,
   PageOfProvider,
@@ -87,6 +89,7 @@ import type {
   PageOfWorkspaceSummary,
   Plan,
   PluginChangeNotice,
+  PluginComposition,
   PluginInstallation,
   PluginProviderSelection,
   PluginReleaseRequest,
@@ -97,6 +100,7 @@ import type {
   ProviderTestResult,
   ReadFileRequest,
   ReadPluginResourceRequest,
+  ResolvePluginCompositionRequest,
   ResolvePluginPointRequest,
   ResolvePluginRequirementsRequest,
   ResolveWorkspaceRequest,
@@ -117,6 +121,7 @@ import type {
   SetApprovalRuleRequest,
   SetHookTrustRequest,
   SetMCPToolExposureRequest,
+  SetPluginCompositionRequest,
   SetPluginEnablementRequest,
   SkillDetail,
   SkillDetailRequest,
@@ -232,6 +237,9 @@ const METHOD_NAMES = [
   "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
+  "plugins.listCompositions",
+  "plugins.setComposition",
+  "plugins.resolveComposition",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -344,6 +352,9 @@ const VALUE_METHOD_NAMES = [
   "plugins.call",
   "plugins.listProviders",
   "plugins.selectProvider",
+  "plugins.listCompositions",
+  "plugins.setComposition",
+  "plugins.resolveComposition",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -837,6 +848,27 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "plugins.listCompositions": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.setComposition": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.resolveComposition": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
   "plugins.list": {
     operation: "query",
     response: "unary",
@@ -1251,6 +1283,15 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.selectProvider": [
     { requires: ["plugins"] },
   ],
+  "plugins.listCompositions": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.setComposition": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.resolveComposition": [
+    { requires: ["plugins"] },
+  ],
   "plugins.list": [
     { requires: ["plugins"] },
   ],
@@ -1357,6 +1398,9 @@ export interface WireShapes {
   "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };
   "plugins.listProviders": { params: Record<string, never>; result: PageOfPluginProviderSelection };
   "plugins.selectProvider": { params: SelectPluginProviderRequest; result: PluginProviderSelection };
+  "plugins.listCompositions": { params: Record<string, never>; result: PageOfPluginComposition };
+  "plugins.setComposition": { params: SetPluginCompositionRequest; result: PluginComposition };
+  "plugins.resolveComposition": { params: ResolvePluginCompositionRequest; result: PageOfPluginOperationBinding };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
   "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };

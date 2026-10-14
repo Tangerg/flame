@@ -57,7 +57,7 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 				if _, err := owner.Enable(t.Context(), id); err != nil {
 					t.Fatal(err)
 				}
-				registry, err := plugins.NewRegistry(users, store, releases, emptySelections{})
+				registry, err := plugins.NewRegistry(users, store, releases, emptySelections{}, emptyCompositions{})
 				if err != nil {
 					t.Fatal(err)
 				}

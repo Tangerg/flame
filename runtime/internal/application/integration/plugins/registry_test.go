@@ -52,7 +52,7 @@ func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: dependency.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(userMemory{}, store, packages, requirementSelections{})
+	registry, err := NewRegistry(userMemory{}, store, packages, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
 	} {
 		for _, operation := range []string{"definition", "dispatchable", "connection"} {
 			t.Run(failure.name+"/"+operation, func(t *testing.T) {
-				registry, err := NewRegistry(userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{})
+				registry, err := NewRegistry(userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -123,7 +123,7 @@ func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewRegistry(userMemory{}, store, &singleServerPackages{}, requirementSelections{})
+	registry, err := NewRegistry(userMemory{}, store, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Transport: mcpserver.TransportStdio, Command: "paused"},
 	}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(users, installations, packages, requirementSelections{})
+	registry, err := NewRegistry(users, installations, packages, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}

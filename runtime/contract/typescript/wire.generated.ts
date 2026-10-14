@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.22";
+export const PROTOCOL_VERSION = "2026-10-14.23";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1083,7 +1083,11 @@ export type PageOfPendingInterruptSet = Page<PendingInterruptSet>;
 
 export type PageOfPluginCollaborator = Page<PluginCollaborator>;
 
+export type PageOfPluginComposition = Page<PluginComposition>;
+
 export type PageOfPluginInstallation = Page<PluginInstallation>;
+
+export type PageOfPluginOperationBinding = Page<PluginOperationBinding>;
 
 export type PageOfPluginPointBinding = Page<PluginPointBinding>;
 
@@ -1179,6 +1183,16 @@ export type PluginComponent =
 export type PluginComponentChange = "enable" | "disable";
 
 export type PluginComponentType = "manifestField" | "flameExtension" | "extensionField" | "contribution" | "mcp" | "mcpServer" | "skills" | "skill";
+
+export interface PluginComposition {
+  contract: string;
+  members: PluginCompositionMember[];
+}
+
+export interface PluginCompositionMember {
+  contribution: string;
+  installationId: string;
+}
 
 export interface PluginContribution {
   background?: boolean;
@@ -1502,6 +1516,10 @@ export interface RequestMeta {
   protocolVersion?: string;
 }
 
+export interface ResolvePluginCompositionRequest {
+  contract: string;
+}
+
 export interface ResolvePluginPointRequest {
   attributes: unknown;
   contract: string;
@@ -1821,6 +1839,11 @@ export interface SetMCPToolExposureRequest {
   disabled: boolean;
   name: string;
   server: MCPServerID;
+}
+
+export interface SetPluginCompositionRequest {
+  contract: string;
+  members: PluginCompositionMember[];
 }
 
 export interface SetPluginEnablementRequest {

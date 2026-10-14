@@ -27,6 +27,12 @@ import (
 
 type emptySelections struct{ plugins.SelectionStore }
 
+type emptyCompositions struct{ plugins.CompositionStore }
+
+func (emptyCompositions) List(context.Context) ([]plugin.OrderedComposition, error) {
+	return nil, nil
+}
+
 func (emptySelections) List(context.Context) ([]plugin.ProviderSelection, error) {
 	return nil, nil
 }
@@ -320,7 +326,7 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{})
+	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{}, emptyCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +408,7 @@ func TestMCPDefinitionsStayStableWhenBackendAvailabilityChanges(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{})
+	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{}, emptyCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}

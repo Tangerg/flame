@@ -52,20 +52,22 @@ type Registry struct {
 	installations Store
 	packages      PackageSources
 	selections    SelectionStore
+	compositions  CompositionStore
 }
 
-func NewRegistry(user userServers, installations Store, packages PackageSources, selections SelectionStore) (*Registry, error) {
+func NewRegistry(user userServers, installations Store, packages PackageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
 	for _, required := range []struct {
 		name  string
 		value any
 	}{
 		{"user server store", user}, {"installation store", installations}, {"package sources", packages}, {"selection store", selections},
+		{"composition store", compositions},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("plugins: registry %s is required", required.name)
 		}
 	}
-	return &Registry{user: user, installations: installations, packages: packages, selections: selections}, nil
+	return &Registry{user: user, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
 }
 
 // Definitions projects desired configuration without observing executable bytes
@@ -136,7 +138,7 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 		}
 		var requirements *plugin.RequiredBindings
 		if snapshot.Installation.ServerEnabled(id.Name()) {
-			requirements, err = ResolveEntryRequirements(ctx, r.installations, r.selections, snapshot, id.Name())
+			requirements, err = ResolveEntryRequirements(ctx, r.installations, r.selections, r.compositions, snapshot, id.Name())
 			if err != nil {
 				return mcpapp.Launch{}, err
 			}

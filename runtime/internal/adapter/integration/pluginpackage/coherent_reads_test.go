@@ -73,7 +73,7 @@ func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			registry, err := plugins.NewRegistry(users, wrapped, releases, emptySelections{})
+			registry, err := plugins.NewRegistry(users, wrapped, releases, emptySelections{}, emptyCompositions{})
 			if err != nil {
 				t.Fatal(err)
 			}

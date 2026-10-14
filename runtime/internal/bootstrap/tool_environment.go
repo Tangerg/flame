@@ -87,7 +87,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		})},
 	}
 	environment.admission = admission
-	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, mcpPool, commands, deps.publish)
+	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, cfg.Stores.PluginCompositions, mcpPool, commands, deps.publish)
 	if err != nil {
 		return environment, err
 	}

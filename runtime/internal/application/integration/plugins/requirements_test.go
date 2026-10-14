@@ -79,14 +79,14 @@ func TestNamedRequirementsUseSelectedBindingsAndExplicitOptionalAbsence(t *testi
 		t.Fatal(err)
 	}
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root, first, second}}
-	values, err := ResolveRequirements(t.Context(), store, requirementSelections{values: []plugin.ProviderSelection{choice}}, root.Installation.ID(), root.Selected.Digest(), "operations")
+	values, err := ResolveRequirements(t.Context(), store, requirementSelections{values: []plugin.ProviderSelection{choice}}, &requirementCompositions{}, root.Installation.ID(), root.Selected.Digest(), "operations")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(values) != 2 || values[0].ID != "model" || len(values[0].Bindings) != 1 || values[0].Bindings[0].InstallationID != second.Installation.ID() || len(values[1].Bindings) != 0 {
 		t.Fatalf("named collaborators: %+v", values)
 	}
-	if _, err := ResolveRequirements(t.Context(), store, requirementSelections{}, root.Installation.ID(), root.Selected.Digest(), "operations"); !errors.Is(err, plugin.ErrUnavailable) {
+	if _, err := ResolveRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, root.Installation.ID(), root.Selected.Digest(), "operations"); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("missing required role: %v", err)
 	}
 }
@@ -98,13 +98,13 @@ func TestRequiredEntryCycleReportsPathAndOptionalCollectionDoesNotActivateIt(t *
 	first := requirementSnapshot(t, idA, "first", a, plugin.Requirement{ID: "b", Contract: b.Identity()})
 	second := requirementSnapshot(t, idB, "second", b, plugin.Requirement{ID: "a", Contract: a.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{first, second}}
-	_, err := ResolveRequirements(t.Context(), store, requirementSelections{}, idA, first.Selected.Digest(), "operations")
+	_, err := ResolveRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, idA, first.Selected.Digest(), "operations")
 	if !errors.Is(err, plugin.ErrInvalid) || !strings.Contains(err.Error(), idA.String()+"/backend -> "+idB.String()+"/backend -> "+idA.String()+"/backend") {
 		t.Fatalf("required cycle: %v", err)
 	}
 	first = requirementSnapshot(t, idA, "first", a, plugin.Requirement{ID: "b", Contract: b.Identity(), Optional: true})
 	store.snapshots[0] = first
-	values, err := ResolveRequirements(t.Context(), store, requirementSelections{}, idA, first.Selected.Digest(), "operations")
+	values, err := ResolveRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, idA, first.Selected.Digest(), "operations")
 	if err != nil || len(values) != 1 || len(values[0].Bindings) != 1 {
 		t.Fatalf("optional collection created a startup cycle: %+v, %v", values, err)
 	}
@@ -122,7 +122,7 @@ func TestRequirementsValidateOtherContributionsSharingTheEntry(t *testing.T) {
 	}
 	root.Selected = release
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
-	_, err = ResolveRequirements(t.Context(), store, requirementSelections{}, root.Installation.ID(), release.Digest(), "operations")
+	_, err = ResolveRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, root.Installation.ID(), release.Digest(), "operations")
 	if !errors.Is(err, plugin.ErrUnavailable) || !strings.Contains(err.Error(), "required dependency missing") {
 		t.Fatalf("sibling entry dependency: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestEntryRequirementsFreezeTheSelectedProviderForTheUseInterval(t *testing.
 	}
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root, first, second}}
 	selections := requirementSelections{values: []plugin.ProviderSelection{choice}}
-	bound, err := ResolveEntryRequirements(t.Context(), store, selections, root, testsupport.ServerName("backend"))
+	bound, err := ResolveEntryRequirements(t.Context(), store, selections, &requirementCompositions{}, root, testsupport.ServerName("backend"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestEntryRequirementsFreezeTheSelectedProviderForTheUseInterval(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	future, err := ResolveEntryRequirements(t.Context(), store, selections, root, testsupport.ServerName("backend"))
+	future, err := ResolveEntryRequirements(t.Context(), store, selections, &requirementCompositions{}, root, testsupport.ServerName("backend"))
 	if err != nil {
 		t.Fatal(err)
 	}

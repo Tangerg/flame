@@ -46,6 +46,7 @@ type Bundle struct {
 	PluginReleases        *sqlitestore.ReleaseStore
 	PluginCommands        *sqlitestore.PluginCommandStore
 	ProviderSelections    *sqlitestore.ProviderSelectionStore
+	PluginCompositions    *sqlitestore.CompositionStore
 	ChatHistory           *sqlitestore.MessageStore
 	Trajectory            *TrajectoryReader
 	ModelInvocations      *sqlitestore.ModelInvocationStore
@@ -191,6 +192,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		PluginReleases:        sqlitestore.NewReleaseStore(db),
 		PluginCommands:        sqlitestore.NewPluginCommandStore(db),
 		ProviderSelections:    sqlitestore.NewProviderSelectionStore(db),
+		PluginCompositions:    sqlitestore.NewCompositionStore(db),
 		ChatHistory:           sqlitestore.NewMessageStore(db),
 		Trajectory:            &TrajectoryReader{store: sqlitestore.NewTrajectoryStore(db)},
 		ModelInvocations:      sqlitestore.NewModelInvocationStore(db),

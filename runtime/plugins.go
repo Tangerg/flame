@@ -45,6 +45,18 @@ func (r *binding) SelectPluginProvider(ctx context.Context, request protocol.Sel
 	return r.invoke[protocol.SelectPluginProviderRequest, *protocol.PluginProviderSelection](ctx, delivery.PluginsSelectProvider, request, commandOptions(options))
 }
 
+func (r *binding) ListPluginCompositions(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginComposition], error) {
+	return r.invoke[struct{}, *protocol.Page[protocol.PluginComposition]](ctx, delivery.PluginsListCompositions, struct{}{}, callOptions(options))
+}
+
+func (r *binding) SetPluginComposition(ctx context.Context, request protocol.SetPluginCompositionRequest, options CommandOptions) (*protocol.PluginComposition, error) {
+	return r.invoke[protocol.SetPluginCompositionRequest, *protocol.PluginComposition](ctx, delivery.PluginsSetComposition, request, commandOptions(options))
+}
+
+func (r *binding) ResolvePluginComposition(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error) {
+	return r.invoke[protocol.ResolvePluginCompositionRequest, *protocol.Page[protocol.PluginOperationBinding]](ctx, delivery.PluginsResolveComposition, request, callOptions(options))
+}
+
 func (r *binding) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsInstall, request, commandOptions(options))
 }

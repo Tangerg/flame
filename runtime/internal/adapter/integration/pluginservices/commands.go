@@ -23,15 +23,16 @@ type CommandCalls struct {
 	publish       invalidation.Publish
 	installations plugins.Store
 	selections    plugins.SelectionStore
+	compositions  plugins.CompositionStore
 	pool          *mcpconnection.Pool
 	routing       *plugins.Commands
 }
 
-func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
-	if dependency.Missing(store) || dependency.Missing(selections) || pool == nil || routing == nil {
+func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcpconnection.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
+	if dependency.Missing(store) || dependency.Missing(selections) || dependency.Missing(compositions) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
-	return &CommandCalls{publish: publish, installations: store, selections: selections, pool: pool, routing: routing}, nil
+	return &CommandCalls{publish: publish, installations: store, selections: selections, compositions: compositions, pool: pool, routing: routing}, nil
 }
 
 type commandReply[T any] struct {

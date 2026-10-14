@@ -256,6 +256,22 @@ Session without a Goal returns null through `goals.get` in both bindings. Receip
 and remote decoders require the declared fields before accepting typed values.
 Diagnostic Tool results remain opaque JSON, where null is a valid value.
 
+Core 2026-10-14.23 adds plugins.listCompositions, plugins.setComposition and
+plugins.resolveComposition. The consumer supplies the complete decoration contract
+and explicit outer-to-inner members; Runtime persists one atomic ordered choice.
+Resolution freezes installation/release/contribution/export identities in that
+order. Updating the choice affects new bindings only. A missing, disabled or
+contract-mismatched selected member refuses the whole composition, including an
+optional declared dependency; it never silently removes a member. Empty configured
+chains are explicit, and required dependencies refuse absent or empty chains.
+Named setup dependencies use the same ordered composition owner and existing
+activation-cycle checks. Go and TS management entrances share Delivery. Actual
+production model decoration and remote-next invocation remain the next integration.
+
+The exact host schema adds plugin_compositions. Preserve former host data separately
+and use a fresh data directory; Runtime refuses former schemas without conversion
+or deletion. Plugin private receipt formats and backend protocol remain unchanged.
+
 Core 2026-10-14.22 adds model invocation knownResponse as the original complete
 Scope JSON string for a failed outer operation with validated inner completion.
 Interaction commits one failed fact containing that response and its accounting;

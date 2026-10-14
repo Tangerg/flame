@@ -17,6 +17,9 @@ const (
 	PluginsReadResource        Name = "plugins.readResource"
 	PluginsListProviders       Name = "plugins.listProviders"
 	PluginsSelectProvider      Name = "plugins.selectProvider"
+	PluginsListCompositions    Name = "plugins.listCompositions"
+	PluginsSetComposition      Name = "plugins.setComposition"
+	PluginsResolveComposition  Name = "plugins.resolveComposition"
 	PluginsInstall             Name = "plugins.install"
 	PluginsStage               Name = "plugins.stage"
 	PluginsSelect              Name = "plugins.select"
@@ -83,6 +86,21 @@ func registerPlugins(r *Registry) {
 		SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error)
 	}, ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
 		return s.SelectPluginProvider(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsListCompositions, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ListPluginCompositions(context.Context) (*protocol.Page[protocol.PluginComposition], error)
+	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginComposition], error) {
+		return s.ListPluginCompositions(ctx)
+	})
+	r.command(MethodMeta{Name: PluginsSetComposition, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest) (*protocol.PluginComposition, error)
+	}, ctx context.Context, in protocol.SetPluginCompositionRequest) (*protocol.PluginComposition, error) {
+		return s.SetPluginComposition(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsResolveComposition, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error)
+	}, ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
+		return s.ResolvePluginComposition(ctx, in)
 	})
 
 	r.query(MethodMeta{Name: PluginsList, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
