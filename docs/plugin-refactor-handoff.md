@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 transitive release retention slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 activation identity slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `6ef5b7961` (transitive activation release retention);
+- Latest product commit: `18ddce955` (same-release activation identity fencing);
+  `6ef5b7961` adds transitive release retention;
   preceding `6a2f30440` implements exact feature JSON and closed Selection schema;
   query-stream commit: `67e7801c1`; preceding recovery
   commit: `8e32d9c35` (observer-bound receipt retirement and unavailable original
@@ -118,11 +119,14 @@ or deletion. Captured primary context and independent billing remain distinct.
    ownership. Restored caller attribution does not restore Session/Run/Segment,
    a model publisher, an expired next or stopped Scope effects. Never infer them
    from parent IDs or an ambient current Session.
-3. Complete activation binding/order identity on same-release reconnect, transitive
-   availability diagnostics, retention/pruning and point/resource lifetimes.
+3. Complete real installed point/callback lifetimes, transitive availability
+   diagnostics and evidence retention/pruning. Same-release activation identity is
+   implemented in `18ddce955`: one session-owned proof includes ordered bindings
+   and source authorities. Frozen dispatch and deployment restoration check it.
    `6ef5b7961` retains actual transitive session release sets in frozen Tools/models
    and unresolved commands. It introduces required immutable host
-   `plugin_commands.dependencies_json`; old Runtime databases are refused without
+   `plugin_commands.activation_json` (replacing the provisional release-only column);
+   old Runtime databases are refused without
    writes/conversion. Private backend formats are unchanged. Whole affected packages
    and a real bootstrap recovery selection pass; full/native/vet/race remain final. Exact Go/TS feature JSON now crosses Core as JSON strings with
    one TS codec; generated consumers, original-intent journals and components are

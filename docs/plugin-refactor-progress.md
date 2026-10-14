@@ -5,10 +5,42 @@
 Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
 failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
 `67e7801c1`; exact Go/TS feature JSON is implemented by `6a2f30440`. Remaining
-lifecycle work now includes transitive release retention (`6ef5b7961`);
+lifecycle work now includes transitive release retention (`6ef5b7961`) and full
+activation identity fencing (`18ddce955`);
 independent/native qualification and final closure remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Same-release activation identity fencing (2026-10-15)
+
+- `18ddce955` extends the release projection with one immutable identity derived
+  under the MCP session owner's lock. It includes each actual source authority and
+  the exact ordered contribution/server/export/contract bindings of all transitive
+  entries. Equivalent graph reconnects preserve identity; same-release contribution
+  or ordering changes cannot impersonate the original activation.
+- Frozen Tools and primary/auxiliary model preparation compare this proof before
+  fresh dispatch. Tool/model deployment configuration includes the proof, so waiting
+  restoration cannot accept another graph with the same release set. The separate
+  root Tool source fingerprint continues to own policy/source attribution.
+- Unresolved commands atomically retain the same activation proof and releases.
+  Prepared dispatch checks it; original-owner receipt reconciliation still does not
+  rerun collaborators or consult current selection. The release-only provisional
+  `dependencies_json` column/reader is deleted in favor of immutable
+  `plugin_commands.activation_json`. Previous host schemas are refused without writes;
+  no private backend format changes or user data operations occur.
+- Passed: whole Application plugins/MCP/connection adapter/Toolset/pluginservices/
+  SQLite (0.543/14.083/1.051/4.430/9.173/2.239s); execution dependency/command/
+  capture/context/manifest/configuration/Tool selection (4.077s); real bootstrap
+  Reviews/plugins/Memory/Schedule/recovery selection (56.162s); Runtime/CLI/Reviews
+  builds, gofmt and diff checks. Regressions distinguish changed contribution/order
+  within identical releases, equivalent reconnect, immutable restored command
+  identity and prepared-command refusal without dispatch. Stash-free staged checks
+  and commitlint pass; owned resources/handles are terminal.
+- No UI/E2E/screenshot or Desktop aggregate checks ran. Global/native/vet/race/
+  closure stay final work. Next: real installed Reviews/analyzer point/callback
+  lifecycle, transitive availability diagnostics, evidence retention/pruning policy,
+  independent first-party author extraction/component/native qualification and final
+  individual P01-P48/review acceptance. This is not 100% completion.
 
 ### Transitive activation release retention (2026-10-15)
 
@@ -1073,9 +1105,9 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 Continue in the same worktree and branch. Preserve the complete proposal/review
 objective and report concrete remaining paths rather than a static completion count.
 
-1. Priority #3: finish activation binding/order identity on same-release reconnect,
-   transitive availability diagnostics, retention/pruning and point/resource lifetimes.
-   Transitive release retention is implemented in `6ef5b7961`. Query streams and exact Go/TS feature JSON are implemented;
+1. Priority #3: real installed point/callback lifetimes, transitive availability
+   diagnostics and evidence retention/pruning. Transitive release retention and
+   same-release activation identity are implemented in `6ef5b7961`/`18ddce955`. Query streams and exact Go/TS feature JSON are implemented;
    retain their cancellation/command-ownership checks during final acceptance.
    Audit actual Tool,
    automatic and cross-plugin target/origin/parent/original-route consumers.
