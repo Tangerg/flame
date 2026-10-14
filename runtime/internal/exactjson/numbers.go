@@ -18,10 +18,12 @@ import (
 	"errors"
 )
 
-// Number is the exact-number carrier. Callers that must hand an exact integer to
-// a JSON-schema bound or other wire field use this instead of importing the v1
-// package directly, keeping encoding/json confined to this one owner.
-type Number = jsonv1.Number
+// Number carries an exact integer literal as the JSON-schema bound type without
+// exposing encoding/json at the call site: a caller that must set a
+// jsonschema.Schema bound uses this so that type stays confined to this one owner.
+func Number(literal string) jsonv1.Number {
+	return jsonv1.Number(literal)
+}
 
 // Numbers decodes every JSON number reaching an any as a [jsonv1.Number]
 // holding the original literal. It changes nothing else: the unmarshaler
