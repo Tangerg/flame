@@ -135,3 +135,10 @@ A failed read preserves the accepted page. No optimistic item or competing resul
 owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
 Complete cross-reload command recovery and cross-entrance invalidation acceptance
 remain in the final public-consumer work.
+
+## Feature boundary
+
+Business changes expose a local `OnChange` signal within the caller's current
+write-set. The transport owns publication after its private transaction commits;
+no Core invalidation record or resource enum enters the feature application.
+Failed writes and losing curation comparisons cannot emit a successful change.

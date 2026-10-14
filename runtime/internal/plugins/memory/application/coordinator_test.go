@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
@@ -248,14 +247,14 @@ func TestCoordinatorRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func TestCommittedAgentMemoryMutationsPublishInvalidations(t *testing.T) {
-	var notices []invalidation.Notice
+func TestCommittedAgentMemoryMutationsSignalChanges(t *testing.T) {
+	var changes int
 	store := &fakeStore{addChanged: true}
 	c := newCoordinator(t, Config{
 		Store: store,
 		Roots: rootResolver{root: "/repo"},
-		Invalidations: func(notice invalidation.Notice) {
-			notices = append(notices, notice)
+		OnChange: func() {
+			changes++
 		},
 	})
 	content := "updated"
@@ -272,37 +271,32 @@ func TestCommittedAgentMemoryMutationsPublishInvalidations(t *testing.T) {
 	if _, err := c.Add(t.Context(), domain.ScopeProject, "/repo", "new"); err != nil {
 		t.Fatal(err)
 	}
-	if len(notices) != 4 {
-		t.Fatalf("notices = %+v, want four", notices)
+	if changes != 4 {
+		t.Fatalf("changes = %d, want four", changes)
 	}
 	store.addChanged = false
 	if _, err := c.Add(t.Context(), domain.ScopeProject, "/repo", "new"); err != nil {
 		t.Fatal(err)
 	}
-	if len(notices) != 4 {
-		t.Fatalf("duplicate Add published notices = %+v", notices)
-	}
-	for _, notice := range notices {
-		if notice.Resource != invalidation.PluginData {
-			t.Fatalf("notice = %+v, want agent memory", notice)
-		}
+	if changes != 4 {
+		t.Fatalf("duplicate Add published changes = %d", changes)
 	}
 }
 
 func TestFailedAgentMemoryMutationDoesNotPublishInvalidation(t *testing.T) {
 	wantErr := errors.New("store unavailable")
-	var notices []invalidation.Notice
+	var changes int
 	c := newCoordinator(t, Config{
 		Store: &fakeStore{err: wantErr},
-		Invalidations: func(notice invalidation.Notice) {
-			notices = append(notices, notice)
+		OnChange: func() {
+			changes++
 		},
 	})
 	if _, err := c.Update(t.Context(), testMemoryItemID('1').String(), nil, nil); !errors.Is(err, wantErr) {
 		t.Fatalf("Update error = %v, want %v", err, wantErr)
 	}
-	if len(notices) != 0 {
-		t.Fatalf("failed mutation published %+v", notices)
+	if changes != 0 {
+		t.Fatalf("failed mutation published %+v", changes)
 	}
 }
 

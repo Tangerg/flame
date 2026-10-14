@@ -12,7 +12,7 @@ import (
 )
 
 type RunRecord struct {
-	scheduleID resourceid.ScheduleID
+	scheduleID scheduleIdentity
 	ranAt      time.Time
 }
 

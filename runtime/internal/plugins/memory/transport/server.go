@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
@@ -77,7 +76,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Add, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (rpc.AddResult, error) {
 			changed := false
-			owner, err := app.New(app.Config{Store: store, Roots: roots, Invalidations: func(invalidation.Notice) { changed = true }})
+			owner, err := app.New(app.Config{Store: store, Roots: roots, OnChange: func() { changed = true }})
 			if err != nil {
 				return rpc.AddResult{}, err
 			}
@@ -150,7 +149,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 				return rpc.MaintenanceResult{}, prepared.Complete(ctx, reply)
 			}
 			published := false
-			curation, err := app.NewCuration(app.CurationConfig{Store: maintenancePublication{CurationStore: store, db: db, command: prepared}, Invalidations: func(invalidation.Notice) { published = true }})
+			curation, err := app.NewCuration(app.CurationConfig{Store: maintenancePublication{CurationStore: store, db: db, command: prepared}, OnChange: func() { published = true }})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}

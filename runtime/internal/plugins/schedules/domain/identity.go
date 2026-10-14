@@ -8,11 +8,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-const IDPrefix = runtimeidentity.SchedulePrefix
+const IDPrefix = "sch_"
 
 const MaximumIDCharacters = runtimeidentity.MaximumResourceCharacters
 
@@ -23,15 +22,25 @@ const (
 	MaximumOccurrenceIDCharacters = MaximumIDCharacters + len(occurrenceIDSeparator) + maximumInt64TextCharacters
 )
 
-func parseScheduleID(text string) (resourceid.ScheduleID, error) {
-	parsed, err := resourceid.ParseSchedule(text)
-	if err != nil {
-		return resourceid.ScheduleID{}, fmt.Errorf("schedule: %w", err)
+type scheduleIdentity struct{ text string }
+
+func (i scheduleIdentity) String() string { return i.text }
+
+func (i scheduleIdentity) Validate() error {
+	if i.text == "" {
+		return ErrIDRequired
+	}
+	return nil
+}
+
+func parseScheduleID(text string) (scheduleIdentity, error) {
+	if err := runtimeidentity.ValidateResource("schedule", text, MaximumIDCharacters); err != nil {
+		return scheduleIdentity{}, fmt.Errorf("schedule: %w", err)
 	}
 	if !strings.HasPrefix(text, IDPrefix) || utf8.RuneCountInString(text) == utf8.RuneCountInString(IDPrefix) {
-		return resourceid.ScheduleID{}, ErrIDRequired
+		return scheduleIdentity{}, ErrIDRequired
 	}
-	return parsed, nil
+	return scheduleIdentity{text: text}, nil
 }
 
 func ValidateID(text string) error {
@@ -42,11 +51,11 @@ func ValidateID(text string) error {
 // Schedule identity and due cursor make retries name the same occurrence.
 type occurrenceIdentity struct {
 	text       string
-	scheduleID resourceid.ScheduleID
+	scheduleID scheduleIdentity
 	dueMillis  int64
 }
 
-func newOccurrenceIdentity(scheduleID resourceid.ScheduleID, dueAt time.Time) (occurrenceIdentity, error) {
+func newOccurrenceIdentity(scheduleID scheduleIdentity, dueAt time.Time) (occurrenceIdentity, error) {
 	if _, err := parseScheduleID(scheduleID.String()); err != nil {
 		return occurrenceIdentity{}, fmt.Errorf("schedule: occurrence: %w", err)
 	}

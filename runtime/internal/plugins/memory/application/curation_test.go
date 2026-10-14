@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
@@ -60,9 +59,9 @@ func (f *fakeCurationStore) Items(context.Context, domain.Scope, string) ([]doma
 
 func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	store := &fakeCurationStore{published: true}
-	var notices []invalidation.Notice
-	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
-		notices = append(notices, notice)
+	var changes int
+	c := newCuration(t, CurationConfig{Store: store, OnChange: func() {
+		changes++
 	}})
 
 	now := time.Now()
@@ -70,8 +69,8 @@ func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	if err != nil || !published {
 		t.Fatalf("Reconcile = (%t, %v), want (true, nil)", published, err)
 	}
-	if len(notices) != 1 || notices[0].Resource != invalidation.PluginData {
-		t.Fatalf("notices = %+v, want one AgentMemory invalidation", notices)
+	if changes != 1 {
+		t.Fatalf("changes = %d, want one AgentMemory invalidation", changes)
 	}
 
 	store.published = false
@@ -79,17 +78,17 @@ func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	if err != nil || published {
 		t.Fatalf("stale Reconcile = (%t, %v), want (false, nil)", published, err)
 	}
-	if len(notices) != 1 {
-		t.Fatalf("lost CAS notices = %+v", notices)
+	if changes != 1 {
+		t.Fatalf("lost CAS changes = %d", changes)
 	}
 }
 
 func TestCurationFailureAndLedgerWritesDoNotPublish(t *testing.T) {
 	wantErr := errors.New("store unavailable")
 	store := &fakeCurationStore{published: true, err: wantErr}
-	var notices []invalidation.Notice
-	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
-		notices = append(notices, notice)
+	var changes int
+	c := newCuration(t, CurationConfig{Store: store, OnChange: func() {
+		changes++
 	}})
 
 	if published, err := c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, nil, time.Now())); published || !errors.Is(err, wantErr) {
@@ -99,8 +98,8 @@ func TestCurationFailureAndLedgerWritesDoNotPublish(t *testing.T) {
 	if _, err := c.AppendLedger(t.Context(), validFactBatch("fact")); err != nil {
 		t.Fatal(err)
 	}
-	if len(notices) != 0 {
-		t.Fatalf("non-public writes published notices = %+v", notices)
+	if changes != 0 {
+		t.Fatalf("non-public writes published changes = %d", changes)
 	}
 }
 
@@ -180,12 +179,9 @@ func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 
 func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	store := &singleWinnerCurationStore{}
-	var notices atomic.Int32
-	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
-		if notice.Resource != invalidation.PluginData {
-			t.Errorf("notice = %+v, want AgentMemory", notice)
-		}
-		notices.Add(1)
+	var changes atomic.Int32
+	c := newCuration(t, CurationConfig{Store: store, OnChange: func() {
+		changes.Add(1)
 	}})
 
 	const contenders = 32
@@ -209,8 +205,8 @@ func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	if got := published.Load(); got != 1 {
 		t.Fatalf("published generations = %d, want 1", got)
 	}
-	if got := notices.Load(); got != 1 {
-		t.Fatalf("AgentMemory invalidations = %d, want 1", got)
+	if got := changes.Load(); got != 1 {
+		t.Fatalf("AgentMemory changes = %d, want 1", got)
 	}
 }
 

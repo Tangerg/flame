@@ -86,17 +86,6 @@ func ParseSegment(text string) (SegmentID, error) {
 func (i SegmentID) String() string  { return i.text }
 func (i SegmentID) Validate() error { return requireConstructed("segment", i.text) }
 
-// ScheduleID is one exact durable scheduled-work identity.
-type ScheduleID struct{ value }
-
-func ParseSchedule(text string) (ScheduleID, error) {
-	parsed, err := parse("schedule", text, runtimeidentity.MaximumResourceCharacters)
-	return ScheduleID{value: parsed}, err
-}
-
-func (i ScheduleID) String() string  { return i.text }
-func (i ScheduleID) Validate() error { return requireConstructed("schedule", i.text) }
-
 var installationIDExpression = regexp.MustCompile(nonzeroUUIDPattern())
 
 func InstallationIDPattern() string { return installationIDExpression.String() }

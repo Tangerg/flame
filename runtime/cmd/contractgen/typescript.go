@@ -284,7 +284,6 @@ func (t *tsEmitter) protocolVersion() {
 	t.line("export const MAXIMUM_RESOURCE_IDENTITY_CHARACTERS = %d;", protocol.MaximumResourceIdentityCharacters)
 	t.line("")
 	t.line("// Public framing of one opaque Schedule resource identity.")
-	t.line("export const SCHEDULE_ID_PREFIX = %s;", strconv.Quote(protocol.IDPrefixSchedule))
 	t.line("")
 	t.line("// Public framing and maximum length of one opaque Run event identity.")
 	t.line("export const RUN_EVENT_ID_PREFIX = %s;", strconv.Quote(protocol.IDPrefixEvent))

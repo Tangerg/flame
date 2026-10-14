@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -39,7 +38,7 @@ type Coordinator struct {
 	models        ModelAdmitter
 	newScheduleID func() string
 	now           func() time.Time
-	invalidations invalidation.Publish
+	onChange      func()
 }
 
 type CWDResolver interface {
@@ -55,7 +54,7 @@ type Dependencies struct {
 	Paths         CWDResolver
 	Models        ModelAdmitter
 	NewScheduleID func() string
-	Invalidations invalidation.Publish
+	OnChange      func()
 }
 
 // Untrusted CWD and model spellings must be resolved before they reach the Domain patch.
@@ -94,7 +93,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		models:        deps.Models,
 		newScheduleID: deps.NewScheduleID,
 		now:           time.Now,
-		invalidations: deps.Invalidations,
+		onChange:      deps.OnChange,
 	}, nil
 }
 
@@ -144,7 +143,9 @@ func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedul
 	if err := c.store.Insert(ctx, created); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: create: %w", err)
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+	if c.onChange != nil {
+		c.onChange()
+	}
 	return created, nil
 }
 
@@ -217,7 +218,9 @@ func (c *Coordinator) updateExisting(
 	if err := c.store.Update(ctx, replacement); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID(), err)
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+	if c.onChange != nil {
+		c.onChange()
+	}
 	return updated, nil
 }
 
@@ -230,7 +233,9 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("schedules: delete %q: %w", id, err)
 	}
 	if deleted {
-		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+		if c.onChange != nil {
+			c.onChange()
+		}
 	}
 	return nil
 }

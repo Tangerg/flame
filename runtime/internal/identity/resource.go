@@ -3,12 +3,11 @@ package identity
 // Server-generated namespaces. Consumers treat the resulting identities as
 // opaque and must not infer behavior from these prefixes.
 const (
-	SessionPrefix  = "ses_"
-	RunPrefix      = "run_"
-	SegmentPrefix  = "seg_"
-	ItemPrefix     = "item_"
-	SchedulePrefix = "sch_"
-	EventPrefix    = "evt_"
+	SessionPrefix = "ses_"
+	RunPrefix     = "run_"
+	SegmentPrefix = "seg_"
+	ItemPrefix    = "item_"
+	EventPrefix   = "evt_"
 )
 
 // MaximumResourceCharacters keeps every ordinary durable resource key bounded while

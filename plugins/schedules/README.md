@@ -178,3 +178,15 @@ projection, alongside canonical capability JSON and TS. CLI catalog reads freeze
 the selected binding and enter the same public installed list operation as the
 ordinary component. Remaining Core mutation entrances retain their existing owner
 until their recovery-safe migration; schedules.list is removed without an alias.
+
+## Feature boundary
+
+Business changes expose a local `OnChange` signal within the caller's current
+write-set. The transport owns publication after its private transaction commits;
+no Core invalidation record or resource enum enters the feature application.
+Failed writes and losing curation comparisons cannot emit a successful change.
+
+Schedule identity parsing, the `sch_` namespace and occurrence framing belong to
+this backend. Core no longer exports a Schedule identity type or Go/TS prefix;
+external consumers obtain business identities from the published feature contract.
+The opaque values and stored private format are unchanged.

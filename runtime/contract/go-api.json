@@ -3581,11 +3581,6 @@
           "value": "\"evt_\""
         },
         {
-          "name": "IDPrefixSchedule",
-          "type": "untyped string",
-          "value": "\"sch_\""
-        },
-        {
           "name": "InterruptApproval",
           "type": "InterruptType",
           "value": "\"approval\""

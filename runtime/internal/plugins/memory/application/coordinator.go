@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
@@ -24,17 +23,18 @@ type Store interface {
 }
 
 type Config struct {
-	Store         Store
-	Roots         RootResolver
-	Now           func() time.Time
-	Invalidations invalidation.Publish
+	Store Store
+	Roots RootResolver
+	Now   func() time.Time
+	// The caller owns external publication after the current write-set commits.
+	OnChange func()
 }
 
 type Coordinator struct {
-	store         Store
-	roots         RootResolver
-	now           func() time.Time
-	invalidations invalidation.Publish
+	store    Store
+	roots    RootResolver
+	now      func() time.Time
+	onChange func()
 }
 
 func New(cfg Config) (*Coordinator, error) {
@@ -48,7 +48,7 @@ func New(cfg Config) (*Coordinator, error) {
 	if now == nil {
 		now = time.Now
 	}
-	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, invalidations: cfg.Invalidations}, nil
+	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, onChange: cfg.OnChange}, nil
 }
 
 func (c *Coordinator) Review(ctx context.Context, id string, decision domain.ReviewDecision) error {
@@ -62,7 +62,9 @@ func (c *Coordinator) Review(ctx context.Context, id string, decision domain.Rev
 	if err := c.store.Review(ctx, itemID, decision, c.now()); err != nil {
 		return err
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+	if c.onChange != nil {
+		c.onChange()
+	}
 	return nil
 }
 
@@ -82,7 +84,9 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if err != nil {
 		return domain.Item{}, err
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+	if c.onChange != nil {
+		c.onChange()
+	}
 	return item, nil
 }
 
@@ -94,7 +98,9 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	if err := c.store.Delete(ctx, itemID); err != nil {
 		return err
 	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+	if c.onChange != nil {
+		c.onChange()
+	}
 	return nil
 }
 
@@ -112,7 +118,9 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 		return domain.Item{}, err
 	}
 	if changed {
-		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+		if c.onChange != nil {
+			c.onChange()
+		}
 	}
 	return item, nil
 }

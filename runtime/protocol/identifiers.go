@@ -4,14 +4,9 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-// The two resource ID prefixes a client may rely on. A Schedule identity is
-// constrained to IDPrefixSchedule on the wire, and IDPrefixEvent frames the
-// opaque replay cursor. Every other prefix is a server generation convention:
-// publishing it would invite exactly the parsing the identities below forbid.
-const (
-	IDPrefixSchedule = runtimeidentity.SchedulePrefix
-	IDPrefixEvent    = runtimeidentity.EventPrefix
-)
+// IDPrefixEvent frames the opaque replay cursor. Business plugin identities
+// belong to their feature contracts, not to the Core protocol.
+const IDPrefixEvent = runtimeidentity.EventPrefix
 
 // MaximumResourceIdentityCharacters is the public envelope shared by opaque
 // Session, Run, Segment, and Item identities. Clients retain and compare these

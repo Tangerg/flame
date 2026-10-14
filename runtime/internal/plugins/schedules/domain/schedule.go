@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
@@ -58,7 +57,7 @@ type Snapshot struct {
 }
 
 type Schedule struct {
-	id             resourceid.ScheduleID
+	id             scheduleIdentity
 	title          string
 	instructions   string
 	cwd            string

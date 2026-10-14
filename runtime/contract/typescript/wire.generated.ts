@@ -24,7 +24,6 @@ export const MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS = 32;
 export const MAXIMUM_RESOURCE_IDENTITY_CHARACTERS = 256;
 
 // Public framing of one opaque Schedule resource identity.
-export const SCHEDULE_ID_PREFIX = "sch_";
 
 // Public framing and maximum length of one opaque Run event identity.
 export const RUN_EVENT_ID_PREFIX = "evt_";

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
@@ -21,20 +20,20 @@ type CurationStore interface {
 }
 
 type CurationConfig struct {
-	Store         CurationStore
-	Invalidations invalidation.Publish
+	Store    CurationStore
+	OnChange func()
 }
 
 type Curation struct {
-	store         CurationStore
-	invalidations invalidation.Publish
+	store    CurationStore
+	onChange func()
 }
 
 func NewCuration(cfg CurationConfig) (*Curation, error) {
 	if dependency.Missing(cfg.Store) {
 		return nil, errors.New("agentmemory: curation store is required")
 	}
-	return &Curation{store: cfg.Store, invalidations: cfg.Invalidations}, nil
+	return &Curation{store: cfg.Store, onChange: cfg.OnChange}, nil
 }
 
 func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
@@ -71,7 +70,9 @@ func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Pub
 		return false, err
 	}
 	if published {
-		c.invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+		if c.onChange != nil {
+			c.onChange()
+		}
 	}
 	return published, nil
 }

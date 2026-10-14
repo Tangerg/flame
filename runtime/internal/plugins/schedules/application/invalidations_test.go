@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 )
 
@@ -41,7 +40,7 @@ func (i *invalidationScheduleStore) Delete(context.Context, string) (bool, error
 	return i.deleteFound, nil
 }
 
-func TestCommittedScheduleMutationsPublishDataInvalidations(t *testing.T) {
+func TestCommittedScheduleMutationsSignalChanges(t *testing.T) {
 	store := &invalidationScheduleStore{
 		runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
 			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "@daily",
@@ -49,13 +48,13 @@ func TestCommittedScheduleMutationsPublishDataInvalidations(t *testing.T) {
 		})},
 		deleteFound: true,
 	}
-	var notices []invalidation.Notice
+	var changes int
 	coordinator := mustCoordinator(t, Dependencies{
 		Store:         store,
 		Models:        allowModels{},
 		NewScheduleID: fixedIdentity("sch_created"),
-		Invalidations: func(notice invalidation.Notice) {
-			notices = append(notices, notice)
+		OnChange: func() {
+			changes++
 		},
 	})
 
@@ -75,13 +74,8 @@ func TestCommittedScheduleMutationsPublishDataInvalidations(t *testing.T) {
 	}
 
 	want := 3
-	if len(notices) != want {
-		t.Fatalf("notices = %+v, want %d", notices, want)
-	}
-	for i, notice := range notices {
-		if notice.Resource != invalidation.PluginData {
-			t.Fatalf("notice %d = %+v, want generic plugin-data invalidation", i, notice)
-		}
+	if changes != want {
+		t.Fatalf("changes = %d, want %d", changes, want)
 	}
 }
 
@@ -95,9 +89,9 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 				})},
 				fail: operation, deleteFound: true,
 			}
-			var notices []invalidation.Notice
-			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, NewScheduleID: fixedIdentity("sch_created"), Invalidations: func(notice invalidation.Notice) {
-				notices = append(notices, notice)
+			var changes int
+			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, NewScheduleID: fixedIdentity("sch_created"), OnChange: func() {
+				changes++
 			}})
 
 			var err error
@@ -115,21 +109,21 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 			if !errors.Is(err, errScheduleMutation) {
 				t.Fatalf("error = %v, want %v", err, errScheduleMutation)
 			}
-			if len(notices) != 0 {
-				t.Fatalf("published after failed %s: %+v", operation, notices)
+			if changes != 0 {
+				t.Fatalf("published after failed %s: %+v", operation, changes)
 			}
 		})
 	}
 
 	store := &invalidationScheduleStore{runNowStore: &runNowStore{}, deleteFound: false}
-	var notices []invalidation.Notice
-	coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, Invalidations: func(notice invalidation.Notice) {
-		notices = append(notices, notice)
+	var changes int
+	coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, OnChange: func() {
+		changes++
 	}})
 	if err := coordinator.Delete(t.Context(), "sch_missing"); err != nil {
 		t.Fatalf("idempotent Delete: %v", err)
 	}
-	if len(notices) != 0 {
-		t.Fatalf("idempotent delete published a false mutation: %+v", notices)
+	if changes != 0 {
+		t.Fatalf("idempotent delete published a false mutation: %+v", changes)
 	}
 }
