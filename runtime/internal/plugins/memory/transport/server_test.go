@@ -23,7 +23,33 @@ import (
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/chat"
 )
+
+// promptModel adapts a prompt-oriented completion to the chat.Model the host
+// grant now expects. The maintenance operation is not on the wire, so it is
+// recovered from the unique extract/curate system-prompt markers.
+func promptModel(call func(context.Context, rpc.Prompt) (string, error)) chat.Model {
+	return chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		var prompt rpc.Prompt
+		if len(request.Messages) == 2 {
+			prompt.SystemPrompt = request.Messages[0].Text()
+			prompt.UserPrompt = request.Messages[1].Text()
+		}
+		switch {
+		case strings.Contains(prompt.SystemPrompt, "NO_FACTS"):
+			prompt.Operation = "memory.extract"
+		case strings.Contains(prompt.SystemPrompt, "NO_MEMORY"):
+			prompt.Operation = "memory.curate"
+		}
+		text, err := call(ctx, prompt)
+		if err != nil {
+			return nil, err
+		}
+		message := chat.NewAssistantMessage(chat.NewTextPart(text))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
+	})
+}
 
 func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *testing.T) {
 	store, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
@@ -39,7 +65,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	})
 	broker.AdmitSession(session)
 	operations := []string{}
-	grant, release, err := rpc.GrantModels(t.Context(), broker, session, func(_ context.Context, prompt rpc.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(t.Context(), broker, session, promptModel(func(_ context.Context, prompt rpc.Prompt) (string, error) {
 		operations = append(operations, prompt.Operation)
 		if prompt.Operation == "memory.extract" {
 			return "- use local workspace mode\n- verify backend restart", nil
@@ -49,7 +75,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 		}
 		t.Errorf("unexpected model request: %s", prompt.Operation)
 		return "", nil
-	}, nil)
+	}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +174,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	broker.AdmitSession(session)
 	curating := make(chan struct{})
 	joined := make(chan struct{})
-	grant, release, err := rpc.GrantModels(ctx, broker, session, func(ctx context.Context, prompt rpc.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(ctx, broker, session, promptModel(func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 		if prompt.Operation == "memory.extract" {
 			return "- automatic proposal", nil
 		}
@@ -159,7 +185,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		<-ctx.Done()
 		close(joined)
 		return "", ctx.Err()
-	}, nil)
+	}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,12 +245,12 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
-	fresh, releaseFresh, err := rpc.GrantModels(ctx, broker, session, func(_ context.Context, prompt rpc.Prompt) (string, error) {
+	fresh, releaseFresh, err := rpc.GrantModels(ctx, broker, session, promptModel(func(_ context.Context, prompt rpc.Prompt) (string, error) {
 		if prompt.Operation != "memory.curate" {
 			t.Errorf("pending recovery repeated extraction: %s", prompt.Operation)
 		}
 		return "- automatic proposal", nil
-	}, nil)
+	}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,10 +311,10 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	broker.AdmitSession(session)
 	defer broker.RevokeSession(session)
 	var calls atomic.Int32
-	grant, release, err := rpc.GrantModels(t.Context(), broker, session, func(context.Context, rpc.Prompt) (string, error) {
+	grant, release, err := rpc.GrantModels(t.Context(), broker, session, promptModel(func(context.Context, rpc.Prompt) (string, error) {
 		calls.Add(1)
 		return "- durable ledger fact", nil
-	}, nil)
+	}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
