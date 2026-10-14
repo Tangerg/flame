@@ -211,12 +211,31 @@ Still failing/unresolved:
   (`ReviveUncertainExecution` → `Schedules.AwaitOriginalCreateSource` →
   `Pool.BoundServiceSession` → `WaitSession`) and blocks on the DISABLED plugin's
   session until the context deadline (`session_busy`, then a host.Close shutdown
-  deadline). Root cause: a Core Run opening should be reconcilable without its
-  originating plugin live; revival of a plugin-backed uncertain execution should not
-  block indefinitely when the plugin is unavailable. The fix is a production
-  recovery-robustness change (defer/terminalize instead of blocking on WaitSession),
-  deferred as out of scope for a wrap-up. Already failing with both symptoms before
-  this session's test realignment.
+  deadline). Exact chain owners:
+  `runs/uncertain_revival.go:42 ReviveUncertainExecutions` (iterates non-terminal
+  roots; no unavailable-source branch) →
+  `run/execution/interaction_cold_recovery.go:18 PrepareUncertainExecution` →
+  `pluginservices/schedules.go:98 AwaitOriginalCreateSource` →
+  `mcpconnection/pool.go:326 BoundServiceSession` →
+  `infra/integration/mcp/connections.go:211 WaitSession`.
+  The test expects two things the fix must jointly satisfy, confirmed by reading
+  `schedules_callback_loss_test.go`:
+  (a) at the first reopen with the plugin DISABLED, the lost Core opening is
+  reconciled to a terminal/lost Run so `SessionsDelete` (retire-accepted-material,
+  line 113) succeeds — i.e. revival of a plugin-backed uncertain execution must NOT
+  block when the originating plugin is unavailable; it should leave/terminalize the
+  Core Run and keep the schedule's private pending work intact; and
+  (b) at the later reopen with the plugin RE-ENABLED (line 116-118), the private
+  pending work reconciles — advancing the schedule revision exactly once and
+  returning the ORIGINAL run/session IDs as the idempotent outcome — WITHOUT
+  recreating the already-retired session (sessions list stays empty, line 126-128).
+  Root cause: a Core Run opening must be reconcilable without its originating plugin
+  live; `WaitSession`/`AwaitOriginalCreateSource` needs an unavailable-source path
+  (defer/terminalize) instead of blocking. This is a production recovery-robustness
+  change in the exact two-phase recovery ordering the branch already stabilized, so
+  re-run the full `internal/bootstrap` suite (especially the other recovery/steer/
+  schedule tests and `TestScheduleCreateRecoversAcrossSIGKILLCuts`) after any change
+  here. Already failing with both symptoms before this session's test realignment.
 - A Desktop aggregate UI check was accidentally run much earlier and interrupted;
   resulting UI failures were not proven pre-existing. Do not rerun forbidden UI
   checks or claim those failures are resolved.
