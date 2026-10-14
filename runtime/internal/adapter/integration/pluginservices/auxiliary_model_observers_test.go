@@ -18,7 +18,7 @@ import (
 )
 
 func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testing.T) {
-	observer, bindings, _ := installedObserverFixture(t, "outer-failure")
+	observer, bindings, _ := installedPublishedObserverFixture(t, "outer-failure")
 	var calls, releases atomic.Int32
 	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 		invocation, err := pluginsdk.InvocationFromContext(ctx)
@@ -83,7 +83,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 }
 
 func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T) {
-	observer, _, _ := installedObserverFixture(t, "transparent")
+	observer, _, _ := installedPublishedObserverFixture(t, "transparent")
 	started, canceled, returnModel := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	var released atomic.Bool
 	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {

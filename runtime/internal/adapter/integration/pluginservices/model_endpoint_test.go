@@ -25,7 +25,7 @@ func (r endpointResolver) ResolveChat(context.Context, modelref.Selection) (mode
 }
 
 func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T) {
-	observers, bindings, _ := installedObserverFixture(t, "outer-failure")
+	observers, bindings, _ := installedPublishedObserverFixture(t, "outer-failure")
 	path := filepath.Join(t.TempDir(), "endpoint.db")
 	db, err := sqlite.Open(t.Context(), path)
 	if err != nil {

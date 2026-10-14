@@ -148,6 +148,66 @@ func TestCallbacksShareEndpointAndRetainCallAuthority(t *testing.T) {
 	}
 }
 
+func TestRPCContinuationsSharePublishedMethodsWithoutReplacingOrLeakingThem(t *testing.T) {
+	host := newTestCallbacks(t)
+	session := new(sdk.ClientSession)
+	host.AdmitSession(session)
+	makeCallback := func(name string) (*Method[callbackInput, int64], Callback) {
+		method, err := NewMethod[callbackInput, int64](MethodConfig{Name: name, Kind: contractsdk.Query, Target: "call", Description: "Read the captured owner."})
+		if err != nil {
+			t.Fatal(err)
+		}
+		callback, err := NewCallback(method, nil, func(ctx context.Context, input Command[callbackInput]) (int64, error) {
+			if ctx.Value(callbackOwnerKey{}) != "original" {
+				return 0, errors.New("callback lost its owner")
+			}
+			return input.Input.Value, nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return method, callback
+	}
+	shared, published := makeCallback("test.host/shared")
+	local, continuation := makeCallback("test.host/next")
+	if err := host.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }), published); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.WithValue(t.Context(), callbackOwnerKey{}, "original")
+	if _, _, err := host.OpenRPC(ctx, session, callbackTestLimits, published); err == nil {
+		t.Fatal("call replaced a published host method")
+	}
+	first, release, err := host.OpenRPC(ctx, session, callbackTestLimits, continuation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	for _, method := range []*Method[callbackInput, int64]{shared, local} {
+		value, err := CallHost(t.Context(), first, method, "", callbackInput{9007199254740993})
+		if err != nil || value != 9007199254740993 {
+			t.Fatalf("cohosted callback: %d %v", value, err)
+		}
+	}
+	second, closeSecond, err := host.OpenRPC(ctx, session, callbackTestLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeSecond()
+	if first.Endpoint != second.Endpoint {
+		t.Fatal("continuation created a second endpoint")
+	}
+	if _, err := CallHost(t.Context(), second, local, "", callbackInput{1}); err == nil {
+		t.Fatal("call-local continuation leaked into another grant")
+	}
+	if value, err := CallHost(t.Context(), second, shared, "", callbackInput{1}); err != nil || value != 1 {
+		t.Fatalf("local admission changed the published methods: %d %v", value, err)
+	}
+	release()
+	if _, err := CallHost(t.Context(), first, local, "", callbackInput{1}); !errors.Is(err, ErrStaleCall) {
+		t.Fatalf("released continuation remained usable: %v", err)
+	}
+}
+
 func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)

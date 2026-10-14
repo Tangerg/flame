@@ -140,6 +140,7 @@ type Callbacks struct {
 	closeErr    error
 	serveErr    error
 	rpc         http.Handler
+	rpcMethods  map[string]boundMethod
 	rpcReady    chan struct{}
 }
 
@@ -217,27 +218,13 @@ func (c *Callbacks) PublishRPC(handler http.Handler, callbacks ...Callback) erro
 	if err != nil {
 		return err
 	}
-	if len(methods) > 0 {
-		rpc := handler
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/" {
-				rpc.ServeHTTP(w, r)
-				return
-			}
-			limits, ok := r.Context().Value(callbackLimitsKey{}).(CallbackLimits)
-			if !ok {
-				http.Error(w, "callback call limits are required", http.StatusForbidden)
-				return
-			}
-			serveCallback(w, r, methods, limits)
-		})
-	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed || c.rpc != nil {
 		return errors.New("plugin: runtime RPC publication is closed")
 	}
 	c.rpc = handler
+	c.rpcMethods = methods
 	close(c.rpcReady)
 	return nil
 }
@@ -256,15 +243,49 @@ func (c *Callbacks) WaitRPC(ctx context.Context) error {
 	return nil
 }
 
-// OpenRPC captures one call lifetime for the already published Runtime contract.
-func (c *Callbacks) OpenRPC(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits) (CallbackRef, func(), error) {
-	c.mu.Lock()
-	handler := c.rpc
-	c.mu.Unlock()
-	if handler == nil {
-		return CallbackRef{}, nil, errors.New("plugin: runtime RPC is not published")
+// OpenRPC captures one lifetime for canonical RPC, published host collaborators
+// and optional call-local continuations. A local binding cannot replace a method.
+func (c *Callbacks) OpenRPC(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error) {
+	handler, err := c.rpcHandler(callbacks)
+	if err != nil {
+		return CallbackRef{}, nil, err
 	}
 	return c.open(ctx, session, limits, handler)
+}
+
+func (c *Callbacks) rpcHandler(callbacks []Callback) (http.Handler, error) {
+	methods, err := callbackMethods(callbacks)
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	handler := c.rpc
+	published := c.rpcMethods
+	c.mu.Unlock()
+	if handler == nil {
+		return nil, errors.New("plugin: runtime RPC is not published")
+	}
+	for name, method := range published {
+		if _, found := methods[name]; found {
+			return nil, errors.New("plugin: call callback cannot replace a published host method")
+		}
+		methods[name] = method
+	}
+	if len(methods) == 0 {
+		return handler, nil
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			handler.ServeHTTP(w, r)
+			return
+		}
+		limits, ok := r.Context().Value(callbackLimitsKey{}).(CallbackLimits)
+		if !ok {
+			http.Error(w, "callback call limits are required", http.StatusForbidden)
+			return
+		}
+		serveCallback(w, r, methods, limits)
+	}), nil
 }
 
 // OpenRPCWithInvocation binds backend-owned background work through an admission
@@ -274,11 +295,9 @@ func (c *Callbacks) OpenRPCWithInvocation(ctx context.Context, session *sdk.Clie
 	if project == nil {
 		return CallbackRef{}, nil, errors.New("plugin: background invocation projection is required")
 	}
-	c.mu.Lock()
-	handler := c.rpc
-	c.mu.Unlock()
-	if handler == nil {
-		return CallbackRef{}, nil, errors.New("plugin: runtime RPC is not published")
+	handler, err := c.rpcHandler(nil)
+	if err != nil {
+		return CallbackRef{}, nil, err
 	}
 	return c.open(ctx, session, limits, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if value := r.Header.Get(InvocationHeader); value != "" {

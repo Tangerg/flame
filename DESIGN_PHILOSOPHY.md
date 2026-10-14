@@ -166,3 +166,11 @@ that cycle explicitly instead of skipping policy or inventing a recursion limit.
 Primary preparation captures its actual execution member's model publisher before
 provider dispatch; independent work therefore cannot silently become Session-only
 merely because the primary model invocation has not started yet.
+
+An installed observer's call-scoped grant cohosts canonical RPC, published host
+collaborators and its exact next continuation. A local method cannot replace a
+published method or leak into another call. Ordinary callbacks retain the receiving
+activation's Actor; continuation dispatch retains the original caller's values and
+frozen remaining chain, with cancellation linked to the actual next request. Fresh
+model exchanges cannot recursively reenter a still-active observer. Stream chunks,
+backpressure and original physical evidence retain their existing owners.

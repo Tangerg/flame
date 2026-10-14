@@ -190,32 +190,37 @@ func sameObservationJSON(left, right any) (bool, error) {
 }
 
 func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	ctx, err := enterModelPhase(ctx, o.binding)
+	if err != nil {
+		return nil, err
+	}
 	session, binding, err := o.prepare(ctx, request, false)
 	if err != nil {
 		return nil, err
 	}
 	invocation, _ := pluginsdk.InvocationFromContext(ctx)
 	admission := &observationAdmission{request: request.Clone(), id: invocation.ID}
-	next, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginsdk.Command[chat.Request]) (*chat.Response, error) {
+	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginsdk.Command[chat.Request]) (*chat.Response, error) {
 		if err := admission.enter(command); err != nil {
 			return nil, err
 		}
-		response, err := o.next.Call(ctx, command.Input.Clone())
+		calling, release := modelContinuationContext(ctx, requestCtx)
+		defer release()
+		if err := calling.Err(); err != nil {
+			return nil, errors.Join(err, context.Cause(calling))
+		}
+		response, err := o.next.Call(calling, command.Input.Clone())
 		admission.retain(response, err)
 		return response, err
 	})
 	if err != nil {
 		return nil, err
 	}
-	ref, release, err := o.owner.callbacks.Open(ctx, session, observerLimits(), next)
+	metadata, release, err := o.owner.calls.pool.OpenRPC(ctx, o.binding.ServerID, session, next)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	metadata, err := pluginsdk.CallbackMetadata(ref)
-	if err != nil {
-		return nil, err
-	}
 	input, err := jsoninput.Encode(admission.request)
 	if err != nil {
 		return nil, err
@@ -235,28 +240,35 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	return admission.outcome(result.Response, err)
 }
 
-func observerLimits() pluginsdk.CallbackLimits {
-	return pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
-}
-
 func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	frozen := request.Clone()
 	return func(yield func(*chat.ResponseDelta, error) bool) {
-		session, binding, err := o.prepare(ctx, frozen, true)
+		calling, err := enterModelPhase(ctx, o.binding)
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+		session, binding, err := o.prepare(calling, frozen, true)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		invocation, _ := pluginsdk.InvocationFromContext(ctx)
 		admission := &observationAdmission{request: frozen, id: invocation.ID}
-		next, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command pluginsdk.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginsdk.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 			return func(yield func(*chat.ResponseDelta, error) bool) {
 				if err := admission.enter(command); err != nil {
 					yield(nil, err)
 					return
 				}
+				continuation, release := modelContinuationContext(calling, requestCtx)
+				defer release()
+				if err := continuation.Err(); err != nil {
+					yield(nil, errors.Join(err, context.Cause(continuation)))
+					return
+				}
 				var accumulated chat.ResponseAccumulator
-				sequence := o.nextStream.Stream(ctx, command.Input.Clone())
+				sequence := o.nextStream.Stream(continuation, command.Input.Clone())
 				if sequence == nil {
 					yield(nil, errors.New("model observer continuation returned no stream"))
 					return
@@ -294,7 +306,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 					// observer has forwarded it to this chain's consumer.
 					select {
 					case <-forwarded:
-					case <-ctx.Done():
+					case <-continuation.Done():
 						return
 					}
 				}
@@ -307,24 +319,19 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			yield(nil, err)
 			return
 		}
-		ref, release, err := o.owner.callbacks.Open(ctx, session, observerLimits(), next)
+		metadata, release, err := o.owner.calls.pool.OpenRPC(calling, o.binding.ServerID, session, next)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		defer release()
-		metadata, err := pluginsdk.CallbackMetadata(ref)
-		if err != nil {
-			yield(nil, err)
-			return
-		}
 		input, err := jsoninput.Encode(frozen)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		var result *pluginsdk.ModelResult
-		for value, err := range o.owner.calls.pool.Stream(ctx, o.binding.ServerID, session, binding, invocation.ID, input, metadata) {
+		for value, err := range o.owner.calls.pool.Stream(calling, o.binding.ServerID, session, binding, invocation.ID, input, metadata) {
 			if err != nil {
 				yield(nil, err)
 				return

@@ -231,6 +231,13 @@ for a later observation does not change the original command input or receipt.
 This projection supplies no durable authority of its own; the enclosing callback
 owner and actual managed connection retain call and installation authority.
 
+`Callbacks.OpenRPC` can bind call-local callbacks beside the once-published host
+methods and canonical Runtime RPC on the same endpoint. Local names cannot replace
+published methods and do not appear in another call's grant. They share the existing
+cancellation, retirement and stale-reference owner. Its variadic source signature
+requires external method-value/interface consumers to update and rebuild; no
+former-signature wrapper remains. Core/backend wire and storage formats are unchanged.
+
 Memory search and maintenance now use this public unary transport. Memory owns
 its two-call policy and captured model collaborators. Real-process tests prove
 MCP → callback → nested MCP reentrancy without a Desktop relay. This slice does
@@ -254,10 +261,18 @@ cross-plugin requirements. That does not grant arbitrary calls to undeclared plu
 operations. A nested model exchange that reenters a contributor still preparing its
 ancestor is explicitly refused before recursively invoking that contribution;
 Runtime neither bypasses the contributor nor retargets the frozen pipeline.
+Installed transparent model observers now receive canonical RPC and independent
+host model callbacks beside their captured `next` continuation. Ordinary callbacks
+retain the observer activation's Actor and dependency bindings. `next` retains the
+original caller's values and exact remaining chain while its network request can
+cancel that work; it cannot borrow the observer's Actor. A fresh exchange that
+reenters the still-active observer is refused explicitly. Original canonical stream
+chunks, backpressure, source response and per-call accounting remain authoritative.
+
 Preparation inside an active execution carries its original member's accounting
 publisher, even before primary provider dispatch. Per-call request/output budgets
-remain supplied by the operation owner. Full native composition, observer host RPC
-cohosting and background effect restoration remain separate acceptance work.
+remain supplied by the operation owner. Full native composition and background
+effect restoration remain separate acceptance work.
 
 ## Background activation and retained caller projection
 

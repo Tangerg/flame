@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"net/http"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -18,7 +19,7 @@ import (
 func TestInstalledModelObserverKeepsKnownOutcomeAndSingleOriginalContinuation(t *testing.T) {
 	for _, mode := range []string{"transparent", "outer-failure", "repeat", "transform"} {
 		t.Run(mode, func(t *testing.T) {
-			observer, bindings, store := installedObserverFixture(t, mode)
+			observer, bindings, store := installedPublishedObserverFixture(t, mode)
 			var calls atomic.Int32
 			message := chat.NewAssistantMessage(chat.NewTextPart("known response"), chat.NewReasoningPart("basis", nil))
 			response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "actual-endpoint", Usage: &chat.Usage{InputTokens: 11, OutputTokens: 3}}}
@@ -63,7 +64,7 @@ func TestInstalledModelObserverKeepsKnownOutcomeAndSingleOriginalContinuation(t 
 func TestInstalledModelObserverStreamsCanonicalChunksThroughCapturedNext(t *testing.T) {
 	for _, mode := range []string{"transparent", "outer-failure"} {
 		t.Run(mode, func(t *testing.T) {
-			observer, bindings, _ := installedObserverFixture(t, mode)
+			observer, bindings, _ := installedPublishedObserverFixture(t, mode)
 			model := &observerStreamModel{done: make(chan struct{})}
 			_, streamer := observer.Bind(model, model, bindings)
 			ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-stream", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-stream"}})
@@ -121,7 +122,7 @@ func (m *observerStreamModel) Stream(context.Context, *chat.Request) iter.Seq2[*
 }
 
 func TestInstalledModelObserverConsumerStopJoinsOriginalProducer(t *testing.T) {
-	observer, bindings, _ := installedObserverFixture(t, "transparent")
+	observer, bindings, _ := installedPublishedObserverFixture(t, "transparent")
 	model := &observerStreamModel{done: make(chan struct{})}
 	_, streamer := observer.Bind(model, model, bindings)
 	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "stopped-stream", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "stopped-stream"}})
@@ -143,6 +144,15 @@ func TestInstalledModelObserverConsumerStopJoinsOriginalProducer(t *testing.T) {
 	if model.produced.Load() != 1 {
 		t.Fatal("consumer stop admitted another provider chunk")
 	}
+}
+
+func installedPublishedObserverFixture(t *testing.T, mode string) (*ModelComposition, []plugins.ContributionBinding, *toolInstallationStore) {
+	t.Helper()
+	composition, bindings, store := installedObserverFixture(t, mode)
+	if err := composition.callbacks.PublishRPC(http.NotFoundHandler()); err != nil {
+		t.Fatal(err)
+	}
+	return composition, bindings, store
 }
 
 func installedObserverFixture(t *testing.T, mode string) (*ModelComposition, []plugins.ContributionBinding, *toolInstallationStore) {

@@ -366,7 +366,7 @@ func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.
 
 // OpenRPC preserves the invoking call while applying this backend's frozen
 // dependency authority. Retirement is owned by the same session ledger.
-func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginsdk.Callback) (sdk.ParamsBase, func(), error) {
 	if p.callbacks == nil {
 		return sdk.ParamsBase{}, nil, errors.New("mcp: Runtime callbacks are unavailable")
 	}
@@ -374,7 +374,7 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}
-	ref, release, err := p.callbacks.OpenRPC(operation.WithActor(ctx, actor), session, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20})
+	ref, release, err := p.callbacks.OpenRPC(operation.WithActor(ctx, actor), session, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}, callbacks...)
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}

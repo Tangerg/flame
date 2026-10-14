@@ -2015,7 +2015,7 @@
             },
             {
               "name": "OpenRPC",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits) (CallbackRef, func(), error)"
+              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
             },
             {
               "name": "OpenRPCWithInvocation",

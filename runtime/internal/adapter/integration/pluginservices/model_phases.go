@@ -11,7 +11,7 @@ import (
 
 type modelPhaseKey struct{}
 
-// A fresh nested exchange cannot reenter a contributor still preparing its
+// A fresh nested exchange cannot reenter a contributor still handling its
 // ancestor. Keep the active path immutable across concurrent callback requests;
 // rejecting a cycle does not skip a contributor or change the selected chain.
 func enterModelPhase(ctx context.Context, binding plugins.ContributionBinding) (context.Context, error) {
@@ -20,4 +20,18 @@ func enterModelPhase(ctx context.Context, binding plugins.ContributionBinding) (
 		return nil, fmt.Errorf("%w: recursive model contributor %s", plugin.ErrInvalid, binding.ContributionID)
 	}
 	return context.WithValue(ctx, modelPhaseKey{}, append(slices.Clone(active), binding)), nil
+}
+
+// RPC belongs to the receiving activation, but next keeps the original caller's
+// values and frozen chain. Its network request may cancel that original work.
+func modelContinuationContext(captured, request context.Context) (context.Context, func()) {
+	ctx, cancel := context.WithCancelCause(captured)
+	stop := context.AfterFunc(request, func() { cancel(context.Cause(request)) })
+	if err := request.Err(); err != nil {
+		cancel(context.Cause(request))
+	}
+	return ctx, func() {
+		stop()
+		cancel(nil)
+	}
 }
