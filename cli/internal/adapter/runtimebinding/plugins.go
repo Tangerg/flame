@@ -6,9 +6,13 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"slices"
 )
 
 type pluginBinding interface {
+	ListPluginCompositions(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginComposition], error)
+	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, flameruntime.CommandOptions) (*protocol.PluginComposition, error)
+	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)
 	ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)
 	ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error)
@@ -21,6 +25,52 @@ type pluginBinding interface {
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
+}
+
+func (r *Connection) ListPluginCompositions(ctx context.Context) ([]protocol.PluginComposition, error) {
+	page, err := r.plugins.ListPluginCompositions(ctx, r.callOptions())
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	values, err := requireCompletePage("list plugin compositions", page)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireUniqueIdentities("list plugin compositions", values, func(value protocol.PluginComposition) string { return value.Contract }); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func (r *Connection) SetPluginComposition(ctx context.Context, request protocol.SetPluginCompositionRequest, commandID replay.CommandID) (*protocol.PluginComposition, error) {
+	options, err := r.commandOptionsFor(commandID)
+	if err != nil {
+		return nil, err
+	}
+	expected, err := capability.Parse([]byte(request.Contract))
+	if err != nil {
+		return nil, err
+	}
+	value, err := r.plugins.SetPluginComposition(ctx, request, options)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || !slices.Equal(value.Members, request.Members) {
+		return nil, runtimeContractViolation("set plugin composition returned another member order")
+	}
+	actual, err := capability.Parse([]byte(value.Contract))
+	if err != nil || actual.Identity() != expected.Identity() {
+		return nil, runtimeContractViolation("set plugin composition returned another contract")
+	}
+	return value, nil
+}
+
+func (r *Connection) ResolvePluginComposition(ctx context.Context, request protocol.ResolvePluginCompositionRequest) ([]protocol.PluginOperationBinding, error) {
+	page, err := r.plugins.ResolvePluginComposition(ctx, request, r.callOptions())
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	return requireCompletePage("resolve plugin composition", page)
 }
 
 func (r *Connection) ResolvePluginPoint(ctx context.Context, request protocol.ResolvePluginPointRequest) ([]protocol.PluginPointBinding, error) {

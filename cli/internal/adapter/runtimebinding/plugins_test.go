@@ -3,9 +3,11 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
@@ -13,9 +15,40 @@ import (
 
 type pluginBindingStub struct {
 	pluginBinding
-	page     *protocol.Page[protocol.PluginInstallation]
-	selected *protocol.PluginInstallation
-	provider *protocol.PluginProviderSelection
+	page        *protocol.Page[protocol.PluginInstallation]
+	selected    *protocol.PluginInstallation
+	provider    *protocol.PluginProviderSelection
+	composition *protocol.PluginComposition
+}
+
+func (s pluginBindingStub) SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, flameruntime.CommandOptions) (*protocol.PluginComposition, error) {
+	return s.composition, nil
+}
+
+func TestPluginCompositionRefusesAnotherContractOrMemberOrder(t *testing.T) {
+	contract, err := pluginsdk.ModelObserverContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := protocol.SetPluginCompositionRequest{Contract: string(contract.Identity().JSON()), Members: []protocol.PluginCompositionMember{{InstallationID: "first", Contribution: "outer"}, {InstallationID: "second", Contribution: "inner"}}}
+	reversed := slices.Clone(request.Members)
+	slices.Reverse(reversed)
+	for name, value := range map[string]*protocol.PluginComposition{
+		"absent":           nil,
+		"invalid contract": {Contract: `{}`, Members: request.Members},
+		"reversed":         {Contract: request.Contract, Members: reversed},
+		"original":         {Contract: request.Contract, Members: request.Members},
+	} {
+		connection := &Connection{plugins: pluginBindingStub{composition: value}, meta: requestMeta("test")}
+		actual, err := connection.SetPluginComposition(t.Context(), request, "")
+		if name == "original" {
+			if err != nil || actual != value {
+				t.Fatalf("original composition refused: %+v, %v", actual, err)
+			}
+		} else if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+			t.Fatalf("%s composition accepted: %+v, %v", name, actual, err)
+		}
+	}
 }
 
 func (s pluginBindingStub) SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, flameruntime.CommandOptions) (*protocol.PluginProviderSelection, error) {

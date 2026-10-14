@@ -199,6 +199,16 @@ not select a provider; several candidates may be enabled. Disabling or removing
 the selected provider leaves the choice unavailable rather than selecting another
 one. Selection preserves private data and the original route of pending commands.
 
+`flame plugins compositions` lists consumer-selected decorator chains in their
+explicit outer-to-inner order. `flame plugins set-composition --request
+'{"contract":"<canonical capability JSON>","members":[{"installationId":"…","contribution":"…"}]}'`
+sets that order through the Runtime command owner; retain its printed command ID
+for uncertain acknowledgement recovery. `flame plugins resolve-composition
+--request '{"contract":"<canonical capability JSON>"}'` reports current exact
+bindings in that same order. Unavailable members are errors, never silently
+removed or replaced. These commands do not activate backends or create another
+composition store.
+
 `flame plugins list` inspects admitted releases, each installation's desired `enabled` value, Skill provenance, typed admission diagnostics, the
 realization Runtime observes now (release availability and unavailable backends) and each
 declared input's state. A configured secret input, including every header and

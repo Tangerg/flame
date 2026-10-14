@@ -2,21 +2,77 @@ package cmd
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type pluginCommandFixture struct {
 	Runtime
 	pluginRuntime
-	calls    int
-	received protocol.InstallPluginRequest
-	command  replay.CommandID
-	provider protocol.SelectPluginProviderRequest
+	calls       int
+	received    protocol.InstallPluginRequest
+	command     replay.CommandID
+	provider    protocol.SelectPluginProviderRequest
+	composition protocol.SetPluginCompositionRequest
+}
+
+func (f *pluginCommandFixture) ListPluginCompositions(context.Context) ([]protocol.PluginComposition, error) {
+	f.calls++
+	return []protocol.PluginComposition{{Contract: f.composition.Contract, Members: f.composition.Members}}, nil
+}
+
+func (f *pluginCommandFixture) SetPluginComposition(_ context.Context, request protocol.SetPluginCompositionRequest, id replay.CommandID) (*protocol.PluginComposition, error) {
+	f.calls++
+	f.composition, f.command = request, id
+	return &protocol.PluginComposition{Contract: request.Contract, Members: request.Members}, nil
+}
+
+func (f *pluginCommandFixture) ResolvePluginComposition(_ context.Context, request protocol.ResolvePluginCompositionRequest) ([]protocol.PluginOperationBinding, error) {
+	f.calls++
+	f.composition.Contract = request.Contract
+	values := make([]protocol.PluginOperationBinding, len(f.composition.Members))
+	for i, member := range f.composition.Members {
+		values[i] = protocol.PluginOperationBinding{InstallationID: member.InstallationID, Contribution: member.Contribution}
+	}
+	return values, nil
+}
+
+func TestPluginCompositionCommandsKeepExplicitOrderAndMutationIdentity(t *testing.T) {
+	contract, err := pluginsdk.ModelObserverContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := protocol.SetPluginCompositionRequest{Contract: string(contract.Identity().JSON()), Members: []protocol.PluginCompositionMember{
+		{InstallationID: "12345678-1234-1234-1234-123456789abc", Contribution: "outer"},
+		{InstallationID: "12345678-1234-1234-1234-123456789abd", Contribution: "inner"},
+	}}
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := "cli_" + strings.Repeat("b", 32)
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
+	out, stderr, err := executeCommand(t, fixture, "", "plugins", "set-composition", "--command-id", key, "--request", string(encoded))
+	if err != nil || fixture.calls != 1 || string(fixture.command) != key || !strings.Contains(stderr, key) || strings.Index(out, "outer") >= strings.Index(out, "inner") {
+		t.Fatalf("set explicit composition: %s %s %+v, %v", out, stderr, fixture, err)
+	}
+	query, err := json.Marshal(protocol.ResolvePluginCompositionRequest{Contract: request.Contract})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"compositions"}, {"resolve-composition", "--request", string(query)}} {
+		fixture.calls = 0
+		out, stderr, err := executeCommand(t, fixture, "", append([]string{"plugins"}, args...)...)
+		if err != nil || fixture.calls != 1 || stderr != "" || !strings.Contains(out, "outer") || strings.Index(out, "outer") >= strings.Index(out, "inner") || fixture.composition.Contract != request.Contract {
+			t.Fatalf("inspect explicit composition %v: %s %s, %v", args, out, stderr, err)
+		}
+	}
 }
 
 func (f *pluginCommandFixture) SelectPluginProvider(_ context.Context, request protocol.SelectPluginProviderRequest, id replay.CommandID) (*protocol.PluginProviderSelection, error) {

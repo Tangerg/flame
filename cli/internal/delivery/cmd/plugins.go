@@ -14,6 +14,9 @@ import (
 )
 
 type pluginRuntime interface {
+	ListPluginCompositions(context.Context) ([]protocol.PluginComposition, error)
+	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, replay.CommandID) (*protocol.PluginComposition, error)
+	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest) ([]protocol.PluginOperationBinding, error)
 	ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest) ([]protocol.PluginPointBinding, error)
 	ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) ([]protocol.PluginCollaborator, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
@@ -48,6 +51,21 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root.AddCommand(newPluginCallCommand(provider))
 	root.AddCommand(newPluginRequirementsCommand(provider))
 	root.AddCommand(newPluginPointCommand(provider))
+	root.AddCommand(newPluginResolveCompositionCommand(provider))
+	root.AddCommand(&cobra.Command{Use: "compositions", Short: "Inspect explicit outer-to-inner plugin compositions", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := runtime.ListPluginCompositions(cmd.Context())
+		if err != nil {
+			return err
+		}
+		if values == nil {
+			values = []protocol.PluginComposition{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginComposition]{Data: values})
+	}})
 	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
 		if err != nil {
@@ -77,6 +95,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginInstallation]{Data: installations})
 	}})
 	root.AddCommand(
+		pluginMutationCommand(provider, "set-composition", "Set explicit outer-to-inner members for a consumer contract", pluginRuntime.SetPluginComposition),
 		pluginMutationCommand(provider, "select-provider", "Select a declared provider without changing its enablement or private data", pluginRuntime.SelectPluginProvider),
 		pluginMutationCommand(provider, "install", "Install an immutable directory or ZIP on the Runtime", pluginRuntime.InstallPlugin),
 		pluginMutationCommand(provider, "stage", "Stage a release without changing active code", pluginRuntime.StagePlugin),
@@ -88,6 +107,33 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		}),
 	)
 	return root
+}
+
+func newPluginResolveCompositionCommand(provider runtimeProvider) *cobra.Command {
+	var input string
+	command := &cobra.Command{Use: "resolve-composition", Short: "Resolve current bindings in the explicit composition order", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if len(input) > 1<<20 {
+			return errors.New("plugin input exceeds 1 MiB")
+		}
+		var request protocol.ResolvePluginCompositionRequest
+		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+			return err
+		}
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		values, err := runtime.ResolvePluginComposition(cmd.Context(), request)
+		if err != nil {
+			return err
+		}
+		if values == nil {
+			values = []protocol.PluginOperationBinding{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginOperationBinding]{Data: values})
+	}}
+	command.Flags().StringVar(&input, "request", "{}", "Consumer contract as a JSON string inside the request")
+	return command
 }
 
 func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
