@@ -55,10 +55,12 @@ func TestRuntimeRejectsTruncatedSummaryBeforeReplacingHistory(t *testing.T) {
 		t.Fatal(created.Failure)
 	}
 	sessionID = created.Value.(*protocol.Session).ID
+	startOptions := options
+	startOptions.IdempotencyKey = "truncated-summary-start"
 	started := endpoint.Invoke(ctx, delivery.RunsStart, protocol.StartRunRequest{
 		SessionID: sessionID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Continue the long tool loop."}},
-	}, options)
+	}, startOptions)
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

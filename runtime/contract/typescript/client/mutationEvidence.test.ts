@@ -72,6 +72,7 @@ it("refuses expired replay without deleting evidence or issuing a replacement ke
     { sessionId: "ses_1", input: [{ type: "text", text: "hello" }] },
     undefined,
     () => false,
+    null,
   )!;
   const before = durable.keys().map((key) => [key, durable.get(key)]);
   now = 2_000;
@@ -81,6 +82,7 @@ it("refuses expired replay without deleting evidence or issuing a replacement ke
     { sessionId: "ses_1", input: [{ type: "text", text: "hello" }] },
     undefined,
     () => false,
+    null,
   )!;
   expect(recovered.entry).toEqual(original.entry);
   expect(restarted.lookupNamespace(recovered)).toBe("runtime-store");

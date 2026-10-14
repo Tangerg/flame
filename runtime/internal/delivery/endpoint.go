@@ -151,11 +151,9 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	ctx = operation.Bind(ctx, e.idempotencyNamespace.String(), options.IdempotencyKey)
 	ctx = WithRequestMeta(ctx, options.RequestMeta)
 	ctx = withAfterEventID(ctx, options.AfterEventID)
-	// A keyed owner-run-stream command carries its acceptance into the opening
-	// transaction, so the handler needs the request's command identity. The key is
-	// optional: an unkeyed start opens a run with no durable acceptance, exactly as
-	// before. Binding only the keyed case keeps that one path un-ambient.
-	if method.Meta.Idempotency == IdempotencyOwnerRun && options.IdempotencyKey != "" {
+	// Run commands carry caller-owned identity into their acceptance transaction.
+	// A key created only in the response cannot survive a lost acknowledgement.
+	if method.Meta.Idempotency == IdempotencyOwnerRun {
 		fingerprint, err := runCommandFingerprint(method.Meta.Name, parameters, options.RequestMeta.ClientCapabilities)
 		if err != nil {
 			return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
@@ -265,6 +263,9 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 	}
 	if options.IdempotencyKey != "" && !method.Idempotency.Replays() {
 		return NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
+	}
+	if method.Idempotency == IdempotencyOwnerRun && options.IdempotencyKey == "" {
+		return NewFailure(protocol.ErrInvalidParams, "a Run command requires an idempotency key retained by its caller")
 	}
 	if len(options.IdempotencyKey) > maxIdempotencyKeyBytes {
 		return NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes")

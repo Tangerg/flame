@@ -68,7 +68,8 @@ describe("smoke: v2 end-to-end happy path", () => {
 
   it("discover → create → start → interrupt → resume → completed", async () => {
     transport = createMemoryTransport();
-    client = createRpcClient(transport, {
+    client = createRpcClient(transport);
+    methods = createMethods(client, {
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "smoke-test", version: "0.1" },
@@ -77,8 +78,6 @@ describe("smoke: v2 end-to-end happy path", () => {
           interruptTypes: ["approval", "question"],
         },
       }),
-    });
-    methods = createMethods(client, {
       capabilities: () =>
         discoverResponse.capabilities as import("@flame/runtime-contract/wire").ServerCapabilities,
     });

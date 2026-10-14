@@ -14,6 +14,7 @@ import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise 
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 
 export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
+import type { RequestMeta } from "../wire.generated";
 
 export {
   MutationJournalCapacityError,
@@ -25,6 +26,7 @@ export type { MutationJournalScope, MutationJournalStorage } from "./durableMuta
 
 export interface MutationReservation {
   readonly idempotencyKey: string;
+  readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string;
   authorizeDispatch(): string;
   track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
@@ -37,7 +39,12 @@ export interface MutationJournal {
     prepare: () => Promise<PluginCommandBinding>,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
   pendingCommands(): PendingRunCommand[];
-  reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined;
+  reserve(
+    method: string,
+    params: unknown,
+    preferredKey?: string,
+    requestMeta?: RequestMeta | null,
+  ): MutationReservation | undefined;
   dispose(): void;
 }
 
@@ -173,10 +180,19 @@ class MutationAuthority implements MutationJournal {
       }));
   }
 
-  reserve(method: string, params: unknown, preferredKey?: string): MutationReservation | undefined {
+  reserve(
+    method: string,
+    params: unknown,
+    preferredKey?: string,
+    requestMeta: RequestMeta | null = null,
+  ): MutationReservation | undefined {
     this.#assertCurrent();
-    const identity = this.#journal.reserve(method, params, preferredKey, (idempotencyKey) =>
-      this.#claims.has(idempotencyKey),
+    const identity = this.#journal.reserve(
+      method,
+      params,
+      preferredKey,
+      (idempotencyKey) => this.#claims.has(idempotencyKey),
+      requestMeta,
     );
     if (!identity) return undefined;
     return this.#claim(identity);
@@ -187,6 +203,9 @@ class MutationAuthority implements MutationJournal {
     const lifecycle = this.#lifecycle(identity);
     return {
       idempotencyKey: identity.entry.idempotencyKey,
+      get requestMeta() {
+        return structuredClone(identity.entry.command?.requestMeta ?? null);
+      },
       lookupNamespace: () => {
         this.#assertClaim(identity);
         return this.#journal.lookupNamespace(identity);

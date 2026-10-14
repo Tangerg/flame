@@ -69,10 +69,6 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, mapRunEvents(result.Events), nil
 }
 
-// runCommandIdentity lifts the Endpoint-bound command identity into the application's
-// acceptance reference. It is absent for an unkeyed start and for a direct handler
-// call that never passed through the Endpoint; both open a run without a durable
-// acceptance record.
 func runCommandIdentity(ctx context.Context) *runs.CommandIdentity {
 	identity, ok := commandIdentityFrom(ctx)
 	if !ok {

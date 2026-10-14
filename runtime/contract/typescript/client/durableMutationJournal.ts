@@ -1,6 +1,11 @@
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
-import type { StartRunRequest, ResumeRunRequest, SteerRunRequest } from "../wire.generated";
+import type {
+  StartRunRequest,
+  ResumeRunRequest,
+  SteerRunRequest,
+  RequestMeta,
+} from "../wire.generated";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
@@ -44,9 +49,9 @@ export class MutationJournalCapacityError extends MutationJournalError {
 }
 
 export type RunCommand =
-  | { operation: "start"; params: StartRunRequest }
-  | { operation: "resume"; params: ResumeRunRequest }
-  | { operation: "steer"; params: SteerRunRequest };
+  | { operation: "start"; params: StartRunRequest; requestMeta: RequestMeta | null }
+  | { operation: "resume"; params: ResumeRunRequest; requestMeta: RequestMeta | null }
+  | { operation: "steer"; params: SteerRunRequest; requestMeta: RequestMeta | null };
 
 interface JournalEntry {
   salt: string;
@@ -91,6 +96,7 @@ export interface DurableMutationJournal {
     params: unknown,
     preferredKey: string | undefined,
     claimed: (idempotencyKey: string) => boolean,
+    requestMeta: RequestMeta | null,
   ): DurableMutationIdentity | undefined;
   authorizeDispatch(identity: DurableMutationIdentity): string;
   lookupNamespace(identity: DurableMutationIdentity): string;
@@ -168,7 +174,7 @@ function validCommand(value: unknown, entry: JournalEntry): boolean {
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    Object.keys(value).length !== 2
+    Object.keys(value).length !== 3
   )
     return false;
   const command = value as Partial<RunCommand>;
@@ -178,23 +184,45 @@ function validCommand(value: unknown, entry: JournalEntry): boolean {
     command.operation !== "steer"
   )
     return false;
+  if (
+    command.requestMeta !== null &&
+    (!command.requestMeta ||
+      typeof command.requestMeta !== "object" ||
+      Array.isArray(command.requestMeta))
+  )
+    return false;
   try {
     const method = `runs.${command.operation}` as const;
-    checkRequest(method, command.params);
-    return matchesCommand(entry, method, command.params);
+    return matchesCommand(entry, method, command.params, command.requestMeta);
   } catch {
     return false;
   }
 }
 
-function prepareCommand(method: string, params: unknown): RunCommand | null {
+function prepareCommand(
+  method: string,
+  params: unknown,
+  requestMeta: RequestMeta | null,
+): RunCommand | null {
   switch (method) {
     case "runs.start":
-      return { operation: "start", params: structuredClone(checkRequest(method, params)) };
+      return {
+        operation: "start",
+        params: structuredClone(checkRequest(method, params, requestMeta)),
+        requestMeta: structuredClone(requestMeta),
+      };
     case "runs.resume":
-      return { operation: "resume", params: structuredClone(checkRequest(method, params)) };
+      return {
+        operation: "resume",
+        params: structuredClone(checkRequest(method, params, requestMeta)),
+        requestMeta: structuredClone(requestMeta),
+      };
     case "runs.steer":
-      return { operation: "steer", params: structuredClone(checkRequest(method, params)) };
+      return {
+        operation: "steer",
+        params: structuredClone(checkRequest(method, params, requestMeta)),
+        requestMeta: structuredClone(requestMeta),
+      };
     default:
       return null;
   }
@@ -313,19 +341,37 @@ function fingerprintFields(...fields: readonly string[]): string {
   return fields.join(FINGERPRINT_FIELD_SEPARATOR);
 }
 
-function matchesCommand(entry: JournalEntry, method: string, params: unknown): boolean {
-  const command = commandFields(method, params, entry.installed !== undefined);
-  return entry.fingerprint === fingerprint(fingerprintFields(entry.salt, command));
-}
-
-function commandFields(method: string, params: unknown, installed: boolean): string {
-  const command = fingerprintFields(method, canonicalJSON(params));
+function commandFingerprintInput(
+  method: string,
+  params: unknown,
+  requestMeta: RequestMeta | null,
+  installed: boolean,
+): string {
+  const command = fingerprintFields(
+    method,
+    canonicalJSON(prepareCommand(method, params, requestMeta) ?? params),
+  );
   if (!installed) return command;
-  // Installed receipts bind input bytes; semantic JSON equality cannot authorize reordered input.
+  // Installed receipts bind original input bytes, beyond semantic JSON equality.
   const input = JSON.stringify((params as CallPluginRequest).input);
   if (input === undefined)
     throw new MutationJournalError("plugin command input is not serializable");
   return fingerprintFields(command, input);
+}
+
+function matchesCommand(
+  entry: JournalEntry,
+  method: string,
+  params: unknown,
+  requestMeta: RequestMeta | null,
+): boolean {
+  const command = commandFingerprintInput(
+    method,
+    params,
+    requestMeta,
+    entry.installed !== undefined,
+  );
+  return entry.fingerprint === fingerprint(fingerprintFields(entry.salt, command));
 }
 
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
@@ -401,6 +447,7 @@ export function openDurableMutationJournal(
     params: unknown,
     scope: MutationJournalScope,
     idempotencyKey: string,
+    requestMeta: RequestMeta | null,
     installed?: { intent: string; route: Omit<CallPluginRequest, "input"> },
   ) => {
     const createdAt = options.now();
@@ -409,7 +456,10 @@ export function openDurableMutationJournal(
       salt,
       namespace: scope.namespace,
       fingerprint: fingerprint(
-        fingerprintFields(salt, commandFields(method, params, installed !== undefined)),
+        fingerprintFields(
+          salt,
+          commandFingerprintInput(method, params, requestMeta, installed !== undefined),
+        ),
       ),
       idempotencyKey,
       createdAt,
@@ -424,7 +474,7 @@ export function openDurableMutationJournal(
               route: installed.route,
             },
           }),
-      command: prepareCommand(method, params),
+      command: prepareCommand(method, params, requestMeta),
     };
     persistEntry(entry);
     return entry;
@@ -450,7 +500,7 @@ export function openDurableMutationJournal(
       if (
         input.method !== route.method ||
         input.contract !== route.contract ||
-        !matchesCommand(entry, pluginDeliveryMethod(request), request)
+        !matchesCommand(entry, pluginDeliveryMethod(request), request, null)
       )
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
@@ -472,7 +522,7 @@ export function openDurableMutationJournal(
       if (loadEntries(options.storage).length >= MAX_ENTRIES)
         throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
       const { input: _, ...route } = structuredClone(request);
-      const entry = createEntry(method, request, scope, crypto.randomUUID(), {
+      const entry = createEntry(method, request, scope, crypto.randomUUID(), null, {
         intent,
         route,
       });
@@ -483,7 +533,7 @@ export function openDurableMutationJournal(
         .filter((entry) => entry.command !== null)
         .map((entry) => ({ entry: structuredClone(entry) }));
     },
-    reserve(method, params, preferredKey, claimed) {
+    reserve(method, params, preferredKey, claimed, requestMeta) {
       const scope = options.scope();
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
@@ -492,7 +542,7 @@ export function openDurableMutationJournal(
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
       const matches = (entry: JournalEntry) =>
-        entry.installed === undefined && matchesCommand(entry, method, params);
+        entry.installed === undefined && matchesCommand(entry, method, params, requestMeta);
       const preferred =
         preferredKey === undefined
           ? undefined
@@ -516,7 +566,13 @@ export function openDurableMutationJournal(
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }
-        entry = createEntry(method, params, scope, preferredKey ?? crypto.randomUUID());
+        entry = createEntry(
+          method,
+          params,
+          scope,
+          preferredKey ?? crypto.randomUUID(),
+          requestMeta,
+        );
       }
       const identity = { entry };
       return identity;

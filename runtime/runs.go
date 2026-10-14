@@ -38,7 +38,7 @@ func (r *binding) GetRun(ctx context.Context, request protocol.GetRunRequest, op
 	return r.invoke[protocol.GetRunRequest, *protocol.RunRef](ctx, delivery.RunsGet, request, callOptions(options))
 }
 
-// GetRunAcceptance reads a Start or Resume acceptance without redelivery.
+// GetRunAcceptance reads a Start, Resume or Steer acceptance without redelivery.
 func (r *binding) GetRunAcceptance(ctx context.Context, request protocol.GetRunAcceptanceRequest, options CallOptions) (*protocol.RunAcceptance, error) {
 	return r.invoke[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](ctx, delivery.RunsGetAcceptance, request, callOptions(options))
 }

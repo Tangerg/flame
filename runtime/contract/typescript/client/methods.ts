@@ -564,7 +564,12 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         }
         const idempotencyNamespace = attempt.authorizeDispatch();
         const opened = await attachRunStream(attempt.signal, (options) =>
-          perform(method, preparedParams, { ...options, idempotencyKey, idempotencyNamespace }),
+          perform(method, preparedParams, {
+            ...options,
+            idempotencyKey,
+            idempotencyNamespace,
+            requestMeta: attempt.requestMeta,
+          }),
         );
         return { result: opened.result, observation: { type: "stream", events: opened.events } };
       },
@@ -597,6 +602,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           signal: attempt.signal,
           idempotencyKey: key,
           idempotencyNamespace: attempt.authorizeDispatch(),
+          requestMeta: attempt.requestMeta,
         });
       },
       signal,

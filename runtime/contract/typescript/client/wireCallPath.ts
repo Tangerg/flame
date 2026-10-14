@@ -79,6 +79,7 @@ type OpenMutation = <M extends WireMethodName, Result>(
 
 interface MutationDelivery {
   signal?: AbortSignal;
+  readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string | undefined;
   authorizeDispatch(): string | undefined;
 }
@@ -109,12 +110,13 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
   };
 
   const perform: WirePerform = async (method, params, callOptions) => {
-    const ownsRequestMeta = options.requestMeta !== undefined;
-    const requestMeta = ownsRequestMeta ? options.requestMeta?.() : callOptions?.requestMeta;
+    const requestMeta =
+      callOptions?.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
     refuse(method, params, requestMeta);
-    const effectiveOptions = ownsRequestMeta
-      ? { ...callOptions, requestMeta: requestMeta ?? null }
-      : callOptions;
+    const effectiveOptions =
+      options.requestMeta !== undefined || callOptions?.requestMeta !== undefined
+        ? { ...callOptions, requestMeta: requestMeta ?? null }
+        : callOptions;
     return client.call(method, params, effectiveOptions);
   };
 
@@ -141,7 +143,12 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
           ? undefined
           : reserveOriginal
             ? reserveOriginal()
-            : options.mutationJournal?.reserve(method, preparedParams, preferredJournalKey);
+            : options.mutationJournal?.reserve(
+                method,
+                preparedParams,
+                preferredJournalKey,
+                structuredClone(options.requestMeta?.() ?? null),
+              );
     } catch (error) {
       const failedKey = requestedKey ?? preferredJournalKey;
       const retry = (retryOptions?: { signal?: AbortSignal }): MutationPromise<Result> =>
@@ -166,6 +173,7 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
             idempotencyKey,
             {
               ...attempt,
+              requestMeta: reservation?.requestMeta ?? null,
               lookupNamespace: () => reservation?.lookupNamespace(),
               authorizeDispatch: () => reservation?.authorizeDispatch(),
             },

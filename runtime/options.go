@@ -10,7 +10,8 @@ type CallOptions struct {
 	RequestMeta protocol.RequestMeta
 }
 
-// CommandOptions describes one mutation and its optional stable retry identity.
+// CommandOptions describes one mutation and its stable retry identity.
+// SteerRun requires IdempotencyKey; other mutations permit omission.
 type CommandOptions struct {
 	RequestMeta          protocol.RequestMeta
 	IdempotencyKey       string
@@ -33,8 +34,10 @@ func pluginCallOptions(options PluginCallOptions) delivery.Options {
 	}
 }
 
-// RunCommandOptions describes a Run-opening command. AfterEventID applies only
-// when an idempotent retry reattaches to the Run opened by the first attempt.
+// RunCommandOptions describes a Run-opening command. Retain IdempotencyKey,
+// the discovered store namespace and the exact request before dispatch. StartRun
+// and ResumeRun reject an absent key. AfterEventID applies only when redelivery
+// reattaches to the original Segment.
 type RunCommandOptions struct {
 	RequestMeta          protocol.RequestMeta
 	IdempotencyKey       string

@@ -73,10 +73,12 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		t.Fatal(created.Failure)
 	}
 	session := created.Value.(*protocol.Session)
+	startOptions := options
+	startOptions.IdempotencyKey = "delegate-completion-start"
 	started := endpoint.Invoke(ctx, delivery.RunsStart, protocol.StartRunRequest{
 		SessionID: session.ID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "delegate both tasks"}},
-	}, options)
+	}, startOptions)
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

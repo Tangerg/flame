@@ -82,7 +82,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 		changed <- errors.New("schedule subscription ended before invalidation")
 	}()
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Schedule from model"}, "session").(*protocol.Session)
-	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Create a recurring progress inspection."}}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Create a recurring progress inspection."}}}, delivery.Options{IdempotencyKey: "schedule-tool-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

@@ -100,7 +100,8 @@ const (
 	IdempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
 	// IdempotencyOwnerRun records the command acceptance atomically with
-	// its opening or input-admission head. Delivery keeps no competing reservation.
+	// its opening or input-admission head. It requires caller-retained identity;
+	// delivery keeps no competing reservation.
 	IdempotencyOwnerRun IdempotencyPolicy = "ownerRun"
 )
 

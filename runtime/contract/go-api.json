@@ -1690,12 +1690,28 @@
           "signature": "func(ctx context.Context) (string, error)"
         },
         {
+          "name": "ModelContextContract",
+          "signature": "func() (*capability.Contract, error)"
+        },
+        {
+          "name": "ModelContextMethod",
+          "signature": "func() (*Method[ModelContextRequest, ModelContextResult], error)"
+        },
+        {
           "name": "ModelMethod",
           "signature": "func() (*Method[chat.Request, ModelResult], error)"
         },
         {
           "name": "ModelObserverContract",
           "signature": "func() (*capability.Contract, error)"
+        },
+        {
+          "name": "ModelSelectionContract",
+          "signature": "func() (*capability.Contract, error)"
+        },
+        {
+          "name": "ModelSelectionMethod",
+          "signature": "func() (*Method[ModelSelectionRequest, ModelSelection], error)"
         },
         {
           "name": "ModelStreamMethod",
@@ -2103,6 +2119,50 @@
           ]
         },
         {
+          "name": "ModelContextRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "Request",
+              "type": "chat.Request",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ModelContextResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Messages",
+              "type": "[]chat.Message",
+              "tag": "json:\"messages\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "ModelFailure",
           "kind": "struct",
           "fields": [
@@ -2158,6 +2218,55 @@
             {
               "name": "JSONSchemaExtend",
               "signature": "func(schema *jsonschema.Schema)"
+            }
+          ]
+        },
+        {
+          "name": "ModelSelection",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "ReasoningEffort",
+              "type": "string",
+              "tag": "json:\"reasoningEffort,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ModelSelectionRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Proposed",
+              "type": "ModelSelection",
+              "tag": "json:\"proposed\""
+            },
+            {
+              "name": "Request",
+              "type": "*chat.Request",
+              "tag": "json:\"request,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
             }
           ]
         },
@@ -3725,7 +3834,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.27\""
+          "value": "\"2026-10-14.28\""
         },
         {
           "name": "ProviderAPIKeyOptional",

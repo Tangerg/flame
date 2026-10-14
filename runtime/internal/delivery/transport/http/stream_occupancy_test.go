@@ -3,6 +3,7 @@ package http_test
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"iter"
 	netHTTP "net/http"
 	"runtime"
@@ -141,6 +142,7 @@ func openAndAbandon(t *testing.T, url string, api *blockingRuntime) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Idempotency-Key", rand.Text())
 	resp, err := netHTTP.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("POST runs.start: %v", err)
