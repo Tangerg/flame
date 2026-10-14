@@ -27,21 +27,23 @@ type observedInteractionModel struct {
 	session  *interactionSession
 }
 
-// request attaches the tail the reducer prepared for this invocation. Scope's
-// WorkingContext adopts whatever the context reducer returns, so a per-request
-// projection is attached here, after the Dispatcher has fixed the messages it
-// will keep; appending at the tail keeps every earlier message a reusable
-// cache prefix.
+// request attaches exactly the ephemeral material measured by the reducer after
+// Scope has adopted the authored conversation it will retain.
 func (o *observedInteractionModel) request(invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
-	tail, err := o.session.tails.take(invocation)
+	material, err := o.session.material.take(invocation)
 	if err != nil {
 		return nil, err
 	}
-	if len(tail) == 0 {
+	if request == nil || material.prefixAt > len(request.Messages) {
+		return nil, errors.New("execution: prepared model context has an invalid instruction boundary")
+	}
+	if len(material.prefix) == 0 && len(material.trailer) == 0 {
 		return request, nil
 	}
 	sent := request.Clone()
-	sent.Messages = append(sent.Messages, tail...)
+	sent.Messages = append(cloneChatMessages(request.Messages[:material.prefixAt]), material.prefix...)
+	sent.Messages = append(sent.Messages, cloneChatMessages(request.Messages[material.prefixAt:])...)
+	sent.Messages = append(sent.Messages, material.trailer...)
 	return sent, nil
 }
 
@@ -54,7 +56,7 @@ func (o *observedInteractionModel) Call(
 		return nil, err
 	}
 	defer o.session.accounting.discardPreparedModelContext(invocation)
-	defer o.session.tails.discard(invocation)
+	defer o.session.material.discard(invocation)
 	sent, err := o.request(invocation, request)
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
@@ -90,7 +92,7 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		defer o.session.accounting.discardPreparedModelContext(invocation)
-		defer o.session.tails.discard(invocation)
+		defer o.session.material.discard(invocation)
 		sent, err := o.request(invocation, request)
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err))

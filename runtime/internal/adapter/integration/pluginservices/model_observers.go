@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type ModelObservers struct {
+type ModelComposition struct {
 	calls     *CommandCalls
 	callbacks *pluginsdk.Callbacks
 	admission *plugins.Admission
@@ -24,14 +24,14 @@ type ModelObservers struct {
 	auxiliary map[*auxiliaryModelCapture]struct{}
 }
 
-func NewModelObservers(calls *CommandCalls, callbacks *pluginsdk.Callbacks, admission *plugins.Admission) (*ModelObservers, error) {
+func NewModelComposition(calls *CommandCalls, callbacks *pluginsdk.Callbacks, admission *plugins.Admission) (*ModelComposition, error) {
 	if calls == nil || callbacks == nil || admission == nil {
-		return nil, errors.New("model observers: installed calls and callbacks are required")
+		return nil, errors.New("model composition: installed calls and callbacks are required")
 	}
-	return &ModelObservers{calls: calls, callbacks: callbacks, admission: admission, auxiliary: make(map[*auxiliaryModelCapture]struct{})}, nil
+	return &ModelComposition{calls: calls, callbacks: callbacks, admission: admission, auxiliary: make(map[*auxiliaryModelCapture]struct{})}, nil
 }
 
-func (o *ModelObservers) Resolve(ctx context.Context) ([]plugins.ContributionBinding, error) {
+func (o *ModelComposition) Resolve(ctx context.Context) ([]plugins.ContributionBinding, error) {
 	contract, err := pluginsdk.ModelObserverContract()
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func (o *ModelObservers) Resolve(ctx context.Context) ([]plugins.ContributionBin
 	return plugins.ResolveComposition(ctx, o.calls.installations, o.calls.compositions, contract)
 }
 
-func (o *ModelObservers) Validate(ctx context.Context, bindings []plugins.ContributionBinding) error {
+func (o *ModelComposition) Validate(ctx context.Context, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
 		if err := o.admitBinding(ctx, binding); err != nil {
 			return err
@@ -48,7 +48,7 @@ func (o *ModelObservers) Validate(ctx context.Context, bindings []plugins.Contri
 	return nil
 }
 
-func (o *ModelObservers) admitBinding(ctx context.Context, binding plugins.ContributionBinding) error {
+func (o *ModelComposition) admitBinding(ctx context.Context, binding plugins.ContributionBinding) error {
 	contract, err := pluginsdk.ModelObserverContract()
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (o *ModelObservers) admitBinding(ctx context.Context, binding plugins.Contr
 	return nil
 }
 
-func (o *ModelObservers) Bind(model chat.Model, streamer chat.Streamer, bindings []plugins.ContributionBinding) (chat.Model, chat.Streamer) {
+func (o *ModelComposition) Bind(model chat.Model, streamer chat.Streamer, bindings []plugins.ContributionBinding) (chat.Model, chat.Streamer) {
 	for index := len(bindings) - 1; index >= 0; index-- {
 		layer := &observedModel{owner: o, binding: bindings[index], next: model, nextStream: streamer}
 		model = layer
@@ -77,7 +77,7 @@ func (o *ModelObservers) Bind(model chat.Model, streamer chat.Streamer, bindings
 }
 
 type observedModel struct {
-	owner      *ModelObservers
+	owner      *ModelComposition
 	binding    plugins.ContributionBinding
 	next       chat.Model
 	nextStream chat.Streamer

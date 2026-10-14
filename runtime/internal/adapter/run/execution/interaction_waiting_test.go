@@ -30,6 +30,7 @@ import (
 
 func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *testing.T) {
 	workspace := t.TempDir()
+	contextOwner := &contextCaptureComposition{t: t}
 	var (
 		toolCalls int
 		requests  [][]chat.Message
@@ -59,6 +60,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		interactionUsageTextResponse("completed", 3, 1),
 	}}
 	recordingModel := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		if countContextMaterial(request.Messages) != 1 {
+			t.Error("restored model input lost or duplicated contributed context")
+		}
 		if request.Options.Temperature == nil || *request.Options.Temperature != 0.27 || request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != 321 {
 			return nil, errors.New("restoration lost generation options")
 		}
@@ -69,8 +73,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	})
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	executor := newObservedTestInteractionExecutor(t, recordingModel, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
-		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		ModelComposition: contextOwner,
+		ToolResolver:     staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolInterpreter:  testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
 	start := interactionTestStart()
@@ -148,6 +153,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		}
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
+	if contextOwner.resolved != 1 || contextOwner.calls != 2 {
+		t.Fatalf("restoration reselected or lost original context: resolves=%d calls=%d", contextOwner.resolved, contextOwner.calls)
+	}
 	completed := payloadsOf[runs.ModelCallCompleted](events)
 	if len(completed) != 1 {
 		t.Fatalf("completion = %#v", completed)
@@ -162,7 +170,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(requests) != 2 || requests[0][0].Text() != "current question" || requests[1][0].Text() != "current question" {
+	if len(requests) != 2 || len(requests[0]) < 2 || len(requests[1]) < 2 || requests[0][0].Text() != "ephemeral retrieval" || requests[1][0].Text() != "ephemeral retrieval" || requests[0][1].Text() != "current question" || requests[1][1].Text() != "current question" {
 		t.Fatalf("restored model context = %#v", requests)
 	}
 	if got := requests[1][len(requests[1])-1].Text(); got != "also include edge cases" {

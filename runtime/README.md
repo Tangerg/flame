@@ -2406,3 +2406,11 @@ follows existing source deletion: Run-associated evidence ends with its Run,
 Session-only evidence ends with its Session, and unattached evidence remains in
 the journal. Automatic historical pruning and embedding/multi-call metering remain
 open. Rebuild Runtime/Go/TS/CLI and select rebuilt component bytes together.
+
+Primary Interaction now captures public `plugin.ModelContextContract` contributors
+before model-visible capacity admission. Their system material is measured and
+sent for one call; it never becomes authored conversation. Exact captured
+installation/release/order survives waiting recovery and holds the ordinary
+installation dependency. A missing `model_contexts` checkpoint field is refused
+as an incompatible pre-release payload. Auxiliary context contributors and
+model-selection/request-transform boundaries remain under development.

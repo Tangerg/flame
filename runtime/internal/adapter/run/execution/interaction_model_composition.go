@@ -8,21 +8,24 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type InteractionModelObservers interface {
+type InteractionModelComposition interface {
+	ResolveContext(context.Context) ([]plugins.ContributionBinding, error)
+	ValidateContext(context.Context, []plugins.ContributionBinding) error
+	PrepareContext(context.Context, []plugins.ContributionBinding, modelref.Selection, *chat.Request) ([]chat.Message, error)
 	Resolve(context.Context) ([]plugins.ContributionBinding, error)
 	Validate(context.Context, []plugins.ContributionBinding) error
 	HeldDependencies() []plugin.Dependency
 	Bind(chat.Model, chat.Streamer, []plugins.ContributionBinding) (chat.Model, chat.Streamer)
 }
 
-type modelObserverWire struct {
+type modelContributionWire struct {
 	Installation string `json:"installation"`
 	Digest       string `json:"digest"`
 	Contribution string `json:"contribution"`
@@ -31,18 +34,17 @@ type modelObserverWire struct {
 	Contract     string `json:"contract"`
 }
 
-func observerBindingsWire(bindings []plugins.ContributionBinding) []modelObserverWire {
-	values := make([]modelObserverWire, len(bindings))
+func modelBindingsWire(bindings []plugins.ContributionBinding) []modelContributionWire {
+	values := make([]modelContributionWire, len(bindings))
 	for index, binding := range bindings {
-		values[index] = modelObserverWire{Installation: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Server: binding.ServerName.String(), Export: binding.Export, Contract: binding.Contract.String()}
+		values[index] = modelContributionWire{Installation: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Server: binding.ServerName.String(), Export: binding.Export, Contract: binding.Contract.String()}
 	}
 	return values
 }
 
-func decodeObserverBindings(values []modelObserverWire) ([]plugins.ContributionBinding, error) {
-	contract, err := pluginsdk.ModelObserverContract()
-	if err != nil {
-		return nil, err
+func decodeModelBindings(values []modelContributionWire, contract *capability.Contract) ([]plugins.ContributionBinding, error) {
+	if contract == nil {
+		return nil, errors.New("execution: model composition contract is required")
 	}
 	bindings := make([]plugins.ContributionBinding, 0, len(values))
 	seen := map[plugin.CompositionMember]bool{}
@@ -65,11 +67,11 @@ func decodeObserverBindings(values []modelObserverWire) ([]plugins.ContributionB
 		}
 		identity, err := jsoninput.Parse([]byte(value.Contract))
 		if err != nil || identity != contract.Identity() {
-			return nil, errors.Join(err, errors.New("execution: observer contract changed"))
+			return nil, errors.Join(err, errors.New("execution: model contribution contract changed"))
 		}
 		member := plugin.CompositionMember{Installation: installation, Contribution: contribution}
 		if seen[member] || !capability.ValidExportName(value.Export) {
-			return nil, errors.New("execution: invalid observer binding")
+			return nil, errors.New("execution: invalid model contribution binding")
 		}
 		seen[member] = true
 		origin, err := mcpserver.InstallationOrigin(installation)

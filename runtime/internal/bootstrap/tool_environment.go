@@ -28,15 +28,15 @@ import (
 // connection adapter. Bootstrap is the composition root that joins them; the
 // generic toolset does not expose application integration ports.
 type toolEnvironment struct {
-	tools          toolset.Built
-	mcp            *mcpconnection.Pool
-	memory         *pluginservices.Memory
-	schedules      *pluginservices.Schedules
-	pluginCalls    *pluginservices.CommandCalls
-	modelObservers *pluginservices.ModelObservers
-	utilityModel   models.AuxiliaryResolver
-	closers        []*teardown.Step
-	admission      *plugins.Admission
+	tools            toolset.Built
+	mcp              *mcpconnection.Pool
+	memory           *pluginservices.Memory
+	schedules        *pluginservices.Schedules
+	pluginCalls      *pluginservices.CommandCalls
+	modelComposition *pluginservices.ModelComposition
+	utilityModel     models.AuxiliaryResolver
+	closers          []*teardown.Step
+	admission        *plugins.Admission
 }
 
 // toolEnvironmentDependencies is the complete construction contract for the
@@ -95,11 +95,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.pluginCalls = commandCalls
-	environment.modelObservers, err = pluginservices.NewModelObservers(commandCalls, deps.modelServices.callbacks, admission)
+	environment.modelComposition, err = pluginservices.NewModelComposition(commandCalls, deps.modelServices.callbacks, admission)
 	if err != nil {
 		return environment, err
 	}
-	environment.utilityModel = environment.modelObservers.Auxiliary(deps.modelServices.utilityModel)
+	environment.utilityModel = environment.modelComposition.Auxiliary(deps.modelServices.utilityModel)
 	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.ResolveMemory, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err

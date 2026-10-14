@@ -368,3 +368,31 @@ The empty opening response conveys no business result. Ordinary plugins.call and
 component bindings remain unary; query/TS streams and production model/
 dependency composition still require their owning migration. Core is
 2026-10-14.21; backend protocol/private formats are unchanged.
+
+## Primary Interaction context composition
+
+`ModelContextContract` publishes the ordered `flame.model-context.v1` context
+contribution point. An installed backend registers `ModelContextMethod`, binds
+its declared capability export and returns `ModelContextResult`. The query
+receives the captured provider/model and the complete current Scope request;
+its invocation metadata identifies the original model call and parent effect.
+It has no command identity, execution continuation or model-routing authority.
+
+Only valid system messages may be contributed. Later contributors see earlier
+material in the explicit captured order. Runtime validates exact installation,
+release, contribution, export and contract before each invocation. A failed,
+withdrawn or changed contributor refuses preparation before provider dispatch.
+
+Primary Interaction captures this order with its execution configuration and
+checkpoint and retains its installation dependencies. Contributions enter the
+existing capacity/compaction input as fixed instructions; they reach the provider
+through the same one-call preparation record as the current Session tail.
+Neither enters Scope's retained WorkingContext or authored durable conversation.
+The physical model journal records the complete request actually dispatched.
+Waiting recovery uses captured bindings, without selecting a replacement chain.
+The checkpoint now requires `model_contexts`, including an explicit empty array;
+former payloads are refused rather than interpreted as an empty composition.
+
+Auxiliary context composition, model selection and general request transformations
+remain separate unfinished semantic boundaries. Transparent model observers keep
+their existing Scope Call/Stream contract and cannot acquire those authorities.

@@ -37,7 +37,7 @@ type interactionSession struct {
 	state               interactionState
 	childProjection     interactionChildProjection
 	accounting          interactionAccounting
-	tails               requestTails
+	material            requestMaterial
 	unknownPollInterval time.Duration
 	statePollInterval   time.Duration
 	maintenance         RunMaintenance
@@ -46,7 +46,9 @@ type interactionSession struct {
 	start               runs.RootExecutionStart
 	modelFailures       interactionModelFailures
 	modelObservers      []plugins.ContributionBinding
+	modelContexts       []plugins.ContributionBinding
 	modelEvidence       InteractionModelEvidence
+	modelComposition    InteractionModelComposition
 	effectFailures      interactionEffectFailures
 	segmentClock        interactionSegmentClock
 	// telemetry observes Framework facts only. It owns Process, Step, and
@@ -143,8 +145,9 @@ func newInteractionSession(
 		},
 		modelFailures:       newInteractionModelFailures(),
 		modelEvidence:       config.ModelEvidence,
+		modelComposition:    config.ModelComposition,
 		accounting:          newInteractionAccounting(start.ModelSelection),
-		tails:               newRequestTails(),
+		material:            newRequestMaterial(),
 		unknownPollInterval: policy.unknownEffectPollInterval,
 		statePollInterval:   policy.statePollInterval,
 		maintenance:         config.Maintenance,

@@ -71,8 +71,8 @@ func (i *InteractionExecutor) heldDependencies(ctx context.Context) ([]plugin.De
 		return nil, err
 	}
 	held = append(held, commands...)
-	if i.config.ModelObservers != nil {
-		held = append(held, i.config.ModelObservers.HeldDependencies()...)
+	if i.config.ModelComposition != nil {
+		held = append(held, i.config.ModelComposition.HeldDependencies()...)
 	}
 	for _, session := range i.sessions.snapshot() {
 		held = append(held, session.installationDependencies()...)
@@ -87,7 +87,7 @@ func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	var dependencies []plugin.Dependency
-	for _, binding := range i.modelObservers {
+	for _, binding := range append(slices.Clone(i.modelObservers), i.modelContexts...) {
 		dependencies = append(dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
 	}
 	if deployments != nil {

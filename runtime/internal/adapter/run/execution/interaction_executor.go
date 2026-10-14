@@ -72,7 +72,7 @@ type InteractionExecutorConfig struct {
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
 	ModelEvidence             InteractionModelEvidence
-	ModelObservers            InteractionModelObservers
+	ModelComposition          InteractionModelComposition
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
 	MaxConcurrentToolCalls    *int
@@ -135,7 +135,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		value any
 	}{
 		{name: "chat resolver", value: config.ChatResolver},
-		{name: "model observers", value: config.ModelObservers},
+		{name: "model composition", value: config.ModelComposition},
 		{name: "original schedule results", value: config.OriginalScheduleResults},
 		{name: "Tool resolver", value: config.ToolResolver},
 		{name: "Tool interpreter", value: config.ToolInterpreter},
@@ -232,7 +232,7 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, err
 	}
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_" + uuid.NewString()}
-	session, err := i.assembleInteraction(ctx, ref, start, nil)
+	session, err := i.assembleInteraction(ctx, ref, start, nil, nil)
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -261,6 +261,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
 	frozenObservers *[]plugins.ContributionBinding,
+	frozenContexts *[]plugins.ContributionBinding,
 ) (_ *interactionSession, err error) {
 	resolved, err := i.resolveChat(ctx, start.ModelSelection)
 	if err != nil {
@@ -282,20 +283,36 @@ func (i *InteractionExecutor) assembleInteraction(
 	}()
 	if frozenObservers != nil {
 		session.modelObservers = slices.Clone(*frozenObservers)
-	} else if i.config.ModelObservers != nil {
-		session.modelObservers, err = i.config.ModelObservers.Resolve(ctx)
+	} else if i.config.ModelComposition != nil {
+		session.modelObservers, err = i.config.ModelComposition.Resolve(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if len(session.modelObservers) > 0 {
-		if i.config.ModelObservers == nil {
-			return nil, errors.New("execution: captured model observers are unavailable")
-		}
-		if err := i.config.ModelObservers.Validate(ctx, session.modelObservers); err != nil {
+	if frozenContexts != nil {
+		session.modelContexts = slices.Clone(*frozenContexts)
+	} else if i.config.ModelComposition != nil {
+		session.modelContexts, err = i.config.ModelComposition.ResolveContext(ctx)
+		if err != nil {
 			return nil, err
 		}
-		model, streamer = i.config.ModelObservers.Bind(model, streamer, session.modelObservers)
+	}
+	if len(session.modelContexts) > 0 {
+		if i.config.ModelComposition == nil {
+			return nil, errors.New("execution: captured model context is unavailable")
+		}
+		if err := i.config.ModelComposition.ValidateContext(ctx, session.modelContexts); err != nil {
+			return nil, err
+		}
+	}
+	if len(session.modelObservers) > 0 {
+		if i.config.ModelComposition == nil {
+			return nil, errors.New("execution: captured model observers are unavailable")
+		}
+		if err := i.config.ModelComposition.Validate(ctx, session.modelObservers); err != nil {
+			return nil, err
+		}
+		model, streamer = i.config.ModelComposition.Bind(model, streamer, session.modelObservers)
 	}
 	observed, err := newObservedInteractionModel(model, streamer, session)
 	if err != nil {
@@ -341,16 +358,17 @@ func (i *InteractionExecutor) interactionConfiguration(
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := agent.EncodePayload(struct {
-		Provider               string              `json:"provider"`
-		Model                  string              `json:"model"`
-		Streaming              bool                `json:"streaming"`
-		MaxConcurrentToolCalls int                 `json:"maxConcurrentToolCalls"`
-		ContextCompaction      bool                `json:"contextCompaction"`
-		Group                  domaintool.Group    `json:"group"`
-		Depth                  uint32              `json:"depth"`
-		DelegateOptions        corechat.Options    `json:"delegateOptions"`
-		Instructions           []corechat.Message  `json:"instructions,omitempty"`
-		ModelObservers         []modelObserverWire `json:"modelObservers"`
+		Provider               string                  `json:"provider"`
+		Model                  string                  `json:"model"`
+		Streaming              bool                    `json:"streaming"`
+		MaxConcurrentToolCalls int                     `json:"maxConcurrentToolCalls"`
+		ContextCompaction      bool                    `json:"contextCompaction"`
+		Group                  domaintool.Group        `json:"group"`
+		Depth                  uint32                  `json:"depth"`
+		DelegateOptions        corechat.Options        `json:"delegateOptions"`
+		Instructions           []corechat.Message      `json:"instructions,omitempty"`
+		ModelObservers         []modelContributionWire `json:"modelObservers"`
+		ModelContexts          []modelContributionWire `json:"modelContexts"`
 	}{
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		Streaming:              i.config.StreamModelResponses,
@@ -358,7 +376,8 @@ func (i *InteractionExecutor) interactionConfiguration(
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
 		Group:                  group, Depth: depth,
 		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
-		ModelObservers: observerBindingsWire(session.modelObservers),
+		ModelObservers: modelBindingsWire(session.modelObservers),
+		ModelContexts:  modelBindingsWire(session.modelContexts),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction configuration identity: %w", err)
@@ -598,7 +617,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 	}
 	start := checkpoint.restoredStart(continuation)
-	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint.modelObservers)
+	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint.modelObservers, &checkpoint.modelContexts)
 	if err != nil {
 		return err
 	}

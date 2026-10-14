@@ -153,7 +153,7 @@ func TestInstalledModelObserverConsumerStopJoinsOriginalProducer(t *testing.T) {
 	}
 }
 
-func installedObserverFixture(t *testing.T, mode string) (*ModelObservers, []plugins.ContributionBinding, *toolInstallationStore) {
+func installedObserverFixture(t *testing.T, mode string) (*ModelComposition, []plugins.ContributionBinding, *toolInstallationStore) {
 	t.Helper()
 	contract, err := pluginsdk.ModelObserverContract()
 	if err != nil {
@@ -271,7 +271,7 @@ func installedObserverFixture(t *testing.T, mode string) (*ModelObservers, []plu
 	if err != nil {
 		t.Fatal(err)
 	}
-	observer, err := NewModelObservers(calls, callbacks, plugins.NewAdmission())
+	observer, err := NewModelComposition(calls, callbacks, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,7 +15,7 @@ import (
 
 // Auxiliary freezes observer bindings for the caller's whole use case. Memory
 // retains one capture across extraction/curation; Complete releases one request.
-func (o *ModelObservers) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
+func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
 	return func(ctx context.Context) (chat.Model, func(), error) {
 		if resolve == nil {
 			return nil, nil, errors.New("model observers: auxiliary resolver is required")
@@ -53,7 +53,7 @@ func (o *ModelObservers) Auxiliary(resolve models.AuxiliaryResolver) models.Auxi
 	}
 }
 
-func (o *ModelObservers) HeldDependencies() []plugin.Dependency {
+func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	var values []plugin.Dependency
@@ -66,7 +66,7 @@ func (o *ModelObservers) HeldDependencies() []plugin.Dependency {
 }
 
 type auxiliaryModelCapture struct {
-	owner    *ModelObservers
+	owner    *ModelComposition
 	bindings []plugins.ContributionBinding
 	model    chat.Model
 	lifetime context.Context

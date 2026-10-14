@@ -294,7 +294,7 @@ func buildExecutionComposition(
 		BuildID:                 cfg.BuildID,
 		ChatResolver:            modelServices.chatResolver,
 		ModelEvidence:           cfg.Stores.ModelInvocations,
-		ModelObservers:          toolRuntime.modelObservers,
+		ModelComposition:        toolRuntime.modelComposition,
 		StreamModelResponses:    true,
 		MaxConcurrentToolCalls:  &maxConcurrentToolCalls,
 		ToolInterpreter:         toolInterpreter,

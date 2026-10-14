@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -64,11 +66,9 @@ func appendPendingContinuation(
 	return append(messages, message), nil
 }
 
-// ReduceModelContext builds the complete messages for one model call. The
-// Dispatcher hands in a throwaway Clone and clones whatever comes back, so this
-// reducer reslices and appends to request.Messages directly; copying it again
-// would give the same sequence a second owner. The frozen instructions are this
-// Runtime's own and are still copied before anything appends to them.
+// ReduceModelContext returns only the authored context Scope may retain. It
+// measures contributed instructions and the current Session tail with that
+// context, then transfers them once to the provider boundary.
 func (i *interactionModelContextReducer) ReduceModelContext(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
@@ -102,6 +102,27 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
+	var material []corechat.Message
+	if len(i.session.modelContexts) > 0 {
+		identity, err := modelInvocationID(invocation)
+		if err != nil {
+			return nil, err
+		}
+		calling, err := pluginsdk.WithInvocation(ctx, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
+		if err != nil {
+			return nil, err
+		}
+		candidate := request.Clone()
+		candidate.Messages, err = appendPendingContinuation(candidate.Messages, pendingContinuation, hasPendingContinuation)
+		if err != nil {
+			return nil, err
+		}
+		candidate.Messages = append(candidate.Messages, cloneChatMessages(tail)...)
+		material, err = i.session.modelComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if i.compactor == nil {
 		effective, err := appendPendingContinuation(
 			request.Messages, pendingContinuation, hasPendingContinuation,
@@ -110,11 +131,13 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 			return nil, err
 		}
 		validation := request.Clone()
-		validation.Messages = effective
+		validation.Messages = append(cloneChatMessages(i.instructions), cloneChatMessages(material)...)
+		validation.Messages = append(validation.Messages, cloneChatMessages(effective[len(i.instructions):])...)
+		validation.Messages = append(validation.Messages, cloneChatMessages(tail)...)
 		if err := validation.Validate(); err != nil {
 			return nil, fmt.Errorf("execution: reduced model context: %w", err)
 		}
-		if err := i.session.tails.prepare(invocation, tail); err != nil {
+		if err := i.session.material.prepare(invocation, len(i.instructions), material, tail); err != nil {
 			return nil, err
 		}
 		return effective, nil
@@ -125,7 +148,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
-	fixedContext := cloneChatMessages(i.instructions)
+	fixedContext := append(cloneChatMessages(i.instructions), cloneChatMessages(material)...)
 	preCompact := func(ctx context.Context) (bool, error) {
 		if i.session.lifecycleHooks == nil {
 			return true, nil
@@ -188,19 +211,17 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
-	effective := append(
-		fixedContext,
-		result.Messages()...,
-	)
+	effective := append(cloneChatMessages(i.instructions), result.Messages()...)
 	validation := request.Clone()
-	validation.Messages = effective
+	validation.Messages = append(fixedContext, result.Messages()...)
+	validation.Messages = append(validation.Messages, cloneChatMessages(tail)...)
 	if err := validation.Validate(); err != nil {
 		return nil, fmt.Errorf("execution: compacted model context: %w", err)
 	}
 	if err := i.session.accounting.prepareModelContext(invocation, result.EstimatedTokens()); err != nil {
 		return nil, err
 	}
-	if err := i.session.tails.prepare(invocation, tail); err != nil {
+	if err := i.session.material.prepare(invocation, len(i.instructions), material, tail); err != nil {
 		i.session.accounting.discardPreparedModelContext(invocation)
 		return nil, err
 	}
