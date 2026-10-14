@@ -215,6 +215,7 @@ func currentSchema() []string {
 		// Semantic response content and aggregate accounting stay in history_items
 		// and runs; deleting the owning Run also removes its invocation records.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
+			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('conversation','independent')),
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT,
 			run_id      TEXT REFERENCES runs(run_id) ON DELETE CASCADE,
@@ -228,7 +229,7 @@ func currentSchema() []string {
 			endpoint_failure TEXT NOT NULL DEFAULT '',
 			endpoint_cost_usd REAL CHECK (endpoint_cost_usd IS NULL OR (endpoint_cost_usd >= 0 AND endpoint_json IS NOT NULL AND known_response IS NOT NULL)),
 			known_response TEXT CHECK (known_response IS NULL OR ((state = '%[3]s' OR (state = '%[2]s' AND endpoint_json IS NOT NULL)) AND json_valid(known_response))),
-			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL)),
+			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL AND logical_purpose IS NOT NULL)),
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
 				(state = '%[1]s' AND finished_at IS NULL) OR

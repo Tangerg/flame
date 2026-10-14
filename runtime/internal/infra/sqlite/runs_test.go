@@ -327,8 +327,7 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 			}
 			startedAt := draft.CreatedAt.Add(time.Second)
 			if err := sqlite.NewModelInvocationStore(database).StartModelInvocation(
-				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt,
-			); err != nil {
+				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, run.ModelConversation); err != nil {
 				t.Fatalf("start model invocation: %v", err)
 			}
 			if err := sqlite.NewModelInvocationStore(database).CompleteModelInvocation(

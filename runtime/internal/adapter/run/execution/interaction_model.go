@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -55,7 +54,7 @@ func (o *observedInteractionModel) Call(
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
-	ctx = executionctx.WithInvocationOwner(ctx, callID)
+	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
 	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: callID}})
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
@@ -94,7 +93,7 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		dispatchedAt := time.Now()
-		ctx = executionctx.WithInvocationOwner(ctx, callID)
+		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
 		ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: callID}})
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err))

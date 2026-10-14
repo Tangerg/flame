@@ -1110,7 +1110,7 @@ func (inertRuntimeStores) ReplaceItem(context.Context, transcript.Replacement) e
 	return nil
 }
 
-func (inertRuntimeStores) StartModelInvocation(context.Context, string, string, string, string, time.Time) error {
+func (inertRuntimeStores) StartModelInvocation(context.Context, string, string, string, string, time.Time, run.ModelCallPurpose) error {
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"reflect"
 	"time"
 
@@ -362,8 +363,26 @@ func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID
 // RecoverModelInvocation projects known physical evidence into a failed logical
 // attempt, or closes an unobserved attempt as unknown. The source CAS joins the
 // existing Run recovery transaction and never permits replay or continuation.
-func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessionID, runID, segmentID, callID string, startedAt, finishedAt time.Time, source *modelref.EndpointObservation) error {
-	if source == nil {
+func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessionID, runID, segmentID, callID string, startedAt, finishedAt time.Time, source *modelref.EndpointObservation, purpose rundomain.ModelCallPurpose) error {
+	if err := purpose.Validate(); err != nil {
+		return err
+	}
+	var actualPurpose string
+	if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT logical_purpose FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, callID).Scan(&actualPurpose); err != nil {
+		return err
+	}
+	if actualPurpose != purpose.String() {
+		return errors.New("sqlite: recovered model purpose changed")
+	}
+	if source != nil {
+		if source.RunID != runID || source.SessionID != sessionID || source.SegmentID != segmentID || source.Invocation.Caller.ID != callID || source.Invocation.StartedAt.Before(startedAt) || source.FinishedAt.After(finishedAt) {
+			return errors.New("sqlite: recovered endpoint differs from original call")
+		}
+		if err := m.validateEndpointProjection(ctx, *source); err != nil {
+			return err
+		}
+	}
+	if source == nil || source.Response == nil {
 		return m.MarkModelInvocationUnknown(ctx, sessionID, runID, segmentID, callID, startedAt, finishedAt)
 	}
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
@@ -371,9 +390,6 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	}
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return err
-	}
-	if source.RunID != runID || source.SessionID != sessionID || source.SegmentID != segmentID || source.Invocation.Caller.ID != callID || source.Response == nil || finishedAt.Before(source.FinishedAt) || source.Invocation.StartedAt.Before(startedAt) {
-		return errors.New("sqlite: recovered endpoint differs from original call")
 	}
 	if err := source.ResponseJSON.Validate(); err != nil {
 		return err
@@ -507,7 +523,7 @@ func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]
 
 // ValidateIndependentEndpoint fences the recovery projection to the immutable
 // physical source in the same transaction as its Run/Goal replacement.
-func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, expected modelref.EndpointObservation) error {
+func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, expected modelref.EndpointObservation) error {
 	source, found, err := m.EndpointForCaller(ctx, expected.Invocation.Caller.ID)
 	if err != nil {
 		return err
@@ -536,6 +552,14 @@ func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, 
 	if actualModel != expectedModel || !reflect.DeepEqual(actualUsage, expectedUsage) {
 		return errors.New("sqlite: independent endpoint consumption projection changed")
 	}
+	return nil
+}
+
+func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, expected modelref.EndpointObservation) error {
+	if err := m.validateEndpointProjection(ctx, expected); err != nil {
+		return err
+	}
+
 	var logical int
 	if err := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Invocation.Caller.ID).Scan(&logical); err != nil {
 		return err

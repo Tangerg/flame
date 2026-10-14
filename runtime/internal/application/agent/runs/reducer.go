@@ -44,6 +44,11 @@ type reducerConfig struct {
 // reducer is the per-segment state machine that turns executor events into the
 // canonical Event family and EventCommit facts. It owns open item state,
 // item identity, resume correlation, terminal synthesis, and error semantics.
+type modelCall struct {
+	startedAt time.Time
+	purpose   run.ModelCallPurpose
+}
+
 type reducer struct {
 	cfg     reducerConfig
 	resume  *resumeBinding
@@ -61,7 +66,7 @@ type reducer struct {
 	userInput       []transcript.ContentBlock
 	text            *openText
 	reasoning       *openText
-	modelCalls      map[string]time.Time
+	modelCalls      map[string]modelCall
 	// modelBoundaryClosed fences lossy stream observations that arrive after the
 	// authoritative model completion or failure commit. A later ModelCallStarted reopens
 	// the observation window for the next provider turn.
@@ -118,7 +123,7 @@ func newReducer(cfg reducerConfig) *reducer {
 		cfg: cfg, resume: resume, itemIDs: newSegmentItemIdentities(cfg.Opened.ActiveSegmentID()),
 		userInput: transcript.CloneContent(cfg.UserInput),
 		step:      cfg.Opened.Metrics().Steps(), contextTokens: cfg.Opened.ContextTokens(),
-		modelCalls: make(map[string]time.Time), toolCallIDs: make(map[string]struct{}),
+		modelCalls: make(map[string]modelCall), toolCallIDs: make(map[string]struct{}),
 		toolPositions: make(map[toolPosition]string), tools: newOpenTools(),
 	}
 }
@@ -277,6 +282,9 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 }
 
 func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error) {
+	if err := started.Purpose.Validate(); err != nil {
+		return factReduction{}, fmt.Errorf("%w: %w", errExecutorContract, err)
+	}
 	if err := runtimeidentity.ValidateEffect(started.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call start: %v", errExecutorContract, err)
 	}
@@ -284,13 +292,15 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 		return factReduction{}, fmt.Errorf("%w: model call %q started more than once", errExecutorContract, started.CallID)
 	}
 	startedAt := r.now()
-	r.modelCalls[started.CallID] = startedAt
-	r.modelBoundaryClosed = false
+	r.modelCalls[started.CallID] = modelCall{startedAt: startedAt, purpose: started.Purpose}
+	if started.Purpose == run.ModelConversation {
+		r.modelBoundaryClosed = false
+	}
 	return factReduction{
 		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Calling model"}}},
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: started.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationStarted, StartedAt: startedAt,
+			State: ModelInvocationStarted, Purpose: started.Purpose, StartedAt: startedAt,
 		}},
 	}, nil
 }
@@ -299,7 +309,8 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	if err := runtimeidentity.ValidateEffect(completed.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
 	}
-	startedAt, started := r.modelCalls[completed.CallID]
+	call, started := r.modelCalls[completed.CallID]
+	startedAt := call.startedAt
 	if !started {
 		return factReduction{}, fmt.Errorf("%w: model call %q completed without a start", errExecutorContract, completed.CallID)
 	}
@@ -311,8 +322,13 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 			completed.CallID,
 		)
 	}
+	if call.purpose == run.ModelIndependent && (completed.Message != nil || completed.ContextTokens != 0 || completed.FirstOutputLatencyMillis != nil) {
+		return factReduction{}, fmt.Errorf("%w: independent model completion carries conversation state", errExecutorContract)
+	}
 	delete(r.modelCalls, completed.CallID)
-	r.modelBoundaryClosed = true
+	if call.purpose == run.ModelConversation {
+		r.modelBoundaryClosed = true
+	}
 	var events []ProjectionEvent
 	var conversationMessages []corechat.Message
 	if completed.Message != nil {
@@ -341,7 +357,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		conversationMessages: conversationMessages,
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: completed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
+			State: ModelInvocationCompleted, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
 			FirstOutputLatencyMillis: completed.FirstOutputLatencyMillis,
 		}},
 		progress: &progressed,
@@ -352,7 +368,8 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	if err := runtimeidentity.ValidateEffect(failed.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call failure: %v", errExecutorContract, err)
 	}
-	startedAt, started := r.modelCalls[failed.CallID]
+	call, started := r.modelCalls[failed.CallID]
+	startedAt := call.startedAt
 	if !started {
 		return factReduction{}, fmt.Errorf("%w: model call %q failed without a start", errExecutorContract, failed.CallID)
 	}
@@ -364,7 +381,14 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 			failed.CallID,
 		)
 	}
-	events, err := r.failModelObservation(failed.Observation)
+	if call.purpose == run.ModelIndependent && (failed.Observation != (ModelObservation{}) || failed.FirstOutputLatencyMillis != nil || (failed.Accounting != nil && (failed.Accounting.Message != nil || failed.Accounting.ContextTokens != 0 || failed.Accounting.FirstOutputLatencyMillis != nil))) {
+		return factReduction{}, fmt.Errorf("%w: independent model failure carries conversation state", errExecutorContract)
+	}
+	var events []ProjectionEvent
+	var err error
+	if call.purpose == run.ModelConversation {
+		events, err = r.failModelObservation(failed.Observation)
+	}
 	if err != nil {
 		return factReduction{}, err
 	}
@@ -384,6 +408,11 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		if !reflect.DeepEqual(failed.Accounting.ReportedUsage, reported) {
 			return factReduction{}, errExecutorContract
 		}
+	}
+	if failed.Accounting != nil {
+		if failed.Accounting.CallID != failed.CallID || (failed.KnownResponse == nil && (call.purpose != run.ModelIndependent || failed.Accounting.ReportedUsage != nil || failed.Accounting.Cost.OptionalUSD() != nil)) {
+			return factReduction{}, errExecutorContract
+		}
 		progressEvents, err := r.modelUsageProgress(*failed.Accounting)
 		if err != nil {
 			return factReduction{}, err
@@ -395,17 +424,18 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		}
 		progressed = &value
 		usage = failed.Accounting.ReportedUsage
-	} else if failed.Accounting != nil {
-		return factReduction{}, errExecutorContract
 	}
+
 	delete(r.modelCalls, failed.CallID)
-	r.modelBoundaryClosed = true
+	if call.purpose == run.ModelConversation {
+		r.modelBoundaryClosed = true
+	}
 	return factReduction{
 		progress: progressed,
 		events:   append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationFailed, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: ModelInvocationFailed, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
 			Usage: usage, KnownResponse: failed.KnownResponse.Clone(),
 			FirstOutputLatencyMillis: failed.FirstOutputLatencyMillis,
 		}},
@@ -474,13 +504,14 @@ func (r *reducer) closeLostModelCalls(outcome run.Outcome) ([]ModelInvocationCom
 	callIDs := slices.Sorted(maps.Keys(r.modelCalls))
 	invocations := make([]ModelInvocationCommit, 0, len(callIDs))
 	for _, callID := range callIDs {
-		startedAt := r.modelCalls[callID]
+		call := r.modelCalls[callID]
+		startedAt := call.startedAt
 		if finishedAt.Before(startedAt) {
 			return nil, fmt.Errorf("%w: model call %q loss precedes its start", errExecutorContract, callID)
 		}
 		invocations = append(invocations, ModelInvocationCommit{
 			CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationUnknown, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: ModelInvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
 	clear(r.modelCalls)
@@ -542,13 +573,14 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 		callIDs := slices.Sorted(maps.Keys(r.modelCalls))
 		modelInvocations = make([]ModelInvocationCommit, 0, len(callIDs))
 		for _, callID := range callIDs {
-			startedAt := r.modelCalls[callID]
+			call := r.modelCalls[callID]
+			startedAt := call.startedAt
 			if finishedAt.Before(startedAt) {
 				return reductionBatch{}, fmt.Errorf("%w: model call %q loss precedes its start", errReducerInvariant, callID)
 			}
 			modelInvocations = append(modelInvocations, ModelInvocationCommit{
 				CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-				State: ModelInvocationUnknown, StartedAt: startedAt, FinishedAt: finishedAt,
+				State: ModelInvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
 			})
 		}
 		clear(r.modelCalls)

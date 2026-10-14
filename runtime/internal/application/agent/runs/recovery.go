@@ -88,6 +88,7 @@ type RecoveryCommitInput struct {
 // external boundary but has no durable outer settlement. A physical result
 // may already be known. Boot recovery precedes new executor admission.
 type OpenModelInvocation struct {
+	Purpose   rundomain.ModelCallPurpose
 	Endpoint  *modelref.EndpointObservation
 	SessionID string
 	RunID     string
@@ -113,6 +114,7 @@ type OpenToolInvocation struct {
 // The state is implied by the recovery operation rather than stored as an
 // application enum in the persistence port.
 type ModelInvocationRecovery struct {
+	Purpose    rundomain.ModelCallPurpose
 	Endpoint   *modelref.EndpointObservation
 	SessionID  string
 	RunID      string
@@ -441,6 +443,7 @@ func newRecoveryPlanner(
 		planner.observeTime(invocation.StartedAt)
 		if invocation.Endpoint != nil {
 			planner.observeTime(invocation.Endpoint.FinishedAt)
+			planner.observeTime(invocation.Endpoint.Invocation.StartedAt)
 		}
 	}
 	for _, invocation := range toolInvocations {
@@ -471,6 +474,7 @@ func newRecoveryPlanner(
 	}
 	for _, invocation := range modelInvocations {
 		planner.commit.ModelInvocations = append(planner.commit.ModelInvocations, ModelInvocationRecovery{
+			Purpose:   invocation.Purpose,
 			SessionID: invocation.SessionID, RunID: invocation.RunID, SegmentID: invocation.SegmentID,
 			CallID: invocation.CallID, StartedAt: invocation.StartedAt, FinishedAt: planner.finishedAt, Endpoint: invocation.Endpoint,
 		})
@@ -729,7 +733,7 @@ func recoverLostTree(
 					return rundomain.Run{}, err
 				}
 				contextTokens := active.ContextTokens()
-				if reported != nil && reported.InputTokens > 0 {
+				if invocation.Purpose == rundomain.ModelConversation && reported != nil && reported.InputTokens > 0 {
 					contextTokens = reported.InputTokens
 				}
 				active, err = active.AdvanceProgress(metrics, contextTokens, finishedAt)

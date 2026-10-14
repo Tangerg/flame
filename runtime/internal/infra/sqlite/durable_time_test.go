@@ -54,7 +54,7 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 				t.Fatal(err)
 			}
 			models, tools := sqlite.NewModelInvocationStore(db), sqlite.NewToolInvocationStore(db)
-			if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at); err != nil {
+			if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, run.ModelConversation); err != nil {
 				t.Fatal(err)
 			}
 			if err := models.CompleteModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, at, nil, nil); err != nil {
@@ -95,7 +95,7 @@ func TestExecutionRecordsRejectUnrepresentableTimesBeforeWriting(t *testing.T) {
 			if err := sqlite.NewRunStore(db).Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			if err := sqlite.NewModelInvocationStore(db).StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at); err == nil {
+			if err := sqlite.NewModelInvocationStore(db).StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, run.ModelConversation); err == nil {
 				t.Error("Model attempt with unrepresentable start time was written")
 			}
 			if err := sqlite.NewToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_call", "tool_item", at); err == nil {

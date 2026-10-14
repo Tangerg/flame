@@ -14,6 +14,7 @@ import (
 // directory's rows are left exactly as they were: there is no migration path.
 func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 	for _, change := range []struct{ name, statement string }{
+		{"former model purpose", `ALTER TABLE model_invocations RENAME COLUMN logical_purpose TO former_purpose`},
 		{"former column", `ALTER TABLE model_invocations DROP COLUMN usage`},
 		{"former installation trust state", `ALTER TABLE plugin_installations RENAME COLUMN enabled TO admission_state`},
 		{"retired object", `CREATE INDEX idx_feedback_entries_created ON feedback_entries(created_at_ns DESC)`},

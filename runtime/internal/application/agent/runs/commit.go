@@ -59,6 +59,7 @@ func (m ModelInvocationState) String() string {
 // compare the exact attempt instead of updating whichever row happens to share
 // CallID.
 type ModelInvocationCommit struct {
+	Purpose                  run.ModelCallPurpose
 	KnownResponse            *corechat.Response
 	FirstOutputLatencyMillis *int64
 	// Usage is the provider's own report for this call, so an unsupported
@@ -140,6 +141,9 @@ func (t ToolInvocationCommit) Validate() error {
 }
 
 func (m ModelInvocationCommit) Validate() error {
+	if err := m.Purpose.Validate(); err != nil {
+		return err
+	}
 	if m.FirstOutputLatencyMillis != nil {
 		if *m.FirstOutputLatencyMillis < 0 || (m.State != ModelInvocationCompleted && m.State != ModelInvocationFailed) {
 			return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")

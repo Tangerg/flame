@@ -58,10 +58,10 @@ type ModelInvocationStore interface {
 	ValidateIndependentEndpoint(context.Context, modelref.EndpointObservation) error
 	ListStartedModelInvocations(
 		ctx context.Context,
-		yield func(sessionID, runID, segmentID, callID string, startedAt time.Time) error,
+		yield func(sessionID, runID, segmentID, callID string, startedAt time.Time, purpose run.ModelCallPurpose) error,
 	) error
 	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
-	RecoverModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *modelref.EndpointObservation) error
+	RecoverModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *modelref.EndpointObservation, run.ModelCallPurpose) error
 }
 
 type ToolInvocationStore interface {
@@ -169,8 +169,9 @@ func (p *Persistence) ListOpenModelInvocations(ctx context.Context) ([]runs.Open
 	var invocations []runs.OpenModelInvocation
 	err := p.modelInvocations.ListStartedModelInvocations(
 		ctx,
-		func(sessionID, runID, segmentID, callID string, startedAt time.Time) error {
+		func(sessionID, runID, segmentID, callID string, startedAt time.Time, purpose run.ModelCallPurpose) error {
 			invocations = append(invocations, runs.OpenModelInvocation{
+				Purpose:   purpose,
 				SessionID: sessionID, RunID: runID, SegmentID: segmentID,
 				CallID: callID, StartedAt: startedAt,
 			})
@@ -191,7 +192,7 @@ func (p *Persistence) ListOpenModelInvocations(ctx context.Context) ([]runs.Open
 		if source.SessionID != invocation.SessionID || source.RunID != invocation.RunID || source.Invocation.Caller.ID != invocation.CallID {
 			return nil, errors.New("recovery: endpoint differs from its logical call ownership")
 		}
-		if source.Response != nil {
+		if source.Response != nil || invocation.Purpose == run.ModelIndependent {
 			value := source.Clone()
 			invocations[index].Endpoint = &value
 		}
@@ -286,7 +287,7 @@ func (p *Persistence) recoverModelInvocations(ctx context.Context, commit runs.R
 			invocation.CallID,
 			invocation.StartedAt,
 			invocation.FinishedAt,
-			invocation.Endpoint,
+			invocation.Endpoint, invocation.Purpose,
 		); err != nil {
 			return fmt.Errorf(
 				"recovery: settle abandoned model invocation %q: %w",

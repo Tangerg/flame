@@ -1,6 +1,7 @@
 package sqlite_test
 
 import (
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestInvocationJournalsDistinguishEpochSettlementFromNoSettlement(t *testing
 		t.Fatal(err)
 	}
 	models, tools := sqlite.NewModelInvocationStore(db), sqlite.NewToolInvocationStore(db)
-	if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_model", startedAt); err != nil {
+	if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_model", startedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	if err := tools.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_tool", "item_tool", startedAt); err != nil {

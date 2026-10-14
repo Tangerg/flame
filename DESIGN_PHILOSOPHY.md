@@ -142,3 +142,15 @@ adds duration and outcome without accepting a replacement invoice. Scope process
 usage remains checkpoint and calibration material, not a second Run billing source.
 Resumed Runs add new calls to their committed opening metrics. Missing usage or price
 keeps exact aggregate cost unknown even when a later call has a known price.
+
+Logical model calls retain a closed conversation/independent purpose. Only
+conversation calls may change primary streaming, continuation content or context
+calibration. Independent provider work enters the captured member's existing fact
+commit pump before dispatch and projects original journal evidence afterward, even
+when its outer call fails or is canceled. The common model capture enforces this
+for selected and auxiliary calls; a provider replay or a second metering ledger is
+not introduced. Logical settlement and Run metrics commit together, and recovery
+uses the same persisted purpose so a different independent model cannot replace
+primary context. Unknown independent attempts count admitted work with unknown
+price. A missing publisher under an executing owner is a composition error;
+unattached/Session-only captures make no Run claim.

@@ -101,6 +101,7 @@ type ModelInvocationJournal interface {
 		ctx context.Context,
 		sessionID, runID, segmentID, callID string,
 		startedAt time.Time,
+		purpose run.ModelCallPurpose,
 	) error
 	CompleteModelInvocation(
 		ctx context.Context,

@@ -240,8 +240,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	}
 	modelStartedAt := createdAt.Add(2 * time.Second)
 	if startModelInvocationErr := modelInvocations.StartModelInvocation(
-		ctx, "session", "run_lost", "segment", "model_call_lost", modelStartedAt,
-	); startModelInvocationErr != nil {
+		ctx, "session", "run_lost", "segment", "model_call_lost", modelStartedAt, run.ModelConversation); startModelInvocationErr != nil {
 		t.Fatalf("start model invocation: %v", startModelInvocationErr)
 	}
 	toolStartedAt := createdAt.Add(3 * time.Second)

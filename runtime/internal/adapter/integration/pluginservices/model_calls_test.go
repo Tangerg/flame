@@ -343,7 +343,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 		t.Fatal(err)
 	}
 	journal := sqlite.NewModelInvocationStore(db)
-	if err := journal.StartModelInvocation(t.Context(), sessionID, draft.RunID, draft.SegmentID, "logical_executing_owner", draft.CreatedAt); err != nil {
+	if err := journal.StartModelInvocation(t.Context(), sessionID, draft.RunID, draft.SegmentID, "logical_executing_owner", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
@@ -371,6 +371,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	composition.callbacks.AdmitSession(sdkSession)
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: sessionID})
 	ctx = executionctx.WithInvocationOwner(ctx, "logical_executing_owner")
+	ctx = executionctx.WithModelCalls(ctx, sourceAdmissionPublisher{journal: journal, draft: draft})
 	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: "original-plugin-operation", Origin: capability.Model, Parent: "logical_executing_owner", Target: capability.Target{Scope: "call", Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
@@ -398,6 +399,39 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if err != nil || response == nil || calls.Load() != 1 {
 		t.Fatalf("captured executing owner: %+v %d %v", response, calls.Load(), err)
 	}
+	resolved, err := observed.ResolveChat(ctx, testsupport.MustModelSelection("anthropic", "auxiliary-route"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := models.NewSelectedChat(testsupport.MustModelSelection("anthropic", "auxiliary-route"), resolved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auxiliary, closeAux, err := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
+		return selected, func() {}, nil
+	})(ctx, models.AuxiliaryBudget{MaxInputBytes: 4096, MaxOutputTokens: 64})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAux()
+	if _, err := auxiliary.Model().Call(executionctx.WithInvocationOwner(ctx, "original-plugin-operation"), &input.Request); err == nil {
+		t.Fatal("auxiliary capture claimed its executing owner identity")
+	}
+	fresh, err := pluginsdk.WithInvocation(ctx, capability.Invocation{ID: "auxiliary-owned", Origin: capability.Model, Parent: "original-plugin-operation", Target: capability.Target{Scope: "call", Reference: "auxiliary-owned"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := input.Request.Clone()
+	request.Tools = nil
+	request.Options.Model = "auxiliary-route"
+	if _, err := auxiliary.Model().Call(fresh, request); err != nil {
+		t.Fatal(err)
+	}
+	auxSource, found, err := journal.EndpointForCaller(t.Context(), "auxiliary-owned")
+	if err != nil || !found || auxSource.RunID != draft.RunID || auxSource.Invocation.Caller.Parent != "original-plugin-operation" || calls.Load() != 2 {
+		t.Fatalf("auxiliary ownership = %+v %v", auxSource, err)
+	}
+	closeAux()
 	row, found, err := journal.EndpointForCaller(t.Context(), "independent-owned")
 	if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != capability.Model {
 		t.Fatalf("wire replaced captured origin: %+v %v", row, err)
@@ -413,10 +447,23 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if err := runStore.Suspend(t.Context(), waiting, draft.SegmentID, runtimeidentity.CommitID{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "independent-after-wait", input); err == nil || calls.Load() != 1 {
+	if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "independent-after-wait", input); err == nil || calls.Load() != 2 {
 		t.Fatalf("retired execution dispatched provider: %d %v", calls.Load(), err)
 	}
 	if len(composition.HeldDependencies()) != 0 {
 		t.Fatal("refused owner retained installed model dependency")
 	}
+}
+
+// This fixture verifies physical admission; the real Run pump is covered separately.
+type sourceAdmissionPublisher struct {
+	journal *sqlite.ModelInvocationStore
+	draft   run.Draft
+}
+
+func (p sourceAdmissionPublisher) Start(ctx context.Context, id string, selection modelref.Selection) (func(context.Context, error) error, error) {
+	if err := p.journal.StartModelInvocation(ctx, p.draft.SessionID, p.draft.RunID, p.draft.SegmentID, id, time.Now().UTC(), run.ModelIndependent); err != nil {
+		return nil, err
+	}
+	return func(context.Context, error) error { return nil }, nil
 }

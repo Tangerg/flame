@@ -7,10 +7,12 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -143,17 +145,25 @@ func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*cha
 	return sent, nil
 }
 
-func (c *modelCapture) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+func (c *modelCapture) Call(ctx context.Context, request *chat.Request) (response *chat.Response, returned error) {
 	calling, leave, err := c.enter(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer leave()
-	sent, err := c.prepare(calling, request)
+	calling, finish, err := beginCapturedModelCall(calling, c.resolved.Selection())
 	if err != nil {
 		return nil, err
 	}
-	return c.model.Call(calling, sent)
+	outcome := errors.New("model call: captured call did not return normally")
+	defer func() { returned = errors.Join(returned, finish(calling, outcome)) }()
+	sent, err := c.prepare(calling, request)
+	if err != nil {
+		outcome = err
+		return nil, err
+	}
+	response, outcome = c.model.Call(calling, sent)
+	return response, outcome
 }
 
 type streamedModelCapture struct{ *modelCapture }
@@ -167,12 +177,31 @@ func (c *streamedModelCapture) Stream(ctx context.Context, request *chat.Request
 			return
 		}
 		defer leave()
-		sent, err := c.prepare(calling, request)
+		calling, finish, err := beginCapturedModelCall(calling, c.resolved.Selection())
 		if err != nil {
 			yield(nil, err)
 			return
 		}
-		c.stream.Stream(calling, sent)(yield)
+		outcome := errors.New("model call: captured stream did not return normally")
+		continuing := true
+		defer func() {
+			if err := finish(calling, errors.Join(outcome, context.Cause(calling))); err != nil && continuing {
+				yield(nil, err)
+			}
+		}()
+		sent, err := c.prepare(calling, request)
+		if err != nil {
+			outcome = err
+			continuing = yield(nil, err)
+			return
+		}
+		var observed error
+		c.stream.Stream(calling, sent)(func(delta *chat.ResponseDelta, err error) bool {
+			observed = errors.Join(observed, err)
+			continuing = yield(delta, err)
+			return continuing
+		})
+		outcome = observed
 	}
 }
 
@@ -193,4 +222,26 @@ func (c *modelCapture) close() {
 	delete(o.captures, c)
 	o.mu.Unlock()
 	close(c.done)
+}
+
+func beginCapturedModelCall(ctx context.Context, selection modelref.Selection) (context.Context, func(context.Context, error) error, error) {
+	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if invocation.ID == executionctx.InvocationOwner(ctx) {
+		return nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
+	}
+	publisher := executionctx.ModelCallsFromContext(ctx)
+	if publisher == nil {
+		if executionctx.InvocationOwner(ctx) != "" {
+			return nil, nil, errors.New("model call: executing owner has no model consumption publisher")
+		}
+		return ctx, func(context.Context, error) error { return nil }, nil
+	}
+	finish, err := publisher.Start(ctx, invocation.ID, selection)
+	if err != nil {
+		return nil, nil, err
+	}
+	return executionctx.WithInvocationOwner(ctx, invocation.ID), finish, nil
 }

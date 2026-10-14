@@ -159,7 +159,7 @@ func (inertItems) ReplaceItem(context.Context, transcript.Replacement) error {
 
 type inertModelInvocations struct{}
 
-func (inertModelInvocations) StartModelInvocation(context.Context, string, string, string, string, time.Time) error {
+func (inertModelInvocations) StartModelInvocation(context.Context, string, string, string, string, time.Time, run.ModelCallPurpose) error {
 	return nil
 }
 

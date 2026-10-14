@@ -1970,3 +1970,43 @@ func TestReducerAccruesInterleavedModelCallsOnceWithoutChangingPrimaryContext(t 
 		t.Fatalf("terminal lost per-call consumption: %+v", record.Snapshot())
 	}
 }
+
+func TestIndependentModelFactsPreservePrimaryStreamingAndUnknownConsumption(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	mustReduce(t, reducer, ModelCallStarted{CallID: "primary_live"})
+	first := mustReduce(t, reducer, MessageDelta{Text: "prefix "})
+	primaryItem := first[0].Event.(ItemStarted).Item.ItemID
+	mustReduce(t, reducer, ModelCallStarted{CallID: "independent_live", Purpose: run.ModelIndependent})
+	consumption := mustReduce(t, reducer, ModelCallFailed{CallID: "independent_live", Accounting: &ModelCallCompleted{CallID: "independent_live", Model: "independent-model"}})
+	if len(completedItems(consumption)) != 0 || len(committedConversationMessages(consumption)) != 0 {
+		t.Fatal("independent failure closed the primary conversation")
+	}
+	continued := mustReduce(t, reducer, MessageDelta{Text: "suffix"})
+	if len(continued) != 1 || continued[0].Event.(ItemChanged).ItemID != primaryItem {
+		t.Fatal("independent completion changed the primary stream")
+	}
+	primary := corechat.NewAssistantMessage(corechat.NewTextPart("prefix suffix"))
+	mustReduce(t, reducer, ModelCallCompleted{CallID: "primary_live", Model: "primary-model", Message: &primary, ReportedUsage: &corechat.Usage{InputTokens: 5, OutputTokens: 2}, Cost: mustReducerCost(t, .5), ContextTokens: 5})
+	finished := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+	record := finished[len(finished)-1].Event.(SegmentFinished).Run
+	usage, reported := record.Metrics().Usage()
+	if !reported || record.Metrics().Steps() != 2 || usage.Total.InputTokens != 5 || usage.Total.CostUSD != nil || record.ContextTokens() != 5 {
+		t.Fatalf("independent consumption = %+v", record.Snapshot())
+	}
+}
+
+func TestIndependentModelCompletionCannotAdvanceConversation(t *testing.T) {
+	for name, completion := range map[string]ModelCallCompleted{
+		"message": {CallID: "independent_invalid", Model: "model", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("foreign")))},
+		"context": {CallID: "independent_invalid", Model: "model", ContextTokens: 7},
+		"latency": {CallID: "independent_invalid", Model: "model", FirstOutputLatencyMillis: new(int64(1))},
+	} {
+		t.Run(name, func(t *testing.T) {
+			reducer := newReducer(testReducerConfig())
+			mustReduce(t, reducer, ModelCallStarted{CallID: completion.CallID, Purpose: run.ModelIndependent})
+			if _, err := reducer.reduce(completion); !errors.Is(err, errExecutorContract) {
+				t.Fatalf("foreign conversation state = %v", err)
+			}
+		})
+	}
+}

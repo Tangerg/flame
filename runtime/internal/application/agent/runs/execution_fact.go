@@ -111,7 +111,8 @@ type ReasoningDelta struct {
 // never parses framework Effect identity from it.
 type ModelCallStarted struct {
 	executionFactBase
-	CallID string
+	Purpose run.ModelCallPurpose
+	CallID  string
 }
 
 // ModelCallCompleted is the sole authoritative semantic and accounting projection

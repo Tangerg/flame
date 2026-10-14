@@ -37,6 +37,7 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 	for _, test := range []struct {
 		name            string
 		known, reported bool
+		independent     bool
 		input           int64
 		price           *float64
 		wantCost        *float64
@@ -46,6 +47,9 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 		{name: "reported zero", known: true, reported: true, input: 0, price: new(0.0), wantCost: new(0.5)},
 		{name: "unreported", known: true},
 		{name: "unknown", wantCost: new(0.5)},
+		{name: "independent route", independent: true, known: true, reported: true, input: 999, price: new(.25), wantCost: new(.75)},
+		{name: "independent unreported", independent: true, known: true},
+		{name: "independent unknown", independent: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "recovery.db")
@@ -81,11 +85,19 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 				t.Fatal(err)
 			}
 			journal := sqlite.NewModelInvocationStore(db)
-			if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_pending", at); err != nil {
+			purpose := run.ModelConversation
+			if test.independent {
+				purpose = run.ModelIndependent
+			}
+			if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_pending", at, purpose); err != nil {
 				t.Fatal(err)
 			}
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured request")))
 			invocation := modelref.EndpointInvocation{ID: "endpoint_pending", Caller: capability.Invocation{ID: "logical_pending", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "logical_pending"}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
+			if test.independent {
+				invocation.Provider = "openai"
+				invocation.Model = "independent-model"
+			}
 			if err := journal.StartEndpointInvocation(t.Context(), invocation, "logical_pending"); err != nil {
 				t.Fatal(err)
 			}
@@ -93,7 +105,7 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 				message := chat.NewAssistantMessage(chat.NewTextPart("known provider answer"))
 				response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
 				if test.reported {
-					response.Metadata = &chat.ResponseMetadata{Model: "captured-model", Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 0, CacheReadInputTokens: new(int64(0))}}
+					response.Metadata = &chat.ResponseMetadata{Model: invocation.Model, Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 0, CacheReadInputTokens: new(int64(0))}}
 				}
 				if err := journal.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, CostUSD: test.price, FinishedAt: at.Add(2 * time.Second)}); err != nil {
 					t.Fatal(err)
@@ -138,7 +150,7 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			usage, ok := recovered.Metrics().Usage()
 			wantInput := int64(5)
 			wantSteps := 1
-			if test.known {
+			if test.known || test.independent {
 				wantSteps++
 				if test.reported {
 					wantInput += test.input
@@ -146,6 +158,9 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			}
 			if !ok || usage.Total.InputTokens != wantInput || usage.Total.OutputTokens != 2 || recovered.Metrics().Steps() != wantSteps || recovered.State() != run.Failed {
 				t.Fatalf("recovery consumption=%+v steps=%d", usage, recovered.Metrics().Steps())
+			}
+			if test.independent && recovered.ContextTokens() != 5 {
+				t.Fatalf("independent recovery recalibrated primary context: %d", recovered.ContextTokens())
 			}
 			if (usage.Total.CostUSD == nil) != (test.wantCost == nil) || (test.wantCost != nil && *usage.Total.CostUSD != *test.wantCost) {
 				t.Fatalf("recovery repriced or guessed cost: %+v", usage.Total.CostUSD)
@@ -206,7 +221,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatal(err)
 	}
 	journal := sqlite.NewModelInvocationStore(db)
-	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "original_model", at); err != nil {
+	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "original_model", at, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original request")))

@@ -38,7 +38,7 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				t.Fatal(err)
 			}
 			store := sqlite.NewModelInvocationStore(db)
-			if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at); err != nil {
+			if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at, run.ModelConversation); err != nil {
 				t.Fatal(err)
 			}
 			if err := store.CompleteModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at, at.Add(time.Second), new(int64(0)), &chat.Usage{}); err != nil {

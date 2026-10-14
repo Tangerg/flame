@@ -846,7 +846,11 @@ func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 			if actorErr != nil {
 				t.Fatal(actorErr)
 			}
-			opening := mustAdmissionOpening(t, testCommitID("run_commit_actor"), draft, &initial, nil, &actor, nil)
+			item, err := transcript.NewUserMessage(transcript.ItemIdentity{SessionID: draft.SessionID, RunID: draft.RunID, ItemID: "item_opening", OccurredAt: now}, []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "captured start"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			opening := mustAdmissionOpening(t, testCommitID("run_commit_actor"), draft, &initial, nil, &actor, []runs.EventCommit{{SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, Items: []transcript.Item{item}}})
 			acceptance := runs.CommandAcceptance{Key: "captured-start", Fingerprint: testsupport.Digest("captured request").String(), Operation: runs.CommandStartOpening, SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, UserItemID: "item_opening"}
 			opening, err = opening.WithCommandAcceptance(acceptance)
 			if err != nil {

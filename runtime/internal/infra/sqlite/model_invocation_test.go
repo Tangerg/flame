@@ -26,7 +26,7 @@ func TestFailedModelKnownResponseSurvivesReopenWithoutPromotingOutcome(t *testin
 	store := sqlite.NewModelInvocationStore(db)
 	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt); err != nil {
+	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.FailModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt, draft.CreatedAt.Add(time.Second), nil, response.Metadata.Usage, response); err != nil {
@@ -63,7 +63,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	latencies := []*int64{nil, new(int64(0)), new(int64(124))}
 	usages := []*chat.Usage{nil, {}, {InputTokens: 17, OutputTokens: 9, CacheReadInputTokens: new(int64(4)), CacheWriteInputTokens: new(int64(2)), ReasoningTokens: new(int64(3))}}
 	for index, id := range []string{"call_a", "call_b", "call_c"} {
-		if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt); err != nil {
+		if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt, run.ModelConversation); err != nil {
 			t.Fatal(err)
 		}
 		if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt, startedAt.Add(time.Second), latencies[index], usages[index]); err != nil {
@@ -122,7 +122,7 @@ func TestRunCannotEraseAnUnsettledModelAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := sqlite.NewModelInvocationStore(db)
-	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_pending", draft.CreatedAt); err != nil {
+	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_pending", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	replacement := storedRunReplacement(t, t.Context(), runs, finishedRunFromDraft(draft, run.OutcomeCompleted))
@@ -146,7 +146,7 @@ func TestFailedModelInvocationRetainsMeasuredLatencyWithoutUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := sqlite.NewModelInvocationStore(db)
-	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt); err != nil {
+	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	if err := calls.FailModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt, draft.CreatedAt.Add(time.Second), new(int64(7)), nil, nil); err != nil {

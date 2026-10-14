@@ -71,7 +71,7 @@ func TestSessionTrajectorySurvivesRestartAndPagesSameTimeSourcesWithoutLoss(t *t
 	items := sqlite.NewTranscriptStore(db)
 	for index := range 151 {
 		id := fmt.Sprintf("call_%03d", index)
-		if err := models.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, draft.CreatedAt); err != nil {
+		if err := models.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, draft.CreatedAt, run.ModelConversation); err != nil {
 			t.Fatal(err)
 		}
 		if index == 150 {
@@ -159,7 +159,7 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		if err := sqlite.NewRunStore(db).Admit(ctx, draft); err != nil {
 			t.Fatal(err)
 		}
-		if err := sqlite.NewModelInvocationStore(db).StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_"+draft.RunID, draft.CreatedAt); err != nil {
+		if err := sqlite.NewModelInvocationStore(db).StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_"+draft.RunID, draft.CreatedAt, run.ModelConversation); err != nil {
 			t.Fatal(err)
 		}
 		if err := sqlite.NewTranscriptStore(db).AppendItem(ctx, trajectoryItem("item_"+draft.RunID, draft.RunID, draft.SessionID, draft.CreatedAt)); err != nil {
@@ -173,7 +173,18 @@ func TestSessionTrajectoryKeepsDescendantAndSessionOwnership(t *testing.T) {
 		{"endpoint_global", "utility_global", ""},
 	} {
 		value := modelref.EndpointInvocation{ID: source.id, Caller: capability.Invocation{ID: source.caller, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: source.caller}}, Provider: "anthropic", Model: "captured-model", SessionID: source.session, Request: request, StartedAt: root.CreatedAt}
-		if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(ctx, value, ""); err != nil {
+		owner := ""
+		if source.caller == "call_run_root" {
+			owner = source.caller
+			value.SessionID = root.SessionID
+			value.StartedAt = root.CreatedAt
+		}
+		if source.caller == "call_run_child" {
+			owner = source.caller
+			value.SessionID = child.SessionID
+			value.StartedAt = child.CreatedAt
+		}
+		if err := sqlite.NewModelInvocationStore(db).StartEndpointInvocation(ctx, value, owner); err != nil {
 			t.Fatal(err)
 		}
 	}

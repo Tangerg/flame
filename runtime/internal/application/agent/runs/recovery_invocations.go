@@ -5,18 +5,23 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // Validate checks one incomplete provider attempt before it can influence boot
 // recovery planning.
 func (o OpenModelInvocation) Validate() error {
+	if err := o.Purpose.Validate(); err != nil {
+		return err
+	}
 	if err := validateOpenInvocation(o.SessionID, o.RunID, o.SegmentID, o.CallID, o.StartedAt); err != nil {
 		return err
 	}
 	if o.Endpoint != nil {
-		return validateRecoveryEndpoint(o.Endpoint, o.SessionID, o.RunID, o.CallID, o.StartedAt, o.Endpoint.FinishedAt)
+		return validateRecoveryEndpoint(o.Endpoint, o.SessionID, o.RunID, o.CallID, o.StartedAt, maxRecoveryEndpointTime(o.Endpoint), o.Purpose)
 	}
 	return nil
 }
@@ -110,7 +115,7 @@ func validateOpenInvocationOwners(
 		}
 	}
 	for index, invocation := range models {
-		if invocation.Endpoint != nil {
+		if invocation.Purpose == rundomain.ModelConversation && invocation.Endpoint != nil {
 			for _, tree := range trees {
 				if active, ok := tree.runsByID[invocation.RunID]; ok && (invocation.Endpoint.Invocation.Provider != active.ModelSelection().Provider() || invocation.Endpoint.Invocation.Model != active.ModelSelection().Model()) {
 					return errors.New("runs: recovery endpoint differs from captured model selection")
@@ -173,4 +178,11 @@ func validateOpenInvocationOwner(
 		)
 	}
 	return nil
+}
+
+func maxRecoveryEndpointTime(source *modelref.EndpointObservation) time.Time {
+	if source.FinishedAt.IsZero() {
+		return source.Invocation.StartedAt
+	}
+	return source.FinishedAt
 }

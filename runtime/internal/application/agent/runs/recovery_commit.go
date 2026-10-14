@@ -270,6 +270,9 @@ func validateRecoveryModelInvocations(
 ) error {
 	seen := make(map[string]struct{}, len(invocations))
 	for index, invocation := range invocations {
+		if err := invocation.Purpose.Validate(); err != nil {
+			return err
+		}
 		if err := validateRecoveryInvocation(
 			invocation.SessionID,
 			invocation.RunID,
@@ -282,7 +285,7 @@ func validateRecoveryModelInvocations(
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
 		}
-		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.SessionID, invocation.RunID, invocation.CallID, invocation.StartedAt, invocation.FinishedAt); err != nil {
+		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.SessionID, invocation.RunID, invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.Purpose); err != nil {
 			return err
 		}
 		if _, duplicate := seen[invocation.CallID]; duplicate {
@@ -595,20 +598,26 @@ func cloneRecoveryModels(values []ModelInvocationRecovery) []ModelInvocationReco
 	return cloned
 }
 
-func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, runID, callID string, startedAt, finishedAt time.Time) error {
+func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, runID, callID string, startedAt, finishedAt time.Time, purpose rundomain.ModelCallPurpose) error {
 	if source == nil {
 		return nil
 	}
 	if err := source.Invocation.Validate(); err != nil {
 		return err
 	}
-	if source.Response == nil || (source.State != "completed" && source.State != "failed") {
-		return errors.New("runs: recovery endpoint has no known outcome")
+	if source.Response == nil {
+		if purpose != rundomain.ModelIndependent || source.CostUSD != nil || source.ResponseJSON.String() != "" || (source.State != "started" && source.State != "failed" && source.State != "unknown") {
+			return errors.New("runs: recovery endpoint has no admitted independent outcome")
+		}
+	} else {
+		if source.State != "completed" && source.State != "failed" {
+			return errors.New("runs: recovery endpoint has no known outcome")
+		}
+		if err := source.Response.Validate(); err != nil {
+			return err
+		}
 	}
-	if err := source.Response.Validate(); err != nil {
-		return err
-	}
-	if source.SessionID != sessionID || source.RunID != runID || source.Invocation.Caller.ID != callID || source.Invocation.StartedAt.Before(startedAt) || source.FinishedAt.Before(source.Invocation.StartedAt) || source.FinishedAt.After(finishedAt) {
+	if source.SessionID != sessionID || source.RunID != runID || source.Invocation.Caller.ID != callID || source.Invocation.StartedAt.Before(startedAt) || (!source.FinishedAt.IsZero() && (source.FinishedAt.Before(source.Invocation.StartedAt) || source.FinishedAt.After(finishedAt))) || (source.FinishedAt.IsZero() && source.State != "started") {
 		return errors.New("runs: recovery endpoint differs from its original call")
 	}
 	if _, err := accounting.CostFromOptional(source.CostUSD); err != nil {

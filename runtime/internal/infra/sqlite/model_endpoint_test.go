@@ -1,6 +1,7 @@
 package sqlite_test
 
 import (
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"path/filepath"
 	"testing"
 	"time"
@@ -143,7 +144,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := sqlite.NewModelInvocationStore(db)
-	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_usage", draft.CreatedAt); err != nil {
+	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_usage", draft.CreatedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))
@@ -236,10 +237,10 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	journal := sqlite.NewModelInvocationStore(db)
-	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_owner", draft.CreatedAt); err != nil {
+	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "logical_owner", draft.CreatedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
-	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "reserved_logical", draft.CreatedAt); err != nil {
+	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "reserved_logical", draft.CreatedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/instant"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -38,13 +39,13 @@ func NewModelInvocationStore(db *sql.DB) *ModelInvocationStore {
 // SQLite package while preserving an exact boot snapshot for its write-set.
 func (m *ModelInvocationStore) ListStartedModelInvocations(
 	ctx context.Context,
-	yield func(sessionID, runID, segmentID, callID string, startedAt time.Time) error,
+	yield func(sessionID, runID, segmentID, callID string, startedAt time.Time, purpose rundomain.ModelCallPurpose) error,
 ) error {
 	if yield == nil {
 		return errors.New("sqlite: model invocation reader is required")
 	}
 	rows, err := Connection(ctx, m.db).QueryContext(ctx, `
-		SELECT session_id, run_id, segment_id, call_id, started_at
+		SELECT session_id, run_id, segment_id, call_id, started_at, logical_purpose
 		  FROM model_invocations
 		 WHERE state = ? AND endpoint_json IS NULL
 		 ORDER BY session_id, run_id, segment_id, call_id
@@ -54,15 +55,19 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
-		var sessionID, runID, segmentID, callID string
+		var sessionID, runID, segmentID, callID, rawPurpose string
 		var startedAt int64
-		if err := rows.Scan(&sessionID, &runID, &segmentID, &callID, &startedAt); err != nil {
+		if err := rows.Scan(&sessionID, &runID, &segmentID, &callID, &startedAt, &rawPurpose); err != nil {
 			return fmt.Errorf("sqlite: scan started model invocation: %w", err)
 		}
 		if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
 			return fmt.Errorf("sqlite: restore started model invocation: %w", err)
 		}
-		if err := yield(sessionID, runID, segmentID, callID, time.Unix(0, startedAt).UTC()); err != nil {
+		purpose, err := rundomain.ParseModelCallPurpose(rawPurpose)
+		if err != nil {
+			return err
+		}
+		if err := yield(sessionID, runID, segmentID, callID, time.Unix(0, startedAt).UTC(), purpose); err != nil {
 			return err
 		}
 	}
@@ -76,7 +81,11 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	ctx context.Context,
 	sessionID, runID, segmentID, callID string,
 	startedAt time.Time,
+	purpose rundomain.ModelCallPurpose,
 ) error {
+	if err := purpose.Validate(); err != nil {
+		return err
+	}
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
 		return err
 	}
@@ -88,14 +97,15 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	}
 	result, err := Connection(ctx, m.db).ExecContext(ctx,
 		`INSERT INTO model_invocations(
-		   call_id, session_id, run_id, segment_id, state, started_at, finished_at)
-		 SELECT ?, session_id, run_id, ?, ?, ?, NULL
+		   call_id, session_id, run_id, segment_id, state, started_at, finished_at, logical_purpose)
+		 SELECT ?, session_id, run_id, ?, ?, ?, NULL, ?
 		   FROM runs
 		  WHERE run_id = ? AND session_id = ? AND state != ?`,
 		callID,
 		segmentID,
 		modelInvocationStarted.databaseValue(),
 		startedAt.UTC().UnixNano(),
+		purpose.String(),
 		runID,
 		sessionID,
 		runStateTerminal.databaseValue(),
