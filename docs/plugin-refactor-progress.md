@@ -8,10 +8,37 @@ failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
 lifecycle work now includes transitive release retention (`6ef5b7961`) and full
 activation identity fencing (`18ddce955`) and actual installed point/analyzer
 lifetimes (`6e23f4d00`). Public SQLite/receipt authoring is extracted in
-`419735d13`; remaining first-party source and native qualification are open;
-independent/native qualification and final closure remain open. Main
+`419735d13`; public model choice/catalog admission follows in `325998894`.
+Remaining first-party source, independent/native qualification and final closure
+remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Public model choice and catalog admission (2026-10-15)
+
+- `325998894` moves the immutable provider/model/reasoning choice and its closed
+  JSON/schema owner to public `runtime/model`. Released Scope effort/modality
+  admission moves to `runtime/model/catalog`. All host, feature, schema and test
+  consumers migrate; the former private selection/catalog paths are deleted.
+  Role configuration, endpoint evidence and execution limits retain their owners.
+- The public-author fixture compiles both packages outside Runtime's private
+  import privilege. Exact public package/dependency and Go API baselines include
+  the actual surfaces. This is local-source qualification, not module publication
+  or complete independent Memory/Schedules source qualification.
+- Moving the schema owner changes generated reference identities while retaining
+  the same closed three required strings. Schedules canonical JSON, Go/TS
+  consumers and production component bytes are regenerated/rebuilt together;
+  no old-reference alias, reader or assertion bypass is introduced.
+- Passed: complete model/catalog/private-role, Schedules, contractgen, SQLite,
+  model-adapter/application packages; focused execution selection/context/capture/
+  dependency checks (4.764s), public/dependency/external-author checks (5.000s),
+  real bootstrap Reviews/point/Memory/Schedule/recovery selection (63.710s),
+  Runtime/CLI/Reviews build, Desktop typecheck, portable component typecheck/build,
+  contract generation, gofmt/diff and stash-free staged checks/commitlint.
+- No UI/E2E/screenshot or Desktop aggregate check ran. No new dependencies,
+  database conversion, push or main integration occurred. Owned processes are
+  terminal. Next migrate remaining shared value/path/policy dependencies and
+  complete backend source before independent/native and P01-P48/review closure.
 
 ### Public private-storage authoring boundary (2026-10-15)
 

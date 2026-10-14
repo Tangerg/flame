@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 public SQLite/receipt authoring slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 public model choice/catalog slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,8 +10,9 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `419735d13` (public SQLite/receipt owners and per-database
-  transaction authority); preceding `6e23f4d00` implements target-owned point
+- Latest product commit: `325998894` (public immutable model choice and released
+  catalog admission, all consumers regenerated); `419735d13` extracts public
+  SQLite/receipt owners and per-database transaction authority; preceding `6e23f4d00` implements target-owned point
   availability and actual
   installed Reviews/analyzer callbacks); `18ddce955` fences same-release activation
   identity;
@@ -148,8 +149,11 @@ or deletion. Captured primary context and independent billing remain distinct.
 4. Public `runtime/storage/sqlite` and `runtime/plugin/sqlite` now own the shared
    implementation; old private entrances are removed and all consumers migrate.
    Full related packages, real bootstrap selection and an offline outside-repository
-   public-author receipt fixture pass (`419735d13`). Extract remaining value/path/
-   model/policy dependencies and Memory/Schedules source, then complete
+   public-author receipt fixture pass (`419735d13`). Public `runtime/model` and `runtime/model/catalog` now own the immutable choice
+   and catalog admission (`325998894`); all private consumers and generated
+   Schedules contracts migrate. Focused packages, real bootstrap (63.710s),
+   external author compilation, builds and types pass. Extract remaining value/path/
+   policy dependencies and Memory/Schedules source, then complete
    independent author/component/native packaging qualification. Workspace
    compilation is not proof of published-module availability. Publishing is not
    authorized.
