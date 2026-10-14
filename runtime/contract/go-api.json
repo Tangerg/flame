@@ -1467,6 +1467,68 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/runtime/idempotency",
+      "imports": [
+        "context",
+        "time"
+      ],
+      "constants": [
+        {
+          "name": "Retention",
+          "type": "time.Duration",
+          "value": "86400000000000"
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrClaimLost",
+          "type": "error"
+        },
+        {
+          "name": "ErrKeyConflict",
+          "type": "error"
+        },
+        {
+          "name": "ErrOutcomeConflict",
+          "type": "error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Record",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Key",
+              "type": "string"
+            },
+            {
+              "name": "Fingerprint",
+              "type": "string"
+            },
+            {
+              "name": "Payload",
+              "type": "[]byte"
+            }
+          ]
+        },
+        {
+          "name": "Store",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "Claim",
+              "signature": "func(ctx context.Context, key string, fingerprint string) (record Record, claimed bool, err error)"
+            },
+            {
+              "name": "Complete",
+              "signature": "func(ctx context.Context, record Record) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/runtime/jsoninput",
       "imports": [
         "encoding/json/jsontext"

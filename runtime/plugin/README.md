@@ -616,6 +616,8 @@ admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
 per-database transaction lifetime live in [`storage/sqlite`](../storage/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
+`runtime/idempotency` exposes stable identity-conflict categories for the same
+receipt mechanism, including changed original method/input under one command key.
 
 ## Model choices
 

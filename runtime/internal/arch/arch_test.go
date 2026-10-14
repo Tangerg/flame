@@ -336,10 +336,10 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"capture", "completion", "exactint", "exactjson", "idempotency",
-		"identity", "optional",
+		"internal/capture", "internal/completion", "internal/exactint", "internal/exactjson", "idempotency",
+		"internal/identity", "internal/optional",
 	} {
-		forbidExternalImports(t, filepath.Join(root, "internal", name), []string{
+		forbidExternalImports(t, filepath.Join(root, name), []string{
 			domainPkg,
 			"github.com/Tangerg/flame/runtime/internal/application",
 			"github.com/Tangerg/flame/runtime/internal/adapter",
@@ -990,7 +990,7 @@ func TestDeliveryHandlerDependsOnUseCaseBoundaries(t *testing.T) {
 			"github.com/Tangerg/flame/runtime/internal/adapter",
 			"github.com/Tangerg/flame/runtime/internal/infra",
 			"github.com/Tangerg/flame/runtime/internal/bootstrap",
-			"github.com/Tangerg/flame/runtime/internal/idempotency",
+			"github.com/Tangerg/flame/runtime/idempotency",
 		})
 	}
 }
@@ -1485,7 +1485,7 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 
 var crossRingCapabilityImports = []string{
 	"github.com/Tangerg/flame/runtime/internal/completion",
-	"github.com/Tangerg/flame/runtime/internal/idempotency",
+	"github.com/Tangerg/flame/runtime/idempotency",
 }
 
 // domainPkg is the bounded-context ring. Prefix-matched.
@@ -1908,7 +1908,7 @@ func layerOf(rel string) string {
 	switch rel {
 	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput", "capability", "point", "model":
 		return ringValue
-	case "internal/cancellation", "internal/capture", "internal/completion", "internal/idempotency", "internal/keylock":
+	case "internal/cancellation", "internal/capture", "internal/completion", "idempotency", "internal/keylock":
 		return ringMechanism
 	case "internal/contractshape":
 		return ringProtocol

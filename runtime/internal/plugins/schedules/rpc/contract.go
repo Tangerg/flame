@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 )

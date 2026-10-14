@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"

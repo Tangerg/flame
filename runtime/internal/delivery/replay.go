@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"encoding/json/jsontext"
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/Tangerg/flame/runtime/protocol"
 )

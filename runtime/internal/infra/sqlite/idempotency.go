@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/idempotency"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )

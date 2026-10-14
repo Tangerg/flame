@@ -141,6 +141,8 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		{from: ".", to: "internal/bootstrap", allowed: true},
 		{from: "plugin/sqlite", to: "storage/sqlite", allowed: true},
 		{from: "internal/domain/newaggregate", to: "model", allowed: true},
+		{from: "plugin/sqlite", to: "idempotency", allowed: true},
+		{from: "idempotency", to: "internal/application/agent/runs"},
 		{from: "model", to: "model/catalog"},
 		{from: "model/catalog", to: "model", allowed: true},
 		{from: "storage/sqlite", to: "internal/cancellation", allowed: true},

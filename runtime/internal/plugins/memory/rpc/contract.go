@@ -7,10 +7,10 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/invopop/jsonschema"
 
+	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/exactjson"
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 

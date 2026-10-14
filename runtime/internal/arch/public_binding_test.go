@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "capability", "jsoninput", "localruntime", "model", "plugin", "point", "protocol", "storage"}
+	want := []string{".", "capability", "idempotency", "jsoninput", "localruntime", "model", "plugin", "point", "protocol", "storage"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -91,12 +91,14 @@ require (
 
 import (
 "context"
+"errors"
 "testing"
 "path/filepath"
 
 flameruntime "github.com/Tangerg/flame/runtime"
 "github.com/Tangerg/flame/runtime/capability"
 "github.com/Tangerg/flame/runtime/jsoninput"
+"github.com/Tangerg/flame/runtime/idempotency"
 "github.com/Tangerg/flame/runtime/localruntime"
 modelchoice "github.com/Tangerg/flame/runtime/model"
 modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
@@ -189,6 +191,13 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
   })
   if err != nil || !value { t.Fatalf("owned command = %v, %v", value, err) }
  }
+ changed, err := jsoninput.Encode(map[string]bool{"changed": true})
+ if err != nil { t.Fatal(err) }
+ _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", struct{}{}, changed, nil, func(context.Context, struct{}) (bool, error) {
+   calls++
+   return false, nil
+ })
+ if !errors.Is(err, idempotency.ErrKeyConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
  var count int
  if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count); err != nil { t.Fatal(err) }
  if calls != 1 || count != 1 { t.Fatalf("receipt repeated business mutation: calls=%d records=%d", calls, count) }

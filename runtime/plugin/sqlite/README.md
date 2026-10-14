@@ -11,6 +11,10 @@ failure invents no receipt. `RegisterReceipts` reads the original method/input
 binding without invoking the use case. Reusing an identity with changed original
 JSON is a conflict; absent evidence never authorizes replay.
 
+Identity conflicts retain the public `runtime/idempotency.ErrKeyConflict`
+category. Classify it with `errors.Is`; an independent author's refusal classifier
+does not need private Runtime source or an error-string match.
+
 For operations with external work, `AdmitCommand` commits original admission first.
 Only `NewlyAdmitted` permits a first external attempt. `ResumeCommand` reads pending
 work without creating it; `PreparedCommand.Complete` joins the private owner's short

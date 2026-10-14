@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -21,7 +22,6 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	app "github.com/Tangerg/flame/runtime/internal/plugins/memory/application"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"

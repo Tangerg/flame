@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/idempotency"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
