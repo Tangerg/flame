@@ -2,74 +2,66 @@
 
 ## Current stage
 
-Stage 5aa (086f01cc1) connects independently captured model calls to the original
-execution member's existing authoritative fact pump. Primary Model and Tool
-boundaries capture that publisher with their actual member. Selected and auxiliary
-captures share one pre-dispatch logical start and original physical-source finish;
-a missing publisher under an executing owner or reuse of its identity is refused.
-Unattached/Session-only calls explicitly remain outside Run accounting.
+Stage 5ab (8968bb1bf) supplies call-scoped host callbacks to the installed model
+selection, context and input phases. Each uses the existing Pool/OpenRPC and
+managed MCP connection, with the original invocation and receiver activation's
+frozen Actor/dependency authority. A contribution can call the host while its outer
+query is pending. Each reference is withdrawn on success, failure or unwinding;
+there is no new listener, business receipt, result cache or public wire method.
 
-The common model capture owns the publication lifetime as well as its frozen chain.
-Call/Stream report consumption before release, including known inner results under
-outer failure/cancellation and unreported admitted attempts; a panic also runs the
-publication defer before unwinding. Source cost/usage are read from the physical
-journal, not the outer response. Independent facts carry no canonical message,
-primary context or latency. Conversation/independent purpose is captured at start;
-only conversation calls open/close primary streams or advance continuation/context.
-A second receipt, pricing calculation or executor invoice is not introduced.
+Host-selected model policies now validate their exact current contribution through
+the Runtime composition owner. They no longer mistakenly require the invoking
+plugin to declare every member of Runtime's selected model pipeline. Arbitrary
+cross-plugin operations still require the caller's frozen declared bindings. The
+shared current-installation/release/contribution checks retain one implementation.
 
-Logical purpose persists in model_invocations.logical_purpose; physical rows leave
-it absent. Recovery retains that original purpose, verifies it against storage in
-the same transaction and uses actual independently served models. Unknown admitted
-independent endpoints join recovery without fabricated tokens/price; independent
-input cannot recalibrate primary context. Existing logical/physical classification
-excludes already settled live calls, while still-open logical calls consume their
-original source once during recovery. Original JSON/association/price/usage proof
-and Run replacement/Goal transaction remain the accounting owners.
+An immutable active-contributor path refuses recursive selection/context/input
+reentry before another contributor dispatch. It neither skips a policy nor imposes
+an arbitrary depth limit. Primary context and input preparation also capture their
+actual execution member's existing model publisher before primary provider dispatch.
+Independent work uses the existing logical-start/source-settlement/fact pump; the
+not-yet-started primary Model ID is not fabricated as an admitted physical owner.
 
-This is a strict storage-shape break: old databases lacking logical_purpose are
-refused unchanged. No migration, old-row reader or data deletion is included.
-The schema-admission regression covers the former purpose column. Public Core .31,
-backend .2 and export schema3 are unchanged; internal store ports/fakes/callers are
-migrated together. In-scope public consumers did not change their wire encoding.
+Boundary proof uses installed managed MCP handlers and real authenticated loopback
+callbacks: reentry while the outer query is pending, exact Actor/invocation, refusal
+of undeclared direct calls, explicit active-contributor cycle refusal, and stale
+references after success/failure in all three phases. Existing primary preparation
+checks retain the execution publisher. These are transport/composition boundaries,
+not a complete installed/native multi-call Run/Goal acceptance claim.
 
-Boundary evidence covers an actual callback/provider source association and fresh
-auxiliary capture, owner identity refusal, original member/large usage/served model/
-price after cancellation, unknown consumption, primary stream continuity and
-conversation-state refusal. Real SQLite recovery covers independent different
-routing, unreported/unknown outcomes, rejected transaction rollback and repeated
-boot exclusion while preserving main context. These are boundary and persistence
-proofs; a single full installed/native Run/Goal workflow remains final acceptance.
+Whole pluginservices passed (17.916s); targeted callback concurrency checks passed
+with -race (8.272s). Final focused phase and primary preparation checks passed
+(1.765s/2.706s). Runtime build, changed-source gofmt and diff checks passed. No
+frontend UI/E2E/screenshot test was authored or executed. Native/full/vet/global
+race/closure acceptance and the unresolved Schedule handshake remain final work.
+Core .31/backend .2/export schema3 and database shape are unchanged in this slice.
 
-Whole Runs, Run-domain and recovery packages passed (1.633/1.015/1.309 seconds).
-After correcting two stale fixtures, whole pluginservices, SQLite and segment
-packages passed (8.386/3.822/2.997 seconds). Trajectory now supplies the actual admitted
-owner/Session/time; Actor acceptance includes its real user input. Original scope,
-receipt and withdrawal assertions were preserved. Focused concurrency regressions
-passed with -race in execution/Runs/pluginservices (5.059/3.733/7.290 seconds).
-Runtime build and Runtime/bootstrap test-source compilation passed before merge.
-Merged Runtime build, opening/acceptance/independent/recovery checks pass
-(0.770/1.994/1.235 seconds); Runtime and bootstrap test sources compile.
-No frontend UI/E2E/screenshot check was authored or run; full/native/vet/race/closure
-and unresolved Schedule activation-handshake acceptance remain concentrated final
-work. No narrow proof clears earlier schema/architecture/format findings.
+Main 14fca7975 remains integrated; merging main after the product commit reported
+already up to date. Original proposal/review/draft SHA-256 values and the user's
+stash remain unchanged. All test/build/commit handles are terminal. Test-owned
+servers/stores are closed, and no scratch script, background process, shared
+configuration or user-data mutation was introduced. Keep the active managed
+worktree and canonical progress symlink for the full goal. Overall 65-70% delivery/
+75% implementation remains a rough workload estimate, not a requirements count.
 
-Main 14fca7975 is integrated in e1b297cf5. Its single opening-owner/user-input rule
-and signature-comment cleanup are preserved; the conflict retains this branch's
-Actor authority and does not restore the retired AutomationStart accessor. Original
-proposal/review/draft hashes and the user stash remain unchanged. The progress
-anchor continues to resolve into this worktree. All owned test/build/compile/commit
-and merge handles are terminal; TemporaryDirectory/test-owned artifacts are cleaned
-by their owners. No UI artifact, scratch script, background job or shared configuration
-change was introduced. Keep the active worktree for the remaining full goal. Overall 65-70% delivery/75%
-implementation remains an estimate, not a requirement-by-requirement count.
-
-Next: aggregate Run/Goal admission must include all independent/in-flight work;
-policy/background grants, embedding evidence, retention, dependency/status/author
-and P01-P48/review/native acceptance remain open. Do not turn live source publication
-into a claim that total-work budget enforcement or full integrated delivery is done.
+Budget clarification: proposal 10.2/10.3/11.5 assigns resource budgets to the calling
+operation/execution. Current Run/Goal contracts have no configured total-cost or
+step ceiling. Preserve real owner-supplied per-call budgets and single-source
+consumption; do not invent a universal Goal limit from the earlier progress wording.
+Integrated in-flight/failure/unknown proof is still required under actual owner policy.
+Next: observer host RPC cohosting, background effect restoration, embedding evidence,
+retention/dependency/status/author lifecycle, and full P01-P48/review/native closure.
 
 ## Completed
+
+- Stage 5ab (8968bb1bf): installed selection/context/input phases receive existing
+  call-scoped host RPC under exact receiver authority; success/failure withdraw it.
+- Stage 5ab: Runtime-owned model pipeline admission is separated from arbitrary
+  managed cross-plugin requirements while sharing exact contribution validation.
+- Stage 5ab: immutable active-contributor cycle refusal and actual primary-preparation
+  member publisher capture; no silent policy skipping, new ledger or inferred owner.
+- Stage 5ab: installed MCP/authenticated reentry/stale/direct-call/cycle boundaries,
+  affected backend suite, focused -race and Runtime build pass; main is current.
 
 - Stage 5aa (086f01cc1): selected/auxiliary calls publish original consumption through
   the captured actual Model/Tool member; one common capture and fact pump.
@@ -676,68 +668,46 @@ into a claim that total-work budget enforcement or full integrated delivery is d
 
 ## In progress
 
-- Stage 5aa supplies live selected/auxiliary publication and purpose-aware recovery.
-  Aggregate Run/Goal admission must still account for all independent and in-flight
-  work. Full single installed/native normal-terminal/failure/restart proof remains open.
-- Real Schedule crash acceptance now stops at plugin handshake after the production
-  Memory dependency repair. Diagnose original exchange evidence during final integrated
+- Stages 5aa/5ab implement live selected/auxiliary consumption, purpose-aware recovery
+  and preparation grants. Complete one installed/native normal-terminal/failure/
+  interruption/restart Run/Goal workflow, including unknown work and in-flight
+  admission under the actual calling owner's resource policy.
+- Schedule crash acceptance still stops at plugin handshake after the production
+  Memory dependency repair. Diagnose original exchange evidence in final integrated
   acceptance; preserve all seven cut cases and original no-replay/data assertions.
-
-- Stage 5y closes independent lost-tree accrual at its source/transaction boundary.
-  Complete live Run/Goal consumption, normal terminal and total-work admission.
-  The boot collection classification must change atomically with live integration;
-  physical persistence plus boot loss is not full model-budget delivery.
-
-- Stage 5x fixes the prerequisite physical execution association. Complete the
-  actual descendant Run/Goal totals/budgets/recovery owner: current Interaction
-  exact-primary lookup remains, and no second billing tally may be introduced.
-- Complete original ownership and RPC grants for policy-phase and background
-  work. The new active Model/Tool boundary checks do not prove all optional counter
-  admission, automatic native workflow or remote composition semantics.
-
-- Stage 5w implements independent per-call selected routing, budgets and physical
-  evidence for unary/stream on ordinary installed RPC grants. Complete actual native/
-  process acceptance and general remote composition; do not turn the transparent
-  observer's specific contract into a universal once-through rule.
-- Connect descendant physical consumption to existing Run/Goal accounting and its
-  budget/uncertainty owner. Current Interaction only consumes its exact primary
-  EndpointForCaller result; adding a second tally/receipt owner is prohibited.
-- Stage 5t/5u/5v close captured input conversion/final model-media admission at
-  primary/auxiliary boundaries. Stage 5w covers general complete requests and fresh
-  installed per-call selection. Full delegated/native/all-workflow acceptance remains.
-
-- All actual CLI/workspace Memory reads and human mutations now use the public
-  installed publisher contract. Core business methods/DTOs and the Memory feature
-  are removed, including Core records/enums. Business topics/record IDs and contract-specific notification routing are also
-  removed. Audit every component, Tool and automatic workflow for original-route
-  recovery and complete scoped lifecycle/author qualification.
-- Schedule Core business facade migration is complete. Full native lost-response,
-  restart, replacement/disablement/uninstall/retirement execution for every migrated
-  Schedule and Memory operation, including missing original receipts, remains final
-  acceptance. Wider notification, cross-language number and author parity remain open.
-- Stage 3p implements setup collaborator delivery, provider-attempt waiting and immutable session bindings. Final integration must prove real multi-entry activation, optional collection behavior, waiting cancellation, source withdrawal/replacement and reentrant installed calls. Add named observed dependency status and integrate dependency retention with the existing execution/installation owners.
-- Stage 3q implements consumer-owned value schema, frozen context applicability, optionality and canonical/explicit order with an executable Reviews analyzer consumer. Stage 5h adds stored ordered decoration choices and named setup integration with required/optional absence and withdrawal refusal. Complete point lifecycle, durable execution composition, observed dependency status/retention and integrated process acceptance remain open.
-- Migrate actual Tool, automatic, UI and cross-plugin consumers to the public installed entrance, retaining target/origin/parent and existing original command/receipt ownership. Cross-plugin actor checks now use captured session bindings. Complete actual Tool callback preparation and durable execution-owned projections; do not treat the SDK primitive as migration of every consumer.
-- Business View/renderer HTML carriers and closed contextual action wrappers are removed. Complete actual CLI/Core business facade migration through public installed operations with original binding, command/receipt and lifecycle owners. No frontend UI/E2E execution is authorized.
-- Public Go model callback streams now pass actual lazy/cancel/backpressure/aggregate/inner-failure and external frozen remaining-chain checks. SDK backend duplex/real stdio decorator-next streaming now passes. Internal mutation-stream original route/recovery is now implemented and verified. Public Go/Protocol mutation-stream delivery is now implemented and verified at its boundaries. Typed/callback Go streams are now implemented and verified at their boundary. TS mutation streaming is now implemented and verified at its boundary. Stage 5g preserves complete known response/accounting under an outer failed attempt; Stage 5i now wires transparent installed observers to Interaction with frozen checkpoint order and held releases. Stage 5j migrates auxiliary/Memory utility consumers and retains their captured releases until cancellation/join. Stage 5k now persists actual physical chat endpoint admission/outcome and unknown restart reconciliation below observers. Stage 5l now bills current transparent Interaction from exact persisted endpoint evidence. Stage 5m completes Session endpoint trajectory/export/deletion. Stage 5n closes known physical pricing and current Interaction boot-loss accrual. Stage 5o closes retained auxiliary/global chat usage reporting with coverage and existing owner deletion. Complete automatic unattached retention policy, embedding/multi-call metering and remaining recovery classes, admitted transformed input/multiple actual calls and transitive dependency lifecycle; SDK probes do not close installed production requirements.
-- Retain and execute final acceptance for Stage 3i business-only Memory input and missing-callback admission; Stage 3k installed public calls/refusal/recovery; Stage 3l original target/caller metadata; Stage 3m durable Schedules trigger propagation; Stage 3n dependency resolution/cycles; Stage 3o activation publication/retirement; Stage 3p provider waiting, setup/callback/authority/lifetime integration. Compilation is not runtime acceptance. Stage 3m has implemented the earlier durable handoff gap.
-- Complete public independent-author/module packaging, final declaration/activation/package integrity audit, deletion audit and all requirement-level verification. Current-source author builds do not establish availability of a published Runtime module.
-- Preserve unrelated main work, existing Memory ledger and Schedules business facts, source/credential/integrity checks and the management recovery entrance throughout remaining changes.
+- Complete observer host RPC cohosting, background original-effect restoration and
+  optional counter I/O admission. A phase callback cannot claim durable continuation.
+- Complete embedding evidence/metering and historical retention at their existing
+  owners. Preserve source-reported unknown usage/price without another billing tally.
+- Complete transitive dependency status, scoped retention/release, point lifecycle,
+  query streams and wide-number Go/TS parity. Existing unary/mutation-stream and
+  composition boundary proofs do not close every consumer or automatic workflow.
+- Audit every Tool, CLI/UI/automatic/cross-plugin consumer for exact target/origin/
+  parent, original route/private receipt and lifetime. Complete independent author/
+  component generation/recovery/module qualification; publication is not authorized.
+- Concentrate full/native/vet/race/dependency/schema/architecture/format/deletion and
+  P01-P48/review closure checks at final acceptance. No frontend UI/E2E/screenshot
+  execution is authorized. Do not classify an unresolved failure as pre-existing
+  without causal evidence.
 
 ## Next
 
-1. Complete aggregate Run/Goal admission for all independent/in-flight work and
-   prove the live publication in one installed/native normal-terminal/failure/restart
-   workflow. Keep original physical evidence and the single accounting transition.
-2. Complete policy/background grants/ownership, embedding evidence/retention,
-   scoped dependencies/status, every consumer and independent author/module work.
-3. Concentrate native/full/vet/race/all-workflow/P01-P48/review and deletion audits;
-   fix required schema/architecture/format obligations. UI/E2E/screenshot excluded.
+1. Complete observer/background host collaborators and original effect ownership;
+   retain canonical RPC, exact frozen continuation and one physical-source owner.
+2. Complete embedding evidence/retention, scoped dependency/status and author work;
+   prove full installed Run/Goal consumption under actual owner-supplied budgets.
+3. Run concentrated final checks and requirement-by-requirement closure, repairing
+   the Schedule handshake and outstanding schema/architecture/format findings.
 
 ## Decision ledger
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Supply existing call-scoped host RPC during selection/context/input queries | Installed preparation code needs reentrant host collaborators under its actual receiver authority | Query identity without callbacks, activation fallback or another listener |
+| 2026-10-14 | Runtime authorizes its selected model pipeline; managed direct calls retain declared-requirement checks | Global host composition is not a caller plugin's dependency declaration | Requiring every caller to declare host policy members or disabling arbitrary cross-plugin admission |
+| 2026-10-14 | Reject active model-contributor cycles using an immutable captured path | Nested fresh generation must not recursively prepare its own ancestor or silently bypass policy | Blind reentry, arbitrary depth limits or skipping active contributors |
+| 2026-10-14 | Capture the actual execution member publisher during primary preparation | Independent preparation work precedes primary dispatch but still belongs to that execution | Fabricating a primary logical owner or classifying active work as Session-only |
+| 2026-10-14 | Honor real owner-supplied budgets without inventing a universal Run/Goal ceiling | Proposal 10.2/10.3/11.5 defines budget ownership; current Run/Goal APIs have no total-cost/step-limit contract | Treating earlier aggregate-budget progress wording as a new product requirement |
 | 2026-10-14 | Common model capture publishes independent selected and auxiliary consumption through the captured execution member | Different callback facades must not create separate billing/lifetime owners | A selected-only tally, inferred current Run, a new invoice/receipt or provider replay |
 | 2026-10-14 | Persist conversation/independent purpose on logical model starts | Independent completions must not close a main stream or replace context; recovery must not force their route to the main model | Presence heuristics, mutable purpose at completion or removing the primary selection guard globally |
 | 2026-10-14 | Unknown admitted independent work remains unknown in live and boot accounting | Admission is evidenced even without a response; a later priced response cannot price missing work | Zero token/price substitution, losing admitted work or promotion to successful continuation |
@@ -996,10 +966,11 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
-| Live independent model consumption and primary-output isolation | Stage 5aa captured-member common selected/auxiliary publication, persisted purpose and different-model/unknown recovery implemented; publication/stream/source/SQLite/-race boundaries verified; aggregate admission and full installed/native Run/Goal acceptance open | executionctx/model_calls.go; execution/interaction_model_calls.go; interaction_model.go; interaction_tool.go; pluginservices/model_capture.go; runs/reducer.go; execution_fact.go; commit.go; recovery.go; recovery_commit.go; sqlite/db.go; model_invocation.go; model_endpoint.go; recovery/persistence.go; matching regressions |
+| Model preparation host collaborators and ownership | Stage 5ab installed selection/context/input authenticated reentry, original Actor/invocation, undeclared direct-call refusal, active-cycle refusal and stale reference boundaries verified; native/full effect composition remains open | pluginservices/model_selection.go; model_context.go; model_input.go; model_phases.go; calls.go; model_phase_callbacks_test.go; execution/interaction_context_reducer.go |
+| Live independent model consumption and primary-output isolation | Stage 5aa captured-member common selected/auxiliary publication, persisted purpose and different-model/unknown recovery implemented; publication/stream/source/SQLite/-race boundaries verified; owner-policy/in-flight and full installed/native Run/Goal acceptance open | executionctx/model_calls.go; execution/interaction_model_calls.go; interaction_model.go; interaction_tool.go; pluginservices/model_capture.go; runs/reducer.go; execution_fact.go; commit.go; recovery.go; recovery_commit.go; sqlite/db.go; model_invocation.go; model_endpoint.go; recovery/persistence.go; matching regressions |
 | One Run consumption owner across actual model calls and termination | Stage 5z per-call accrual, original usage/price, resume/interleaving/duplicate/context/terminal invariants implemented and verified; Stage 5aa live callback wiring implemented; full installed/native and total-work admission remain open | runs/execution_fact.go; execution_fact_commit.go; reducer_items.go; reducer_outcome.go; execution/interaction_accounting.go; interaction_session.go; interaction_durable_children.go; run/metrics.go; matching backend regressions |
-| Known independent inner consumption under lost outer execution | Stage 5y source/Run/Goal atomic recovery, unknown cost, primary exclusion, rollback/context/restart proof verified; Stage 5aa live publication and role-aware recovery implemented; full normal-terminal/aggregate admission and native acceptance open | sqlite/model_endpoint.go; application/runs/recovery.go/recovery_commit.go; adapter/run/recovery/persistence.go/model_evidence_test.go |
-| Original executing Run/Segment for multiple physical model calls | Stage 5x active Model/Tool ownership, namespace/chronology/Session/wait/resume refusal and real callback source association verified; aggregate budgets/native/background/policy phases remain open | executionctx/scope.go; execution/interaction_model.go; interaction_tool.go; model/endpoint_observation.go; sqlite/model_endpoint.go/tests; pluginservices/model_calls.go/tests; plugin/model_call.go; protocol/model_invocations.go/version.go |
+| Known independent inner consumption under lost outer execution | Stage 5y source/Run/Goal atomic recovery, unknown cost, primary exclusion, rollback/context/restart proof verified; Stage 5aa live publication and role-aware recovery implemented; full normal-terminal/owner-policy admission and native acceptance open | sqlite/model_endpoint.go; application/runs/recovery.go/recovery_commit.go; adapter/run/recovery/persistence.go/model_evidence_test.go |
+| Original executing Run/Segment for multiple physical model calls | Stage 5x active Model/Tool ownership, namespace/chronology/Session/wait/resume refusal and real callback source association verified; Stage 5ab preparation publisher captured; native/background/owner-policy proof remains open | executionctx/scope.go; execution/interaction_model.go; interaction_tool.go; model/endpoint_observation.go; sqlite/model_endpoint.go/tests; pluginservices/model_calls.go/tests; plugin/model_call.go; protocol/model_invocations.go/version.go |
 | Multiple independent model calls, original budgets/observations and uncertainty | Stage 5w ordinary installed RPC unary/stream capabilities, three separate routes/IDs, full request budgets and physical evidence verified; total Run/Goal accounting/general remote composition/native acceptance open | runtime/plugin/model_call.go/tests; model_stream.go; callbacks.go; stream.go; pluginservices/model_calls.go/tests; model_capture.go; bootstrap/tool_environment.go/delivery.go/assemble.go |
 | Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
 | Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; Stage 5w independent callback input/budget/media handling now verified; general composition and final native acceptance open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
@@ -1042,6 +1013,18 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5ab: baseline installed selection/context/input checks passed (1.752s).
+- Stage 5ab: initial phase/selection/context/input/independent callback checks passed
+  (2.499s); primary preparation/source checks passed (2.312s). After adding explicit
+  cycle/host-composition ownership, targeted phase checks passed (2.679s).
+- Stage 5ab: whole pluginservices passed (17.916s); focused callback -race passed
+  (8.272s); Runtime go build ./... passed. Deferred per-contributor release then
+  passed focused pluginservices/execution again (1.765s/2.706s). Changed gofmt -l
+  and git diff --check are clean. All source assertions remain; none were weakened.
+- Stage 5ab: main merge is already up to date at 14fca7975. Original inputs/stash
+  match. Full/native/vet/global-race/closure and Schedule handshake are not rerun
+  during this development slice. No frontend UI/E2E/screenshot check was run.
 
 - Stage 5y initial recovery checks passed (adapter 1.322s; Application 0.794s).
   New source clone comparison failed correctly while diagnosing nil/empty DTO
@@ -2534,37 +2517,19 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Stage 5z: actual Schedule crash acceptance still fails at activation handshake
-  after the missing production Memory binding was repaired. Preserve all original
-  cut/no-replay/data assertions; inspect original exchanges before choosing a fix.
-- Stage 5aa: logical purposes and captured-member publication are implemented.
-  Full installed/native Run/Goal acceptance, aggregate/in-flight admission, policy
-  phase/background ownership and primary failed/unknown total-work coverage remain open.
-
-- Stage 5y recovery is not live budget closure. Independent sources currently
-  lack a logical accounting projection and are consumed on lost-tree replacement;
-  live integration must update that same classification before it can accrue them.
-  Otherwise boot could charge a live-accounted source twice.
-- Complete normal-terminal independent consumption and generation-time aggregate
-  Run/Goal budget, including unknown pricing and optional count-provider work.
-  No per-call estimate or newly created report may become another billing owner.
-
-- Stage 5x repairs active Model/Tool endpoint association. General policy-phase
-  grants and background restoration still need original effect ownership before
-  their external work. Session-only harnesses and compilation are not native proof.
-- Descendant physical charges now have an actual Run/Segment source but current
-  aggregate consumption remains exact-primary-only. Run/Goal totals, total-work
-  admission, failure/unknown and crash accrual must converge on the existing owner.
-- Generation admission does not itself prove every optional counting-provider I/O
-  is gated, nor reserve aggregate Goal costs. Those boundaries remain explicitly open.
-
-- Stage 5w does not close Run/Goal totals or policy composition: the current
-  Interaction source lookup is exact-primary-only. Descendant invocation charges,
-  interruption, known failure and crash accrual must use the existing owner without
-  double counting, estimates-as-billing or a separate tally.
-- Ordinary installed selected-model callbacks are now implemented. Full real-process/
-  native/author acceptance, general remote composition, embedding evidence and
-  retention remain open; no source-only proof is treated as complete delivery.
+- Schedule crash acceptance still fails at activation handshake after the production
+  Memory dependency repair. Preserve cut/no-replay/data assertions and inspect the
+  original exchange before choosing a fix; causality is not classified as unrelated.
+- Full installed/native Run/Goal live/normal-terminal/failure/interruption/restart
+  accounting remains unproven. Stages 5aa/5ab are boundary implementations, not full
+  delivery. Preserve unknown consumption and the original logical/physical owner.
+- Complete actual owner-policy/in-flight admission and optional counting-provider
+  evidence. Current contracts do not authorize inventing a universal Goal ceiling.
+- Preparation phases now receive host RPC with cycle refusal and their original
+  execution publisher. Observer RPC cohosting, background original-effect restoration
+  and full durable composition remain open; cycles cannot silently bypass policy.
+- Embedding evidence, retention, transitive dependency/status/lifecycle, every
+  consumer, independent author/module and all P01-P48/review acceptance remain open.
 
 - Stage 5t/5u/5v implement public/auxiliary/primary input transformation and final
   model-media admission with original source evidence. Full real process/native/
@@ -2574,7 +2539,7 @@ Stage 2a verification:
 - Primary/auxiliary context and accepted execution/use-case model selection are
   implemented. Stage 5s adds known auxiliary capacity preflight using its actual
   counter or the shared estimate. General transforms/per-call routes/multiple
-  independently admitted calls and complete final acceptance remain open.
+  independently admitted calls exist at their boundaries; complete final acceptance remains open.
 - Internal AuxiliaryResolver now requires an explicit budget and returns exact
   SelectedChat capture. All known internal consumers are migrated; no public
   plugin SDK or protocol type changed in this slice.
