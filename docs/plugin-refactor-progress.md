@@ -14,6 +14,34 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Ordinary installed callbacks expose embedding roles (2026-10-15)
+
+- `0969e16b8` publishes the public text-embedding callback beside the normal
+  selected-model Call/Stream callbacks in actual Runtime composition. Ordinary
+  installed callers do not enter a Memory-specific service to use the configured
+  embedding role. Role absence is the explicit `model_role_unconfigured` refusal;
+  configured lookup failure and typed-nil defects stay errors. No alternate
+  provider or keyword policy is selected by this shared handler.
+- The ordinary RPC callback path proves three independent exchanges, preserved
+  child origin/parent, byte-budget refusal before resolution, withdrawal, and
+  absence versus configured failure. It imports no Memory business type/profile.
+  The provider adapter continues to own complete physical endpoint evidence.
+- A deterministic regression exposed a real SDK identity bug: an embedding could
+  reuse its calling owner's ID and reach the callback a fourth time, with the
+  wrong parent. It fails on the preceding implementation. SDK admission now
+  refuses that reuse; the Runtime role handler also refuses claiming the actual
+  executing Model/Tool identity before resolution/provider work. No replay cache
+  or alternate identity is invented.
+- Passed: full SDK/pluginservices (0.921/8.936s), Memory/embedding/multi-model
+  bootstrap selection (14.186s), Runtime/CLI/Reviews build, gofmt/diff and
+  stash-free staged checks/commitlint. Final affected race/full/native gates stay
+  concentrated with the remaining closure work. No frontend UI test ran.
+- Next: replace the remaining private Memory grant-policy source dependency with
+  its one authoritative published caller-policy projection, retain Memory's own
+  work count/envelopes, then close the dependency/retention and final acceptance
+  audit. Normal host model access is now shared; this does not by itself remove
+  the private caller-policy factory import.
+
 ### Public Tool context and text embedding contract (2026-10-15)
 
 - `2079ee06f` replaces the private `flame.memory/embed.v1` method with public SDK

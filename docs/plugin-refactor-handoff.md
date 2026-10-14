@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 public Tool-context/embedding contract cutover.
+Prepared on 2026-10-14 and updated after the 2026-10-15 ordinary embedding callback cutover.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,11 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `2079ee06f` (public Tool context and text embedding
+- Latest product commit: `0969e16b8` (ordinary installed embedding-role callback,
+  independent child-identity refusal and full SDK/service/bootstrap proof).
+  Next: the published Memory caller-policy projection/factory dependency, then
+  dependency/retention and final closure.
+  Previous: `2079ee06f` (public Tool context and text embedding
   contracts; private Memory scope/embedding method removed; actual Memory and
   public independent-author checks pass).
   Next: remove the private caller grant-policy factory/contract construction,
