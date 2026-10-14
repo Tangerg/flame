@@ -125,14 +125,14 @@ func problemType(t *testing.T, resp *transport.Response) string {
 func TestCapabilityGateRefusesADisabledFeature(t *testing.T) {
 	t.Parallel()
 
-	const params = `{"scope":"project","workspace":{"path":"/workspace"}}`
-	off := call(t, map[string]bool{"agentMemory": false}, "agentMemory.list", params)
+	const params = `{"workspace":{"path":"/workspace"}}`
+	off := call(t, map[string]bool{"skills": false}, "skills.discovered.list", params)
 	if got := problemType(t, off); got != "capability_not_negotiated" {
-		t.Fatalf("agentMemory.list with the feature off = %q, want capability_not_negotiated", got)
+		t.Fatalf("skills.discovered.list with the feature off = %q, want capability_not_negotiated", got)
 	}
-	on := call(t, map[string]bool{"agentMemory": true}, "agentMemory.list", params)
+	on := call(t, map[string]bool{"skills": true}, "skills.discovered.list", params)
 	if on.Error != nil {
-		t.Fatalf("agentMemory.list with the feature on: %+v", on.Error)
+		t.Fatalf("skills.discovered.list with the feature on: %+v", on.Error)
 	}
 }
 
