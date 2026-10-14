@@ -18,6 +18,7 @@ export class AgentCommandOwner {
   readonly #forks = new Map<string, Promise<unknown>>();
   readonly #rollbackSessions = new Set<string>();
   readonly #effects = new Set<AgentCommandEffect>();
+  readonly #steerRetries = new Map<string, () => void>();
   readonly #retiredError = new GenerationRetiredError("agent_command_owner");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
 
@@ -110,6 +111,20 @@ export class AgentCommandOwner {
     return effect;
   }
 
+  retainSteerRetry(messageId: string, retry: () => void): void {
+    this.assertCurrent();
+    this.#steerRetries.set(messageId, retry);
+  }
+
+  retrySteer(messageId: string): boolean {
+    this.assertCurrent();
+    const retry = this.#steerRetries.get(messageId);
+    if (!retry) return false;
+    this.#steerRetries.delete(messageId);
+    retry();
+    return true;
+  }
+
   dispose(): void {
     if (this.#cohort.retired) return;
     agentCommandPublication.withdraw(this);
@@ -137,6 +152,7 @@ export class AgentCommandOwner {
     this.#creates.clear();
     this.#forks.clear();
     this.#rollbackSessions.clear();
+    this.#steerRetries.clear();
     for (const effect of [...this.#effects]) effect.rollback();
   }
 }

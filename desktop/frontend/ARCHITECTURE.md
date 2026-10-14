@@ -286,6 +286,17 @@ replay rules; the graphical application supplies its storage lifetime and render
 the outcome. A delayed result may settle its original command, but cannot
 advance a retired view generation.
 
+Steering retains the SDK's original mutation rather than wrapping away its retry
+authority. The Agent command owner exposes one retry of that frozen submission;
+it never retargets a replacement Segment or rereads authored input. Pending and
+unconfirmed receipts remain local observations, including through snapshot refresh
+and Run termination. Only a definite refusal removes the provisional input. An
+accepted receipt binds the reserved Item identity, and that exact committed Item
+proves model-context application. Connection replacement retires local observation
+and retry actions while the SDK preserves its unresolved journal identity. This
+does not persist input bodies or promise to restore pending bubbles after a full
+application restart.
+
 Start and Resume query `runs.getAcceptance` with their original namespace, key,
 and operation before delivery. The journal reserves identity independently of
 dispatch admission: replay expiry and a replaced Runtime store forbid a write,

@@ -1,4 +1,5 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
+import { createMutationPromise } from "@flame/runtime-contract/client/mutation";
 import { subagentsView } from "@/plugins/builtin/chat/message/subagents";
 import { installAgentStatePorts } from "@/plugins/builtin/agent/adapters/agentStatePorts";
 import { navigator } from "@/lib/navigation";
@@ -141,12 +142,14 @@ function visualAgentRuntimeGateway(
     }),
     loadSessionUsage: async () => ({}),
     rollbackSession: async () => ({ droppedRuns: [] }),
-    steerRun: async (runId, segmentId, input) => {
-      document.documentElement.dataset.visualSteeredRun = runId;
-      document.documentElement.dataset.visualSteeredSegment = segmentId;
-      document.documentElement.dataset.visualSentInput = JSON.stringify(input);
-      return { userItemId: "item_visual_steer" };
-    },
+    steerRun: (runId, segmentId, input) =>
+      createMutationPromise(async () => {
+        document.documentElement.dataset.visualSteeredRun = runId;
+        document.documentElement.dataset.visualSteeredSegment = segmentId;
+        document.documentElement.dataset.visualSentInput = JSON.stringify(input);
+        return { userItemId: "item_visual_steer" };
+      }),
+    isSteerReceiptUnknown: () => false,
     isRunGone: () => false,
     isReplayLost: () => false,
     setApprovalMode: async (mode) => ({ mode, modes: VISUAL_APPROVAL_MODES }),

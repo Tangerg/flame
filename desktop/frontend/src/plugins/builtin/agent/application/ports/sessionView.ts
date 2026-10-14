@@ -79,6 +79,11 @@ export interface AgentSessionViewPort {
   getSession(sessionId: string): AgentSessionViewEntry | undefined;
   sendToSession(sessionId: string, input: AgentInput, options?: AgentRunStartOptions): boolean;
   dropMessage(sessionId: string, messageId: string): void;
+  projectSteerReceipt(
+    sessionId: string,
+    messageId: string,
+    steer: NonNullable<Message["steer"]>,
+  ): void;
   reconcileMessageIdentity(
     sessionId: string,
     fromId: string,

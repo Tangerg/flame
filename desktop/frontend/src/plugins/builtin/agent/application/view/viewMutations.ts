@@ -1,4 +1,18 @@
-import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
+import type { AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
+
+export function projectSteerReceipt(
+  view: AgentSessionView,
+  messageId: string,
+  steer: NonNullable<Message["steer"]>,
+): AgentSessionView {
+  if (!view.messages.some((message) => message.id === messageId)) return view;
+  return {
+    ...view,
+    messages: view.messages.map((message) =>
+      message.id === messageId ? { ...message, steer } : message,
+    ),
+  };
+}
 
 export function reconcileMessageIdentity(
   view: AgentSessionView,
@@ -17,7 +31,7 @@ export function reconcileMessageIdentity(
           .filter((message) => message.id !== fromId)
           .map((message) =>
             message.id === toId && steerRunId
-              ? { ...message, steer: { runId: steerRunId } }
+              ? { ...message, steer: { runId: steerRunId, receipt: "accepted" } }
               : message,
           )
       : view.messages.map((message) =>
@@ -25,7 +39,9 @@ export function reconcileMessageIdentity(
             ? {
                 ...message,
                 id: toId,
-                ...(steerRunId ? { steer: { runId: steerRunId } } : {}),
+                ...(steerRunId
+                  ? { steer: { runId: steerRunId, receipt: "accepted" as const } }
+                  : {}),
               }
             : message,
         ),
@@ -55,7 +71,8 @@ export function reconcileSteerMessages(
       messages[index] = { ...messages[index]!, steer };
     } else if (pending.runId !== steer.runId) {
       const run = authoritative.runsById[steer.runId];
-      if (run?.status === "finished") unapplied = true;
+      if (steer.receipt !== "accepted") messages.push(pending);
+      else if (run?.status === "finished") unapplied = true;
       else if (run) messages.push(pending);
     }
   }

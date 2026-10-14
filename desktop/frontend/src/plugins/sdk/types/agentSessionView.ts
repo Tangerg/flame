@@ -59,7 +59,7 @@ export interface Message {
   runId: string | null;
   blocks: ContentBlock[];
   /** The Run this input steered; it is applied once it is that Run's Item. */
-  steer?: { runId: string };
+  steer?: { runId: string; receipt: "pending" | "unknown" | "accepted" };
 }
 
 export interface RunUsage {

@@ -337,6 +337,9 @@ export const ja: Record<string, string> = {
   "settings.connection.status.checking": "Runtime を確認中…",
   "settings.connection.status.reconnecting": "再接続中…",
   "agent.steer.accepted": "受け付け済み・モデルのコンテキストへの追加待ち",
+  "agent.steer.pending": "入力を送信中",
+  "agent.steer.unknown": "受付結果を確認できません",
+  "agent.steer.retry": "元の送信を再試行",
   "agent.steer.applied": "モデルのコンテキストに追加済み",
   "agent.steer.notApplied":
     "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",

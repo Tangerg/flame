@@ -350,6 +350,9 @@ export const fr: Record<string, string> = {
   "settings.connection.status.checking": "Vérification du runtime…",
   "settings.connection.status.reconnecting": "Reconnexion…",
   "agent.steer.accepted": "Acceptée · en attente du contexte du modèle",
+  "agent.steer.pending": "Envoi de l’entrée",
+  "agent.steer.unknown": "Réception non confirmée",
+  "agent.steer.retry": "Réessayer l’envoi initial",
   "agent.steer.applied": "Ajoutée au contexte du modèle",
   "agent.steer.notApplied":
     "L’exécution s’est terminée avant qu’une instruction acceptée soit ajoutée au contexte du modèle.",

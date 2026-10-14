@@ -6,7 +6,9 @@ import {
   asSessionId,
   createMutationSettler,
   isErrorType,
+  RpcError,
 } from "@flame/runtime-contract/client";
+import { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 import { configureAgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";
@@ -93,7 +95,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     };
   }
 
-  async steerRun(
+  steerRun(
     runId: string,
     segmentId: string,
     input: Parameters<AgentRuntimeGateway["steerRun"]>[2],
@@ -103,6 +105,10 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       asSegmentId(segmentId),
       agentInputToContentBlocks(input),
     );
+  }
+
+  isSteerReceiptUnknown(error: unknown): boolean {
+    return !(error instanceof RpcError) || mutationSettlementIsUnknown(error);
   }
 
   isRunGone(error: unknown) {

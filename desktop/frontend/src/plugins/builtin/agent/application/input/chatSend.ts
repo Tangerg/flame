@@ -1,19 +1,12 @@
 import type { AgentRunStartOptions } from "@/plugins/sdk";
 import { useCallback } from "react";
-import { t } from "@/lib/i18n";
-import { describeRpcError } from "@/lib/rpcErrors";
-import { notifyError } from "@/plugins/sdk";
 import { resolveAgentRunStartOptions } from "@/plugins/sdk";
 import type { AgentInput } from "../../domain/input";
-import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "../view/optimisticMessageIdentity";
-import { agentRuntime } from "../ports/runtimeGateway";
 import { agentSessionView } from "../ports/sessionView";
 import { getActiveSessionId, useActiveSessionId } from "../session/activeSession";
 import { selectCurrentRootRun } from "../view/runTree";
-import { agentCommandOwner } from "../agentCommandOwner";
 import { useCurrentRootMaterial } from "../run/runReadModel";
-import { ExactSequence } from "@/foundation/exactSequence";
-import { synchronizeMountedAgentSession } from "../session/refreshSessionProjection";
+import { steerRunningTurn } from "./steering";
 
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
 export function useChatSend(): (input: AgentInput) => boolean {
@@ -56,48 +49,6 @@ export function canAcceptChatInput(
   return Boolean(sessionId) && mountedSendAvailable && rootStatus !== "waiting";
 }
 
-const steerBubbleIds = new ExactSequence();
-
-interface SteerRunningTurnInput {
-  sessionId: string;
-  runId: string;
-  segmentId: string;
-  input: AgentInput;
-}
-
-function steerRunningTurn({ sessionId, runId, segmentId, input }: SteerRunningTurnInput): boolean {
-  if (input.parts.length === 0) return false;
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
-  const view = agentSessionView();
-  const localId = mintSteerBubble(view, sessionId, input);
-  const effect = owner.trackEffect(() => view.dropMessage(sessionId, localId));
-  void owner.settle(runtime.steerRun(runId, segmentId, input)).then(
-    (result) => {
-      if (!owner.isCurrent()) return;
-      const messages = view.getSession(sessionId)?.view.messages;
-      if (
-        messages &&
-        !messages.some((message) => message.id === localId || message.id === result.userItemId)
-      ) {
-        view.appendLocalUserMessage(sessionId, localId, input);
-      }
-      view.reconcileMessageIdentity(sessionId, localId, result.userItemId, runId);
-      effect.settle();
-      void synchronizeMountedAgentSession(sessionId, "after-live").catch((error: unknown) => {
-        console.warn("[session] steer reconciliation failed:", sessionId, error);
-      });
-    },
-    (err: unknown) => {
-      if (!owner.isCurrent()) return;
-      effect.rollback();
-      console.error("[session] steer failed:", err);
-      notifyError(describeRpcError(err) ?? t("session.error.steer"), { source: "session" });
-    },
-  );
-  return true;
-}
-
 interface SendFreshTurnInput {
   sessionId: string;
   send: SendToAgent | null;
@@ -110,14 +61,4 @@ function sendFreshTurn({ sessionId, send, input, runOptions }: SendFreshTurnInpu
     return send(input, runOptions);
   }
   return false;
-}
-
-function mintSteerBubble(
-  view: ReturnType<typeof agentSessionView>,
-  sessionId: string,
-  input: AgentInput,
-): string {
-  const id = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${steerBubbleIds.issue()}`;
-  view.appendLocalUserMessage(sessionId, id, input);
-  return id;
 }

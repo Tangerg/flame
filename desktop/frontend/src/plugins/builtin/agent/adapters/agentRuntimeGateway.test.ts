@@ -233,6 +233,44 @@ describe("agentRuntimeGateway", () => {
     ] satisfies Parameters<Methods["runs"]["steer"]>[2]);
   });
 
+  it("preserves the original steer command and its retry authority", async () => {
+    const execute = vi.fn().mockResolvedValue({ userItemId: "item_original" });
+    const mutation = createMutationPromise(execute, "original-steer");
+    const steer = vi.fn(() => mutation);
+    runtimeClient = () => ({ runs: { steer } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
+
+    const submitted = agentRuntime().steerRun("run_1", "seg_original", {
+      parts: [{ kind: "text", text: "original input" }],
+    });
+
+    expect(submitted).toBe(mutation);
+    await submitted;
+    await mutation.retry();
+    expect(execute.mock.calls.map(([key]) => key)).toEqual(["original-steer", "original-steer"]);
+    expect(steer).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes receipt uncertainty from a definitive Runtime refusal", () => {
+    runtimeClient = () => ({}) as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
+    expect(agentRuntime().isSteerReceiptUnknown(new RpcTransportError("lost ACK"))).toBe(true);
+    expect(agentRuntime().isSteerReceiptUnknown(new Error("unreadable receipt"))).toBe(true);
+    expect(
+      agentRuntime().isSteerReceiptUnknown(
+        new RpcError({
+          message: "still claimed",
+          data: { type: "idempotency_in_progress", retryAfterSeconds: 1 },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      agentRuntime().isSteerReceiptUnknown(
+        new RpcError({ message: "stale segment", data: { type: "stale_segment" } }),
+      ),
+    ).toBe(false);
+  });
+
   it.each([{ supported: false }, { supported: true }])(
     "reads one coherent snapshot with descendants supported=$supported",
     async ({ supported }) => {

@@ -5,6 +5,8 @@ import type { AgentMessagePhase } from "@/plugins/sdk/types/agentSessionView";
 import type { BlockCtx } from "./BlockRenderer";
 import { MessageBlock } from "./MessageBlock";
 import { MessageVisibleMaterialOwner } from "./messageVisibleMaterial";
+import * as agentInput from "@/plugins/builtin/agent/public/input";
+import { fireEvent } from "@testing-library/react";
 
 const { renderActionSlot } = vi.hoisted(() => ({ renderActionSlot: vi.fn() }));
 
@@ -49,6 +51,37 @@ function row(
 }
 
 describe("MessageBlock turn identity", () => {
+  it("shows uncertain acceptance and retries only its original command", () => {
+    const retry = vi.spyOn(agentInput, "retrySteerInput").mockReturnValue(true);
+    const uncertain = row("complete", "Original submitted input", "user");
+    uncertain.message = {
+      ...uncertain.message,
+      runId: null,
+      steer: { runId: "run_1", receipt: "unknown" },
+    };
+    const { rerender } = render(
+      <MessageBlock row={uncertain} ctx={CTX} sessionId="session-steer" isLast isRunning />,
+    );
+    expect(screen.getByText("Acceptance not confirmed")).toBeTruthy();
+    expect(screen.queryByText("Accepted · waiting for model context")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry original submission" }));
+    expect(retry).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledWith(uncertain.message.id);
+    rerender(
+      <MessageBlock
+        row={{
+          ...uncertain,
+          message: { ...uncertain.message, steer: { runId: "run_1", receipt: "pending" } },
+        }}
+        ctx={CTX}
+        sessionId="session-steer"
+        isLast
+        isRunning
+      />,
+    );
+    expect(screen.getByText("Sending input")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Retry original submission" })).toBeNull();
+  });
   it("keeps terminal evidence visible when the selected narrative row has no rendered blocks", () => {
     const empty = row("complete", "", "assistant", "commentary");
     empty.message.blocks = [];
@@ -70,7 +103,7 @@ describe("MessageBlock turn identity", () => {
     accepted.message = {
       ...accepted.message,
       runId: null,
-      steer: { runId: "run_1" },
+      steer: { runId: "run_1", receipt: "accepted" },
     };
     const { rerender } = render(
       <MessageBlock row={accepted} ctx={CTX} sessionId="session-steer" isLast isRunning />,
@@ -82,7 +115,7 @@ describe("MessageBlock turn identity", () => {
       message: {
         ...accepted.message,
         runId: "run_1",
-        steer: { runId: "run_1" },
+        steer: { runId: "run_1", receipt: "accepted" as const },
       },
     };
     rerender(<MessageBlock row={applied} ctx={CTX} sessionId="session-steer" isLast isRunning />);
