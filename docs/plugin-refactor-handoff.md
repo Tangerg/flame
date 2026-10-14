@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 ordinary embedding callback cutover.
+Prepared on 2026-10-14 and updated after the 2026-10-15 published Memory caller-policy cutover.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,24 +10,17 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `0969e16b8` (ordinary installed embedding-role callback,
-  independent child-identity refusal and full SDK/service/bootstrap proof).
-  Next: the published Memory caller-policy projection/factory dependency, then
-  dependency/retention and final closure.
-  Previous: `2079ee06f` (public Tool context and text embedding
-  contracts; private Memory scope/embedding method removed; actual Memory and
-  public independent-author checks pass).
-  Next: remove the private caller grant-policy factory/contract construction,
-  retain one authoritative resource policy and complete normal installed model
-  access. Source/private receipt formats are unchanged.
-  Previous: `9f2bac554` (generated published Core Memory reads,
-  model-owned embedding port and named Go consumer projections; all consumers
-  migrated; focused/bootstrap/architecture/generator/CLI/build/vet pass).
-  Next: the two private Memory RPC callback/grant imports in consumer/preparation.
-  Previous: `6b3a1d823` (public original-owner Tool result queries;
-  Core Schedule-specific decoder deleted; whole bootstrap/execution and all eight
-  SIGKILL cuts pass). The private read/entity/model-port dependencies are now removed; callback
-  grant construction remains open.
+- Latest product commit: `6d3728a0c` (published caller-policy JSON/Go projections,
+  actual grant factory moved to Core, no private feature in the public Runtime
+  build closure, query/embedding origin-parent regression fixed).
+  Complete service (11.661s), external closure (4.704s), Memory/Embedding
+  bootstrap (11.662s), production builds and regeneration pass.
+  Next: final dependency/provenance/retention source audit, current docs cleanup,
+  then concentrated current full/race/native gates and individual P01-P48 closure.
+  Previous: `0969e16b8` (ordinary installed embedding-role callbacks),
+  `2079ee06f` (public Tool context/text embeddings), `9f2bac554` (published Core
+  Memory reads and public model ports), `6b3a1d823` (public original-owner Tool
+  result recovery, whole bootstrap/execution and all eight SIGKILL cuts).
   Previous: `659f1aa30` (read-only existing-schema admission and
   atomic empty initialization); `146e8b220` qualifies independent Usage installation;
   `de2a57d54` (public idempotency conflict owner and
@@ -158,18 +151,16 @@ and now pass. Full storage/private receipt/Core SQLite race passes, whole
 bootstrap passes (94.982s), and every SIGKILL cut passes twice under race (95.367s).
 An earlier race run exhausted its package-level five-minute budget; a subsequent
 run reproduced the actual conflict. Neither failed run counts as a pass. Complete
-execution race is currently rerunning with a 900s aggregate budget and unchanged
-per-case assertions/limits. Record its result before changing recovery code.
+execution race subsequently passed (278.105s), with unchanged per-case assertions
+and limits. Repeat affected race checks at final acceptance after later cutovers.
 
-Source audit after the green full Runtime/CLI/shared-protocol gates still found
-live host-to-feature private imports: `pluginservices/schedules.go` reconstructs
-original `create_schedule` Tool output with private Schedule RPC/domain/codec, and
-Core memory prompt/read ports consume private Memory values. These are real
-remaining cutover work, not proved closed by the current tests. Generalize the
-original-owner Tool receipt query/projection at the backend owner and migrate the
-Memory consumer to its public contract/read projection. Preserve all original
-cancellation/receipt/capture/unknown assertions and rerun whole bootstrap after
-recovery changes. Do not replace those dependencies with forwarding aliases.
+The live host-to-feature private imports found after the first full gates are
+removed: original Tool recovery uses the original backend's public Tool receipt
+projection (`6b3a1d823`); Core Memory reads and model ports use published values
+(`9f2bac554`); Tool context/embeddings and caller grants use public SDK contracts
+and generated policy (`2079ee06f`, `6d3728a0c`). An offline external-module check
+now proves the public Runtime build closure contains no private feature package.
+All original cancellation/receipt/capture/unknown assertions remain intact.
 
 Public idempotency conflict classification now works outside Runtime's private
 import privilege (`de2a57d54`). A complete Usage package installs from an independent
