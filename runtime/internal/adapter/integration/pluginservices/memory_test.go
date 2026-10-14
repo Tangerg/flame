@@ -38,6 +38,20 @@ type capturedConversation []chat.Message
 
 func (c capturedConversation) Read(context.Context, string) ([]chat.Message, error) { return c, nil }
 
+type ownedMemoryEmbedder struct {
+	preparedEmbedder
+	t      *testing.T
+	parent string
+}
+
+func (e *ownedMemoryEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	if err != nil || invocation.Origin != capability.Model || invocation.Parent != e.parent || invocation.ID == e.parent {
+		e.t.Errorf("Memory embedding detached from its original query: %+v, %v", invocation, err)
+	}
+	return e.preparedEmbedder.Embed(ctx, texts)
+}
+
 func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFailureIsExplicit(t *testing.T) {
 	name := testsupport.ServerName("memory")
 	contracts, err := rpc.NewContracts()
@@ -255,9 +269,9 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil || len(current) != 1 || current[0].Content != "keyword fact" || current[0].ID != items[0].ID || current[0].UpdatedAt.IsZero() {
 		t.Fatalf("published active read changed prompt values: %+v, %v", current, err)
 	}
-	embedder := &preparedEmbedder{}
+	embedder := &ownedMemoryEmbedder{t: t, parent: "original-memory-query"}
 	owner.embedder = func(context.Context) (models.TextEmbedder, error) { return embedder, nil }
-	items, err = owner.Search(t.Context(), project, "keyword", 5)
+	items, err = owner.Search(operation.Adopt(t.Context(), "original-memory-query", capability.Model, "executing-owner"), project, "keyword", 5)
 	if err != nil || len(items) != 1 || embedder.calls.Load() != 2 {
 		t.Fatalf("human search callback metadata: items=%v, embeddings=%d, %v", items, embedder.calls.Load(), err)
 	}

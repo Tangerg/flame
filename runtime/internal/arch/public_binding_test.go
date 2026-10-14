@@ -234,6 +234,18 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 
 	workspace := fmt.Sprintf("go 1.27.0\n\nuse (\n%s\n%s\n%s\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "localruntime")))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
+	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
+	dependencies.Dir = directory
+	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off")
+	output, err := dependencies.CombinedOutput()
+	if err != nil {
+		t.Fatalf("load external Runtime build closure: %v\n%s", err, output)
+	}
+	for _, dependency := range strings.Fields(string(output)) {
+		if strings.HasPrefix(dependency, runtimeModulePath+"/internal/plugins/") {
+			t.Fatalf("public Runtime builds a private feature implementation: %s", dependency)
+		}
+	}
 	command := exec.CommandContext(t.Context(), "go", "test", "./...")
 	command.Dir = directory
 	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off")

@@ -1,0 +1,9 @@
+{
+  "maxModelInputBytes": 524288,
+  "maxModelOutputTokens": 2048,
+  "maxModelCalls": 2,
+  "maxEmbeddingTexts": 1024,
+  "maxEmbeddingInputBytes": 25168897,
+  "maxCallbackInputBytes": 25234433,
+  "maxCallbackOutputBytes": 67108864
+}

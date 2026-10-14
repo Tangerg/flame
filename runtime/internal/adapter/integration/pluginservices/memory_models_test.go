@@ -1,4 +1,4 @@
-package rpc
+package pluginservices
 
 import (
 	"context"
@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices/memorycontract"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	"github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -26,12 +28,12 @@ func textModel(call func(context.Context, *chat.Request) (string, error)) chat.M
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
 }
-func testModelRequest(prompt Prompt) *chat.Request {
+func testModelRequest(prompt rpc.Prompt) *chat.Request {
 	return &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(prompt.SystemPrompt), chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt))}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens, OutputFormat: &chat.OutputFormat{Type: chat.OutputFormatText}}}
 }
 
-func testPrompt() Prompt {
-	return Prompt{Operation: "memory.extract", SystemPrompt: "extract durable facts", UserPrompt: "captured transcript", MaxInputBytes: 128, MaxOutputTokens: 64}
+func testPrompt() rpc.Prompt {
+	return rpc.Prompt{Operation: "memory.extract", SystemPrompt: "extract durable facts", UserPrompt: "captured transcript", MaxInputBytes: 128, MaxOutputTokens: 64}
 }
 
 func TestMemoryGrantKeepsCompleteModelEvidenceWithKnownResponseAndFailure(t *testing.T) {
@@ -41,7 +43,7 @@ func TestMemoryGrantKeepsCompleteModelEvidenceWithKnownResponseAndFailure(t *tes
 	callbacks.AdmitSession(session)
 	message := chat.NewAssistantMessage(chat.NewTextPart("fact"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "captured-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	grant, release, err := GrantModels(t.Context(), callbacks, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+	grant, release, err := GrantMemoryModels(t.Context(), callbacks, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return response, errors.New("outer observation failed")
 	}), nil)
 	if err != nil {
@@ -58,7 +60,7 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	token := strings.Repeat("a", 64)
-	_, err := (RemoteModels{Grant: pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}}).Complete(ctx, testPrompt())
+	_, err := (rpc.RemoteModels{Grant: pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}}).Complete(ctx, testPrompt())
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled transport lost its cause: %v", err)
 	}
@@ -77,17 +79,17 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
 	var calls atomic.Int32
-	grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { calls.Add(1); return "fact", nil }), nil)
+	grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { calls.Add(1); return "fact", nil }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
 	foreign := grant
 	foreign.Credential = strings.Repeat("0", 64)
-	if _, err := (RemoteModels{Grant: foreign}).Complete(t.Context(), testPrompt()); err == nil {
+	if _, err := (rpc.RemoteModels{Grant: foreign}).Complete(t.Context(), testPrompt()); err == nil {
 		t.Fatal("another connection borrowed model authority")
 	}
-	remote := RemoteModels{Grant: grant}
+	remote := rpc.RemoteModels{Grant: grant}
 	for range 2 {
 		value, err := remote.Complete(t.Context(), testPrompt())
 		if err != nil || value != "fact" {
@@ -119,7 +121,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			session := new(sdk.ClientSession)
 			callbacks.AdmitSession(session)
 			var calls atomic.Int32
-			grant, release, err := GrantModels(t.Context(), callbacks, session, textModel(func(context.Context, *chat.Request) (string, error) {
+			grant, release, err := GrantMemoryModels(t.Context(), callbacks, session, textModel(func(context.Context, *chat.Request) (string, error) {
 				calls.Add(1)
 				if lost {
 					return "", errors.New("provider observation was lost")
@@ -178,7 +180,7 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 	broker.AdmitSession(session)
 	entered := make(chan struct{})
 	settled := make(chan struct{})
-	grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(ctx context.Context, _ *chat.Request) (string, error) {
+	grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(ctx context.Context, _ *chat.Request) (string, error) {
 		close(entered)
 		<-ctx.Done()
 		close(settled)
@@ -189,7 +191,7 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 	}
 	defer release()
 	done := make(chan error, 1)
-	go func() { _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); done <- err }()
+	go func() { _, err := (rpc.RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); done <- err }()
 	select {
 	case <-entered:
 	case err := <-done:
@@ -218,7 +220,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := pluginsdk.RegisterServer(binding, "flame.memory/test.v1", func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, grant pluginsdk.CallbackRef) (string, error) {
-		return (RemoteModels{Grant: grant}).Complete(ctx, testPrompt())
+		return (rpc.RemoteModels{Grant: grant}).Complete(ctx, testPrompt())
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +243,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	}
 	defer session.Close()
 	broker.AdmitSession(session)
-	grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "durable fact", nil }), nil)
+	grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "durable fact", nil }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,13 +263,13 @@ func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
-	grant, release, err := GrantModels(ctx, broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "", errors.New("must not be called") }), nil)
+	grant, release, err := GrantMemoryModels(ctx, broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "", errors.New("must not be called") }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
 	cancel()
-	if _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); err == nil {
+	if _, err := (rpc.RemoteModels{Grant: grant}).Complete(t.Context(), testPrompt()); err == nil {
 		t.Fatal("canceled invocation retained model authority")
 	}
 }
@@ -294,7 +296,7 @@ func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
 	embedder := new(boundedEmbeddings)
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
-	grant, release, err := GrantModels(t.Context(), broker, session, nil, embedder)
+	grant, release, err := GrantMemoryModels(t.Context(), broker, session, nil, embedder)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +305,7 @@ func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
 	for i := range texts {
 		texts[i] = strings.Repeat("\x00", memory.MaxContentCharacters)
 	}
-	vectors, err := (RemoteModels{Grant: grant, Space: embedder.ID()}).Embed(t.Context(), texts)
+	vectors, err := (rpc.RemoteModels{Grant: grant, Space: embedder.ID()}).Embed(t.Context(), texts)
 	if err != nil || len(vectors) != len(texts) || embedder.calls != 1 {
 		t.Fatalf("maximum corpus: vectors=%d calls=%d error=%v", len(vectors), embedder.calls, err)
 	}
@@ -319,7 +321,7 @@ func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
 	session := new(sdk.ClientSession)
 	broker.AdmitSession(session)
 	broker.RevokeSession(session)
-	grant, release, err := GrantModels(t.Context(), broker, session, nil, nil)
+	grant, release, err := GrantMemoryModels(t.Context(), broker, session, nil, nil)
 	if err == nil {
 		release()
 		t.Fatalf("retired connection issued model capability %+v", grant)
@@ -332,13 +334,13 @@ func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
 func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
 	for _, test := range []struct {
 		name string
-		edit func(*Prompt)
+		edit func(*rpc.Prompt)
 	}{
-		{"unknown operation", func(p *Prompt) { p.Operation = "runtime.execute" }},
-		{"ungranted embedding", func(p *Prompt) { p.Operation = "memory.embed"; p.UserPrompt = `["fact"]` }},
-		{"unbounded input", func(p *Prompt) { p.MaxInputBytes = MaximumModelInput + 1 }},
-		{"unbounded output", func(p *Prompt) { p.MaxOutputTokens = 2049 }},
-		{"input exceeds envelope", func(p *Prompt) { p.MaxInputBytes = len(p.UserPrompt) - 1 }},
+		{"unknown operation", func(p *rpc.Prompt) { p.Operation = "runtime.execute" }},
+		{"ungranted embedding", func(p *rpc.Prompt) { p.Operation = "memory.embed"; p.UserPrompt = `["fact"]` }},
+		{"unbounded input", func(p *rpc.Prompt) { p.MaxInputBytes = memorycontract.MaxModelInputBytes + 1 }},
+		{"unbounded output", func(p *rpc.Prompt) { p.MaxOutputTokens = 2049 }},
+		{"input exceeds envelope", func(p *rpc.Prompt) { p.MaxInputBytes = len(p.UserPrompt) - 1 }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			broker := pluginsdk.NewCallbacks()
@@ -350,7 +352,7 @@ func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
 			session := new(sdk.ClientSession)
 			broker.AdmitSession(session)
 			var calls atomic.Int32
-			grant, release, err := GrantModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) {
+			grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) {
 				calls.Add(1)
 				return "fact", nil
 			}), nil)
@@ -360,7 +362,7 @@ func TestModelGrantRefusesOperationsOutsideCapturedAuthority(t *testing.T) {
 			defer release()
 			prompt := testPrompt()
 			test.edit(&prompt)
-			if _, err := (RemoteModels{Grant: grant}).Complete(t.Context(), prompt); err == nil {
+			if _, err := (rpc.RemoteModels{Grant: grant}).Complete(t.Context(), prompt); err == nil {
 				t.Fatal("operation outside captured authority succeeded")
 			}
 			if calls.Load() != 0 {

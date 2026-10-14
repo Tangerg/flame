@@ -36,14 +36,7 @@ func contributionSession(ctx context.Context, store plugins.Store, selections pl
 
 func query[P, R any](ctx context.Context, location plugins.ContributionBinding, session *sdk.ClientSession, name string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
-	if operation.Identity(ctx) == "" {
-		ctx = operation.Bind(ctx, "plugins.query", "")
-	}
-	invocation, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: location.InstallationID.String()})
-	if err != nil {
-		return zero, err
-	}
-	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	ctx, err := queryContext(ctx, location)
 	if err != nil {
 		return zero, err
 	}
@@ -72,4 +65,17 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 		return zero, err
 	}
 	return value, nil
+}
+
+// Collaborators must inherit the same admitted query as its backend invocation.
+// Capturing after a grant opens would detach model origin and parent evidence.
+func queryContext(ctx context.Context, location plugins.ContributionBinding) (context.Context, error) {
+	if operation.Identity(ctx) == "" {
+		ctx = operation.Bind(ctx, "plugins.query", "")
+	}
+	invocation, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: location.InstallationID.String()})
+	if err != nil {
+		return nil, err
+	}
+	return pluginsdk.WithInvocation(ctx, invocation)
 }

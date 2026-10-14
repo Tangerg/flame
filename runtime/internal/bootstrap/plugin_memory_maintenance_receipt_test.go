@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -59,7 +60,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	})
 	broker.AdmitSession(session)
 	var calls atomic.Int32
-	grant, release, err := memoryrpc.GrantModels(ctx, broker, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+	grant, release, err := pluginservices.GrantMemoryModels(ctx, broker, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		calls.Add(1)
 		return completedTextResponse("- retained publication"), nil
 	}), nil)

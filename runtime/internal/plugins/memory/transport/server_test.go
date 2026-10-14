@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	workspace "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
@@ -65,7 +66,7 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryWithBoundedHostModels(t *te
 	})
 	broker.AdmitSession(session)
 	operations := []string{}
-	grant, release, err := rpc.GrantModels(t.Context(), broker, session, promptModel(func(_ context.Context, prompt rpc.Prompt) (string, error) {
+	grant, release, err := pluginservices.GrantMemoryModels(t.Context(), broker, session, promptModel(func(_ context.Context, prompt rpc.Prompt) (string, error) {
 		operations = append(operations, prompt.Operation)
 		if prompt.Operation == "memory.extract" {
 			return "- use local workspace mode\n- verify backend restart", nil
@@ -174,7 +175,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	broker.AdmitSession(session)
 	curating := make(chan struct{})
 	joined := make(chan struct{})
-	grant, release, err := rpc.GrantModels(ctx, broker, session, promptModel(func(ctx context.Context, prompt rpc.Prompt) (string, error) {
+	grant, release, err := pluginservices.GrantMemoryModels(ctx, broker, session, promptModel(func(ctx context.Context, prompt rpc.Prompt) (string, error) {
 		if prompt.Operation == "memory.extract" {
 			return "- automatic proposal", nil
 		}
@@ -245,7 +246,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
-	fresh, releaseFresh, err := rpc.GrantModels(ctx, broker, session, promptModel(func(_ context.Context, prompt rpc.Prompt) (string, error) {
+	fresh, releaseFresh, err := pluginservices.GrantMemoryModels(ctx, broker, session, promptModel(func(_ context.Context, prompt rpc.Prompt) (string, error) {
 		if prompt.Operation != "memory.curate" {
 			t.Errorf("pending recovery repeated extraction: %s", prompt.Operation)
 		}
@@ -311,7 +312,7 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	broker.AdmitSession(session)
 	defer broker.RevokeSession(session)
 	var calls atomic.Int32
-	grant, release, err := rpc.GrantModels(t.Context(), broker, session, promptModel(func(context.Context, rpc.Prompt) (string, error) {
+	grant, release, err := pluginservices.GrantMemoryModels(t.Context(), broker, session, promptModel(func(context.Context, rpc.Prompt) (string, error) {
 		calls.Add(1)
 		return "- durable ledger fact", nil
 	}), nil)

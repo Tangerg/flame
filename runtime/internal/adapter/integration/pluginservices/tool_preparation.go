@@ -5,15 +5,16 @@ import (
 	"errors"
 	"maps"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices/memorycontract"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -28,7 +29,7 @@ type ToolPreparationConfig struct {
 }
 
 func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPreparation, error) {
-	memoryContracts, err := rpc.NewContracts()
+	memoryContract, err := capability.Parse([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +60,7 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 		if current != source.Source {
 			return nil, nil, plugin.ErrUnavailable
 		}
-		if snapshot.Selected.HasImplementation(source.Name, memoryContracts.Capability) {
+		if snapshot.Selected.HasImplementation(source.Name, memoryContract) {
 			scoped, release, err := prepareMemoryTool(ctx, executable, config.Callbacks, config.Embeddings)
 			if err != nil {
 				return nil, nil, err
@@ -88,7 +89,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	if err != nil {
 		return nil, nil, err
 	}
-	grant, release, err := rpc.GrantModels(ctx, callbacks, session, nil, embedder)
+	grant, release, err := GrantMemoryModels(ctx, callbacks, session, nil, embedder)
 	if err != nil {
 		return nil, nil, err
 	}

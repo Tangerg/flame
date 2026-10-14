@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -92,11 +91,15 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 	if err != nil {
 		return nil, err
 	}
+	ctx, err = queryContext(ctx, location)
+	if err != nil {
+		return nil, err
+	}
 	embedder, err := m.embedder(ctx)
 	if err != nil {
 		return nil, err
 	}
-	grant, release, err := rpc.GrantModels(ctx, m.callbacks, session, nil, embedder)
+	grant, release, err := GrantMemoryModels(ctx, m.callbacks, session, nil, embedder)
 	if err != nil {
 		return nil, err
 	}
@@ -140,14 +143,14 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	request.Conversation.MessageCount = int64(len(messages))
 	request.Conversation.Transcript = modeltext.RenderTranscript(messages)
 	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
-		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: rpc.MaximumModelInput, MaxOutputTokens: rpc.MaximumModelOutput})
+		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
 		}
 		if releaseModel == nil {
 			return sdk.ParamsBase{}, nil, errors.New("memory: captured utility model release is required")
 		}
-		grant, release, err := rpc.GrantModels(ctx, m.callbacks, original, model.Model(), nil)
+		grant, release, err := GrantMemoryModels(ctx, m.callbacks, original, model.Model(), nil)
 		if err != nil {
 			releaseModel()
 			return sdk.ParamsBase{}, nil, err

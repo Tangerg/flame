@@ -16,9 +16,11 @@ Tool to that exact generation. Closing a component cannot stop this process.
 
 Optional model work uses the public SDK's invocation-scoped `CallbackRef`, bound
 to this concrete backend generation. Runtime owns one lazily opened loopback
-callback endpoint, shared by concurrent calls. Memory's RPC adapter owns its
-two-call budget for extraction plus curation or query plus corpus embedding; the
-public endpoint imposes no Memory policy. The reference carries no Runtime bearer
+callback endpoint, shared by concurrent calls. Memory publishes its caller budget
+from the Go business owner as `contracts/caller-policy.generated.json`; the same
+generation emits the Core caller's compiled projection. The calling operation
+allocates two calls for extraction plus curation or query plus corpus embedding.
+The shared callback endpoint imposes no Memory policy. The reference carries no Runtime bearer
 or provider credential and expires when the owning call or backend generation
 ends. Withdrawal cancels and joins admitted callbacks, including incomplete
 request bodies. Standard MCP sampling is not used. An absent embedder or failed
@@ -33,8 +35,10 @@ Workspace and optional vector-space identity use `plugin.ToolContext`; callback
 credentials travel only in the existing public callback metadata. The private
 Memory scope codec and embedding method are deleted. Rebuild Runtime and this
 backend together; no legacy metadata reader is retained. This changes neither
-private data nor command receipt formats. The remaining private grant-policy
-integration is still being migrated to ordinary public collaborators.
+private data nor command receipt formats. Core constructs its operation-scoped
+grant from the published caller policy and public SDK contracts, without importing
+the private backend. Query collaborators inherit the same admitted invocation
+as the backend query, including original origin and parent identity.
 
 The actual Memory tool adapter captures the Run workspace, original invocation
 metadata and the executable's concrete callback session before dispatch. The
