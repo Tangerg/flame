@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -326,6 +327,43 @@ func (o OpeningCommit) Automation() (AutomationStart, bool) {
 // acceptance reference committed with this admission, when one was supplied.
 func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
 	return optional.Present(o.commandAcceptance)
+}
+
+// rootRunID is the Run that owns this opening's user input: the admitted Run, or
+// the resumed tree's root. Child admissions carry no root user input.
+func (o OpeningCommit) rootRunID() (string, error) {
+	if o.admit != nil {
+		return o.admit.RunID, nil
+	}
+	if o.resume != nil && len(o.resume.Runs) > 0 {
+		return o.resume.Runs[len(o.resume.Runs)-1].State().ID(), nil
+	}
+	return "", errors.New("runs: opening has no root run")
+}
+
+// UserInputItemID is the single user input Item this opening appends to its root
+// Run, or "" when none. It is the one rule for which Item a start or resume
+// accepted as its input, so the command acceptance record and the accepted
+// continuation binding cannot name different Items for the same opening. More than
+// one root user input is rejected rather than silently resolved to one.
+func (o OpeningCommit) UserInputItemID() (string, error) {
+	root, err := o.rootRunID()
+	if err != nil {
+		return "", err
+	}
+	var id string
+	for _, event := range o.events {
+		for _, item := range event.Items {
+			if item.Kind() != transcript.UserMessage || item.RunID() != root {
+				continue
+			}
+			if id != "" {
+				return "", errors.New("runs: opening repeats its user input")
+			}
+			id = item.ID()
+		}
+	}
+	return id, nil
 }
 
 // Events returns isolated opening projections in their canonical order.

@@ -590,15 +590,13 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 	// The accepted continuation binding commits with the answers it routes, so a
 	// crash before delivery completes leaves exactly one durable accepted-paused
 	// tree for boot revival. The next durable waiting/terminal boundary retires it;
-	// a local Resume acknowledgement alone cannot prove the head left this cut.
+	// a local Resume acknowledgement alone cannot prove the head left this cut. The
+	// input Item is read through the opening's one input rule, so revival re-delivers
+	// exactly the Item the command acceptance named.
 	resume, _ := opening.Resume()
-	var inputItemID string
-	for _, event := range opening.Events() {
-		for _, item := range event.Items {
-			if item.Kind() == transcript.UserMessage {
-				inputItemID = item.ID()
-			}
-		}
+	inputItemID, err := opening.UserInputItemID()
+	if err != nil {
+		return fmt.Errorf("segment: derive accepted continuation input: %w", err)
 	}
 	accepted, err := runs.NewAcceptedContinuation(acceptance.SessionID(), consumed, resume, inputItemID)
 	if err != nil {

@@ -161,17 +161,11 @@ func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (Comma
 	} else {
 		return CommandAcceptance{}, errors.New("runs: command acceptance has no opening")
 	}
-	for _, event := range opening.events {
-		for _, item := range event.Items {
-			if item.Kind() != transcript.UserMessage || item.RunID() != acceptance.RunID {
-				continue
-			}
-			if acceptance.UserItemID != "" {
-				return CommandAcceptance{}, errors.New("runs: command opening repeats its user input")
-			}
-			acceptance.UserItemID = item.ID()
-		}
+	userItemID, err := opening.UserInputItemID()
+	if err != nil {
+		return CommandAcceptance{}, err
 	}
+	acceptance.UserItemID = userItemID
 	if err := acceptance.Validate(); err != nil {
 		return CommandAcceptance{}, err
 	}
