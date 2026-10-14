@@ -94,22 +94,30 @@ func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
 		}
 		return ""
 	}, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
-		var method, encoded string
-		var reply []byte
-		err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
-		if errors.Is(err, sql.ErrNoRows) {
-			return pluginsdk.Receipt{}, nil
-		}
-		if err != nil {
-			return pluginsdk.Receipt{}, err
-		}
-		admitted, err := jsoninput.Parse([]byte(encoded))
-		if err != nil {
-			return pluginsdk.Receipt{}, err
-		}
-		if method != input.Method || admitted.Digest() != input.InputDigest {
-			return pluginsdk.Receipt{}, idempotency.ErrKeyConflict
-		}
-		return pluginsdk.Receipt{Found: len(reply) != 0, Reply: reply}, nil
+		return ReadReceipt(ctx, db, input)
 	})
+}
+
+// ReadReceipt only projects the private owner's original method/input evidence.
+func ReadReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
+	if err := input.Validate(); err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	var method, encoded string
+	var reply []byte
+	err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
+	if errors.Is(err, sql.ErrNoRows) {
+		return pluginsdk.Receipt{}, nil
+	}
+	if err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	admitted, err := jsoninput.Parse([]byte(encoded))
+	if err != nil {
+		return pluginsdk.Receipt{}, err
+	}
+	if method != input.Method || admitted.Digest() != input.InputDigest {
+		return pluginsdk.Receipt{}, idempotency.ErrKeyConflict
+	}
+	return pluginsdk.Receipt{Found: len(reply) != 0, Reply: reply}, nil
 }

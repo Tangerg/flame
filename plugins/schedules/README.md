@@ -38,6 +38,13 @@ the mutation transaction. Former call-context input, completed-only, digest-only
 without mutation; retain the old directory separately and use a fresh directory
 for this breaking change.
 
+The optional public Tool-result query projects the original `create_schedule`
+receipt inside this backend, using the same normal output/failure codecs. Core
+never decodes a private Schedule record. The query matches the original Tool name,
+logical identity and admitted input digest; edits and deletion do not rewrite its
+historical output. Unsupported Tool reads remain absent evidence. No replay or
+additional persisted output representation is introduced.
+
 Before dispatch, the backend persists the exact instructions, title, workspace,
 model selection, stable Session/Run identities and original calling-owner
 invocation (origin, parent and concrete target). Editing or deleting the

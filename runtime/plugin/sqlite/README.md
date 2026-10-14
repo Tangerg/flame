@@ -7,7 +7,7 @@ business database; Runtime routing evidence contains no competing business resul
 
 `RegisterCommand` commits a known value or refusal with its mutation. A refusal
 rolls the mutation back before storing its original refusal receipt. Unexpected
-failure invents no receipt. `RegisterReceipts` reads the original method/input
+failure invents no receipt. `ReadReceipt` and its `RegisterReceipts` transport read the original method/input
 binding without invoking the use case. Reusing an identity with changed original
 JSON is a conflict; absent evidence never authorizes replay.
 

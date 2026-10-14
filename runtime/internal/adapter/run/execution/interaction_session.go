@@ -27,13 +27,13 @@ import (
 )
 
 type interactionSession struct {
-	executionTrees  runs.ExecutionTreeStore
-	scheduleResults OriginalScheduleResults
-	ref             runs.ExecutorRef
-	scope           runs.ExecutionScope
-	deployment      agent.Deployment
-	input           agent.Payload
-	engine          *agent.Engine
+	executionTrees runs.ExecutionTreeStore
+	toolResults    OriginalToolResults
+	ref            runs.ExecutorRef
+	scope          runs.ExecutionScope
+	deployment     agent.Deployment
+	input          agent.Payload
+	engine         *agent.Engine
 
 	lifetime            interactionLifetime
 	state               interactionState
@@ -139,10 +139,10 @@ func newInteractionSession(
 	telemetry *otelagent.Observer,
 ) *interactionSession {
 	return &interactionSession{
-		telemetry:       telemetry,
-		executionTrees:  config.ExecutionTrees,
-		scheduleResults: config.OriginalScheduleResults,
-		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
+		telemetry:      telemetry,
+		executionTrees: config.ExecutionTrees,
+		toolResults:    config.OriginalToolResults,
+		ref:            ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
 			pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
@@ -635,7 +635,7 @@ func (i *interactionSession) reportUnknownEffects() bool {
 			i.state.mu.Unlock()
 		}
 	}()
-	if _, err := i.investigateScheduleCreates(ctx); err != nil {
+	if _, err := i.investigateToolReceipts(ctx); err != nil {
 		if ctx.Err() != nil || releasedDuringProjection(err) {
 			return true
 		}

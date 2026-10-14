@@ -33,7 +33,7 @@ type toolEnvironment struct {
 	tools            toolset.Built
 	mcp              *mcpconnection.Pool
 	memory           *pluginservices.Memory
-	schedules        *pluginservices.Schedules
+	toolResults      *pluginservices.ToolResults
 	pluginCalls      *pluginservices.CommandCalls
 	modelComposition *pluginservices.ModelComposition
 	modelCallbacks   []pluginsdk.Callback
@@ -115,7 +115,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, err
 	}
-	environment.schedules, err = pluginservices.NewSchedules(cfg.Stores.Installations, mcpPool)
+	environment.toolResults, err = pluginservices.NewToolResults(cfg.Stores.Installations, mcpPool)
 	if err != nil {
 		return environment, err
 	}

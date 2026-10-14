@@ -8,19 +8,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.T) {
 	for _, state := range []string{"disabled", "disconnected", "storage failure", "canceled"} {
 		t.Run(state, func(t *testing.T) {
-			contracts, err := schedulerpc.NewContracts()
-			if err != nil {
-				t.Fatal(err)
-			}
 			name := testsupport.ServerName("schedules")
-			release, err := plugin.NewRelease(testsupport.Digest("original release"), plugin.Declaration{Name: "example.schedules", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Contributions: []plugin.Contribution{{ID: "schedules", Server: name, Export: "schedules", Contract: contracts.Capability.Identity()}}})
+			release, err := plugin.NewRelease(testsupport.Digest("original release"), plugin.Declaration{Name: "example.schedules", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -44,7 +39,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			schedules, err := NewSchedules(store, pool)
+			schedules, err := NewToolResults(store, pool)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -63,7 +58,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 				ctx, cancel = context.WithCancelCause(ctx)
 				cancel(failure)
 			}
-			available, err := schedules.AwaitOriginalCreateSource(ctx, testsupport.MCPTool(server.ID(), "create_schedule"), release.Digest(), server.AuthorityFingerprint())
+			available, err := schedules.AwaitOriginalToolSource(ctx, testsupport.MCPTool(server.ID(), "create_schedule"), release.Digest(), server.AuthorityFingerprint())
 			if available {
 				t.Fatal("unavailable original source became recoverable")
 			}

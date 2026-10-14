@@ -24,6 +24,7 @@ import (
 type scheduleReceiptTool struct {
 	toolcontract.Tool
 	configuration mcp.ServerConfig
+	remote        string
 }
 
 func (s scheduleReceiptTool) Unwrap() toolcontract.Tool      { return s.Tool }
@@ -38,7 +39,7 @@ func (s scheduleReceiptTool) InstallationActivation() (plugin.Activation, error)
 }
 
 func (s scheduleReceiptTool) MCPToolIdentity() (string, string) {
-	return s.configuration.Name.String(), "create_schedule"
+	return s.configuration.Name.String(), s.remote
 }
 
 type scheduleReceiptProbe struct {
@@ -48,13 +49,13 @@ type scheduleReceiptProbe struct {
 	context atomic.Pointer[context.Context]
 }
 
-func (*scheduleReceiptProbe) AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error) {
+func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error) {
 	return true, nil
 }
-func (s *scheduleReceiptProbe) OwnsCreateSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error) {
+func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error) {
 	return s.owned, nil
 }
-func (s *scheduleReceiptProbe) OriginalCreateResult(ctx context.Context, _ domaintool.Ref, _, _ fingerprint.Digest, _, _ string) (*chat.ToolOutput, error) {
+func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ fingerprint.Digest, _, _ string) (*chat.ToolOutput, error) {
 	s.calls.Add(1)
 	s.context.Store(new(ctx))
 	return s.query(ctx)
@@ -77,7 +78,7 @@ func (s *schedulePublicationTrees) SaveExecutionTree(ctx context.Context, update
 }
 
 func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *testing.T) {
-	for _, mode := range []string{"cancel", "timeout", "unavailable", "later model", "publication", "other service"} {
+	for _, mode := range []string{"cancel", "timeout", "unavailable", "later model", "publication", "other service", "non-schedule tool", "known refusal"} {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				installation := testsupport.InstallationID(t)
@@ -86,8 +87,13 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					t.Fatal(err)
 				}
 				configuration := mcp.ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("schedules"), Transport: mcpserver.TransportStdio, Command: "schedule-test", Enabled: true}}
+				remote := "create_schedule"
+				if mode == "non-schedule tool" {
+					remote = "append_record"
+				}
+				modelToolName := "schedules_" + remote
 				var toolCalls, modelCalls atomic.Int32
-				inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "schedules_create_schedule", Description: "Create one schedule."}, func(context.Context, struct {
+				inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: modelToolName, Description: "Create one schedule."}, func(context.Context, struct {
 					Title string `json:"title"`
 				}) (string, error) {
 					toolCalls.Add(1)
@@ -109,20 +115,28 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					if mode == "cancel" {
 						<-release
 					}
+					if mode == "known refusal" {
+						output := chat.NewTextToolOutput("original refused")
+						failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: errors.New("original refused"), Output: output})
+						if err != nil {
+							return nil, err
+						}
+						return &output, failure
+					}
 					output, err := chat.NewJSONToolOutput([]byte(`{"schedule":{"schedule_id":"original","title":"original"}}`))
 					return &output, err
 				}}
 				model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 					if modelCalls.Add(1) == 1 {
-						return interactionToolResponse(chat.ToolCall{ID: "create", Name: "schedules_create_schedule", Arguments: `{"title":"original"}`}, 1, 1), nil
+						return interactionToolResponse(chat.ToolCall{ID: "create", Name: modelToolName, Arguments: `{"title":"original"}`}, 1, 1), nil
 					}
-					if mode == "publication" {
+					if mode == "publication" || mode == "non-schedule tool" || mode == "known refusal" {
 						return interactionUsageTextResponse("completed", 1, 1), nil
 					}
 					return nil, errors.New("later model outcome is unknown")
 				})
 				trees := &schedulePublicationTrees{ExecutionTreeStore: testTrees(t), probe: probe}
-				executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ExecutionTrees: trees, OriginalScheduleResults: probe, ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{scheduleReceiptTool{Tool: inner, configuration: configuration}}}}, ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+				executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ExecutionTrees: trees, OriginalToolResults: probe, ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{scheduleReceiptTool{Tool: inner, configuration: configuration, remote: remote}}}}, ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 				ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 				if err != nil {
 					t.Fatal(err)
@@ -159,7 +173,14 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					time.Sleep(auxiliaryOperationTimeout)
 				}
 				<-reported
-				ends := payloadsOf[runs.SegmentEnded](<-events)
+				observed := <-events
+				ends := payloadsOf[runs.SegmentEnded](observed)
+				if mode == "known refusal" {
+					finished := payloadsOf[runs.ToolCallFinished](observed)
+					if len(finished) != 1 || finished[0].Failure == nil {
+						t.Fatalf("known refusal lost: %+v", finished)
+					}
+				}
 				want := run.OutcomeLost
 				if mode == "cancel" {
 					want = run.OutcomeCanceled
@@ -167,7 +188,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 				if mode == "later model" {
 					want = run.OutcomeFailed
 				}
-				if mode == "publication" {
+				if mode == "publication" || mode == "non-schedule tool" || mode == "known refusal" {
 					want = run.OutcomeCompleted
 				}
 				if len(ends) != 1 || ends[0].Reason != want {
@@ -186,16 +207,16 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 				if mode == "later model" {
 					session.state.mu.Lock()
 					for _, metadata := range session.state.toolMetadata {
-						if metadata.Create != nil {
+						if metadata.Receipt != nil {
 							t.Error("a later model call retained the old create recovery prefix")
 						}
 					}
 					session.state.mu.Unlock()
 				}
 				uncertain := 1
-				if mode == "publication" {
+				if mode == "publication" || mode == "non-schedule tool" || mode == "known refusal" {
 					uncertain = 0
-					if !trees.observed.Load() {
+					if mode == "publication" && !trees.observed.Load() {
 						t.Fatal("no publication outlived its query context")
 					}
 				}

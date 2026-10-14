@@ -14,15 +14,14 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	scheduledb "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/tools"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
@@ -71,10 +70,6 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	create, err := exported.Method(rpc.Create)
-	if err != nil {
-		t.Fatal(err)
-	}
 	list, err := contracts.List.Bind(exported)
 	if err != nil {
 		t.Fatal(err)
@@ -92,20 +87,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		receipt, found, err := create.ReadReceipt(t.Context(), "tool:"+id, admitted)
-		if err != nil || !found {
-			return nil, rpc.DecodeError(err)
-		}
-		var snapshot schedule.Snapshot
-		if err := json.Unmarshal(receipt.JSON(), &snapshot, json.RejectUnknownMembers(true)); err != nil {
-			return nil, err
-		}
-		value, err := schedule.Restore(snapshot)
-		if err != nil {
-			return nil, err
-		}
-		output, err := tools.CreateOutput(value)
-		return &output, err
+		return pluginsdk.ReadToolReceipt(t.Context(), session, id, "create_schedule", admitted)
 	}
 	if result, err := lookup("original", string(arguments)); err != nil || result != nil {
 		t.Fatalf("absence: %+v,%v", result, err)
@@ -140,6 +122,28 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(historical, original) {
 		t.Fatalf("mutable Schedule changed its original receipt: %+v,%v", historical, err)
 	}
+	refusedInput := map[string]any{"instructions": "invalid automation", "cron": "invalid", "workspace_path": input["workspace_path"]}
+	refusedJSON, err := json.Marshal(refusedInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "refused", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "schedules-owner"}}}, Name: "create_schedule", Arguments: refusedInput})
+	if err != nil || !refusal.IsError {
+		t.Fatalf("normal refusal: %+v, %v", refusal, err)
+	}
+	refusedOutput, err := lookup("refused", string(refusedJSON))
+	failure, known := errors.AsType[*toolcontract.Failure](err)
+	if !known || refusedOutput == nil {
+		t.Fatalf("original refusal not recovered: %+v, %v", refusedOutput, err)
+	}
+	text, _ := failure.Output().Text()
+	if len(refusal.Content) != 1 {
+		t.Fatalf("normal refusal output: %+v", refusal.Content)
+	}
+	normalText, ok := refusal.Content[0].(*sdk.TextContent)
+	if !ok || text != normalText.Text {
+		t.Fatalf("receipt changed original refusal: %q / %+v", text, refusal.Content)
+	}
 	input["title"] = "different"
 	changed, err := json.Marshal(input)
 	if err != nil {
@@ -161,7 +165,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method=?`, rpc.Create).Scan(&creates); err != nil {
 		t.Fatal(err)
 	}
-	if schedules != 0 || creates != 1 {
+	if schedules != 0 || creates != 2 {
 		t.Fatalf("queries repeated creation: schedules=%d creates=%d", schedules, creates)
 	}
 }

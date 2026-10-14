@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -129,7 +130,7 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 	}
 	created, err := s.coordinator.Create(ctx, draft)
 	if err != nil {
-		return scheduleResponse{}, settleScheduleCommand(fmt.Errorf("create_schedule: %w", err))
+		return scheduleResponse{}, CommandFailure("create_schedule", err)
 	}
 	return scheduleResponse{Schedule: viewSchedule(created)}, nil
 }
@@ -160,13 +161,16 @@ func CreateOutput(created scheduledomain.Schedule) (chat.ToolOutput, error) {
 
 func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleArgs) (scheduleDeleteResponse, error) {
 	if err := s.coordinator.Delete(ctx, in.ScheduleID); err != nil {
-		return scheduleDeleteResponse{}, settleScheduleCommand(fmt.Errorf("delete_schedule: %w", err))
+		return scheduleDeleteResponse{}, CommandFailure("delete_schedule", err)
 	}
 	return scheduleDeleteResponse(in), nil
 }
 
-func settleScheduleCommand(err error) error {
-	if errors.Is(err, scheduleapp.ErrRefused) {
+// CommandFailure preserves receipted refusals while storage failures stay unknown.
+func CommandFailure(name string, cause error) error {
+	err := fmt.Errorf("%s: %w", name, cause)
+	_, receipted := errors.AsType[*capability.Refusal](err)
+	if errors.Is(err, scheduleapp.ErrRefused) || receipted {
 		return toolfailure.Definite(err)
 	}
 	return err

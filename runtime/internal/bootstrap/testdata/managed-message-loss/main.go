@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 func main() {
@@ -78,7 +80,7 @@ func run() (err error) {
 					return
 				}
 				stage := strings.TrimSpace(string(phase))
-				matched = (stage == "commit" || stage == "edited") && request.Method == "tools/call" && request.Params.Name == "create_schedule" || stage == "query" && semantic == "io.github.tangerg.flame/commands.get"
+				matched = (stage == "commit" || stage == "edited") && request.Method == "tools/call" && request.Params.Name == "create_schedule" || stage == "query" && semantic == pluginsdk.ToolReceiptMethod
 			}
 			if matched {
 				if os.Args[5] == "request" {
@@ -92,7 +94,7 @@ func run() (err error) {
 					updates.Store(string(request.ID), jsontext.Value(line))
 				}
 			}
-			if os.Args[5] == "durable" && semantic == "io.github.tangerg.flame/commands.get" {
+			if os.Args[5] == "durable" && semantic == pluginsdk.ToolReceiptMethod {
 				updates.Store(string(request.ID), jsontext.Value(line))
 			}
 			if _, err := fmt.Fprintln(input, string(line)); err != nil {

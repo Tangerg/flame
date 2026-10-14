@@ -50,10 +50,10 @@ type InteractionModelEvidence interface {
 	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
 }
 
-type OriginalScheduleResults interface {
-	OwnsCreateSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error)
-	AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error)
-	OriginalCreateResult(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest, string, string) (*corechat.ToolOutput, error)
+type OriginalToolResults interface {
+	OwnsToolSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error)
+	AwaitOriginalToolSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error)
+	OriginalToolResult(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest, string, string) (*corechat.ToolOutput, error)
 }
 
 // InteractionExecutorConfig freezes the host-owned inputs shared by
@@ -69,7 +69,7 @@ type InteractionExecutorConfig struct {
 	// execution must outlive the request that created it.
 	Lifetime                  context.Context
 	ExecutionTrees            runs.ExecutionTreeStore
-	OriginalScheduleResults   OriginalScheduleResults
+	OriginalToolResults       OriginalToolResults
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
 	ModelEvidence             InteractionModelEvidence
@@ -137,7 +137,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	}{
 		{name: "chat resolver", value: config.ChatResolver},
 		{name: "model composition", value: config.ModelComposition},
-		{name: "original schedule results", value: config.OriginalScheduleResults},
+		{name: "original Tool results", value: config.OriginalToolResults},
 		{name: "Tool resolver", value: config.ToolResolver},
 		{name: "Tool interpreter", value: config.ToolInterpreter},
 		{name: "Tool presenter", value: config.ToolPresenter},

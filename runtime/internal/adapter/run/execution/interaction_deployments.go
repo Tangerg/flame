@@ -54,13 +54,13 @@ func (i *interactionDeploymentSet) toolChild(reference agent.DeploymentRef) bool
 	return found
 }
 
-func (i *interactionDeploymentSet) hasScheduleCreates() bool {
+func (i *interactionDeploymentSet) hasToolReceipts() bool {
 	if i == nil {
 		return false
 	}
 	for _, tools := range i.observedTools {
 		for _, tool := range tools {
-			if tool.createEvidence != nil {
+			if tool.receiptEvidence != nil {
 				return true
 			}
 		}

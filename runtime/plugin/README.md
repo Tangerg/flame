@@ -174,6 +174,16 @@ arguments or transport IDs. `ToolCommandID` qualifies that identity for receipt
 owners that separate Tool and human command namespaces. These identities are not
 credentials or standing approval grants.
 
+`ToolReceiptMethod` is an optional read of an original model Tool result. Register
+it with `RegisterServer` and accept `ReceiptRequest`: `Method` is the original
+remote Tool name, `ID` is its `ToolCommandID`, and `InputDigest` identifies the
+admitted Tool JSON before business translation. Read only the matching private
+receipt, then use the same Tool codec and `NewToolReceipt` to project its original
+output or known failure. No second result table is needed. `ReadToolReceipt` binds
+the exact public query contract and validates Scope output without narrowing its
+JSON. Query errors, missing methods and absent/malformed evidence remain unknown;
+a valid failed Tool receipt is distinct from a failure to read it.
+
 The current SDK requires `capability.Protocol` on invocation and description. It is
 a public wire contract identity, separate from internal build or data-directory
 versions. Only this current protocol is interpreted. Installed declaration/token

@@ -57,6 +57,9 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
+		pluginsdk.RegisterServer(backend, pluginsdk.ToolReceiptMethod, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+			return toolReceipt(ctx, db, input)
+		}),
 		contracts.List.RegisterServer(backend, rpc.Classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()

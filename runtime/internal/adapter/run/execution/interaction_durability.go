@@ -80,7 +80,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	fact := runs.ExecutionTreeSettled{Update: update, Children: children}
 	i.state.mu.Lock()
 	hasChildren := len(i.state.delegateChildren) > 0
-	contextAdvances := (len(i.state.pendingSteers) > 0 || i.scheduleResults != nil && i.state.deployments.hasScheduleCreates()) && i.state.boundary != interactionBoundaryAcceptedPaused
+	contextAdvances := (len(i.state.pendingSteers) > 0 || i.toolResults != nil && i.state.deployments.hasToolReceipts()) && i.state.boundary != interactionBoundaryAcceptedPaused
 	i.state.mu.Unlock()
 	acceptances, err := i.admittedSteers(tree)
 	if err != nil {

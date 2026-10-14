@@ -26,7 +26,7 @@ import (
 
 type observedInteractionTool struct {
 	ref               tool.Ref
-	createEvidence    *scheduleCreateEvidence
+	receiptEvidence   *toolReceiptEvidence
 	sourceFingerprint fingerprint.Digest
 	inner             toolcontract.Tool
 	binding           toolcontract.Binding
@@ -109,10 +109,10 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
 	var prepared runs.ExecutionFact = start
-	if o.createEvidence != nil && !denied && prepareErr == nil {
-		proof := *o.createEvidence
+	if o.receiptEvidence != nil && !denied && prepareErr == nil {
+		proof := *o.receiptEvidence
 		proof.ProcessID, proof.EffectID = invocation.Relation().ProcessID().String(), invocation.EffectID().String()
-		if err := o.session.rememberToolMetadata(toolResultMetadata{MemberID: member.MemberID, Start: start, Create: &proof}); err != nil {
+		if err := o.session.rememberToolMetadata(toolResultMetadata{MemberID: member.MemberID, Start: start, Receipt: &proof}); err != nil {
 			return corechat.ToolOutput{}, o.projectionFailure(err)
 		}
 		root := o.session.state.processHandle()
@@ -625,20 +625,20 @@ func wrapInteractionTools(
 				offloadPolicy: offloadPolicy,
 				start:         start,
 			}
-			if server, remote, mcp := ref.MCP(); mcp && remote.String() == "create_schedule" {
+			if server, _, mcp := ref.MCP(); mcp {
 				if _, installed := server.Origin().Installation(); installed {
 					dependency, found, err := toolset.InstallationDependency(executable)
 					if err != nil {
 						return nil, err
 					}
 					if found {
-						if config.OriginalScheduleResults != nil {
-							owned, err := config.OriginalScheduleResults.OwnsCreateSource(ctx, ref, dependency.Digest)
+						if config.OriginalToolResults != nil {
+							owned, err := config.OriginalToolResults.OwnsToolSource(ctx, ref, dependency.Digest)
 							if err != nil {
 								return nil, err
 							}
 							if owned {
-								observed.createEvidence = &scheduleCreateEvidence{Tool: ref, Release: dependency.Digest, Authority: fingerprint}
+								observed.receiptEvidence = &toolReceiptEvidence{Tool: ref, Release: dependency.Digest, Authority: fingerprint}
 							}
 						}
 					}

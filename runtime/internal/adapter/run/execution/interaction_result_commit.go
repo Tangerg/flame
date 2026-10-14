@@ -21,17 +21,17 @@ import (
 // The checkpoint retains this data when a completed sibling waits for another
 // sibling's input; no completed Tool is rerun to reconstruct its presentation.
 type toolResultMetadata struct {
-	Create       *scheduleCreateEvidence `json:"create,omitzero"`
-	MemberID     string                  `json:"member_id"`
-	Start        runs.ToolCallStarted    `json:"start"`
-	Result       *tool.Result            `json:"result,omitzero"`
-	Offload      *toolresult.Ref         `json:"offload,omitzero"`
-	OutputText   string                  `json:"output_text,omitempty"`
-	MutatedPaths []string                `json:"mutated_paths,omitempty"`
-	Failure      *tool.Failure           `json:"failure,omitzero"`
+	Receipt      *toolReceiptEvidence `json:"receipt,omitzero"`
+	MemberID     string               `json:"member_id"`
+	Start        runs.ToolCallStarted `json:"start"`
+	Result       *tool.Result         `json:"result,omitzero"`
+	Offload      *toolresult.Ref      `json:"offload,omitzero"`
+	OutputText   string               `json:"output_text,omitempty"`
+	MutatedPaths []string             `json:"mutated_paths,omitempty"`
+	Failure      *tool.Failure        `json:"failure,omitzero"`
 }
 
-type scheduleCreateEvidence struct {
+type toolReceiptEvidence struct {
 	ProcessID string             `json:"process_id"`
 	EffectID  string             `json:"effect_id"`
 	Tool      tool.Ref           `json:"tool"`
@@ -40,8 +40,8 @@ type scheduleCreateEvidence struct {
 }
 
 func (t toolResultMetadata) clone() toolResultMetadata {
-	if t.Create != nil {
-		t.Create = new(*t.Create)
+	if t.Receipt != nil {
+		t.Receipt = new(*t.Receipt)
 	}
 	t.MutatedPaths = slices.Clone(t.MutatedPaths)
 	if t.Result != nil {
@@ -57,22 +57,22 @@ func (t toolResultMetadata) clone() toolResultMetadata {
 }
 
 func (t toolResultMetadata) validate() error {
-	if t.Create != nil {
-		if _, err := agent.ParseProcessID(t.Create.ProcessID); err != nil {
+	if t.Receipt != nil {
+		if _, err := agent.ParseProcessID(t.Receipt.ProcessID); err != nil {
 			return err
 		}
-		if _, err := agent.ParseEffectID(t.Create.EffectID); err != nil {
+		if _, err := agent.ParseEffectID(t.Receipt.EffectID); err != nil {
 			return err
 		}
-		server, remote, found := t.Create.Tool.MCP()
+		server, _, found := t.Receipt.Tool.MCP()
 		_, installed := server.Origin().Installation()
-		if !found || !installed || remote.String() != "create_schedule" || t.Create.Tool.ModelName() != t.Start.ToolName {
-			return errors.New("execution: invalid schedule create evidence")
+		if !found || !installed || t.Receipt.Tool.ModelName() != t.Start.ToolName {
+			return errors.New("execution: invalid Tool receipt evidence")
 		}
-		if err := t.Create.Release.Validate(); err != nil {
+		if err := t.Receipt.Release.Validate(); err != nil {
 			return err
 		}
-		if err := t.Create.Authority.Validate(); err != nil {
+		if err := t.Receipt.Authority.Validate(); err != nil {
 			return err
 		}
 	}
@@ -114,10 +114,10 @@ func (i *interactionSession) rememberToolMetadata(metadata toolResultMetadata) e
 		i.state.toolMetadata = make(map[string]toolResultMetadata)
 	}
 	if previous, duplicate := i.state.toolMetadata[metadata.Start.CallID]; duplicate {
-		if previous.Create == nil || previous.Result != nil || previous.Failure != nil || previous.Offload != nil || previous.Start != metadata.Start {
+		if previous.Receipt == nil || previous.Result != nil || previous.Failure != nil || previous.Offload != nil || previous.Start != metadata.Start {
 			return errors.New("execution: pending call metadata already exists")
 		}
-		metadata.Create = new(*previous.Create)
+		metadata.Receipt = new(*previous.Receipt)
 	}
 	i.state.toolMetadata[metadata.Start.CallID] = metadata.clone()
 	return nil
@@ -174,7 +174,7 @@ func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeide
 	i.state.mu.Lock()
 	var delegates []*managedDelegateCall
 	for _, identity := range identities {
-		if i.state.toolMetadata[identity.String()].Create == nil {
+		if i.state.toolMetadata[identity.String()].Receipt == nil {
 			delete(i.state.toolMetadata, identity.String())
 		}
 		for _, managed := range i.state.delegateCalls {
@@ -193,12 +193,12 @@ func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeide
 }
 
 // The next model dispatch closes this member's investigated Tool prefix.
-// Historical create metadata cannot turn a later model crash into that class.
-func (i *interactionSession) retireCreatePrefix(memberID string) {
+// Historical Tool metadata cannot turn a later model crash into that class.
+func (i *interactionSession) retireToolReceiptPrefix(memberID string) {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	for id, metadata := range i.state.toolMetadata {
-		if metadata.MemberID == memberID && metadata.Create != nil {
+		if metadata.MemberID == memberID && metadata.Receipt != nil {
 			delete(i.state.toolMetadata, id)
 		}
 	}

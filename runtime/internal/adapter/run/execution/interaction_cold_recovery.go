@@ -47,19 +47,19 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	}
 	proofs := make(map[agent.EffectID]toolResultMetadata)
 	for _, metadata := range checkpoint.toolMetadata {
-		if metadata.Create == nil {
+		if metadata.Receipt == nil {
 			continue
 		}
 		if metadata.MemberID != rootID.String() {
 			return zero, false, nil
 		}
-		id, _ := agent.ParseEffectID(metadata.Create.EffectID)
+		id, _ := agent.ParseEffectID(metadata.Receipt.EffectID)
 		proofs[id] = metadata
 	}
 	if len(proofs) == 0 {
 		return zero, false, nil
 	}
-	if i.config.OriginalScheduleResults == nil {
+	if i.config.OriginalToolResults == nil {
 		return zero, false, nil
 	}
 	rootWaiting := false
@@ -95,7 +95,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 			continue
 		}
 		metadata, found := checkpoint.toolMetadata[invocation.CallID]
-		if !found || metadata.Create == nil {
+		if !found || metadata.Receipt == nil {
 			return zero, false, nil
 		}
 		item, found := items[invocation.ItemID]
@@ -157,7 +157,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 		return zero, false, err
 	}
 	for _, metadata := range proofs {
-		proof := metadata.Create
+		proof := metadata.Receipt
 		processID, _ := agent.ParseProcessID(proof.ProcessID)
 		effectID, _ := agent.ParseEffectID(proof.EffectID)
 		if request, found := checkpoint.tree.EffectRequest(processID, effectID); found {
@@ -171,7 +171,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 				return zero, false, errors.New("execution: retained request differs from its captured attribution")
 			}
 		}
-		available, err := i.config.OriginalScheduleResults.AwaitOriginalCreateSource(ctx, proof.Tool, proof.Release, proof.Authority)
+		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, proof.Tool, proof.Release, proof.Authority)
 		if err != nil {
 			return zero, false, err
 		}
@@ -192,7 +192,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	for _, metadata := range proofs {
 		var owner *observedInteractionTool
 		for _, tools := range session.state.deployments.observedTools {
-			if candidate := tools[metadata.Create.Tool]; candidate != nil {
+			if candidate := tools[metadata.Receipt.Tool]; candidate != nil {
 				owner = candidate
 				break
 			}

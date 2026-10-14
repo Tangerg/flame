@@ -56,6 +56,13 @@ func ToolCommandID(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return toolCommandID(id)
+}
+
+func toolCommandID(id string) (string, error) {
+	if err := validateCommandID(id); err != nil {
+		return "", err
+	}
 	command := "tool:" + id
 	if err := validateCommandID(command); err != nil {
 		return "", err

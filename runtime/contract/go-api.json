@@ -1905,6 +1905,11 @@
           "name": "ReceiptMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/commands.get\""
+        },
+        {
+          "name": "ToolReceiptMethod",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/tools.getResult\""
         }
       ],
       "variables": [
@@ -2051,8 +2056,16 @@
           "signature": "func[P, C, R any](config MethodConfig) (*StreamingMethod[P, C, R], error)"
         },
         {
+          "name": "NewToolReceipt",
+          "signature": "func(output chat.ToolOutput, failed bool) (ToolReceipt, error)"
+        },
+        {
           "name": "ReadReceipt",
           "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, id string, method string, input P) (R, bool, error)"
+        },
+        {
+          "name": "ReadToolReceipt",
+          "signature": "func(ctx context.Context, session *mcp.ClientSession, callID string, remote string, admitted jsoninput.Input) (*chat.ToolOutput, error)"
         },
         {
           "name": "RegisterClient",
@@ -2728,6 +2741,10 @@
             {
               "name": "UnmarshalJSON",
               "signature": "func(data []byte) error"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
             }
           ]
         },
@@ -2884,6 +2901,27 @@
               "signature": "func(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id string, input P, metadata mcp.ParamsBase) iter.Seq2[StreamValue[C, R], error]"
             }
           ]
+        },
+        {
+          "name": "ToolReceipt",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Found",
+              "type": "bool",
+              "tag": "json:\"found\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output,omitzero\""
+            },
+            {
+              "name": "IsError",
+              "type": "bool",
+              "tag": "json:\"isError,omitzero\""
+            }
+          ]
         }
       ]
     },
@@ -2917,6 +2955,10 @@
         {
           "name": "Command",
           "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, input P, admitted jsoninput.Input, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error)"
+        },
+        {
+          "name": "ReadReceipt",
+          "signature": "func(ctx context.Context, db *sql.DB, input plugin.ReceiptRequest) (plugin.Receipt, error)"
         },
         {
           "name": "RegisterCommand",

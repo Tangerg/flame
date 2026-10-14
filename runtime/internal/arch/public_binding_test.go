@@ -107,6 +107,7 @@ pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 "github.com/Tangerg/flame/runtime/point"
 "github.com/Tangerg/flame/runtime/protocol"
+"github.com/Tangerg/scope/core/chat"
 )
 
 var _ = flameruntime.Open
@@ -132,6 +133,7 @@ var _ = pluginsdk.NewBinding
 var _ = pluginsdk.Resolve
 var _ *pluginsdk.Binding
 var _ = jsoninput.Encode[struct{}]
+var _ = pluginsdk.ReadToolReceipt
 var _ = pluginsdk.RequestInput
 var _ = pluginsdk.NewCallbacks
 var _ pluginsdk.CallbackRef
@@ -191,6 +193,12 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
   })
   if err != nil || !value { t.Fatalf("owned command = %v, %v", value, err) }
  }
+ receipt, err := pluginstorage.ReadReceipt(t.Context(), db, pluginsdk.ReceiptRequest{ID: "original", Method: "records.update", InputDigest: input.Digest()})
+ if err != nil || !receipt.Found { t.Fatalf("public owner read = %+v, %v", receipt, err) }
+ value, err := pluginsdk.DecodeReply[bool](receipt.Reply)
+ if err != nil || !value { t.Fatalf("original owner value = %v, %v", value, err) }
+ projected, err := pluginsdk.NewToolReceipt(chat.NewTextToolOutput("owned"), false)
+ if err != nil || !projected.Found || projected.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
  changed, err := jsoninput.Encode(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }
  _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", struct{}{}, changed, nil, func(context.Context, struct{}) (bool, error) {

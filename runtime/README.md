@@ -2294,8 +2294,8 @@ are never revived. The binding survives local Resume intent until the next
 committed waiting or terminal boundary retires it atomically. New waiting context
 and accepted-continuation storage require a fresh pre-release data directory.
 
-The first-party `create_schedule` tool has one cold recovery class: a single
-product root and its ordinary Tool processes. Before external dispatch, the
+Installed MCP Tools have one captured cold recovery class: a single product
+root and its ordinary Tool processes. Before external dispatch, the
 effective arguments, exact installation release and source authority, original
 Process/Effect attribution, and complete execution context commit with the
 canonical Tool Item. Active and waiting executions use the same context payload;
@@ -2303,11 +2303,18 @@ Scope's original JSON remains exclusively in the acknowledged tree head.
 
 Startup acquires the original Session writer lease and reinstalls the original
 Run and Segment pump before Scope restoration. It joins only the captured source's
-already admitted connection attempt. Recovery reads the backend's original command
-receipt, matching invocation identity, method, and the Tool owner's deterministic
-input encoding. The receipt survives Schedule edits and deletion. Its normal Tool
-output enters Scope through typed settlement and explicit Unknown resolution;
-queries do not call the Tool, rerun hooks, or create another Schedule.
+already admitted connection attempt. Recovery reads the optional public `ToolReceiptMethod` query at the original
+backend, matching logical identity, remote Tool name and admitted input digest.
+The backend alone projects its private receipt through the original Tool codec;
+Core imports no business record or private feature method for this read. The
+Schedules producer retains creation evidence across edits and deletion. Original
+output or a known failed Tool outcome enters Scope through typed settlement and
+explicit Unknown resolution. Queries never call the Tool or rerun hooks. An
+unsupported query retains Unknown; it never falls back to another provider.
+
+The internal checkpoint field is now `receipt`, replacing the provisional
+Schedule-specific `create` field. Strict decoding refuses the former shape; no
+legacy reader or converter remains. Private backend receipt formats are unchanged.
 
 The query deadline bounds only evidence collection. Publication uses the existing
 Run owner lifetime, atomically committing the Scope cut, product context, result

@@ -30,14 +30,14 @@ func (r *ReceiptRequest) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	request := ReceiptRequest(decoded)
-	if err := request.validate(); err != nil {
+	if err := request.Validate(); err != nil {
 		return err
 	}
 	*r = request
 	return nil
 }
 
-func (r ReceiptRequest) validate() error {
+func (r ReceiptRequest) Validate() error {
 	if err := validateCommandID(r.ID); err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func receiptBinding(session *sdk.ClientSession) (*Binding, error) {
 
 func readReceipt(ctx context.Context, binding *Binding, id, method string, admitted jsoninput.Input) (jsontext.Value, bool, error) {
 	request := ReceiptRequest{ID: id, Method: method, InputDigest: admitted.Digest()}
-	if err := request.validate(); err != nil {
+	if err := request.Validate(); err != nil {
 		return nil, false, err
 	}
 	input, err := jsoninput.Encode(request)

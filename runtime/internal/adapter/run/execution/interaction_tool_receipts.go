@@ -10,10 +10,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func (i *interactionSession) investigateScheduleCreates(ctx context.Context) (int, error) {
-	if i.scheduleResults == nil {
+func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, error) {
+	if i.toolResults == nil {
 		return 0, nil
 	}
 	root := i.state.processHandle()
@@ -51,40 +52,53 @@ func (i *interactionSession) investigateScheduleCreates(ctx context.Context) (in
 			metadata, retained := i.state.toolMetadata[identity.String()]
 			deployments := i.state.deployments
 			i.state.mu.Unlock()
-			if !retained || metadata.Create == nil {
+			if !retained || metadata.Receipt == nil {
 				continue
 			}
-			proof := *metadata.Create
+			proof := *metadata.Receipt
 			owner := deployments.observedTools[request.DeploymentRef()][proof.Tool]
-			if owner == nil || owner.createEvidence == nil || owner.createEvidence.Tool != proof.Tool || owner.createEvidence.Release != proof.Release || owner.createEvidence.Authority != proof.Authority || request.Relation().ProcessID().String() != proof.ProcessID || request.ID().String() != proof.EffectID {
-				return resolved, errors.New("execution: schedule receipt source differs from the captured Tool")
+			if owner == nil || owner.receiptEvidence == nil || owner.receiptEvidence.Tool != proof.Tool || owner.receiptEvidence.Release != proof.Release || owner.receiptEvidence.Authority != proof.Authority || request.Relation().ProcessID().String() != proof.ProcessID || request.ID().String() != proof.EffectID {
+				return resolved, errors.New("execution: Tool receipt source differs from the captured Tool")
 			}
 			queryCtx, stop := context.WithTimeout(ctx, auxiliaryOperationTimeout)
-			output, queryErr := i.scheduleResults.OriginalCreateResult(queryCtx, proof.Tool, proof.Release, proof.Authority, metadata.Start.CallID, metadata.Start.Arguments)
+			output, queryErr := i.toolResults.OriginalToolResult(queryCtx, proof.Tool, proof.Release, proof.Authority, metadata.Start.CallID, metadata.Start.Arguments)
 			stop()
 			if err := ctx.Err(); err != nil {
 				return resolved, err
 			}
 			// An unavailable, absent, conflicting, or malformed receipt proves
 			// nothing about the original mutation. The Effect remains Unknown.
-			if queryErr != nil || output == nil {
+			failure, knownFailure := errors.AsType[*toolcontract.Failure](queryErr)
+			if queryErr != nil && !knownFailure || output == nil {
 				if queryErr != nil {
-					slog.WarnContext(ctx, "execution: original schedule result is inconclusive", "call.id", metadata.Start.CallID, "error", queryErr)
+					slog.WarnContext(ctx, "execution: original Tool result is inconclusive", "call.id", metadata.Start.CallID, "error", queryErr)
 				}
 				continue
+			}
+			if knownFailure {
+				if err := failure.Validate(); err != nil {
+					return resolved, err
+				}
+				value := failure.Output()
+				output = &value
 			}
 			arguments, err := tool.ParseArguments(metadata.Start.Arguments)
 			if err != nil {
 				return resolved, err
 			}
 			publicationCtx, stop := i.lifetime.publicationContext(ctx)
-			modelOutput, projected, err := owner.resultMetadata(publicationCtx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, *output, nil, nil)
+			modelOutput, projected, err := owner.resultMetadata(publicationCtx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, *output, queryErr, nil)
+			state := interaction.ResultSucceeded
+			if knownFailure {
+				state = interaction.ResultFailed
+				projected.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: executorDiagnostic(queryErr)}
+			}
 			if err == nil {
 				err = i.rememberToolMetadata(projected)
 			}
 			var settlement agent.Settlement
 			if err == nil {
-				settlement, err = deployments.toolSets[request.DeploymentRef()].SettleToolResult(request, modelOutput, interaction.ResultSucceeded, nil)
+				settlement, err = deployments.toolSets[request.DeploymentRef()].SettleToolResult(request, modelOutput, state, nil)
 			}
 			process, found := i.engine.Process(request.Relation().ProcessID())
 			if err == nil && !found {
@@ -103,7 +117,7 @@ func (i *interactionSession) investigateScheduleCreates(ctx context.Context) (in
 			}
 			stop()
 			if err != nil {
-				return resolved, fmt.Errorf("execution: publish original schedule result: %w", err)
+				return resolved, fmt.Errorf("execution: publish original Tool result: %w", err)
 			}
 			resolved++
 		}
