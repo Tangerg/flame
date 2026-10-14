@@ -145,7 +145,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		ItemID: "item_followup",
 		Content: []transcript.ContentBlock{{
 			Kind: transcript.TextContent, Text: "also include edge cases",
-		}},
+		}, {Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("original resumed image")}},
 	}
 	if err := executor.BeginContinuation(t.Context(), restored, answers, committedInput); err != nil {
 		t.Fatal(err)
@@ -157,6 +157,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 			failure = *terminal[0].Failure()
 		}
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
+	}
+	if !inputOwner.convertedMedia {
+		t.Fatal("resumed source image never reached original input transform")
 	}
 	if inputOwner.inputResolves != 1 || inputOwner.inputCalls != 2 {
 		t.Fatalf("restoration reselected or lost input transforms: %d/%d", inputOwner.inputResolves, inputOwner.inputCalls)
@@ -181,14 +184,17 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	if len(requests) != 2 || len(requests[0]) < 2 || len(requests[1]) < 2 || requests[0][0].Text() != "ephemeral retrieval" || requests[1][0].Text() != "ephemeral retrieval" || requests[0][1].Text() != "current question" || requests[1][1].Text() != "current question" {
 		t.Fatalf("restored model context = %#v", requests)
 	}
-	if got := requests[1][len(requests[1])-1].Text(); got != "also include edge cases" {
+	if got := requests[1][len(requests[1])-1].Text(); got != "also include edge casesconverted resume image" {
 		t.Fatalf("continuation follow-up = %q, want committed input", got)
 	}
 	steers := payloadsOf[runs.SteerMessagesApplied](events)
 	if len(steers) != 1 || len(steers[0].Messages) != 1 ||
 		steers[0].Messages[0].ItemID != committedInput.ItemID ||
-		len(steers[0].Messages[0].Content) != 1 || steers[0].Messages[0].Content[0].Text != "also include edge cases" {
+		len(steers[0].Messages[0].Content) != 2 || steers[0].Messages[0].Content[0].Text != "also include edge cases" {
 		t.Fatalf("committed continuation input projection = %#v", steers)
+	}
+	if !reflect.DeepEqual(steers[0].Messages[0].Content, committedInput.Content) {
+		t.Fatal("resume rewrote original media evidence")
 	}
 	estimated, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: requests[0], Options: chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321)), Stop: []string{"TRANSFORMED"}}, Tools: []chat.ToolDefinition{question.Definition()}})
 	if err != nil {

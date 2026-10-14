@@ -17,20 +17,6 @@ func (f modelSelectorFunc) SelectModel(ctx context.Context, proposed modelref.Se
 	return f(ctx, proposed, request)
 }
 
-type selectedInputAdmitter struct {
-	target modelref.Selection
-	calls  int
-}
-
-func (*selectedInputAdmitter) AdmitSelection(modelref.Selection) error { return nil }
-func (a *selectedInputAdmitter) AdmitInput(selection modelref.Selection, _ []chat.Message) error {
-	a.calls++
-	if selection != a.target {
-		return errors.New("input admitted before the selected model")
-	}
-	return nil
-}
-
 func TestFreshStartBindsSelectedModelAndKeepsSessionPreferenceAndOriginalInput(t *testing.T) {
 	proposed := testsupport.DefaultModelSelection()
 	selected := testsupport.MustModelSelection("provider", "selected-model")
@@ -46,15 +32,14 @@ func TestFreshStartBindsSelectedModelAndKeepsSessionPreferenceAndOriginalInput(t
 		request.Messages[0] = chat.NewUserMessage(chat.NewTextPart("forged input"))
 		return selected, nil
 	})
-	admitter := &selectedInputAdmitter{target: selected}
-	coordinator.models = admitter
+
 	result, err := coordinator.Start(t.Context(), StartCommand{Acceptance: &CommandIdentity{Key: "selected-opening", Fingerprint: testsupport.Digest("selected opening").String()}, NewSession: &SessionOpening{SessionID: "ses_selected", RunID: "run_selected", CWD: "/selected", Title: "Selected"}, ModelSelection: proposed, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "question"}}, Options: &chat.Options{MaxOutputTokens: new(int64(128))}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	consumeEvents(result.Events)
-	if count != 1 || admitter.calls != 2 || control.started.ModelSelection != selected || control.validated.ModelSelection != selected || control.started.WorkingContext[0].Text() != "question" {
-		t.Fatalf("selected execution changed: selections=%d admissions=%d started=%+v validated=%+v", count, admitter.calls, control.started, control.validated)
+	if count != 1 || control.started.ModelSelection != selected || control.validated.ModelSelection != selected || control.started.WorkingContext[0].Text() != "question" {
+		t.Fatalf("selected execution changed: selections=%d started=%+v validated=%+v", count, control.started, control.validated)
 	}
 	opening := effects.opening()
 	admitted, ok := opening.Admission()

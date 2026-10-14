@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 )
 
@@ -64,12 +63,9 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 		return "", err
 	}
 	rec := live.record
-	message, err := MaterializeUserMessage(cmd.Input)
+	_, err = MaterializeUserMessage(cmd.Input)
 	if err != nil {
 		return "", err
-	}
-	if admitErr := c.models.AdmitInput(durable.ModelSelection(), []corechat.Message{message}); admitErr != nil {
-		return "", fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
 	}
 	prepared := PreparedSteer{ItemID: NewItemID(uuid.NewString()), Input: cmd.Input}
 	if cmd.Acceptance != nil {

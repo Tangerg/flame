@@ -84,3 +84,10 @@ shape equivalence never selects a provider or proves behavioral substitutability
 Architecture is judged by real consumers, invariants, failure ordering, protocol behavior, persistence, and lifecycle tests. Package counts, file counts, private field inventories, and symmetric trees are not design evidence.
 
 Use the current module Go version and standard library first, then existing mature dependencies. Keep a wrapper only when it owns policy, translation, lifecycle, or authority. Measure before optimizing.
+
+Model-visible media support is admitted at the complete reduced/transformed
+request boundary. Command admission owns structurally valid source input, target,
+identity and original transcript evidence; it cannot decide whether a later model
+projection has an unsupported modality. Start/Resume/Steer acceptance therefore does
+not claim model-media success. The selected provider sees only the admitted final
+projection, and failure remains the original execution owner's observable outcome.

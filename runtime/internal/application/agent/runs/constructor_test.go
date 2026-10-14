@@ -42,8 +42,7 @@ func (passthroughWorkingContext) ComposeWorkingContext(
 
 type acceptAllModelInputs struct{}
 
-func (acceptAllModelInputs) AdmitSelection(modelref.Selection) error                 { return nil }
-func (acceptAllModelInputs) AdmitInput(modelref.Selection, []corechat.Message) error { return nil }
+func (acceptAllModelInputs) AdmitSelection(modelref.Selection) error { return nil }
 
 // mustNewCoordinator completes dependencies unrelated to a focused test. The
 // production constructor remains strict; tests opt into explicit inert doubles

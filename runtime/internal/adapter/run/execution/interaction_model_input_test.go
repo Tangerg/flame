@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/scope/core/media"
+	"iter"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -109,8 +114,9 @@ func TestPrimaryInputFailureRefusesBeforeProviderDispatch(t *testing.T) {
 
 type waitingInputComposition struct {
 	*contextCaptureComposition
-	inputResolves int
-	inputCalls    int
+	inputResolves  int
+	inputCalls     int
+	convertedMedia bool
 }
 
 func (c *waitingInputComposition) ResolveInput(ctx context.Context) ([]plugins.ContributionBinding, error) {
@@ -124,6 +130,14 @@ func (c *waitingInputComposition) PrepareInput(_ context.Context, _ []plugins.Co
 		c.t.Error("transformed Options entered retained context")
 	}
 	result := request.Clone()
+	for mi, message := range result.Messages {
+		for pi, part := range message.Parts {
+			if part.Kind == chat.PartMedia {
+				c.convertedMedia = true
+				result.Messages[mi].Parts[pi] = chat.NewTextPart("converted resume image")
+			}
+		}
+	}
 	result.Options.Stop = []string{"TRANSFORMED"}
 	return result, nil
 }
@@ -168,5 +182,111 @@ func TestPrimaryFinalCapacityCountsTransformedInputBeforeProvider(t *testing.T) 
 				t.Fatalf("transformed input capacity: generation=%d count=%d", model.calls, model.counts)
 			}
 		})
+	}
+}
+
+type mediaInputComposition struct {
+	inputCaptureComposition
+	convert  bool
+	received bool
+}
+
+func (c *mediaInputComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelref.Selection, request *chat.Request) (*chat.Request, error) {
+	c.transformed++
+	result := request.Clone()
+	for mi, message := range result.Messages {
+		for pi, part := range message.Parts {
+			if part.Kind == chat.PartMedia {
+				c.received = true
+				if c.convert {
+					result.Messages[mi].Parts[pi] = chat.NewTextPart("decoded original image")
+				}
+			}
+		}
+	}
+	return result, nil
+}
+
+type mediaAdmissionModel struct {
+	t      *testing.T
+	calls  int
+	counts int
+}
+
+func (m *mediaAdmissionModel) check(request *chat.Request) {
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.Kind == chat.PartMedia {
+				m.t.Error("unsupported authored media reached provider or counter")
+			}
+		}
+	}
+}
+func (m *mediaAdmissionModel) CountInputTokens(_ context.Context, request *chat.Request) (int64, error) {
+	m.counts++
+	m.check(request)
+	return 32, nil
+}
+func (m *mediaAdmissionModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	m.calls++
+	m.check(request)
+	return interactionUsageTextResponse("done", 32, 1), nil
+}
+func (m *mediaAdmissionModel) Stream(_ context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		m.calls++
+		m.check(request)
+		yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("done")}, FinishReason: chat.FinishReasonStop, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 32, OutputTokens: 1}}}, nil)
+	}
+}
+func TestPrimaryMediaAdmissionUsesFinalTransformedInputForCallAndStream(t *testing.T) {
+	for _, streaming := range []bool{false, true} {
+		for _, compact := range []bool{false, true} {
+			for _, mode := range []string{"converted", "unconverted", "absent"} {
+				t.Run(fmt.Sprintf("stream=%t/compact=%t/%s", streaming, compact, mode), func(t *testing.T) {
+					selected := testsupport.MustModelSelection("alibaba", "qwen-mt-plus")
+					image, err := media.NewBytes("image/png", []byte("original image"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					start := interactionTestStart()
+					start.ModelSelection = selected
+					start.Options = &chat.Options{MaxOutputTokens: new(int64(64))}
+					start.WorkingContext = []chat.Message{chat.NewUserMessage(chat.NewMediaPart(image))}
+					original := cloneChatMessages(start.WorkingContext)
+					owner := &mediaInputComposition{inputCaptureComposition: inputCaptureComposition{contextCaptureComposition: contextCaptureComposition{t: t}}, convert: mode == "converted"}
+					model := &mediaAdmissionModel{t: t}
+					cfg := InteractionExecutorConfig{StreamModelResponses: streaming}
+					if mode != "absent" {
+						cfg.ModelComposition = owner
+					}
+					if compact {
+						cfg.ModelContextCompactor = &calibrationCaptureCompactor{estimatedTokens: 100}
+						cfg.ModelContextState = emptyInteractionModelContextState{}
+					}
+					executor := newObservedTestInteractionExecutor(t, model, cfg)
+					events := runInteractionHarness(t.Context(), t, executor, start, nil)
+					ends := payloadsOf[runs.SegmentEnded](events)
+					want := 0
+					reason := run.OutcomeFailed
+					if mode == "converted" {
+						want = 1
+						reason = run.OutcomeCompleted
+					}
+					if model.calls != want || len(ends) != 1 || ends[0].Reason != reason {
+						t.Fatalf("final media admission: generation=%d ends=%+v", model.calls, ends)
+					}
+					if mode != "absent" && !owner.received {
+						t.Fatal("authored image was rejected before transformation")
+					}
+					if !reflect.DeepEqual(start.WorkingContext, original) {
+						t.Fatal("model transformation changed source media")
+					}
+					if mode == "converted" && model.counts != 1 {
+						t.Fatalf("only final converted request should be counted: %d", model.counts)
+					}
+				})
+			}
+		}
 	}
 }

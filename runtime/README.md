@@ -2472,5 +2472,20 @@ now captures transform bindings with its configuration/checkpoint and hands the
 complete admitted request through one per-call record into Call/Stream. Original
 conversation/Options remain retained; final media/capacity and calibration see the
 actual transformed input. Checkpoints require model_inputs with no old-shape fallback.
-Fresh Start's authored-input media preflight still needs migration for conversion
-from otherwise unsupported input modalities; full native acceptance remains open.
+Core .29 moves selected-model media admission to the final transformed request.
+Start/Resume/Steer still reject structurally invalid input, but retain original
+well-formed source media even if the chosen model needs a converter. Unconverted
+unsupported input becomes an accepted execution failure before provider generation,
+with original transcript/command evidence retained. Canonical unsupported media is
+not sent to a provider counter. Full native acceptance remains open.
+
+## Protocol 2026-10-14.29
+
+Model-media admission belongs to the final reduced/transformed request, not the
+source input of Start/Resume/Steer. Source format/target/identity validation still
+precedes command acceptance. Model capability refusal occurs through the existing
+accepted execution failure path before the physical provider attempt; callers must
+observe the Run outcome rather than interpreting opening acceptance as media/model
+success. A converter may adapt the original image without changing its stored
+user Item or retry identity. No new receipt, compatibility branch or error fallback
+is introduced. Rebuild Runtime and clients together.

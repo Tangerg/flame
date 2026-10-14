@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"reflect"
 	"runtime"
 	"sync"
 	"testing"
@@ -396,36 +397,15 @@ func (f *fakeExecutionPorts) SubmitSteer(_ context.Context, ref ExecutorRef, pre
 }
 
 type modelInputAdmissionProbe struct {
-	err            error
 	selectionErr   error
-	failAt         int
-	calls          int
 	selectionCalls int
 	selected       []modelref.Selection
-	messages       [][]corechat.Message
 }
 
 func (m *modelInputAdmissionProbe) AdmitSelection(selection modelref.Selection) error {
 	m.selectionCalls++
 	m.selected = append(m.selected, selection)
 	return m.selectionErr
-}
-
-func (m *modelInputAdmissionProbe) AdmitInput(
-	selection modelref.Selection,
-	messages []corechat.Message,
-) error {
-	m.calls++
-	m.selected = append(m.selected, selection)
-	cloned := make([]corechat.Message, len(messages))
-	for index := range messages {
-		cloned[index] = messages[index].Clone()
-	}
-	m.messages = append(m.messages, cloned)
-	if m.err != nil && (m.failAt == 0 || m.calls == m.failAt) {
-		return m.err
-	}
-	return nil
 }
 
 func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, sessions completeTestSessionPorts, effects completeTestProjectionPorts) *Coordinator {
@@ -1391,6 +1371,17 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 		t.Fatalf("executor continuation input = %+v, want the committed user Item", control.continuationInput)
 	}
 
+	_, mediaControl, mediaCoordinator := newResumeCase()
+	source := []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("original resume image")}}
+	mediaResult, err := mediaCoordinator.Resume(t.Context(), ResumeCommand{RunID: "run_1", Responses: approve, CallerCapabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}, Input: source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumeEvents(mediaResult.Events)
+	if mediaControl.continuationInput == nil || mediaControl.continuationInput.ItemID != mediaResult.UserItemID || !reflect.DeepEqual(mediaControl.continuationInput.Content, source) {
+		t.Fatal("resume altered source media before executor transformation")
+	}
+
 	_, control, c = newResumeCase()
 	without, err := c.Resume(context.Background(), ResumeCommand{
 		RunID: "run_1", Responses: approve,
@@ -2276,52 +2267,39 @@ func TestSteerHidesExecutorHandle(t *testing.T) {
 	}
 }
 
-func TestSteerRejectsInputOutsideSelectedModelCapabilities(t *testing.T) {
+func TestSteerRetainsOriginalMediaForFinalModelAdmission(t *testing.T) {
 	control := &fakeExecutionPorts{}
 	c, _ := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	c.steering = control
-	probe := &modelInputAdmissionProbe{err: errors.New("selected model accepts text only")}
-	c.models = probe
-
-	_, err := c.Steer(t.Context(), SteerCommand{
-		RunID:             testRunID,
-		ExpectedSegmentID: testSegmentID,
-		Input: []transcript.ContentBlock{{
-			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
-		}},
-	})
-	if !errors.Is(err, ErrUnsupportedMedia) {
-		t.Fatalf("Steer error = %v, want ErrUnsupportedMedia", err)
+	input := []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image")}}
+	if _, err := c.Steer(t.Context(), SteerCommand{RunID: testRunID, ExpectedSegmentID: testSegmentID, Input: input}); err != nil {
+		t.Fatal(err)
 	}
-	if probe.calls != 1 || len(probe.messages) != 1 || len(probe.messages[0]) != 1 {
-		t.Fatalf("model input admission = calls:%d messages:%+v", probe.calls, probe.messages)
-	}
-	if len(control.steered) != 0 {
-		t.Fatalf("rejected model input reached executor: %+v", control.steered)
+	if len(control.steered) != 1 || !reflect.DeepEqual(control.steerInput, input) {
+		t.Fatalf("Steer changed original media before transformation: %+v", control.steerInput)
 	}
 }
 
-func TestStartRejectsCurrentInputOutsideSelectedModelCapabilitiesBeforeStaging(t *testing.T) {
-	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"),
-	})}
+func TestStartRetainsAuthoredMediaForFinalModelAdmission(t *testing.T) {
+	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
-	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, &fakeEffects{})
-	probe := &modelInputAdmissionProbe{err: errors.New("selected model accepts text only")}
-	c.models = probe
-
-	_, err := c.Start(t.Context(), StartCommand{
-		SessionID:      "ses_1",
-		ModelSelection: testsupport.MustModelSelection("provider", "text-model"),
-		Input: []transcript.ContentBlock{{
-			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
-		}},
-	})
-	if !errors.Is(err, ErrUnsupportedMedia) {
-		t.Fatalf("Start error = %v, want ErrUnsupportedMedia", err)
+	effects := &fakeEffects{}
+	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
+	input := []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("original image")}}
+	result, err := c.Start(t.Context(), StartCommand{SessionID: "ses_1", ModelSelection: testsupport.MustModelSelection("provider", "text-model"), Input: input})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if probe.calls != 1 || control.validated.ModelSelection.Configured() || control.started.ModelSelection.Configured() {
-		t.Fatalf("rejected input crossed staging boundary: probe=%d validated=%+v staged=%+v", probe.calls, control.validated, control.started)
+	consumeEvents(result.Events)
+	expected, err := MaterializeUserMessage(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(control.started.WorkingContext) != 1 || !reflect.DeepEqual(control.started.WorkingContext[0], expected) {
+		t.Fatal("Start changed original media before model transformation")
+	}
+	if _, admitted := effects.opening().Admission(); !admitted {
+		t.Fatal("structurally valid source input was not admitted")
 	}
 }
 
@@ -2352,31 +2330,19 @@ func TestStartRejectsUnsupportedReasoningSelectionBeforeAnyOpeningSideEffect(t *
 	}
 }
 
-func TestStartRevalidatesComposedHistoryAgainstSelectedModelBeforeStaging(t *testing.T) {
-	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"),
-	})}
+func TestStartRetainsHistoricalMediaForFinalModelAdmission(t *testing.T) {
+	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, &fakeEffects{})
-	c.conversation = staticConversationReader{messages: []corechat.Message{
-		corechat.NewUserMessage(corechat.NewMediaPart(mustInputMedia(t, "image/png", []byte("history")))),
-	}}
-	probe := &modelInputAdmissionProbe{err: errors.New("selected model rejects historical image"), failAt: 2}
-	c.models = probe
-
-	_, err := c.Start(t.Context(), StartCommand{
-		SessionID:      "ses_1",
-		ModelSelection: testsupport.MustModelSelection("provider", "text-model"),
-		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "continue"}},
-	})
-	if !errors.Is(err, ErrUnsupportedMedia) {
-		t.Fatalf("Start error = %v, want ErrUnsupportedMedia", err)
+	historical := corechat.NewUserMessage(corechat.NewMediaPart(mustInputMedia(t, "image/png", []byte("history"))))
+	c.conversation = staticConversationReader{messages: []corechat.Message{historical}}
+	result, err := c.Start(t.Context(), StartCommand{SessionID: "ses_1", ModelSelection: testsupport.MustModelSelection("provider", "text-model"), Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "continue"}}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if probe.calls != 2 || len(probe.messages[1]) != 2 {
-		t.Fatalf("composed admission = calls:%d messages:%+v", probe.calls, probe.messages)
-	}
-	if control.started.ModelSelection.Configured() {
-		t.Fatalf("rejected composed history reached staging: %+v", control.started)
+	consumeEvents(result.Events)
+	if len(control.started.WorkingContext) != 2 || !reflect.DeepEqual(control.started.WorkingContext[0], historical) || control.started.WorkingContext[1].Text() != "continue" {
+		t.Fatal("composed source media changed before final transformation")
 	}
 }
 

@@ -480,7 +480,14 @@ admission and accounting calibration use the transformed input. An over-capacity
 transform refuses rather than rerunning plugin I/O or silently compacting its output.
 Former checkpoints without the captured input field are refused.
 
-Fresh Start still checks authored current/composed input against the selected
-model before executor staging. Cross-modality conversion of input rejected by that
-preflight is not yet enabled by this path; its full admission migration and native
-acceptance remain open, together with independently routed multiple calls.
+Start, Resume and Steer admit structurally valid authored input and preserve its
+original bytes without deciding the selected model's media support. That support
+is checked on the final complete request after canonical reduction and input
+transformation, for root and delegated Call/Stream. A converter can turn unsupported
+source media into supported text without replacing the original transcript. An
+unconverted unsupported request fails the accepted execution before provider I/O;
+there is no automatic replay. Structural MIME/empty-input errors still refuse the
+command before its state transition. Core .29 publishes this failure-timing change.
+Canonical media the selected model cannot accept is never passed to its provider
+counter; compaction uses its local projection and final transformation/admission
+remains authoritative. Full native/multiple-call acceptance is still open.

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	corechat "github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -88,12 +86,8 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, &run.InsufficientCapabilitiesError{RunID: cmd.RunID, Missing: gap}
 	}
 	if len(cmd.Input) > 0 {
-		message, err := MaterializeUserMessage(cmd.Input)
-		if err != nil {
+		if _, err := MaterializeUserMessage(cmd.Input); err != nil {
 			return StartResult{}, err
-		}
-		if err := c.models.AdmitInput(root.ModelSelection(), []corechat.Message{message}); err != nil {
-			return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, err)
 		}
 	}
 

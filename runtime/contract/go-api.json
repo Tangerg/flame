@@ -1698,6 +1698,14 @@
           "signature": "func() (*Method[ModelContextRequest, ModelContextResult], error)"
         },
         {
+          "name": "ModelInputContract",
+          "signature": "func() (*capability.Contract, error)"
+        },
+        {
+          "name": "ModelInputMethod",
+          "signature": "func() (*Method[ModelInputRequest, chat.Request], error)"
+        },
+        {
           "name": "ModelMethod",
           "signature": "func() (*Method[chat.Request, ModelResult], error)"
         },
@@ -1808,6 +1816,10 @@
         {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
+        },
+        {
+          "name": "ValidateModelInput",
+          "signature": "func(original *chat.Request, transformed *chat.Request) error"
         },
         {
           "name": "VerifyCapabilities",
@@ -2196,6 +2208,28 @@
             {
               "name": "JSONSchemaEnum",
               "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ModelInputRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Selection",
+              "type": "ModelSelection",
+              "tag": "json:\"selection\""
+            },
+            {
+              "name": "Request",
+              "type": "chat.Request",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
             }
           ]
         },
@@ -3834,7 +3868,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.28\""
+          "value": "\"2026-10-14.29\""
         },
         {
           "name": "ProviderAPIKeyOptional",

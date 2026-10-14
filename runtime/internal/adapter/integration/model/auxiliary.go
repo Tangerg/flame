@@ -182,17 +182,8 @@ func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) e
 	if request == nil {
 		return errors.New("auxiliary model: request is required")
 	}
-	if err := request.Validate(); err != nil {
+	if err := m.AdmitInput(request); err != nil {
 		return err
-	}
-	if err := m.selection.ValidateExact(); err != nil {
-		return err
-	}
-	if err := (modelcatalog.Selections{}).AdmitInput(m.selection, request.Messages); err != nil {
-		return err
-	}
-	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
-		return errors.New("model: request cannot replace selected model")
 	}
 	reservation := modelref.OutputReservation{}
 	if request.Options.MaxOutputTokens != nil {
@@ -267,4 +258,25 @@ func (m SelectedChat) PrepareRequest(request *chat.Request) (*chat.Request, erro
 	prepared := request.Clone()
 	prepared.Options.ReasoningEffort = effort
 	return prepared, nil
+}
+
+// AdmitInput validates the model-visible projection, never the authored source
+// that an input contributor may legitimately convert before model execution.
+func (m SelectedChat) AdmitInput(request *chat.Request) error {
+	if request == nil {
+		return errors.New("model: final request is required")
+	}
+	if err := request.Validate(); err != nil {
+		return err
+	}
+	if err := m.selection.ValidateExact(); err != nil {
+		return err
+	}
+	if err := (modelcatalog.Selections{}).AdmitInput(m.selection, request.Messages); err != nil {
+		return err
+	}
+	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
+		return errors.New("model: request cannot replace selected model")
+	}
+	return nil
 }

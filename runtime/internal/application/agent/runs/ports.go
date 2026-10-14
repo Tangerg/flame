@@ -74,13 +74,11 @@ type WorkingContextComposer interface {
 	) ([]corechat.Message, error)
 }
 
-// ModelAdmitter validates an exact selection and provider-neutral input against
-// that model's known capabilities. Unknown-model behavior belongs behind this
-// port; the use case only knows that rejected selections or input must not reach
-// staging or durable admission.
+// ModelAdmitter admits a model proposal before exact selection is frozen.
+// Authored input is structurally validated here; model-media admission belongs
+// to the complete transformed request at the physical execution boundary.
 type ModelAdmitter interface {
 	AdmitSelection(selection modelref.Selection) error
-	AdmitInput(selection modelref.Selection, messages []corechat.Message) error
 }
 
 // WorkingContextInput is the exact fresh-root context composition input. Seed

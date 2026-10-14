@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -178,6 +179,22 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		Counter:      i.counter,
 		PreCompact:   preCompact,
 	}
+	// Canonical history is not the provider request when input transformation is
+	// selected. Its compaction uses the local projection; final counting follows
+	// transformation and owns the actual provider request.
+	if len(i.session.modelInputs) > 0 {
+		input.Counter = nil
+	} else {
+		countable := request.Clone()
+		countable.Messages = append(cloneChatMessages(fixedContext), cloneChatMessages(candidate)...)
+		countable.Messages = append(countable.Messages, cloneChatMessages(tail)...)
+		if err := i.session.selectedChat.AdmitInput(countable); err != nil {
+			if !errors.Is(err, modelcatalog.ErrUnsupportedInputModality) {
+				return nil, err
+			}
+			input.Counter = nil
+		}
+	}
 	var (
 		compaction ModelContextCompaction
 		buildErr   error
@@ -306,6 +323,9 @@ var _ interaction.ModelContextReducer = (*interactionModelContextReducer)(nil)
 
 func (i *interactionModelContextReducer) prepareInput(ctx context.Context, invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
 	if len(i.session.modelInputs) == 0 {
+		if err := i.session.selectedChat.AdmitInput(request); err != nil {
+			return nil, err
+		}
 		return request, nil
 	}
 	identity, err := modelInvocationID(invocation)

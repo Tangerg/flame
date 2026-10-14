@@ -40,8 +40,7 @@ func (passthroughRunWorkingContext) ComposeWorkingContext(
 
 type acceptAllRunModelInputs struct{}
 
-func (acceptAllRunModelInputs) AdmitSelection(modelref.Selection) error                 { return nil }
-func (acceptAllRunModelInputs) AdmitInput(modelref.Selection, []corechat.Message) error { return nil }
+func (acceptAllRunModelInputs) AdmitSelection(modelref.Selection) error { return nil }
 
 func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinator {
 	t.Helper()

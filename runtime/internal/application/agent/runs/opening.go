@@ -118,12 +118,6 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 		}
 		draft.ModelSelection = selected
 	}
-	if admitErr := c.models.AdmitInput(draft.ModelSelection, []corechat.Message{preparation.currentMessage}); admitErr != nil {
-		return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
-	}
-	if admitErr := c.models.AdmitInput(draft.ModelSelection, draft.WorkingContext); admitErr != nil {
-		return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
-	}
 	if err := c.rootStarts.ValidateRootStart(draft); err != nil {
 		return StartResult{}, err
 	}
