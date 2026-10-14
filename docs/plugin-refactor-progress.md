@@ -14,6 +14,30 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Final-gate read/write transaction repair (2026-10-15)
+
+- Product: `f8d2d9bd8`. The first
+  current full run exposed two deterministic `SQLITE_BUSY` failures in interrupt
+  and Session/Plan/Goal snapshot tests. Immediate writer admission had also been
+  applied to pure reads. This was introduced by the earlier shared transaction
+  change, not an unrelated baseline failure.
+- Added public `RunReadSnapshot`: deferred snapshots join the same database owner
+  and refuse nested write-set promotion. Mutation paths keep immediate writer
+  admission, cancellation, rollback diagnostics and connection settlement.
+  Migrated Session/query/export, Goal, installation, checkpoint, trajectory and
+  aggregate endpoint reads. Existing snapshot assertions are unchanged; the
+  instrumented Goal driver now forwards actual read transaction options.
+- Passed: complete public storage (0.846s), persistence (2.408s), Core SQLite
+  (2.150s), and complete bootstrap (86.007s), including every original crash cut.
+  Public Go API generation contains the new additive function; no wire/schema or
+  data conversion changes. The failed full run was terminated after diagnosis
+  and is not a pass; its mixed-source continuation is not acceptance evidence.
+- Current shared protocol check passes all 355 tests; Desktop/SDK/Reviews and
+  portable typechecks pass. Portable format/resource gates pass after one
+  formatting-only component correction. Static API consumer closure exposed three
+  orphaned composition management operations; add real CLI inspection/selection
+  consumers, then run final current full/race/native gates with source frozen.
+
 ### Final dependency and Tool-admission audit (2026-10-15)
 
 - Product: `9f3de47f0`. A deterministic RED regression exposed lost transitive
