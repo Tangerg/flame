@@ -226,8 +226,16 @@ source completion; invalid/missing evidence cannot manufacture success. The call
 keeps transport refusal/uncertainty classification with its existing owner.
 PluginCallbackCaller consumes the same stream with its captured original reference,
 lazily opening and closing the ordinary Runtime Client. Invoked work missing call
-context is refused instead of using activation. Production model chains, query
-streams, dependency retention and TS delivery remain open.
+context is refused instead of using activation. TS plugins.stream now consumes
+chunks through an awaited callback and resolves only the decoded final result.
+It uses the existing intent/binding/input journal; transport loss retains that
+original record without automatic replay. Recovery derives stream/unary delivery
+from the original contract and restores its exact route before current preparation.
+Each HTTP request waits for its own notification consumption while the shared
+client continues handling nested/unrelated RPC. Stop/client closure releases the
+reader/observers and joins in-flight asynchronous consumers. Unsafe numeric stream input/evidence is refused instead of
+silently rounded; full cross-language wide-number parity remains unfinished.
+Production model chains, query streams and dependency retention remain open.
 Unary entrances continue to refuse stream methods before route creation. Stream
 recovery stores no competing business result or chunk history.
 

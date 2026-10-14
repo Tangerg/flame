@@ -3,6 +3,7 @@ import { MutationLookupError, mutationSettlementIsUnknown } from "./mutation";
 import { MutationJournalError } from "./durableMutationJournal";
 import type { MutationJournal, PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
+import { pluginDeliveryMethod } from "./request";
 
 export async function callPluginCommand<T>(
   journal: MutationJournal,
@@ -13,6 +14,8 @@ export async function callPluginCommand<T>(
   decode: (output: unknown) => T,
   signal?: AbortSignal,
 ): Promise<T> {
+  if (pluginDeliveryMethod(input) !== "plugins.call")
+    throw new TypeError("Unary plugin command requires a unary method");
   const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
   return reservation.track(() =>
     wire.openMutation(

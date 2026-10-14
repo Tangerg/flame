@@ -129,6 +129,7 @@ function mapMutation<R>(
 export function bindOperations<
   Inputs,
   Outputs extends { [K in keyof Inputs]: unknown },
+  Chunks extends { [K in keyof Inputs]?: unknown } = {},
 >(context: ComponentContext, contract: string, target: Target) {
   if (!context.binding)
     throw new Error("component has no declared callable contribution");
@@ -139,12 +140,13 @@ export function bindOperations<
     method: K,
     input: Inputs[K],
     kind: "query" | "command",
+    delivery: "unary" | "stream",
   ) {
     context.signal.throwIfAborted();
     const descriptor = required.methods.find((value) => value.name === method);
     if (
       !descriptor ||
-      descriptor.stream !== undefined ||
+      (descriptor.stream !== undefined) !== (delivery === "stream") ||
       descriptor.kind !== kind ||
       descriptor.target !== captured.scope
     ) {
@@ -163,6 +165,26 @@ export function bindOperations<
     };
   }
   return {
+    stream: <K extends keyof Inputs & keyof Chunks & string>(
+      intent: string,
+      method: K,
+      input: Inputs[K],
+      consume: (chunk: Chunks[K], signal: AbortSignal) => void | Promise<void>,
+      signal: AbortSignal = context.signal,
+    ): Promise<Outputs[K]> => {
+      const invocation = request(method, input, "command", "stream");
+      const { input: _, contract, method: name, ...binding } = invocation;
+      return context.track(
+        context.runtime.plugins.stream(
+          intent,
+          { contract, method: name, input: invocation.input },
+          async () => binding,
+          (chunk, signal) => consume(chunk as Chunks[K], signal),
+          (value) => value as Outputs[K],
+          AbortSignal.any([context.signal, signal]),
+        ),
+      );
+    },
     query: async <K extends keyof Inputs & string>(
       method: K,
       input: Inputs[K],
@@ -170,7 +192,7 @@ export function bindOperations<
     ): Promise<Outputs[K]> =>
       context.track(
         context.runtime.plugins
-          .call(request(method, input, "query"), {
+          .call(request(method, input, "query", "unary"), {
             signal: AbortSignal.any([context.signal, signal]),
           })
           .then(output<Outputs[K]>),
@@ -180,7 +202,7 @@ export function bindOperations<
       input: Inputs[K],
     ): MutationPromise<Outputs[K]> => {
       const mutation = context.runtime.plugins.call(
-        request(method, input, "command"),
+        request(method, input, "command", "unary"),
         { signal: context.signal },
       );
       if (!("retry" in mutation) || !("idempotencyKey" in mutation))

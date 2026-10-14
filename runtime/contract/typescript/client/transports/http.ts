@@ -116,10 +116,21 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     let responseSeen = false;
     let streamError: Error | undefined;
     let parsedEvent: TransportEvent | undefined;
+    let consumption: Promise<void> | undefined;
     const parser = createParser({
       onEvent(event) {
         if (!event.data) return;
-        const msg = parseRpcMessage(event.data);
+        if (
+          method === "plugins.stream" &&
+          (event.id || (event.event !== undefined && event.event !== "message"))
+        ) {
+          throw new RpcProtocolError(
+            "plugin stream",
+            [{ path: "$", detail: "requires ephemeral message frames without a replay cursor" }],
+            metadata.requestId,
+          );
+        }
+        const msg = parseRpcMessage(event.data, method === "plugins.stream");
         if (!msg) {
           streamError = new RpcProtocolError(
             "event stream",
@@ -131,11 +142,20 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         if (isResponse(msg) && msg.id === requestId) {
           responseSeen = true;
         }
+        const consumed = method === "plugins.stream" ? Promise.withResolvers<void>() : undefined;
+        consumption = consumed?.promise;
         parsedEvent = {
           type: "message",
           message: msg,
           requestRpcId: requestId,
           metadata,
+          ...(consumed
+            ? {
+                consumed: (delivery: Promise<void>) => {
+                  void delivery.then(consumed.resolve, consumed.reject);
+                },
+              }
+            : {}),
         };
       },
       onError(error) {
@@ -153,7 +173,39 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       if (parsedEvent === undefined) return undefined;
       const event = parsedEvent;
       parsedEvent = undefined;
-      return channel.send(event);
+      return (async () => {
+        if (!(await channel.send(event))) return false;
+        if (consumption) {
+          const delivery = consumption;
+          consumption = undefined;
+          if (
+            !(await new Promise<boolean>((resolve, reject) => {
+              const abort = () => {
+                cleanup();
+                resolve(false);
+              };
+              const cleanup = () => signal?.removeEventListener("abort", abort);
+              void delivery.then(
+                () => {
+                  cleanup();
+                  resolve(true);
+                },
+                (error: unknown) => {
+                  cleanup();
+                  reject(error);
+                },
+              );
+              if (signal?.aborted) {
+                resolve(false);
+                return;
+              }
+              signal?.addEventListener("abort", abort, { once: true });
+            }))
+          )
+            return false;
+        }
+        return signal?.aborted !== true;
+      })();
     };
     const reader = body.getReader();
     readers.add(reader);

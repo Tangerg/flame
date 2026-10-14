@@ -5,7 +5,7 @@ import {
   type WireParams,
 } from "@flame/runtime-contract/methods";
 import { validateMethodParams, validateWire } from "@flame/runtime-contract/validate";
-import type { Descriptor, RequestMeta } from "@flame/runtime-contract/wire";
+import type { Descriptor, RequestMeta, CallPluginRequest } from "@flame/runtime-contract/wire";
 import { RpcProtocolError } from "./errors";
 
 export function checkRequest<M extends WireMethodName>(
@@ -31,6 +31,10 @@ export function requestRequiresIdempotency<M extends WireMethodName>(
     return wireMethodRequiresIdempotency(method);
   }
   const request = checkRequest("plugins.call", params);
+  return pluginMethod(request).kind === "command";
+}
+
+function pluginMethod(request: Pick<CallPluginRequest, "contract" | "method">) {
   const contract: unknown = JSON.parse(request.contract);
   const violations = validateWire("Descriptor", contract);
   if (violations.length) throw new RpcProtocolError("plugin contract", violations);
@@ -40,5 +44,15 @@ export function requestRequiresIdempotency<M extends WireMethodName>(
   if (members.length !== 1 || !["query", "command"].includes(members[0]!.kind)) {
     throw new TypeError("Plugin call requires one admitted query or command method");
   }
-  return members[0]!.kind === "command";
+  return members[0]!;
+}
+
+export function pluginDeliveryMethod(
+  request: Pick<CallPluginRequest, "contract" | "method">,
+): "plugins.call" | "plugins.stream" {
+  const method = pluginMethod(request);
+  if (method.stream === undefined) return "plugins.call";
+  if (method.kind !== "command")
+    throw new TypeError("Installed stream requires a command contract");
+  return "plugins.stream";
 }

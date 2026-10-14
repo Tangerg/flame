@@ -1,4 +1,10 @@
-import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
+import {
+  errorMessage,
+  RpcError,
+  RpcProtocolError,
+  RpcTransportError,
+  RpcConnectionError,
+} from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
@@ -34,7 +40,7 @@ import type { RpcId, RpcMessage } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
 
 export interface NotificationObserver<M extends WireNotificationName = WireNotificationName> {
-  next(params: WireNotificationParams[M], requestRpcId: RpcId): void;
+  next(params: WireNotificationParams[M], requestRpcId: RpcId): void | Promise<void>;
   error(error: RpcProtocolError | RpcTransportError, requestRpcId?: RpcId): void;
 }
 
@@ -86,6 +92,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   const pending = new Map<RpcId, Pending>();
   const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
   const streamEndHandlers = new Set<StreamEndHandler>();
+  const consumers = new Set<Promise<void>>();
   const connection = new AbortController();
   let closePromise: Promise<void> | undefined;
 
@@ -146,14 +153,19 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       }
       return;
     }
-    dispatchMessage(event.message, event.requestRpcId, event.metadata);
+    const delivery = dispatchMessage(event.message, event.requestRpcId, event.metadata);
+    if (event.consumed) event.consumed(delivery ?? Promise.resolve());
+    else if (delivery)
+      void delivery.catch((cause: unknown) =>
+        failConnection(new RpcConnectionError(errorMessage(cause))),
+      );
   }
 
   function dispatchMessage(
     msg: RpcMessage,
     requestRpcId: RpcId,
     metadata?: TransportResponseMetadata,
-  ): void {
+  ): Promise<void> | undefined {
     if (isResponse(msg)) {
       const entry = pending.get(msg.id);
       if (!entry) return;
@@ -225,14 +237,35 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         for (const observer of handlers) observer.error(failure, requestRpcId);
         return;
       }
+      const deliveries: Promise<void>[] = [];
       for (const observer of handlers) {
         try {
-          observer.next(msg.params as WireNotificationParams[typeof msg.method], requestRpcId);
+          const delivery = observer.next(
+            msg.params as WireNotificationParams[typeof msg.method],
+            requestRpcId,
+          );
+          if (delivery) {
+            const consumed = delivery.catch((cause: unknown) => {
+              observer.error(
+                new RpcConnectionError(`notification consumer failed: ${errorMessage(cause)}`),
+                requestRpcId,
+              );
+            });
+            consumers.add(consumed);
+            void consumed.then(
+              () => consumers.delete(consumed),
+              () => consumers.delete(consumed),
+            );
+            deliveries.push(consumed);
+          }
         } catch (err) {
-          console.error(`[rpc] notification handler for "${msg.method}" threw:`, err);
+          observer.error(
+            new RpcConnectionError(`notification consumer failed: ${errorMessage(err)}`),
+            requestRpcId,
+          );
         }
       }
-      return;
+      return Promise.all(deliveries).then(() => undefined);
     }
     console.warn("[rpc] dropping unexpected server-initiated Request", msg);
   }
@@ -360,6 +393,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         closeFailure = error;
       }
       await receiveLoop;
+      await Promise.all(consumers);
       if (closeFailure !== undefined) throw closeFailure;
     })();
     return closePromise;

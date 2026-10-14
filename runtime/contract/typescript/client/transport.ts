@@ -17,6 +17,7 @@ export type TransportEvent =
       message: RpcMessage;
       requestRpcId: RpcId;
       metadata?: TransportResponseMetadata;
+      consumed?: (delivery: Promise<void>) => void;
     }
   | { type: "requestError"; rpcId: RpcId; error: Error }
   | {

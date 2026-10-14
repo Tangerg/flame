@@ -102,7 +102,19 @@ which the SDK exports as the same class.
 
 
 Generated streaming methods publish a distinct chunk schema and final result.
-The component bindOperations entrance remains unary and refuses stream metadata
-before constructing delivery. Streaming model callbacks use the public Go SDK's
-existing authenticated lifetime; installed/TS streaming delivery remains open.
-A descriptor alone cannot turn a unary command into a stream or an unknown journal entry.
+Supply the generated MethodChunks as bindOperations' third type map to use its
+stream(intent, method, input, consume, signal) function. The captured target/binding
+and original contract are checked before the common client plugins.stream entrance.
+Each consume(chunk, signal) may return a Promise; the request waits for it while
+nested RPC remains available. The returned Promise resolves only the final output.
+Consumers must honor the supplied signal; client closure cancels and joins their
+returned Promises alongside the transport reader.
+Component tracking and signal bound the same operation; no browser relay is added.
+Ordinary query/command bindings still refuse stream metadata before delivery.
+
+The TS stream uses the existing durable intent journal. Missing/invalid terminal,
+consumer/decoder failure and client replacement preserve the original identity,
+binding and input; restoration reads the original receipt without chunk replay or
+current-provider preparation. Unsafe numeric input/stream evidence is refused
+before it can be accepted as a rounded result. Full wide-number parity, query
+streams and installed production model/dependency composition remain open.

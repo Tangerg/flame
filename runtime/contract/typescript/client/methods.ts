@@ -1,4 +1,5 @@
 import { callPluginCommand } from "./pluginCommand";
+import { callPluginStream } from "./pluginStream";
 import type {
   OpenPluginResourcesRequest,
   PluginResourceLease,
@@ -300,6 +301,14 @@ export interface Methods {
     };
   };
   plugins: {
+    stream: <T>(
+      intent: string,
+      input: PluginCommandInput,
+      prepare: () => Promise<PluginCommandBinding>,
+      consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
+      decode: (output: unknown) => T,
+      signal?: AbortSignal,
+    ) => Promise<T>;
     command: <T>(
       intent: string,
       input: PluginCommandInput,
@@ -616,6 +625,18 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      stream: (intent, input, prepare, consume, decode, signal) =>
+        callPluginStream(
+          mutationJournal,
+          client,
+          { perform, openMutation },
+          intent,
+          input,
+          prepare,
+          consume,
+          decode,
+          signal,
+        ),
       command: (intent, input, prepare, decode, signal) =>
         callPluginCommand(
           mutationJournal,

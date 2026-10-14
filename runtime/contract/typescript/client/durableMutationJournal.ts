@@ -1,5 +1,5 @@
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
-import { checkRequest, requestRequiresIdempotency } from "./request";
+import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
@@ -144,8 +144,9 @@ function validInstalled(value: JournalEntry["installed"]): boolean {
   )
     return false;
   try {
-    const request = checkRequest("plugins.call", { ...value.route, input: null });
-    return requestRequiresIdempotency("plugins.call", request);
+    const method = pluginDeliveryMethod(value.route);
+    const request = checkRequest(method, { ...value.route, input: null });
+    return requestRequiresIdempotency(method, request);
   } catch {
     return false;
   }
@@ -399,7 +400,7 @@ export function openDurableMutationJournal(
       if (
         input.method !== route.method ||
         input.contract !== route.contract ||
-        !matchesCommand(entry, "plugins.call", request)
+        !matchesCommand(entry, pluginDeliveryMethod(request), request)
       )
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
@@ -413,14 +414,15 @@ export function openDurableMutationJournal(
     stagePluginCommand(intent, request, claimed) {
       const original = journal.findPluginCommand(intent, request, claimed);
       if (original) return original;
-      checkRequest("plugins.call", request);
-      if (!requestRequiresIdempotency("plugins.call", request))
+      const method = pluginDeliveryMethod(request);
+      checkRequest(method, request);
+      if (!requestRequiresIdempotency(method, request))
         throw new MutationJournalError("plugin command requires a command operation");
       const scope = currentScope();
       if (loadEntries(options.storage).length >= MAX_ENTRIES)
         throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
       const { input: _, ...route } = structuredClone(request);
-      const entry = createEntry("plugins.call", request, scope, crypto.randomUUID(), {
+      const entry = createEntry(method, request, scope, crypto.randomUUID(), {
         intent,
         route,
       });
