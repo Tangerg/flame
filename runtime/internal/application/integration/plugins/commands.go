@@ -70,8 +70,8 @@ func (c *Commands) Find(ctx context.Context, id, method string, input jsoninput.
 // CommandAdmission captures routing and its actual activation dependencies at the
 // same serialization point. It carries no private business settlement.
 type CommandAdmission struct {
-	Binding      ContributionBinding
-	Dependencies []plugin.Dependency
+	Binding    ContributionBinding
+	Activation plugin.Activation
 }
 
 func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (capability.Invocation, error)) (*plugin.Command, error) {
@@ -100,7 +100,7 @@ func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.
 		if err != nil {
 			return err
 		}
-		command, err = plugin.NewCommand(plugin.CommandBinding{ID: id, Method: method, Input: input, Contract: binding.Contract, Contribution: binding.ContributionID, Export: binding.Export, Provider: plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, Dependencies: admitted.Dependencies, Server: binding.ServerName, Invocation: invocation})
+		command, err = plugin.NewCommand(plugin.CommandBinding{ID: id, Method: method, Input: input, Contract: binding.Contract, Contribution: binding.ContributionID, Export: binding.Export, Provider: plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}, Activation: admitted.Activation, Server: binding.ServerName, Invocation: invocation})
 		if err != nil {
 			return err
 		}

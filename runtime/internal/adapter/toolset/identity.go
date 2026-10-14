@@ -104,55 +104,53 @@ func InstallationDependency(executable toolcontract.Tool) (plugin.Dependency, bo
 	return dependency, true, nil
 }
 
-type installationDependencies interface {
-	InstallationDependencies() ([]plugin.Dependency, error)
+type installationActivation interface {
+	InstallationActivation() (plugin.Activation, error)
 }
 
 // The source owns the activation graph; the manifest only freezes its projection.
-func InstallationDependencies(executable toolcontract.Tool) ([]plugin.Dependency, error) {
+func InstallationActivation(executable toolcontract.Tool) (plugin.Activation, error) {
 	root, installed, err := InstallationDependency(executable)
 	if err != nil || !installed {
-		return nil, err
+		return plugin.Activation{}, err
 	}
-	source, found, err := toolcontract.Capability[installationDependencies](executable)
+	source, found, err := toolcontract.Capability[installationActivation](executable)
 	if err != nil {
-		return nil, err
+		return plugin.Activation{}, err
 	}
 	if !found {
-		return nil, fmt.Errorf("toolset: installation tool has no activation dependencies")
+		return plugin.Activation{}, fmt.Errorf("toolset: installation tool has no activation proof")
 	}
-	dependencies, err := source.InstallationDependencies()
+	activation, err := source.InstallationActivation()
 	if err != nil {
-		return nil, err
+		return plugin.Activation{}, err
 	}
-	if err := plugin.ValidateDependencies(dependencies); err != nil {
-		return nil, err
+	if err := activation.Validate(); err != nil {
+		return plugin.Activation{}, err
 	}
-	for _, dependency := range dependencies {
-		if dependency == root {
-			return dependencies, nil
-		}
+	if !slices.Contains(activation.Dependencies, root) {
+		return plugin.Activation{}, fmt.Errorf("toolset: activation omits its source release")
 	}
-	return nil, fmt.Errorf("toolset: activation dependencies omit their source release")
+	return activation.Clone(), nil
 }
 
-// A manifest keeps its admitted release set until all Tool calls join. A
-// reconnected collaborator cannot silently expand that execution's authority.
+// A manifest's graph identity also fences same-release reconnects whose selected
+// contributions or decorator ordering changed while execution was waiting.
 type frozenInstallationTool struct {
 	toolcontract.Tool
-	dependencies []plugin.Dependency
+	activation plugin.Activation
 }
 
 func (t frozenInstallationTool) Unwrap() toolcontract.Tool { return t.Tool }
-func (t frozenInstallationTool) InstallationDependencies() ([]plugin.Dependency, error) {
-	return slices.Clone(t.dependencies), nil
+func (t frozenInstallationTool) InstallationActivation() (plugin.Activation, error) {
+	return t.activation.Clone(), nil
 }
 func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-	current, err := InstallationDependencies(t.Tool)
+	current, err := InstallationActivation(t.Tool)
 	if err != nil {
 		return chat.ToolOutput{}, err
 	}
-	if !slices.Equal(current, t.dependencies) {
+	if !current.Equal(t.activation) {
 		return chat.ToolOutput{}, plugin.ErrStale
 	}
 	return t.Tool.Call(ctx, invocation)

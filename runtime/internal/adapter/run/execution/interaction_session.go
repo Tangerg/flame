@@ -48,7 +48,7 @@ type interactionSession struct {
 	start               runs.RootExecutionStart
 	modelFailures       interactionModelFailures
 	modelObservers      []plugins.ContributionBinding
-	modelDependencies   []plugin.Dependency
+	modelActivations    []plugin.Activation
 	modelContexts       []plugins.ContributionBinding
 	modelInputs         []plugins.ContributionBinding
 	selectedChat        modeladapter.SelectedChat

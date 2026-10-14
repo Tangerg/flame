@@ -289,5 +289,5 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 }
 
 func commandAdmission(binding plugins.ContributionBinding) plugins.CommandAdmission {
-	return plugins.CommandAdmission{Binding: binding, Dependencies: []plugin.Dependency{{InstallationID: binding.InstallationID, Digest: binding.Digest}}}
+	return plugins.CommandAdmission{Binding: binding, Activation: plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: binding.InstallationID, Digest: binding.Digest}}}}
 }

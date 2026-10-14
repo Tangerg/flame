@@ -374,3 +374,28 @@ func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
 		t.Fatalf("query acquired command recovery evidence: dependencies=%v receipt=%+v invocations=%d error=%v", dependencies, f.receipt, f.invocations.Load(), err)
 	}
 }
+
+func TestPreparedCommandRefusesAnotherActivationWithTheSameReleases(t *testing.T) {
+	f := newStreamFixture(t, "complete")
+	ctx := operation.Bind(t.Context(), "records.stream", "original-graph")
+	call, err := f.calls.PrepareStream(ctx, f.request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared := call.(*installedStream)
+	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) capability.Target { return f.request.Target }, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := record
+	changed.Activation.Identity = testsupport.Digest("another composition in the same releases")
+	if err := f.calls.admitDispatch(ctx, changed); !errors.Is(err, plugin.ErrStale) {
+		t.Fatalf("same-release graph change admitted: %v", err)
+	}
+	if err := f.calls.admitDispatch(ctx, record); err != nil {
+		t.Fatalf("original graph refused: %v", err)
+	}
+	if f.invocations.Load() != 0 {
+		t.Fatal("graph validation dispatched an operation")
+	}
+}

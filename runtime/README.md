@@ -1259,11 +1259,15 @@ including transitively bound optional collaborators. It does not resolve current
 provider choices to reconstruct a previous activation. Manifest Tools, model
 captures and unresolved installed commands retain the resulting canonical release
 set; a declared bound provider that is unavailable is an error, not optional absence.
-Changed release sets refuse fresh dispatch. Known command receipt lookup remains
-with its original business owner and does not require replaying collaborators.
+Activation identity includes the actual ordered contribution/export/contract edges
+and source authority of every bound entry. Same-release contribution or order
+changes refuse fresh dispatch too; reconnecting the exact same graph preserves its
+identity. Tool and model deployment identities include this proof for restoration.
+Known command receipt lookup remains with its original business owner and does not require replaying collaborators.
 Command observation releases its dependencies without erasing the original route.
 
-`plugin_commands.dependencies_json` is now required immutable routing evidence.
+`plugin_commands.activation_json` is required immutable routing evidence containing
+that identity and its release projection. The former release-only column is removed.
 Former Runtime databases are refused before writes; retain them separately and use
 a fresh Runtime data directory. Private plugin databases are unchanged. Existing
 waiting executions must finish under their original binary: model dependencies also

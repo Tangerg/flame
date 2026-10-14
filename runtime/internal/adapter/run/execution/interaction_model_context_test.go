@@ -154,10 +154,11 @@ func (*contextCaptureComposition) PrepareInput(_ context.Context, _ []plugins.Co
 	return request.Clone(), nil
 }
 
-func (c *contextCaptureComposition) Dependencies(_ context.Context, bindings []plugins.ContributionBinding) ([]plugin.Dependency, error) {
-	dependencies := slices.Clone(c.dependencies)
+func (c *contextCaptureComposition) Activations(_ context.Context, bindings []plugins.ContributionBinding) ([]plugin.Activation, error) {
+	var activations []plugin.Activation
 	for _, binding := range bindings {
-		dependencies = append(dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
+		dependencies := append(slices.Clone(c.dependencies), plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
+		activations = append(activations, plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: plugin.CompactDependencies(dependencies)})
 	}
-	return plugin.CompactDependencies(dependencies), nil
+	return activations, nil
 }

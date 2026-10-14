@@ -16,7 +16,7 @@ import (
 )
 
 type InteractionModelComposition interface {
-	Dependencies(context.Context, []plugins.ContributionBinding) ([]plugin.Dependency, error)
+	Activations(context.Context, []plugins.ContributionBinding) ([]plugin.Activation, error)
 	ResolveInput(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateInput(context.Context, []plugins.ContributionBinding) error
 	PrepareInput(context.Context, []plugins.ContributionBinding, modelref.Selection, *chat.Request) (*chat.Request, error)
@@ -89,4 +89,12 @@ func decodeModelBindings(values []modelContributionWire, contract *capability.Co
 		bindings = append(bindings, plugins.ContributionBinding{InstallationID: installation, Digest: digest, ContributionID: contribution, ServerName: server, ServerID: id, Export: value.Export, Contract: identity})
 	}
 	return bindings, nil
+}
+
+func activationIdentities(activations []plugin.Activation) []string {
+	identities := make([]string, len(activations))
+	for i, activation := range activations {
+		identities[i] = activation.Identity.String()
+	}
+	return identities
 }

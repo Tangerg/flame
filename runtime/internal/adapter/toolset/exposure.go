@@ -103,13 +103,13 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 	freeze := func(tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
 		frozen := make([]toolcontract.Tool, len(tools))
 		for index, executable := range tools {
-			dependencies, err := InstallationDependencies(executable)
+			activation, err := InstallationActivation(executable)
 			if err != nil {
 				return nil, err
 			}
-			installations = append(installations, dependencies...)
-			if len(dependencies) > 0 {
-				executable = frozenInstallationTool{Tool: executable, dependencies: slices.Clone(dependencies)}
+			installations = append(installations, activation.Dependencies...)
+			if !activation.Identity.IsZero() {
+				executable = frozenInstallationTool{Tool: executable, activation: activation.Clone()}
 			}
 			frozen[index] = executable
 		}

@@ -20,8 +20,8 @@ func NewPluginCommandStore(db *sql.DB) *PluginCommandStore { return &PluginComma
 
 func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	var record plugin.CommandBinding
-	var installation, digest, input, contract, server, contribution, invocation, dependencies string
-	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,dependencies_json,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &invocation, &dependencies, &record.Phase)
+	var installation, digest, input, contract, server, contribution, invocation, activation string
+	err := Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &invocation, &activation, &record.Phase)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -49,7 +49,7 @@ func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Comman
 	if err := json.Unmarshal([]byte(invocation), &record.Invocation, json.RejectUnknownMembers(true)); err != nil {
 		return nil, false, err
 	}
-	if record.Dependencies, err = decodeCommandDependencies(dependencies); err != nil {
+	if record.Activation, err = decodeCommandActivation(activation); err != nil {
 		return nil, false, err
 	}
 	command, err := plugin.RestoreCommand(record)
@@ -68,7 +68,7 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		}
 		if found {
 			old := previous.Snapshot()
-			if old.Method != r.Method || old.Input != r.Input || old.Contract != r.Contract || old.Provider != r.Provider || old.Server != r.Server || old.Contribution != r.Contribution || old.Export != r.Export || old.Invocation != r.Invocation || !slices.Equal(old.Dependencies, r.Dependencies) {
+			if old.Method != r.Method || old.Input != r.Input || old.Contract != r.Contract || old.Provider != r.Provider || old.Server != r.Server || old.Contribution != r.Contribution || old.Export != r.Export || old.Invocation != r.Invocation || !old.Activation.Equal(r.Activation) {
 				return plugin.ErrCommandConflict
 			}
 			_, err = Connection(ctx, s.db).ExecContext(ctx, `UPDATE plugin_commands SET phase=? WHERE id=?`, r.Phase, r.ID)
@@ -81,17 +81,17 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		if err != nil {
 			return err
 		}
-		dependencies, err := encodeCommandDependencies(r.Dependencies)
+		activation, err := encodeCommandActivation(r.Activation)
 		if err != nil {
 			return err
 		}
-		_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,dependencies_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), string(dependencies), r.Phase)
+		_, err = Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
 		return err
 	})
 }
 
 func (s *PluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	rows, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,dependencies_json FROM plugin_commands WHERE phase != 'observed'`)
+	rows, err := Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase != 'observed'`)
 	if err != nil {
 		return nil, err
 	}
@@ -102,16 +102,16 @@ func (s *PluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]
 		if err := rows.Scan(&installation, &release, &source); err != nil {
 			return nil, err
 		}
-		dependencies, err := decodeCommandDependencies(source)
+		activation, err := decodeCommandActivation(source)
 		if err != nil {
 			return nil, err
 		}
-		if !slices.ContainsFunc(dependencies, func(dependency plugin.Dependency) bool {
+		if !slices.ContainsFunc(activation.Dependencies, func(dependency plugin.Dependency) bool {
 			return dependency.InstallationID.String() == installation && dependency.Digest.String() == release
 		}) {
 			return nil, plugin.ErrInvalid
 		}
-		held = append(held, dependencies...)
+		held = append(held, activation.Dependencies...)
 	}
 	return plugin.CompactDependencies(held), rows.Err()
 }
@@ -121,34 +121,42 @@ type commandDependencyJSON struct {
 	Digest       string `json:"digest"`
 }
 
-func encodeCommandDependencies(dependencies []plugin.Dependency) (string, error) {
-	values := make([]commandDependencyJSON, len(dependencies))
-	for i, dependency := range dependencies {
-		values[i] = commandDependencyJSON{dependency.InstallationID.String(), dependency.Digest.String()}
-	}
-	encoded, err := json.Marshal(values)
-	return string(encoded), err
+type commandActivationJSON struct {
+	Identity     string                  `json:"identity"`
+	Dependencies []commandDependencyJSON `json:"dependencies"`
 }
 
-func decodeCommandDependencies(source string) ([]plugin.Dependency, error) {
-	var values []commandDependencyJSON
-	if err := json.Unmarshal([]byte(source), &values, json.RejectUnknownMembers(true)); err != nil {
-		return nil, err
+func encodeCommandActivation(activation plugin.Activation) (string, error) {
+	values := make([]commandDependencyJSON, len(activation.Dependencies))
+	for i, dependency := range activation.Dependencies {
+		values[i] = commandDependencyJSON{dependency.InstallationID.String(), dependency.Digest.String()}
 	}
-	if len(values) == 0 {
-		return nil, plugin.ErrInvalid
+	encoded, err := json.Marshal(commandActivationJSON{Identity: activation.Identity.String(), Dependencies: values})
+	return string(encoded), err
+}
+func decodeCommandActivation(source string) (plugin.Activation, error) {
+	var value commandActivationJSON
+	if err := json.Unmarshal([]byte(source), &value, json.RejectUnknownMembers(true)); err != nil {
+		return plugin.Activation{}, err
 	}
-	dependencies := make([]plugin.Dependency, len(values))
-	for i, value := range values {
-		id, err := resourceid.ParseInstallation(value.Installation)
+	identity, err := fingerprint.ParseDigest(value.Identity)
+	if err != nil {
+		return plugin.Activation{}, err
+	}
+	if len(value.Dependencies) == 0 {
+		return plugin.Activation{}, plugin.ErrInvalid
+	}
+	activation := plugin.Activation{Identity: identity, Dependencies: make([]plugin.Dependency, len(value.Dependencies))}
+	for i, dependency := range value.Dependencies {
+		id, err := resourceid.ParseInstallation(dependency.Installation)
 		if err != nil {
-			return nil, err
+			return plugin.Activation{}, err
 		}
-		digest, err := fingerprint.ParseDigest(value.Digest)
+		digest, err := fingerprint.ParseDigest(dependency.Digest)
 		if err != nil {
-			return nil, err
+			return plugin.Activation{}, err
 		}
-		dependencies[i] = plugin.Dependency{InstallationID: id, Digest: digest}
+		activation.Dependencies[i] = plugin.Dependency{InstallationID: id, Digest: digest}
 	}
-	return dependencies, plugin.ValidateDependencies(dependencies)
+	return activation, activation.Validate()
 }

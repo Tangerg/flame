@@ -114,9 +114,9 @@ func (t Executable) CallbackSession() (*sdkmcp.ClientSession, error) {
 	return t.session, nil
 }
 
-func (t Executable) InstallationDependencies() ([]plugin.Dependency, error) {
+func (t Executable) InstallationActivation() (plugin.Activation, error) {
 	if t.owner == nil {
-		return nil, ErrUnavailable
+		return plugin.Activation{}, ErrUnavailable
 	}
-	return t.owner.Dependencies(t.session)
+	return t.owner.Activation(t.session)
 }

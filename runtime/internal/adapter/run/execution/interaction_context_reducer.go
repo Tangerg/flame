@@ -84,11 +84,11 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	}
 	if i.session.modelComposition != nil {
 		bindings := append(append(slices.Clone(i.session.modelObservers), i.session.modelContexts...), i.session.modelInputs...)
-		dependencies, err := i.session.modelComposition.Dependencies(ctx, bindings)
+		activations, err := i.session.modelComposition.Activations(ctx, bindings)
 		if err != nil {
 			return nil, err
 		}
-		if !slices.Equal(dependencies, i.session.modelDependencies) {
+		if !slices.EqualFunc(activations, i.session.modelActivations, plugin.Activation.Equal) {
 			return nil, plugin.ErrStale
 		}
 	}

@@ -2,11 +2,16 @@ package mcp
 
 import (
 	"context"
+	"crypto/sha256"
+	json "encoding/json/v2"
 	"errors"
 	"os/exec"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
@@ -194,14 +199,14 @@ func (c *Connections) Requirements(session *sdkmcp.ClientSession) (*plugin.Requi
 	return nil, ErrUnavailable
 }
 
-// Dependencies projects the exact live activation graph, including optional
+// Activation projects the exact live activation graph, including optional
 // collaborators that were bound. Re-reading current selections would retarget a
 // waiting execution after a collaborator changed its own selection.
-func (c *Connections) Dependencies(session *sdkmcp.ClientSession) ([]plugin.Dependency, error) {
+func (c *Connections) Activation(session *sdkmcp.ClientSession) (plugin.Activation, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed || session == nil {
-		return nil, ErrUnavailable
+		return plugin.Activation{}, ErrUnavailable
 	}
 	var root *server
 	for _, candidate := range c.servers {
@@ -210,6 +215,17 @@ func (c *Connections) Dependencies(session *sdkmcp.ClientSession) ([]plugin.Depe
 			break
 		}
 	}
+	type boundJSON struct{ Provider, Digest, Contribution, Server, Export, Contract string }
+	type requirementJSON struct {
+		Contribution, ID, Contract string
+		Optional                   bool
+		Bindings                   []boundJSON
+	}
+	type entryJSON struct {
+		Server, Authority string
+		Requirements      []requirementJSON
+	}
+	var entries []entryJSON
 	var dependencies []plugin.Dependency
 	visited := map[*server]bool{}
 	var collect func(*server) error
@@ -229,8 +245,12 @@ func (c *Connections) Dependencies(session *sdkmcp.ClientSession) ([]plugin.Depe
 			id, _ := current.id.Origin().Installation()
 			dependencies = append(dependencies, plugin.Dependency{InstallationID: id, Digest: digest})
 		}
+		entry := entryJSON{Server: current.id.String(), Authority: current.config.AuthorityFingerprint().String(), Requirements: []requirementJSON{}}
 		for _, required := range owned.bindings.Snapshot() {
+			requirement := requirementJSON{Contribution: required.Contribution.String(), ID: required.ID.String(), Contract: required.Contract.String(), Optional: required.Optional, Bindings: []boundJSON{}}
+
 			for _, binding := range required.Bindings {
+				requirement.Bindings = append(requirement.Bindings, boundJSON{binding.Provider.InstallationID.String(), binding.Provider.Digest.String(), binding.Contribution.String(), binding.Server.String(), binding.Export, binding.Contract.String()})
 				origin, err := mcpserver.InstallationOrigin(binding.Provider.InstallationID)
 				if err != nil {
 					return err
@@ -251,13 +271,20 @@ func (c *Connections) Dependencies(session *sdkmcp.ClientSession) ([]plugin.Depe
 					return err
 				}
 			}
+			entry.Requirements = append(entry.Requirements, requirement)
 		}
+		entries = append(entries, entry)
 		return nil
 	}
 	if err := collect(root); err != nil {
-		return nil, err
+		return plugin.Activation{}, err
 	}
-	return plugin.CompactDependencies(dependencies), nil
+	slices.SortFunc(entries, func(a, b entryJSON) int { return strings.Compare(a.Server, b.Server) })
+	encoded, err := json.Marshal(entries, json.Deterministic(true))
+	if err != nil {
+		return plugin.Activation{}, err
+	}
+	return plugin.Activation{Identity: fingerprint.Sum(sha256.Sum256(encoded)), Dependencies: plugin.CompactDependencies(dependencies)}, nil
 }
 
 func (c *Connections) ServiceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {

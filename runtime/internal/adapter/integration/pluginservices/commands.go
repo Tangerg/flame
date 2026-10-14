@@ -5,7 +5,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
@@ -173,18 +172,18 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	return commandReply[jsoninput.Input]{value: result, binding: binding, session: session}, err
 }
 
-// Prepared work may dispatch only with its original activation releases. A receipt
+// Prepared work may dispatch only with its original activation identity. A receipt
 // read deliberately needs only the original owner and never replays that graph.
 func (c *CommandCalls) admitDispatch(ctx context.Context, record plugin.CommandBinding) error {
 	binding, err := c.original(ctx, record)
 	if err != nil {
 		return err
 	}
-	dependencies, err := c.pool.InstallationDependencies(ctx, binding.ServerID)
+	activation, err := c.pool.InstallationActivation(ctx, binding.ServerID)
 	if err != nil {
 		return err
 	}
-	if !slices.Equal(record.Dependencies, dependencies) {
+	if !record.Activation.Equal(activation) {
 		return plugin.ErrStale
 	}
 	return nil
@@ -260,11 +259,11 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
 				return plugins.CommandAdmission{}, err
 			}
-			dependencies, err := c.pool.InstallationDependencies(ctx, candidate.ServerID)
+			activation, err := c.pool.InstallationActivation(ctx, candidate.ServerID)
 			if err != nil {
 				return plugins.CommandAdmission{}, err
 			}
-			return plugins.CommandAdmission{Binding: current, Dependencies: dependencies}, nil
+			return plugins.CommandAdmission{Binding: current, Activation: activation}, nil
 		}, capture)
 	}
 	if errors.Is(routeErr, plugin.ErrCommandConflict) {

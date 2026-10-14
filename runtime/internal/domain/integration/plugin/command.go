@@ -34,7 +34,7 @@ type CommandBinding struct {
 	Contribution ContributionID
 	Export       string
 	Provider     Dependency
-	Dependencies []Dependency
+	Activation   Activation
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
 	Invocation   capability.Invocation
@@ -78,13 +78,13 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if err := record.Provider.Validate(); err != nil {
 		return nil, err
 	}
-	if err := ValidateDependencies(record.Dependencies); err != nil {
+	if err := record.Activation.Validate(); err != nil {
 		return nil, err
 	}
-	if !slices.Contains(record.Dependencies, record.Provider) {
+	if !slices.Contains(record.Activation.Dependencies, record.Provider) {
 		return nil, fmt.Errorf("%w: command dependencies omit the original provider", ErrInvalid)
 	}
-	record.Dependencies = slices.Clone(record.Dependencies)
+	record.Activation = record.Activation.Clone()
 	if record.Invocation.Target.Scope == "installation" && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
 		return nil, fmt.Errorf("%w: command target differs from its installation", ErrInvalid)
 	}
@@ -101,7 +101,7 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 
 func (c *Command) Snapshot() CommandBinding {
 	record := c.record
-	record.Dependencies = slices.Clone(record.Dependencies)
+	record.Activation = record.Activation.Clone()
 	return record
 }
 func (c *Command) Matches(method string, input jsoninput.Input) bool {
