@@ -151,21 +151,19 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
               const applied = receipt.appliedItem;
               if (!material.snapshot.items.some((item) => item.id === applied.id))
                 material.snapshot.items.push(runtimeItem(applied));
-            } else if (receipt.userItemId && receipt.input) {
-              material.snapshot.pendingSteers ??= [];
+            }
+            if (receipt.userItemId && receipt.input) {
+              material.snapshot.steerInputs ??= [];
               if (
-                !material.snapshot.pendingSteers.some(
+                !material.snapshot.steerInputs.some(
                   (pending) => pending.userItemId === receipt.userItemId,
                 )
               )
-                material.snapshot.pendingSteers.push({
+                material.snapshot.steerInputs.push({
                   runId: receipt.runId,
                   userItemId: receipt.userItemId,
                   input: contentBlocksToAgentInput(receipt.input),
-                  receipt:
-                    receipt.type === "retired" || receipt.run?.status === "finished"
-                      ? "notApplied"
-                      : "accepted",
+                  receipt: receipt.type === "retired" ? "retired" : "accepted",
                 });
             }
             continue;
@@ -177,6 +175,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
         if (!snapshot.runs.some((run) => run.id === command.params.runId)) continue;
         unresolvedSteers.push({
           idempotencyKey: command.idempotencyKey,
+          userItemId: command.userItemId,
           runId: command.params.runId,
           input: contentBlocksToAgentInput(command.params.input),
           retry: () => command.retry(),

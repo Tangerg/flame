@@ -138,10 +138,10 @@ for (const consumerProject of [project, componentsProject]) {
         let wrapper;
         let target;
         if (declarationPath === METHODS_PATH) {
-          wrapper = wrapperPath(declaration, METHODS_PATH);
+          wrapper = wrapperPath(declaration, METHODS_PATH, new Set(["Methods", "WorkspaceMethods"]));
           target = consumerCalls;
         } else if (declarationPath === SIDECAR_PATH) {
-          wrapper = wrapperPath(declaration, SIDECAR_PATH);
+          wrapper = wrapperPath(declaration, SIDECAR_PATH, new Set(["SidecarClient"]));
           target = sidecarConsumerCalls;
         } else {
           continue;
@@ -550,7 +550,7 @@ function unwrapExpression(expression) {
   return node;
 }
 
-function wrapperPath(declaration, declarationSourcePath) {
+function wrapperPath(declaration, declarationSourcePath, interfaceOwners) {
   const parts = [];
   let node = declaration;
   while (node && resolve(node.getSourceFile().fileName) === declarationSourcePath) {
@@ -563,10 +563,11 @@ function wrapperPath(declaration, declarationSourcePath) {
       const name = propertyName(node.name);
       if (parts[0] !== name) parts.unshift(name);
     }
-    if (ts.isInterfaceDeclaration(node)) break;
+    if (ts.isInterfaceDeclaration(node))
+      return interfaceOwners.has(node.name.text) ? parts.join(".") : "";
     node = node.parent;
   }
-  return parts.join(".");
+  return "";
 }
 
 function discardsNonVoidResult(call) {

@@ -106,7 +106,13 @@ export async function respondNotRecorded(
           (message.params as { operation?: string }).operation === operation,
       );
     if (request) {
-      respondSuccess(t, request.id, { type: "notRecorded" });
+      respondSuccess(
+        t,
+        request.id,
+        operation === "steer"
+          ? { type: "notRecorded", candidateUserItemId: "item_steer" }
+          : { type: "notRecorded" },
+      );
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 0));

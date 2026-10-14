@@ -401,6 +401,8 @@ export const de: Record<string, string> = {
   "agent.opening.review": "Ursprüngliche Eingabe und Auswahl prüfen",
   "agent.command.unknown": "Annahme nicht bestätigt",
   "agent.command.retry": "Ursprüngliche Eingabe erneut senden",
+  "agent.steer.retired":
+    "Die ursprünglichen Ausführungsdaten sind nicht verfügbar; die Anwendung der Eingabe ist unbestätigt.",
   "agent.steer.applied": "In den Modellkontext aufgenommen",
   "agent.steer.notApplied":
     "Der Lauf endete, bevor eine angenommene Anweisung in den Modellkontext aufgenommen wurde.",

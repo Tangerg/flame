@@ -407,6 +407,8 @@ export const fr: Record<string, string> = {
   "agent.opening.review": "Vérifier la saisie et les choix initiaux",
   "agent.command.unknown": "Réception non confirmée",
   "agent.command.retry": "Réessayer l’envoi initial",
+  "agent.steer.retired":
+    "Les données de l’exécution d’origine sont indisponibles ; l’application de l’entrée ne peut pas être confirmée.",
   "agent.steer.applied": "Ajoutée au contexte du modèle",
   "agent.steer.notApplied":
     "L’exécution s’est terminée avant qu’une instruction acceptée soit ajoutée au contexte du modèle.",

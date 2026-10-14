@@ -12,7 +12,8 @@ const material = vi.hoisted(() => ({
   cancel: vi.fn(),
 }));
 vi.mock("@/plugins/builtin/agent/public/run", () => ({ cancelSessionRun: material.cancel }));
-vi.mock("@/plugins/builtin/agent/public/conversation", () => ({
+vi.mock("@/plugins/builtin/agent/public/conversation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/plugins/builtin/agent/public/conversation")>()),
   useActiveConversationRows: () => material.rows,
 }));
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
@@ -125,6 +126,7 @@ it("marks a delegated user message as the same speech bubble the transcript draw
     id: "child-task",
     role: "user",
     runId: "child",
+    steer: { runId: "child", delivery: "pending" },
     blocks: [{ kind: "text", text: "Audit axios cancellation", status: "complete" }],
   });
   navigator().go({ session: "session" });
@@ -134,6 +136,8 @@ it("marks a delegated user message as the same speech bubble the transcript draw
   const bubbles = container.querySelectorAll("[data-user-message-bubble]");
   expect(bubbles).toHaveLength(1);
   expect(bubbles[0]!.textContent).toContain("Audit axios cancellation");
+  expect(screen.getByText("Entered model context")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Retry original submission" })).toBeNull();
   expect(
     screen.getByText("Child streamed output").closest("[data-user-message-bubble]"),
   ).toBeNull();

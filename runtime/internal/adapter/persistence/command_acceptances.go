@@ -94,10 +94,9 @@ func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.C
 	return record, nil
 }
 
-func (s *CommandAcceptanceStore) PendingSessionInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
+func (s *CommandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
 	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT key FROM idempotency_records
 		WHERE kind='run_acceptance' AND operation='steer' AND session_id=? AND material_run_id IS NOT NULL
-		AND NOT EXISTS (SELECT 1 FROM history_items WHERE item_id=idempotency_records.user_item_id)
 		ORDER BY key`, sessionID)
 	if err != nil {
 		return nil, err
@@ -120,8 +119,8 @@ func (s *CommandAcceptanceStore) PendingSessionInputs(ctx context.Context, sessi
 		if err != nil {
 			return nil, err
 		}
-		if !record.Found || record.CurrentRun == nil || record.AppliedItem != nil {
-			return nil, errors.New("sqlite: pending input changed inside its snapshot")
+		if !record.Found || record.CurrentRun == nil {
+			return nil, errors.New("sqlite: accepted input changed inside its snapshot")
 		}
 		inputs = append(inputs, record.Acceptance)
 	}

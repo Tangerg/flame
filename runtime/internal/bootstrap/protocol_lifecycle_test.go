@@ -154,15 +154,20 @@ func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
 		p.t.Fatal("timed out waiting for first model call")
 	}
 
-	if _, steerRunErr := p.api.SteerRun(p.ctx, protocol.SteerRunRequest{
-		RunID:             started.RunID,
-		ExpectedSegmentID: started.SegmentID,
-		Input: []protocol.ContentBlock{{
-			Type: protocol.ContentBlockText,
-			Text: protocolLifecycleSteeringText,
-		}},
-	}); steerRunErr != nil {
-		p.t.Fatalf("runs.steer: %v", steerRunErr)
+	commandEndpoint := acceptedCommandEndpoint(p.t, p.api, p.stores)
+	options := acceptedCommandOptions()
+	options.IdempotencyKey = "protocol-lifecycle-steer"
+	options.RequestMeta.ClientCapabilities.InterruptTypes = []protocol.InterruptType{protocol.InterruptQuestion}
+	nomination, err := commandEndpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](p.ctx, delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer}, delivery.Options{RequestMeta: options.RequestMeta})
+	if err != nil || nomination.Type != protocol.RunAcceptanceNotRecorded || nomination.CandidateUserItemID == "" {
+		p.t.Fatalf("steer nomination=%+v,%v", nomination, err)
+	}
+	steered := commandEndpoint.Invoke(p.ctx, delivery.RunsSteer, protocol.SteerRunRequest{
+		RunID: started.RunID, ExpectedSegmentID: started.SegmentID,
+		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: protocolLifecycleSteeringText}},
+	}, options)
+	if steered.Failure != nil || steered.Value.(*protocol.SteerRunResponse).UserItemID != nomination.CandidateUserItemID {
+		p.t.Fatalf("steer acknowledgement=%+v,%v", steered.Value, steered.Failure)
 	}
 	close(p.model.releaseFirstCall)
 	waitForRunEvents(p.t, startEventsDone, "waiting segment")
@@ -318,6 +323,19 @@ func (p *protocolLifecycleFixture) assertColdState() {
 	}
 	if !hasUserText(items.Data, protocolLifecycleSteeringText) {
 		p.t.Fatal("cold items do not contain the structured steering message")
+	}
+	snapshot, err := restartedAPI.GetSessionSnapshot(p.ctx, protocol.GetSessionSnapshotRequest{SessionID: p.sessionID})
+	if err != nil || len(snapshot.SteerInputs) != 1 || len(snapshot.SteerInputs[0].Input) != 1 || snapshot.SteerInputs[0].Input[0].Text != protocolLifecycleSteeringText {
+		p.t.Fatalf("cold Steer origin=%+v,%v", snapshot, err)
+	}
+	applied := false
+	for _, item := range snapshot.Items {
+		if item.ID == snapshot.SteerInputs[0].UserItemID && item.Type == protocol.ItemTypeUserMessage && item.RunID == p.started.RunID {
+			applied = true
+		}
+	}
+	if !applied {
+		p.t.Fatal("cold Steer origin lost its exact committed User Item")
 	}
 }
 

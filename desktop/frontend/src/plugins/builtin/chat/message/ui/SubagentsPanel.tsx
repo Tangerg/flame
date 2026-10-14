@@ -4,7 +4,10 @@ import { useMemo } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
-import { useActiveConversationRows } from "@/plugins/builtin/agent/public/conversation";
+import {
+  useActiveConversationRows,
+  steerInputFeedback,
+} from "@/plugins/builtin/agent/public/conversation";
 import { MessageContext } from "@/plugins/sdk/messageContext";
 import {
   openWorkspaceSubagentRun,
@@ -25,6 +28,7 @@ import { renderMessageBlocks, type BlockCtx } from "./BlockRenderer";
 import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
 import { UnresolvedRunEffects } from "./UnresolvedRunEffects";
+import { SteerInputStatus } from "./SteerInputStatus";
 
 const styles = stylex.create({
   headLine: { minWidth: 0, flex: 1 },
@@ -165,6 +169,9 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
               value={{ sessionId: narrative.run.sessionId, message }}
             >
               <div {...stylex.props(ms.column, isUser && ms.columnUser)}>
+                {isUser && (
+                  <SteerInputStatus feedback={steerInputFeedback(message)} messageId={message.id} />
+                )}
                 <div
                   data-user-message-bubble={isUser ? "" : undefined}
                   className={cn(

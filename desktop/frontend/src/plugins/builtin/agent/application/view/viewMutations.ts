@@ -1,15 +1,44 @@
 import type { AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
 
+function assertSteerOwner(message: Message, runId: string): void {
+  if (
+    message.role !== "user" ||
+    (message.runId !== null && message.runId !== runId) ||
+    (message.steer && message.steer.runId !== runId)
+  )
+    throw new Error("agent.steer.itemOwnerMismatch");
+}
+
 export function projectSteerReceipt(
   view: AgentSessionView,
   messageId: string,
-  steer: NonNullable<Message["steer"]>,
+  steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
 ): AgentSessionView {
-  if (!view.messages.some((message) => message.id === messageId)) return view;
+  const message = view.messages.find((current) => current.id === messageId);
+  if (!message) return view;
+  assertSteerOwner(message, steer.runId);
   return {
     ...view,
-    messages: view.messages.map((message) =>
-      message.id === messageId ? { ...message, steer } : message,
+    messages: view.messages.map((current) =>
+      current === message
+        ? { ...current, steer: { ...current.steer, ...steer, delivery: undefined } }
+        : current,
+    ),
+  };
+}
+
+export function projectSteerDelivery(
+  view: AgentSessionView,
+  messageId: string,
+  command: Pick<NonNullable<Message["steer"]>, "runId" | "delivery">,
+): AgentSessionView {
+  const message = view.messages.find((current) => current.id === messageId);
+  if (!message) return view;
+  assertSteerOwner(message, command.runId);
+  return {
+    ...view,
+    messages: view.messages.map((current) =>
+      current === message ? { ...current, steer: { ...current.steer, ...command } } : current,
     ),
   };
 }
@@ -18,20 +47,32 @@ export function reconcileMessageIdentity(
   view: AgentSessionView,
   fromId: string,
   toId: string,
-  steerRunId?: string,
+  steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
 ): AgentSessionView {
-  if (fromId === toId) return view;
+  if (fromId === toId) return steer ? projectSteerReceipt(view, toId, steer) : view;
   const has = (id: string) => view.messages.some((message) => message.id === id);
-  if (!has(fromId) && !(steerRunId && has(toId))) return view;
+  if (!has(fromId) && !(steer && has(toId))) return view;
   const targetExists = has(toId);
+  const source = view.messages.find((message) => message.id === fromId);
+  const target = view.messages.find((message) => message.id === toId);
+  const association = steer ?? source?.steer;
+  if (association && source) assertSteerOwner(source, association.runId);
+  if (association && target) assertSteerOwner(target, association.runId);
   return {
     ...view,
     messages: targetExists
       ? view.messages
           .filter((message) => message.id !== fromId)
           .map((message) =>
-            message.id === toId && steerRunId
-              ? { ...message, steer: { runId: steerRunId, receipt: "accepted" } }
+            message.id === toId && association
+              ? {
+                  ...message,
+                  steer: {
+                    ...association,
+                    ...message.steer,
+                    ...(steer ? { ...steer, delivery: undefined } : {}),
+                  },
+                }
               : message,
           )
       : view.messages.map((message) =>
@@ -39,9 +80,7 @@ export function reconcileMessageIdentity(
             ? {
                 ...message,
                 id: toId,
-                ...(steerRunId
-                  ? { steer: { runId: steerRunId, receipt: "accepted" as const } }
-                  : {}),
+                ...(steer ? { steer: { ...message.steer, ...steer, delivery: undefined } } : {}),
               }
             : message,
         ),
@@ -57,25 +96,16 @@ export function reconcileMessageIdentity(
 export function reconcileSteerMessages(
   previous: AgentSessionView,
   authoritative: AgentSessionView,
-): { view: AgentSessionView; unapplied: boolean } {
-  const receipts = previous.messages.filter((message) => message.steer);
-  if (receipts.length === 0) return { view: authoritative, unapplied: false };
-  const messages = [...authoritative.messages];
-  let unapplied = false;
-  for (const pending of receipts) {
-    const steer = pending.steer!;
-    const index = messages.findIndex((message) => message.id === pending.id);
-    if (index >= 0) {
-      if (messages[index]!.runId === steer.runId)
-        messages[index] = { ...messages[index]!, steer: { ...steer, receipt: "accepted" } };
-    } else if (pending.runId !== steer.runId) {
-      const run = authoritative.runsById[steer.runId];
-      if (steer.receipt !== "accepted") messages.push(pending);
-      else if (run?.status === "finished") unapplied = true;
-      else if (run) messages.push(pending);
-    }
-  }
-  return { view: { ...authoritative, messages }, unapplied };
+): AgentSessionView {
+  const pending = previous.messages.filter(
+    (message) =>
+      message.steer?.delivery &&
+      !message.steer.receipt &&
+      !authoritative.messages.some((current) => current.id === message.id),
+  );
+  return pending.length
+    ? { ...authoritative, messages: [...authoritative.messages, ...pending] }
+    : authoritative;
 }
 
 export function dropMessage(view: AgentSessionView, id: string): AgentSessionView {

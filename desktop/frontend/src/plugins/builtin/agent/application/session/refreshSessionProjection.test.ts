@@ -5,6 +5,7 @@ import type {
   AgentRuntimeGateway,
 } from "../ports/runtimeGateway";
 import { configureAgentRuntimeGateway } from "../ports/runtimeGateway";
+import { steerInputFeedback } from "../view/steerInputFeedback";
 import { useAgentStore } from "../../adapters/agentStore";
 import { useNotificationStore } from "@/plugins/sdk/notifications";
 import { installAgentStatePorts } from "../../adapters/agentStatePorts";
@@ -57,7 +58,7 @@ afterEach(() => {
 
 describe("refreshAgentSessionProjection", () => {
   it.each([false, true])(
-    "reports an unapplied steer only after a committed terminal read (superseded=%s)",
+    "renders non-application only from the committed terminal input snapshot (superseded=%s)",
     async (superseded) => {
       useAgentStore.getState().appendLocalMessage(SESSION_ID, {
         id: "reserved_user_item",
@@ -68,6 +69,14 @@ describe("refreshAgentSessionProjection", () => {
       });
       const read = Promise.withResolvers<AgentSessionMaterialRead>();
       const terminal: AgentSessionSnapshot = {
+        steerInputs: [
+          {
+            runId: "run_steered",
+            userItemId: "reserved_user_item",
+            receipt: "accepted",
+            input: { parts: [{ kind: "text", text: "Use the attached reference" }] },
+          },
+        ],
         items: [],
         pendingInterruptSets: [],
         runs: [
@@ -98,10 +107,11 @@ describe("refreshAgentSessionProjection", () => {
       if (superseded) writeNewerProjectionFact();
       read.resolve(material(terminal));
       await refreshing;
-      expect(useNotificationStore.getState().log).toHaveLength(superseded ? 0 : 1);
-      expect(useAgentStore.getState().sessions[SESSION_ID]!.view.messages).toHaveLength(
-        superseded ? 2 : 0,
-      );
+      expect(useNotificationStore.getState().log).toHaveLength(0);
+      const view = useAgentStore.getState().sessions[SESSION_ID]!.view;
+      expect(view.messages).toHaveLength(superseded ? 2 : 1);
+      const input = view.messages.find((message) => message.id === "reserved_user_item")!;
+      expect(steerInputFeedback(input)).toBe(superseded ? "accepted" : "notApplied");
     },
   );
 

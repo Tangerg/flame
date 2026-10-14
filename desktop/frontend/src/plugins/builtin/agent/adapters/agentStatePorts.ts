@@ -143,10 +143,12 @@ export function installAgentStatePorts(): () => void {
     },
     dropMessage: (sessionId, messageId) =>
       useAgentStore.getState().dropMessage(sessionId, messageId),
+    projectSteerDelivery: (sessionId, messageId, command) =>
+      useAgentStore.getState().projectSteerDelivery(sessionId, messageId, command),
     projectSteerReceipt: (sessionId, messageId, steer) =>
       useAgentStore.getState().projectSteerReceipt(sessionId, messageId, steer),
-    reconcileMessageIdentity: (sessionId, fromId, toId, steerRunId) =>
-      useAgentStore.getState().reconcileMessageIdentity(sessionId, fromId, toId, steerRunId),
+    reconcileMessageIdentity: (sessionId, fromId, toId, steer) =>
+      useAgentStore.getState().reconcileMessageIdentity(sessionId, fromId, toId, steer),
     appendLocalUserMessage: (sessionId, messageId, input) =>
       useAgentStore
         .getState()

@@ -224,4 +224,23 @@ describe("transcript rows", () => {
     expect(after.rows[0]).toBe(before.rows[0]);
     expect(after.cache.has("m2")).toBe(false);
   });
+  it("does not infer an absent Item from a separate terminal Run observation", () => {
+    const accepted: Message = {
+      id: "item_steer",
+      role: "user",
+      runId: null,
+      blocks: [text("accepted input")],
+      steer: { runId: ROOT_RUN, receipt: "accepted" },
+    };
+    const active = view({ messages: [accepted], runs: [run({ id: ROOT_RUN, status: "running" })] });
+    const before = buildTranscriptRows(active, EMPTY_TRANSCRIPT_ROW_CACHE);
+    expect(before.rows[0]?.inputFeedback).toBe("accepted");
+    const after = buildTranscriptRows(
+      { ...active, runsById: { [ROOT_RUN]: run({ id: ROOT_RUN }) } },
+      before.cache,
+    );
+    expect(after.rows[0]?.message).toBe(accepted);
+    expect(after.rows[0]?.inputFeedback).toBe("accepted");
+    expect(after.rows[0]).toBe(before.rows[0]);
+  });
 });

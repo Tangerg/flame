@@ -19,6 +19,7 @@ import {
   dropMessage,
   reconcileMessageIdentity,
   projectSteerReceipt,
+  projectSteerDelivery,
 } from "@/plugins/builtin/agent/application/view/viewMutations";
 import {
   dismissVisibleProblem,
@@ -77,13 +78,18 @@ interface AgentStore {
     sessionId: string,
     fromId: string,
     toId: string,
-    steerRunId?: string,
+    steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
   ) => void;
   dropMessage: (sessionId: string, id: string) => void;
   projectSteerReceipt: (
     sessionId: string,
     messageId: string,
-    steer: NonNullable<Message["steer"]>,
+    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
+  ) => void;
+  projectSteerDelivery: (
+    sessionId: string,
+    messageId: string,
+    command: Pick<NonNullable<Message["steer"]>, "runId" | "delivery">,
   ) => void;
   dropSession: (sessionId: string) => void;
   setStop: (sessionId: string, action: StopCurrentRootRunAction | null) => void;
@@ -315,10 +321,10 @@ export const useAgentStore = create<AgentStore>((set) => ({
         ? state
         : { sessions, projectionGenerationSequence: viewEpoch };
     }),
-  reconcileMessageIdentity: (sessionId, fromId, toId, steerRunId) =>
+  reconcileMessageIdentity: (sessionId, fromId, toId, steer) =>
     set((state) => {
       const sessions = patchView(state.sessions, sessionId, (view) =>
-        reconcileMessageIdentity(view, fromId, toId, steerRunId),
+        reconcileMessageIdentity(view, fromId, toId, steer),
       );
       return sessions === state.sessions ? state : { sessions };
     }),
@@ -331,6 +337,13 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((state) => {
       const sessions = patchView(state.sessions, sessionId, (view) =>
         projectSteerReceipt(view, messageId, steer),
+      );
+      return sessions === state.sessions ? state : { sessions };
+    }),
+  projectSteerDelivery: (sessionId, messageId, command) =>
+    set((state) => {
+      const sessions = patchView(state.sessions, sessionId, (view) =>
+        projectSteerDelivery(view, messageId, command),
       );
       return sessions === state.sessions ? state : { sessions };
     }),

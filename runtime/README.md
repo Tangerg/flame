@@ -463,7 +463,27 @@ results are labeled as the last inspected snapshot. No former object reader rema
 Core clients must rebuild against the generated current shapes; backend callable
 contracts use their independent current backend protocol identity.
 
-## Protocol 2026-10-14.28
+## Main Steer identity change integrated in Core .31
+
+For Steer, a pure `runs.getAcceptance` `notRecorded` read nominates
+`candidateUserItemId` from the original command key. The opaque candidate does
+not establish acceptance. The SDK persists it before dispatch and publishes it
+through `SteerMutationPromise.inputIdentity`, so an exact committed User Item can
+arrive before ACK without creating a duplicate input. Steer SDK results distinguish
+`accepted` from `retired`; retired material cannot prove application or rejection.
+
+Session snapshots expose `steerInputs` for all accepted inputs whose original
+material remains present, including inputs already applied. The former
+`pendingSteers` field is removed. ACK proves original Segment admission, and the
+exact committed User Item proves model-context application. Full snapshot reads
+restore that same origin after reopening; payload equality never identifies a command.
+
+The SDK journal now requires `steerItemId` (null before nomination and for other
+commands). Former entries without this field are refused and preserved without
+conversion. Resolve pending commands with their owning client build before
+replacing it. Rebuild Runtime and clients together for this protocol change.
+
+## Public command admission (Core .31)
 
 Public Start, Resume and Steer commands require a caller-retained idempotency key.
 The shared Endpoint rejects an absent key before invoking the command. Retain the
@@ -1960,7 +1980,7 @@ the operation is not an atomic filesystem or filesystem-plus-history transaction
 
 `runs.steer` and `Runtime.SteerRun` return `userItemId`, the identity reserved for that input. Success proves admission to the addressed active Segment, not model consumption. Only the matching committed user Item proves application at a model boundary. Clients reconcile by identity, including when the Item arrives before its receipt; identical text or attachments do not identify a command. A rejected steer must not silently become a new Run.
 
-Protocol `2026-10-14.1` makes keyed Steer acceptance Run-owned. Its original namespace, key, request fingerprint, reserved Item identity and immutable input commit with the Scope Signal admission head and execution context. `runs.getAcceptance` supports `steer` without redelivery or writer recovery. A consumed Signal receipt is not an applied input: only the exact completed User Item proves application. `sessions.snapshot.pendingSteers` retains accepted inputs until that Item commits, including after the Run finishes. Replaying a recorded command returns its original identity even when the original Run finished or its material was retired; importing the same Run ID never refills a retired receipt. Ordinary active execution still follows its existing crash policy.
+Protocol `2026-10-14.1` makes keyed Steer acceptance Run-owned. Its original namespace, key, request fingerprint, reserved Item identity and immutable input commit with the Scope Signal admission head and execution context. `runs.getAcceptance` supports `steer` without redelivery or writer recovery. A consumed Signal receipt is not an applied input: only the exact completed User Item proves application. Protocol `2026-10-14.3` projects those receipts through `sessions.snapshot.steerInputs` while their original material remains present, including after the exact Item commits or the Run finishes. The SDK caches the pure-query Item nomination before dispatch so ACK and Item can arrive in either order. Replaying a recorded command returns its original identity even when the original Run finished or its material was retired; importing the same Run ID never refills a retired receipt. Ordinary active execution still follows its existing crash policy.
 
 Upgrade Runtime, Desktop and CLI together. The current SQLite command-record shape refuses older data directories without conversion. Retain the old directory separately and use a fresh directory. The SDK journal requires a concrete frozen Start, Resume or Steer command; other mutations still persist no request bodies. Older journal shapes are refused and preserved, not cleared or decoded through an adapter. Omitted original request bodies cannot be recovered from their hash.
 

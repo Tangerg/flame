@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-14.30",
+  "protocolVersion": "2026-10-14.31",
   "features": [
     "reasoning",
     "multimodal",
@@ -3307,7 +3307,10 @@
       "discriminator": "type",
       "variants": [
         {
-          "tag": "notRecorded"
+          "tag": "notRecorded",
+          "optional": [
+            "candidateUserItemId"
+          ]
         },
         {
           "tag": "accepted",
@@ -7704,6 +7707,14 @@
         },
         {
           "field": "userItemId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "candidateUserItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "candidateUserItemId",
           "constraint": "maxLength(256)"
         }
       ]

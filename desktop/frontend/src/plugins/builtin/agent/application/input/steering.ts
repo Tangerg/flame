@@ -9,6 +9,7 @@ import {
   type AgentUnresolvedSteer,
 } from "../ports/runtimeGateway";
 import { agentSessionView } from "../ports/sessionView";
+import { steerInputFeedback } from "../view/steerInputFeedback";
 import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "../view/optimisticMessageIdentity";
 
 export function steerRunningTurn({
@@ -37,7 +38,8 @@ export function steerRunningTurn({
 
 export function restoreUnresolvedSteers(sessionId: string, commands: AgentUnresolvedSteer[]): void {
   for (const command of commands) {
-    const localId = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${command.idempotencyKey}`;
+    const localId =
+      command.userItemId ?? `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${command.idempotencyKey}`;
     if (
       agentSessionView()
         .getSession(sessionId)
@@ -51,6 +53,7 @@ export function restoreUnresolvedSteers(sessionId: string, commands: AgentUnreso
       command.idempotencyKey,
       command.retry,
       true,
+      command.userItemId,
     );
   }
 }
@@ -62,24 +65,36 @@ function observeSteer(
   key: string,
   open: () => AgentSteerSubmission,
   restored = false,
+  nominatedId: string | null = null,
 ): void {
   const owner = agentCommandOwner();
   const runtime = agentRuntime();
   const view = agentSessionView();
   const prepared = structuredClone(input);
-  const localId = `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${key}`;
+  let localId = nominatedId ?? `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${key}`;
   if (!view.getSession(sessionId)?.view.messages.some((message) => message.id === localId))
     view.appendLocalUserMessage(sessionId, localId, prepared);
-  const effect = owner.trackEffect(() => view.dropMessage(sessionId, localId));
+  const clearProvisional = () => {
+    const message = view
+      .getSession(sessionId)
+      ?.view.messages.find((message) => message.id === localId);
+    if (!message?.steer?.delivery) return;
+    if (message.runId === null && !message.steer.receipt) view.dropMessage(sessionId, localId);
+    else view.projectSteerDelivery(sessionId, localId, { runId, delivery: undefined });
+  };
+  const effect = owner.trackEffect(clearProvisional);
 
   function retainUnknown(submission: AgentSteerSubmission): void {
-    view.projectSteerReceipt(sessionId, localId, { runId, receipt: "unknown" });
+    view.projectSteerDelivery(sessionId, localId, { runId, delivery: "unknown" });
     owner.retainSteerRetry(localId, () => attempt(() => submission.retry(), submission));
-    notifyInfo(t("agent.command.unknown"), { source: "session" });
+    const current = view.getSession(sessionId)?.view;
+    const message = current?.messages.find((input) => input.id === localId);
+    if (message && steerInputFeedback(message) === "unknown")
+      notifyInfo(t("agent.command.unknown"), { source: "session" });
   }
 
   function attempt(open: () => AgentSteerSubmission, previous?: AgentSteerSubmission): void {
-    view.projectSteerReceipt(sessionId, localId, { runId, receipt: "pending" });
+    view.projectSteerDelivery(sessionId, localId, { runId, delivery: "pending" });
     let submission: AgentSteerSubmission;
     try {
       submission = open();
@@ -92,18 +107,41 @@ function observeSteer(
       notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
       return;
     }
+    void submission.inputIdentity
+      .then(
+        (userItemId) => {
+          if (!owner.isCurrent()) return;
+          view.reconcileMessageIdentity(sessionId, localId, userItemId);
+          localId = userItemId;
+        },
+        () => {},
+      )
+      .catch((error: unknown) => {
+        notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+      });
     void owner.settle(submission).then(
       (result) => {
         if (!owner.isCurrent()) return;
-        const messages = view.getSession(sessionId)?.view.messages;
-        if (
-          messages &&
-          !messages.some((message) => message.id === localId || message.id === result.userItemId)
-        ) {
-          view.appendLocalUserMessage(sessionId, localId, prepared);
+        if (result.type === "retired") {
+          clearProvisional();
+          const retiredId = `retired-steer:${result.userItemId}`;
+          view.appendLocalUserMessage(sessionId, retiredId, prepared);
+          view.projectSteerReceipt(sessionId, retiredId, { runId, receipt: "retired" });
+          effect.settle();
+        } else {
+          const messages = view.getSession(sessionId)?.view.messages;
+          if (
+            messages &&
+            !messages.some((message) => message.id === localId || message.id === result.userItemId)
+          ) {
+            view.appendLocalUserMessage(sessionId, localId, prepared);
+          }
+          view.reconcileMessageIdentity(sessionId, localId, result.userItemId, {
+            runId,
+            receipt: "accepted",
+          });
+          effect.settle();
         }
-        view.reconcileMessageIdentity(sessionId, localId, result.userItemId, runId);
-        effect.settle();
         void view
           .getSession(sessionId)
           ?.synchronize?.("after-live")
@@ -124,7 +162,7 @@ function observeSteer(
   }
 
   if (restored) {
-    view.projectSteerReceipt(sessionId, localId, { runId, receipt: "unknown" });
+    view.projectSteerDelivery(sessionId, localId, { runId, delivery: "unknown" });
     owner.retainSteerRetry(localId, () => attempt(open));
   } else attempt(open);
 }

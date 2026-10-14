@@ -80,6 +80,8 @@ type OpenMutation = <M extends WireMethodName, Result>(
 interface MutationDelivery {
   signal?: AbortSignal;
   readonly requestMeta: RequestMeta | null;
+  readonly steerItemId: string | null;
+  bindSteerItem(userItemId: string): void;
   lookupNamespace(): string | undefined;
   authorizeDispatch(): string | undefined;
 }
@@ -174,6 +176,14 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
             {
               ...attempt,
               requestMeta: reservation?.requestMeta ?? null,
+              get steerItemId() {
+                return reservation?.steerItemId ?? null;
+              },
+              bindSteerItem: (userItemId) => {
+                if (!reservation)
+                  throw new Error("Steer input identity requires a reserved command");
+                reservation.bindSteerItem(userItemId);
+              },
               lookupNamespace: () => reservation?.lookupNamespace(),
               authorizeDispatch: () => reservation?.authorizeDispatch(),
             },

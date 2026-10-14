@@ -3941,7 +3941,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-14.30\""
+          "value": "\"2026-10-14.31\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8614,32 +8614,6 @@
           ]
         },
         {
-          "name": "PendingSteerInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "RunID",
-              "type": "string",
-              "tag": "json:\"runId\""
-            },
-            {
-              "name": "SegmentID",
-              "type": "string",
-              "tag": "json:\"segmentId\""
-            },
-            {
-              "name": "UserItemID",
-              "type": "string",
-              "tag": "json:\"userItemId\""
-            },
-            {
-              "name": "Input",
-              "type": "[]ContentBlock",
-              "tag": "json:\"input\""
-            }
-          ]
-        },
-        {
           "name": "Plan",
           "kind": "struct",
           "fields": [
@@ -10337,6 +10311,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "CandidateUserItemID",
+              "type": "string",
+              "tag": "json:\"candidateUserItemId,omitempty\""
+            },
+            {
               "name": "Type",
               "type": "RunAcceptanceType",
               "tag": "json:\"type\""
@@ -11112,9 +11091,9 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "PendingSteers",
-              "type": "[]PendingSteerInput",
-              "tag": "json:\"pendingSteers,omitempty\""
+              "name": "SteerInputs",
+              "type": "[]SteerInput",
+              "tag": "json:\"steerInputs,omitempty\""
             },
             {
               "name": "Session",
@@ -11805,6 +11784,32 @@
             {
               "name": "ValidateWire",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SteerInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "SegmentID",
+              "type": "string",
+              "tag": "json:\"segmentId\""
+            },
+            {
+              "name": "UserItemID",
+              "type": "string",
+              "tag": "json:\"userItemId\""
+            },
+            {
+              "name": "Input",
+              "type": "[]ContentBlock",
+              "tag": "json:\"input\""
             }
           ]
         },

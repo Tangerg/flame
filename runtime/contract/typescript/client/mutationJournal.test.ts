@@ -107,6 +107,7 @@ describe("mutation journal", () => {
       "idempotencyKey",
       "namespace",
       "salt",
+      "steerItemId",
     ]);
     expect(JSON.stringify(entry)).not.toContain("never persist me");
     expect(entry).not.toHaveProperty("owner");
@@ -405,5 +406,36 @@ describe("mutation journal", () => {
     expect(interval).not.toHaveBeenCalled();
     expect([...storage.values.entries()]).toEqual(persisted);
     interval.mockRestore();
+  });
+  it("refuses the former journal shape and preserves the unresolved original bytes", () => {
+    const storage = new MemoryStorage();
+    const first = journal(storage);
+    first.reserve("runs.steer", {
+      runId: "run_1",
+      expectedSegmentId: "seg_1",
+      input: [{ type: "text", text: "original" }],
+    });
+    first.dispose();
+    const key = storage.keys()[0]!;
+    const old = storage.get(key) as Record<string, unknown>;
+    delete old.steerItemId;
+    storage.set(key, old);
+    expect(() => journal(storage).pendingCommands()).toThrow(MutationJournalStorageError);
+    expect(storage.get(key)).toEqual(old);
+  });
+
+  it("rejects a cached Steer identity on another command and preserves the evidence", () => {
+    const storage = new MemoryStorage();
+    const first = journal(storage);
+    first.reserve("runs.start", {
+      sessionId: "ses_1",
+      input: [{ type: "text", text: "original" }],
+    });
+    first.dispose();
+    const key = storage.keys()[0]!;
+    const invalid = { ...(storage.get(key) as object), steerItemId: "item_other" };
+    storage.set(key, invalid);
+    expect(() => journal(storage).pendingCommands()).toThrow(MutationJournalStorageError);
+    expect(storage.get(key)).toEqual(invalid);
   });
 });

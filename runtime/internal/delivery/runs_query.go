@@ -64,7 +64,11 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 			}
 		}
 	}
-	return presentRunAcceptance(record), nil
+	response := presentRunAcceptance(record)
+	if !record.Found && in.Operation == protocol.RunCommandSteer {
+		response.CandidateUserItemID = runs.SteerItemID(in.Key)
+	}
+	return response, nil
 }
 
 func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcceptance {

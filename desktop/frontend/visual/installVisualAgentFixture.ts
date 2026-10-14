@@ -11,6 +11,7 @@ import { installInterruptResponseCoordinator } from "@/plugins/builtin/agent/app
 import {
   configureAgentRuntimeGateway,
   type AgentRuntimeGateway,
+  type AgentSteerSubmission,
 } from "@/plugins/builtin/agent/application/ports/runtimeGateway";
 import { projectAgentSessionSnapshot } from "@/plugins/builtin/agent/application/session/sessionSnapshot";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -141,13 +142,24 @@ function visualAgentRuntimeGateway(
     }),
     loadSessionUsage: async () => ({}),
     rollbackSession: async () => ({ droppedRuns: [] }),
-    steerRun: (runId, segmentId, input) =>
-      createMutationPromise(async () => {
+    steerRun: (runId, segmentId, input) => {
+      const mutation = createMutationPromise(async () => {
         document.documentElement.dataset.visualSteeredRun = runId;
         document.documentElement.dataset.visualSteeredSegment = segmentId;
         document.documentElement.dataset.visualSentInput = JSON.stringify(input);
-        return { userItemId: "item_visual_steer" };
-      }),
+        return { type: "accepted" as const, userItemId: "item_visual_steer" };
+      });
+      const expose = (current: typeof mutation): AgentSteerSubmission =>
+        Object.defineProperties(
+          current.then((value) => value),
+          {
+            idempotencyKey: { value: current.idempotencyKey },
+            inputIdentity: { value: Promise.resolve("item_visual_steer") },
+            retry: { value: () => expose(current.retry()) },
+          },
+        ) as AgentSteerSubmission;
+      return expose(mutation);
+    },
     isSteerReceiptUnknown: () => false,
     isRunGone: () => false,
     isReplayLost: () => false,

@@ -54,10 +54,11 @@ describe("MessageBlock turn identity", () => {
   it("shows uncertain acceptance and retries only its original command", () => {
     const retry = vi.spyOn(agentInput, "retrySteerInput").mockReturnValue(true);
     const uncertain = row("complete", "Original submitted input", "user");
+    uncertain.inputFeedback = "unknown";
     uncertain.message = {
       ...uncertain.message,
       runId: null,
-      steer: { runId: "run_1", receipt: "unknown" },
+      steer: { runId: "run_1", delivery: "unknown" },
     };
     const { rerender } = render(
       <MessageBlock row={uncertain} ctx={CTX} sessionId="session-steer" isLast isRunning />,
@@ -71,7 +72,8 @@ describe("MessageBlock turn identity", () => {
       <MessageBlock
         row={{
           ...uncertain,
-          message: { ...uncertain.message, steer: { runId: "run_1", receipt: "pending" } },
+          inputFeedback: "pending",
+          message: { ...uncertain.message, steer: { runId: "run_1", delivery: "pending" } },
         }}
         ctx={CTX}
         sessionId="session-steer"
@@ -100,6 +102,7 @@ describe("MessageBlock turn identity", () => {
 
   it("distinguishes an accepted steer from its applied durable Item", () => {
     const accepted = row("complete", "Check the image", "user");
+    accepted.inputFeedback = "accepted";
     accepted.message = {
       ...accepted.message,
       runId: null,
@@ -112,6 +115,7 @@ describe("MessageBlock turn identity", () => {
     expect(screen.queryByText("Entered model context")).toBeNull();
     const applied = {
       ...accepted,
+      inputFeedback: "applied" as const,
       message: {
         ...accepted.message,
         runId: "run_1",

@@ -32,6 +32,14 @@ func NewRunID(entropy string) string     { return runIDPrefix + entropy }
 func NewSegmentID(entropy string) string { return segmentIDPrefix + entropy }
 func NewItemID(entropy string) string    { return itemIDPrefix + entropy }
 
+// SteerItemID nominates the same opaque Item for every delivery of one command.
+// Nomination is read-only; only admission and a committed User Item establish
+// acceptance and application respectively.
+func SteerItemID(commandKey string) string {
+	digest := sha256.Sum256([]byte("steer:" + commandKey))
+	return NewItemID(hex.EncodeToString(digest[:]))
+}
+
 // segmentItemIdentities owns the deterministic Item namespace of one Segment.
 // The Segment identity is digested before composition so every valid foreign
 // Segment, including one at its maximum envelope, produces a bounded Item ID.

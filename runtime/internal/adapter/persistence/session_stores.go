@@ -163,7 +163,7 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		if err != nil {
 			return err
 		}
-		pendingSteers, err := s.commandAcceptances.PendingSessionInputs(ctx, sessionID)
+		steerInputs, err := s.commandAcceptances.SessionSteerInputs(ctx, sessionID)
 		if err != nil {
 			return err
 		}
@@ -189,8 +189,8 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 			currentGoal = &stored
 		}
 		snapshot = sessions.MaterialSnapshot{
-			PendingSteers: pendingSteers,
-			Session:       ses, Items: items, Runs: runs, Interrupts: interrupts, Plan: state,
+			SteerInputs: steerInputs,
+			Session:     ses, Items: items, Runs: runs, Interrupts: interrupts, Plan: state,
 			Goal: currentGoal,
 		}
 		return nil

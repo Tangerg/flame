@@ -336,17 +336,20 @@ const (
 // is present for accepted and retired. Run is the current owner projection and
 // is present only while the original material association survives.
 type RunAcceptance struct {
-	Type        RunAcceptanceType `json:"type"`
-	RunID       string            `json:"runId,omitempty"`
-	SegmentID   string            `json:"segmentId,omitempty"`
-	SessionID   string            `json:"sessionId,omitempty"`
-	UserItemID  string            `json:"userItemId,omitempty"`
-	Run         *RunRef           `json:"run,omitzero"`
-	Input       []ContentBlock    `json:"input,omitempty"`
-	AppliedItem *Item             `json:"appliedItem,omitzero"`
+	// CandidateUserItemID is a Steer nomination on notRecorded. It correlates
+	// prospective input but does not prove that any command was accepted.
+	CandidateUserItemID string            `json:"candidateUserItemId,omitempty"`
+	Type                RunAcceptanceType `json:"type"`
+	RunID               string            `json:"runId,omitempty"`
+	SegmentID           string            `json:"segmentId,omitempty"`
+	SessionID           string            `json:"sessionId,omitempty"`
+	UserItemID          string            `json:"userItemId,omitempty"`
+	Run                 *RunRef           `json:"run,omitzero"`
+	Input               []ContentBlock    `json:"input,omitempty"`
+	AppliedItem         *Item             `json:"appliedItem,omitzero"`
 }
 
-type PendingSteerInput struct {
+type SteerInput struct {
 	RunID      string         `json:"runId"`
 	SegmentID  string         `json:"segmentId"`
 	UserItemID string         `json:"userItemId"`

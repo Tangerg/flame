@@ -414,3 +414,61 @@ test("credits only declared query projections with actual HTTP consumption", () 
   assert.equal(consumers.get("resource.write").size, 0);
   assert.deepEqual(errors, ["invalid projects an invalid Runtime query resource.write"]);
 });
+
+test("credits RPC interface methods rather than command-handle methods in the same SDK source", () => {
+  const dir = mkdtempSync(join(tmpdir(), "sdk-interface-consumer-"));
+  try {
+    const fileName = join(dir, "probe.ts");
+    writeFileSync(join(dir, "package.json"), '{"type":"module"}');
+    writeFileSync(
+      fileName,
+      `
+      interface Methods { runs: { steer(): Promise<void>; getAcceptance(): Promise<void> }; }
+      interface Command { retry(): Promise<void>; runs: { steer(): Promise<void> }; }
+      declare const methods: Methods;
+      declare const command: Command;
+      methods.runs.steer(); methods.runs.getAcceptance(); command.retry(); command.runs.steer();
+    `,
+    );
+    const start = script.indexOf("function wrapperPath(");
+    const end = script.indexOf("\nfunction discardsNonVoidResult", start);
+    const declarationStart = script.indexOf("function declarationsOf(symbol)");
+    const declarationEnd = script.indexOf("\nfunction fail", declarationStart);
+    assert.ok(start >= 0 && end > start);
+    writeFileSync(
+      join(dir, "probe.mjs"),
+      `
+      import { API } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};
+      import * as ts from ${JSON.stringify(import.meta.resolve("typescript/unstable/ast"))};
+      import { resolve } from "node:path";
+      const compiler = new API({ cwd: ${JSON.stringify(dir)} });
+      try {
+        const fileName = ${JSON.stringify(fileName)};
+        const snapshot = compiler.updateSnapshot({ openFiles: [fileName] });
+        const project = snapshot.getDefaultProjectForFile(fileName);
+        const program = project.program;
+        const checker = project.checker;
+        ${script.slice(start, end)}
+        ${script.slice(declarationStart, declarationEnd)}
+        function propertyName(node) { return node?.text; }
+        const paths = [];
+        function visit(node) {
+          if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+            const declaration = declarationsOf(checker.getSymbolAtLocation(node.expression.name))[0];
+            paths.push(wrapperPath(declaration, fileName, new Set(["Methods"])));
+          }
+          node.forEachChild(visit);
+        }
+        visit(program.getSourceFile(fileName));
+        console.log(JSON.stringify(paths));
+      } finally { compiler.close(); }
+    `,
+    );
+    assert.deepEqual(
+      JSON.parse(execFileSync(process.execPath, [join(dir, "probe.mjs")], { encoding: "utf8" })),
+      ["runs.steer", "runs.getAcceptance", "", ""],
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

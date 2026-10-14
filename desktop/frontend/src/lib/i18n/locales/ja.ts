@@ -393,6 +393,7 @@ export const ja: Record<string, string> = {
   "agent.opening.review": "元の入力と選択を確認",
   "agent.command.unknown": "受付結果を確認できません",
   "agent.command.retry": "元の送信を再試行",
+  "agent.steer.retired": "元の実行記録を利用できないため、入力が適用されたか確認できません。",
   "agent.steer.applied": "モデルのコンテキストに追加済み",
   "agent.steer.notApplied":
     "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",

@@ -34,8 +34,17 @@ export interface Message {
   createdAt?: string;
   runId: string | null;
   blocks: ContentBlock[];
-  /** The Run this input steered; it is applied once it is that Run's Item. */
-  steer?: { runId: string; receipt: "pending" | "unknown" | "accepted" | "notApplied" };
+  /**
+   * The addressed Run identifies application; Runtime admission and local
+   * delivery observation have separate owners.
+   */
+  steer?: {
+    runId: string;
+    receipt?: "accepted" | "retired";
+    /** Only a coherent terminal Session read can prove an absent committed Item. */
+    application?: "notApplied";
+    delivery?: "pending" | "unknown";
+  };
 }
 
 export interface RunUsage {

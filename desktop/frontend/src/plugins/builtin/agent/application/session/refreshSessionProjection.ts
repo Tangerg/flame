@@ -5,8 +5,6 @@ import { agentRuntime, type AgentSessionMaterialRead } from "../ports/runtimeGat
 import { agentSessionView } from "../ports/sessionView";
 import { projectAgentSessionSnapshot } from "./sessionSnapshot";
 import { reconcileSteerMessages } from "../view/viewMutations";
-import { notifyInfo } from "@/plugins/sdk";
-import { t } from "@/lib/i18n";
 import { restoreUnresolvedSteers } from "../input/steering";
 
 interface RefreshSessionProjectionOptions {
@@ -56,17 +54,15 @@ export async function revalidateAgentSessionMaterial(
   const shared = material.projectAssociatedSharedMaterial(projected.shared);
   const view = shared === projected.shared ? projected : { ...projected, shared };
   const previous = viewPort.getSession(sessionId)?.view;
-  const reconciled = previous ? reconcileSteerMessages(previous, view) : { view, unapplied: false };
+  const reconciled = previous ? reconcileSteerMessages(previous, view) : view;
   const committed = viewPort.commitViewRefresh(
     sessionId,
     token,
-    reconciled.view,
+    reconciled,
     material.unresolvedOpenings,
   );
   if (committed && material.unresolvedSteers?.length)
     restoreUnresolvedSteers(sessionId, material.unresolvedSteers);
-  if (committed && reconciled.unapplied)
-    notifyInfo(t("agent.steer.notApplied"), { source: "session" });
   return {
     authoritativeView: view,
     committed,

@@ -1094,7 +1094,7 @@ describe("methods factory", () => {
       id: req.id,
       result: { userItemId: "item_steer" },
     } as RpcMessage);
-    await expect(promise).resolves.toEqual({ userItemId: "item_steer" });
+    await expect(promise).resolves.toEqual({ type: "accepted", userItemId: "item_steer" });
     await client.close();
   });
 

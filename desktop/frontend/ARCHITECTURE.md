@@ -295,21 +295,24 @@ replay rules; the graphical application supplies its storage lifetime and render
 the outcome. A delayed result may settle its original command, but cannot
 advance a retired view generation.
 
-Steering retains the SDK's original mutation rather than wrapping away its retry
-authority. The Agent command owner exposes one retry of that frozen submission;
-it never retargets a replacement Segment or rereads authored input. Pending and
-unconfirmed receipts remain local observations, including through snapshot refresh
-and Run termination. Only a definite refusal removes the provisional input. An
-accepted receipt binds the reserved Item identity, and that exact committed Item
-proves model-context application. Connection replacement retires local observation
-and retry actions while the SDK preserves its unresolved journal. Its concrete
-Run command descriptor retains the frozen original body and target before dispatch.
-After application restart, Session mounting queries original command handles
-without dispatch and projects unknown submissions with their original retry
-authority. Runtime snapshot pending inputs remain visible after client settlement;
-only the exact User Item proves application, and a terminal Run with a pending
-accepted input renders it as not applied. Desktop stores no second receipt or
-input-application ledger.
+Steering retains the SDK's original mutation and retry authority. The SDK caches
+Runtime's opaque Item nomination before dispatch and exposes it before ACK; the
+Agent binds the authored message to that identity without inferring acceptance.
+Equal payloads remain distinct commands. Retry never changes the original body,
+key, namespace or target Segment.
+
+Runtime receipts and local delivery observations are separate facts. A late
+inconclusive request cannot erase acceptance read from Runtime. Only the exact
+committed User Item proves model-context application, even if ACK has not arrived.
+Only a coherent terminal Session read proves non-application for an accepted
+input with no such Item; a separate terminal Run observation cannot prove Item
+absence. The snapshot projector owns that read-only proof, and command callbacks
+cannot change it. Retired material remains unavailable. Session snapshots retain all current
+Steer origins, including applied inputs, so live observation and reopening render
+the same conclusion. Root and delegated messages share the same derived feedback.
+Connection replacement retires command observers and retry actions while the SDK
+preserves unresolved journal evidence; committed Items survive that retirement.
+Desktop stores no independent input-application transition.
 
 Start and Resume query `runs.getAcceptance` with their original namespace, key,
 and operation before delivery. The journal reserves identity independently of

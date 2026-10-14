@@ -14,24 +14,46 @@ export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): Age
   for (const pending of snapshot.pendingInterruptSets) {
     view = foldPendingInterruptSet(view, pending);
   }
-  for (const pending of snapshot.pendingSteers ?? []) {
-    if (view.messages.some((message) => message.id === pending.userItemId)) continue;
+  for (const accepted of snapshot.steerInputs ?? []) {
+    const identity =
+      accepted.receipt === "retired" ? `retired-steer:${accepted.userItemId}` : accepted.userItemId;
+    const present = view.messages.find((message) => message.id === identity);
+    if (present) {
+      if (present.role !== "user" || present.runId !== accepted.runId)
+        throw new Error("agent.snapshot.steerInputOwnerMismatch");
+      view = {
+        ...view,
+        messages: view.messages.map((message) =>
+          message.id === identity
+            ? { ...message, steer: { runId: accepted.runId, receipt: accepted.receipt } }
+            : message,
+        ),
+      };
+      continue;
+    }
     view = {
       ...view,
       messages: [
         ...view.messages,
         {
-          id: pending.userItemId,
+          id: identity,
           role: "user",
           runId: null,
           blocks: userContentBlocks(
-            pending.input.parts.map((part) =>
+            accepted.input.parts.map((part) =>
               part.kind === "text"
                 ? { type: "text", text: part.text }
                 : { type: "image", mime: part.mime, data: part.data },
             ),
           ),
-          steer: { runId: pending.runId, receipt: pending.receipt },
+          steer: {
+            runId: accepted.runId,
+            receipt: accepted.receipt,
+            ...(accepted.receipt === "accepted" &&
+            view.runsById[accepted.runId]?.status === "finished"
+              ? { application: "notApplied" as const }
+              : {}),
+          },
         },
       ],
     };

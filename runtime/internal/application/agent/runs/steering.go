@@ -2,7 +2,6 @@ package runs
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 
@@ -69,7 +68,7 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 	}
 	prepared := PreparedSteer{ItemID: NewItemID(uuid.NewString()), Input: cmd.Input}
 	if cmd.Acceptance != nil {
-		prepared.ItemID = NewItemID(fmt.Sprintf("%x", sha256.Sum256([]byte("steer:"+cmd.Acceptance.Key))))
+		prepared.ItemID = SteerItemID(cmd.Acceptance.Key)
 		prepared.Acceptance = &CommandAcceptance{Key: cmd.Acceptance.Key, Fingerprint: cmd.Acceptance.Fingerprint, Operation: CommandSteerInput, SessionID: durable.SessionID(), RunID: durable.ID(), SegmentID: cmd.ExpectedSegmentID, UserItemID: prepared.ItemID, SteerInput: transcript.CloneContent(cmd.Input)}
 	}
 	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: durable.SessionID(), ExecutorID: rec.ExecutorID}, prepared)

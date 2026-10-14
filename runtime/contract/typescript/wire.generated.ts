@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-14.30";
+export const PROTOCOL_VERSION = "2026-10-14.31";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1157,13 +1157,6 @@ export interface PendingInterruptSet {
   sessionId: string;
 }
 
-export interface PendingSteerInput {
-  input: ContentBlock[];
-  runId: string;
-  segmentId: string;
-  userItemId: string;
-}
-
 export interface Plan {
   sessionId: string;
   state?: PlanState;
@@ -1608,7 +1601,7 @@ export interface RollbackSessionResponse {
 }
 
 export type RunAcceptance =
-  | { type: "notRecorded" }
+  | { type: "notRecorded"; candidateUserItemId?: string }
   | { type: "accepted"; appliedItem?: Item; input?: ContentBlock[]; run: RunRef; runId: string; segmentId: string; sessionId: string; userItemId?: string }
   | { type: "retired"; input?: ContentBlock[]; runId: string; segmentId: string; sessionId: string; userItemId?: string };
 
@@ -1827,10 +1820,10 @@ export interface SessionSnapshot {
   goal?: Goal;
   interrupts: PendingInterruptSet[];
   items: Item[];
-  pendingSteers?: PendingSteerInput[];
   plan?: Plan;
   runs: RunRef[];
   session: Session;
+  steerInputs?: SteerInput[];
 }
 
 export type SessionStatus = "running" | "waiting" | "idle";
@@ -1986,6 +1979,13 @@ export interface StartRunRequest {
 }
 
 export interface StartRunResponse {
+  runId: string;
+  segmentId: string;
+  userItemId: string;
+}
+
+export interface SteerInput {
+  input: ContentBlock[];
   runId: string;
   segmentId: string;
   userItemId: string;

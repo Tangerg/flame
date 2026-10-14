@@ -411,6 +411,7 @@ func registerRunValues(s *Shapes) {
 	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("segmentId")...)
 	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("sessionId")...)
 	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("userItemId")...)
+	runAcceptanceIdentity = append(runAcceptanceIdentity, resourceIdentity("candidateUserItemId")...)
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RunAcceptance](), Constraints: runAcceptanceIdentity})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.CancelRunRequest](),
