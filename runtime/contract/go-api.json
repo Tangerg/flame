@@ -34,6 +34,10 @@
           "signature": "func[P, R any](caller PluginCaller, binding PluginBinding, method *plugin.Method[P, R]) (*PluginMethod[P, R], error)"
         },
         {
+          "name": "BindPluginStreamingMethod",
+          "signature": "func[P, C, R any](caller PluginStreamer, binding PluginBinding, method *plugin.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error)"
+        },
+        {
           "name": "Connect",
           "signature": "func(ctx context.Context, cfg RemoteConfig) (*Client, error)"
         },
@@ -550,6 +554,10 @@
             {
               "name": "CallPlugin",
               "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (result *protocol.CallPluginResponse, err error)"
+            },
+            {
+              "name": "StreamPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
             }
           ]
         },
@@ -570,6 +578,26 @@
             {
               "name": "Call",
               "signature": "func(ctx context.Context, input P, options PluginCallOptions) (R, error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginStreamer",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "StreamPlugin",
+              "signature": "func(context.Context, protocol.CallPluginRequest, CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginStreamingMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Stream",
+              "signature": "func(ctx context.Context, input P, options CommandOptions) iter.Seq2[plugin.StreamValue[C, R], error]"
             }
           ]
         },

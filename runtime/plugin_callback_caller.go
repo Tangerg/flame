@@ -3,7 +3,10 @@ package runtime
 import (
 	"context"
 	"errors"
+	"iter"
+	"sync/atomic"
 
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -20,15 +23,9 @@ func NewPluginCallbackCaller(activation pluginsdk.CallbackRef) (*PluginCallbackC
 }
 
 func (c *PluginCallbackCaller) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (result *protocol.CallPluginResponse, err error) {
-	if c == nil {
-		return nil, errors.New("runtime: plugin callback caller is required")
-	}
-	ref, refErr := pluginsdk.CallbackFromContext(ctx)
-	if refErr != nil {
-		if _, invocationErr := pluginsdk.InvocationFromContext(ctx); invocationErr == nil {
-			return nil, errors.New("runtime: an invoked plugin dependency requires its calling-owner callback")
-		}
-		ref = c.activation
+	ref, err := c.reference(ctx)
+	if err != nil {
+		return nil, err
 	}
 	client, err := ConnectCallback(ctx, ref)
 	if err != nil {
@@ -36,4 +33,62 @@ func (c *PluginCallbackCaller) CallPlugin(ctx context.Context, request protocol.
 	}
 	defer func() { err = errors.Join(err, client.Close()) }()
 	return client.CallPlugin(ctx, request, options)
+}
+
+func (c *PluginCallbackCaller) reference(ctx context.Context) (pluginsdk.CallbackRef, error) {
+	if c == nil {
+		return pluginsdk.CallbackRef{}, errors.New("runtime: plugin callback caller is required")
+	}
+	ref, refErr := pluginsdk.CallbackFromContext(ctx)
+	if refErr != nil {
+		if _, invocationErr := pluginsdk.InvocationFromContext(ctx); invocationErr == nil {
+			return pluginsdk.CallbackRef{}, errors.New("runtime: an invoked plugin dependency requires its calling-owner callback")
+		}
+		ref = c.activation
+	}
+	return ref, nil
+}
+
+// StreamPlugin captures the original callback and envelope before returning a
+// lazy sequence. Its empty opening conveys no remote business acknowledgement.
+func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options CommandOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+	ref, err := c.reference(ctx)
+	if err != nil {
+		return struct{}{}, nil, err
+	}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return struct{}{}, nil, err
+	}
+	input, err := jsoninput.Parse(request.Input)
+	if err != nil {
+		return struct{}{}, nil, err
+	}
+	request.Input = input.JSON()
+	options, err = captureStreamOptions(options)
+	if err != nil {
+		return struct{}{}, nil, err
+	}
+	var consumed atomic.Bool
+	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
+		if !consumed.CompareAndSwap(false, true) {
+			yield(protocol.PluginStreamEvent{}, ErrClosed)
+			return
+		}
+		client, err := ConnectCallback(ctx, ref)
+		if err != nil {
+			yield(protocol.PluginStreamEvent{}, err)
+			return
+		}
+		defer client.Close()
+		_, events, err := client.StreamPlugin(ctx, request, options)
+		if err != nil {
+			yield(protocol.PluginStreamEvent{}, err)
+			return
+		}
+		for event, err := range events {
+			if !yield(event, err) || err != nil {
+				return
+			}
+		}
+	}, nil
 }

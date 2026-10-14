@@ -219,8 +219,15 @@ carry validated chunks, final results or explicit refusals; no cursor is accepte
 The Go remote client recognizes terminal evidence and reports missing/malformed
 terminal delivery as an unknown acknowledgement without reconnecting or resubmitting.
 HTTP transport acknowledges each source yield only after its SSE frame is written,
-and cancellation joins the source. Production model chains, query streams, typed
-installed streaming proxies, dependency retention and TS delivery remain open.
+and cancellation joins the source. Typed BindPluginStreamingMethod now uses shared
+binding admission and SDK StreamValue, freezing input/options before lazy single
+consumption and validating chunks/final output. Final result publication follows
+source completion; invalid/missing evidence cannot manufacture success. The caller
+keeps transport refusal/uncertainty classification with its existing owner.
+PluginCallbackCaller consumes the same stream with its captured original reference,
+lazily opening and closing the ordinary Runtime Client. Invoked work missing call
+context is refused instead of using activation. Production model chains, query
+streams, dependency retention and TS delivery remain open.
 Unary entrances continue to refuse stream methods before route creation. Stream
 recovery stores no competing business result or chunk history.
 

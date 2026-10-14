@@ -66,7 +66,20 @@ Fresh installed queries/commands carry call-scoped canonical callback metadata;
 receipt lookup retains its original route without acquiring new collaborators.
 Managed nested calls are checked against the session's immutable bindings, not a
 later selection. Actual Tool/automatic/UI consumer migration, complete point
-policies, durable execution projections and streaming remain open.
+policies and durable execution projections remain open.
+
+`runtime.BindPluginStreamingMethod` admits a typed mutation stream from the same
+immutable binding used by unary calls. Its Stream freezes input/options before lazy
+delivery and returns one consumable sequence of SDK StreamValue chunks/final result.
+Chunk/output schemas and strict decoding precede delivery; final publication follows
+source completion. Missing/invalid final evidence stays unconfirmed. Transport-owned
+refusal/uncertainty classification is preserved instead of reconstructed here.
+Runtime, Client and PluginCallbackCaller implement the same PluginStreamer port.
+The callback caller captures the original reference/envelope, opens its Client only
+on consumption and closes it when the sequence ends or stops. Invoked work missing
+its calling-owner callback cannot fall back to activation. These Go mechanisms do
+not yet complete query streams, TS author parity or production model/dependency
+composition. Core/backend/storage identities remain unchanged by this Go API addition.
 
 `BindCapability(export, contract)` associates a named export with those existing
 handlers and checks its complete required set before publication. Several exports
@@ -347,6 +360,6 @@ plugins.stream enter that owner through the same delivery endpoint. Chunks have
 no replay cursor; retry reads only the original private receipt. Explicit owner
 refusal is final evidence, while missing terminal delivery remains unconfirmed.
 The empty opening response conveys no business result. Ordinary plugins.call and
-component bindings remain unary; query/typed/TS streams and production model/
+component bindings remain unary; query/TS streams and production model/
 dependency composition still require their owning migration. Core is
 2026-10-14.21; backend protocol/private formats are unchanged.

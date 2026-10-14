@@ -37,8 +37,19 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	if dependency.Missing(caller) || binding.Contract == nil || method == nil {
 		return nil, errors.New("runtime: plugin caller, binding and typed method are required")
 	}
-	required, found := binding.Contract.Method(method.Name())
-	actual, err := capability.AdmitMethod(method.Descriptor())
+	required, err := admitPluginBinding(binding, method.Descriptor())
+	if err != nil {
+		return nil, err
+	}
+	return &PluginMethod[P, R]{caller: caller, binding: binding, method: required}, nil
+}
+
+func admitPluginBinding(binding PluginBinding, descriptor capability.MethodDescriptor) (*capability.Method, error) {
+	if binding.Contract == nil {
+		return nil, errors.New("runtime: plugin binding contract is required")
+	}
+	required, found := binding.Contract.Method(descriptor.Name)
+	actual, err := capability.AdmitMethod(descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +68,7 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	if err := protocol.ValidateWireTree(protocol.SelectPluginProviderRequest{InstallationID: binding.InstallationID, Contribution: binding.Contribution, Role: binding.Contract.Descriptor().Reference}); err != nil {
 		return nil, err
 	}
-	return &PluginMethod[P, R]{caller: caller, binding: binding, method: required}, nil
+	return required, nil
 }
 
 func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options PluginCallOptions) (R, error) {

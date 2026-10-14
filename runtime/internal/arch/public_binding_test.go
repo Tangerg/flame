@@ -104,6 +104,10 @@ import (
 
 var _ = flameruntime.Open
 var _ = flameruntime.ConnectCallback
+var _ = flameruntime.BindPluginStreamingMethod[struct{}, uint64, bool]
+var _ flameruntime.PluginStreamer = (*flameruntime.Runtime)(nil)
+var _ flameruntime.PluginStreamer = (*flameruntime.Client)(nil)
+var _ flameruntime.PluginStreamer = (*flameruntime.PluginCallbackCaller)(nil)
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ protocol.RunEvent
@@ -113,6 +117,7 @@ var _ = pluginsdk.RegisterClient
 var _ = pluginsdk.CallCommand[string, string]
 var _ pluginsdk.Command[string]
 var _ = pluginsdk.NewMethod[struct{}, string]
+var _ = pluginsdk.NewStreamingMethod[struct{}, uint64, bool]
 var _ capability.MethodDescriptor
 var _ = pluginsdk.NewBinding
 var _ = pluginsdk.Resolve
