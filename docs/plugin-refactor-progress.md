@@ -45,6 +45,47 @@ imports); and two Stage-5aa `logical_purpose` fixture omissions in the trajector
 export tests that this slice repaired. Full/native/vet/race/closure stay concentrated
 at final acceptance. No frontend UI/E2E/screenshot check was authored or executed.
 
+### Schedule recovery deadlock: root cause (priority #2, diagnosis committed, fix open)
+
+`TestScheduleCreateRecoversAcrossSIGKILLCuts` was fully root-caused this session with a
+proxy trace of the real handshake. It is NOT the Scanner size the earlier handoff
+suspected: the real activation is the flame protocol `server/discover` (329 B) then
+`io.github.tangerg.flame/operations.describe` (20413 B), both forwarded intact by the
+`message-loss` proxy; the go-sdk client cap is 16 MiB. The backend handshakes in <1s
+standalone and through the proxy (CGO on and off). Two distinct defects stack:
+
+1. Harness gap (proven fix). The crash-test Runtime is built with `buildProtocolRuntime`
+   → `protocolHandler` → `newDeliveryHandler` plus `acceptedCommandEndpoint`
+   (`delivery.NewEndpoint`), none of which call `publishCallbacks`/`PublishRPC` the way
+   production's `newEndpoint`/`newDeliveryEndpoint` does. So `rpcReady` never closes and
+   the schedules backend plugin (a `Background` contribution) blocks forever in the
+   admission `admit` closure at `Callbacks.WaitRPC` (pool.go), leaving the server
+   `connecting` with no tools. Publishing the callback RPC in the helper made activation
+   complete end-to-end: the trace then showed `operations.setup`, `operations.activate`,
+   `tools/list` (3 tools settled) and the `create_schedule` tool-call executing before
+   the durable cut — exactly as the test intends.
+
+2. Production recovery-ordering deadlock (open; same cycle in production, not harness-only).
+   With activation unblocked, the recovery invoke deadlocks inside `assemble`:
+   `buildAssemblyCore` (assemble.go:443) runs `ReviveUncertainExecutions` →
+   `InteractionExecutor.PrepareUncertainExecution` → `Schedules.AwaitOriginalCreateSource`
+   → `Pool.BoundServiceSession` → `Connections.WaitSession`, which waits for the schedules
+   plugin session; that session's admission waits on `WaitRPC`; and the callback RPC is
+   published only AFTER `assemble` (production `newDeliveryEndpoint` is instance.go:142,
+   after `assemble` at 118 and `recoverStartup` at 128). Revival needs the plugin → the
+   plugin needs the RPC → the RPC needs the application `assemble` is still building while
+   it runs revival. Production has the same order, so recovering an uncertain background-
+   plugin execution after a crash deadlocks there too — a real product bug the test
+   exposes once the handshake layer is fixed.
+
+Fix direction (not yet implemented — needs the ~130s native crash test to verify all
+seven cuts and a broader assemble/startup regression): publish the callback RPC before
+uncertain-execution revival that depends on plugin sessions — i.e. move
+`ReviveUncertainExecutions` out of `buildAssemblyCore` to after the delivery endpoint is
+established (instance.go, after `newDeliveryEndpoint`), and give `buildProtocolRuntime`
+the same publish-then-revive order. The experimental proxy trace and the helper
+`publishCallbacks` call used for this diagnosis were reverted; the tree is clean.
+
 Stage 5ad (13193c2d6) removes the incorrect installation-only prerequisite from
 restoration of an original dispatched plugin command. Background restoration now
 checks its entire persisted invocation and exact installation/release/server before
