@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated during the 2026-10-15 concentrated acceptance and query-stream repair.
+Prepared on 2026-10-14 and updated during the 2026-10-15 independent origin and SDK conflict qualification.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `882222cd8` (shared query-stream Go options, generated
+- Latest product commit: `de2a57d54` (public idempotency conflict owner and
+  outside-module classification proof); `882222cd8` (shared query-stream Go options, generated
   consumers and integration gate realignment); `ecdbe5c39` (standalone packed Usage author kit and
   explicit author-owned compiler); `d0c9afaec` removes Core Schedule identity vocabulary
   and feature imports of Core invalidation records; `325998894` (public immutable model choice and released
@@ -118,6 +119,24 @@ schema 3, Scope modules v0.50.0. Strict database admission now requires
 or deletion. Captured primary context and independent billing remain distinct.
 
 ## Remaining work and priority
+
+
+Source audit after the green full Runtime/CLI/shared-protocol gates still found
+live host-to-feature private imports: `pluginservices/schedules.go` reconstructs
+original `create_schedule` Tool output with private Schedule RPC/domain/codec, and
+Core memory prompt/read ports consume private Memory values. These are real
+remaining cutover work, not proved closed by the current tests. Generalize the
+original-owner Tool receipt query/projection at the backend owner and migrate the
+Memory consumer to its public contract/read projection. Preserve all original
+cancellation/receipt/capture/unknown assertions and rerun whole bootstrap after
+recovery changes. Do not replace those dependencies with forwarding aliases.
+
+Public idempotency conflict classification now works outside Runtime's private
+import privilege (`de2a57d54`). A complete Usage package installs from an independent
+source with identical contract/resources, distinct installation ownership,
+withdrawal/restart independence and normal uninstall (6.546s). All-module vet is
+also green; concurrent-owner race remains running. Native `.app` build/signature
+and shared TS 355 tests pass. None of this is rendered UI or registry publication.
 
 1. Embedding results/evidence/metering is implemented through the existing source,
    live Run/Goal, query/export and recovery owners (see the progress anchor).

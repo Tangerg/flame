@@ -14,6 +14,32 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Public conflict category and independent installation origin (2026-10-15)
+
+- `de2a57d54` moves the actual opaque idempotency mechanism to public
+  `runtime/idempotency`. All private receipt/Core consumers migrate and the old
+  private entrance is removed. Independent authors can classify identity conflicts
+  with `errors.Is`; no alias or error-text parsing is required. The outside-module
+  receipt fixture changes original input, observes the public conflict and proves
+  the business handler/record count remains one.
+- Passed: complete public receipts, Core SQLite, Memory/Schedules, delivery
+  (10.662s), complete architecture/public author checks (19.194s), generation and
+  Runtime/CLI/Reviews build. No schema, wire epoch, retention policy or replay
+  permission changes. All-module vet subsequently passes, including Desktop and
+  the independent Reviews backend. Focused concurrent-owner race is in progress.
+- New backend acceptance installs the complete bundled Usage package from a
+  copied independent source through the ordinary public installer. Release
+  contract and every resource byte remain identical, installation/source identity
+  remain distinct, withdrawing the seeded installation leaves the independent
+  resource available, restart preserves both decisions and ordinary uninstall
+  succeeds. The final restart-inclusive test passes (6.546s). It never loads UI.
+- Remaining source audit found live Core consumers of private Memory records and
+  the Schedule-specific original Tool receipt reconstruction path. These are not
+  closed by passing tests or component packaging; remove those dependencies at
+  their semantic boundaries before declaring the whole proposal complete. Keep
+  the original receipt/capture/cancellation/unknown-evidence assertions while
+  generalizing the original-owner Tool result path. No UI tests are authorized.
+
 ### Complete Runtime/CLI/shared-protocol gates (2026-10-15)
 
 - After `882222cd8`, complete Runtime and CLI `go test -p 2 ./... -count=1`
