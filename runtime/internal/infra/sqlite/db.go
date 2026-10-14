@@ -49,8 +49,8 @@ const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results 
 // Tuning baked in:
 //   - journal_mode = WAL — concurrent readers don't block the writer
 //   - foreign_keys = ON — surfaces parent-id violations early
-//   - busy_timeout = 5000ms — survives brief contention from
-//     concurrent writers piling onto the same connection
+//   - immediate writes — acquire the writer slot before reading mutable state
+//   - busy_timeout = 5000ms — waits for other owners' brief write-sets
 func Open(ctx context.Context, path string) (*sql.DB, error) {
 	return sqlitebase.OpenSchema(ctx, path, currentSchema())
 }

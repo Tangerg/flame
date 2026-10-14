@@ -6,6 +6,16 @@ and a private database path. Empty databases receive that schema; an incompatibl
 existing schema is refused before writes. The owner retains its old data separately.
 The package configures WAL, foreign keys, bounded busy waits and one connection.
 
+Existing schema admission owns a read-only snapshot and never reexecutes
+initialization statements. It cannot compete with a live recovery write-set or
+recreate a missing owner fact. Empty databases are rechecked under the writer
+slot before schema/data initialization commits atomically. Ordinary write-sets
+acquire that slot before reading, so a deferred snapshot upgrade cannot fail
+after the callback has already begun. No application retry is introduced.
+`InstallSchema` uses the same boundary for callers supplying their own configured
+SQLite database; writer transactions must use the immediate mode configured by
+`OpenSchema`. Its statements describe empty-database initialization.
+
 `Connection(ctx, db)` and `RunInTx(ctx, db, fn)` join only a transaction owned by
 that exact `*sql.DB`. Nested work on another database keeps its own transaction
 and outcome; this is not a transaction across plugin fact owners. An error, panic,

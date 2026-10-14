@@ -20,16 +20,16 @@ import (
 // OpenSchema admits an exact owner-supplied schema in its private database.
 func OpenSchema(ctx context.Context, path string, statements []string) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
-		"file:%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)",
+		"file:%s?_txlock=immediate&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)",
 		url.PathEscape(filepath.ToSlash(path)),
 	)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: open %q: %w", path, err)
 	}
-	// modernc.org/sqlite serializes writes internally; one connection
-	// is sufficient and avoids "database is locked" surprises under
-	// concurrent transactions.
+	// Acquire the write slot before reading a mutable snapshot: a deferred
+	// upgrade can fail immediately even when the busy timeout allows waiting.
+	// One connection serializes this owner's write-sets; SQLite coordinates peers.
 	db.SetMaxOpenConns(1)
 
 	if err := InstallSchema(ctx, db, statements); err != nil {
@@ -39,10 +39,28 @@ func OpenSchema(ctx context.Context, path string, statements []string) (*sql.DB,
 }
 
 func InstallSchema(ctx context.Context, db *sql.DB, stmts []string) error {
-	err := RunIndependentTx(ctx, db, func(ctx context.Context) error {
+	var current bool
+	err := runIndependentTx(ctx, db, &sql.TxOptions{ReadOnly: true}, func(ctx context.Context) error {
+		var err error
+		current, err = requireCurrentSchema(ctx, Connection(ctx, db), stmts)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect current schema: %w", err)
+	}
+	// Reexecuting initialization on an existing schema competes with recovery
+	// writes and can recreate missing owner facts instead of exposing corruption.
+	if current {
+		return nil
+	}
+	err = RunIndependentTx(ctx, db, func(ctx context.Context) error {
 		tx := Connection(ctx, db)
-		if err := requireCurrentSchema(ctx, tx, stmts); err != nil {
+		current, err := requireCurrentSchema(ctx, tx, stmts)
+		if err != nil {
 			return err
+		}
+		if current {
+			return nil
 		}
 		for _, stmt := range stmts {
 			if _, err := tx.ExecContext(ctx, stmt); err != nil {
@@ -62,26 +80,26 @@ func InstallSchema(ctx context.Context, db *sql.DB, stmts []string) error {
 // their definitions, and nothing else. The statements would only partly apply
 // to any other directory, so it is refused before one of them runs; there is
 // no migration path, and a former shape is never repaired in place.
-func requireCurrentSchema(ctx context.Context, tx Executor, stmts []string) error {
+func requireCurrentSchema(ctx context.Context, tx Executor, stmts []string) (bool, error) {
 	rows, err := tx.QueryContext(ctx,
 		`SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite\_%' ESCAPE '\'`)
 	if err != nil {
-		return fmt.Errorf("sqlite: inspect schema: %w", err)
+		return false, fmt.Errorf("sqlite: inspect schema: %w", err)
 	}
 	stored := map[string]string{}
 	for rows.Next() {
 		var name, definition string
 		if err := rows.Scan(&name, &definition); err != nil {
 			_ = rows.Close()
-			return fmt.Errorf("sqlite: inspect schema: %w", err)
+			return false, fmt.Errorf("sqlite: inspect schema: %w", err)
 		}
 		stored[name] = definition
 	}
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return fmt.Errorf("sqlite: inspect schema: %w", err)
+		return false, fmt.Errorf("sqlite: inspect schema: %w", err)
 	}
 	if len(stored) == 0 {
-		return nil
+		return false, nil
 	}
 	for _, stmt := range stmts {
 		if !strings.HasPrefix(stmt, "CREATE ") {
@@ -89,17 +107,17 @@ func requireCurrentSchema(ctx context.Context, tx Executor, stmts []string) erro
 		}
 		name, definition, err := schemaObject(stmt)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if stored[name] != definition {
-			return fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", name)
+			return false, fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", name)
 		}
 		delete(stored, name)
 	}
 	for _, name := range slices.Sorted(maps.Keys(stored)) {
-		return fmt.Errorf("sqlite: incompatible schema object %s; open a fresh data directory", name)
+		return false, fmt.Errorf("sqlite: incompatible schema object %s; open a fresh data directory", name)
 	}
-	return nil
+	return true, nil
 }
 
 // schemaObject names the object a current statement creates and the definition

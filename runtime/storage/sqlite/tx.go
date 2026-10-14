@@ -69,6 +69,10 @@ func RunInTx(ctx context.Context, db *sql.DB, fn func(context.Context) error) er
 // discard its diagnostic. Workspace intents and schema admission deliberately
 // enter here rather than joining an ambient write-set.
 func RunIndependentTx(ctx context.Context, db *sql.DB, fn func(context.Context) error) (err error) {
+	return runIndependentTx(ctx, db, nil, fn)
+}
+
+func runIndependentTx(ctx context.Context, db *sql.DB, options *sql.TxOptions, fn func(context.Context) error) (err error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
@@ -87,7 +91,7 @@ func RunIndependentTx(ctx context.Context, db *sql.DB, fn func(context.Context) 
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
-	tx, err := connection.BeginTx(context.WithoutCancel(ctx), nil)
+	tx, err := connection.BeginTx(context.WithoutCancel(ctx), options)
 	if err != nil {
 		return errors.Join(err, discardConnection(connection), cancellation.Err(ctx))
 	}
