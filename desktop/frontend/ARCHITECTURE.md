@@ -261,6 +261,10 @@ Interrupt, and execution state. The Agent context folds Runtime events into a
 view, and recovery replaces that view from a coherent durable snapshot. Those
 are projections of one authority, not independent product transitions.
 
+Goal presentation preserves the Runtime's stopping code and safe detail from the
+same Session snapshot. Status wording and stopping explanations are derived from
+that material; renderer state and connection failures cannot author a new reason.
+
 The client owns authoring facts: drafts, attachment preparation, queued intent,
 and unresolved command identity. Changing the endpoint scopes this local state
 to the selected Runtime. A remote path describes the Runtime machine; a browser

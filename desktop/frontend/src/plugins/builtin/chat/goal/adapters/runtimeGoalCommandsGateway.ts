@@ -28,6 +28,7 @@ export function toGoalReadModel(goal: Goal): GoalReadModel {
     sessionId: goal.sessionId,
     objective: goal.objective,
     status: goal.status,
+    ...(goal.reason ? { reason: { ...goal.reason } } : {}),
     used: {
       runs: goal.used.runs,
       ...(goal.used.costUsd !== undefined ? { costUsd: goal.used.costUsd } : {}),

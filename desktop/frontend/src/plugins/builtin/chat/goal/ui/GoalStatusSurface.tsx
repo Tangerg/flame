@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { Icon, TextEditorDialog } from "@/ui";
-import { Button, IconButton, vocab } from "@flame/ui";
+import { Button, Disclosure, IconButton, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { color } from "@flame/ui/tokens.stylex";
 
@@ -26,7 +26,11 @@ const goalTray = stylex.create({
 import { useT } from "@/lib/i18n";
 import { notifyError, useCommandAction } from "@/plugins/sdk";
 import { clearGoal, resumeGoal, stopGoal, updateGoal } from "../application/goalCommands";
-import { GOAL_STATUS_I18N, goalCanResume } from "../application/goalStatusPresentation";
+import {
+  GOAL_STATUS_I18N,
+  GOAL_REASON_I18N,
+  goalCanResume,
+} from "../application/goalStatusPresentation";
 import { type GoalReadModel, useGoalMaterial } from "../application/goalReadModel";
 import {
   runtimeCommandsAvailable,
@@ -58,6 +62,19 @@ const gs = stylex.create({
     alignItems: "center",
     gap: space.s3,
     marginInlineStart: space.s2,
+  },
+  reason: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr)",
+    gap: space.s1,
+    paddingInline: space.s3,
+    paddingBottom: space.s2,
+  },
+  reasonDetail: {
+    maxHeight: "20vh",
+    overflow: "auto",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
   },
 });
 
@@ -197,6 +214,17 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
           )}
         </div>
       </div>
+      {goal.reason && (
+        <div data-slot="goal-stop-reason" {...stylex.props(gs.reason, vocab.muted)}>
+          {goal.reason.detail ? (
+            <Disclosure title={t(GOAL_REASON_I18N[goal.reason.code].label)}>
+              <div {...stylex.props(gs.reasonDetail)}>{goal.reason.detail}</div>
+            </Disclosure>
+          ) : (
+            <span>{t(GOAL_REASON_I18N[goal.reason.code].label)}</span>
+          )}
+        </div>
+      )}
       <TextEditorDialog
         open={editing}
         onOpenChange={(open) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { en } from "@/lib/i18n/locales/en";
-import { GOAL_STATUS_I18N, goalCanResume } from "./goalStatusPresentation";
+import { GOAL_STATUS_I18N, GOAL_REASON_I18N, goalCanResume } from "./goalStatusPresentation";
 import type { GoalReadModel } from "./goalReadModel";
 
 function goal(patch: Partial<GoalReadModel> = {}): GoalReadModel {
@@ -22,6 +22,7 @@ describe("goal lifecycle actions", () => {
         goalCanResume(
           goal({
             status: code === "blockedByModel" ? "blocked" : "paused",
+            reason: { code, ...(code === "blockedByModel" ? { detail: "needs credentials" } : {}) },
           }),
         ),
       ).toBe(true);
@@ -30,8 +31,8 @@ describe("goal lifecycle actions", () => {
 });
 
 describe("the wording tables", () => {
-  it("names a catalog entry for every status", () => {
-    const unworded = Object.values(GOAL_STATUS_I18N)
+  it("names a catalog entry for every status and stop reason", () => {
+    const unworded = [...Object.values(GOAL_STATUS_I18N), ...Object.values(GOAL_REASON_I18N)]
       .map((status) => status.label)
       .filter((key) => !(key in en));
     expect(unworded).toEqual([]);

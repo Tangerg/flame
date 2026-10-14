@@ -24,6 +24,7 @@ describe("Runtime Goal Adapter", () => {
       sessionId: "ses_goal",
       objective: "ship it",
       status: "blocked",
+      reason: { code: "blockedByModel", detail: "need an answer" },
       used: { runs: 2, costUsd: 0.75, steps: 12 },
       createdAt: "2026-08-12T08:00:00Z",
     });
