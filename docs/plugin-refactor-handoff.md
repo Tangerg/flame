@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 installed point/analyzer lifecycle slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 public SQLite/receipt authoring slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,9 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `6e23f4d00` (target-owned point availability and actual
+- Latest product commit: `419735d13` (public SQLite/receipt owners and per-database
+  transaction authority); preceding `6e23f4d00` implements target-owned point
+  availability and actual
   installed Reviews/analyzer callbacks); `18ddce955` fences same-release activation
   identity;
   `6ef5b7961` adds transitive release retention;
@@ -143,7 +145,11 @@ or deletion. Captured primary context and independent billing remain distinct.
    schedules, affected Go packages, Runtime/CLI/Reviews build and SDK/portable/
    Reviews/Desktop typechecks pass. Audit every Tool,
    automatic and cross-plugin consumer for target/origin/parent/original route.
-4. Extract Memory/Schedules from Runtime-private source dependencies, then complete
+4. Public `runtime/storage/sqlite` and `runtime/plugin/sqlite` now own the shared
+   implementation; old private entrances are removed and all consumers migrate.
+   Full related packages, real bootstrap selection and an offline outside-repository
+   public-author receipt fixture pass (`419735d13`). Extract remaining value/path/
+   model/policy dependencies and Memory/Schedules source, then complete
    independent author/component/native packaging qualification. Workspace
    compilation is not proof of published-module availability. Publishing is not
    authorized.

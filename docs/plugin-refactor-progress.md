@@ -7,10 +7,48 @@ failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
 `67e7801c1`; exact Go/TS feature JSON is implemented by `6a2f30440`. Remaining
 lifecycle work now includes transitive release retention (`6ef5b7961`) and full
 activation identity fencing (`18ddce955`) and actual installed point/analyzer
-lifetimes (`6e23f4d00`);
+lifetimes (`6e23f4d00`). Public SQLite/receipt authoring is extracted in
+`419735d13`; remaining first-party source and native qualification are open;
 independent/native qualification and final closure remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Public private-storage authoring boundary (2026-10-15)
+
+- `419735d13` moves strict schema admission and transaction settlement to public
+  `runtime/storage/sqlite`, and the actual nullable private command/receipt owner
+  to `runtime/plugin/sqlite`. Core stores, both bundled backends and every existing
+  test consumer migrate together. Former private entrypoints/packages are deleted;
+  no forwarding compatibility API, duplicate store or dependency is introduced.
+- Host business schema selection remains Runtime-owned. Plugin schemas, pending
+  admission, original input and atomic value/refusal receipts stay private business
+  facts. This extraction changes no database schema or backend protocol.
+- Transaction context now identifies its exact database owner. An independent
+  database cannot accidentally use another owner's active transaction. A recursive
+  independent transaction on the same active database is refused before waiting on
+  its single connection. Existing cancellation/rollback/panic/Goexit settlement
+  guarantees and original receipt assertions are preserved.
+- The public Go API baseline and exact package/dependency classification include
+  the two public packages. An outside-repository author fixture uses public imports
+  to open a private database and replay its original receipt without a second
+  mutation. It uses local SDK sources offline; it does not claim publication or
+  complete outside-private-source Memory/Schedules qualification.
+- Passed: full public storage/receipts and private Core SQLite, Memory/Schedules
+  packages; complete contractgen/persistence/recovery/segment checks
+  (5.534/5.062/1.656/1.998s), focused public/dependency/external-author checks
+  (4.520s), real bootstrap Reviews/point/Memory/Schedule/recovery selection (53.038s),
+  Runtime/CLI/Reviews build and contract generation. Feature-generated TS was
+  formatted through the existing formatter; accidental import whitespace residue
+  was removed. Gofmt/diff and stash-free staged checks/commitlint pass.
+- No UI/E2E/screenshot or Desktop aggregate check ran. All owned handles/resources
+  are terminal and the user stash remains unchanged. Full/native/vet/race/closure
+  stay final work. Next extract the remaining first-party private value/path/model/
+  policy dependencies, migrate the complete backend source and build consumers,
+  then qualify author/component/native distribution and every P01-P48/review item.
+- No automatic evidence expiry policy is specified in the current owner contracts.
+  An optional user preference was requested; until a new rule is supplied, preserve
+  current Run/Session deletion ownership and unattached/pending evidence retention.
+  No age-based deletion or user-data operation is introduced by this work.
 
 ### Installed point and analyzer lifecycle (2026-10-15)
 
