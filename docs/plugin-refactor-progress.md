@@ -99,10 +99,16 @@ Remaining acceptance obligations (pre-existing, deeper, not yet done):
   never `$ref`'d. `PageContinuation`, `PageQuery` and `RecordedUsage` are flattened
   composed values (only `PageContinuation` is in the test's `notOnTheWire` list),
   and `PageOfItem` is a generic instantiation nothing returns. Resolution is
-  multi-cause: stop emitting defs for flattened embeds (and confirm `ValidateWire`
-  generation is independent), add the genuinely-flattened types to `notOnTheWire`,
-  and stop (or reference) the unused `PageOfItem` instantiation — then regenerate
-  and re-run every contract-drift check. Deferred as the deepest generator change.
+  multi-cause and the walked set is shared: validators are generated from the same
+  `schemaSet` (`validator.go` `reachableProtocolStructs(walked *schemaSet)`), and
+  `PageContinuation`/`PageQuery` are also walked through the `valueConstraint` path
+  (`bundle.go:67`), so these types must stay walked (for `ValidateWire` and the
+  flattened-field constraints) while being excluded from the published `$defs`.
+  Resolution needs a real separation of "walked for validation" from "published
+  definition" in the generator, plus handling `PageOfItem`'s generic instantiation,
+  then regeneration and re-running every contract-drift check. Deferred as the
+  deepest generator change; the prior quick-alias experiment was reverted because a
+  transparent alias trips the transport-boundary gate (now a Number constructor).
 - Bootstrap suite and full/native/vet/race/dependency/format/deletion acceptance
   remain concentrated final work; the embedding live-Run/Goal consumption,
   retention/dependency/point lifecycle (priority #3) and independent author
