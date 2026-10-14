@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"slices"
 	"sync"
 
@@ -107,7 +108,7 @@ func (a *setupActivation) close() error {
 		defer close(a.done)
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				a.err = errors.Join(a.err, fmt.Errorf("plugin: setup resource close panicked: %v", recovered))
+				a.err = errors.Join(a.err, fmt.Errorf("plugin: setup resource close panicked: %v\n%s", recovered, debug.Stack()))
 			}
 		}()
 		if a.resource != nil {
@@ -232,7 +233,7 @@ func (b *Backend) registerSetup() error {
 func invokeSetup(handler func(context.Context, Setup) (io.Closer, error), ctx context.Context, setup Setup) (resource io.Closer, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("plugin: setup handler panicked: %v", recovered)
+			err = fmt.Errorf("plugin: setup handler panicked: %v\n%s", recovered, debug.Stack())
 		}
 	}()
 	return handler(ctx, setup)
@@ -370,7 +371,7 @@ func (b *Backend) registerActivation() error {
 func startActivation(resource ActivationResource) (err error) {
 	defer func() {
 		if value := recover(); value != nil {
-			err = fmt.Errorf("plugin: activation start panicked: %v", value)
+			err = fmt.Errorf("plugin: activation start panicked: %v\n%s", value, debug.Stack())
 		}
 	}()
 	return resource.Start()

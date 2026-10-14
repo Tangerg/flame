@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -173,7 +174,7 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 func admitSession(ctx context.Context, session *sdk.ClientSession, admit func(context.Context, *sdk.ClientSession) error) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("mcp: connection admission panicked: %v", recovered)
+			err = fmt.Errorf("mcp: connection admission panicked: %v\n%s", recovered, debug.Stack())
 		}
 	}()
 	return errors.Join(admit(ctx, session), cancellation.Err(ctx))
