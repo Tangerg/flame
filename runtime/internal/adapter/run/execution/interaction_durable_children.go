@@ -40,11 +40,7 @@ func (i *interactionSession) childTerminalFacts(tree agent.TreeSnapshot) ([]runs
 		}
 		member := i.executorMember(snapshot.Relation())
 		draft := segmentEndFromTermination(result.Termination(), i.segmentClock.duration(result.StartedAt(), result.FinishedAt()))
-		usage, err := i.accounting.segmentUsage(result.ProcessID())
-		if err != nil {
-			return nil, nil, err
-		}
-		facts = append(facts, runs.ExecutorEvent{Member: member, Payload: runs.NewSegmentEnded(draft.reason, draft.failure, usage, draft.duration)})
+		facts = append(facts, runs.ExecutorEvent{Member: member, Payload: runs.NewSegmentEnded(draft.reason, draft.failure, draft.duration)})
 		children = append(children, managed)
 	}
 	return facts, children, nil

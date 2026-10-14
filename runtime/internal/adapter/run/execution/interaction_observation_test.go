@@ -73,9 +73,12 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatalf("per-call usage was lost or replaced with cumulative usage: %#v", models)
 	}
 	modelCost, modelCostAvailable := models[1].Cost.USD()
-	if models[1].Steps != 2 || models[1].Tokens.InputTokens != 18 ||
-		models[1].Tokens.OutputTokens != 5 || !modelCostAvailable || modelCost != 0.5 {
-		t.Fatalf("model completions = %#v", models)
+	if !modelCostAvailable || modelCost != 0.25 {
+		t.Fatalf("second call cost = %v/%t, want its own 0.25", modelCost, modelCostAvailable)
+	}
+	firstCost, firstPriced := models[0].Cost.USD()
+	if !firstPriced || firstCost+modelCost != 0.5 {
+		t.Fatalf("per-call costs = %#v", models)
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
 	finishes := payloadsOf[runs.ToolCallFinished](events)
@@ -95,15 +98,10 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatalf("hook calls = before %d after %d", hooks.before, hooks.after)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Usage() == nil {
-		t.Fatalf("segment accounting = %#v", ended)
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+		t.Fatalf("segment termination = %#v", ended)
 	}
-	segmentUsage := ended[0].Usage()
-	segmentCost, segmentCostAvailable := segmentUsage.Cost.USD()
-	if segmentUsage.Steps != 2 ||
-		segmentUsage.Tokens.InputTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
-		t.Fatalf("segment accounting = %#v", ended)
-	}
+
 }
 
 func TestInteractionExecutorCalibratesNextModelContextFromProviderUsage(t *testing.T) {
@@ -605,13 +603,12 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 	completed := payloadsOf[runs.ModelCallCompleted](events)
 	if len(completed) != 1 || completed[0].Message.Text() != strings.Repeat("x", chunks) ||
 		completed[0].FirstOutputLatencyMillis == nil || *completed[0].FirstOutputLatencyMillis < 0 ||
-		completed[0].Tokens.InputTokens != 5 || completed[0].Tokens.OutputTokens != 2 {
+		completed[0].ReportedUsage.InputTokens != 5 || completed[0].ReportedUsage.OutputTokens != 2 {
 		t.Fatalf("authoritative model completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Usage() == nil || ended[0].Usage().Tokens.InputTokens != 5 ||
-		ended[0].Usage().Tokens.OutputTokens != 2 {
-		t.Fatalf("terminal usage = %#v", ended)
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+		t.Fatalf("terminal = %#v", ended)
 	}
 }
 

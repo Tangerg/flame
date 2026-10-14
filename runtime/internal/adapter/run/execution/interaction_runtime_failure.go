@@ -58,7 +58,7 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 			reason, kind = run.OutcomeLost, run.FailureLost
 		}
 		failure := run.Failure{Kind: kind, Detail: executorDiagnostic(cause)}
-		if err := i.commitFact(ctx, member, runs.NewSegmentEnded(reason, &failure, nil, 0).WithUnresolvedEffects(effects)); err != nil {
+		if err := i.commitFact(ctx, member, runs.NewSegmentEnded(reason, &failure, 0).WithUnresolvedEffects(effects)); err != nil {
 			return err
 		}
 	}

@@ -725,7 +725,7 @@ func (i *interactionSession) publishProjectionFailure(cause error) {
 	}
 	i.lifetime.send(runs.ExecutorEvent{
 		Member:  member,
-		Payload: runs.NewSegmentEnded(run.OutcomeFailed, &failure, nil, 0),
+		Payload: runs.NewSegmentEnded(run.OutcomeFailed, &failure, 0),
 	})
 }
 
@@ -797,17 +797,13 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 			end.failure = &classified
 		}
 	}
-	usage, err := i.accounting.segmentUsage(result.ProcessID())
-	if err != nil {
-		return runs.SegmentEnded{}, err
-	}
 	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancel()
 	effects, err := i.terminalEffects(ctx, result.ProcessID())
 	if err != nil {
 		return runs.SegmentEnded{}, err
 	}
-	return runs.NewSegmentEnded(end.reason, end.failure, usage, end.duration).WithUnresolvedEffects(effects), nil
+	return runs.NewSegmentEnded(end.reason, end.failure, end.duration).WithUnresolvedEffects(effects), nil
 }
 
 type segmentEndDraft struct {

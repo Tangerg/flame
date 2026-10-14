@@ -60,7 +60,7 @@ func (c *concurrentToolExecutor) Observe(
 		commitErr := receipt.Await(ctx)
 		if commitErr != nil {
 			c.failures <- commitErr
-			yield(ExecutorEvent{Member: member, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:test: " + commitErr.Error()}, nil, 0)})
+			yield(ExecutorEvent{Member: member, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:test: " + commitErr.Error()}, 0)})
 			return
 		}
 
@@ -92,24 +92,19 @@ func (a *authoritativeFailureExecutor) Observe(
 		a.receipts <- startReceipt.Await(ctx)
 
 		usage := accounting.Tokens{InputTokens: 2, OutputTokens: 1}
-		completion, completionReceipt, err := NewExecutionFactCommit(ModelCallCompleted{
-			CallID: "model_call_1",
+		completion, completionReceipt, err := NewExecutionFactCommit(ModelCallCompleted{CallID: "model_call_1",
 			Message: new(corechat.NewAssistantMessage(
 				corechat.NewTextPart("durable final that must not be half-published"),
 			)),
-			Tokens: usage,
-			ByModel: []accounting.ModelUsage{{
-				Model: "test-model", Tokens: usage, Calls: 1,
-			}},
-			Steps: 1,
-		})
+			ReportedUsage: &corechat.Usage{InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens},
+			Model:         "test-model"})
 		if err != nil || !yield(ExecutorEvent{Member: member, Payload: completion}) {
 			return
 		}
 		a.receipts <- completionReceipt.Await(ctx)
 		yield(ExecutorEvent{
 			Member:  member,
-			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, nil, 0),
+			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, 0),
 		})
 	}, nil
 }
@@ -197,12 +192,12 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 		{Member: child, Payload: childStart},
 		{Member: sibling, Payload: siblingStart},
 		{Member: completed, Payload: completedStart},
-		{Member: completed, Payload: NewSegmentEnded(run.OutcomeCompleted, nil, nil, 0)},
+		{Member: completed, Payload: NewSegmentEnded(run.OutcomeCompleted, nil, 0)},
 		{Member: sibling, Payload: ModelCallStarted{CallID: "in_flight_model"}},
 		{Member: child, Payload: ToolCallStarted{CallID: "unknown_tool", SourceCallID: "provider_tool", ToolName: "write", Arguments: `{}`}},
-		{Member: child, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, nil, 0)},
-		{Member: sibling, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, nil, 0)},
-		{Member: root, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, nil, 0)},
+		{Member: child, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, 0)},
+		{Member: sibling, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, 0)},
+		{Member: root, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, 0)},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
@@ -544,10 +539,8 @@ func TestSparseToolResultSurvivesSiblingCancellation(t *testing.T) {
 	first := corechat.ToolCall{ID: "provider_first", Name: "first", Arguments: `{}`}
 	second := corechat.ToolCall{ID: "provider_second", Name: "second", Arguments: `{}`}
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	model := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Steps: 1,
-		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(first), corechat.NewToolCallPart(second))),
-	})
+	model := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(first), corechat.NewToolCallPart(second)))})
 	result := corechat.ToolResult{ID: second.ID, Name: second.Name, Output: corechat.NewTextToolOutput("external write acknowledged")}
 	settlement := testToolPublication([]ToolCallStarted{{
 		CallID: "tool_second", SourceCallID: second.ID, ModelCallSequence: 1,

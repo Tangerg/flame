@@ -171,12 +171,15 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	if len(completed) != 1 {
 		t.Fatalf("completion = %#v", completed)
 	}
+	if len(payloadsOf[runs.ModelCallCompleted](first))+len(completed) != 2 {
+		t.Fatal("restoration lost a model consumption boundary")
+	}
 	message := completed[0].Message
 	if message.Text() != "completed" {
 		t.Fatalf("completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Usage() == nil || ended[0].Usage().Steps != 2 {
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v", ended)
 	}
 	mu.Lock()

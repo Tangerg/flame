@@ -104,7 +104,7 @@ func (m Metrics) Steps() int { return m.steps }
 // ActiveDuration returns the cumulative time spent executing.
 func (m Metrics) ActiveDuration() time.Duration { return m.activeDuration }
 
-// AccrueModelCall adds only a known, not-yet-committed provider call. The journal
+// AccrueModelCall adds one not-yet-committed provider call. The journal
 // transition and Run replacement commit together; a restarted pass cannot add it twice.
 func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *float64) (Metrics, error) {
 	if err := m.Validate(); err != nil {
@@ -118,7 +118,7 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 		return Metrics{}, err
 	}
 	if m.steps == math.MaxInt {
-		return Metrics{}, errors.New("run: recovered model call count overflows")
+		return Metrics{}, errors.New("run: model call count overflows")
 	}
 	if reported == nil {
 		if costUSD != nil {
@@ -127,7 +127,8 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 		if m.usage != nil {
 			usage := m.usage.Clone()
 			usage.Total.CostUSD = nil
-			if value, ok := usage.ByModel[model]; ok {
+			if usage.ByModel != nil {
+				value := usage.ByModel[model]
 				value.CostUSD = nil
 				usage.ByModel[model] = value
 			}
@@ -141,6 +142,10 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 	}
 	delta := accounting.Totals{Tokens: tokens, CostUSD: cost.OptionalUSD()}
 	usage := accounting.Usage{Total: delta, ByModel: map[string]accounting.Totals{model: delta}}
+	if m.usage == nil && m.steps > 0 {
+		usage.Total.CostUSD = nil
+		usage.ByModel = nil
+	}
 	if m.usage != nil {
 		usage = m.usage.Clone()
 		usage.Total, err = usage.Total.Add(delta)

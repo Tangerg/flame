@@ -54,11 +54,12 @@ func TestReducerTerminalChargesTheGoalOfAGoalOwnedRun(t *testing.T) {
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.GoalIncarnationID = "goal_lease" })
 	reducer := newReducer(config)
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_goal"})
+	mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_goal", ReportedUsage: &corechat.Usage{}, Cost: mustReducerCost(t, 0.75)})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
 	reductions := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		usage:  &SegmentUsage{Cost: mustReducerCost(t, 0.75), Steps: 1},
 	})
 	commit := reductions[len(reductions)-1].Commit
 	if commit == nil || !commit.ChargesGoal() || commit.Run.GoalIncarnationID() != "goal_lease" {
@@ -82,14 +83,13 @@ func TestReducerTerminalChargesTheGoalOfAGoalOwnedRun(t *testing.T) {
 func TestReducerStepsCountModelCallsRatherThanParallelTools(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	mustReduce(t, reducer, ModelCallCompleted{CallID: "model_call_1", Steps: 1})
+	mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1"})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_2", ToolName: "inspect", Arguments: `{}`})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_2", Result: testToolResult(t, "two")})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "one")})
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		usage:  &SegmentUsage{Steps: 1},
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	if record.Metrics().Steps() != 1 {
@@ -105,9 +105,8 @@ func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 		corechat.NewReasoningPart("authoritative reasoning", nil),
 		corechat.NewTextPart("authoritative answer"),
 	)
-	reduced := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	})
+	reduced := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)})
 
 	var completed []transcript.Item
 	for _, reduction := range reduced {
@@ -133,10 +132,8 @@ func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	reported := corechat.Usage{InputTokens: 7, OutputTokens: 2}
-	usage := accounting.Tokens{InputTokens: 7, OutputTokens: 2}
-	completed := ModelCallCompleted{
-		CallID: "model_call_1", ReportedUsage: &reported, Tokens: usage, Steps: 1,
-	}
+	completed := ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		ReportedUsage: &reported}
 	if _, err := reducer.reduce(completed); !errors.Is(err, errExecutorContract) {
 		t.Fatalf("accounting without an admitted model call = %v", err)
 	}
@@ -164,11 +161,11 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	}
 	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeFailed, &run.Failure{
 		Kind: run.FailureProviderRejected, Detail: "model response has no finished assistant message",
-	}, nil, 0))
+	}, 0))
 	record := terminal[len(terminal)-1].Event.(SegmentFinished).Run
 	accounted, available := record.Metrics().Usage()
 	if record.Metrics().Steps() != 1 || !available ||
-		accounted.Total.InputTokens != usage.InputTokens || accounted.Total.OutputTokens != usage.OutputTokens {
+		accounted.Total.InputTokens != reported.InputTokens || accounted.Total.OutputTokens != reported.OutputTokens {
 		t.Fatalf("terminal lost model accounting: %+v", record.Metrics())
 	}
 }
@@ -177,9 +174,8 @@ func TestReducerProjectsProviderRefusalWithoutChangingConversationSemantics(t *t
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	message := corechat.NewAssistantMessage(corechat.NewRefusalPart("I cannot help with that request."))
-	reduced := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	})
+	reduced := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)})
 
 	items := completedItems(reduced)
 	if len(items) != 1 || items[0].Kind() != transcript.AgentMessage ||
@@ -196,14 +192,11 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 	reducer := newReducer(testReducerConfig())
 	call := corechat.ToolCall{ID: "provider_call_1", Name: "inspect", Arguments: `{}`}
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	commentary := completedItems(mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1",
+	commentary := completedItems(mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
 		Message: new(corechat.NewAssistantMessage(
 			corechat.NewTextPart("I will inspect the file first."),
 			corechat.NewToolCallPart(call),
-		)),
-		Steps: 1,
-	}))
+		))}))
 	if len(commentary) != 1 || commentary[0].Kind() != transcript.AgentMessage {
 		t.Fatalf("commentary Items = %#v, want one agent message", commentary)
 	}
@@ -222,9 +215,8 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 
 	answer := corechat.NewAssistantMessage(corechat.NewTextPart("The file is ready."))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_2"})
-	final := completedItems(mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_2", Message: new(answer), Steps: 2,
-	}))
+	final := completedItems(mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_2",
+		Message: new(answer)}))
 	if len(final) != 1 || final[0].Kind() != transcript.AgentMessage {
 		t.Fatalf("final Items = %#v, want one agent message", final)
 	}
@@ -253,9 +245,8 @@ func TestReducerKeepsStreamingItemsOpenUntilTheAuthoritativeModelResponse(t *tes
 		corechat.NewReasoningPart("authoritative reasoning", nil),
 		corechat.NewTextPart("authoritative answer"),
 	)
-	completed := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	})
+	completed := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)})
 	items := completedItems(completed)
 	if len(items) != 2 {
 		t.Fatalf("completed Items = %#v, want one reasoning and one assistant message", items)
@@ -275,9 +266,8 @@ func TestReducerTerminalDoesNotDuplicateCommittedModelResponse(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	message := corechat.NewAssistantMessage(corechat.NewTextPart("authoritative answer"))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	})
+	modelBatch := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)})
 	completed := 0
 	for _, reduction := range modelBatch {
 		if _, ok := reduction.Event.(ItemCompleted); ok {
@@ -291,7 +281,7 @@ func TestReducerTerminalDoesNotDuplicateCommittedModelResponse(t *testing.T) {
 	if len(conversation) != 1 || conversation[0].Text() != "authoritative answer" {
 		t.Fatalf("model conversation projection = %#v", conversation)
 	}
-	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, nil, 0))
+	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
 	if items := completedItems(terminal); len(items) != 0 {
 		t.Fatalf("terminal duplicated committed model Items: %#v", items)
 	}
@@ -308,9 +298,8 @@ func TestReducerIgnoresStreamingObservationAfterAuthoritativeModelCompletion(t *
 	message := corechat.NewAssistantMessage(corechat.NewTextPart("authoritative answer"))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	mustReduce(t, reducer, MessageDelta{Text: "authoritative answer"})
-	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	})
+	modelBatch := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)})
 	if completed := completedItems(modelBatch); len(completed) != 1 {
 		t.Fatalf("model completion Items = %#v, want one", completed)
 	}
@@ -364,9 +353,8 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 	call := corechat.ToolCall{ID: " provider\u200b" + strings.Repeat("界", 513) + "\n", Name: "inspect", Arguments: `{"path":"README.md"}`}
 	message := corechat.NewAssistantMessage(corechat.NewToolCallPart(call))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	})
+	modelBatch := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)})
 	modelMessages := committedConversationMessages(modelBatch)
 	if len(modelMessages) != 1 || len(modelMessages[0].Parts) != 1 ||
 		modelMessages[0].Parts[0].ToolCall == nil || modelMessages[0].Parts[0].ToolCall.ID != call.ID {
@@ -402,9 +390,8 @@ func TestReducerRejectsMissingProviderToolCallIDBeforeProjection(t *testing.T) {
 	message := corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
 		Name: "inspect", Arguments: `{}`,
 	}))
-	if _, err := reducer.reduce(ModelCallCompleted{
-		CallID: "model_call_1", Message: new(message), Steps: 1,
-	}); !errors.Is(err, errExecutorContract) {
+	if _, err := reducer.reduce(ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(message)}); !errors.Is(err, errExecutorContract) {
 		t.Fatalf("missing ToolCall ID error = %v, want executor contract failure", err)
 	}
 }
@@ -414,14 +401,11 @@ func TestTerminalConversationClosesProviderToolCallCanceledBeforeRuntimeStart(t 
 	first := corechat.ToolCall{ID: "provider_first", Name: "glob", Arguments: `{"pattern":"**/*"}`}
 	second := corechat.ToolCall{ID: "provider_second", Name: "search_tools", Arguments: `{"query":"lookup"}`}
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1",
+	modelBatch := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
 		Message: new(corechat.NewAssistantMessage(
 			corechat.NewToolCallPart(first),
 			corechat.NewToolCallPart(second),
-		)),
-		Steps: 1,
-	})
+		))})
 
 	start := ToolCallStarted{
 		CallID: "runtime_first", SourceCallID: first.ID,
@@ -512,7 +496,7 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 	}
 }
 
-func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
+func TestReducerAccruesPerCallAccountingAcrossResume(t *testing.T) {
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
 		s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{
@@ -524,17 +508,10 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 
 	reducer := newReducer(config)
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_3"})
-	mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_3",
-		Tokens: accounting.Tokens{InputTokens: 15},
-		Steps:  3,
-	})
+	mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_3",
+		ReportedUsage: &corechat.Usage{InputTokens: 5}})
 	finished := mustReduce(t, reducer, SegmentEnded{
-		Reason: run.OutcomeCompleted,
-		usage: &SegmentUsage{
-			Tokens: accounting.Tokens{InputTokens: 15},
-			Steps:  3,
-		},
+		Reason:   run.OutcomeCompleted,
 		Duration: 2 * time.Second,
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
@@ -562,11 +539,8 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 
 	reducer := newReducer(config)
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_2"})
-	progress := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_2",
-		Tokens: accounting.Tokens{InputTokens: 20},
-		Steps:  2,
-	})
+	progress := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_2",
+		ReportedUsage: &corechat.Usage{InputTokens: 10}})
 	event := progress[len(progress)-1].Event.(SegmentProgressed)
 	if event.Progress.Usage == nil || event.Progress.Usage.Total.InputTokens != 20 ||
 		event.Progress.Usage.Total.CostUSD != nil {
@@ -575,10 +549,6 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		usage: &SegmentUsage{
-			Tokens: accounting.Tokens{InputTokens: 20},
-			Steps:  2,
-		},
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
@@ -587,54 +557,21 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	}
 }
 
-func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
-	t.Run("step regression", func(t *testing.T) {
-		config := testReducerConfig()
-		config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}) })
-		reducer := newReducer(config)
-		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-		_, err := reducer.reduce(ModelCallCompleted{CallID: "model_call_1", Steps: 1})
-		if !errors.Is(err, errExecutorContract) {
-			t.Fatalf("error = %v, want executor protocol violation", err)
-		}
-	})
-
-	t.Run("usage regression", func(t *testing.T) {
-		config := testReducerConfig()
-		config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
-			s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{InputTokens: 10}},
-				Steps: 1})
+func TestReducerRejectsInvalidPerCallAccounting(t *testing.T) {
+	for name, fact := range map[string]ModelCallCompleted{
+		"negative usage":      {Model: "claude", CallID: "call_invalid", ReportedUsage: &corechat.Usage{InputTokens: -1}},
+		"missing model":       {CallID: "call_invalid"},
+		"invalid model":       {CallID: "call_invalid", Model: " model"},
+		"price without usage": {Model: "claude", CallID: "call_invalid", Cost: mustReducerCost(t, 1)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			reducer := newReducer(testReducerConfig())
+			mustReduce(t, reducer, ModelCallStarted{CallID: fact.CallID})
+			if _, err := reducer.reduce(fact); !errors.Is(err, errExecutorContract) {
+				t.Fatalf("error = %v, want executor contract violation", err)
+			}
 		})
-
-		reducer := newReducer(config)
-		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_2"})
-		_, err := reducer.reduce(ModelCallCompleted{
-			CallID: "model_call_2",
-			Tokens: accounting.Tokens{InputTokens: 9},
-			Steps:  2,
-		})
-		if !errors.Is(err, errExecutorContract) {
-			t.Fatalf("error = %v, want executor protocol violation", err)
-		}
-	})
-
-	t.Run("per-model mismatch", func(t *testing.T) {
-		reducer := newReducer(testReducerConfig())
-		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-		_, err := reducer.reduce(ModelCallCompleted{
-			CallID: "model_call_1",
-			Tokens: accounting.Tokens{InputTokens: 5},
-			ByModel: []accounting.ModelUsage{{
-				Model:  "model",
-				Tokens: accounting.Tokens{InputTokens: 4},
-				Calls:  1,
-			}},
-			Steps: 1,
-		})
-		if !errors.Is(err, errExecutorContract) {
-			t.Fatalf("error = %v, want executor protocol violation", err)
-		}
-	})
+	}
 }
 
 type unsupportedEngineEvent struct{ executionFactBase }
@@ -855,11 +792,8 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 		Arguments: `{"command":"printf hello","description":"Print hello"}`,
 	}
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	mustReduce(t, reducer, ModelCallCompleted{
-		CallID:  "model_call_1",
-		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(call))),
-		Steps:   1,
-	})
+	mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(call)))})
 	start := ToolCallStarted{
 		CallID: "runtime_shell", SourceCallID: call.ID,
 		ModelCallSequence: 1, ToolCallIndex: 0,
@@ -1009,11 +943,10 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	usage := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1",
-		Tokens: accounting.Tokens{InputTokens: 1200, OutputTokens: 80, ReasoningTokens: 30},
-		Cost:   mustReducerCost(t, 0.0125), Steps: 1, ContextTokens: 4096,
-	})
+	usage := mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_1",
+		ReportedUsage: &corechat.Usage{InputTokens: 1200, OutputTokens: 80, ReasoningTokens: new(int64(30))},
+		Cost:          mustReducerCost(t, 0.0125),
+		ContextTokens: 4096})
 	progress, ok := usage[0].Event.(SegmentProgressed)
 	if !ok || progress.Progress.Usage == nil || progress.Progress.Usage.Total.InputTokens != 1200 || progress.Progress.Usage.Total.CostUSD == nil {
 		t.Fatalf("usage progress = %#v", usage[0].Event)
@@ -1055,17 +988,12 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	// — see reducer.fenceFinalPlan.
 	terminal := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCanceled, Duration: 1500 * time.Millisecond,
-		usage: &SegmentUsage{
-			Tokens: accounting.Tokens{
-				InputTokens:     1200,
-				OutputTokens:    80,
-				ReasoningTokens: 30,
-			},
-			Cost:  mustReducerCost(t, 4.2),
-			Steps: 1,
-		},
 	})
 	finished := terminal[len(terminal)-1].Event.(SegmentFinished)
+	terminalUsage, terminalReported := finished.Run.Metrics().Usage()
+	if !terminalReported || !terminalUsage.Equal(stored) || finished.Run.Metrics().Steps() != 1 {
+		t.Fatalf("segment termination replaced committed consumption: %+v", finished.Run.Metrics())
+	}
 	if finished.Run.Metrics().ActiveDuration() != 1500*time.Millisecond || finished.Run.Detail() != "" {
 		t.Fatalf("canceled terminal = %+v", finished.Run)
 	}
@@ -1904,7 +1832,8 @@ func TestFailedOuterKnownResponseCommitsEvidenceAndUsageWithoutContinuation(t *t
 	message := corechat.NewAssistantMessage(corechat.NewTextPart("known inner answer"), corechat.NewToolCallPart(corechat.ToolCall{ID: "unexecuted", Name: "read", Arguments: `{}`}))
 	usage := &corechat.Usage{InputTokens: 7, OutputTokens: 2}
 	response := &corechat.Response{Output: &corechat.Output{Message: &message, FinishReason: corechat.FinishReasonToolCalls}, Metadata: &corechat.ResponseMetadata{Model: "inner", Usage: usage}}
-	accounted := &ModelCallCompleted{CallID: "known_inner", ReportedUsage: usage, Tokens: accounting.Tokens{InputTokens: 7, OutputTokens: 2}, Steps: 1}
+	accounted := &ModelCallCompleted{Model: "claude", CallID: "known_inner",
+		ReportedUsage: usage}
 	reduced := mustReduce(t, reducer, ModelCallFailed{CallID: "known_inner", KnownResponse: response, Accounting: accounted, Observation: ModelObservation{Text: "known inner answer"}})
 	if len(committedConversationMessages(reduced)) != 0 {
 		t.Fatal("failed outer response entered executable model continuation")
@@ -2022,5 +1951,22 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 				t.Fatalf("settlement bypassed the canonical Item: %v", err)
 			}
 		})
+	}
+}
+
+func TestReducerAccruesInterleavedModelCallsOnceWithoutChangingPrimaryContext(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	mustReduce(t, reducer, ModelCallStarted{CallID: "primary"})
+	mustReduce(t, reducer, ModelCallStarted{CallID: "independent"})
+	mustReduce(t, reducer, ModelCallCompleted{CallID: "independent", Model: "second-model", ReportedUsage: &corechat.Usage{InputTokens: 7, OutputTokens: 2}, Cost: mustReducerCost(t, .25)})
+	mustReduce(t, reducer, ModelCallCompleted{CallID: "primary", Model: "first-model", ReportedUsage: &corechat.Usage{InputTokens: 5, OutputTokens: 1}, Cost: mustReducerCost(t, .5), ContextTokens: 5})
+	if _, err := reducer.reduce(ModelCallCompleted{Model: "claude", CallID: "independent", ReportedUsage: &corechat.Usage{InputTokens: 7}}); !errors.Is(err, errExecutorContract) {
+		t.Fatalf("repeated completion = %v", err)
+	}
+	finished := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+	record := finished[len(finished)-1].Event.(SegmentFinished).Run
+	usage, reported := record.Metrics().Usage()
+	if !reported || record.Metrics().Steps() != 2 || usage.Total.InputTokens != 12 || usage.Total.OutputTokens != 3 || usage.Total.CostUSD == nil || *usage.Total.CostUSD != .75 || record.ContextTokens() != 5 || usage.ByModel["second-model"].InputTokens != 7 {
+		t.Fatalf("terminal lost per-call consumption: %+v", record.Snapshot())
 	}
 }

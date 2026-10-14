@@ -543,15 +543,19 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 }
 
 // The model completion supplies both durable consumption and its progress
-// projection. Terminal accounting may confirm it, but absence cannot erase it.
+// projection. Segment termination cannot replace or erase that consumption.
 func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, error) {
-	if err := r.applyUsage(SegmentUsage{
-		Tokens:  e.Tokens,
-		ByModel: e.ByModel,
-		Cost:    e.Cost,
-		Steps:   e.Steps,
-	}); err != nil {
+	current, err := r.metrics()
+	if err != nil {
 		return nil, err
+	}
+	next, err := current.AccrueModelCall(e.Model, e.ReportedUsage, e.Cost.OptionalUSD())
+	if err != nil {
+		return nil, err
+	}
+	r.step = next.Steps()
+	if usage, known := next.Usage(); known {
+		r.usage = new(usage)
 	}
 	metrics, err := r.metrics()
 	if err != nil {

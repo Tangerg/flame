@@ -228,7 +228,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	}
 	var parentStarts, parentResults []string
 	var restoredMetadata *runs.ToolCallFinished
-	var childEnds, rootEnds int
+	var childEnds, rootEnds, rootModels int
 	for _, event := range observed {
 		if event.Member.MemberID == processID.String() {
 			t.Fatalf("completed sibling B was projected again: %+v", event)
@@ -247,6 +247,10 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 					}
 				}
 			}
+		case runs.ModelCallCompleted:
+			if !event.Member.Child() {
+				rootModels++
+			}
 		case runs.SegmentEnded:
 			if payload.Reason != run.OutcomeCompleted {
 				t.Fatalf("restored member failed: %+v", payload)
@@ -255,9 +259,6 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 				childEnds++
 			} else {
 				rootEnds++
-				if payload.Usage() == nil || payload.Usage().Steps != 2 {
-					t.Fatalf("restored root accounting = %+v, want two root model calls", payload.Usage())
-				}
 			}
 		}
 	}
@@ -270,7 +271,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	expectedStarts := []string{"delegate_a"}
 	expectedResults := []string{"delegate_a"}
 	if !slices.Equal(parentStarts, expectedStarts) || !slices.Equal(parentResults, expectedResults) ||
-		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 {
+		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 || rootModels != 1 {
 		t.Fatalf("restored tree starts=%v results=%v childEnds=%d rootEnds=%d modelCalls=%d",
 			parentStarts, parentResults, childEnds, rootEnds, modelCalls.Load())
 	}

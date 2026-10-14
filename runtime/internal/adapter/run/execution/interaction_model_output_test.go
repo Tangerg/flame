@@ -73,12 +73,12 @@ func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *t
 			}
 			if withhold {
 				failed := payloadsOf[runs.ModelCallFailed](events)
-				if len(failed) != 1 || failed[0].Accounting == nil || failed[0].Accounting.ReportedUsage.InputTokens != 12 || failed[0].Accounting.ReportedUsage.OutputTokens != 3 || failed[0].Accounting.Steps != 1 || failed[0].KnownResponse.Text() != "physical answer" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+				if len(failed) != 1 || failed[0].Accounting == nil || failed[0].Accounting.ReportedUsage.InputTokens != 12 || failed[0].Accounting.ReportedUsage.OutputTokens != 3 || failed[0].KnownResponse.Text() != "physical answer" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
 					t.Fatalf("withheld result lost or duplicated physical usage: %+v", failed)
 				}
 			} else {
 				completed := payloadsOf[runs.ModelCallCompleted](events)
-				if len(completed) != 1 || completed[0].ReportedUsage.InputTokens != 12 || completed[0].ReportedUsage.OutputTokens != 3 || completed[0].Steps != 1 {
+				if len(completed) != 1 || completed[0].ReportedUsage.InputTokens != 12 || completed[0].ReportedUsage.OutputTokens != 3 {
 					t.Fatalf("outer projection originated usage: %+v", completed)
 				}
 			}
@@ -95,7 +95,7 @@ func TestFailedOuterModelRetainsKnownResponseAndAccounting(t *testing.T) {
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: false})
 	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 	failed := payloadsOf[runs.ModelCallFailed](events)
-	if len(failed) != 1 || !reflect.DeepEqual(failed[0].KnownResponse, response) || failed[0].Accounting == nil || !reflect.DeepEqual(failed[0].Accounting.ReportedUsage, response.Metadata.Usage) || failed[0].Accounting.Steps != 1 || failed[0].Observation.Text != "known inner answer" || failed[0].Observation.Reasoning != "basis" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+	if len(failed) != 1 || !reflect.DeepEqual(failed[0].KnownResponse, response) || failed[0].Accounting == nil || !reflect.DeepEqual(failed[0].Accounting.ReportedUsage, response.Metadata.Usage) || failed[0].Observation.Text != "known inner answer" || failed[0].Observation.Reasoning != "basis" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
 		t.Fatalf("known inner evidence discarded or promoted: %+v", failed)
 	}
 	ends := payloadsOf[runs.SegmentEnded](events)

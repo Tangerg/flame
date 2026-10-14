@@ -4,6 +4,14 @@ Flame Runtime is the local product backend for Flame. It owns durable agent sema
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
+Run accounting facts now report one actual model call, including original usage and
+captured per-call price. The Run reducer owns accumulation across calls and resumed
+segments; terminal segment facts contain outcome, unresolved effects and duration.
+`SegmentUsage` and cumulative completion fields are removed. Scope process snapshots
+retain their checkpoint/calibration purpose. Unknown consumption cannot become an
+exact priced total because a later response is known. Independent callback live
+integration, total-work admission and remaining acceptance are still outstanding.
+
 ## First-party initialization
 
 `make build` produces `build/flame` and its complete companion `build/plugins`

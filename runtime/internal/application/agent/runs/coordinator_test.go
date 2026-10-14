@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -1675,21 +1674,6 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 		ParentID:    rootMember.MemberID,
 		SpawnCallID: "provider_call_delegate",
 	}
-	finalUsage := SegmentUsage{
-		Tokens: accounting.Tokens{
-			InputTokens:  13,
-			OutputTokens: 5,
-		},
-		ByModel: []accounting.ModelUsage{{
-			Model: "child-model",
-			Tokens: accounting.Tokens{
-				InputTokens:  13,
-				OutputTokens: 5,
-			},
-			Calls: 1,
-		}},
-		Steps: 1,
-	}
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{
 			Member: rootMember,
@@ -1701,10 +1685,10 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 			},
 		},
 		{Member: childMember, Payload: request},
-		{Member: childMember, Payload: MessageDelta{Text: "child reply"}},
+		{Member: childMember, Payload: ModelCallStarted{CallID: "child_model"}},
+		{Member: childMember, Payload: ModelCallCompleted{CallID: "child_model", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("child reply"))), Model: "child-model", ReportedUsage: &corechat.Usage{InputTokens: 13, OutputTokens: 5}}},
 		{Member: childMember, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			usage:  &finalUsage,
 		}},
 		{Member: rootMember, Payload: testDelegatePublication(childMember.SpawnCallID, ToolCallFinished{
 			CallID:     "canonical_call_delegate",
@@ -1758,20 +1742,6 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 		ParentID:    rootMember.MemberID,
 		SpawnCallID: "provider_call_b",
 	}
-	childUsage := func(model string, prompt int64) *SegmentUsage {
-		return &SegmentUsage{
-			Tokens: accounting.Tokens{InputTokens: prompt, OutputTokens: 1},
-			ByModel: []accounting.ModelUsage{{
-				Model: model,
-				Tokens: accounting.Tokens{
-					InputTokens:  prompt,
-					OutputTokens: 1,
-				},
-				Calls: 1,
-			}},
-			Steps: 1,
-		}
-	}
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{Member: rootMember, Payload: ToolCallStarted{
 			CallID: "canonical_a", ModelCallSequence: 1, ToolCallIndex: 0, SourceCallID: childA.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
@@ -1781,15 +1751,15 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 		}},
 		{Member: childA, Payload: requestA},
 		{Member: childB, Payload: requestB},
-		{Member: childA, Payload: MessageDelta{Text: "alpha"}},
-		{Member: childB, Payload: MessageDelta{Text: "beta"}},
+		{Member: childA, Payload: ModelCallStarted{CallID: "model-a_call"}},
+		{Member: childA, Payload: ModelCallCompleted{CallID: "model-a_call", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("alpha"))), Model: "model-a", ReportedUsage: &corechat.Usage{InputTokens: 5, OutputTokens: 1}}},
+		{Member: childB, Payload: ModelCallStarted{CallID: "model-b_call"}},
+		{Member: childB, Payload: ModelCallCompleted{CallID: "model-b_call", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("beta"))), Model: "model-b", ReportedUsage: &corechat.Usage{InputTokens: 7, OutputTokens: 1}}},
 		{Member: childB, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			usage:  childUsage("model-b", 7),
 		}},
 		{Member: childA, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			usage:  childUsage("model-a", 5),
 		}},
 		{Member: rootMember, Payload: testPublicationPayload(testToolPublication(
 			[]ToolCallStarted{
@@ -1895,20 +1865,6 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 		ParentID:    childMember.MemberID,
 		SpawnCallID: "provider_call_grandchild",
 	}
-	usage := func(prompt int64, calls int) *SegmentUsage {
-		return &SegmentUsage{
-			Tokens: accounting.Tokens{InputTokens: prompt, OutputTokens: int64(calls)},
-			ByModel: []accounting.ModelUsage{{
-				Model: "model",
-				Tokens: accounting.Tokens{
-					InputTokens:  prompt,
-					OutputTokens: int64(calls),
-				},
-				Calls: calls,
-			}},
-			Steps: calls,
-		}
-	}
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{Member: rootMember, Payload: ToolCallStarted{
 			CallID: "canonical_child", ModelCallSequence: 1, SourceCallID: childMember.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
@@ -1918,18 +1874,22 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 			CallID: "canonical_grandchild", ModelCallSequence: 1, SourceCallID: grandchildSource.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
 		}},
 		{Member: grandchildSource, Payload: grandchildRequest},
-		{Member: grandchildSource, Payload: MessageDelta{Text: "leaf"}},
+		{Member: grandchildSource, Payload: ModelCallStarted{CallID: "leaf_model"}},
+		{Member: grandchildSource, Payload: ModelCallCompleted{CallID: "leaf_model", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("leaf"))), Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 3, OutputTokens: 1}}},
 		{Member: grandchildSource, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			usage:  usage(3, 1),
 		}},
 		{Member: childMember, Payload: testDelegatePublication(grandchildSource.SpawnCallID, ToolCallFinished{
 			CallID: "canonical_grandchild", OutputText: "leaf",
 		})},
-		{Member: childMember, Payload: MessageDelta{Text: "branch"}},
+		{Member: childMember, Payload: ModelCallStarted{CallID: "branch_model_0"}},
+		{Member: childMember, Payload: ModelCallCompleted{CallID: "branch_model_0", Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 3, OutputTokens: 1}}},
+		{Member: childMember, Payload: ModelCallStarted{CallID: "branch_model_1"}},
+		{Member: childMember, Payload: ModelCallCompleted{CallID: "branch_model_1", Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 3, OutputTokens: 1}}},
+		{Member: childMember, Payload: ModelCallStarted{CallID: "branch_model_2"}},
+		{Member: childMember, Payload: ModelCallCompleted{CallID: "branch_model_2", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("branch"))), Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 3, OutputTokens: 1}}},
 		{Member: childMember, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			usage:  usage(9, 3),
 		}},
 		{Member: rootMember, Payload: testDelegatePublication(childMember.SpawnCallID, ToolCallFinished{
 			CallID: "canonical_child", OutputText: "branch",
@@ -2114,7 +2074,7 @@ func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
 		{Member: childMember, Payload: request},
 		// The root's boundary, with the child still live and no terminal of its
 		// own ever arriving.
-		{Member: rootMember, Payload: NewSegmentEnded(run.OutcomeTimedOut, &run.Failure{Kind: run.FailureTimeout, Detail: "original deadline"}, nil, 3*time.Second)},
+		{Member: rootMember, Payload: NewSegmentEnded(run.OutcomeTimedOut, &run.Failure{Kind: run.FailureTimeout, Detail: "original deadline"}, 3*time.Second)},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)

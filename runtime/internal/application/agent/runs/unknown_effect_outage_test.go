@@ -45,7 +45,7 @@ func TestUnknownEffectLossOutageReachesTheOperatorOnce(t *testing.T) {
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{
 			Member:  ExecutorMember{MemberID: "member_root"},
-			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, nil, 0),
+			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, 0),
 		},
 	}}
 	effects := &fakeEffects{commitErr: outage, commitErrAt: 1, commitErrCount: 3}

@@ -249,6 +249,7 @@ func buildExecutionComposition(
 	modelServices.utilityModel = toolRuntime.utilityModel
 	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
+		AgentMemory:       toolRuntime.memory,
 		AgentMemorySearch: toolRuntime.memory,
 		Plan:              cfg.Stores.Plan,
 		Goal:              policy.goalReader,

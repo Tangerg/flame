@@ -298,7 +298,7 @@ func TestInteractionExecutorRunsRootFromCompleteWorkingContext(t *testing.T) {
 		t.Fatalf("authoritative assistant completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Usage() == nil || ended[0].Usage().Steps != 1 {
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
 		t.Fatalf("segment end = %#v", ended)
 	}
 	assertOneRootMember(t, events)

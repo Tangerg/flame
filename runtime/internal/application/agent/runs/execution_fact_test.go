@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -51,27 +50,25 @@ func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T
 }
 
 func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
-	model := ModelCallCompleted{
-		ReportedUsage: &corechat.Usage{
-			InputTokens: 17, OutputTokens: 5, ReasoningTokens: new(int64(3)),
-			CacheReadInputTokens: new(int64(2)), CacheWriteInputTokens: new(int64(1)),
-		},
+	model := ModelCallCompleted{ReportedUsage: &corechat.Usage{
+		InputTokens: 17, OutputTokens: 5, ReasoningTokens: new(int64(3)),
+		CacheReadInputTokens: new(int64(2)), CacheWriteInputTokens: new(int64(1)),
+	},
 		Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("original"))),
-		ByModel: []accounting.ModelUsage{{Model: "model-original", Calls: 1}},
-	}
+		Model:   "model-original"}
 	modelCommit, _, err := NewExecutionFactCommit(model)
 	if err != nil {
 		t.Fatalf("new model fact commit: %v", err)
 	}
 	model.Message.Parts[0].Text = "changed"
-	model.ByModel[0].Model = "model-changed"
+	model.Model = "model-changed"
 	model.ReportedUsage.InputTokens = 99
 	*model.ReportedUsage.ReasoningTokens = 4
 	*model.ReportedUsage.CacheReadInputTokens = 6
 	*model.ReportedUsage.CacheWriteInputTokens = 7
 	projectedModel := modelCommit.Fact().(ModelCallCompleted)
 	projectedModel.Message.Parts[0].Text = "projected"
-	projectedModel.ByModel[0].Model = "model-projected"
+	projectedModel.Model = "model-projected"
 	if projectedModel.ReportedUsage.InputTokens != 17 ||
 		*projectedModel.ReportedUsage.ReasoningTokens != 3 ||
 		*projectedModel.ReportedUsage.CacheReadInputTokens != 2 ||
@@ -83,7 +80,7 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	*projectedModel.ReportedUsage.CacheReadInputTokens = 8
 	*projectedModel.ReportedUsage.CacheWriteInputTokens = 9
 	ownedModel := modelCommit.Fact().(ModelCallCompleted)
-	if ownedModel.Message.Text() != "original" || ownedModel.ByModel[0].Model != "model-original" ||
+	if ownedModel.Message.Text() != "original" || ownedModel.Model != "model-original" ||
 		ownedModel.ReportedUsage.InputTokens != 17 || *ownedModel.ReportedUsage.ReasoningTokens != 3 ||
 		*ownedModel.ReportedUsage.CacheReadInputTokens != 2 || *ownedModel.ReportedUsage.CacheWriteInputTokens != 1 {
 		t.Fatalf("owned model fact = %+v", ownedModel)
@@ -113,24 +110,19 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 		t.Fatalf("owned Tool fact = %+v", ownedTool)
 	}
 
-	usage := SegmentUsage{ByModel: []accounting.ModelUsage{{Model: "model-original", Calls: 1}}}
 	runFailure := run.Failure{Kind: run.FailureInternal, Detail: "original"}
-	ended := NewSegmentEnded(run.OutcomeFailed, &runFailure, &usage, 0)
-	usage.ByModel[0].Model = "model-changed"
+	ended := NewSegmentEnded(run.OutcomeFailed, &runFailure, 0)
 	runFailure.Detail = "changed"
 	endedCommit, _, err := NewExecutionFactCommit(ended)
 	if err != nil {
 		t.Fatalf("new segment-end fact commit: %v", err)
 	}
 	projectedEnd := endedCommit.Fact().(SegmentEnded)
-	projectedUsage := projectedEnd.Usage()
-	projectedUsage.ByModel[0].Model = "model-projected"
 	projectedFailure := projectedEnd.Failure()
 	projectedFailure.Detail = "projected"
 	ownedEnd := endedCommit.Fact().(SegmentEnded)
-	ownedUsage := ownedEnd.Usage()
 	ownedFailure := ownedEnd.Failure()
-	if ownedUsage.ByModel[0].Model != "model-original" || ownedFailure.Detail != "original" {
+	if ownedFailure.Detail != "original" {
 		t.Fatalf("owned segment-end fact = %+v", ownedEnd)
 	}
 
@@ -251,7 +243,8 @@ func TestExecutorEventValidateRequiresPayload(t *testing.T) {
 func TestFirstOutputLatencyFactDoesNotAliasProducerOrConsumer(t *testing.T) {
 	latency := int64(0)
 	for _, fact := range []ExecutionFact{
-		ModelCallCompleted{CallID: "call_latency", FirstOutputLatencyMillis: &latency},
+		ModelCallCompleted{Model: "claude", CallID: "call_latency",
+			FirstOutputLatencyMillis: &latency},
 		ModelCallFailed{CallID: "call_latency", FirstOutputLatencyMillis: &latency},
 	} {
 		latency = 0
@@ -288,7 +281,7 @@ func TestTerminalCommitOwnsUnresolvedEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	values := []run.UnresolvedEffect{effect}
-	end := NewSegmentEnded(run.OutcomeCanceled, nil, nil, 0).WithUnresolvedEffects(values)
+	end := NewSegmentEnded(run.OutcomeCanceled, nil, 0).WithUnresolvedEffects(values)
 	values[0] = run.UnresolvedEffect{}
 	commit, _, err := NewExecutionFactCommit(end)
 	if err != nil {

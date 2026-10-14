@@ -87,7 +87,6 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		if value.Message != nil {
 			value.Message = new(value.Message.Clone())
 		}
-		value.ByModel = slices.Clone(value.ByModel)
 		return value, true
 	case ModelCallFailed:
 		value.KnownResponse = value.KnownResponse.Clone()
@@ -118,7 +117,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case CompactionBoundary:
 		return value, true
 	case SegmentEnded:
-		return NewSegmentEnded(value.Reason, value.failure, value.usage, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
+		return NewSegmentEnded(value.Reason, value.failure, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
 	case PlanUpdated:
 		return value, true
 	case SteerMessagesApplied:

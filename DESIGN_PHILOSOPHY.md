@@ -134,3 +134,11 @@ Run is excluded from later recovery, and a failed replacement transaction advanc
 neither its totals nor Goal. Live accounting must converge on this ownership;
 adding live child accrual without changing its original accounting classification
 would introduce double counting and is not an accepted design.
+
+Run consumption advances from individual completed or known-failed model calls.
+The fact carries the actual model, original reported usage and that call's captured
+price; the Run reducer alone accrues cumulative usage and steps. Segment termination
+adds duration and outcome without accepting a replacement invoice. Scope process
+usage remains checkpoint and calibration material, not a second Run billing source.
+Resumed Runs add new calls to their committed opening metrics. Missing usage or price
+keeps exact aggregate cost unknown even when a later call has a known price.

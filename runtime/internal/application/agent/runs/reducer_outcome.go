@@ -15,11 +15,6 @@ func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	if e.Reason != run.OutcomeFailed && e.Reason != run.OutcomeTimedOut && e.Reason != run.OutcomeLost && e.failure != nil {
 		return nil, errors.New("outcome does not allow a failure")
 	}
-	if e.usage != nil {
-		if err := r.applyUsage(*e.usage); err != nil {
-			return nil, err
-		}
-	}
 	r.segmentDuration = e.Duration
 	var failure *run.Failure
 	detail := ""
@@ -76,10 +71,8 @@ func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
 	return r.cfg.Opened.AdvanceProgress(metrics, r.contextTokens, updatedAt)
 }
 
-// metrics is the Run's cumulative consumption as of now: what it brought into
-// this segment plus what this segment has reported. Every committed Run record
-// goes through here, which is what makes the sequence non-decreasing — the seed
-// is fixed for the segment and the segment's own figures only grow.
+// metrics projects consumption accrued from individual calls onto the opened Run.
+// Active duration joins it only at the segment boundary.
 func (r *reducer) metrics() (run.Metrics, error) {
 	usage, reported := r.cfg.Opened.Metrics().Usage()
 	if r.usage != nil {
@@ -94,33 +87,6 @@ func (r *reducer) metrics() (run.Metrics, error) {
 		return run.Metrics{}, errors.New("segment active duration is invalid or overflows")
 	}
 	return run.NewMetrics(usageRef, r.step, activeDuration+r.segmentDuration)
-}
-
-func (r *reducer) applyUsage(reported SegmentUsage) error {
-	if reported.Steps < r.step {
-		return fmt.Errorf(
-			"cumulative model-call count regressed from %d to %d",
-			r.step,
-			reported.Steps,
-		)
-	}
-	next, err := validatedSegmentUsage(reported)
-	if err != nil {
-		return err
-	}
-	var previous *accounting.Usage
-	if value, reported := r.cfg.Opened.Metrics().Usage(); reported {
-		previous = &value
-	}
-	if r.usage != nil {
-		previous = r.usage
-	}
-	if err := validateUsageMonotonic(previous, next); err != nil {
-		return err
-	}
-	r.usage = next
-	r.step = reported.Steps
-	return nil
 }
 
 func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail string, effects []run.UnresolvedEffect) (SegmentFinished, error) {
@@ -139,115 +105,4 @@ func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail 
 		return SegmentFinished{}, err
 	}
 	return SegmentFinished{Run: terminal}, nil
-}
-
-func transcriptUsage(reported SegmentUsage) *accounting.Usage {
-	usage := &accounting.Usage{Total: modelUsageFrom(
-		reported.Tokens.InputTokens,
-		reported.Tokens.OutputTokens,
-		reported.Tokens.ReasoningTokens,
-		reported.Tokens.CacheReadTokens,
-		reported.Tokens.CacheWriteTokens,
-		reported.Cost,
-	)}
-	if len(reported.ByModel) > 0 {
-		usage.ByModel = make(map[string]accounting.Totals, len(reported.ByModel))
-		for _, model := range reported.ByModel {
-			usage.ByModel[model.Model] = modelUsageFrom(
-				model.InputTokens,
-				model.OutputTokens,
-				model.ReasoningTokens,
-				model.CacheReadTokens,
-				model.CacheWriteTokens,
-				model.Cost,
-			)
-		}
-	}
-	return usage
-}
-
-func validatedSegmentUsage(reported SegmentUsage) (*accounting.Usage, error) {
-	if reported.Steps < 0 {
-		return nil, fmt.Errorf("model-call count %d is negative", reported.Steps)
-	}
-	total := accounting.ModelUsage{
-		Model:  "total",
-		Tokens: reported.Tokens,
-		Cost:   reported.Cost,
-		Calls:  max(reported.Steps, 1),
-	}
-	if err := total.Validate(); err != nil {
-		return nil, fmt.Errorf("total usage: %w", err)
-	}
-	if reported.Steps == 0 &&
-		(reported.Tokens != (accounting.Tokens{}) || reported.Cost != (accounting.Cost{})) {
-		return nil, errors.New("zero model calls carry non-zero token or cost usage")
-	}
-	if len(reported.ByModel) > 0 {
-		aggregate, err := (accounting.Snapshot{Models: reported.ByModel}).Total()
-		if err != nil {
-			return nil, fmt.Errorf("per-model usage: %w", err)
-		}
-		if aggregate.Tokens != reported.Tokens ||
-			aggregate.Calls != reported.Steps ||
-			!aggregate.Cost.Equal(reported.Cost) {
-			aggregateCost, aggregatePriced := aggregate.Cost.USD()
-			reportedCost, reportedPriced := reported.Cost.USD()
-			return nil, fmt.Errorf(
-				"per-model aggregate {tokens:%+v cost:%g priced:%t calls:%d} does not match total {tokens:%+v cost:%g priced:%t calls:%d}",
-				aggregate.Tokens,
-				aggregateCost,
-				aggregatePriced,
-				aggregate.Calls,
-				reported.Tokens,
-				reportedCost,
-				reportedPriced,
-				reported.Steps,
-			)
-		}
-	}
-	return transcriptUsage(reported), nil
-}
-
-func validateUsageMonotonic(previous, next *accounting.Usage) error {
-	if previous == nil {
-		return nil
-	}
-	if next == nil {
-		return errors.New("cumulative usage disappeared after it was reported")
-	}
-	if err := validateModelUsageMonotonic("total", previous.Total, next.Total); err != nil {
-		return err
-	}
-	for model, previousModel := range previous.ByModel {
-		nextModel, ok := next.ByModel[model]
-		if !ok {
-			return fmt.Errorf("cumulative usage dropped model %q", model)
-		}
-		if err := validateModelUsageMonotonic(model, previousModel, nextModel); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateModelUsageMonotonic(label string, previous, next accounting.Totals) error {
-	if err := next.ValidateAdvanceFrom(previous); err != nil {
-		return fmt.Errorf(
-			"cumulative usage for %q regressed from %+v to %+v: %w",
-			label,
-			previous,
-			next,
-			err,
-		)
-	}
-	return nil
-}
-
-func modelUsageFrom(prompt, completion, reasoning, cacheRead, cacheWrite int64, cost accounting.Cost) accounting.Totals {
-	return accounting.Totals{
-		InputTokens: prompt, OutputTokens: completion,
-		ReasoningTokens: reasoning, CacheReadTokens: cacheRead,
-		CacheWriteTokens: cacheWrite, CostUSD: cost.OptionalUSD(),
-	}
 }

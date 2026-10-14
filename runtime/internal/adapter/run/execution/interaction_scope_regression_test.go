@@ -38,7 +38,7 @@ func TestModelResponseWithoutMessageRetainsAccountingAndScopeFailure(t *testing.
 			completed := payloadsOf[runs.ModelCallCompleted](events)
 			if len(completed) != 1 || completed[0].Message != nil || completed[0].ReportedUsage == nil ||
 				completed[0].ReportedUsage.InputTokens != 7 || completed[0].ReportedUsage.OutputTokens != 2 ||
-				completed[0].Steps != 1 || completed[0].FirstOutputLatencyMillis != nil {
+				completed[0].FirstOutputLatencyMillis != nil {
 				t.Fatalf("usage-only model completion = %+v", completed)
 			}
 			if len(payloadsOf[runs.ModelCallFailed](events)) != 0 || len(payloadsOf[runs.MessageDelta](events)) != 0 {
@@ -49,9 +49,7 @@ func TestModelResponseWithoutMessageRetainsAccountingAndScopeFailure(t *testing.
 				ends[0].Failure().Kind != run.FailureProviderRejected || len(ends[0].UnresolvedEffects()) != 0 {
 				t.Fatalf("Scope rejection = %+v", ends)
 			}
-			if usage := ends[0].Usage(); usage == nil || usage.Steps != 1 || usage.Tokens.InputTokens != 7 || usage.Tokens.OutputTokens != 2 {
-				t.Fatalf("terminal lost completed model usage: %+v", usage)
-			}
+
 		})
 	}
 }
@@ -438,7 +436,7 @@ func TestTerminalReceiptFollowsPublicationLifetime(t *testing.T) {
 			session.lifetime.stopExecution()
 			finished := make(chan error, 1)
 			go func() {
-				finished <- session.commitFact(context.WithoutCancel(t.Context()), runs.ExecutorMember{MemberID: "root"}, runs.NewSegmentEnded(run.OutcomeCanceled, nil, nil, 0))
+				finished <- session.commitFact(context.WithoutCancel(t.Context()), runs.ExecutorMember{MemberID: "root"}, runs.NewSegmentEnded(run.OutcomeCanceled, nil, 0))
 			}()
 			event := <-session.lifetime.events
 			commit := event.Payload.(runs.ExecutionFactCommit)

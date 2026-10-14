@@ -17,9 +17,8 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// interactionAccounting owns per-Process model usage and the root's Tool-call
-// count. These facts share the
-// accounting snapshot/checkpoint invariant but not the Process-tree lock.
+// interactionAccounting retains Scope process checkpoints and context calibration.
+// Run consumption advances only through per-call facts, never this snapshot.
 type interactionAccounting struct {
 	mu                       sync.Mutex
 	usageByProcess           map[agent.ProcessID]map[string]accounting.ModelUsage
@@ -301,7 +300,7 @@ func (i *interactionAccounting) accountModelCallLocked(
 		prepared.sequence != invocation.ModelCallSequence()) {
 		return runs.ModelCallCompleted{}, errors.New("execution: model response has no matching prepared context")
 	}
-	nextUsage, models, total, err := advanceProcessUsage(
+	nextUsage, _, _, err := advanceProcessUsage(
 		i.usageByProcess[processID], input.delta, invocation.ModelCallSequence(),
 	)
 	if err != nil {
@@ -312,8 +311,7 @@ func (i *interactionAccounting) accountModelCallLocked(
 		return runs.ModelCallCompleted{}, err
 	}
 	completed := runs.ModelCallCompleted{
-		CallID: callID, Message: input.message, Tokens: total.Tokens,
-		ByModel: slices.Clone(models), Cost: total.Cost, Steps: total.Calls,
+		CallID: callID, Message: input.message, Model: input.delta.Model, Cost: input.delta.Cost,
 		ContextTokens: input.contextTokens,
 	}
 	completed.ReportedUsage = input.reported
@@ -340,23 +338,6 @@ func calibrateModelContext(
 		return ModelContextTokenCalibration{}, false, err
 	}
 	return calibration, true, nil
-}
-
-func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) (*runs.SegmentUsage, error) {
-	i.mu.Lock()
-	snapshot := interactionUsageSnapshot(i.usageByProcess[processID])
-	i.mu.Unlock()
-	if len(snapshot.Models) == 0 {
-		return nil, nil
-	}
-	total, err := snapshot.Total()
-	if err != nil {
-		return nil, fmt.Errorf("execution: total segment usage: %w", err)
-	}
-	return &runs.SegmentUsage{
-		Tokens: total.Tokens, ByModel: snapshot.Models,
-		Cost: total.Cost, Steps: total.Calls,
-	}, nil
 }
 
 // reportedResponseUsage detaches the provider's own usage value so the durable

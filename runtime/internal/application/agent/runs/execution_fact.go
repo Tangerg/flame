@@ -126,14 +126,12 @@ type ModelCallCompleted struct {
 	FirstOutputLatencyMillis *int64
 	// ReportedUsage is the provider's own per-call report, absent when the
 	// provider reported nothing. It keeps the reported shape so an unsupported
-	// breakdown stays absent instead of becoming a zero; Tokens and ByModel
-	// below are Runtime's cumulative counters for this executing process.
+	// breakdown stays absent instead of becoming a zero. Consumption is per-call;
+	// the Run reducer alone owns cumulative accounting.
 	ReportedUsage *corechat.Usage
 	Message       *corechat.Message
-	Tokens        accounting.Tokens
-	ByModel       []accounting.ModelUsage
+	Model         string
 	Cost          accounting.Cost
-	Steps         int
 	ContextTokens int64
 }
 
@@ -309,41 +307,20 @@ type SegmentEnded struct {
 	// Failure is present exactly when Reason is Failed, TimedOut, or Lost. It is
 	// already a stable, client-safe classification; executor diagnostics
 	// never enter the event stream.
-	failure *run.Failure
-	// Missing final accounting cannot erase consumption already reported by
-	// this process's model completions. Cancellation and failure retain the same
-	// process ledger; a child does not charge its descendants here.
-	usage    *SegmentUsage
+	failure  *run.Failure
 	Duration time.Duration
 }
 
-// SegmentUsage is one authoritative accounting report for a segment. The three
-// numbers are produced together by the executor's observer, so they travel
-// together: a report that had tokens but no per-model split would be a different
-// report, not this one with a field missing.
-type SegmentUsage struct {
-	Tokens  accounting.Tokens
-	ByModel []accounting.ModelUsage
-	Cost    accounting.Cost
-	Steps   int
-}
-
 // NewSegmentEnded captures an ownership-independent terminal observation.
-// Contextual outcome and monotonic-accounting checks remain with the reducer,
+// Contextual outcome checks remain with the reducer,
 // which owns the active Segment state needed to decide them.
 func NewSegmentEnded(
 	reason run.Outcome,
 	failure *run.Failure,
-	usage *SegmentUsage,
 	duration time.Duration,
 ) SegmentEnded {
 	end := SegmentEnded{Reason: reason, Duration: duration}
 	end.failure = optional.Clone(failure)
-	if usage != nil {
-		owned := *usage
-		owned.ByModel = append([]accounting.ModelUsage(nil), usage.ByModel...)
-		end.usage = &owned
-	}
 	return end
 }
 
@@ -354,16 +331,6 @@ func (s SegmentEnded) Failure() *run.Failure {
 	}
 	failure := *s.failure
 	return &failure
-}
-
-// Usage returns an ownership-independent final accounting report, when present.
-func (s SegmentEnded) Usage() *SegmentUsage {
-	if s.usage == nil {
-		return nil
-	}
-	usage := *s.usage
-	usage.ByModel = append([]accounting.ModelUsage(nil), s.usage.ByModel...)
-	return &usage
 }
 
 // PlanUpdated reports the committed Plan after a replacement — read back
