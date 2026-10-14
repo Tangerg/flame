@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20261008063147-97d0c5c7e56e
-	github.com/wailsapp/wails/v3 v3.0.0-beta.28
+	github.com/wailsapp/wails/v3 v3.0.0-beta.29
 )
 
 require (
