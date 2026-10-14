@@ -5,9 +5,48 @@
 Continued on 2026-10-15 in the original path and branch. The remaining bootstrap
 failure is resolved by `8e32d9c35`; priority #3 query streams are implemented by
 `67e7801c1`; exact Go/TS feature JSON is implemented by `6a2f30440`. Remaining
-lifecycle work and independent/native qualification are next. Main
+lifecycle work now includes transitive release retention (`6ef5b7961`);
+independent/native qualification and final closure remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
+
+### Transitive activation release retention (2026-10-15)
+
+- `6ef5b7961` derives canonical release dependencies from actual MCP session-owned
+  setup bindings, including bound optional collaborators and transitive cycles.
+  It never re-resolves a current provider choice to manufacture a past dependency.
+  A missing bound provider is explicit failure, not optional absence.
+- Frozen Tool manifests, primary model execution and auxiliary captures retain the
+  projection through their existing owners. Model dependencies enter deployment
+  identity and the existing checkpoint projection. Release-set changes refuse fresh
+  Tool/model dispatch; capture close still cancels and joins calls before release.
+- Unresolved commands atomically retain the same transitive set with their original
+  route. Prepared dispatch rechecks it; known receipt recovery consults only the
+  original business owner. Observation releases all held releases while retaining
+  immutable historical identity. No business result ledger or provider replay is added.
+- `plugin_commands.dependencies_json` is a required immutable host schema field;
+  old Runtime databases are refused without conversion or writes. Preserve them
+  separately; use a clean Runtime directory and finish former waiting execution
+  under its original binary. Plugin-private formats are unchanged.
+- Binding persistence failures now propagate their original cause. The old nested
+  error variable could discard a failed Bind and proceed to a missing command.
+  A real SQL refusal regression proves no operation dispatch or route residue.
+- Passed: complete Application plugins (0.547s), MCP (13.943s), connection adapter
+  (1.396s), Toolset (3.264s), pluginservices (10.987s), SQLite (2.017s); focused
+  execution dependency/capture/context checks (1.031s); real bootstrap Reviews/
+  plugins/Memory/Schedule/recovery selection (60.147s); Runtime/CLI/Reviews build,
+  gofmt and diff checks. New checks cover transitive/optional-cycle release sets,
+  retired generations, replacement refusal, immutable/copy-safe command retention
+  after restart and staged execution replacement refusal through release.
+- No UI/E2E/screenshot or Desktop aggregate check ran. Full/native/vet/race/closure
+  remain final work. Stash-free staged checks/commitlint passed; all owned handles
+  are terminal, test resources close, and the user stash is preserved.
+- Remaining #3 audit includes complete activation binding/order identity across
+  reconnects within the same release, transitive availability diagnostics, point/
+  resource lifetimes and evidence retention/pruning policy. This release-set proof
+  alone does not close those distinct obligations. #4 still requires extracting
+  first-party backends from Runtime-private source dependencies, independent author/
+  component qualification and native packaging; no publishing is authorized.
 
 ### Exact feature JSON and closed model selection (2026-10-15)
 
@@ -1034,8 +1073,9 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 Continue in the same worktree and branch. Preserve the complete proposal/review
 objective and report concrete remaining paths rather than a static completion count.
 
-1. Priority #3: retention/pruning, transitive dependency status and scoped release,
-   point lifetimes. Query streams and exact Go/TS feature JSON are implemented;
+1. Priority #3: finish activation binding/order identity on same-release reconnect,
+   transitive availability diagnostics, retention/pruning and point/resource lifetimes.
+   Transitive release retention is implemented in `6ef5b7961`. Query streams and exact Go/TS feature JSON are implemented;
    retain their cancellation/command-ownership checks during final acceptance.
    Audit actual Tool,
    automatic and cross-plugin target/origin/parent/original-route consumers.

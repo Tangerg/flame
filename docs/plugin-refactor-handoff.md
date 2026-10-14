@@ -1,6 +1,6 @@
 # Unified plugin refactor handoff
 
-Prepared on 2026-10-14 and updated after the 2026-10-15 exact feature JSON slice.
+Prepared on 2026-10-14 and updated after the 2026-10-15 transitive release retention slice.
 The complete proposal/review implementation is unfinished. This document is a
 starting point; current repository state remains authoritative.
 
@@ -10,7 +10,8 @@ starting point; current repository state remains authoritative.
 - Branch: `codex/unified-plugins`
 - Last integrated main: `7ba40c117` (Scope v0.50.0 dependency graph).
 - Main integration commit: `0227ffd94`.
-- Latest product commit: `6a2f30440` (exact feature JSON and closed Selection schema);
+- Latest product commit: `6ef5b7961` (transitive activation release retention);
+  preceding `6a2f30440` implements exact feature JSON and closed Selection schema;
   query-stream commit: `67e7801c1`; preceding recovery
   commit: `8e32d9c35` (observer-bound receipt retirement and unavailable original
   source recovery). Tooling commit `59c826ec6` repairs the contract lock's two
@@ -117,8 +118,13 @@ or deletion. Captured primary context and independent billing remain distinct.
    ownership. Restored caller attribution does not restore Session/Run/Segment,
    a model publisher, an expired next or stopped Scope effects. Never infer them
    from parent IDs or an ambient current Session.
-3. Complete retention/pruning, transitive dependency status and scoped release,
-   point lifetimes. Exact Go/TS feature JSON now crosses Core as JSON strings with
+3. Complete activation binding/order identity on same-release reconnect, transitive
+   availability diagnostics, retention/pruning and point/resource lifetimes.
+   `6ef5b7961` retains actual transitive session release sets in frozen Tools/models
+   and unresolved commands. It introduces required immutable host
+   `plugin_commands.dependencies_json`; old Runtime databases are refused without
+   writes/conversion. Private backend formats are unchanged. Whole affected packages
+   and a real bootstrap recovery selection pass; full/native/vet/race remain final. Exact Go/TS feature JSON now crosses Core as JSON strings with
    one TS codec; generated consumers, original-intent journals and components are
    migrated in `6a2f30440`. Selection schema/decode share their closed three-field
    owner; Schedules consumers are regenerated. Installed query streams now share
@@ -128,7 +134,8 @@ or deletion. Captured primary context and independent billing remain distinct.
    schedules, affected Go packages, Runtime/CLI/Reviews build and SDK/portable/
    Reviews/Desktop typechecks pass. Audit every Tool,
    automatic and cross-plugin consumer for target/origin/parent/original route.
-4. Complete independent author/component/native packaging qualification. Workspace
+4. Extract Memory/Schedules from Runtime-private source dependencies, then complete
+   independent author/component/native packaging qualification. Workspace
    compilation is not proof of published-module availability. Publishing is not
    authorized.
 5. Run concentrated integrated acceptance and repair failures. Individually audit
