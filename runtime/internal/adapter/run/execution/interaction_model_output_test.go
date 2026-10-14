@@ -5,15 +5,73 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *testing.T) {
+	for _, withhold := range []bool{true, false} {
+		t.Run(fmt.Sprint(withhold), func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			journal := sqlite.NewModelInvocationStore(db)
+			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				return interactionUsageTextResponse("physical answer", 12, 3), nil
+			})
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), journal)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outer := interactionChatResolverFunc(func(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
+				resolved, err := recorded.ResolveChat(ctx, selection)
+				if err != nil {
+					return modeladapter.ResolvedChat{}, err
+				}
+				return modeladapter.NewResolvedChat(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+					response, err := resolved.Model().Call(ctx, request)
+					if err != nil {
+						return response, err
+					}
+					if withhold {
+						return nil, errors.New("outer result withheld")
+					}
+					changed := response.Clone()
+					changed.Metadata.Usage = &chat.Usage{InputTokens: 999, OutputTokens: 999}
+					return changed, nil
+				}), nil)
+			})
+			executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: outer, ModelEvidence: journal})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			if withhold {
+				failed := payloadsOf[runs.ModelCallFailed](events)
+				if len(failed) != 1 || failed[0].Accounting == nil || failed[0].Accounting.ReportedUsage.InputTokens != 12 || failed[0].Accounting.ReportedUsage.OutputTokens != 3 || failed[0].Accounting.Steps != 1 || failed[0].KnownResponse.Text() != "physical answer" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+					t.Fatalf("withheld result lost or duplicated physical usage: %+v", failed)
+				}
+			} else {
+				completed := payloadsOf[runs.ModelCallCompleted](events)
+				if len(completed) != 1 || completed[0].ReportedUsage.InputTokens != 12 || completed[0].ReportedUsage.OutputTokens != 3 || completed[0].Steps != 1 {
+					t.Fatalf("outer projection originated usage: %+v", completed)
+				}
+			}
+		})
+	}
+}
 
 func TestFailedOuterModelRetainsKnownResponseAndAccounting(t *testing.T) {
 	message := chat.NewAssistantMessage(chat.NewTextPart("known inner answer"), chat.NewReasoningPart("basis", nil))

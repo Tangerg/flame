@@ -256,6 +256,20 @@ Session without a Goal returns null through `goals.get` in both bindings. Receip
 and remote decoders require the declared fields before accepting typed values.
 Diagnostic Tool results remain opaque JSON, where null is a valid value.
 
+Interaction known-usage accounting now consumes its exact persisted physical
+endpoint response, not the outer operation's response metadata. Successful output
+still supplies the semantic message; usage, model identity and context calibration
+come from the captured provider evidence. Failed outer operations retain physical
+known response/usage even if the outer response is absent. No complete endpoint
+evidence means no guessed usage, and a read/publication failure remains explicit.
+The existing single completed/failed fact advances accounting once; there is no
+second metering event or aggregate writer. Model-call sequence and prepared context
+checks still fence duplicate accrual. Production execution requires the evidence
+reader, with no compatibility path that accepts outer-reported usage.
+This closes the current transparent single-call Interaction case. Auxiliary/global
+usage aggregation, crash reconstruction of aggregate projections and multi-call
+composition metering remain explicit follow-up work.
+
 Core 2026-10-14.24 adds modelInvocations.endpoints, with parentCallId identifying
 the logical caller or its immediate parent. The same model_invocations journal
 now distinguishes logical Interaction observations from actual endpoint admission
@@ -277,8 +291,8 @@ The exact host schema adds endpoint metadata/ancestry and permits observations
 without a Run. Former schemas are refused without conversion/deletion; preserve
 them separately and use a fresh directory. Backend/private receipts are unchanged.
 Existing Run list/trajectory/export retain their logical observation contract;
-endpoint export/lifecycle retention and Run accounting from actual physical calls
-remain explicit follow-up work. The operational journal does not authorize Tool
+endpoint export/lifecycle retention and wider physical-call accounting remain
+explicit follow-up work. The operational journal does not authorize Tool
 or conversation continuation and is not a recoverable provider receipt.
 
 Auxiliary title, compaction, skill mining and Memory utility work now consume the

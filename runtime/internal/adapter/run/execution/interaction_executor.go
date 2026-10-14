@@ -46,6 +46,10 @@ type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error)
 }
 
+type InteractionModelEvidence interface {
+	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
+}
+
 type OriginalScheduleResults interface {
 	OwnsCreateSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error)
 	AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) error
@@ -68,6 +72,7 @@ type InteractionExecutorConfig struct {
 	OriginalScheduleResults   OriginalScheduleResults
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
+	ModelEvidence             InteractionModelEvidence
 	ModelObservers            InteractionModelObservers
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
@@ -110,6 +115,9 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	}
 	if dependency.Missing(config.ChatResolver) {
 		return nil, errors.New("execution: Interaction requires a chat resolver")
+	}
+	if dependency.Missing(config.ModelEvidence) {
+		return nil, errors.New("execution: Interaction model evidence is required")
 	}
 	if config.Admission == nil {
 		return nil, errors.New("execution: installation admission is required")

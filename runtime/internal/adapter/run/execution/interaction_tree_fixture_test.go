@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"path/filepath"
 	"sync"
 	"testing"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 var testTreeStores sync.Map
@@ -34,6 +37,20 @@ func testTrees(t *testing.T) *testExecutionTrees {
 	return actual.(*testExecutionTrees)
 }
 func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
+	if config.ModelEvidence == nil && config.ChatResolver != nil {
+		db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = db.Close() })
+		journal := sqlite.NewModelInvocationStore(db)
+		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, journal)
+		if err != nil {
+			t.Fatal(err)
+		}
+		config.ChatResolver = resolver
+		config.ModelEvidence = journal
+	}
 	if config.Admission == nil {
 		config.Admission = plugins.NewAdmission()
 	}

@@ -46,6 +46,7 @@ type interactionSession struct {
 	start               runs.RootExecutionStart
 	modelFailures       interactionModelFailures
 	modelObservers      []plugins.ContributionBinding
+	modelEvidence       InteractionModelEvidence
 	effectFailures      interactionEffectFailures
 	segmentClock        interactionSegmentClock
 	// telemetry observes Framework facts only. It owns Process, Step, and
@@ -140,6 +141,7 @@ func newInteractionSession(
 			delegateChildren: make(map[agent.ProcessID]*managedDelegateCall),
 		},
 		modelFailures: newInteractionModelFailures(),
+		modelEvidence: config.ModelEvidence,
 		accounting: newInteractionAccounting(
 			start.ModelSelection,
 			config.Pricing,

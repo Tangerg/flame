@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
@@ -108,70 +109,80 @@ func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, pare
 	defer rows.Close()
 	values := []modelref.EndpointObservation{}
 	for rows.Next() {
-		var value modelref.EndpointObservation
-		var encoded string
-		var id string
-		var startedAt int64
-		var finishedAt *int64
-		var response *string
-		if err := rows.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure); err != nil {
-			return nil, err
-		}
-		if err := decodeStoredJSON([]byte(encoded), &value.Invocation); err != nil {
-			return nil, err
-		}
-		var fields map[string]jsontext.Value
-		if err := decodeStoredJSON([]byte(encoded), &fields); err != nil {
-			return nil, err
-		}
-		value.RequestJSON, err = jsoninput.Parse(fields["request"])
+		value, err := scanEndpointObservation(rows, parent)
 		if err != nil {
 			return nil, err
 		}
-		if err := value.Invocation.Validate(); err != nil {
-			return nil, err
-		}
-		if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt || (value.Invocation.Caller.ID != parent && value.Invocation.Caller.Parent != parent) {
-			return nil, errors.New("sqlite: endpoint observation identity differs from its row")
-		}
-		if response != nil {
-			value.ResponseJSON, err = jsoninput.Parse([]byte(*response))
-			if err != nil {
-				return nil, err
-			}
-			if err := decodeStoredJSON([]byte(*response), &value.Response); err != nil {
-				return nil, err
-			}
-			if value.Response == nil || value.Response.Validate() != nil || (value.State != modelInvocationCompleted.databaseValue() && value.State != modelInvocationFailed.databaseValue()) {
-				return nil, fmt.Errorf("sqlite: endpoint response evidence is invalid")
-			}
-		}
-		if finishedAt != nil {
-			value.FinishedAt = time.Unix(0, *finishedAt).UTC()
-		}
-		switch value.State {
-		case modelInvocationStarted.databaseValue():
-			if finishedAt != nil || response != nil || value.Failure != "" {
-				return nil, errors.New("sqlite: started endpoint carries completion")
-			}
-		case modelInvocationCompleted.databaseValue():
-			if response == nil || finishedAt == nil || value.Failure != "" {
-				return nil, errors.New("sqlite: completed endpoint is missing its outcome")
-			}
-		case modelInvocationFailed.databaseValue():
-			if response == nil || finishedAt == nil || value.Failure == "" {
-				return nil, errors.New("sqlite: failed endpoint is missing known evidence")
-			}
-		case modelInvocationUnknown.databaseValue():
-			if response != nil || finishedAt == nil || value.Failure == "" {
-				return nil, errors.New("sqlite: unknown endpoint asserts completion")
-			}
-		default:
-			return nil, errors.New("sqlite: unknown endpoint state")
-		}
+
 		values = append(values, value)
 	}
 	return values, rows.Err()
+}
+
+func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObservation, error) {
+	var err error
+	var value modelref.EndpointObservation
+	var encoded string
+	var id string
+	var startedAt int64
+	var finishedAt *int64
+	var response *string
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure); err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	if err := decodeStoredJSON([]byte(encoded), &value.Invocation); err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	var fields map[string]jsontext.Value
+	if err := decodeStoredJSON([]byte(encoded), &fields); err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	value.RequestJSON, err = jsoninput.Parse(fields["request"])
+	if err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	if err := value.Invocation.Validate(); err != nil {
+		return modelref.EndpointObservation{}, err
+	}
+	if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt || (value.Invocation.Caller.ID != parent && value.Invocation.Caller.Parent != parent) {
+		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint observation identity differs from its row")
+	}
+	if response != nil {
+		value.ResponseJSON, err = jsoninput.Parse([]byte(*response))
+		if err != nil {
+			return modelref.EndpointObservation{}, err
+		}
+		if err := decodeStoredJSON([]byte(*response), &value.Response); err != nil {
+			return modelref.EndpointObservation{}, err
+		}
+		if value.Response == nil || value.Response.Validate() != nil || (value.State != modelInvocationCompleted.databaseValue() && value.State != modelInvocationFailed.databaseValue()) {
+			return modelref.EndpointObservation{}, fmt.Errorf("sqlite: endpoint response evidence is invalid")
+		}
+	}
+	if finishedAt != nil {
+		value.FinishedAt = time.Unix(0, *finishedAt).UTC()
+	}
+	switch value.State {
+	case modelInvocationStarted.databaseValue():
+		if finishedAt != nil || response != nil || value.Failure != "" {
+			return modelref.EndpointObservation{}, errors.New("sqlite: started endpoint carries completion")
+		}
+	case modelInvocationCompleted.databaseValue():
+		if response == nil || finishedAt == nil || value.Failure != "" {
+			return modelref.EndpointObservation{}, errors.New("sqlite: completed endpoint is missing its outcome")
+		}
+	case modelInvocationFailed.databaseValue():
+		if response == nil || finishedAt == nil || value.Failure == "" {
+			return modelref.EndpointObservation{}, errors.New("sqlite: failed endpoint is missing known evidence")
+		}
+	case modelInvocationUnknown.databaseValue():
+		if response != nil || finishedAt == nil || value.Failure == "" {
+			return modelref.EndpointObservation{}, errors.New("sqlite: unknown endpoint asserts completion")
+		}
+	default:
+		return modelref.EndpointObservation{}, errors.New("sqlite: unknown endpoint state")
+	}
+	return value, nil
 }
 
 func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context, settledAt time.Time) error {
@@ -180,4 +191,13 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 	}
 	_, err := Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelInvocationUnknown.databaseValue(), settledAt.UTC().UnixNano(), modelInvocationStarted.databaseValue())
 	return err
+}
+
+func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
+	row := Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
+	value, err := scanEndpointObservation(row, caller)
+	if errors.Is(err, sql.ErrNoRows) {
+		return modelref.EndpointObservation{}, false, nil
+	}
+	return value, err == nil, err
 }

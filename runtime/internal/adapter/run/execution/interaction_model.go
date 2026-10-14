@@ -65,9 +65,6 @@ func (o *observedInteractionModel) Call(
 	}
 	response, err := o.model.Call(ctx, sent)
 	if err != nil {
-		if response != nil && response.Validate() == nil {
-			return response, o.finishKnownFailedCall(ctx, invocation, callID, response, nil, err)
-		}
 		return response, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
 	if response == nil {
@@ -119,10 +116,6 @@ func (o *observedInteractionModel) Stream(
 		var firstOutputLatencyMillis *int64
 		for chunk, streamErr := range sequence {
 			if streamErr != nil {
-				if response, responseErr := accumulated.Response(); responseErr == nil {
-					yield(nil, o.finishKnownFailedCall(ctx, invocation, callID, response, firstOutputLatencyMillis, streamErr))
-					return
-				}
 				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, streamErr))
 				return
 			}
@@ -177,8 +170,48 @@ func (o *observedInteractionModel) finishFailedCall(
 	firstOutputLatencyMillis *int64,
 	cause error,
 ) error {
+	response, err := o.knownEndpoint(ctx, callID)
+	if err != nil {
+		return o.stopFailedCall(ctx, invocation, cause, err)
+	}
+	if response != nil {
+		return o.finishKnownFailedCall(ctx, invocation, callID, response, firstOutputLatencyMillis, cause)
+	}
 	projectionErr := o.fail(ctx, invocation, callID, observation, firstOutputLatencyMillis)
 	return o.stopFailedCall(ctx, invocation, cause, projectionErr)
+}
+
+func (o *observedInteractionModel) knownEndpoint(ctx context.Context, callID string) (*corechat.Response, error) {
+	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
+	defer cancel()
+	row, found, err := o.session.modelEvidence.EndpointForCaller(projectionCtx, callID)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, nil
+	}
+	if row.Invocation.Caller.ID != callID || row.Invocation.Provider != o.session.start.ModelSelection.Provider() || row.Invocation.Model != o.session.start.ModelSelection.Model() {
+		return nil, errors.New("execution: physical model evidence differs from captured call")
+	}
+	if row.Response == nil {
+		return nil, nil
+	}
+	if err := row.Response.Validate(); err != nil {
+		return nil, err
+	}
+	return row.Response.Clone(), nil
+}
+
+func (o *observedInteractionModel) accountEndpoint(ctx context.Context, invocation interaction.ModelInvocation, callID string) (runs.ModelCallCompleted, error) {
+	response, err := o.knownEndpoint(ctx, callID)
+	if err != nil {
+		return runs.ModelCallCompleted{}, err
+	}
+	if response == nil {
+		return runs.ModelCallCompleted{}, errors.New("execution: completed model operation has no known physical endpoint evidence")
+	}
+	return o.session.accounting.accountModelCall(invocation, callID, response)
 }
 
 func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation interaction.ModelInvocation, cause, projectionErr error) error {
@@ -197,7 +230,7 @@ func (o *observedInteractionModel) finishKnownFailedCall(ctx context.Context, in
 	if err := o.session.flushDeltas(projectionCtx); err != nil {
 		return errors.Join(cause, err)
 	}
-	accounted, err := o.session.accounting.accountModelCall(invocation, callID, response)
+	accounted, err := o.accountEndpoint(projectionCtx, invocation, callID)
 	if err != nil {
 		return errors.Join(cause, err)
 	}
@@ -290,11 +323,15 @@ func (o *observedInteractionModel) complete(
 	if err := o.session.flushDeltas(projectionCtx); err != nil {
 		return err
 	}
-	fact, err := o.session.accounting.accountModelCall(invocation, callID, response)
+	fact, err := o.accountEndpoint(projectionCtx, invocation, callID)
 	if err != nil {
 		return err
 	}
 	fact.FirstOutputLatencyMillis = firstOutputLatencyMillis
+	fact.Message = nil
+	if response.Output.Message != nil {
+		fact.Message = new(response.Output.Message.Clone())
+	}
 	if err := o.session.commitFact(
 		projectionCtx, o.session.executorMember(invocation.Relation()), fact,
 	); err != nil {
