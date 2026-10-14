@@ -2,62 +2,68 @@
 
 ## Current stage
 
-Stage 5u (48ecd6fd6) connects public input transforms to primary Interaction.
-Captured input order joins the execution configuration, required model_inputs
-checkpoint field and ordinary installation dependencies. Waiting/cold restoration
-validates original exact bindings, without selecting a current transform chain.
-Missing former checkpoint fields are refused without compatibility interpretation.
+Stage 5v (2f9b4cc94) moves selected-model media admission to the complete final
+request. Start, Resume and Steer validate source structure/target/identity, preserve
+original media bytes and commit their original input evidence. They no longer ask
+an early model policy whether an authored image can be accepted before its selected
+input converter has run. The obsolete media method is removed from the command
+ModelAdmitter port and its test collaborators, without a bypass flag/legacy branch.
 
-Canonical reduction/compaction still owns retained conversation. After that
-reduction, the model-visible context/tail is transformed once under the original
-logical model-call/effect attribution, validated against routing/Tool/output owners,
-and admitted against selected model media/output/token capacity. Over-capacity or
-failed transforms refuse before provider generation. No plugin retry/recompaction
-loop is added. Input transformations remain ephemeral; authored messages and Options
-are not adopted from their output.
+SelectedChat owns final media/model validation. Every primary reduction invokes it,
+including absent transform chains; transform paths additionally run full capacity.
+Root/delegated Call/Stream share that reducer and one complete prepared request.
+Unconverted media the selected model cannot accept refuses before provider generation
+and becomes the original accepted execution's failure. An image converted to text
+can reach a text-only model, without changing its retained user Item/checkpoint.
 
-The existing per-call preparation record now holds the complete final Scope request,
-instead of instructions/trailer fragments assembled later. Both observed Call and
-Stream consume that exact prepared request. Accounting calibration uses the final
-transformed request estimate, while actual token/cost accounting still comes from
-physical endpoint evidence. This repairs request-option loss and prevents a counted
-request from differing from what the physical endpoint receives.
+Canonical compaction is a source projection rather than the final provider request
+when transforms apply. Provider counting is withheld for selected transforms and
+canonical media the model does not support, using the existing local compaction
+projection. Only the specific unsupported-modality result permits that local path;
+other validation errors refuse. Final transformed counting remains authoritative,
+without counter fallback, retries, model redelivery or a competing media rule.
 
-The former AuxiliaryModel type/constructor is replaced by SelectedChat because
-primary and auxiliary consumers now share captured selection/provider/counter/token
-limits and final input admission. All internal consumers migrate without an alias.
-The shared capacity method admits optional output reservation for primary policy;
-auxiliary's existing caller budget still requires explicit positive output. The
-selected model's media capability also checks transformed output before dispatch.
+This intentionally changes public failure timing: well-formed source media can be
+accepted before later model refusal, while malformed/empty/MIME-invalid source input
+still refuses the command before transition. Core 2026-10-14.29 publishes the change;
+generated contracts/samples and design/runtime/SDK documentation are updated. Backend
+.2 and export schema 3 unchanged. The original proposal/review remains read-only.
 
-Passed: direct/compacted two-call primary transformations of messages and Options,
-original retained context, failure-before-provider; final provider count includes
-transformed input and exact/over-capacity boundaries; waiting recovery preserves
-transform order/Options without reselection; calibration equals final request estimate;
-existing primary context/auxiliary/captured binding checks. Runtime build and
-Runtime/bootstrap test-source compilation passed, plus scoped dependency/domain/
-protocol/public-package checks. Initial checkpoint argument/state wiring errors
-were repaired. The waiting calibration expectation now derives from actual final
-input; its previous fixed pre-transform estimate was intentionally replaced, without
-weakening original conversation/continuation/usage/recovery assertions.
+Passed: original Start/composed-history/Steer/resume media evidence; invalid Resume
+input preserves waiting state; actual image-to-text versus unconverted/absent-chain
+failure in all twelve unary/stream x compacted/direct combinations; provider/counter
+never sees unsupported source; one final converted count; waiting restore carries
+original image into captured transformation and leaves committed input unchanged.
+Related Start/Resume/Steer/selection, primary/auxiliary/capacity checks passed. Runtime
+build/Runtime-bootstrap test-source compilation, generation, shared/desktop typecheck
+and scoped architecture/version/schema/drift gates passed. Earlier fixture reflect
+import and canonical counter ordering failures were repaired before passing. Old
+preflight-refusal tests are replaced by source-evidence and final-execution refusal
+proof for the intentional contract change, without skipped tests or weakened safety.
 
-One full transformation requirement is still open: fresh Start admits authored
-current/composed media before executor staging, so a transform cannot yet convert
-otherwise unsupported input to a supported modality. Next migrate that admission
-boundary consistently across fresh/resumed/delegated paths, with observable refusal
-and original evidence intact. Primary integration on already-admitted input is not
-proof that this broader cross-modality requirement is achieved. Multiple separately
-routed/admitted calls, embeddings/retention and lifecycle/author acceptance remain open.
+Main 3d897dfb6 is integrated in 43c0b765c. Terminal unresolved-effect explanation
+source/translations and incoming tests are preserved; merge is clean. Desktop
+post-merge typecheck passed; no UI/E2E/screenshot tests authored or run. Original
+proposal/review/background draft hashes and user stash unchanged. Owned compile/
+test/typecheck handles and temporary outputs settled. Full/native/vet/race/all-
+workflow/P01-P48/review acceptance remains open. Last-known older architecture,
+Memory formatting and prior untriaged interrupted UI findings remain obligations.
 
-Main 0886453d9 remains integrated; git merge main reports already up to date.
-Original proposal/review/background draft hashes and user stash are unchanged.
-Core .28/backend .2/export schema 3 unchanged. Owned handles/temporary compile outputs
-are settled; no UI/E2E/screenshot tests authored or run. Full/native/vet/race/all-workflow
-and P01-P48/review closure remain open. Last-known older architecture/Memory format
-and prior untriaged interrupted UI findings remain final obligations. Rough estimate
-remains 65-70% full delivery/75% implementation, not counted acceptance. Full goal active.
+The premature authored-media rule is removed; final request admission is the sole
+model-media owner. Next implement multiple independently routed/admitted model calls
+and embedding/retention, then remaining dependency/author and final acceptance work.
+Full native/delegated/real process transformation acceptance is still unproven by
+these bounded checks. Approximate 65-70% full delivery/75% implementation remains a
+rough estimate, not counted P01-P48 closure. Full goal active.
 
 ## Completed
+
+- Stage 5v (2f9b4cc94): one final-request media owner; original source structural
+  admission/evidence retained across Start/Resume/Steer and restored execution.
+- Stage 5v: image conversion versus final rejection, unary/stream/compaction
+  matrix, no unsupported provider counting and original resume media proof.
+- Stage 5v: Core .29 regenerated/documented; main 3d897dfb6 integrated in
+  43c0b765c, terminal unresolved-effect explanations/tests preserved.
 
 - Stage 5u (48ecd6fd6): primary captured input chain/configuration/checkpoint/
   dependency/recovery and complete per-call request projection into Call/Stream.
@@ -608,10 +614,9 @@ remains 65-70% full delivery/75% implementation, not counted acceptance. Full go
 
 ## In progress
 
-- Stage 5t/5u implement public/auxiliary/primary input transformation and complete
-  prepared requests. Fresh Start's earlier authored-media admission still needs
-  migration for conversion from unsupported to supported modalities, along with
-  full resumed/delegated/streaming/native acceptance and multiple-call semantics.
+- Stage 5t/5u/5v implement input transformation, complete prepared requests and
+  final model-media admission. Full delegated/native/real-process acceptance and
+  multiple independently routed/admitted call semantics remain open.
 
 - Stage 5p/5q close primary/auxiliary context capture; Stage 5r closes public
   selection at accepted execution and auxiliary use-case boundaries. Complete
@@ -639,9 +644,9 @@ remains 65-70% full delivery/75% implementation, not counted acceptance. Full go
 
 ## Next
 
-1. Complete original versus final media admission for transformed input across
-   fresh/resumed/delegated/streaming paths; then multiple independently routed/
-   admitted calls, embeddings and retention. Exact billing never uses estimates.
+1. Complete multiple independently routed/admitted physical calls, embeddings
+   and retention. Each final request owns its media/capacity and original identity;
+   exact billing never derives from token estimates.
 2. Complete scoped point/dependency lifecycle, observed status/retention and actual
    Tool/automatic/cross-plugin consumers with original command/Run ownership.
 3. Complete all-workflow generation recovery, independent author/module packaging,
@@ -651,6 +656,9 @@ remains 65-70% full delivery/75% implementation, not counted acceptance. Full go
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-14 | Source command admission owns structure/evidence; final prepared request owns selected-model media support | Pre-transform model checks prevented legitimate conversion and created a competing media decision | Early authored-media rejection, transformer-exists bypass flags, dropped original media or weakened final model checks |
+| 2026-10-14 | Well-formed media acceptance and later model failure retain the original Run/command outcome path; Core .29 | Opening/continuation acceptance cannot claim success for a model-visible projection not yet prepared | Promoting acceptance to model success, a second refusal receipt, implicit redelivery or pretending failure timing is unchanged |
+| 2026-10-14 | Canonical unsupported media cannot go to a provider counter; only its specific modality refusal allows local compaction projection | Provider counting is itself model-specific I/O and must not preempt final conversion | Counting rejected source media, swallowing arbitrary errors, estimating billing or suppressing final refusal |
 | 2026-10-14 | Primary prepares one complete transformed provider request while Scope retains canonical conversation/Options | Fragment assembly after reduction could lose transformed Options or send a different request than was admitted | Persisting transformed working context, separate prepared projections, post-count mutations or implicit retries/recompaction |
 | 2026-10-14 | Input order is part of the original configuration/checkpoint/dependency set | Restoration must retain the contributors accepted by that execution | Current-chain reselection, missing-field empty fallback, independent held registry or legacy checkpoint adapter |
 | 2026-10-14 | SelectedChat owns the immutable selection/model/counter/token envelope for both execution kinds | Final transformed primary capacity now needs the same guarantee as auxiliary work | Duplicate capacity captures/algorithms, keeping the misleading auxiliary-only type as an alias or mandatory output for primary default policy |
@@ -883,7 +891,8 @@ Status is open until code and appropriate verification prove the requirement.
 
 | Review item | Status | Implementation/evidence |
 | --- | --- | --- |
-| Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; original-media preflight conversion, multiple-call and final acceptance remain open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
+| Cross-modality transformation and final input admission | Stage 5v source evidence/structural refusal, original Resume image, final Call/Stream/compaction conversion/refusal and counter boundary verified; full native/delegated/process acceptance open | runs/opening.go; resume.go; steering.go; ports.go; model/auxiliary.go; execution/interaction_context_reducer.go; interaction_model_input_test.go; interaction_waiting_test.go; protocol/version.go |
+| Model input transformation before final admission | Stage 5t auxiliary and Stage 5u primary captured final-request/capacity/calibration/recovery verified; Stage 5v original-source/final-media admission now verified at its boundaries; multiple-call and final native acceptance remain open | runtime/plugin/model_input.go/tests; pluginservices/model_input.go/tests; model_context.go; auxiliary_model_observers.go |
 | Auxiliary complete-input capacity and original model-owned options | Stage 5s final context/provider count/local estimate, output reservation, known/unknown/error semantics, reasoning, request equality and cancel/join verified; final native/all-workflow acceptance open | model/auxiliary.go; auxiliary_capacity_test.go; pluginservices/auxiliary_model_observers.go/tests; modeltext/request_estimate.go; maintenance/compaction_trigger.go/tests |
 | Model route selection before exact binding and admission | Stage 5r public query/explicit publisher, fresh Run/auxiliary construction order, accepted Run identity and retry/Resume preservation verified; per-call routes/multiple invocations/final native acceptance remain open | runtime/plugin/model_selection.go; application/integration/models/selection.go; pluginservices/model_selection.go; runs/opening.go; model/role_resolvers.go; bootstrap/assemble.go; tool_environment.go; corresponding tests |
 | Primary model context contribution before admission | Stage 5p primary query/capacity/nonpersistence/waiting recovery and Stage 5q auxiliary exact capture/text/output budget/lifetime verified; Stage 5r accepted execution/auxiliary selection now verified; Stage 5s auxiliary token preflight now verified; per-call routes/general transformation/final acceptance remain open | runtime/plugin/model_context.go; pluginservices/model_context.go; execution/interaction_context_reducer.go; interaction_request_material.go; interaction_model_composition.go; interaction_checkpoint.go; installation_dependencies.go; pluginservices/auxiliary_model_observers.go; model/auxiliary.go; role_resolvers.go; corresponding tests |
@@ -923,6 +932,24 @@ Full P01-P48 completion remains open. Stage 1 supplies installation-state, defau
 | P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
 
 ## Verification
+
+- Stage 5v original source/media and selected boundary checks passed (runs 0.514s;
+  execution 1.430s). Initial no-transform compaction passed unsupported source to a
+  counter; that defect was fixed with explicit modality handling, preserving the
+  test assertion that neither counter nor generation receives unsupported media.
+- Stage 5v valid Resume original-image and invalid-image waiting preservation,
+  real original waiting transform and media matrix passed (runs 0.752s; execution
+  1.507s). Original committed resume content is compared byte-for-byte; source,
+  continuation, input IDs/usage/order/calibration assertions remain meaningful.
+- Stage 5v broader affected Start/Steer/Resume/selection/captured/primary/auxiliary
+  checks passed (runs 0.553s; execution 1.385s; model 1.489s; pluginservices 4.660s).
+- Stage 5v Runtime/bootstrap go test -c, Runtime go build ./..., Core .29 generation,
+  shared and desktop typecheck passed. Scoped dependency/domain/JSON-tag/protocol/
+  public-package/version/schema/drift gates passed (2.500s). Full/native/vet/race/
+  all-workflow acceptance is deferred; no UI/E2E/screenshot execution or authorship.
+- Stage 5v main terminal-explanation changes merged without conflicts; post-merge
+  desktop typecheck passed. Changed gofmt/diff/original SHA-256 passed, user stash
+  retained; compile directories/owned processes settled. Backend .2/export 3 unchanged.
 
 - Stage 5u initial source compilation passed after correcting checkpoint argument/
   restored-state wiring. Related primary context/waiting/captured/auxiliary checks
@@ -2321,10 +2348,10 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-- Stage 5t/5u public/auxiliary/primary request transformation is implemented.
-  Original-media preflight still prevents conversion of otherwise unsupported
-  authored input before primary staging. Migrate the actual admission owner and
-  relevant fresh/resume/delegate/streaming paths; full transformation remains open.
+- Stage 5t/5u/5v implement public/auxiliary/primary input transformation and final
+  model-media admission with original source evidence. Full real process/native/
+  delegated and all-workflow acceptance remains open; bounded tests are not a full
+  transformation platform completion proof.
 
 - Primary/auxiliary context and accepted execution/use-case model selection are
   implemented. Stage 5s adds known auxiliary capacity preflight using its actual
@@ -2399,6 +2426,11 @@ Stage 2a verification:
 - Select the actual SDK-containing published Runtime version for independent application module metadata after the complete public surface exists. The isolated current-source archive proof does not claim published artifact availability.
 
 ## Spillover risks
+
+- Core .29 changes media refusal timing for well-formed Start/Resume/Steer input.
+  External consumers must observe the accepted Run outcome; structural validation
+  remains before acceptance. Original media/command identity are preserved, with
+  no new storage migration or side-effect redelivery authority.
 
 - Input-transform execution checkpoints require model_inputs and explicit empty
   capture. Former payloads cannot be silently resumed as the current chain. Internal
