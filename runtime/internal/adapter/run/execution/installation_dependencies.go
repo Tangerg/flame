@@ -87,7 +87,7 @@ func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	var dependencies []plugin.Dependency
-	for _, binding := range append(slices.Clone(i.modelObservers), i.modelContexts...) {
+	for _, binding := range append(append(slices.Clone(i.modelObservers), i.modelContexts...), i.modelInputs...) {
 		dependencies = append(dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
 	}
 	if deployments != nil {

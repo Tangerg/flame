@@ -82,7 +82,7 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			model := &skillRevisionModel{}
-			resolve := modeladapter.AuxiliaryResolver(func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+			resolve := modeladapter.AuxiliaryResolver(func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
 				return auxiliaryFixture(model), func() {}, nil
 			})
 			pipeline, _, err := buildRunMaintenance(cfg, conversation, nil, workspace.skills, workspace.skillMaintenance, noMemoryMaintenance{}, resolve, unusedMaintenanceContext{})

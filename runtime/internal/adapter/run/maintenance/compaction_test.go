@@ -19,13 +19,13 @@ import (
 )
 
 func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
-	return func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+	return func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
 		return auxiliaryFixture(&c), func() {}, nil
 	}
 }
 
-func unexpectedClient(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
-	return modeladapter.AuxiliaryModel{}, nil, errors.New("unexpected utility model call")
+func unexpectedClient(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
+	return modeladapter.SelectedChat{}, nil, errors.New("unexpected utility model call")
 }
 
 func textToolOutput(t *testing.T, output chat.ToolOutput) string {

@@ -48,9 +48,9 @@ func LiveUtilityModel(
 	if selector != nil && dependency.Missing(selector) {
 		return nil, errors.New("model: utility selector is typed nil")
 	}
-	return func(ctx context.Context, budget AuxiliaryBudget) (AuxiliaryModel, func(), error) {
+	return func(ctx context.Context, budget AuxiliaryBudget) (SelectedChat, func(), error) {
 		if err := budget.Validate(); err != nil {
-			return AuxiliaryModel{}, nil, err
+			return SelectedChat{}, nil, err
 		}
 		selection := mainSelection
 		if role := roles.Role(); role.Configured() {
@@ -59,10 +59,10 @@ func LiveUtilityModel(
 		if selector != nil {
 			selected, err := selector.SelectModel(ctx, selection, nil)
 			if err != nil {
-				return AuxiliaryModel{}, nil, fmt.Errorf("auxiliary model: select route: %w", err)
+				return SelectedChat{}, nil, fmt.Errorf("auxiliary model: select route: %w", err)
 			}
 			if err := selected.ValidateExact(); err != nil {
-				return AuxiliaryModel{}, nil, err
+				return SelectedChat{}, nil, err
 			}
 			selection = selected
 		}
@@ -72,16 +72,16 @@ func LiveUtilityModel(
 		)
 		resolved, err := resolver.ResolveChat(ctx, selection)
 		if err != nil {
-			return AuxiliaryModel{}, nil, fmt.Errorf(
+			return SelectedChat{}, nil, fmt.Errorf(
 				"auxiliary model: resolve %s/%s: %w",
 				selection.Provider(),
 				selection.Model(),
 				err,
 			)
 		}
-		capture, err := NewAuxiliaryModel(selection, resolved)
+		capture, err := NewSelectedChat(selection, resolved)
 		if err != nil {
-			return AuxiliaryModel{}, nil, err
+			return SelectedChat{}, nil, err
 		}
 		return capture, func() {}, nil
 	}, nil

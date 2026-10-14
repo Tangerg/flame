@@ -137,3 +137,13 @@ func countContextMaterial(messages []chat.Message) int {
 	}
 	return count
 }
+
+func (*contextCaptureComposition) ResolveInput(context.Context) ([]plugins.ContributionBinding, error) {
+	return nil, nil
+}
+func (*contextCaptureComposition) ValidateInput(context.Context, []plugins.ContributionBinding) error {
+	return nil
+}
+func (*contextCaptureComposition) PrepareInput(_ context.Context, _ []plugins.ContributionBinding, _ modelref.Selection, request *chat.Request) (*chat.Request, error) {
+	return request.Clone(), nil
+}

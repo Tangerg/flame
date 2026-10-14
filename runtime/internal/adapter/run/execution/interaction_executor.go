@@ -232,7 +232,7 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, err
 	}
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_" + uuid.NewString()}
-	session, err := i.assembleInteraction(ctx, ref, start, nil, nil)
+	session, err := i.assembleInteraction(ctx, ref, start, nil, nil, nil)
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -262,6 +262,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	start runs.RootExecutionStart,
 	frozenObservers *[]plugins.ContributionBinding,
 	frozenContexts *[]plugins.ContributionBinding,
+	frozenInputs *[]plugins.ContributionBinding,
 ) (_ *interactionSession, err error) {
 	resolved, err := i.resolveChat(ctx, start.ModelSelection)
 	if err != nil {
@@ -274,7 +275,12 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, fmt.Errorf("execution: observe Interaction execution: %w", err)
 	}
+	selected, err := modeladapter.NewSelectedChat(start.ModelSelection, resolved)
+	if err != nil {
+		return nil, err
+	}
 	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy, telemetry)
+	session.selectedChat = selected
 	i.sessions.own(session)
 	defer func() {
 		if err != nil {
@@ -294,6 +300,22 @@ func (i *InteractionExecutor) assembleInteraction(
 	} else if i.config.ModelComposition != nil {
 		session.modelContexts, err = i.config.ModelComposition.ResolveContext(ctx)
 		if err != nil {
+			return nil, err
+		}
+	}
+	if frozenInputs != nil {
+		session.modelInputs = slices.Clone(*frozenInputs)
+	} else if i.config.ModelComposition != nil {
+		session.modelInputs, err = i.config.ModelComposition.ResolveInput(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(session.modelInputs) > 0 {
+		if i.config.ModelComposition == nil {
+			return nil, errors.New("execution: captured model input is unavailable")
+		}
+		if err := i.config.ModelComposition.ValidateInput(ctx, session.modelInputs); err != nil {
 			return nil, err
 		}
 	}
@@ -369,6 +391,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 		Instructions           []corechat.Message      `json:"instructions,omitempty"`
 		ModelObservers         []modelContributionWire `json:"modelObservers"`
 		ModelContexts          []modelContributionWire `json:"modelContexts"`
+		ModelInputs            []modelContributionWire `json:"modelInputs"`
 	}{
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		Streaming:              i.config.StreamModelResponses,
@@ -378,6 +401,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
 		ModelObservers: modelBindingsWire(session.modelObservers),
 		ModelContexts:  modelBindingsWire(session.modelContexts),
+		ModelInputs:    modelBindingsWire(session.modelInputs),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction configuration identity: %w", err)
@@ -617,7 +641,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 	}
 	start := checkpoint.restoredStart(continuation)
-	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint.modelObservers, &checkpoint.modelContexts)
+	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint.modelObservers, &checkpoint.modelContexts, &checkpoint.modelInputs)
 	if err != nil {
 		return err
 	}

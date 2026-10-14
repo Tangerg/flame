@@ -175,7 +175,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 			return zero, false, err
 		}
 	}
-	session, err := i.assembleInteraction(ctx, runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, checkpoint.restoredStart(continuation), &checkpoint.modelObservers, &checkpoint.modelContexts)
+	session, err := i.assembleInteraction(ctx, runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, checkpoint.restoredStart(continuation), &checkpoint.modelObservers, &checkpoint.modelContexts, &checkpoint.modelInputs)
 	if err != nil {
 		return zero, false, err
 	}
@@ -238,7 +238,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, conti
 		return runs.ExecutorRef{}, err
 	}
 	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	session, err := i.assembleInteraction(ctx, ref, checkpoint.restoredStart(continuation), &checkpoint.modelObservers, &checkpoint.modelContexts)
+	session, err := i.assembleInteraction(ctx, ref, checkpoint.restoredStart(continuation), &checkpoint.modelObservers, &checkpoint.modelContexts, &checkpoint.modelInputs)
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}

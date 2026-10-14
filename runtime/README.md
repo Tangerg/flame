@@ -2468,4 +2468,9 @@ original output-envelope presence remain authoritative. Context precedes transfo
 final byte/output/token capacity admission precedes observer/physical execution.
 Transform output never rewrites authored conversation, and transformer installations
 share the existing captured dependency/cancel/join lifetime. Primary Interaction
-integration of this public contract remains in progress.
+now captures transform bindings with its configuration/checkpoint and hands the
+complete admitted request through one per-call record into Call/Stream. Original
+conversation/Options remain retained; final media/capacity and calibration see the
+actual transformed input. Checkpoints require model_inputs with no old-shape fallback.
+Fresh Start's authored-input media preflight still needs migration for conversion
+from otherwise unsupported input modalities; full native acceptance remains open.

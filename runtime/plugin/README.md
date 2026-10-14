@@ -470,6 +470,17 @@ refuse generation; no fallback/retry or model routing is implied. Caller convers
 is independently retained and never adopts transformed messages. The same use-case
 lifetime cancels/joins requests and retains all participating installation releases.
 
-Primary Interaction transformation is not yet connected to this contract. Its
-single-call prepared request and final capacity/accounting integration must be
-completed before this capability is claimed for the whole Runtime.
+Primary Interaction now captures the same transform order in its execution
+configuration and required `model_inputs` checkpoint field. Restore validates
+original bindings rather than selecting current ones. Canonical compaction runs
+first; context and transformed complete requests remain ephemeral. The existing
+single-call preparation record now carries the complete final request, including
+Options, and Call/Stream consume that exact request. Final model media/token/output
+admission and accounting calibration use the transformed input. An over-capacity
+transform refuses rather than rerunning plugin I/O or silently compacting its output.
+Former checkpoints without the captured input field are refused.
+
+Fresh Start still checks authored current/composed input against the selected
+model before executor staging. Cross-modality conversion of input rejected by that
+preflight is not yet enabled by this path; its full admission migration and native
+acceptance remain open, together with independently routed multiple calls.

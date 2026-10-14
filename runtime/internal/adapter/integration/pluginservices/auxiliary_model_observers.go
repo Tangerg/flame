@@ -17,23 +17,23 @@ import (
 // Auxiliary freezes context and observer bindings for the caller's whole use case. Memory
 // retains one capture across extraction/curation; Complete releases one request.
 func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
-	return func(ctx context.Context, budget models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+	return func(ctx context.Context, budget models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 		if err := budget.Validate(); err != nil {
-			return models.AuxiliaryModel{}, nil, err
+			return models.SelectedChat{}, nil, err
 		}
 		if resolve == nil {
-			return models.AuxiliaryModel{}, nil, errors.New("model observers: auxiliary resolver is required")
+			return models.SelectedChat{}, nil, errors.New("model observers: auxiliary resolver is required")
 		}
 		resolved, release, err := resolve(ctx, budget)
 		if err != nil {
-			return models.AuxiliaryModel{}, nil, err
+			return models.SelectedChat{}, nil, err
 		}
 		if release == nil {
-			return models.AuxiliaryModel{}, nil, errors.New("model observers: auxiliary model release is required")
+			return models.SelectedChat{}, nil, errors.New("model observers: auxiliary model release is required")
 		}
 		if dependency.Missing(resolved.Model()) {
 			release()
-			return models.AuxiliaryModel{}, nil, errors.New("model observers: auxiliary model is required")
+			return models.SelectedChat{}, nil, errors.New("model observers: auxiliary model is required")
 		}
 		var capture *auxiliaryModelCapture
 		err = o.admission.Under(ctx, func() error {
@@ -59,12 +59,12 @@ func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.Au
 		})
 		if err != nil {
 			release()
-			return models.AuxiliaryModel{}, nil, err
+			return models.SelectedChat{}, nil, err
 		}
 		result, err := resolved.WithModel(capture)
 		if err != nil {
 			capture.close()
-			return models.AuxiliaryModel{}, nil, err
+			return models.SelectedChat{}, nil, err
 		}
 		return result, capture.close, nil
 	}
@@ -87,7 +87,7 @@ type auxiliaryModelCapture struct {
 	bindings []plugins.ContributionBinding
 	contexts []plugins.ContributionBinding
 	inputs   []plugins.ContributionBinding
-	resolved models.AuxiliaryModel
+	resolved models.SelectedChat
 	budget   models.AuxiliaryBudget
 	model    chat.Model
 	lifetime context.Context

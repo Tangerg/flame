@@ -29,6 +29,7 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	ModelInputs         *[]modelContributionWire            `json:"model_inputs"`
 	ModelContexts       *[]modelContributionWire            `json:"model_contexts"`
 	ModelObservers      *[]modelContributionWire            `json:"model_observers"`
 	MCPReferences       *[]string                           `json:"mcp_references"`
@@ -87,6 +88,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	modelInputs         []plugins.ContributionBinding
 	modelContexts       []plugins.ContributionBinding
 	modelObservers      []plugins.ContributionBinding
 	mcpSources          []mcpserver.ID
@@ -152,6 +154,7 @@ func encodeInteractionCheckpointPayload(
 	handoff *interactionHandoffWire,
 	observers []plugins.ContributionBinding,
 	contexts []plugins.ContributionBinding,
+	inputs []plugins.ContributionBinding,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
@@ -163,6 +166,7 @@ func encodeInteractionCheckpointPayload(
 	wire := interactionCheckpointPayloadWire{
 		ModelObservers: new(modelBindingsWire(observers)),
 		ModelContexts:  new(modelBindingsWire(contexts)),
+		ModelInputs:    new(modelBindingsWire(inputs)),
 		MCPReferences:  new(mcpReferences),
 		ToolMetadata:   toolMetadata, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
@@ -411,6 +415,17 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err := wire.Options.Validate(); err != nil {
 		return interactionCheckpointState{}, err
 	}
+	if wire.ModelInputs == nil {
+		return interactionCheckpointState{}, errors.New("execution: checkpoint model input bindings are required")
+	}
+	inputContract, err := pluginsdk.ModelInputContract()
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	inputs, err := decodeModelBindings(*wire.ModelInputs, inputContract)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
 	if wire.ModelContexts == nil {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint model context bindings are required")
 	}
@@ -455,6 +470,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	return interactionCheckpointState{
 		modelObservers: observers,
 		modelContexts:  contexts,
+		modelInputs:    inputs,
 		mcpSources:     sources,
 		handoff:        handoff, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/modelcatalog"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -25,7 +26,7 @@ import (
 // Resolving at the boundary lets a role configuration change take effect without
 // rebuilding the owning worker. The caller releases the frozen capture after
 // all calls have joined; retained observers cannot retire before that boundary.
-type AuxiliaryResolver func(context.Context, AuxiliaryBudget) (AuxiliaryModel, func(), error)
+type AuxiliaryResolver func(context.Context, AuxiliaryBudget) (SelectedChat, func(), error)
 
 // AuxiliaryBudget is the caller-owned input/output envelope for a captured use
 // case. Every complete model-visible request must remain within it.
@@ -41,30 +42,30 @@ func (b AuxiliaryBudget) Validate() error {
 	return nil
 }
 
-// AuxiliaryModel captures the exact role selection and model construction
+// SelectedChat captures the exact selection and model construction
 // together. Wrapping its model cannot detach or invent the selected identity.
-type AuxiliaryModel struct {
+type SelectedChat struct {
 	selection modelref.Selection
 	resolved  ResolvedChat
 	limits    modelref.TokenLimits
 }
 
-func NewAuxiliaryModel(selection modelref.Selection, resolved ResolvedChat) (AuxiliaryModel, error) {
+func NewSelectedChat(selection modelref.Selection, resolved ResolvedChat) (SelectedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
-		return AuxiliaryModel{}, err
+		return SelectedChat{}, err
 	}
 	if dependency.Missing(resolved.Model()) {
-		return AuxiliaryModel{}, errors.New("auxiliary model: resolved model is required")
+		return SelectedChat{}, errors.New("auxiliary model: resolved model is required")
 	}
 	limits, _, err := LookupTokenLimits(selection)
 	if err != nil {
-		return AuxiliaryModel{}, err
+		return SelectedChat{}, err
 	}
-	return AuxiliaryModel{selection: selection, resolved: resolved, limits: limits}, nil
+	return SelectedChat{selection: selection, resolved: resolved, limits: limits}, nil
 }
-func (m AuxiliaryModel) Selection() modelref.Selection { return m.selection }
-func (m AuxiliaryModel) Model() chat.Model             { return m.resolved.Model() }
-func (m AuxiliaryModel) InputTokenCounter() (InputTokenCounter, bool) {
+func (m SelectedChat) Selection() modelref.Selection { return m.selection }
+func (m SelectedChat) Model() chat.Model             { return m.resolved.Model() }
+func (m SelectedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return m.resolved.InputTokenCounter()
 }
 
@@ -177,7 +178,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 // AdmitRequest applies the selected model's known input/output envelope to the
 // complete request after context composition. A catalog miss retains unknown
 // capacity; it cannot manufacture a limit from the caller's byte budget.
-func (m AuxiliaryModel) AdmitRequest(ctx context.Context, request *chat.Request) error {
+func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) error {
 	if request == nil {
 		return errors.New("auxiliary model: request is required")
 	}
@@ -187,15 +188,19 @@ func (m AuxiliaryModel) AdmitRequest(ctx context.Context, request *chat.Request)
 	if err := m.selection.ValidateExact(); err != nil {
 		return err
 	}
-	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
-		return errors.New("auxiliary model: request cannot replace selected model")
-	}
-	if request.Options.MaxOutputTokens == nil {
-		return errors.New("auxiliary model: explicit output reservation is required")
-	}
-	reservation, err := modelref.NewOutputReservation(*request.Options.MaxOutputTokens)
-	if err != nil {
+	if err := (modelcatalog.Selections{}).AdmitInput(m.selection, request.Messages); err != nil {
 		return err
+	}
+	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
+		return errors.New("model: request cannot replace selected model")
+	}
+	reservation := modelref.OutputReservation{}
+	if request.Options.MaxOutputTokens != nil {
+		var err error
+		reservation, err = modelref.NewOutputReservation(*request.Options.MaxOutputTokens)
+		if err != nil {
+			return err
+		}
 	}
 	ceiling, known, err := m.limits.InputCeiling(reservation)
 	if err != nil {
@@ -230,11 +235,11 @@ func (m AuxiliaryModel) AdmitRequest(ctx context.Context, request *chat.Request)
 
 // WithModel retains the frozen selected identity, capacity and counter while
 // replacing only its call projection with a caller-owned decorator.
-func (m AuxiliaryModel) WithModel(model chat.Model) (AuxiliaryModel, error) {
+func (m SelectedChat) WithModel(model chat.Model) (SelectedChat, error) {
 	counter, _ := m.InputTokenCounter()
 	resolved, err := NewResolvedChat(model, counter)
 	if err != nil {
-		return AuxiliaryModel{}, err
+		return SelectedChat{}, err
 	}
 	m.resolved = resolved
 	return m, nil
@@ -242,7 +247,7 @@ func (m AuxiliaryModel) WithModel(model chat.Model) (AuxiliaryModel, error) {
 
 // PrepareRequest applies model-owned options before contributors and capacity
 // observe the same final request. Callers cannot replace a captured selection.
-func (m AuxiliaryModel) PrepareRequest(request *chat.Request) (*chat.Request, error) {
+func (m SelectedChat) PrepareRequest(request *chat.Request) (*chat.Request, error) {
 	if request == nil {
 		return nil, errors.New("auxiliary model: request is required")
 	}
@@ -253,11 +258,11 @@ func (m AuxiliaryModel) PrepareRequest(request *chat.Request) (*chat.Request, er
 		return nil, err
 	}
 	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
-		return nil, errors.New("auxiliary model: request cannot replace selected model")
+		return nil, errors.New("model: request cannot replace selected model")
 	}
 	effort := chat.ReasoningEffort(m.selection.ReasoningEffort())
 	if request.Options.ReasoningEffort != "" && request.Options.ReasoningEffort != effort {
-		return nil, errors.New("auxiliary model: request cannot replace selected reasoning effort")
+		return nil, errors.New("model: request cannot replace selected reasoning effort")
 	}
 	prepared := request.Clone()
 	prepared.Options.ReasoningEffort = effort

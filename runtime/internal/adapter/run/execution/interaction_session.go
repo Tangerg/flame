@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"log/slog"
 	"runtime/debug"
 	"slices"
@@ -47,6 +48,8 @@ type interactionSession struct {
 	modelFailures       interactionModelFailures
 	modelObservers      []plugins.ContributionBinding
 	modelContexts       []plugins.ContributionBinding
+	modelInputs         []plugins.ContributionBinding
+	selectedChat        modeladapter.SelectedChat
 	modelEvidence       InteractionModelEvidence
 	modelComposition    InteractionModelComposition
 	effectFailures      interactionEffectFailures

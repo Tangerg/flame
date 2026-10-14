@@ -34,17 +34,10 @@ func (o *observedInteractionModel) request(invocation interaction.ModelInvocatio
 	if err != nil {
 		return nil, err
 	}
-	if request == nil || material.prefixAt > len(request.Messages) {
-		return nil, errors.New("execution: prepared model context has an invalid instruction boundary")
+	if request == nil || material.request == nil {
+		return nil, errors.New("execution: prepared model request is unavailable")
 	}
-	if len(material.prefix) == 0 && len(material.trailer) == 0 {
-		return request, nil
-	}
-	sent := request.Clone()
-	sent.Messages = append(cloneChatMessages(request.Messages[:material.prefixAt]), material.prefix...)
-	sent.Messages = append(sent.Messages, cloneChatMessages(request.Messages[material.prefixAt:])...)
-	sent.Messages = append(sent.Messages, material.trailer...)
-	return sent, nil
+	return material.request, nil
 }
 
 func (o *observedInteractionModel) Call(

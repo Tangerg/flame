@@ -16,6 +16,9 @@ import (
 )
 
 type InteractionModelComposition interface {
+	ResolveInput(context.Context) ([]plugins.ContributionBinding, error)
+	ValidateInput(context.Context, []plugins.ContributionBinding) error
+	PrepareInput(context.Context, []plugins.ContributionBinding, modelref.Selection, *chat.Request) (*chat.Request, error)
 	ResolveContext(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateContext(context.Context, []plugins.ContributionBinding) error
 	PrepareContext(context.Context, []plugins.ContributionBinding, modelref.Selection, *chat.Request) ([]chat.Message, error)

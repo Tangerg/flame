@@ -749,7 +749,7 @@ func TestRequiredCompactionCannotPersistTextFromARefusal(t *testing.T) {
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
 	compactor := mustNewCompactor(t, store,
-		func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.AuxiliaryModel, func(), error) {
+		func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
 			return auxiliaryFixture(model), func() {}, nil
 		},
 		nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)},

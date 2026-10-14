@@ -69,12 +69,12 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 				if err != nil {
 					t.Fatal(err)
 				}
-				base, err = models.NewAuxiliaryModel(testsupport.MustModelSelection("openai", "gpt-5-pro"), resolved)
+				base, err = models.NewSelectedChat(testsupport.MustModelSelection("openai", "gpt-5-pro"), resolved)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
-			resolver := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+			resolver := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 				return base, func() {}, nil
 			})
 			capture, release, err := resolver(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})

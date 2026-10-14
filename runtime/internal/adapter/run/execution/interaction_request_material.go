@@ -10,9 +10,9 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// requestMaterial transfers the complete ephemeral context measured by the
-// reducer to the provider boundary. Neither contributed instructions nor the
-// current Session tail enters Scope's WorkingContext.
+// requestMaterial transfers one complete admitted provider request from reduction
+// to Call/Stream. Its contributed/transformed projection never enters Scope's
+// retained conversation or Options.
 type requestMaterial struct {
 	mu        sync.Mutex
 	byProcess map[agent.ProcessID]preparedRequestMaterial
@@ -21,17 +21,15 @@ type requestMaterial struct {
 type preparedRequestMaterial struct {
 	effectID agent.EffectID
 	sequence uint64
-	prefixAt int
-	prefix   []corechat.Message
-	trailer  []corechat.Message
+	request  *corechat.Request
 }
 
 func newRequestMaterial() requestMaterial {
 	return requestMaterial{byProcess: make(map[agent.ProcessID]preparedRequestMaterial)}
 }
 
-func (t *requestMaterial) prepare(invocation interaction.ModelInvocation, prefixAt int, prefix, trailer []corechat.Message) error {
-	if !invocation.Valid() || prefixAt < 0 {
+func (t *requestMaterial) prepare(invocation interaction.ModelInvocation, request *corechat.Request) error {
+	if !invocation.Valid() || request == nil {
 		return errors.New("execution: prepare request material requires valid attribution")
 	}
 	processID := invocation.Relation().ProcessID()
@@ -42,7 +40,7 @@ func (t *requestMaterial) prepare(invocation interaction.ModelInvocation, prefix
 	}
 	t.byProcess[processID] = preparedRequestMaterial{
 		effectID: invocation.EffectID(), sequence: invocation.ModelCallSequence(),
-		prefixAt: prefixAt, prefix: cloneChatMessages(prefix), trailer: cloneChatMessages(trailer),
+		request: request.Clone(),
 	}
 	return nil
 }

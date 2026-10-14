@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -31,6 +32,7 @@ import (
 func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *testing.T) {
 	workspace := t.TempDir()
 	contextOwner := &contextCaptureComposition{t: t}
+	inputOwner := &waitingInputComposition{contextCaptureComposition: contextOwner}
 	var (
 		toolCalls int
 		requests  [][]chat.Message
@@ -60,6 +62,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		interactionUsageTextResponse("completed", 3, 1),
 	}}
 	recordingModel := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		if len(request.Options.Stop) != 1 || request.Options.Stop[0] != "TRANSFORMED" {
+			t.Error("restored input transform lost complete request options")
+		}
 		if countContextMaterial(request.Messages) != 1 {
 			t.Error("restored model input lost or duplicated contributed context")
 		}
@@ -73,7 +78,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	})
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	executor := newObservedTestInteractionExecutor(t, recordingModel, InteractionExecutorConfig{
-		ModelComposition: contextOwner,
+		ModelComposition: inputOwner,
 		ToolResolver:     staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
 		ToolInterpreter:  testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
@@ -153,6 +158,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		}
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
+	if inputOwner.inputResolves != 1 || inputOwner.inputCalls != 2 {
+		t.Fatalf("restoration reselected or lost input transforms: %d/%d", inputOwner.inputResolves, inputOwner.inputCalls)
+	}
 	if contextOwner.resolved != 1 || contextOwner.calls != 2 {
 		t.Fatalf("restoration reselected or lost original context: resolves=%d calls=%d", contextOwner.resolved, contextOwner.calls)
 	}
@@ -182,8 +190,13 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		len(steers[0].Messages[0].Content) != 1 || steers[0].Messages[0].Content[0].Text != "also include edge cases" {
 		t.Fatalf("committed continuation input projection = %#v", steers)
 	}
-	if !reflect.DeepEqual(compactor.adjustments, []int{0, -98}) {
-		t.Fatalf("restored model context calibration = %v, want [0 -98]", compactor.adjustments)
+	estimated, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: requests[0], Options: chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321)), Stop: []string{"TRANSFORMED"}}, Tools: []chat.ToolDefinition{question.Definition()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := []int{0, 2 - estimated}
+	if !reflect.DeepEqual(compactor.adjustments, expected) {
+		t.Fatalf("restored model context calibration=%v, want final-input estimate %v", compactor.adjustments, expected)
 	}
 	if err := executor.Release(t.Context(), restored); err != nil {
 		t.Fatal(err)

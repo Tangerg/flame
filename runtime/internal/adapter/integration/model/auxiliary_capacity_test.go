@@ -18,7 +18,7 @@ func (f auxiliaryCountFunc) CountInputTokens(ctx context.Context, request *chat.
 	return f(ctx, request)
 }
 
-func capacityFixture(t *testing.T, selection modelref.Selection, counter InputTokenCounter) AuxiliaryModel {
+func capacityFixture(t *testing.T, selection modelref.Selection, counter InputTokenCounter) SelectedChat {
 	t.Helper()
 	resolved, err := NewResolvedChat(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		t.Fatal("admission executed provider")
@@ -27,7 +27,7 @@ func capacityFixture(t *testing.T, selection modelref.Selection, counter InputTo
 	if err != nil {
 		t.Fatal(err)
 	}
-	capture, err := NewAuxiliaryModel(selection, resolved)
+	capture, err := NewSelectedChat(selection, resolved)
 	if err != nil {
 		t.Fatal(err)
 	}

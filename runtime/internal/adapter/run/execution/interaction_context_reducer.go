@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	agent "github.com/Tangerg/scope/agent"
@@ -137,7 +138,11 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if err := validation.Validate(); err != nil {
 			return nil, fmt.Errorf("execution: reduced model context: %w", err)
 		}
-		if err := i.session.material.prepare(invocation, len(i.instructions), material, tail); err != nil {
+		validation, err = i.prepareInput(ctx, invocation, validation)
+		if err != nil {
+			return nil, err
+		}
+		if err := i.session.material.prepare(invocation, validation); err != nil {
 			return nil, err
 		}
 		return effective, nil
@@ -218,10 +223,21 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err := validation.Validate(); err != nil {
 		return nil, fmt.Errorf("execution: compacted model context: %w", err)
 	}
-	if err := i.session.accounting.prepareModelContext(invocation, result.EstimatedTokens()); err != nil {
+	validation, err = i.prepareInput(ctx, invocation, validation)
+	if err != nil {
 		return nil, err
 	}
-	if err := i.session.material.prepare(invocation, len(i.instructions), material, tail); err != nil {
+	estimate := result.EstimatedTokens()
+	if len(i.session.modelInputs) > 0 {
+		estimate, err = modeltext.EstimateRequestTokens(validation)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := i.session.accounting.prepareModelContext(invocation, estimate); err != nil {
+		return nil, err
+	}
+	if err := i.session.material.prepare(invocation, validation); err != nil {
 		i.session.accounting.discardPreparedModelContext(invocation)
 		return nil, err
 	}
@@ -287,3 +303,37 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 }
 
 var _ interaction.ModelContextReducer = (*interactionModelContextReducer)(nil)
+
+func (i *interactionModelContextReducer) prepareInput(ctx context.Context, invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
+	if len(i.session.modelInputs) == 0 {
+		return request, nil
+	}
+	identity, err := modelInvocationID(invocation)
+	if err != nil {
+		return nil, err
+	}
+	calling, err := pluginsdk.WithInvocation(ctx, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
+	if err != nil {
+		return nil, err
+	}
+	transformed, err := i.session.modelComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
+	if err != nil {
+		return nil, err
+	}
+	if err := pluginsdk.ValidateModelInput(request, transformed); err != nil {
+		return nil, err
+	}
+	if err := i.session.selectedChat.AdmitRequest(calling, transformed); err != nil {
+		return nil, err
+	}
+	if i.compactor == nil {
+		estimate, err := modeltext.EstimateRequestTokens(transformed)
+		if err != nil {
+			return nil, err
+		}
+		if err := i.session.accounting.prepareModelContext(invocation, estimate); err != nil {
+			return nil, err
+		}
+	}
+	return transformed, nil
+}

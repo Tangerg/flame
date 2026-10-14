@@ -29,7 +29,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 		message := chat.NewAssistantMessage(chat.NewTextPart("known response"))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
-	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 		return auxiliaryFixture(model), func() { releases.Add(1) }, nil
 	})
 	captured, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 1024, MaxOutputTokens: 64})
@@ -86,7 +86,7 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 	observer, _, _ := installedObserverFixture(t, "transparent")
 	started, canceled, returnModel := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	var released atomic.Bool
-	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+	resolve := observer.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 		return auxiliaryFixture(chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 			close(started)
 			<-ctx.Done()
@@ -142,7 +142,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 				message := chat.NewAssistantMessage(chat.NewTextPart("done"))
 				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 			})
-			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 				return auxiliaryFixture(provider), func() { releases.Add(1) }, nil
 			})
 			budget := models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64}
@@ -236,11 +236,11 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			base, err := models.NewAuxiliaryModel(selected, resolved)
+			base, err := models.NewSelectedChat(selected, resolved)
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+			resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 				return base, func() {}, nil
 			})
 			capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})
@@ -281,11 +281,11 @@ func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependenci
 	if err != nil {
 		t.Fatal(err)
 	}
-	base, err := models.NewAuxiliaryModel(testsupport.MustModelSelection("openai", "gpt-5-pro"), resolved)
+	base, err := models.NewSelectedChat(testsupport.MustModelSelection("openai", "gpt-5-pro"), resolved)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.AuxiliaryModel, func(), error) {
+	resolve := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 		return base, func() { released.Store(true) }, nil
 	})
 	capture, release, err := resolve(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})

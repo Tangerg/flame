@@ -7,15 +7,15 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func auxiliaryFixture(model chat.Model) modeladapter.AuxiliaryModel {
+func auxiliaryFixture(model chat.Model) modeladapter.SelectedChat {
 	if dependency.Missing(model) {
-		return modeladapter.AuxiliaryModel{}
+		return modeladapter.SelectedChat{}
 	}
 	resolved, err := modeladapter.NewResolvedChat(model, nil)
 	if err != nil {
 		panic(err)
 	}
-	capture, err := modeladapter.NewAuxiliaryModel(testsupport.DefaultModelSelection(), resolved)
+	capture, err := modeladapter.NewSelectedChat(testsupport.DefaultModelSelection(), resolved)
 	if err != nil {
 		panic(err)
 	}
