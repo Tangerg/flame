@@ -18,6 +18,11 @@ import (
 	"errors"
 )
 
+// Number is the exact-number carrier. Callers that must hand an exact integer to
+// a JSON-schema bound or other wire field use this instead of importing the v1
+// package directly, keeping encoding/json confined to this one owner.
+type Number = jsonv1.Number
+
 // Numbers decodes every JSON number reaching an any as a [jsonv1.Number]
 // holding the original literal. It changes nothing else: the unmarshaler
 // declines other kinds before reading a token, which is how encoding/json/v2 is

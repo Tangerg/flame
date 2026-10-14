@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"encoding/json"
 	"errors"
 	"strconv"
 
@@ -10,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	memory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
@@ -34,8 +34,8 @@ type ListInput struct {
 func (ListInput) JSONSchemaExtend(schema *jsonschema.Schema) {
 	limit, ok := schema.Properties.Get("Limit")
 	if ok {
-		limit.Minimum = json.Number("1")
-		limit.Maximum = json.Number(strconv.Itoa(memory.MaxManagementPageItems))
+		limit.Minimum = exactjson.Number("1")
+		limit.Maximum = exactjson.Number(strconv.Itoa(memory.MaxManagementPageItems))
 	}
 }
 

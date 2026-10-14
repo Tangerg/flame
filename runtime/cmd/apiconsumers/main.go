@@ -2,11 +2,12 @@
 package main
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,18 +22,36 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	if err := json.NewEncoder(os.Stdout).Encode(collect(root)); err != nil {
+	if err := json.MarshalWrite(os.Stdout, collect(root)); err != nil {
 		fail(err)
+	}
+}
+
+// readGoDirectory returns the directory entries in bounded batches instead of
+// materializing the whole directory at once.
+func readGoDirectory(directory string) []os.DirEntry {
+	dir, err := os.Open(directory)
+	if err != nil {
+		fail(err)
+	}
+	defer func() { _ = dir.Close() }()
+	var entries []os.DirEntry
+	for {
+		batch, err := dir.ReadDir(128)
+		entries = append(entries, batch...)
+		if err == io.EOF {
+			return entries
+		}
+		if err != nil {
+			fail(err)
+		}
 	}
 }
 
 func collect(root string) map[string][]string {
 	files := token.NewFileSet()
 	parse := func(directory string) []*ast.File {
-		entries, err := os.ReadDir(directory)
-		if err != nil {
-			fail(err)
-		}
+		entries := readGoDirectory(directory)
 		var parsed []*ast.File
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
