@@ -1339,23 +1339,30 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## Next
 
-Continue in the same worktree and branch. Preserve the complete proposal/review
-objective and report concrete remaining paths rather than a static completion count.
+Continue in the same worktree and branch. The complete proposal/review objective
+is unfinished; the individual acceptance table distinguishes executed backend
+proof from source/native inspection and excluded UI execution.
 
-1. Priority #3: finish transitive availability diagnostics and evidence
-   retention/pruning policy audit. Actual installed point/callback lifetimes are
-   qualified in `6e23f4d00`. Transitive release retention and
-   same-release activation identity are implemented in `6ef5b7961`/`18ddce955`. Query streams and exact Go/TS feature JSON are implemented;
-   retain their cancellation/command-ownership checks during final acceptance.
-   Audit actual Tool,
-   automatic and cross-plugin target/origin/parent/original-route consumers.
-2. Priority #4: independent author/component/native packaging qualification.
-   Workspace compilation alone does not prove public module availability; no
-   publishing is authorized.
-3. Concentrated integrated/native/vet/race/dependency/schema/architecture/format
-   acceptance, every P01-P48 and review obligation, and deletion of retired public
-   APIs/schemas/examples/docs. Repeat the Schedule resolution cut. Frontend
-   UI/E2E/screenshot execution and Desktop aggregate checks remain excluded.
+1. Record the full execution race result after `659f1aa30`. All eight SIGKILL
+   cuts have already passed twice under race and whole bootstrap passed again.
+2. Replace the Schedule-specific original Tool result reconstruction with one
+   public original-owner result query. Projection of private business receipts
+   belongs to the backend. Preserve exact captured source, missing/conflicting/
+   malformed receipt uncertainty, cancellation, publication lifetime and no replay.
+   Prove the path for an unrelated installed Tool and rerun whole bootstrap.
+3. Migrate Core Memory consumption to its published operation/read projection;
+   remove production imports of private feature domain/application/RPC values.
+   Preserve optional absence versus operational failure and model-owned budgets.
+4. Finish transitive availability diagnostics, all Tool/automatic/cross-plugin
+   target/origin/parent/original-route audit and retention policy review. No new
+   automatic expiry is authorized; retain the current Run/Session/pending owners.
+5. Complete independent backend/public artifact qualification, final module/dependency/
+   schema/API checks and current README/example cleanup. Packed Usage independent
+   build/install and native `.app` build already pass; they do not prove registry
+   publication or rendered workflows. Publishing remains unauthorized.
+6. Run the final affected full/vet/race/closure gates and reconcile every P01-P48
+   and review item against current evidence. Frontend UI/E2E/screenshot execution
+   and Desktop aggregate checks remain excluded; never count them as passed.
 
 ## Decision ledger
 
@@ -1671,16 +1678,61 @@ Status is open until code and appropriate verification prove the requirement.
 
 ## Proposal acceptance coverage
 
-Full P01-P48 completion remains open. Stage 1 supplies installation-state, default-initialization and incompatible-storage evidence; it does not prove the new public platform. Grouping names the evidence required, not a reduced scope.
+Current evidence is individual rather than a grouped completion claim. Backend
+verification refers to the complete Runtime/CLI suites recorded above, plus the
+specific repeated recovery/race checks. UI/E2E/screenshot execution is excluded by
+the user; source inspection and native builds do not become rendered proof.
 
-| Cases | Required evidence | Status |
-| --- | --- | --- |
-| P01-P09 | Author parity, selected roles, plugin-defined points, declaration failure, provisional resources and available management | Open |
-| P10-P20 | Reentrant host callback, installed model decorators, frozen ordering, admitted transformed input, command identity, stale next, preserved inner evidence, stream cancellation/backpressure and actual model identity | Unary headless callback/reentrancy/retirement and public Go Scope model callback/full valid inner result plus outer failure/cancellation subset verified; actual callback stream/aggregate/cancel/backpressure/external frozen remaining-chain subset now verified; SDK duplex/export/real stdio decorator-next subset now verified; Internal Runtime mutation-stream original route/recovery is now verified; public Go/Protocol stream delivery is now verified; typed/callback Go streaming is now verified; TS mutation streaming is now verified; Stage 5g production failed-outer known-response/accounting and host reopen are verified; Stage 5i transparent installed Interaction chain and original checkpoint/retention are implemented with HTTP boundary evidence; Stage 5j auxiliary/Memory consumers and captured lifetime are implemented/verified at their boundaries; Stage 5k physical chat endpoint admission/outcome/restart is verified at its boundaries; Stage 5l current transparent Interaction source accounting is verified; endpoint export/lifecycle, auxiliary/global/crash/multi-call accounting, transform/multiple-call contracts, transitive lifecycle and full native acceptance still open |
-| P21-P28 | Shared operation entrances, receipts/conflicts, scheduling acceptance/capture, independent Run lifetime and Memory owner invariants | Schedules acceptance/capture/retirement, lost Core acknowledgement across disable/reenable, and eight SIGKILL cuts verified; original private records and no replay preserved. Full shared installed entrances and final repeated acceptance remain open |
-| P29-P35 | Shared React binding, recoverable UI failure, target capture, shared resource owner, applicability, capacity and appearance owner | Open; UI/E2E execution excluded by user |
-| P36-P41 | Generation safety, waiting dependencies, retained data, generic history, remote environment and headless host calls | Open |
-| P42-P48 | Portable packages, strict current contracts, non-mutating old-state refusal, recovery, shutdown, diagnostics and final deletion | Open |
+| Requirement | Current evidence and remaining work |
+| --- | --- |
+| P01 | Verified for complete Usage from packed public artifacts outside the checkout, with typecheck/build and exact release resource bytes. Registry publication is not claimed. Backend private-source dependencies remain a separate review/cutover item. |
+| P02 | Verified by `TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource`: ordinary source, same contract/resources, independent identity, withdrawal, restart and uninstall. |
+| P03 | Verified by full first-party initialization/restart and independent-origin lifecycle tests; durable disable/uninstall is not reseeded. |
+| P04 | Backend verified by explicit provider selection and original-command routing tests; enablement never selects another provider. |
+| P05 | Backend verified by named requirement, required-cycle and missing-binding admission tests. Transitive failure diagnostics still need final source review. |
+| P06 | Verified by actual Reviews/analyzer installed processes, point callbacks and consumer reconnect; no Core business enum is added. |
+| P07 | Backend verified by point/declaration contract admission and duplicate identity checks in pluginpackage/plugins. |
+| P08 | Backend verified by provisional setup failure, callback/resource retirement and connection publication checks. |
+| P09 | Backend verified by blocked stdio/handshake restart and management tests; unrelated operations stay available. |
+| P10 | Verified by actual reentrant headless callback and original installed observer/RPC tests. |
+| P11 | Verified by executable stdio decorator/model-next and installed model-call evidence tests. |
+| P12 | Backend verified by captured composition order and checkpoint activation identity tests. |
+| P13 | Final response/input admission and approval paths are backend tested; final audit must trace rewritten Tool proposals to the arguments actually approved. |
+| P14 | Public command/stream continuation and original receipt paths are verified. Open: remove the Schedule-specific original Tool result reconstruction and prove the same recovery for an unrelated installed Tool. |
+| P15 | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
+| P16 | Backend verified by known inner response/consumption surviving failed outer observation and reopen; uncertainty is not relabeled as no effect. |
+| P17 | Backend/shared-client verified by early consumer withdrawal, cancellation/join and no premature final-result tests. |
+| P18 | Backend/shared-client verified by partial evidence, disconnect and original-receipt-only restoration tests; no replay. |
+| P19 | Verified at backend stream/transport boundaries for pull backpressure, captured byte budgets and explicit capacity failure. |
+| P20 | Backend verified by actual selected provider/model/options, independent routes, metering and durable endpoint evidence. |
+| P21 | Backend/CLI and component source use published operation contracts. Open: remove Core imports of private Memory read values; rendered UI execution is excluded. |
+| P22 | Verified by actual Reviews committed-response loss, reopen, original receipt and stale-revision conflict tests. |
+| P23 | Verified by private receipt, public binding and CLI/shared-client original-input conflict tests, including external public idempotency classification. |
+| P24 | Verified by whole bootstrap and all eight SIGKILL cuts twice under race after the schema-admission fix. |
+| P25 | Verified by retained Schedule input after definition edit/deletion and negative receipt/capture cuts. |
+| P26 | Backend resource observation and independent accepted Run lifetimes are separated and tested. View-close interaction itself is source/native only. |
+| P27 | Backend absence versus operational failure tests pass. Final Memory consumer migration must preserve this distinction. |
+| P28 | Private Memory review/ledger/watermark/CAS and concurrent publication tests pass, including exactly one winning generation. |
+| P29 | Public packed component, shared-module source graph and native build verified. Rendered Hooks/provider identity proof is not run under the user's UI exclusion. |
+| P30 | Error-boundary/management entrances are source audited; blocked-backend CLI management is backend verified. Graphical module failure interaction is not run. |
+| P31 | Captured target, generation cancellation and mutation-journal behavior are source/shared-protocol verified. Navigation interaction is not run. |
+| P32 | Reviews/Schedules/Skills revisions and one backend owner are backend/source verified. Two graphical editors are not run. |
+| P33 | Declarative applicability and metadata resolution are source/backend verified; menu rendering is not run. |
+| P34 | Backend resource/body/stream bounds and Tool output offloading are tested. Graphical large-item display is not run. |
+| P35 | Shared UI/CSS appearance ownership and native component graph are source/build verified. Live graphical theme/font switching is not run. |
+| P36 | Backend/shared-client callback withdrawal, exact release capture and late-response rejection pass. Graphical replacement is source only. |
+| P37 | Backend waiting/checkpoint/pending-command dependencies retain exact activation/release identity and refuse unsafe replacement. |
+| P38 | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |
+| P39 | Generic history inspection and current renderer selection are source/backend verified; historical JS is not automatically loaded. Graphical history interaction is not run. |
+| P40 | Runtime-host execution and authenticated remote resource delivery are backend/source verified. Real remote Web/Wails module rendering is not run. |
+| P41 | Actual Reviews CLI/headless callback and Schedule host-Run admission tests pass without a page. |
+| P42 | Portable Skill/MCP admission, independent failure and source semantics pass in the full backend suites. |
+| P43 | Exact backend/Core protocol, strict declaration and retired request refusal tests pass; no old reader/alias is introduced. |
+| P44 | Strict incompatible schema and immutable namespace admission tests pass. New current-schema regression also proves missing owner facts are not silently recreated. |
+| P45 | Actual blocked optional backend restart/disable management tests pass without loading that backend's component. |
+| P46 | Backend reverse-order cancellation/join, callback teardown, transaction panic/Goexit and settled close/error tests pass. UI teardown remains source only. |
+| P47 | Owner-backed selection, composition, connection and release inspection exist and are tested. Finish transitive failure/availability diagnostic review without a second readiness ledger. |
+| P48 | Open: remove the live Schedule-specific host receipt codec and private Memory consumer imports, then clean superseded source/API/schema/example/README claims and recheck current artifacts. |
 
 ## Verification
 
