@@ -14,6 +14,26 @@ remain open. Main
 integration remains `7ba40c117`; no push or merge into main occurred. The original
 inputs and user stash remain unchanged.
 
+### Product-consumer closure and current author documentation (2026-10-15)
+
+- `33696b3c2` supplies actual CLI `plugins compositions`, `set-composition` and
+  `resolve-composition` consumers. They enter existing Runtime query/command
+  owners, retain explicit member order and mutation identity, and reject another
+  contract/order in the acknowledgement. No UI placeholder or operation exemption
+  was added. Focused complete plugin CLI/binding checks pass (5.481/5.504s).
+- Static product API closure now passes all 95/95 fact families: 83 directly
+  graphical, 4 Go headless, 7 materialized and 1 HTTP projection, with 112 typed
+  callsites, all 3 sidecars, 14 event types and 4 Tool-result readers. This is
+  source evidence, not rendered UI verification.
+- `b577d3b15` removes superseded migration claims from active module/author
+  READMEs, documents current public callbacks, exact pending routing, evidence
+  retention and protocol identities, and formats one existing Memory component
+  expression. Portable format and exact resource reproduction pass. Excluded
+  graphical execution and registry publication are explicitly not claimed.
+- Source is now frozen for the concentrated current complete/vet/race/native and
+  independent artifact sweep. Record failures as failures, repair the owner, and
+  repeat only affected gates before final P01-P48/review reconciliation.
+
 ### Final-gate read/write transaction repair (2026-10-15)
 
 - Product: `f8d2d9bd8`. The first
