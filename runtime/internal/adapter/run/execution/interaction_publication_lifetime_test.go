@@ -89,6 +89,11 @@ func TestObservedFactSurvivesExecutionCancellationUntilRelease(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		execution, cancelExecution := context.WithCancel(t.Context())
 		session := &interactionSession{lifetime: newInteractionLifetime(execution)}
+		detach, attached := session.state.attachObserver(t.Context())
+		if !attached {
+			t.Fatal("observation was not admitted")
+		}
+		defer detach()
 		defer session.lifetime.beginRelease()
 		ctx, cancel := session.lifetime.publicationContext(execution)
 		defer cancel()
@@ -126,4 +131,59 @@ func TestObservedFactSurvivesExecutionCancellationUntilRelease(t *testing.T) {
 			t.Fatalf("release did not end publication: %v", err)
 		}
 	})
+}
+
+func TestObservationWithdrawalEndsUnacknowledgedFact(t *testing.T) {
+	for _, withdrawal := range []string{"cancel", "stop consuming"} {
+		t.Run(withdrawal, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				executor := newTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+					t.Error("withdrawing observation dispatched model work")
+					return nil, errors.New("unexpected model call")
+				}))
+				ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() {
+					if err := executor.Release(context.WithoutCancel(t.Context()), ref); err != nil {
+						t.Error(err)
+					}
+				}()
+				observation, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				events, err := executor.Observe(observation, ref)
+				if err != nil {
+					t.Fatal(err)
+				}
+				session, _ := executor.session(ref)
+				result := make(chan error, 1)
+				go func() {
+					result <- session.commitFact(t.Context(), runs.ExecutorMember{}, runs.ModelCallFailed{CallID: "unacknowledged"})
+				}()
+				synctest.Wait()
+				select {
+				case err := <-result:
+					t.Fatalf("fact did not await its observer: %v", err)
+				default:
+				}
+				if withdrawal == "cancel" {
+					cancel()
+				} else {
+					events(func(event runs.ExecutorEvent) bool {
+						if _, authoritative := event.Payload.(runs.ExecutionFactCommit); !authoritative {
+							t.Fatalf("unexpected publication: %T", event.Payload)
+						}
+						return false
+					})
+				}
+				if err := <-result; !errors.Is(err, context.Canceled) {
+					t.Fatalf("observer withdrawal did not end the receipt wait: %v", err)
+				}
+				if err := session.commitFact(t.Context(), runs.ExecutorMember{}, runs.ModelCallFailed{CallID: "later"}); !errors.Is(err, errInteractionReleased) && !errors.Is(err, context.Canceled) {
+					t.Fatalf("retired observation admitted another fact: %v", err)
+				}
+			})
+		})
+	}
 }

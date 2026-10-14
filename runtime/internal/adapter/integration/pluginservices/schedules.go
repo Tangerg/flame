@@ -7,10 +7,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	rpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/plugins/schedules/tools"
@@ -95,9 +97,15 @@ func (s *Schedules) OriginalCreateResult(ctx context.Context, ref tool.Ref, rele
 	return &output, nil
 }
 
-func (s *Schedules) AwaitOriginalCreateSource(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) error {
+func (s *Schedules) AwaitOriginalCreateSource(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) (bool, error) {
+	if err := cancellation.Err(ctx); err != nil {
+		return false, err
+	}
 	_, err := s.originalCreateBinding(ctx, ref, release, authority)
-	return err
+	if ctx.Err() == nil && (errors.Is(err, plugin.ErrUnavailable) || errors.Is(err, mcp.ErrUnavailable)) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func (s *Schedules) originalCreateBinding(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) (*pluginsdk.CapabilityBinding, error) {

@@ -72,7 +72,7 @@ type interactionState struct {
 	pendingContinuation        *pendingInteractionContinuation
 	process                    *agent.Process
 	admittedProcessID          agent.ProcessID
-	observerWasAttached        bool
+	observer                   context.Context
 	phase                      interactionPhase
 	workersStarted             bool
 	boundary                   interactionBoundary
@@ -171,30 +171,38 @@ func interactionSegmentDuration(
 	return max(finishedAt.Sub(startedAt), 0)
 }
 
-func (i *interactionState) attachObserver() bool {
+func (i *interactionState) attachObserver(ctx context.Context) (func(), bool) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	if i.observerWasAttached || i.phase == interactionFinished {
-		return false
+	if i.observer != nil || i.phase == interactionFinished {
+		return nil, false
 	}
 	if i.phase == interactionBegun && i.boundary != interactionBoundaryAcceptedPaused &&
 		i.boundary != interactionBoundarySubtreePrepared {
-		return false
+		return nil, false
 	}
-	i.observerWasAttached = true
-	return true
-}
-
-func (i *interactionState) detachObserver() {
-	i.mu.Lock()
-	i.observerWasAttached = false
-	i.mu.Unlock()
+	observer, cancel := context.WithCancel(ctx)
+	i.observer = observer
+	return func() {
+		cancel()
+		i.mu.Lock()
+		defer i.mu.Unlock()
+		if i.observer == observer {
+			i.observer = nil
+		}
+	}, true
 }
 
 func (i *interactionState) observerAttached() bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	return i.observerWasAttached
+	return i.observer != nil
+}
+
+func (i *interactionState) observationContext() context.Context {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.observer
 }
 
 func (i *interactionState) markDurableContextCompacted() {
@@ -403,12 +411,23 @@ func (i *interactionSession) commitFact(
 	if err := owner.Err(); err != nil {
 		return err
 	}
+	// A receipt belongs to its consuming Segment observer. Once that observer
+	// retires, activation must stop waiting before the pump joins activation.
+	observer := i.state.observationContext()
+	if observer == nil {
+		return errInteractionReleased
+	}
 	bound, cancel := context.WithCancel(ctx)
 	stop := context.AfterFunc(owner, cancel)
+	stopObservation := context.AfterFunc(observer, cancel)
 	defer func() {
 		stop()
+		stopObservation()
 		cancel()
 	}()
+	if observer.Err() != nil {
+		cancel()
+	}
 	ctx = bound
 	commit, receipt, err := runs.NewExecutionFactCommit(fact)
 	if err != nil {
@@ -537,7 +556,7 @@ func (i *interactionSession) stageAcceptedContinuation(checkpoint runs.ExecutorC
 	if i.state.phase == interactionFinished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if i.state.boundary != interactionBoundaryWaiting || i.state.observerWasAttached {
+	if i.state.boundary != interactionBoundaryWaiting || i.state.observer != nil {
 		return runs.ErrExecutionClaimed
 	}
 	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
@@ -553,7 +572,7 @@ func (i *interactionSession) beginContinuation() error {
 	if i.state.phase == interactionFinished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if i.state.boundary != interactionBoundaryAcceptedPaused || !i.state.observerWasAttached {
+	if i.state.boundary != interactionBoundaryAcceptedPaused || i.state.observer == nil {
 		return errors.New("execution: Interaction continuation was not staged and observed")
 	}
 	return nil

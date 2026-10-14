@@ -239,6 +239,18 @@ Runtime decodes its execution-context envelope with the standard strict JSON dec
 
 The cold `create_schedule` class admits a single product root and its ordinary Tool processes under the original Session lease. The Run owner reinstalls the original Segment and reducer before writer activation or result publication. Effective Tool arguments and exact release/source attribution commit before external I/O. Subsequent tree cuts, context, and known product results share an atomic write. Restored reducers observe the original Segment's committed Item identities and operational Tool start times before continuing. They do not emit another opening, Tool attempt, or allocation for those facts. Existing terminal decisions, incompatible builds and bindings, and unsupported active execution remain outside this class.
 
+Original-source availability is a recovery qualification, not a prerequisite for
+closing a lost Core Run. A disabled or unavailable Schedule source leaves revival
+ineligible so the existing ownership sweep can terminalize the Run and release its
+Session. Private pending work and receipts remain with the backend; reenabling it
+reconciles the original acceptance without opening another Run.
+
+Authoritative executor receipts belong to the exact Segment observer consuming
+them. Observation withdrawal ends an unacknowledged wait before shutdown joins
+activation, including the initial Scope checkpoint. Execution cancellation alone
+still preserves known facts while their observer remains live. Retiring an older
+observer cannot detach a replacement Segment's observer.
+
 Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.
 
 Lease acquisition distinguishes contention from operational failure. Only a contended lease proves another owner is live; filesystem and lock errors abort admission or reconciliation with their cause. The persistence and authored-file adapters report the first failure in each outage through Runtime logging, including when the embedding host has not configured tracing, and retry without inventing a change notification. A successful resample resumes observation and permits a later outage to be reported again. Filesystem reconciliation reads the backend's current registrations so deleted and recreated directories regain their watches. Git observation retains its last successful HEAD/index snapshot across read failures. Failed samples retry with bounded exponential backoff without requiring another filesystem event; persistent failure or a terminated backend ends the subscription explicitly. Watcher event loss schedules a fresh semantic read. Workspace path observations reuse the bounded filesystem mechanism for exact files and directory entries, preserving the originating workspace in invalidations.

@@ -46,7 +46,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 		t.Fatalf("build real backends: %v\n%s", err, output)
 	}
 
-	for _, cut := range []string{"commit", "query", "resolution", "edited", "absent", "conflict", "malformed"} {
+	for _, cut := range []string{"commit", "query", "resolution", "edited", "absent", "conflict", "malformed", "disabled"} {
 		t.Run(cut, func(t *testing.T) {
 			home := testsupport.TempDirectory(t)
 			source, evidence := scheduleLossPackage(t, module, packages)
@@ -185,11 +185,23 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if !originalChild.Valid() {
 				t.Fatal("original create Process is unavailable")
 			}
+			if cut == "disabled" {
+				for _, dependency := range checkpoint.Installations {
+					snapshot, found, err := stores.Installations.Get(t.Context(), dependency.InstallationID)
+					if err != nil || !found {
+						t.Fatalf("original installation: %t,%v", found, err)
+					}
+					snapshot.Installation.Disable()
+					if err := stores.Installations.Save(t.Context(), snapshot.Installation); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 			if err := stores.Close(); err != nil {
 				t.Fatal(err)
 			}
-			negative := cut == "absent" || cut == "conflict" || cut == "malformed"
-			if negative {
+			negative := cut == "absent" || cut == "conflict" || cut == "malformed" || cut == "disabled"
+			if negative && cut != "disabled" {
 				raw, err := os.ReadFile(evidence + "." + initial)
 				if err != nil {
 					t.Fatal(err)
@@ -235,24 +247,34 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("model steps=%d, want the original two calls and one continuation", current.CurrentRun.Metrics().Steps())
 			}
 			finalHead, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(t.Context(), originalHead.SessionID, originalHead.RootID)
-			if err != nil || !found {
+			if err != nil {
 				t.Fatalf("final head: %t,%v", found, err)
 			}
-			finalTree, err := agent.ParseTreeSnapshot(finalHead.Payload)
-			if err != nil {
-				t.Fatal(err)
-			}
-			retained := false
-			for _, child := range finalTree.ProcessSnapshots() {
-				if child.Relation().ProcessID() == originalChild.Relation().ProcessID() {
-					retained = true
-					if child.Usage().PreparedEffects != originalChild.Usage().PreparedEffects {
-						t.Fatal("recovery prepared another create Effect")
+			if cut == "disabled" {
+				_, contextFound, contextErr := stores.ExecutorCheckpoints.LoadSessionCheckpoint(t.Context(), originalHead.SessionID)
+				if found || contextFound || contextErr != nil {
+					t.Fatalf("unrecoverable execution retained a continuation: head=%t context=%t error=%v", found, contextFound, contextErr)
+				}
+			} else {
+				if !found {
+					t.Fatal("recovered execution lost its original head")
+				}
+				finalTree, err := agent.ParseTreeSnapshot(finalHead.Payload)
+				if err != nil {
+					t.Fatal(err)
+				}
+				retained := false
+				for _, child := range finalTree.ProcessSnapshots() {
+					if child.Relation().ProcessID() == originalChild.Relation().ProcessID() {
+						retained = true
+						if child.Usage().PreparedEffects != originalChild.Usage().PreparedEffects {
+							t.Fatal("recovery prepared another create Effect")
+						}
 					}
 				}
-			}
-			if !retained || finalTree.RootID() != originalTree.RootID() {
-				t.Fatal("recovery replaced the original Process tree")
+				if !retained || finalTree.RootID() != originalTree.RootID() {
+					t.Fatal("recovery replaced the original Process tree")
+				}
 			}
 			items, err = stores.Transcript.List(t.Context(), receipt.Acceptance.SessionID)
 			if err != nil {
@@ -314,7 +336,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("backend creations=%d receipts=%d original ID=%q current ID=%q", schedules, commands, witness.Response.Result.StructuredContent.Schedule.ID, createdID)
 			}
 			if negative {
-				if len(current.CurrentRun.UnresolvedEffects()) != 1 {
+				if cut != "disabled" && len(current.CurrentRun.UnresolvedEffects()) != 1 {
 					t.Fatalf("inconclusive proof lost its Unknown Effect: %+v", current.CurrentRun.UnresolvedEffects())
 				}
 				if _, err := os.Stat(filepath.Join(home, "recovered-model-result.json")); !errors.Is(err, os.ErrNotExist) {

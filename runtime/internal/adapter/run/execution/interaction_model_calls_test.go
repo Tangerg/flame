@@ -35,6 +35,11 @@ func TestIndependentModelPublisherUsesOriginalSourceAndCapturedMemberAfterCancel
 			}
 			journal := sqlite.NewModelInvocationStore(db)
 			active := &interactionSession{scope: runs.ExecutionScope{SessionID: draft.SessionID}, modelEvidence: journal, lifetime: newInteractionLifetime(t.Context())}
+			detach, attached := active.state.attachObserver(t.Context())
+			if !attached {
+				t.Fatal("observation was not admitted")
+			}
+			defer detach()
 			defer active.lifetime.stopExecution()
 			defer active.lifetime.stopReconciling()
 			defer active.lifetime.stopRelease()

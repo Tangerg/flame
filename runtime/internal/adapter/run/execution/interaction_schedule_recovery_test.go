@@ -41,8 +41,8 @@ type scheduleReceiptProbe struct {
 	context atomic.Pointer[context.Context]
 }
 
-func (*scheduleReceiptProbe) AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) error {
-	return nil
+func (*scheduleReceiptProbe) AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error) {
+	return true, nil
 }
 func (s *scheduleReceiptProbe) OwnsCreateSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error) {
 	return s.owned, nil

@@ -51,7 +51,7 @@ type InteractionModelEvidence interface {
 
 type OriginalScheduleResults interface {
 	OwnsCreateSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error)
-	AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) error
+	AwaitOriginalCreateSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error)
 	OriginalCreateResult(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest, string, string) (*corechat.ToolOutput, error)
 }
 
@@ -504,15 +504,16 @@ func (i *InteractionExecutor) Observe(
 	if err != nil {
 		return nil, err
 	}
-	if !session.state.attachObserver() {
+	detach, attached := session.state.attachObserver(ctx)
+	if !attached {
 		return nil, errors.New("execution: Interaction execution already has an observer")
 	}
 	continuedTools := session.continuedDelegateTools()
-	stopDetach := context.AfterFunc(ctx, session.state.detachObserver)
+	stopDetach := context.AfterFunc(ctx, detach)
 	return func(yield func(runs.ExecutorEvent) bool) {
 		defer func() {
 			stopDetach()
-			session.state.detachObserver()
+			detach()
 		}()
 		// The fresh Segment's reducer must know every continued Delegate before
 		// it consumes buffered child results or new execution facts.

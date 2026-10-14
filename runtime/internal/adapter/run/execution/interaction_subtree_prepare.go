@@ -82,7 +82,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			"%w: Interaction tree is crossing another execution boundary",
 			runs.ErrExecutionClaimed,
 		)
-	case i.state.observerWasAttached:
+	case i.state.observer != nil:
 		i.state.mu.Unlock()
 		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
 			"%w: Interaction tree has an active observer",

@@ -171,8 +171,14 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 				return zero, false, errors.New("execution: retained request differs from its captured attribution")
 			}
 		}
-		if err := i.config.OriginalScheduleResults.AwaitOriginalCreateSource(ctx, proof.Tool, proof.Release, proof.Authority); err != nil {
+		available, err := i.config.OriginalScheduleResults.AwaitOriginalCreateSource(ctx, proof.Tool, proof.Release, proof.Authority)
+		if err != nil {
 			return zero, false, err
+		}
+		// The ownership sweep can close the lost Core Run without consuming or
+		// replaying the unavailable plugin's original private receipt.
+		if !available {
+			return zero, false, nil
 		}
 	}
 	session, err := i.assembleInteraction(ctx, runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, checkpoint.restoredStart(continuation), &checkpoint.modelObservers, &checkpoint.modelContexts, &checkpoint.modelInputs)

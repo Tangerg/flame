@@ -432,6 +432,11 @@ func TestTerminalReceiptFollowsPublicationLifetime(t *testing.T) {
 	for _, release := range []bool{false, true} {
 		t.Run(fmt.Sprintf("release=%t", release), func(t *testing.T) {
 			session := &interactionSession{lifetime: newInteractionLifetime(t.Context())}
+			detach, attached := session.state.attachObserver(t.Context())
+			if !attached {
+				t.Fatal("observation was not admitted")
+			}
+			defer detach()
 			defer session.lifetime.beginRelease()
 			session.lifetime.stopExecution()
 			finished := make(chan error, 1)

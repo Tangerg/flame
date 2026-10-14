@@ -179,7 +179,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 	value, err := api.GetRun(acceptedCrashContext(t), protocol.GetRunRequest{RunID: receipt.Acceptance.RunID})
 	want := protocol.OutcomeCompleted
-	if phase == "absent" || phase == "conflict" || phase == "malformed" {
+	if phase == "absent" || phase == "conflict" || phase == "malformed" || phase == "disabled" {
 		want = protocol.OutcomeLost
 	}
 	if err != nil || value.Outcome == nil || value.Outcome.Type != want {
