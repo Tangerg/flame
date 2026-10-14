@@ -174,3 +174,11 @@ activation's Actor; continuation dispatch retains the original caller's values a
 frozen remaining chain, with cancellation linked to the actual next request. Fresh
 model exchanges cannot recursively reenter a still-active observer. Stream chunks,
 backpressure and original physical evidence retain their existing owners.
+
+Background caller restoration distinguishes an original dispatched command from a
+fresh trigger. The former validates the entire stored invocation and original
+provider binding, retaining the resource owner's declared target. The latter must
+originate automatically in its own installation without an invented parent. An
+installation-only admission rule cannot erase an accepted Session/workspace target.
+Restored attribution alone does not recreate an expired continuation or a stopped
+execution member; durable work still needs its actual Scope or host-use-case owner.

@@ -286,6 +286,12 @@ An activation callback keeps its authenticated Actor and declared dependency bin
 For a retained background request, use WithInvocation on the public callback client's
 context. The host verifies the original dispatched route for human/model callers and
 admits fresh automatic triggers only for that installation without an invented parent.
+Retained commands preserve their declared resource target, including Session and
+workspace targets; they are not forced into an installation target. The complete
+stored invocation and original installation/release/server must match, and a merely
+prepared command cannot authorize restoration. An unrecorded automatic trigger
+cannot name another resource. This attribution does not restore an expired next
+continuation or a stopped Scope effect's execution authority.
 Origin, parent and target are ephemeral transport context, not business input or
 credentials. Closing the callback observation leaves independently accepted Runs with
 their canonical Runtime owner. Rebuild against backend protocol 2026-10-14.2.

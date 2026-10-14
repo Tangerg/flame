@@ -31,14 +31,14 @@ func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
 }
 
 // RestoreInvocation validates a private owner's retained caller against original
-// host routing. A fresh background trigger may only originate automatically in
-// its own installation; human/model callers require an already dispatched route.
+// host routing, including the resource owner's original target. Only a fresh
+// automatic trigger needs the background contribution's own installation target.
 func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.Invocation) (context.Context, error) {
 	if err := invocation.Validate(); err != nil {
 		return nil, err
 	}
 	actor, found := operation.ActorFrom(ctx)
-	if !found || invocation.Target.Scope != "installation" || invocation.Target.Reference != actor.InstallationID().String() {
+	if !found {
 		return nil, plugin.ErrCommandConflict
 	}
 	command, found, err := c.store.Get(ctx, invocation.ID)
@@ -50,7 +50,7 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.
 		if record.Invocation != invocation || record.Provider.InstallationID != actor.InstallationID() || record.Provider.Digest != actor.Release() || record.Server != actor.Server() || record.Phase == plugin.CommandPrepared {
 			return nil, plugin.ErrCommandConflict
 		}
-	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" {
+	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" || invocation.Target.Scope != "installation" || invocation.Target.Reference != actor.InstallationID().String() {
 		return nil, plugin.ErrCommandConflict
 	}
 	return operation.Adopt(ctx, invocation.ID, invocation.Origin, invocation.Parent), nil

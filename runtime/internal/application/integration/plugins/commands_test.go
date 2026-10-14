@@ -206,3 +206,83 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 		t.Fatalf("unrecorded parent accepted: %v", err)
 	}
 }
+
+func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
+	for _, target := range []capability.Target{{Scope: "session", Reference: "ses_original"}, {Scope: "workspace", Reference: "/original/workspace"}} {
+		for _, origin := range []capability.Origin{capability.Human, capability.Model, capability.Automatic} {
+			t.Run(target.Scope+"/"+string(origin), func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "flame.db")
+				db, err := sqlite.Open(t.Context(), path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = db.Close() })
+				commands, err := plugins.NewCommands(sqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+				if err != nil {
+					t.Fatal(err)
+				}
+				provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", target.Scope), ContributionID: "owner", Export: "operations"}
+				original := capability.Invocation{ID: "original-command", Origin: origin, Parent: "original-parent", Target: target}
+				command, err := commands.Bind(t.Context(), original.ID, "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.ContributionBinding, error) { return provider, nil }, func(plugins.ContributionBinding) (capability.Invocation, error) { return original, nil })
+				if err != nil {
+					t.Fatal(err)
+				}
+				actor, err := operation.NewActor(provider.InstallationID.String(), provider.Digest.String(), testsupport.Digest("2").String(), provider.ServerName.String())
+				if err != nil {
+					t.Fatal(err)
+				}
+				calling := operation.WithActor(t.Context(), actor)
+				if _, err := commands.RestoreInvocation(calling, original); !errors.Is(err, plugin.ErrCommandConflict) {
+					t.Fatalf("prepared resource command restored: %v", err)
+				}
+				if err := commands.Dispatch(t.Context(), command.Snapshot().ID, func(context.Context, plugin.CommandBinding) error { return nil }); err != nil {
+					t.Fatal(err)
+				}
+				if err := db.Close(); err != nil {
+					t.Fatal(err)
+				}
+				db, err = sqlite.Open(t.Context(), path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				commands, err = plugins.NewCommands(sqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, observe := range []bool{false, true} {
+					if observe {
+						if err := commands.Observe(t.Context(), original.ID); err != nil {
+							t.Fatal(err)
+						}
+					}
+					restored, err := commands.RestoreInvocation(calling, original)
+					if err != nil {
+						t.Fatal(err)
+					}
+					captured, err := operation.Capture(restored, target)
+					retained, found := operation.ActorFrom(restored)
+					if err != nil || captured != original || !found || retained != actor {
+						t.Fatalf("original resource caller changed: %+v %v", captured, err)
+					}
+				}
+				for _, change := range []func(*capability.Invocation){
+					func(v *capability.Invocation) { v.Target.Reference = "different-resource" },
+					func(v *capability.Invocation) {
+						v.Target = capability.Target{Scope: "installation", Reference: actor.InstallationID().String()}
+					},
+					func(v *capability.Invocation) { v.Parent = "different-parent" },
+				} {
+					altered := original
+					change(&altered)
+					if _, err := commands.RestoreInvocation(calling, altered); !errors.Is(err, plugin.ErrCommandConflict) {
+						t.Fatalf("resource caller retargeted: %+v %v", altered, err)
+					}
+				}
+				fresh := capability.Invocation{ID: "unrecorded-resource-trigger", Origin: capability.Automatic, Target: target}
+				if _, err := commands.RestoreInvocation(calling, fresh); !errors.Is(err, plugin.ErrCommandConflict) {
+					t.Fatalf("unrecorded resource target accepted: %v", err)
+				}
+			})
+		}
+	}
+}
