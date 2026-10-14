@@ -619,6 +619,29 @@ cannot be repurposed as a fresh physical caller. The host captures execution own
 wire invocation headers and parent fields cannot select another Run or Segment.
 Endpoint observations expose the original optional Segment in Core .30.
 
+## Tool context and text embeddings
+
+`WithToolContext` projects a captured `ToolContext` into ordinary MCP Tool
+metadata. `ToolContextFromContext` admits that same closed current shape. Workspace
+and optional vector-space identity come from the calling owner, outside model
+arguments; callback authority remains only in `CallbackMetadata` and
+`CallbackFromContext`. Setting Tool context cannot mutate an earlier caller's
+metadata. There is no standing model grant inside the context record.
+
+`TextEmbeddingMethod`, `NewTextEmbeddingCallback` and `CallTextEmbedding` publish
+`flame.model/embed-texts.v1` for a captured model. Input is a text array and output
+is its corresponding float32 vector array. Empty, missing and inconsistent vector
+sets are refused. This is an explicit vector projection; the provider adapter
+retains its complete response, usage and endpoint evidence. Each physical exchange
+has its own original child identity and retains the caller's origin/parent.
+Call admission, resource budgets and workflow counts belong to its caller; the
+shared SDK has no Memory-specific two-call limit and never retries provider work.
+
+The former private Memory scope header and embedding method are removed. Rebuild
+Memory backend and Runtime together for the current public metadata/methods.
+There is no legacy header/method reader. Private databases and command receipts
+keep their formats. Other SDK contracts and the Core wire epoch are unchanged.
+
 ## Private SQLite receipts
 
 Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input

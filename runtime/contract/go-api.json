@@ -1907,6 +1907,11 @@
           "value": "\"io.github.tangerg.flame/commands.get\""
         },
         {
+          "name": "ToolContextMetadataKey",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/tool-context.v1\""
+        },
+        {
           "name": "ToolReceiptMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/tools.getResult\""
@@ -1946,6 +1951,10 @@
         {
           "name": "CallSelectedModel",
           "signature": "func(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) (*chat.Response, error)"
+        },
+        {
+          "name": "CallTextEmbedding",
+          "signature": "func(ctx context.Context, ref CallbackRef, id string, texts []string) ([][]float32, error)"
         },
         {
           "name": "CallbackFromContext",
@@ -2056,6 +2065,10 @@
           "signature": "func[P, C, R any](config MethodConfig) (*StreamingMethod[P, C, R], error)"
         },
         {
+          "name": "NewTextEmbeddingCallback",
+          "signature": "func(call func(context.Context, Command[[]string]) ([][]float32, error)) (Callback, error)"
+        },
+        {
           "name": "NewToolReceipt",
           "signature": "func(output chat.ToolOutput, failed bool) (ToolReceipt, error)"
         },
@@ -2124,8 +2137,16 @@
           "signature": "func(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) iter.Seq2[StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
+          "name": "TextEmbeddingMethod",
+          "signature": "func() (*Method[[]string, [][]float32], error)"
+        },
+        {
           "name": "ToolCommandID",
           "signature": "func(ctx context.Context) (string, error)"
+        },
+        {
+          "name": "ToolContextFromContext",
+          "signature": "func(ctx context.Context) (ToolContext, error)"
         },
         {
           "name": "ValidateModelInput",
@@ -2138,6 +2159,10 @@
         {
           "name": "WithInvocation",
           "signature": "func(ctx context.Context, invocation capability.Invocation) (context.Context, error)"
+        },
+        {
+          "name": "WithToolContext",
+          "signature": "func(ctx context.Context, captured ToolContext) (context.Context, error)"
         }
       ],
       "types": [
@@ -2899,6 +2924,28 @@
             {
               "name": "StreamWithMetadata",
               "signature": "func(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id string, input P, metadata mcp.ParamsBase) iter.Seq2[StreamValue[C, R], error]"
+            }
+          ]
+        },
+        {
+          "name": "ToolContext",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"embeddingSpace,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
             }
           ]
         },

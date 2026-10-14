@@ -38,10 +38,6 @@ type Prompt struct {
 	MaxOutputTokens                     int64
 }
 
-func embeddingMethod() (*pluginsdk.Method[[]string, [][]float32], error) {
-	return pluginsdk.NewMethod[[]string, [][]float32](pluginsdk.MethodConfig{Name: "flame.memory/embed.v1", Kind: capability.Mutation, Target: "call", Description: "Embed the captured Memory corpus with its granted embedding space."})
-}
-
 type modelAdmission struct {
 	mu          sync.Mutex
 	invocations map[string]modelInvocation
@@ -93,11 +89,7 @@ func GrantModels(ctx context.Context, callbacks *pluginsdk.Callbacks, session *s
 	if err != nil {
 		return pluginsdk.CallbackRef{}, nil, err
 	}
-	method, err := embeddingMethod()
-	if err != nil {
-		return pluginsdk.CallbackRef{}, nil, err
-	}
-	embedding, err := pluginsdk.NewCallback(method, Classify, func(ctx context.Context, command pluginsdk.Command[[]string]) ([][]float32, error) {
+	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) ([][]float32, error) {
 		texts := command.Input
 		input, err := command.RequestInput()
 		if err != nil {
@@ -165,9 +157,5 @@ func (r RemoteModels) Complete(ctx context.Context, prompt Prompt) (string, erro
 }
 func (r RemoteModels) ID() string { return r.Space }
 func (r RemoteModels) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	method, err := embeddingMethod()
-	if err != nil {
-		return nil, err
-	}
-	return pluginsdk.CallHost(ctx, r.Grant, method, uuid.NewString(), texts)
+	return pluginsdk.CallTextEmbedding(ctx, r.Grant, uuid.NewString(), texts)
 }

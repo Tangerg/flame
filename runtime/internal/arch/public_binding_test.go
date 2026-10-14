@@ -122,6 +122,8 @@ var _ = modelchoice.NewWithReasoningEffort
 var _ = (modelcatalog.Selections{}).AdmitSelection
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
+var _ = pluginsdk.CallTextEmbedding
+var _ = pluginsdk.NewTextEmbeddingCallback
 var _ = pluginsdk.RegisterTools
 var _ = pluginsdk.RegisterClient
 var _ = pluginsdk.CallCommand[string, string]
@@ -175,6 +177,16 @@ func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 		}
 	}
 	return runtime.Close()
+}
+
+func TestPublicToolCollaboratorsHaveNoFeatureDependency(t *testing.T) {
+ want := pluginsdk.ToolContext{CWD: t.TempDir(), EmbeddingSpace: "captured-space"}
+ ctx, err := pluginsdk.WithToolContext(t.Context(), want)
+ if err != nil { t.Fatal(err) }
+ actual, err := pluginsdk.ToolContextFromContext(ctx)
+ if err != nil || actual != want { t.Fatalf("public Tool context = %+v, %v", actual, err) }
+ method, err := pluginsdk.TextEmbeddingMethod()
+ if err != nil || method.Descriptor().Kind != capability.Mutation || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
 }
 
 func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {

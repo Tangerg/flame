@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
@@ -64,7 +64,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	if err != nil {
 		return "", toolfailure.Definite(fmt.Errorf("search_memory: %w", err))
 	}
-	scope, err := rpc.MemoryScope(ctx)
+	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
 		return "", toolfailure.Definite(err)
 	}

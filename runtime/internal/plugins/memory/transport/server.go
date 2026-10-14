@@ -179,14 +179,18 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, roots app.RootR
 type toolSearch struct{ store Store }
 
 func (s toolSearch) Search(ctx context.Context, project, query string, topK int) ([]memory.Item, error) {
-	scope, err := rpc.MemoryScope(ctx)
+	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var embed func(context.Context) (app.Embedder, error)
 	if scope.EmbeddingSpace != "" {
 		embed = func(context.Context) (app.Embedder, error) {
-			return rpc.RemoteModels{Grant: scope.Grant, Space: scope.EmbeddingSpace}, nil
+			grant, err := pluginsdk.CallbackFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return rpc.RemoteModels{Grant: grant, Space: scope.EmbeddingSpace}, nil
 		}
 	}
 	read, err := app.NewReadModel(s.store, embed)

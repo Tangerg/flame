@@ -97,8 +97,12 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			t.Cleanup(func() { _ = callbacks.Close() })
 			var calls, notices atomic.Int32
 			embedder := &preparedEmbedder{}
-			var captured rpc.ToolScope
+			var captured pluginsdk.ToolContext
+			var capturedGrant pluginsdk.CallbackRef
 			remote := sdk.NewServer(&sdk.Implementation{Name: "feature-owner"}, nil)
+			if err := pluginsdk.RegisterTools(remote); err != nil {
+				t.Fatal(err)
+			}
 			remote.AddTool(&sdk.Tool{Name: "search", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
 				encodedInvocation, err := json.Marshal(request.Params.Meta[pluginsdk.InvocationMetadataKey])
@@ -113,7 +117,12 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 					return nil, errors.New("original invocation metadata was lost")
 				}
 				if contract == memoryContracts.Capability {
-					encoded, err := json.Marshal(request.Params.Meta[rpc.ToolScopeKey])
+					var err error
+					capturedGrant, err = pluginsdk.CallbackFromContext(ctx)
+					if err != nil {
+						return nil, err
+					}
+					encoded, err := json.Marshal(request.Params.Meta[pluginsdk.ToolContextMetadataKey])
 					if err != nil {
 						return nil, err
 					}
@@ -123,7 +132,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 					if captured.CWD != "/captured/workspace" || captured.EmbeddingSpace != embedder.ID() {
 						return nil, errors.New("captured Memory scope was changed")
 					}
-					vectors, err := (rpc.RemoteModels{Grant: captured.Grant, Space: captured.EmbeddingSpace}).Embed(ctx, []string{"rank"})
+					vectors, err := (rpc.RemoteModels{Grant: capturedGrant, Space: captured.EmbeddingSpace}).Embed(ctx, []string{"rank"})
 					if err != nil || len(vectors) != 1 {
 						return nil, errors.Join(err, errors.New("prepared callback failed"))
 					}
@@ -187,7 +196,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				if embedder.calls.Load() != 1 || notices.Load() != 0 {
 					t.Fatal("Memory callback or feature observation escaped its owner")
 				}
-				if _, err := (rpc.RemoteModels{Grant: captured.Grant}).Embed(t.Context(), []string{"stale"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
+				if _, err := (rpc.RemoteModels{Grant: capturedGrant}).Embed(t.Context(), []string{"stale"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
 					t.Fatalf("failed Tool call retained its callback: %v", err)
 				}
 				embeddingFailure = errors.New("embedding source read failed")

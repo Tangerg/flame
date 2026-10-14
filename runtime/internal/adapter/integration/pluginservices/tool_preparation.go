@@ -96,10 +96,20 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	metadata := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
-	if metadata == nil {
-		metadata = make(map[string]any)
+	metadata, err := pluginsdk.CallbackMetadata(grant)
+	if err != nil {
+		release()
+		return nil, nil, err
 	}
-	metadata[rpc.ToolScopeKey] = rpc.ToolScope{CWD: cwd, Grant: grant, EmbeddingSpace: space}
-	return scopemcp.WithRequestMeta(ctx, metadata), release, nil
+	combined := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
+	if combined == nil {
+		combined = make(map[string]any)
+	}
+	maps.Copy(combined, metadata.Meta)
+	scoped, err := pluginsdk.WithToolContext(scopemcp.WithRequestMeta(ctx, combined), pluginsdk.ToolContext{CWD: cwd, EmbeddingSpace: space})
+	if err != nil {
+		release()
+		return nil, nil, err
+	}
+	return scoped, release, nil
 }

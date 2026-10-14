@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	rpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
@@ -14,7 +14,7 @@ import (
 
 func projectScoped(t *testing.T) context.Context {
 	t.Helper()
-	return scopemcp.WithRequestMeta(t.Context(), map[string]any{rpc.ToolScopeKey: rpc.ToolScope{CWD: t.TempDir()}})
+	return scopemcp.WithRequestMeta(t.Context(), map[string]any{pluginsdk.ToolContextMetadataKey: pluginsdk.ToolContext{CWD: t.TempDir()}})
 }
 
 type failingMemorySearch struct{ err error }

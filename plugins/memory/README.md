@@ -28,6 +28,14 @@ before dispatch rather than being treated as an absent model role. The same rule
 applies to human search. Callback references travel only in invocation metadata,
 never in search or maintenance business input or durable routing/receipt records.
 
+Text embedding now uses the public SDK `flame.model/embed-texts.v1` callback.
+Workspace and optional vector-space identity use `plugin.ToolContext`; callback
+credentials travel only in the existing public callback metadata. The private
+Memory scope codec and embedding method are deleted. Rebuild Runtime and this
+backend together; no legacy metadata reader is retained. This changes neither
+private data nor command receipt formats. The remaining private grant-policy
+integration is still being migrated to ordinary public collaborators.
+
 The actual Memory tool adapter captures the Run workspace, original invocation
 metadata and the executable's concrete callback session before dispatch. The
 generic MCP pool knows no Memory service type or model DTO. After preparation it
