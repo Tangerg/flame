@@ -4,8 +4,8 @@
 
 P13 public installed Tool proposal transformation is implemented and verified
 in ordinary backend tests at `6a88bd45a`. Overall acceptance remains **incomplete**:
-**34 Evidenced / 13 Partial / 1 Open**. These are evidence counts, not an
-implementation percentage. P48, safe-steer causal investigation
+**35 Evidenced / 13 Partial / 0 Open**. These are evidence counts, not an
+implementation percentage. Safe-steer causal investigation
 and the unexecuted graphical criteria remain. Current complete parallel/vet/native/
 standalone-artifact qualification is pending after this new product change.
 
@@ -38,6 +38,55 @@ The original worktree/`codex/unified-plugins` branch and last integrated main
 stash mutation or user-data conversion occurred. The private checkpoint format
 changes explicitly: preserve old data and finish old waiting work with its original
 binary. There is no compatibility reader, dual writer, silent fallback or replay.
+
+### Unavailable captured contributors and final source cleanup (2026-10-15)
+
+- `ac5c3ece6` extends the actual Tool proposal process test to disabled and failed
+  handshake sources across Runtime restart. The disabled case reproduces startup
+  failure plus `agent: invalid engine configuration` from pre-engine discard.
+  The probe now checks original source eligibility before assembly: connecting
+  sources defer, definite unavailable/stale captures lose the original waiting
+  tree explicitly, and inconclusive storage reads remain errors without a loss.
+  Failed early assembly closes only an Engine it actually acquired. No waiting,
+  replacement contribution, transform replay or unapproved business mutation occurs.
+- Real disabled and failed stdio-source cases pass. A detached live-source test
+  preserves both installed-unavailable and MCP-unavailable error identities;
+  probe tests distinguish unavailable/stale from unexpected I/O, and early-assembly
+  cleanup is verified. Complete execution/pluginservices/bootstrap pass
+  61.039/6.290/118.086s, including all eight SIGKILL cuts and unchanged existing
+  recovery/steer/schedule assertions. The focused failed-source case passes 7.834s.
+- `b2dcbfbba` closes P48's source/API/doc omissions. Runtime's historical cutover
+  dump is replaced by current installed operations, composition, callback,
+  component and accounting guidance; current lifecycle/storage details remain.
+  Reviews describes its actual Board; CLI's stale notification-stage claim is
+  removed. The superseded historical draft is explicitly labeled and points at
+  current owners. The original external proposal/review are unchanged.
+- Core/Memory/Schedules generation exposes the omitted three P13 public Go API
+  inventory entries; they are regenerated from the real declarations. Feature TS
+  formatting reproduces its existing bytes. The new process fixture adopts the
+  repository's JSON/v2 codec after the strict architecture check reports its v1
+  import. No test exception or assertion changes were used.
+- Complete current architecture package passes 20.159s. Shared TS check passes
+  all 30 files/355 tests plus types/lint/format/dead-code checks. Desktop typecheck
+  and direct layer/published-boundary/context/port/API-consumer checks pass: 95/95
+  fact families, 112 typed sites, three sidecars, fourteen event types and four
+  result readers. Retired symbols remain only in explicit refusal tests or prose
+  describing their removal; no legacy reader, action/view/service enum or feature
+  facade remains. These are source/backend proofs, not graphical acceptance.
+- The historical full source-overlay diagnostic exits 1 on architecture/source
+  checks; source-scanning checks read the physical current tree, and additional
+  edits during that run were not a fully frozen historical snapshot. It is not
+  an old-source or current-source acceptance pass. Its safe-steer trace reaches
+  the second provider at 1.520s and closes at 2.110s without reproducing the
+  historical timeout. An earlier diagnostic cleanup also emitted stacks after
+  cancellation on success; those are not timeout stacks. No causal claim follows.
+  Temporary overlays/logs are removed by their owning temporary-directory lifetime.
+- Current frozen Go source is `b2dcbfbba`. The original complete parallel race
+  command is running without overlay, exclusions or changed case deadlines.
+  Global normal/vet, current native/Runtime distributions and current standalone
+  author artifacts are pending. P01-P48 now records 35 Evidenced/13 Partial/0 Open;
+  all thirteen graphical rows and all four review cross-scenarios remain Partial.
+  Safe-steer's historical cause remains an explicit independent unresolved item.
 
 ### Real installed/CLI acceptance and callback isolation (2026-10-15)
 
@@ -1807,7 +1856,7 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 13 Partial rows, P48 cleanup and
+Original-proposal acceptance remains incomplete: 13 Partial rows and
 the four review cross-scenarios above. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
@@ -2211,7 +2260,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P45 | Recover from a broken optional-plugin startup | Partial | Real never-handshaking backend restart/list/disable passes; independent CLI management does not evaluate component JS. No execution of recovery while an installed module blocks renderer startup is recorded; the review requires that stronger scenario. |
 | P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
-| P48 | Final source/API cutover review | Open | Major old service/view/carrier/feature-API paths are removed, including Core private feature build dependencies. Final cleanup is incomplete: `examples/plugins/reviews/README.md` still says no board, `runtime/README.md` retains contradictory open-stage claims. P13 is now implemented and normal-verified; final replacement-map cleanup and current global qualification remain. |
+| P48 | Final source/API cutover review | Evidenced | `b2dcbfbba` reconciles the original replacement map against current source: superseded service/view/carrier/feature facades and compatibility readers are absent; remaining negative fixtures assert refusal. Runtime/Reviews/CLI active guidance and public API inventory are current, with strict architecture/generation/static closure passed. Overall graphical criteria and current final global/native/artifact gates remain separately recorded; this row does not qualify them. |
 
 ## Verification
 

@@ -1,7 +1,7 @@
 # Unified plugin refactor handoff
 
-Original-proposal acceptance is reopened by the 2026-10-15 audit: **34 Evidenced,
-13 Partial, 1 Open** across P01-P48. These are evidence counts, not implementation
+Original-proposal acceptance is reopened by the 2026-10-15 audit: **35 Evidenced,
+13 Partial, 0 Open** across P01-P48. These are evidence counts, not implementation
 percentages. P13 is implemented and normal-verified at `6a88bd45a`; the global gates below
 precede that change and must not be relabeled as current. The whole-plugin-system
 100% claim remains withdrawn. The distinct causal
@@ -26,6 +26,21 @@ detailed failures, measurements, individual proposal rows and review reconciliat
   root/module instructions apply. No sub-agent delegation occurred.
 
 ## Current implementation
+
+Frozen Go source `b2dcbfbba` includes `ac5c3ece6`'s captured-contributor recovery:
+real disabled and failed stdio sources no longer block startup or replay their
+transforms. Definite availability loss differs from an inconclusive I/O read;
+pre-engine discard releases only acquired resources. Complete affected execution/
+pluginservices/bootstrap pass 61.039/6.290/118.086s, all eight crash cuts included.
+P48 source/docs/API cleanup is committed; architecture, generation, shared TS
+355 tests, Desktop types and direct static/API closure pass. The original current
+full parallel race is running, with global normal/vet/build/artifact gates pending.
+
+The full historical overlay diagnostic is inconclusive (source-scan architecture
+failures and not every source stayed frozen). Safe steer again passes its phases,
+which does not explain the historical timeout. Removed diagnostic stacks emitted
+after successful cancellation are not timeout evidence. Preserve this unresolved
+item independently of the original per-group MCP authority repair.
 
 `ef5a9a0f3` closes the four missing real-process scenarios P12/P16/P18/P41:
 installed nested observer order, durable inner command receipt with outer failure,
