@@ -112,8 +112,46 @@ Reviews. The real Go Runtime -> HTTP -> TypeScript client suite rebuilds its
 executables and first-party packages from this source and passes all 49 tests
 (36.96s), including real restart and installed-owner interactions. The complete
 frontend and shared-client gates retain their earlier unchanged-JavaScript scope.
-Fresh native qualification and independent author archives for this Scope graph
-remain pending; neither is inferred from the passing build.
+Fresh native execution for this Scope graph now has the exact ESM and connection
+evidence below. Other graphical criteria and independent author archives remain
+pending; neither is inferred from the passing build.
+
+### Graphical acceptance: pending ESM and connection retirement (2026-10-15)
+
+Fresh task-owned Runtime and Wails builds at the Scope/WAL cut pass native
+multi-resource ESM, shared React identity and a real 0 -> 1 Hook state change.
+An imported dependency that throws displays the explicit reload boundary, and
+settings remain accessible. The executable links all 30 Scope modules at v0.51.1;
+the task uses a fresh data root and separately identified native bundle.
+
+The next actual native control exposes a distinct lifecycle defect. Open the
+installed module whose top-level await never completes, then switch the same
+Runtime from 127.0.0.1 to localhost with its exact token. Connection settings report
+ready and the independent CLI reads the same enabled/admitted four-component
+installation, but the command palette no longer publishes its Healthy component.
+This is not a missing backend or an old safe-steer/MCP failure. ComponentModules
+registers the noncancellable import promise as connection-generation cleanup;
+the package owner's replacement queue waits for that cleanup before registration.
+
+The repair removes that incorrect join. The browser window owns ESM
+evaluation; the generation still cancels and joins resource leases, rejects late
+exports and requires explicit reload for another evaluated generation. There is
+no import timeout, automatic reload, fallback evaluator or second module owner.
+The two existing plugin-pane focused files pass all 21 tests (4.40s). The complete
+frontend pipeline passes all 355 files/2,418 tests (95.36s for tests), typecheck,
+lint/format, Knip and every architecture/resource/bundle/public-module gate.
+Fresh beta.29 production packaging and strict/deep ad-hoc signature pass.
+
+Computer use repeats the same never-finishing module, token and address-change
+sequence on the rebuilt native bundle: Healthy reappears in the command palette,
+opening it retains the explicit reload boundary, and an explicit window reload
+clears the in-memory token as required. After reentering that same task-only token,
+the multi-resource page renders shared React identity true and increments 0 -> 1.
+Before/after screenshots and the independent CLI record retain the actual native
+RED/GREEN; no new automated unit test is claimed for platform ESM evaluation.
+This does not prove synchronous CPU-blocking recovery, pending business mutation
+replacement, active-Run view shutdown or the full Web/Wails review matrix. P45,
+the nine broader graphical criteria and all four review scenarios remain Partial.
 
 ### Graphical acceptance: shared React exports (2026-10-15)
 

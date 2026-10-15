@@ -21,8 +21,9 @@ class ModuleReloadRequired extends Error {
   }
 }
 
-// Evaluated ESM stays in the window after logical disposal. A different release
-// or Runtime generation requires reload instead of another unique module URL.
+// The browser window owns ESM evaluation, which may never finish. Connection
+// generations own resource leases and refuse late exports; they cannot join the
+// browser's evaluation. A different release or generation requires a reload.
 export class ComponentModules {
   private generation: object | undefined;
   private readonly releases = new Map<string, string>();
@@ -96,14 +97,6 @@ export class ComponentModules {
         }
       })();
       this.modules.set(key, module);
-      // Evaluation cannot be aborted. Its owner joins completion and refuses
-      // late registration; the rendering boundary owns its failure message.
-      scope.cleanup(() =>
-        module!.then(
-          () => undefined,
-          () => undefined,
-        ),
-      );
     }
     const loaded = await module;
     scope.signal.throwIfAborted();

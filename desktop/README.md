@@ -276,6 +276,10 @@ JSX runtimes, SDK and UI; the workbench maps them to its actual shared module in
 Runtime serves exact selected-release resources through subscription-owned leases.
 Logical disablement retires supported registrations and joins owned observation;
 module replacement may require a window reload and does not promise ESM unloading.
+The browser window owns module evaluation, including a top-level await that never
+finishes. Connection retirement closes its resource leases and refuses late
+exports without waiting for that evaluation. Otherwise one optional module could
+prevent every replacement package generation from becoming available.
 
 File and settled Tool-result renderers receive frozen accepted data. Current navigation
 cannot retarget it. Partial/truncated files and running/absent results stay generic;

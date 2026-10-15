@@ -53,8 +53,24 @@ passes 2.79s; delegated approval, all eight SIGKILL cuts and complete bootstrap
 (402.385s) pass. All four participating modules pass go mod verify. Workspace vet
 and production build pass, as does the real Go Runtime -> HTTP -> TypeScript suite
 (49 tests, 36.96s) with freshly built executables and first-party packages. Fresh
-native qualification and independent author archives for this graph remain
-pending. This current pass does not establish either historical timeout's cause.
+native ESM/connection evidence follows; other graphical criteria and independent
+author archives for this graph remain pending. This current pass does not
+establish either historical timeout's cause.
+
+Fresh Scope/WAL Runtime and native builds actually render multi-resource ESM,
+shared React identity and a 0 -> 1 Hook state change. Dependency evaluation failure
+displays the explicit recovery boundary. A further native control exposes a real
+connection-lifecycle defect: a never-finishing top-level await is incorrectly
+joined by generation cleanup, so replacement package contributions never publish
+despite ready HTTP/CLI state. Removing that wrong join retains resource cancellation,
+late-export refusal and explicit cross-generation reload. The same native sequence
+now republishes Healthy, requires explicit reload and, after the expected token
+reentry, renders and increments normally. Actual native RED/GREEN screenshots are
+retained. Complete frontend qualification passes 355 files/2,418 tests (95.36s for
+tests) and all source/resource/bundle gates; fresh beta.29 packaging/signature pass.
+This is not synchronous CPU-blocking recovery, pending business-operation
+replacement, active-Run shutdown or the complete Web/Wails review matrix. The
+39 Evidenced / 9 Partial audit and four Partial review groups remain unchanged.
 
 A second actual Web failure is now causally fixed: an imported ESM dependency
 throws, but its resource close never settles because the HTTP transport suppresses
@@ -68,12 +84,11 @@ P30/P35 join P29/P32 as graphical evidence. P48 source cut is now evidenced:
 the unused workspace Memory path is deleted end to end, the dialog uses the atom
 boundary and management controls use the shared pending contract. Complete frontend
 check passes all 355 files/2,418 tests plus every source/resource/bundle gate. Actual
-rebuilt Web Memory adds and refreshes its owner-backed task-only row. Fresh native
-execution after this cut remains pending; the user has now unlocked the Mac.
-Fresh task-local beta.29 macOS packaging passes before the Scope dependency cut;
-the latest graph still needs fresh native qualification. Earlier results retain
-their exact scope. The requested Scope v0.51.1 upgrade is complete as described
-above; upgrade success is not either historical timeout diagnosis.
+rebuilt Web Memory adds and refreshes its owner-backed task-only row. The user
+unlocks the Mac; subsequent Scope/WAL native ESM/connection execution is recorded
+above. Earlier native results retain their exact source scope. The requested
+Scope v0.51.1 upgrade is complete; upgrade success is not either historical
+timeout diagnosis.
 Bounded MCP controls now distinguish whole/fragmented frames, lease release and
 pre-transport EOF/SIGTERM, with package init traces. They do not reproduce or explain
 the historical MCP deadline; safe-steer also remains unresolved. Full details and
