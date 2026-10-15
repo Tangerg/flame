@@ -362,6 +362,7 @@ function matchesCommand(
   params: unknown,
   requestMeta: RequestMeta | null,
 ): boolean {
+  if (entry.method !== method) return false;
   const command = commandFingerprintInput(
     method,
     params,

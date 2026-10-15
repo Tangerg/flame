@@ -40,6 +40,67 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Management recovery and actual no-Run restart (2026-10-16)
+
+Plugin management now renders unresolved unary commands directly from the existing
+client journal, independently of producer/catalog/component availability. Each
+control keeps the original command identity, installation, release and method.
+The same public original-request query and receipt path owns recovery. A known
+result, known business refusal, unavailable original owner and unreadable journal
+remain distinct. Results are ephemeral presentation; there is no new queue,
+business result store, provider lookup or replacement dispatch. View/connection
+retirement cancels its observer. All eight locale dictionaries migrate together.
+
+The real Reviews board commits revision 2 behind the existing managed response-loss
+fixture, then displays unknown with its original UUID. Close that actual UI,
+stop and join Runtime, and restart the identical Runtime binary with the same
+isolated home. A distinct staged release cannot be selected; configure and
+uninstall also return plugin_in_use. Disabling the original producer is allowed.
+A fresh UI's generic management entry still shows that original UUID and binding;
+checking it while disabled retains unknown. Re-enabling through the actual UI
+then recovers the original complete revision-2 receipt and clears that journal
+record. Selecting the staged release now succeeds, and both task installations
+can be uninstalled. The second Reviews backend stays open at revision 1.
+
+The loss fixture's private commit marker is archived, then removed before recovery
+to arm a redispatch trap: any mutation replay would recreate it. It stays absent.
+Untruncated network captures show the same original UUID, routing, admitted input
+and metadata through plugins.getCommand and plugins.call. Go's existing object
+normalization changes member order only; comparison retains numeric lexemes.
+No Session/Run or provider POST is created. This proves the Reviews reply-loss,
+UI/Runtime restart, disable, update and uninstall sequence. It does not substitute
+for the remaining real same-role provider-selection scenario; review stays Partial.
+
+The actual enable action exposes a shared journal defect: reserve compares a
+pending direct plugin entry with an unrelated management mutation, then attempts
+to parse nonexistent plugin contract/input. It throws before HTTP dispatch. The
+journal now excludes a different stored method before interpreting that method's
+request. A public SDK regression reproduces the TypeError and verifies independent
+management refusal with the original pending identity intact; the stable-intent
+control remains covered. No UI bypass, retry, fallback or duplicate fact is added.
+Initial new-test fixture mistakes (SDK uninstall argument and definite-refusal
+settlement count) are corrected to the existing contract before the causal test.
+
+Passed: shared TS complete check, 30 files/364 tests (1.04s), types/lint/format/knip;
+12 focused management tests (3.57s); Desktop types, focused lint, eight-locale
+coverage (1,014 keys) and production build (3.64s). The first full frontend run
+passes all 357 files/2,429 tests (82.33s), then correctly fails the layer guard:
+the new management test was outside its owning plugin context. Move that test
+into the context instead of exporting private surfaces or exempting the guard.
+The next complete run again passes 357 files/2,429 tests (77.16s), then exposes an
+API-consumer analyzer limitation: a typed recovery handle's called member is not
+mapped. The analyzer now maps typed SDK binding factories separately from actual
+product member calls. Merely enumerating handles earns no RPC coverage, and unused
+members stay uncredited. Sixteen analyzer regressions pass, including the existing
+negative assertions; an initial probe missed shared helper imports and is repaired.
+The final complete npm run check passes: 357 files/2,429 tests (78.02s), types,
+lint, format, knip, all architecture/API/style/locale/resource guards, production
+bundle build (3.32s) and public React/JSX module linkage. No guard is exempted.
+Native/global Go race/vet/closure at this source are not run. Historical safe-steer/MCP causes and dependency alerts remain
+open. Actual scene resources are isolated; both task installations are removed,
+the task UI closes, Runtime joins at 0 and the quiet provider joins after SIGTERM.
+Private outcome/network evidence is retained; copied package sources are removed.
+
 ### Recreated-client original command recovery (2026-10-16)
 
 The remaining graphical review exposes a real consumer gap before qualification:

@@ -100,6 +100,8 @@ if (!sidecarSource) fail([`TypeScript did not load ${relative(ROOT, SIDECAR_PATH
 const implementationMap = new Map();
 const bindingFactories = new Set();
 const bindingWrappers = new Set();
+const bindingOwners = new Map();
+mapTypedSDKBindings();
 mapReturnedObject("bindWorkspace", [], true);
 mapReturnedObject("createMethods", []);
 const sidecarMethodMap = mappedSidecarMethods();
@@ -148,7 +150,8 @@ for (const consumerProject of [project, componentsProject]) {
           wrapper = wrapperPath(declaration, SIDECAR_PATH, new Set(["SidecarClient"]));
           target = sidecarConsumerCalls;
         } else {
-          continue;
+          wrapper = typedBindingPath(declaration);
+          target = consumerCalls;
         }
         if (!wrapper || !target) continue;
         const position = source.getLineAndCharacterOfPosition(node.getStart(source));
@@ -463,20 +466,66 @@ function walkImplementationObject(object, prefix) {
   }
 }
 
+// Constructing a capability does not call its members; only product member calls earn coverage.
+function mapTypedSDKBindings() {
+  for (const fileName of program.getSourceFileNames()) {
+    if (fileName === METHODS_PATH || !fileName.startsWith(`${dirname(METHODS_PATH)}${sep}`))
+      continue;
+    const source = program.getSourceFile(fileName);
+    for (const declaration of source?.statements ?? []) {
+      if (
+        !ts.isFunctionDeclaration(declaration) ||
+        !declaration.body ||
+        !declaration.type ||
+        !ts.isTypeReferenceNode(declaration.type)
+      )
+        continue;
+      let symbol = checker.getSymbolAtLocation(declaration.type.typeName);
+      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+      const owner = declarationsOf(symbol).find(ts.isInterfaceDeclaration);
+      if (!owner) continue;
+      const returned = declaration.body.statements.find(
+        (node) => ts.isReturnStatement(node) && ts.isObjectLiteralExpression(node.expression),
+      );
+      if (!returned) continue;
+      const key = `${resolve(owner.getSourceFile().fileName)}#${owner.name.text}`;
+      const prefix = `${relative(ROOT, owner.getSourceFile().fileName)}#${owner.name.text}`;
+      walkImplementationObject(returned.expression, [prefix]);
+      if (![...implementationMap.keys()].some((name) => name.startsWith(`${prefix}.`))) continue;
+      bindingOwners.set(key, prefix);
+      bindingFactories.add(declaration);
+    }
+  }
+}
+
+function typedBindingPath(declaration) {
+  let owner = declaration.parent;
+  while (owner && !ts.isInterfaceDeclaration(owner)) owner = owner.parent;
+  if (!owner) return undefined;
+  const path = resolve(owner.getSourceFile().fileName);
+  const prefix = bindingOwners.get(`${path}#${owner.name.text}`);
+  if (!prefix) return undefined;
+  const member = wrapperPath(declaration, path, new Set([owner.name.text]));
+  return member ? `${prefix}.${member}` : undefined;
+}
+
 function returnsMappedBinding(initializer) {
-  const functionBody =
-    ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)
-      ? initializer.body
-      : undefined;
-  if (
-    !functionBody ||
-    !ts.isCallExpression(functionBody) ||
-    !ts.isIdentifier(functionBody.expression)
-  )
+  if (!ts.isArrowFunction(initializer) && !ts.isFunctionExpression(initializer)) return false;
+  const returnsBinding = (expression) => {
+    const node = unwrapExpression(expression);
+    if (!ts.isCallExpression(node)) return false;
+    if (ts.isIdentifier(node.expression)) {
+      let symbol = checker.getSymbolAtLocation(node.expression);
+      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+      return declarationsOf(symbol).some((declaration) => bindingFactories.has(declaration));
+    }
+    if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map") {
+      const mapper = node.arguments[0];
+      return mapper && ts.isArrowFunction(mapper) && returnsBinding(mapper.body);
+    }
     return false;
-  let symbol = checker.getSymbolAtLocation(functionBody.expression);
-  if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-  return declarationsOf(symbol).some((declaration) => bindingFactories.has(declaration));
+  };
+  return returnsBinding(initializer.body);
 }
 
 function wireOperationsIn(initializer) {

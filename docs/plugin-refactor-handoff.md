@@ -57,10 +57,24 @@ SDK, Reviews and affected tests/docs migrate together. Shared TS full checks pas
 362 tests; seven component regressions, Desktop/SDK/author types, ESM/production
 builds, four Go owner/architecture packages and the actual installed no-Run
 restart/replacement test pass. Earlier global race/native/closure gates do not
-extend to this new source. Next add the same journal projection to management
-when a producer cannot mount, then execute the full actual UI/Runtime restart,
-update/uninstall/provider-selection review. That group remains Partial; historical
-timeouts, dependency alerts and final global qualification remain open.
+extend to this new source. Management now exposes the same pending journal
+projection even when the producer cannot mount. An actual Reviews committed-reply
+loss survives UI and same-binary Runtime restart; disabled recovery remains
+unknown, then the original complete receipt settles after explicit re-enablement.
+Pending select/configure/uninstall are held; after confirmation, staged selection
+and uninstall succeed. An armed redispatch trap stays absent, the second Reviews
+owner stays at revision 1 and no Session/Run/model request is created. This
+sequence also reveals and repairs a journal matching defect: unrelated management
+mutations must be excluded by the stored method before plugin input decoding.
+Shared TS checks now pass 364 tests. The frontend consumer analyzer also recognizes
+actually called typed recovery members without crediting mere handle enumeration
+or unused members; all sixteen analyzer regressions retain the negative guards.
+Complete frontend npm run check passes 357 files/2,429 tests (78.02s), including
+architecture/API/locale/resource/bundle/module guards. The first two gate failures
+and their repairs are recorded in progress; no guard or assertion is weakened.
+The real same-role provider-selection scene
+still remains, so that review group stays Partial. Historical timeouts, dependency
+alerts and fresh global/native qualification remain open.
 
 P46 executes the actual installed Reviews board against a task analyzer that
 enters the public selected-model callback and a held local provider stream before

@@ -319,6 +319,14 @@ mutation cohort, read cache, DTOs and facade are removed with their exclusive te
 and visual data-provider registration. Existing installed operations, shared
 command-generation coverage and real HTTP recovery/cold-read checks remain.
 
+Plugin management exposes unresolved unary plugin commands from that same journal,
+even when the original producer is disabled or its component cannot mount. Checking
+an original result keeps its captured installation, release, method and identity;
+it cannot select the current provider or submit a replacement command. Confirmed
+results and definite business refusals settle only through the original receipt
+path. Unavailable owners and unreadable evidence remain explicit. Displayed
+results are view-local observations, and closing management cancels observation.
+
 Generated publisher snapshots own transport fields and schema-bound capacity.
 Complete catalog traversal rejects capacity drift, cumulative overflow, empty
 continuations and repeated cursors under one captured binding. Page width uses the

@@ -80,6 +80,7 @@ describe("PluginsPane installation facts", () => {
           ctx.cleanup(
             packageOperations.configure({
               signal: ctx.signal,
+              pendingCommands: () => [],
               configure: submit,
             } as unknown as ReturnType<typeof packageOperations.get>),
           );
@@ -145,6 +146,7 @@ describe("PluginsPane installation facts", () => {
           ctx.cleanup(
             packageOperations.configure({
               signal: ctx.signal,
+              pendingCommands: () => [],
               configure: submit,
             } as unknown as ReturnType<typeof packageOperations.get>),
           );
@@ -223,9 +225,10 @@ describe("PluginsPane installation facts", () => {
           ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
           ctx.cleanup(
-            packageOperations.configure({ signal: ctx.signal } as unknown as ReturnType<
-              typeof packageOperations.get
-            >),
+            packageOperations.configure({
+              signal: ctx.signal,
+              pendingCommands: () => [],
+            } as unknown as ReturnType<typeof packageOperations.get>),
           );
         },
       }),
@@ -258,9 +261,10 @@ describe("PluginsPane installation facts", () => {
           ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
           ctx.cleanup(
-            packageOperations.configure({ signal: ctx.signal } as unknown as ReturnType<
-              typeof packageOperations.get
-            >),
+            packageOperations.configure({
+              signal: ctx.signal,
+              pendingCommands: () => [],
+            } as unknown as ReturnType<typeof packageOperations.get>),
           );
         },
       }),

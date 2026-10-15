@@ -22,6 +22,18 @@ export const de: Record<string, string> = {
   "packages.providers.unknown":
     "Bestätigung unbekannt. Prüfen Sie den ursprünglichen Befehl {{id}} vor einer weiteren Auswahl.",
   "packages.providers.reconcile": "Ursprüngliches Ergebnis prüfen",
+  "packages.commands.title": "Unbestätigte Plugin-Befehle",
+  "packages.commands.refresh": "Befehle aktualisieren",
+  "packages.commands.explanation":
+    "Prüfen Sie das ursprüngliche Ergebnis auch bei nicht verfügbarer Plugin-Ansicht. Ein neuer Anbieter kann den ursprünglichen Eigentümer nicht ersetzen.",
+  "packages.commands.none": "Keine unbestätigten Plugin-Befehle.",
+  "packages.commands.recover": "Ursprüngliches Ergebnis prüfen",
+  "packages.commands.checking": "Ursprünglicher Befehl {{id}} wird geprüft…",
+  "packages.commands.confirmed": "Ursprüngliches Ergebnis bestätigt: {{id}}",
+  "packages.commands.refused": "Ursprünglicher Befehl abgelehnt: {{id}}",
+  "packages.commands.unknown":
+    "Das ursprüngliche Ergebnis ist weiterhin unbekannt. Bewahren Sie Befehl {{id}} auf.",
+  "packages.commands.failed": "Das ursprüngliche Ergebnis konnte nicht gelesen werden.",
   "packages.points.title": "Erweiterungspunkte",
   "packages.points.inspect": "Werte prüfen",
   "packages.points.readOnly": "Aktuelle Beiträge prüfen, ohne Plugin-Code zu aktivieren.",

@@ -50,6 +50,40 @@ const binding = {
 const intent = `memory-delete:${id}`;
 const journals: MutationJournal[] = [];
 
+it.each(["direct", "stable intent"])(
+  "keeps an unresolved %s plugin command independent of management mutations",
+  async (kind) => {
+    const storage = new Storage();
+    const original = client(storage);
+    const lost = new RpcTransportError("reply lost");
+    original.dispatch.mockRejectedValue(lost);
+    const pending =
+      kind === "direct"
+        ? original.methods.plugins.call({ ...binding, ...input })
+        : original.methods.plugins.command(
+            intent,
+            input,
+            async () => binding,
+            (value) => value,
+          );
+    await expect(pending).rejects.toBe(lost);
+    const key = original.dispatch.mock.calls[0]![2].idempotencyKey;
+    original.journal.dispose();
+    const successor = client(storage);
+    const held = new RpcError({ message: "plugin_in_use", data: { type: "plugin_in_use" } });
+    successor.dispatch.mockRejectedValue(held);
+    const uninstall = { installationId };
+    await expect(successor.methods.plugins.uninstall(installationId)).rejects.toBe(held);
+    expect(successor.dispatch.mock.calls.map(([method, params]) => ({ method, params }))).toEqual([
+      { method: "plugins.uninstall", params: uninstall },
+    ]);
+    expect(
+      successor.methods.plugins.pendingCommands().map((command) => command.idempotencyKey),
+    ).toEqual([key]);
+    expect(storage.keys()).toHaveLength(1);
+  },
+);
+
 it("recovers an unresolved unary call through its Runtime-owned request after client replacement", async () => {
   const storage = new Storage();
   const original = client(storage);

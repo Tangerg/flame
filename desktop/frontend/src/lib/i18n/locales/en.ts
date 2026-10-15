@@ -21,6 +21,17 @@ export const en: Record<string, string> = {
   "packages.providers.unknown":
     "Confirmation is unknown. Keep original command {{id}} before making another selection.",
   "packages.providers.reconcile": "Check original result",
+  "packages.commands.title": "Unconfirmed plugin commands",
+  "packages.commands.refresh": "Refresh commands",
+  "packages.commands.explanation":
+    "Check the original outcome even when its plugin view is unavailable. A new provider cannot replace the original owner.",
+  "packages.commands.none": "No unconfirmed plugin commands.",
+  "packages.commands.recover": "Check original outcome",
+  "packages.commands.checking": "Checking original command {{id}}…",
+  "packages.commands.confirmed": "Original outcome confirmed: {{id}}",
+  "packages.commands.refused": "Original command was refused: {{id}}",
+  "packages.commands.unknown": "The original outcome is still unknown. Keep command {{id}}.",
+  "packages.commands.failed": "The original outcome could not be read.",
   "packages.points.title": "Extension points",
   "packages.points.inspect": "Inspect values",
   "packages.points.readOnly": "Inspect current contributions without activating plugin code.",

@@ -21,6 +21,17 @@ export const ko: Record<string, string> = {
   "packages.providers.unknown":
     "확인 결과를 알 수 없습니다. 다른 선택 전에 원래 명령 {{id}}의 결과를 확인하세요.",
   "packages.providers.reconcile": "원래 결과 확인",
+  "packages.commands.title": "미확인 플러그인 명령",
+  "packages.commands.refresh": "명령 새로 고침",
+  "packages.commands.explanation":
+    "플러그인 보기를 사용할 수 없어도 원래 결과를 확인할 수 있습니다. 새 제공자는 원래 소유자를 대체할 수 없습니다.",
+  "packages.commands.none": "미확인 플러그인 명령이 없습니다.",
+  "packages.commands.recover": "원래 결과 확인",
+  "packages.commands.checking": "원래 명령 {{id}} 확인 중…",
+  "packages.commands.confirmed": "원래 결과 확인됨: {{id}}",
+  "packages.commands.refused": "원래 명령이 거부됨: {{id}}",
+  "packages.commands.unknown": "원래 결과를 아직 알 수 없습니다. 명령 {{id}}을 보관하세요.",
+  "packages.commands.failed": "원래 결과를 읽을 수 없습니다.",
   "packages.points.title": "확장 지점",
   "packages.points.inspect": "값 확인",
   "packages.points.readOnly": "플러그인 코드를 실행하지 않고 현재 확장을 확인합니다.",

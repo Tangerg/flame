@@ -22,6 +22,18 @@ export const es: Record<string, string> = {
   "packages.providers.unknown":
     "Confirmación desconocida. Comprueba el comando original {{id}} antes de otra selección.",
   "packages.providers.reconcile": "Comprobar resultado original",
+  "packages.commands.title": "Comandos de plugin sin confirmar",
+  "packages.commands.refresh": "Actualizar comandos",
+  "packages.commands.explanation":
+    "Compruebe el resultado original aunque la vista del plugin no esté disponible. Un nuevo proveedor no puede sustituir al propietario original.",
+  "packages.commands.none": "No hay comandos de plugin sin confirmar.",
+  "packages.commands.recover": "Comprobar el resultado original",
+  "packages.commands.checking": "Comprobando el comando original {{id}}…",
+  "packages.commands.confirmed": "Resultado original confirmado: {{id}}",
+  "packages.commands.refused": "Comando original rechazado: {{id}}",
+  "packages.commands.unknown":
+    "El resultado original sigue siendo desconocido. Conserve el comando {{id}}.",
+  "packages.commands.failed": "No se pudo leer el resultado original.",
   "packages.points.title": "Puntos de extensión",
   "packages.points.inspect": "Inspeccionar valores",
   "packages.points.readOnly":

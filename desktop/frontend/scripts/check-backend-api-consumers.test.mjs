@@ -173,22 +173,24 @@ test("rejects stale terminal diagnostic declarations", () => {
   assert.match(errors[0], /absent from the Runtime manifest/);
 });
 
-function mappedOperations(sourceText, helperText) {
+function mappedOperations(sourceText, helperText, bindings = false) {
   const dir = mkdtempSync(join(tmpdir(), "api-operation-consumer-"));
   try {
     const fileName = join(dir, "probe.ts");
     writeFileSync(join(dir, "package.json"), '{"type":"module"}\n');
     writeFileSync(fileName, sourceText);
     if (helperText) writeFileSync(join(dir, "helper.ts"), helperText);
-    const mappingStart = script.indexOf("function wireOperationsIn(initializer)");
-    const mappingEnd = script.indexOf("\nfunction wrapperPath", mappingStart);
+    const mappingStart = script.indexOf("function walkImplementationObject(object, prefix)");
+    const mappingEnd = script.indexOf("\nfunction discardsNonVoidResult", mappingStart);
+    const propertyStart = script.indexOf("function propertyName(node)");
+    const propertyEnd = script.indexOf("\nfunction isProductSource", propertyStart);
     const declarationsStart = script.indexOf("function declarationsOf(symbol)");
     const declarationsEnd = script.indexOf("\nfunction fail", declarationsStart);
     assert.ok(mappingStart >= 0 && mappingEnd > mappingStart);
     assert.ok(declarationsStart >= 0 && declarationsEnd > declarationsStart);
     writeFileSync(
       join(dir, "probe.mjs"),
-      `import { dirname, resolve, sep } from "node:path";
+      `import { dirname, relative, resolve, sep } from "node:path";
 import { API, SymbolFlags } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};
 import * as ts from ${JSON.stringify(import.meta.resolve("typescript/unstable/ast"))};
 const fileName = ${JSON.stringify(fileName)};
@@ -197,9 +199,17 @@ try {
   const snapshot = compiler.updateSnapshot({ openFiles: [fileName] });
   const project = snapshot.getDefaultProjectForFile(fileName);
   const checker = project.checker;
-  const methodsSource = project.program.getSourceFile(fileName);
+  const program = project.program;
+  const methodsSource = program.getSourceFile(fileName);
+  const ROOT = ${JSON.stringify(dir)};
+  const METHODS_PATH = fileName;
+  const implementationMap = new Map();
+  const bindingFactories = new Set();
+  const bindingWrappers = new Set();
+  const bindingOwners = new Map();
   const operations = new Set(["runs.start", "runs.resume", "runs.getAcceptance"]);
   ${script.slice(mappingStart, mappingEnd)}
+  ${script.slice(propertyStart, propertyEnd)}
   ${script.slice(declarationsStart, declarationsEnd)}
   let initializer;
   for (const statement of methodsSource.statements) {
@@ -208,7 +218,23 @@ try {
       if (ts.isIdentifier(declaration.name) && declaration.name.text === "start") initializer = declaration.initializer;
     }
   }
-  console.log(JSON.stringify([...wireOperationsIn(initializer)].sort()));
+  if (${bindings}) {
+    mapTypedSDKBindings();
+    const found = new Set();
+    function scan(node) {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+        let symbol = checker.getSymbolAtLocation(node.expression.name);
+        if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+        for (const declaration of declarationsOf(symbol)) {
+          const path = typedBindingPath(declaration);
+          for (const operation of implementationMap.get(path) ?? []) found.add(operation);
+        }
+      }
+      node.forEachChild(scan);
+    }
+    scan(methodsSource);
+    console.log(JSON.stringify({ projection: returnsMappedBinding(initializer), operations: [...found].sort() }));
+  } else console.log(JSON.stringify([...wireOperationsIn(initializer)].sort()));
 } finally { compiler.close(); }
 `,
     );
@@ -269,6 +295,39 @@ test("does not count callable members of a returned SDK object as executed opera
   `),
     ["runs.start"],
   );
+});
+
+test("credits only actually called members of typed SDK capability projections", () => {
+  const helper = `
+    declare function perform(method: string): unknown;
+    export interface Recovery {
+      recover(): unknown;
+      unused(): unknown;
+    }
+    export function bind(): Recovery {
+      return {
+        recover: () => perform("runs.getAcceptance"),
+        unused: () => perform("runs.resume"),
+      };
+    }
+  `;
+  const projection = `
+    import { bind } from "./helper";
+    const start = () => [1].map(() => bind());
+    const [command] = start();
+  `;
+  assert.deepEqual(mappedOperations(projection, helper, true), {
+    projection: true,
+    operations: [],
+  });
+  assert.deepEqual(mappedOperations(`${projection} command.recover();`, helper, true), {
+    projection: true,
+    operations: ["runs.getAcceptance"],
+  });
+  assert.deepEqual(mappedOperations(`${projection} command.unused();`, helper, true), {
+    projection: true,
+    operations: ["runs.resume"],
+  });
 });
 
 test("does not credit an SDK helper without a product caller of its wrapper", () => {

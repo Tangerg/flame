@@ -22,6 +22,17 @@ export const ja: Record<string, string> = {
   "packages.providers.unknown":
     "確認結果は不明です。別の選択を行う前に元のコマンド {{id}} を確認してください。",
   "packages.providers.reconcile": "元の結果を確認",
+  "packages.commands.title": "未確認のプラグインコマンド",
+  "packages.commands.refresh": "コマンドを更新",
+  "packages.commands.explanation":
+    "プラグインのビューが利用できなくても元の結果を確認できます。新しいプロバイダーが元の所有者を置き換えることはありません。",
+  "packages.commands.none": "未確認のプラグインコマンドはありません。",
+  "packages.commands.recover": "元の結果を確認",
+  "packages.commands.checking": "元のコマンド {{id}} を確認中…",
+  "packages.commands.confirmed": "元の結果を確認しました：{{id}}",
+  "packages.commands.refused": "元のコマンドは拒否されました：{{id}}",
+  "packages.commands.unknown": "元の結果はまだ不明です。コマンド {{id}} を保持してください。",
+  "packages.commands.failed": "元の結果を読み取れませんでした。",
   "packages.points.title": "拡張ポイント",
   "packages.points.inspect": "値を確認",
   "packages.points.readOnly": "プラグインコードを起動せずに現在の拡張を確認します。",

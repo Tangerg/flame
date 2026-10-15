@@ -21,6 +21,7 @@ import { packageOperations, usePackageRealization, usePackages } from "../applic
 import { ProviderSelections } from "./ProviderSelections";
 import { ContributionRequirements } from "./ContributionRequirements";
 import { PointInspection } from "./PointInspection";
+import { PendingCommands } from "./PendingCommands";
 import { pointMetadata } from "../adapters/pointContracts";
 
 const styles = stylex.create({
@@ -60,6 +61,7 @@ export function PackageManager() {
   };
   return (
     <SettingsGroup>
+      {operations && <PendingCommands operations={operations} />}
       <div {...stylex.props(styles.row)}>
         <SystemMessage>{t("packages.trust")}</SystemMessage>
         <TextField
