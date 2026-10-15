@@ -16,8 +16,13 @@ The missing failure interval cannot be reconstructed from normal-path observatio
 
 The latest complete product qualification is frozen `b2dcbfbba`. Production Go
 remains unchanged. Later test-only slices add failure-only steer diagnostics,
-installed Reviews no-Run recovery and real Tool/CLI equivalence. The latest
-fixture/CLI slice passes the complete execution/bootstrap parallel race on clean
+installed Reviews no-Run recovery and real Tool/CLI equivalence. A subsequent
+capacity slice now compares an actual model Run and executable CLI against an
+independent Reviews HTTP process at its real 4,096-receipt bound. Its new case
+passes normal 26.590s; both actual CLI cases pass focused bootstrap race 39.001s,
+and the complete Reviews module race and affected-package vet pass. This is not
+a fresh whole-product, full-bootstrap, graphical or stdio-capacity qualification.
+The preceding fixture/CLI slice passes the complete execution/bootstrap parallel race on clean
 `6b3a175e8`: 385 top-level passes, zero failures/skips, package times
 240.475/328.931s, wall 334.225s. This run has no source overlay or changed test
 deadline. A read-only process observer finds no proxy/backend reaching its
@@ -91,6 +96,51 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Real CLI and model Tool capacity refusal (2026-10-15)
+
+`TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI` builds a separate
+Reviews test executable. Before publishing its HTTP endpoint, that process fills
+all 4,096 receipt slots through real `Store.Update` calls with unique admitted
+identities and missing-review inputs. No private rows, reduced bound or production
+setup hook are introduced. The installed package retains its actual declaration;
+only its temporary MCP transport descriptor points to this independent HTTP
+backend rather than the package's normal stdio executable.
+
+An actual Session-owned model Run discovers and executes the update Tool through
+Runtime. Exactly one update Tool retains the complete `receiptCapacity` result,
+`incomplete`/`tool_failed` classification and a completed Run. The executable CLI
+then sends a fresh command through authenticated Runtime HTTP to that same backend;
+its canonical business result matches the Tool's complete result. Public reads
+before/after match. After Runtime closes, EOF asks the backend to assert unchanged
+private Review state and exactly 4,096 receipts before the process exits.
+
+The common executable-CLI setup is extracted from the existing query/revision-
+conflict recovery case, with idempotent cleanup registered immediately after
+opening its HTTP resources. Both cases retain their original behavior and limits.
+
+The first build fails on an unused import; it is removed before execution.
+Passed on final test source:
+
+- New capacity case, normal: 26.590s.
+- New capacity and existing Reviews lifecycle/CLI case together, bootstrap race:
+  39.001s (`-timeout=180s`, no original assertion/context changed).
+- Complete Reviews module race: backend 9.284s, analyzer 2.087s; two command
+  packages have no tests. The env-gated child fixture is exercised by the
+  bootstrap case, not claimed as an independently executed standard module case.
+- Vet for bootstrap and the complete Reviews module; formatting/diff checks.
+
+The new business backend is a separate HTTP process built without `-race`, as
+ordinary installed executables are; parent bootstrap and the normal backend
+suite receive race instrumentation. This slice does not execute capacity through
+stdio, duplicate-capacity-command recovery, invocation conflict through the actual
+CLI, or a rendered UI. Full product/bootstrap, shared TS, native, independent
+archives, paid live and platform gates are not rerun. No production API, schema,
+dependency, owner, assertion or original deadline changes.
+
+P01-P48 remains 35 Evidenced/13 Partial; all four added review groups stay Partial.
+The historical safe-steer and later initial-MCP-discovery deadlines still lack
+established causes. This refusal proof closes neither investigation.
 
 ### Reviews SDK/Tool refusal parity at the real receipt bound (2026-10-15)
 

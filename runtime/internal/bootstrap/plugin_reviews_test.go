@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -47,7 +48,7 @@ func reviewAuthorPackage(t *testing.T, packagePath, executable string) string {
 	return source
 }
 
-func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *protocol.PluginInstallation, sessionID, runID string, expected, conflict any) {
+func reviewCLICommand(t *testing.T, runtime *poMCPRuntime) (func(...string) []byte, func()) {
 	t.Helper()
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "flame")
@@ -63,9 +64,12 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer server.Close()
 	remote := httptest.NewServer(server.Handler())
-	defer remote.Close()
+	closeCLI := sync.OnceFunc(func() {
+		remote.Close()
+		_ = server.Close()
+	})
+	t.Cleanup(closeCLI)
 	config := filepath.Join(directory, "config.yaml")
 	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -83,6 +87,13 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 		}
 		return output
 	}
+	return runCLI, closeCLI
+}
+
+func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *protocol.PluginInstallation, sessionID, runID string, expected, conflict any) {
+	t.Helper()
+	runCLI, closeCLI := reviewCLICommand(t, runtime)
+	defer closeCLI()
 	output := runCLI("sessions", "show", sessionID, "--json")
 	var snapshot struct {
 		Transcript []struct {

@@ -44,7 +44,11 @@ Reviews' typed-operation/MCP Tool test now compares full canonical invocation-
 conflict and capacity outcomes as well as revision conflict. Setup fills the real
 4,096-receipt bound through the business owner; both entrances retain original
 recovery and unchanged private Review state. This is SDK/in-memory transport
-coverage, not new CLI/Run/stdio/UI qualification of those two refusal classes.
+coverage. A subsequent test now compares capacity through an actual model Run
+and executable CLI against a separate Reviews HTTP process. It reaches the real
+bound through Store updates before endpoint publication and checks private Review
+and receipt-count invariants at child exit. This is not stdio-capacity, duplicate-
+capacity-command recovery, actual CLI invocation-conflict or graphical evidence.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -83,7 +87,15 @@ recorded in progress rather than duplicated here.
 
 ## Actual current qualification
 
-The latest Reviews test/doc-only slice passes focused race 6.412s and module vet.
+The latest capacity test/doc-only slice passes its normal bootstrap case 26.590s
+and both actual CLI cases together under bootstrap race 39.001s. Complete Reviews
+module race passes backend/analyzer 9.284/2.087s, with two no-test command packages;
+bootstrap/Reviews vet passes. The separate HTTP backend fixture executes under
+bootstrap, without child race instrumentation; ordinary backend tests are race
+instrumented. Full product/bootstrap, TS, native and author archives are not rerun.
+The initial unused-import compilation failure is corrected before those passes.
+
+The preceding Reviews test/doc-only slice passes focused race 6.412s and module vet.
 Complete module race passes backend/analyzer 7.294/3.290s, with two no-test command
 packages; it predates only the final retained-count assertion covered by that
 focused run. Runtime/shared TS/native and standalone author archives are not
@@ -289,9 +301,10 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   typed refusal through Tool/CLI/rendered UI; authenticated remote multi-resource
   ESM/module identity/connection replacement in Web and Wails; independent recovery
   while module initialization blocks the renderer.
-  Real Tool/CLI query and revision-conflict equivalence now has backend process
-  evidence; the graphical entrance and other cross-entrance refusal classes are
-  not newly qualified by that case.
+  Real Tool/CLI query and revision-conflict equivalence has stdio backend process
+  evidence. Capacity now has separate HTTP-process/model Run/executable CLI
+  evidence at the actual bound. The graphical entrance, actual CLI invocation
+  conflict and duplicate-capacity-command recovery remain unqualified.
 - Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
   alternate native execution and registry/deployment publication are not qualified.
 - Read-only npm audit exits 1 with eight alerts (four high/four low). All high
@@ -341,8 +354,9 @@ admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them
 obtain a failing child/proxy snapshot before making a production repair.
 Do not substitute a later pass or build overlap for a cause of its failed gates.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
-Actual CLI invocation-conflict/capacity cross-entrance proof is still separate
-from the new SDK/Tool test; do not count the latter as execution of those CLI cases.
+Actual CLI invocation-conflict and duplicate-capacity-command recovery remain
+separate from the new fresh-capacity-command proof. Do not infer those cases from
+the SDK/Tool or actual CLI capacity results.
 Do not declare the whole plugin system 100%.
 
 Read-only original inputs:

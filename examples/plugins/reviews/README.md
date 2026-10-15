@@ -196,6 +196,14 @@ receipt does not enter the mutation handler. That test also verifies process ret
 and preserves the Run's original uncertainty after restart. Its model is scripted;
 the test needs no provider credentials or external service.
 
+`go test ./internal/bootstrap -run TestReviewReceiptCapacity -count=1` instead
+starts a separate HTTP backend fixture and fills all 4,096 receipts through real
+Store updates before Runtime connects. A model Run and the executable CLI receive
+the same complete capacity refusal; public reads and the child process's final
+private assertions retain the original Review and receipt count. This case does
+not execute the board, stdio capacity, duplicate-capacity-command recovery or
+invocation conflict through the actual CLI.
+
 This package's MCP tools execute through Session-owned Runs and the existing
 approval path. Its ordinary Board calls the same published business operations
 through the public component SDK. Diagnostic `tools.invoke` is not a plugin action
