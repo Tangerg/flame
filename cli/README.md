@@ -314,13 +314,12 @@ Uncertain requests from retired Core contracts are not translated into fresh
 public commands. Core Memory read models and enums are also removed in Core .17.
 Terminal presentation owns its compact read projection; generated publisher
 snapshots remain the transport contract. Visible-state and timestamp checks precede
-presentation, while publisher schemas own identity/content admission. Remaining
-Core .18 also removes its Memory capacity export. Complete readers obtain the
+presentation, while publisher schemas own identity/content admission. Complete
+readers consume the publisher-owned capacity without a Core Memory export. Complete readers obtain the
 publisher's schema-bound Capacity from the first page, require it to remain stable
 under the captured binding and reject cumulative overflow or empty continuation.
 Page width uses the backend default, and the publisher alone derives row/request
-limits from its business constants. Notification migration and final acceptance
-are still open.
+limits from its business constants.
 
 Core .19 replaces Memory/Schedule-specific change topics with plugins.dataChanged.
 The CLI subscribes once when either reader exists and refreshes both through their

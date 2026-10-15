@@ -121,1057 +121,116 @@ migration. Use a fresh data directory when upgrading.
 
 ## Public surfaces
 
-- The module-root `runtime.Runtime` is the concrete in-process binding.
-- The module-root `runtime.Client` attaches to an existing Runtime over HTTP/SSE with the same typed operation methods.
-- `protocol` contains binding-neutral requests, responses, events, errors, and validation.
-- `contract` contains generated machine-readable protocol artifacts and the generated API reference.
-- `localruntime` owns the local deployment layout and the strict credential-file handoff.
-  It resolves the data directory beneath a product root and names the database and local
-  token inside it, so the Runtime process and a trusted desktop client read one layout
-  rather than each composing a path.
-
-All Runtime operations enter one delivery endpoint. The Go binding avoids JSON and HTTP encoding but uses the same admission, capability, idempotency, Application, error, and event semantics as the HTTP binding.
-
-Installed unary operations use `CallPlugin` in both Go bindings, `plugins.call`
-in Protocol and `plugins call --request ...` in CLI. The request retains the
-installation, selected release digest, independent contribution ID, complete
-consumer capability, method, concrete target and business input. Runtime requires
-exact equality with the declared and live export before a new call can execute. The envelope's
-query/command semantics come from that admitted method; queries reject command
-identities. Commands use the existing durable original route and private receipt,
-without a Runtime result cache. A same-identity change of installation, release,
-contribution, contract, method, target, calling origin, parent or input conflicts.
-
-`BindPluginMethod` binds an existing typed `plugin.Method[P, R]` and complete
-required capability to a concrete `PluginBinding`. Its `Call` uses the same
-public entrance and validates typed input and output. The TypeScript client's
-`plugins.call` uses the shared mutation identity/journal path for commands and
-the shared query path for reads. A definite business refusal projects the owner's
-code/message in `CallPluginResponse.failure`; output and failure are exclusive.
-Transport loss remains an unknown command acknowledgement and requires the
-original command identity for reconciliation. Delivery and execution adapters
-establish human, model and automatic origins; nested callbacks inherit the
-captured origin and parent. Command routes persist this evidence separately from
-business input and backends receive it as invocation metadata. Declared
-cross-plugin dependencies, durable trigger-origin propagation and streaming
-decoration remain under development.
-
-All Schedule reads and mutations use the installed
-contribution's published operations. The former `ListSchedules`, `CreateSchedule`,
-`UpdateSchedule`, `DeleteSchedule`, `RunScheduleNow` Go methods and their Protocol entrances are
-removed. Backend business transitions and private receipts retain their owners.
-The CLI persists original intent before dispatch and keeps its installation,
-release and inputs across selection changes, acknowledgement loss and restart.
-The generic installed call supplies Runtime callbacks; the backend owns manual
-capture/reconciliation and Runtime owns the accepted Run. Core Schedule DTOs,
-error translations and the schedules feature gate are removed. Clients consume
-the publisher contract through plugins.call. External consumers must use
-`CallPlugin`; no compatibility alias or old-method request translation exists.
-
-Memory catalog readers in CLI and the workspace client now use the public installed
-list operation and retain one selected binding across the traversal. ListAgentMemory,
-agentMemory.list and their list request DTO are removed without aliases. The public
-workspace reader and generated CLI projection consume the same publisher contract;
-remaining Memory mutation Core entrances are under migration. Private ledger,
-watermark, curation, model maintenance and receipt owners are unchanged.
-
-Core 2026-10-14.13 also removes DeleteAgentMemory/agentMemory.delete and its DTO,
-delivery port and selected-provider forwarder. CLI and workspace deletion use the
-published installed operation. The TS client's plugins.command captures a logical
-intent in the existing mutation journal before dispatch. A successor client restores
-the original route before provider preparation and requires the same contract and
-serialized input. Changed input, a replaced store, expired retention, active intent
-ownership or failed persistence refuse delivery and retain unresolved evidence.
-Journal records contain original routing and salted input/intent fingerprints;
-they do not store authored input or business results. A typed decoder runs before
-settlement, and only witnessed owner refusals can settle as business failures.
-Core's removed requests are not converted or resent under a new command identity.
-Business storage and backend protocol remain unchanged. Remaining add
-and all-consumer/restart/native acceptance are still open.
-
-Core 2026-10-14.14 removes the Memory review method/request/global decision enum,
-delivery mapping and selected-role forwarder. CLI and workspace review consume the
-generated publisher input and the same private business/receipt owner. Approve and
-reject use one logical intent per item; changed decision cannot turn an uncertain
-review into another command. CLI recovery precedes workspace/catalog reads, keeps
-the original decision and refuses ambiguous pending prefixes. Clients own their
-review choices as presentation values; Runtime has no universal plugin-review enum.
-The public not_pending owner refusal replaces the former Core invalid_params
-translation. Retired requests receive no compatibility alias or automatic conversion.
-
-Core 2026-10-14.15 removes the Memory update API/DTO, delivery mapping and
-selected-role forwarder. CLI and workspace editing/pin/unpin use the publisher
-operation and its original item intent. Omission and explicit false remain distinct;
-an unknown command cannot absorb changed patch values. CLI resumes its stored raw
-patch before current target/catalog reads and rejects a changed editor resubmission.
-The generated publisher snapshot is decoded/validated before intent retirement.
-Workspace acknowledgement rereads the current cache owner rather than projecting
-an original provider's item into every current row with the same ID. The remaining
-Core add entrance is retired by the following cutover; wider consumer migration
-and final acceptance remain open.
-
-Core 2026-10-14.16 removes the last Memory business facade, AddAgentMemory/
-agentMemory.add, its request/constraints, delivery handler, selected-role forwarding
-and Memory-specific Core feature. Every actual CLI/workspace Memory read and human
-mutation uses the publisher's public installed capability. New additions capture
-scope/path/content once; the private backend alone resolves project roots, owns
-deduplication and reports Changed. Pending authoring resumes its original route,
-input and command before current workspace/provider reads. Changed input and
-invalid acknowledgement, including a different scope, cannot retire uncertainty.
-Workspace projections reread their current owner after acknowledgement.
-
-Rebuild Core/Go/TS clients together; retired requests receive no alias or conversion.
-Backend wire remains 2026-10-14.2 and private business/storage formats are unchanged.
-Core Memory read models, limits and topics still have real consumers and require
-their own ownership migration. Native restart/withdrawal/response-loss acceptance,
-wider consumers and final full/vet/race verification remain open.
-
-Core 2026-10-14.17 removes AgentMemoryItem, its scope/origin/status enums, Core
-constraints/sample/schema and Go/TS exports. No Core operation consumes those
-plugin-owned records. CLI and Desktop own only visible read projections over the
-publisher's generated snapshots. Publisher Go models derive closed vocabularies,
-identity patterns and Unicode content limits from their private owner; canonical
-JSON, generated Go/TS and actual ESM resources are regenerated together. ItemID's
-string alias is replaced by its actual patterned schema so identity admission is
-enforced at the public operation boundary. Private storage/receipt formats and
-backend protocol are unchanged. Native fixtures compare complete owner snapshots,
-including vectors, without recreating the retired Core shape. Remaining Core
-capacity/topic knowledge and final runtime acceptance remain open.
-
-Core 2026-10-14.18 removes MaximumAgentMemoryItemsPerTarget and its private-domain
-import from the public root. The Memory publisher page includes Capacity, with a
-schema const derived from MaxVisiblePerTarget. Request page width and response
-row limits derive from one private MaxManagementPageItems constant. CLI/Desktop
-complete collectors retain one binding and the first admitted capacity; invalid
-or changed capacity, cumulative overflow and empty/cyclic continuation fail without
-partial results. Workspace and ordinary component readers request the owner's
-default page width. Regenerate canonical JSON, Go/TS and ordinary ESM together;
-backend protocol and private storage/receipt formats remain unchanged. No Core
-capacity alias remains. Business notification migration and final acceptance are open.
-
-Core 2026-10-14.19 replaces agentMemory.changed and schedules.changed with the
-generic plugins.dataChanged topic, without business IDs or results. The existing
-command route publishes after dispatch/recovery, including unknown outcomes; it
-does not match first-party contracts to decide whose reads may be stale. Generic
-backend change notices retain authenticated current actor/release/server/contribution
-admission and publish this signal instead of forcing a global Core resync. Installed
-Tool calls use the same stale-data vocabulary without a Schedule-specific branch.
-Private mutation owners publish only after actual change/commit. CLI/workspace and
-ordinary Memory/Schedules consumers reread their owners; installation lifecycle
-remains plugins.changed. No event can settle a command or advance business state.
-
-Remove the old topics, Schedule event IDs/constructor, closed contract observer and
-generated schema/sample/exports together. Rebuild Go/TS/SDK/ordinary ESM packages;
-backend wire and private storage/receipt formats are unchanged. External subscribers
-must adopt the current topic; no alias or double publication remains. Scoped
-subscriptions, model streaming, wider Tool/dependency lifecycle and final acceptance
-remain active work.
-
-The public plugin SDK now supplies a captured unary model contract over Scope's
-complete request/response and the existing callback endpoint. Its result keeps
-validated inner response evidence even when an outer operation fails. A public
-external-package subprocess verifies model calls, full usage and causal cancellation
-without private imports or a Desktop relay. This is a foundation for the continuing
-canonical model execution migration; production Interaction/auxiliary paths,
-installed streaming decorators/remote next and durable inner evidence are still open.
-No model execution Core method or streaming support is inferred from this unary API.
-
-Production Memory maintenance now uses that public complete Scope model exchange.
-The utility model is resolved once before the original maintenance dispatch and
-captured by its callback grant. Memory keeps its private two-external-call budget
-and original method/input identity fence. Its private prompt policy builds the
-canonical request; the backend uses Scope's text output contract only after the
-complete response arrives. Usage/reasoning/model evidence is preserved on the link,
-including a valid response alongside failure. Embedding has a separate private
-text-array/vector method rather than a string-valued model operation. The former
-flame.memory/model.v1 text multiplexer is removed. Full durable inner observation,
-generic embedding author parity and installed model/decorator composition remain open.
-
-Core 2026-10-14.21 projects optional stream schema on public method descriptors.
-The Go plugin SDK implements captured callback streaming on the existing endpoint,
-with lazy production, immutable request evidence, synchronous transport backpressure,
-cancel/retire joining, independently validated chunks and a final outcome distinct
-from them. Scope owns model delta aggregation; completed inner evidence survives
-outer failure, while missing terminal transport evidence remains unconfirmed.
-Feature generation includes chunk schemas/Go/TS types in the same method identity.
-
-The public subprocess probe consumes a frozen remaining Scope chain without a Desktop
-relay. This is real callback streaming, not full installed decorator acceptance.
-Installed host-to-backend stream delivery, frozen contribution/dependency retention,
-durable inner observation, production model consumers and TS author parity remain
-open. Unary installed calls explicitly refuse streaming before storing a route.
-Backend remains 2026-10-14.2; no private storage or receipt format changes. Rebuild
-current Core/Go/TS consumers together; no new method or descriptor promises streaming
-through a transport that has not implemented it.
-
-The public SDK now also registers and consumes real backend streams. One original
-MCP request carries the final result; synchronous acknowledged chunk delivery uses
-its existing authenticated Runtime callback lifetime. Real stdio executable proof
-includes model-next reentrancy, immutable invocation, demand backpressure, cancel/
-join and known inner response with outer failure. No backend listener or event queue
-is introduced. Runtime's internal installed command stream now shares unary route
-admission and the same durable Commands owner. First invocation captures exact
-installation/release/contribution/export/contract, raw input, target and caller.
-Dispatched recovery reads only the original private receipt; it never reproduces
-chunks or invokes a replacement provider. Consumer stop and missing receipt retain
-uncertainty. Valid final evidence or explicit owner refusal ends the route; generic
-transport failure does not. Callback preparation precedes dispatch and resources
-are joined when consumption ends.
-
-The public Go binding and Runtime Protocol now expose this mutation stream through
-StreamPlugin/plugins.stream and the same delivery endpoint. Its empty opening
-response conveys no business outcome. Ephemeral notifications.plugin.stream frames
-carry validated chunks, final results or explicit refusals; no cursor is accepted.
-The Go remote client recognizes terminal evidence and reports missing/malformed
-terminal delivery as an unknown acknowledgement without reconnecting or resubmitting.
-HTTP transport acknowledges each source yield only after its SSE frame is written,
-and cancellation joins the source. Typed BindPluginStreamingMethod now uses shared
-binding admission and SDK StreamValue, freezing input/options before lazy single
-consumption and validating chunks/final output. Final result publication follows
-source completion; invalid/missing evidence cannot manufacture success. The caller
-keeps transport refusal/uncertainty classification with its existing owner.
-PluginCallbackCaller consumes the same stream with its captured original reference,
-lazily opening and closing the ordinary Runtime Client. Invoked work missing call
-context is refused instead of using activation. TS plugins.stream now consumes
-chunks through an awaited callback and resolves only the decoded final result.
-It uses the existing intent/binding/input journal; transport loss retains that
-original record without automatic replay. Recovery derives stream/unary delivery
-from the original contract and restores its exact route before current preparation.
-Each HTTP request waits for its own notification consumption while the shared
-client continues handling nested/unrelated RPC. Stop/client closure releases the
-reader/observers and joins in-flight asynchronous consumers. Feature JSON text and
-the shared exact numeric codec preserve Go/TS input, chunk and final values.
-Production model/dependency lifecycle and final acceptance remain open.
-Unary entrances continue to refuse stream methods before route creation. Stream
-recovery stores no competing business result or chunk history.
-
-The operation catalog owns result nullability for execution, durable replay and
-the remote Go client. A required response cannot become a successful null; a
-Session without a Goal returns null through `goals.get` in both bindings. Receipt
-and remote decoders require the declared fields before accepting typed values.
-Diagnostic Tool results remain opaque JSON, where null is a valid value.
-
-Interaction known-usage accounting now consumes its exact persisted physical
-endpoint response, not the outer operation's response metadata. Successful output
-still supplies the semantic message; usage, model identity and context calibration
-come from the captured provider evidence. Failed outer operations retain physical
-known response/usage even if the outer response is absent. No complete endpoint
-evidence means no guessed usage, and a read/publication failure remains explicit.
-The existing single completed/failed fact advances accounting once; there is no
-second metering event or aggregate writer. Model-call sequence and prepared context
-checks still fence duplicate accrual. Production execution requires the evidence
-reader, with no compatibility path that accepts outer-reported usage.
-This closes the current transparent single-call Interaction case. Auxiliary/global
-usage aggregation, crash reconstruction of aggregate projections and multi-call
-composition metering remain explicit follow-up work.
-
-Core 2026-10-14.24 adds modelInvocations.endpoints, with parentCallId identifying
-the logical caller or its immediate parent. The same model_invocations journal
-now distinguishes logical Interaction observations from actual endpoint admission
-through endpoint_json. Every real primary/auxiliary/Memory chat request is
-recorded before I/O with its own identity, original caller/origin/parent, exact
-provider/model and frozen Scope request. Reusing the same logical model call cannot
-start another endpoint. Request model overrides cannot replace the captured route.
-
-Endpoint response, usage and reasoning are committed beneath remote observation;
-outer observer failure cannot rewrite a known completed endpoint. The original
-request/response JSON remains available through public Go/TS query without another
-numeric conversion. A complete source response accompanied by failure remains
-failed with known evidence; absence of a complete response remains unknown. Lazy
-streams publish nothing before consumption. Early stop retains a complete known
-response where available, but never asserts operation success. Startup reconciles
-unobserved endpoints as unknown before Run recovery and never replays them.
-
-The exact host schema adds endpoint metadata/ancestry and permits observations
-without a Run. Former schemas are refused without conversion/deletion; preserve
-them separately and use a fresh directory. Backend/private receipts are unchanged.
-Existing Run list/trajectory/export retain their logical observation contract;
-endpoint export/lifecycle retention and wider physical-call accounting remain
-explicit follow-up work. The operational journal does not authorize Tool
-or conversation continuation and is not a recoverable provider receipt.
-
-Auxiliary title, compaction, skill mining and Memory utility work now consume the
-same public observer choice. AuxiliaryResolver returns a captured model and a
-required release function. Complete releases after response validation; Memory
-holds one capture across extraction/curation and releases it only after its callback
-grant has canceled and joined. Observer captures register their exact releases at
-the existing installation admission point. HeldDependencies projects that live
-ownership into installation quiescence/retention; closing first cancels and joins
-all active model calls, then removes the held capture. A released model explicitly
-refuses further calls, and composition changes affect only subsequent captures.
-
-Public model callbacks now derive each command's call-scoped identity while
-preserving the original origin and parent. Distinct extraction/curation requests
-share their maintenance parent without sharing a model invocation identity. Unary
-and streaming next keep an already matching call identity. Memory's private
-two-external-call admission and original receipt recovery remain authoritative;
-receipt lookup does not acquire a new utility model or repeat an unknown call.
-Durable per-inner-invocation accounting/evidence remains separate unfinished work.
-
-Interaction consumes the public flame.model-observers.v1 decoration contract.
-Staging captures its stored outer-to-inner installation/release/contribution/export
-bindings and folds them into deployment identity and installation retention.
-Checkpoint model_observers records the same order; restoration validates those
-original bindings without reading current composition choice. Former checkpoints
-without this field are refused without conversion or deletion.
-
-The first production contract is transparent observation. Each layer receives a
-call-bound next to the remaining captured chain on the existing callback endpoint.
-It permits one unchanged request/continuation, exact response and ordered canonical
-chunks; another request or changed outcome is refused. This restriction belongs to
-this observer contract, not all decoration. No independent command receipt, Tool
-loop or model history is added. Unary inner evidence survives outer failure; stream
-chunks retain actual consumer backpressure, usage and cancellation. Early stop
-cancels and joins the original producer. Non-streaming providers remain non-streaming.
-The physical adapter is checked with real SDK HTTP callbacks and installed release
-identity; full native production qualification remains final work. Admitted request
-transformation, multiple separate inner invocations and transitive dependency
-retention/status remain open.
-
-Core 2026-10-14.23 adds plugins.listCompositions, plugins.setComposition and
-plugins.resolveComposition. The consumer supplies the complete decoration contract
-and explicit outer-to-inner members; Runtime persists one atomic ordered choice.
-Resolution freezes installation/release/contribution/export identities in that
-order. Updating the choice affects new bindings only. A missing, disabled or
-contract-mismatched selected member refuses the whole composition, including an
-optional declared dependency; it never silently removes a member. Empty configured
-chains are explicit, and required dependencies refuse absent or empty chains.
-Named setup dependencies use the same ordered composition owner and existing
-activation-cycle checks. Go and TS management entrances share Delivery. Interaction
-now consumes this ordered choice through transparent production model observation.
-
-The exact host schema adds plugin_compositions. Preserve former host data separately
-and use a fresh data directory; Runtime refuses former schemas without conversion
-or deletion. Plugin private receipt formats and backend protocol remain unchanged.
-
-Core 2026-10-14.22 adds model invocation knownResponse as the original complete
-Scope JSON string for a failed outer operation with validated inner completion.
-Interaction commits one failed fact containing that response and its accounting;
-unary response-plus-error and canonical stream completion followed by outer error
-both retain known usage/model/reasoning evidence. Incomplete output remains separate.
-The Run stays failed, and Tool calls/messages from the failed outer operation do
-not enter executable continuation. The existing model invocation row owns the one
-monotonic transition; list/trajectory/export are read projections. Export capacity
-counts the retained response bytes. A restarted host reads the same evidence.
-
-The exact host schema now includes known_response and permits failed-call usage
-only with validated matching response evidence. Former host schemas are refused
-without conversion or deletion; keep them separately and use a fresh data directory.
-Rebuild Go/TS consumers together. Plugin backend/private receipt formats are unchanged.
-This evidence boundary does not yet complete installed decorator selection/retention,
-multiple inner invocation identities or production remote composition.
-
-RPC parameters and `_meta` use exact, case-sensitive schema field names. Unknown members, duplicate members, invalid Unicode, trailing JSON values, and explicit `null` in typed fields are rejected. Omit optional fields; use the declared change variants to clear configuration. Opaque tool arguments may contain `null`. Clients must not rely on case folding or replacement of malformed text.
-
-Go consumers accepting authored JSON use `protocol.DecodeRequest(encoded, &request)`
-before invoking either binding. It shares the transport's strict decoding and generated
-value validation, preserves opaque numeric evidence, and leaves the target unchanged on
-failure. Required JSON fields must be present even when their value is false or an empty
-collection. Ordinary JSON decoding can erase omissions and explicit nulls before the
-binding observes them.
-
-The shared TypeScript client validates request parameters through the generated method
-contract before reserving a mutation identity or sending a request. Authored-value
-consumers use `checkRequest` from `@flame/runtime-contract/client/request` for the same
-validation and typed result. Typed request objects reject unknown members at every
-depth; declared maps and opaque tool arguments keep their own keys. Shared result
-shapes continue to accept additional fields. Request metadata is validated before
-publishing the request identity or calling the transport. OpenRPC derives closed
-request components, including `_meta`, from the same wire graph used by the
-generated client checks; its result references retain the reusable schema shapes.
-
-## Provider management clients
-
-The shared TypeScript client exposes `plugins.listProviders` and
-`plugins.selectProvider` as the same query/command catalog entries used by Go and
-CLI. The built-in graphical package manager displays recorded choices, including
-missing/disabled selected candidates, and submits explicit role/installation/
-contribution changes. It never infers selection from enablement or picks a default
-candidate. The Runtime selection owner continues to validate and persist the choice;
-existing execution retains its captured binding set. No protocol/storage change.
-
-The graphical dependency inspector uses the public current requirements query and
-labels its accepted read as the last inspected snapshot. Unknown selection outcomes
-retain their original command key and retry closure. Actual graphical execution and
-cross-reload recovery remain final-verification obligations.
-
-## Protocol 2026-10-13.10
-
-Component declarations admit workspace scope and an optional generic `material`
-navigation key. Graphical components receive a captured public workspace reference
-and file-focus intent, without private stores or application aliases. The Diff
-component calls canonical `workspace.diff.get`. Its HTML/carrier and duplicate
-`plugins.readDiff` request/bindings are removed. Rebuild clients and installed
-artifacts together. Business storage and workspace authority are unchanged.
-
-## Protocol 2026-10-13.9
-
-Usage is an ordinary installed React component. It reads the public `usage.summary`
-operation through the explicit SDK Runtime client, with cancellation and I/O joining
-owned by its component lifetime. The former `plugins.readUsage` wrapper/request,
-closed usage view kind, HTML resource and graphical carrier adapter are deleted.
-Rebuild clients and installed package artifacts together. Accounting and business
-storage formats are unchanged.
-
-## Protocol 2026-10-13.8
-
-Client components may omit their own callable contribution. The public SDK admits
-that context for component-only content and refuses `bindOperations` without a
-binding. An explicitly authored empty, null or unknown contribution remains invalid.
-The bundled icon gallery now ships ordinary ESM and uses shared React/UI controls;
-its static HTML resource, carrier branch and closed view enum are deleted. Rebuild
-all clients and plugin artifacts together. No business storage format changes.
-
-## Protocol 2026-10-13.7
-
-Release projections include public `components`. A workspace component references
-one same-release callable contribution and prebuilt namespace-local ESM export.
-`plugins.openResources` owns a live Core subscription; its ephemeral capability
-permits ordinary module/asset GETs through `pluginResources`. Each asset read
-still enters `plugins.readResource` under the captured caller, rechecks the exact
-current enabled release/component, and verifies package integrity. Closing the
-subscription or Runtime cancels access without persisting a grant or holding an
-execution dependency. The asset URL contains no persistent Runtime bearer token.
-
-The browser/Wails workbench builds an import map over actual shared module exports
-and loads the declared component in its own React tree. Supported registrations,
-observation and owned calls retire through Dougong; ESM evaluation is not unload.
-A changed evaluated release or Runtime generation requires a window reload.
-The current slice declares the installation-scoped Reviews workspace board;
-remaining action placements and final component acceptance still require
-migration. Compilation and bundle mapping do not establish rendered acceptance.
-
-
-`plugins.call.contract` is the owner's complete canonical JSON string. Client
-serialization must preserve it as a string; parsing a schema into JavaScript
-numbers can round large integer limits and change its exact identity. Go typed
-bindings and generated feature `CAPABILITY_JSON` supply that original contract.
-Runtime parses and admits it through the same pure capability owner. The former
-object request shape is removed; clients and backend packages must be rebuilt.
-
-Plugin release projections include required `points` and `pointValues` arrays,
-and `plugins.resolvePoint` resolves the admitted consumer-owned value contract.
-Point contracts in both arrays and the query are canonical JSON strings, preserving
-numeric schema limits through Go, CLI and TypeScript serialization. The built-in
-manager inspects a reviewed target, attributes and explicit order without activation;
-results are labeled as the last inspected snapshot. No former object reader remains.
-Core clients must rebuild against the generated current shapes; backend callable
-contracts use their independent current backend protocol identity.
-
-## Main Steer identity change integrated in Core .31
-
-For Steer, a pure `runs.getAcceptance` `notRecorded` read nominates
-`candidateUserItemId` from the original command key. The opaque candidate does
-not establish acceptance. The SDK persists it before dispatch and publishes it
-through `SteerMutationPromise.inputIdentity`, so an exact committed User Item can
-arrive before ACK without creating a duplicate input. Steer SDK results distinguish
-`accepted` from `retired`; retired material cannot prove application or rejection.
-
-Session snapshots expose `steerInputs` for all accepted inputs whose original
-material remains present, including inputs already applied. The former
-`pendingSteers` field is removed. ACK proves original Segment admission, and the
-exact committed User Item proves model-context application. Full snapshot reads
-restore that same origin after reopening; payload equality never identifies a command.
-
-The SDK journal now requires `steerItemId` (null before nomination and for other
-commands). Former entries without this field are refused and preserved without
-conversion. Resolve pending commands with their owning client build before
-replacing it. Rebuild Runtime and clients together for this protocol change.
-
-## Public command admission (Core .31)
-
-Public Start, Resume and Steer commands require a caller-retained idempotency key.
-The shared Endpoint rejects an absent key before invoking the command. Retain the
-exact request and discovered store namespace before dispatch; use them for lookup
-or original-command redelivery after an uncertain acknowledgement. Go and HTTP
-bindings enforce the same contract. Internal Goal and automation origins retain
-their existing acceptance owners. Rebuild Runtime and clients together.
-
-The SDK journal freezes Run command metadata with its original parameters,
-including admission capabilities. Changed client preferences cannot change the
-original command on redelivery. Former entries without metadata are refused and
-preserved without conversion; resolve their pending commands with the owning
-client build before replacing it.
-
-## Protocol 2026-10-14.1
-
-Start and Resume use one Run-owned command acceptance. A keyed Resume commits
-its request fingerprint and original Run, Segment, and optional input Item
-references with the complete answer set, resumed tree, and requested standing
-rules. Redelivery reads that immutable acceptance before current prompts or
-execution preparation; it never allocates a replacement opening. Delivery no
-longer reserves or caches a separate Run-stream response.
-
-Keyed Steer commits its immutable input and reserved Item reference with the
-Scope Signal head and pending execution context. Its acceptance query returns
-that original input and, when present, the exact applied User Item. The SDK
-`runs.recoverCommands()` enumerates frozen original Start, Resume and Steer requests
-after application restart, reads their receipts without dispatch, and retains explicit
-original-command retry authority for inconclusive reads. The SDK journal persists the
-complete prepared request before dispatch. Explicit replay keeps its original key,
-namespace and deadline; it never reads changed drafts or reviewed answers. Accepted
-openings recover observation through Session snapshots and the existing subscriptions.
-The former Steer-only SDK journal shape is rejected and preserved without migration.
-
-`runs.getAcceptance` requires the original `namespace`, `key`, and `operation`
-(`start`, `resume`, or `steer`) as query parameters. It only reads. `accepted` includes
-the original opening references and a consistent current Run projection;
-`retired` retains those references without material. Deleted material cannot
-be relinked by importing the same Run ID. `notRecorded` describes this read
-and says nothing about an invocation still in flight. Namespace mismatches,
-operation conflicts, and inconclusive reads remain errors.
-An optional captured start `request` verifies the original admitted meaning,
-including its execution capability context. Plugin callbacks retain their
-installation-scoped key; lookup cannot read another plugin's command by spelling
-the same logical key. A changed captured request conflicts even after retirement.
-
-Only the original material and Segment may supply a redelivery stream. A later
-Segment, waiting or terminal Run, retired material, or unavailable replay cursor
-returns the original acknowledgement with no replacement stream. A client uses
-existing snapshot and subscription reads for the current lifecycle. Observation
-defects remain errors and never overwrite acceptance.
-
-Rebuild Runtime and its clients together. The former cached Resume response
-policy and acceptance query shapes are removed without compatibility readers.
-
-## Plugin backend 2026-10-13.4
-
-Memory Run-context reads use the same generated published capability as external
-consumers. The prompt composer receives only ID/content/pinned/ordering-time
-projections; it cannot restore or advance a private Memory entity. Active target
-checks, search bounds, optional absence, operational errors and the existing prompt
-budgets retain their behavior. Model resolution returns the model adapter's
-`TextEmbedder` port, without a dependency on a feature application interface.
-The feature-specific callback grant cutover remains separate work.
-
-Memory and Schedules are optional, complete managed plugin backends. Their
-Local contribution declarations bind independent IDs to exact contracts and
-server exports; there is no closed service-kind routing enum. Product composition selects
-an exact installation/contribution independently of its enablement. More than
-one candidate may be enabled; absence, disablement or removal of the selected
-provider never chooses another one. Human
-commands and installed components use the same backend as model Tools and maintenance.
-The host retains no Memory ledger or Schedule store. With no available selected owner, human
-operations return `plugin_unavailable`; optional Memory context is absent.
-
-The generic MCP connection owner validates only captured source, configuration
-and session authority. Feature tool preparation belongs to the actual feature
-adapter: Memory captures workspace/model collaborators and Schedules observes
-dispatched calls to invalidate reads. Preparation does not hold an installation
-lock across I/O. The source and cancellation state are checked again before the
-prepared call runs; withdrawal releases acquired collaborators without invoking
-the backend or publishing a dispatch observation. Read failures and concurrent
-cancellation preserve both causes. A failed or lost reply still releases the
-Memory callback and invalidates Schedules reads. An unconfigured embedding role
-permits keyword retrieval; an unexpected resolver failure remains an error.
-
-The public `plugin.Callbacks` binding owns one lazily opened loopback endpoint for
-this Runtime instance. MCP session retirement withdraws its callback references,
-cancels all admitted sibling calls before joining them, then closes the backend
-transport. Memory search and maintenance use this same unary binding and own
-their model budget in Memory's RPC adapter. Public typed operations can bind
-other call-scoped collaborators without importing Memory. Bootstrap publishes
-the canonical RPC/SSE handler exactly once after the one Delivery Endpoint is
-built and before workers start. `OpenRPC` captures that transport's call lifetime;
-backend authors use `ConnectCallback` and the ordinary typed Runtime Client.
-Closing a client detaches observation; callback retirement cancels and joins its
-stream source. Message limits bound replies/frames, not an entire stream.
-Memory search/maintenance and Schedules dispatch pass ephemeral callback references
-through MCP metadata, outside business input and durable host routing/private
-receipts. Receipt lookup and completed Memory maintenance redelivery require no
-new callback grant. Current command tables name that input `business_input_json`;
-former call-context input schemas are refused without changing retained evidence.
-The Schedules executable uses the ordinary Client to query `runs.getAcceptance` with its namespace, actor-scoped key, start operation and original `runs.start` request, then submits
-the captured `newSession` only when no acceptance exists. Runtime commits the new
-Session, Run and command acceptance atomically. Opened and retired acceptances
-settle the same private pending work without recreating deleted material.
-The actual managed connection supplies the installed actor; Runtime rechecks its
-release and source authority inside the opening transaction. Logical command
-keys are scoped by installation independently of activation and release.
-Installed dependency rendezvous, canonical model execution and streaming
-decorators remain open parts of the refactor.
-
-`plugins.listProviders` and `plugins.selectProvider` expose the same composition
-owner through the Go binding and Runtime Protocol. CLI uses `plugins providers`
-and `plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory-provider"}'`.
-Selection changes future resolution, preserves each provider's private data and
-never retargets an original command or its receipt. Distribution selects initial
-providers by configured package/contribution once in its initial transaction;
-restart preserves later choices. The provider-selection table is a strict host
-schema cutover, requiring a fresh directory while retaining the old one.
-
-These commands use `ownerResponse` idempotency. The Runtime store namespace and
-logical key identify a durable original route, including installation, release,
-method, admitted input and exact public method contract. The backend persists its
-transition and reply together; after dispatch admission the host reads only the
-original receipt and validates it against that captured contract. A missing or
-unreachable receipt remains unconfirmed and never permits resending the mutation.
-The former route encoding without a method contract is refused without conversion.
-Run acceptance remains a separate
-Runtime fact, recorded atomically with its opening. Already accepted automated
-Runs survive backend disable and can be reconciled after restart.
-
-Protocol `2026-10-13.2` adds mutually exclusive existing-Session and captured
-new-Session targets to `runs.start`, and optional original-request verification to
-`runs.getAcceptance`. Captured openings require an idempotency key. The former
-automation opening API and receipt table are removed. Schedules binds its private
-pending work to one Runtime store namespace before capture; attaching that private
-directory to another Runtime store is refused. Old host schemas containing the
-automation receipt table and old Schedules schemas without the namespace binding
-are refused before conversion. Retain those directories and use fresh ones.
-
-Build target-specific backend packages from the repository's `go.work` using
-[the first-party package workflow](../plugins/README.md). Their executable sources
-share this application module; they require no published first-party module graph.
-Rebuild Runtime, CLI and Desktop together. This is an intentional pre-release
-schema break: use a fresh
-Runtime data directory and retain the old directory separately. No old Memory or
-Schedule tables are imported, decoded or maintained in parallel.
-
-## Component-only packages
-
-A namespace declaration may publish ordinary `components` without callable
-contributions or a backend process. Each component declares installation, workspace or Session scope,
-workspace placement, a namespace-local prebuilt ESM entry and its export name.
-An optional `contribution` binds an existing callable contribution from the same
-release. An authored unknown or malformed callable ID is refused; absence is valid
-for content-only components. Runtime admits resources without executing module code.
-The optional icon gallery is the first bundled component-only package. Its former
-static HTML view kind is removed. Graphical clients use the same subscription-owned
-exact-release module resources and shared React/UI graph as the Reviews Board.
-Diagnostics is an ordinary component consuming an explicit public client-telemetry
-collaborator; no Runtime diagnostics view kind or HTML resource remains. Its local
-buffer and Runtime accounting retain their separate owners.
-
-## File components
-
-The optional [File renderers package](../plugins/file-renderers/plugin.json) supplies
-ordinary prebuilt ESM components. Each uses `scope: "file"`, `placement: "fileRenderer"`
-and an exact normalized file-extension `selector`. These selectors are not admitted
-through the former HTML renderer declaration. Invalid scopes, missing selectors and
-callable-resource mismatches are refused during metadata admission without evaluating
-module code. Selector projections are detached from admitted immutable metadata.
-
-Runtime still owns file access. The client supplies one frozen accepted read, with its
-workspace, path and bounds. Navigation never replaces that captured data. Ambiguity,
-partial/truncated reads, loading, failure and withdrawal retain the existing source
-presentation; line navigation begins in source mode. Shared React/SDK/UI and exact
-release resource leases are the same as for other installed components.
-
-## Tool-result components
-
-The optional [Tool results package](../plugins/tool-results/plugin.json) supplies
-ordinary components with `toolResult` scope and `toolResultRenderer` placement.
-An exact display-name or known result-shape selector chooses presentation; it grants
-no Tool invocation or historical replay authority. Runtime admits ESM resources and
-immutable selector metadata without evaluating code. The generic HTML renderer
-vocabulary and read operation are removed.
-
-The client captures one frozen settled transcript projection. Exact-name matches
-precede shape matches; equally ranked candidates use generic inspection. Running or
-absent results stay generic. Inspection remains available during loading, failure,
-revocation and connection replacement. Current installed renderers may inspect old
-results, but opening history never downloads or evaluates historical producer code.
-
-## Protocol 2026-10-11.1
-
-`usage.session` now returns `SessionUsage`: its `byModel` value is a list of
-`UsageBucket` records keyed by the exact `provider/model` pair. Session and summary
-reports use the same Runtime-owned aggregation and order: cost descending, input
-tokens descending, then identity ascending. CLI and Desktop consume that order.
-Run metrics retain model-name maps local to the Run's selected provider. Qualified
-aggregate identities therefore do not inherit the length limit of a single model name.
-
-Rebuild Runtime and clients together. The former Session model-name map is removed
-without an adapter. Existing Run records require no conversion. Goal cost and steps
-also include retained delegated Runs through their root's Goal incarnation; its Run
-count continues to describe root executions. Previously omitted spending is reflected
-when the Goal is next read, including after restart.
-
-## Protocol 2026-10-10.8
-
-MCP status describes only the connection supervisor's live outcome. The retired
-`mcp_release_unavailable` and `mcp_backend_unavailable` status categories no longer
-appear in the contract. Plugin realization remains the authority for current release
-and backend availability. A refused new launch settles as `mcp_configuration_failed`;
-reading package availability cannot mark an existing admitted connection as failed.
-Rebuild Runtime and clients together; older protocol versions are refused. No storage
-schema changes or data conversion are required.
-
-## Workspace Diff component
-
-The optional [Diff package](../plugins/diff/plugin.json) reads canonical
-`workspace.diff.get` through the public SDK's captured workspace context. Runtime
-owns workspace confinement, Git baselines and file/row/byte limits. Structured
-renames, binary evidence and whole-file truncation remain lossless public data.
-
-Host owns the current workspace reference and file-focus revision; changes retire
-that rendering instance and cancel its reads. The component owns comparison mode,
-layout, filtering and folding. A file-focus activation starts a fresh working-tree
-comparison. The former Host diff-mode preference is removed. Failed baseline reads
-retain the last accepted comparison and label its actual mode.
-
-The component declares `material: "diff"` for the existing workspace navigation
-consumer. That consumer opens the catalogue if no or several admitted candidates
-exist. Generic loading does not interpret the key. Disablement/uninstall withdraws
-presentation/resources while canonical workspace files, Git and Tool evidence remain
-with their original owners. There is no HTML guest or feature-specific read wrapper.
-
-## Protocol 2026-10-13.15
-
-The optional [Skills component](../plugins/skills/plugin.json) directly consumes
-canonical discovery, document, managed-library and proposal operations through the
-public SDK. Captured workspace references and proposal revisions remain with their
-existing owners. Personal library inspection works without a workspace. Archive and
-restore affect only user-managed Skills; installation-provided enablement belongs
-to package configuration. Confirmed commands reread the owner, and uncertain replies
-retain their original mutation key and retry closure before further commands.
-
-The component observes existing skills/plugins/file notices through the public
-Runtime subscription, captures its workspace watch and cancels/joins both notices
-and reads on retirement. Read failure retains the accepted same-target snapshot.
-Switching catalog or document cancels the old read and clears its presentation.
-Proposal confirmation displays its captured instructions and revision; concurrent
-replacement remains an explicit revision conflict.
-
-The Skills HTML/view kind, dedicated plugins.readSkills/readSkill/readSkillLibrary/
-readSkillProposals operations, private Desktop controls/curation generation and
-unused catalog query projections are removed. Rebuild Runtime/CLI/TS/SDK/Host and
-installed artifacts together. Disablement/uninstall withdraws component resources;
-managed Skills, proposals, published documents, discovery and mining remain with
-Runtime. Backend .4 and persisted Skill formats are unchanged. Final installed and
-cross-generation recovery execution remains queued.
-
-Native acceptance also repairs recalled-memory composition: recall annotates the opening
-User message after its authored parts, and the existing opening write-set persists that
-exact message. It no longer introduces a separate unpersisted conversation entry or
-replaces the input committed by Run admission. Durable-context equality remains enforced.
-
-## Usage component
-
-The optional [Usage package](../plugins/usage/plugin.json) reads the existing public
-`usage.summary` owner. Runtime interprets all-time, seven-day and thirty-day periods
-and folds retained physical model attempts once, including main/delegated,
-auxiliary, active, Session-only and unattached calls. The component renders known
-token totals, a priced subtotal and coverage counts, grouped by exact provider/
-served model, admission UTC day, calling origin or Run/Session association.
-Unreported usage, unknown outcomes and absent pricing remain explicit; recorded
-zero stays zero. Local grouping/filtering cannot change accounting.
-
-An owned request cancels when its selected period changes or the component retires.
-Failed reads retain the last accepted report and label its actual period. Refresh
-reuses the selected query. Disablement/uninstall withdraws presentation and resources
-without changing accounting. There is no view-specific usage query or HTML guest.
-Rebuild the prebuilt ESM and explicitly select the changed package release.
-
-## Protocol 2026-10-14.7
-
-Core removes schedules.list and its Go/TS binding, delivery handler and selected-role
-forwarding read. CLI catalog readers now capture a public installation/contribution
-binding and call the publisher's typed list operation through plugins.call for every
-page. Publisher Go contracts generate canonical JSON, TS and the CLI Go projection
-from one source, preserving integer bounds and optional values. Metadata/contract
-mismatch or withdrawal is an explicit failure; a later selection cannot retarget an
-in-progress traversal. No old reader or compatibility alias remains.
-
-Rebuild generated consumers. Backend wire stays 2026-10-14.2; business/storage
-formats stay unchanged. Schedule mutation Core facades remain real consumers until
-those owning migrations preserve original command/binding recovery. Full native
-execution, external author packaging and final full/vet/race checks remain open.
-
-## Protocol 2026-10-14.6
-
-Core removes `plugins.renameSession`, the special Go/TS/CLI wrapper, release action
-array and title-only DTO/operation enum. Rebuild generated consumers and reinstall
-Trajectory with its `sessionAction` component export. Old closed action declarations
-are refused without aliases or a compatibility reader. The ordinary component and
-existing CLI Session rename enter canonical `sessions.update` with the inspected
-revision and original command identity. Unknown acknowledgement never becomes another
-method, target or successful receipt. Former uncertain wrapper requests are retained
-as their original evidence; they are not translated into new Core commands.
-
-Backend wire remains 2026-10-14.2. Private business/storage formats are unchanged.
-Final canonical receipt/restart execution, supported native component acceptance and
-full/vet/race verification remain open. UI/E2E execution is excluded by the task.
-
-## Protocol 2026-10-14.5
-
-Core removes `plugins.readRenderer`, its Go/TS binding, HTML resource DTO and release
-renderer array. Renderers now declare ordinary components with file/toolResult scopes,
-technical placements and selectors, using the common exact-release resource lease.
-Rebuild all generated consumers and reinstall Tool results at the new digest. Former
-HTML declarations, resources, readers, builders and browser/native guest machinery
-are removed without aliases. The shared UI guest theme/bootstrap exports are removed;
-external UI authors must use ordinary shared provider context. Backend wire remains
-2026-10-14.2; private business formats and recorded results remain unchanged.
-
-Native component acceptance and final full/vet/race verification remain open. Optional
-renderer failure preserves recorded data inspection. Contextual action/Core facade
-migration remains separate work with the existing business/receipt owners.
-
-## Protocol 2026-10-14.4
-
-Core adds optional component selector metadata and file scope. Rebuild generated
-Go/Protocol/TS consumers and reinstall the File renderers package at its new digest.
-The former file HTML declaration, resource, builder and graphical carrier are removed
-without an alias or old reader. Markdown is an ordinary ESM component using frozen
-public captured-file data. Contextual actions remain separate migration work. Backend wire remains 2026-10-14.2; private business formats do not change.
-Native loading/retirement acceptance and final full/vet/race verification remain open.
-
-## Protocol 2026-10-14.3 and plugin backend 2026-10-14.2
-
-Background setup resources implement the public ActivationResource. The connection
-supervisor completes setup before calling Activate; an activation attempt starts
-at most once and failed/withdrawn lifetimes cancel and join their resources. Setup
-itself does not advance business work. Current compiled packages must implement the
-new activation frame and exact five-method Schedules contract.
-
-Schedules owns its minute wake-up, bounded private claim/recovery pass and original
-Run acceptance reconciliation. Every enabled declared background entry operates its
-own installation independently of provider selection and graphical entries. The
-host scan driver and Bootstrap worker/join are removed, with the former public
-scan/dispatch methods. Manual recovery reads the original private command input and
-commits acceptance plus original runNow reply through the existing private owner.
-Edits/deletion do not rewrite captures; independent accepted Runs stay in Runtime.
-
-plugins.notifyChange accepts no business value or installation identity. A managed
-callback's authenticated Actor must own that enabled release/server/contribution.
-It publishes the existing outcome-free resync invalidation, allowing readers to
-reread unknown plugin-owned dependencies without a new event bus or result store.
-The public Go callback client is the real production consumer; source coverage scans
-actual backend/CLI bindings without operation exemptions. Native lifecycle, enabled
-non-selected installation and cross-generation acceptance remain final verification.
-Rebuild Core/Go/TS/SDK/installed packages together; old frames and original routes are
-refused rather than converted. Business data formats remain unchanged.
-
-## Protocol 2026-10-14.2 and plugin backend 2026-10-14.1
-
-Callable contributions may explicitly declare background activation. Setup receives
-that entry's immutable installation target and an activation-owned Runtime callback.
-Connection publication still waits for declared dependencies and successful setup;
-background resources are canceled and joined on session withdrawal. This does not
-create another installation-enable or provider-selection owner.
-
-The callback's Actor comes from the connection owner. A backend may supply its
-retained invocation through the public callback client context; original human/model
-identity must match an already dispatched host command's installation/release/server
-and complete invocation. Fresh automatic work is restricted to that installation
-and cannot invent a retained parent. The routing owner validates and projects the
-caller without copying its business result or advancing command state.
-
-Schedules declares this role and checks the attached Runtime namespace during setup
-without binding or modifying private work. Its callback connection is joined before
-the private database closes. Its existing host scan driver still owns scheduling;
-the subsequent cutover must move the loop/clock and captured recovery into the backend
-and delete the driver and retired scan/dispatch exports together. No second loop is
-introduced by this activation slice.
-
-Known business refusal is capability.Refusal, independent of MCP. The former
-plugin.Failure Go type is removed, with all in-repository callers migrated.
-
-Rebuild all Go/Protocol/TS/SDK/installed packages together. Current backend description,
-setup and generated feature contract identities use 2026-10-14.1; former frames and
-routes are not converted. Retain former data directories separately for this breaking
-pre-release change. The five CLI-consumed Schedule Core facades remain migration work.
-
-## Protocol 2026-10-14.1
-
-The optional [Schedules component](../plugins/schedules/plugin.json) binds its own
-admitted installation/contribution and generated complete capability. Its canonical
-backend results supply lists, exact revisions, captured workspace/model choices and
-cron times. Add/edit/toggle/delete and complete manual run use that same public
-installed entrance. Unknown commands retain their original key/retry closure; owner
-notices reread accepted data without creating optimistic business outcomes.
-
-Templates are Schedules-owned component source, copied into an explicit new draft.
-They are not generic package metadata or persisted schedule references. The component
-uses public model choices and captured optional workspace data. Failed pagination
-retains the accepted page/cursor, and editing keeps the inspected revision until
-submission. Concurrent edits remain business revision refusals.
-
-The final Views declaration, Domain model, Protocol projection, readView/readSchedules
-operations, generated contracts and HTML build path are removed. The generic loader
-has no remaining business view cases or Schedule-domain import for templates. Rebuild
-Runtime/CLI/TS/SDK/Host/packages together; backend .4 and private data formats remain.
-Human action migration remains separate ongoing work. The current
-background role still requires its backend-owned lifecycle cutover and full native
-acceptance; component/build evidence does not close that requirement.
-
-## Protocol 2026-10-10.3
-
-The published Memory list returns its generated page/snapshot values, with target-bound
-sort-position cursors and at most 100 items per page. CLI and shared-client collectors
-traverse the complete bounded target. The former `{items}` response is removed.
-The optional [Memory package](../plugins/memory/plugin.json) is an ordinary component
-bound to its own installation/contribution and generated Memory capability. Reads,
-add/edit/pin/delete and human review use the public installed operation entrance and
-the backend's existing command/receipt owner. No plugin-specific readMemory wrapper,
-Memory view kind, HTML carrier or private Desktop mutation control remains.
-
-Client-scoped components capture optional Session/workspace targets from their existing
-owners. Memory keeps user scope available without a workspace and captures the project
-path before dispatch. Read failure keeps the accepted page/cursor; uncertain mutations
-retain their original command and block new changes. Ledger/publication/private data
-ownership remains with the Memory backend. Full cross-reload recovery stays queued.
-
-Superseded HTML handshakes and resources are removed without aliases.
-
-Trajectory components call the canonical `sessions.trajectory` request, including
-`includeDescendants`, bounded page size and cursor scope. The existing query owns
-capability admission and cursor validation. The component discovers negotiated
-subagent capability and retains that scope with its accepted pagination chain.
-
-The first-party [Session trajectory package](../plugins/trajectory/plugin.json) replaces
-the compiled Desktop Timeline. It is optional and uses ordinary package installation,
-explicit release selection and enablement. Its display, filters and current-page metrics consume
-canonical Run, model-call and Item evidence. Runtime owns execution and recorded evidence;
-the Host owns navigation, Run controls and complete Session trajectory export.
-
-Rebuild Runtime, the shared client, CLI and Desktop together. Earlier protocol versions
-are refused. Install the new package bytes from `plugins/trajectory` and explicitly select their digest;
-previously admitted immutable releases do not change when their source directory moves.
-There is no Timeline alias, fallback renderer or second trajectory query model.
-
-
-## Protocol 2026-10-09.1
-
-`UnresolvedEffect.output` preserves an observed Scope `chat.ToolOutput` from a
-`CallError`. The terminal Run owns this evidence across reads, restart and
-Session export/import. The wire and artifact carry its frozen JSON document as
-text, so clients cannot round numbers or discard framework fields while parsing
-and re-encoding it. Its presence establishes neither a final Tool result nor
-retry safety; model history never receives it as a settled ToolResult.
-
-The replay journal charges the complete unresolved-effect evidence, including
-diagnostics and frozen output, once at publication. Its replay window and live
-subscriber queues consume that same charge. An oversized event ends a subscriber
-and makes the earlier cursor unavailable; clients recover from durable Run reads.
-
-Rebuild the shared client, Desktop and CLI against this catalog. Earlier
-protocol versions are refused. Session artifacts use version 31 so an earlier
-importer cannot discard the new evidence. Effects without an observed output
-remain valid; there is no alternate storage reader or migration path.
-
-## Installed trajectory components
-
-Trajectory is an ordinary prebuilt React component with declared Session scope.
-The graphical navigation owner supplies its frozen Session ID through the public
-SDK. Reads enter the canonical `sessions.trajectory` operation; no plugin-specific
-trajectory query, HTML carrier or second history owner remains. Session replacement
-retires its observer and joins reads without changing retained Run evidence.
-
-The page owns filters and a cursor history for the last accepted bounded page.
-A failed read keeps that page and cursor. Descendant scope comes from public Runtime
-capability discovery and is captured for the complete pagination chain. The Runtime
-still owns cursor admission, redaction, retention and source evidence.
-
-## Protocol 2026-10-07.8
-
-`ApprovalModeResult.modes` is required: every default mode with the gate
-(`pass`, `prompt` or `deny`) it applies to write, exec and network tools, taken
-from the Runtime's own policy. Clients describe a mode from it instead of
-restating what each mode allows.
-
-## Protocol 2026-10-07.7
-
-`segment.finished` carries `run`, the RunRef the segment ended with, and
-`interrupts` when that Run raised them. Its former `outcome`, `metrics` and
-`contextTokens` are gone, and so is `SegmentOutcome`: the Run's own status,
-outcome, metrics and context footprint state the boundary, so a client
-replaces its Run instead of deriving one from why the segment stopped. A
-waiting Run without `interrupts` was suspended by another Run in its tree.
-
-## Protocol 2026-10-07.6
-
-`SkillProposal.scope` and `SkillProposalRef.scope` are `SkillProposalScope`:
-`project` or `user`. A proposal never joins an installed plugin's library, so
-the wire no longer admits `installation` there; a reference naming it is
-refused by request validation.
-
-## Protocol 2026-10-07.5
-
-Every problem that can end a Run, tool call or Item now publishes its default
-recovery action: the manifest's `runChannelTypes` entries carry
-`recoveryAction`, and the TypeScript contract exports `RUN_PROBLEM_RECOVERY`
-beside `PROBLEM_RECOVERY` for failed requests. The two differ for a type that
-rides both channels: an `internal_error` request stops, while a Run it ended
-can be prompted again. Clients take whether to offer a retry from these tables
-instead of keeping their own list.
-
-## Protocol 2026-10-07.4
-
-`SessionSnapshot.session` is required: the snapshot carries the Session it was
-read from, with its status resolved from the snapshot's own Runs. Clients take
-Session metadata from the snapshot instead of pairing it with a separate
-`sessions.get`, which could observe another moment.
-
-## Protocol 2026-10-07.3
-
-A resume that answers Questions commits the answers before its continuation
-opens, and the continuation now publishes each answered Question as an
-`item.completed` immediately after `segment.started`. A Question Item may
-therefore complete twice: once unanswered when its Run parks, and once with its
-answers when the Run resumes. Clients fold the second completion like any other
-Item; they no longer derive answers from the command they sent or re-read the
-Session to learn them.
-Resume acquires Session and working-tree admission before reading the open hand-off,
-its Items, or its parked Run tree. Run identity only locates that admission. A competing
-resume or cancellation therefore observes busy or a consumed hand-off, rather than
-combining an old waiting record with answered Items or a completed Run.
-Pending-interrupt pages read their waiting records, root Runs, and Items in one storage
-snapshot. A page already in flight remains coherent when a resume consumes its hand-off;
-the next page observes that consumption.
-
-## Protocol 2026-10-07.2
-
-`SkillProposal.origin` is required. The Runtime records why it created every
-proposal, so a proposal without a valid origin is not listed and a client never
-supplies a default. Older proposal files written without an origin are not
-listed; resubmit them.
-
-## Protocol 2026-10-07.1
-
-A Run tree's root alone carries the facts it owns for the whole tree: only a
-root `RunRef` has `protocolProfile`, and only a root `ArtifactRun` has
-`messageMark`; both are absent on children. Portable artifact Tool results are
-keyed by their owning Item. Older Runtimes and clients are refused by the exact
-protocol-version check, and older artifacts by their version.
-
-Rebuild and deploy Runtime, CLI, Desktop/Web, and generated contract
-consumers together. Trajectory inspection requires `sessions.trajectory`, and evaluation
-export requires `sessions.exportTrajectory`. Bundled clients reject an older
-Runtime through the existing exact protocol-version checks; an updated Runtime
-likewise refuses requests declaring an older version. There is no legacy endpoint
-fallback. The trajectory document has its own `schemaVersion`
-(`protocol.SessionTrajectoryVersion`), independent of the Runtime protocol and
-importable Session artifacts.
-
-Model invocation and Tool attempt `callId` values preserve the executor's exact
-identity: 1–256 ASCII letters, digits, dots, underscores, colons, or hyphens.
-Their wire validators are generated from the same rule used for persistence.
-Rebuild Runtime and contract consumers together after updating these validators;
-existing stored identities need no migration or rewriting.
-
-The protocol includes bounded `WatchSpec.paths` with advertised subscription limits,
-`checkpoint_conflict` for a safely refused file restore, and
-`prompt_source_too_large` for an AGENTS.md cascade that cannot be included whole.
-The existing Run, Segment, Item, and command identities keep their meanings.
-
-Portable Session artifacts carry `protocol.SessionArtifactVersion` and preserve
-unresolved-effect evidence for every terminal outcome. Any other artifact version
-is rejected; export again from the updated Runtime. The SQLite history representation is unchanged.
-Import retires the replaced Session's file checkpoints and isolated copy before
-committing its history. Artifacts carry no working-tree snapshots, so imported Run
-identities never grant access to a predecessor's file rollback boundaries. Use new
-Runs to establish new file checkpoints. Retirement failure refuses the import;
-a storage failure after retirement can leave the original history without those
-optional resources. Workspace files are unchanged by import.
-For a Session imported by an earlier build, submit a new import command to retire
-any retained file checkpoints. Replaying its earlier receipt performs no mutation.
-CLI attachment commands retain their prepared content with the original command
-and replay guard; an older dispatched or ambiguous command whose attachment bytes
-are unavailable remains unresolved and is never reconstructed from the current
-path. A queued command that has never been dispatched can still prepare its input.
+- `runtime.Runtime` is the concrete in-process binding; `runtime.Client` attaches
+  over HTTP/SSE. Both enter one Delivery Endpoint for validation, capabilities,
+  command identity, invocation lifetime, Application calls and error/event projection.
+- `protocol` owns binding-neutral requests, responses, events and validation.
+  [`contract/API_REFERENCE.md`](contract/API_REFERENCE.md) and the generated
+  manifest, OpenRPC and schema are projections of the operation catalog.
+- [`plugin`](plugin/README.md) owns public typed backend methods, streams,
+  receipts and captured host collaborators. [`capability`](capability/contract.go)
+  owns callable metadata; [`point`](point/contract.go) owns typed value points.
+- `localruntime` owns the executable/companion-package layout and credential handoff.
+  The Runtime process and clients consume that layout without checkout discovery.
+
+Installed operations enter `CallPlugin`/`StreamPlugin`, Protocol
+`plugins.call`/`plugins.stream`, or CLI `plugins call --request ...`. Typed Go
+bindings validate the complete consumer contract. The shared TypeScript client
+uses the same query and mutation owners. Input/output and stream values retain
+feature JSON source as described above. A query has no command identity; a
+mutation retains its exact installation, release, contribution, contract, method,
+input, target, origin and parent. Changed meaning conflicts with the original key.
+
+The backend commits its business transition and private receipt atomically.
+Runtime retains original dispatch/activation evidence, never a competing business
+result. After dispatch admission, original-command recovery queries that receipt;
+missing evidence remains unknown and cannot authorize another mutation. Partial
+stream output is observation, not a final receipt. Core Run acceptance remains
+with Runtime independently of a plugin's acknowledgement or availability.
+
+Memory and Schedules are ordinary selected contributions. CLI, workspace clients,
+Tools and components consume their published operations. Private Memory items,
+ledger, watermark and curation belong to Memory; definitions, cursors and captured
+pending work belong to Schedules. Core has no feature business facade or private
+feature store. Memory publishes its read capacity and owns its maintenance budget.
+Generic `plugins.dataChanged` invalidates reads without carrying business results
+or settling a command. `plugins.changed` describes installation lifecycle.
+
+## Selection, composition and host callbacks
+
+Enablement and selection are independent. `plugins.listProviders` and
+`plugins.selectProvider` inspect/change the explicit role owner; an unavailable
+selected provider never chooses another candidate. Composition operations retain
+an explicit outer-to-inner order. Frozen execution and setup dependencies keep
+exact contribution/export/contract, source authority and transitive release facts.
+Changing a choice affects subsequent captures. A missing selected member refuses
+its whole composition, including a previously bound optional dependency.
+
+The published selection, context, input, observation and Tool proposal contracts
+use the existing backend binding. Selection fixes the route before provider
+construction. Context and input policies prepare the actual model-visible request;
+media, byte/output and token admission see that final request. Authored conversation
+and retry identity remain original. Transparent observers receive one unchanged
+call-bound `next` and preserve canonical response/chunk evidence. Tool proposals
+may transform arguments while execution retains Tool identity, schema and approval.
+See the [public authoring contracts](plugin/README.md).
+
+`plugin.Callbacks` owns one lifecycle-bound loopback link. Bootstrap publishes
+canonical RPC once before backends can receive its reference. Nested operations
+inherit captured caller/actor authority and cancellation; each HTTP request owns
+its own transport metadata. Closing or replacing a session revokes its references,
+cancels admitted calls, joins them and then retires the transport. Runtime's
+selected-model collaborators share this link; Memory supplies its own private
+budget rather than changing the common callback contract.
+
+`plugins.resolvePoint` resolves consumer-owned schemas and applicability without
+activating code. Consumers choose explicit value order and interpret their own
+point semantics. Installation/release/value bindings are immutable projections;
+point resolution does not invent another composition or business-state owner.
+
+## Components and resources
+
+Packages publish ordinary prebuilt ESM exports using the public
+[`@flame/plugin-sdk`](../plugin-sdk/README.md) and shared UI modules. Components
+may be content-only or bind a same-release callable contribution. Workspace,
+Session, action, file and Tool-result placements use one component/resource path.
+The first-party catalog and independent Reviews author use this same entrance.
+
+`plugins.openResources` creates a live exact-release resource subscription. Each
+asset read rechecks the enabled release, component and package integrity through
+canonical Delivery. Closing the subscription or Runtime withdraws its ephemeral
+access. Asset URLs carry no persistent Runtime bearer token. The workbench's
+shared module graph supplies React, the SDK and UI; replacement of evaluated code
+requires a fresh window generation. Source/native compilation is not evidence of
+rendered interaction; actual acceptance status belongs in the refactor progress.
+
+File renderers receive a frozen accepted file read. Tool-result renderers receive
+settled historical projections and no invocation authority. Current renderers may
+inspect historical results without evaluating historical producer code. Loading,
+withdrawal and ambiguity retain generic inspection and existing source access.
+See [Desktop's component lifecycle](../desktop/README.md#installed-component-rendering).
+
+## Run commands and strict request identity
+
+Public Start, Resume and Steer require caller-retained idempotency keys. Preserve
+the exact request, capability metadata and discovered store namespace before
+sending it. Runtime owns one atomic acceptance with the Run/Segment opening or
+Steer input; redelivery reads it before current execution preparation.
+`runs.getAcceptance` is a read, not permission to repeat an unknown operation.
+Retired material retains its original references and cannot be recreated by import.
+
+A Steer acceptance nominates its exact User Item identity before application.
+`steerInputs` keeps accepted original inputs while their material remains; only
+that committed Item proves application at the next model boundary. Shared-client
+journals preserve request/metadata/item identity across restart. Incompatible
+journal and private checkpoint shapes are refused and preserved, without conversion.
+
+RPC parameters and metadata use exact schema names. Duplicate or unknown members,
+invalid Unicode, trailing values and explicit null in typed fields are refused.
+Go authored JSON uses `protocol.DecodeRequest`; TypeScript uses generated request
+validation before reserving command identity. Opaque feature JSON keeps its own
+numeric source and null semantics. Rebuild affected clients, contracts and component
+artifacts together when public shapes change.
 
 ## Portable plugins
 
@@ -1179,8 +238,6 @@ Current selection rows store contribution_id independently of server identity.
 Original command routes retain that ID, named export and complete capability
 contract alongside immutable provider/server/input evidence. Former host tables
 without these bindings are refused by exact-schema admission without conversion.
-Full public installed operations and component loading remain in the continuing
-cutover; this backend binding does not claim their implementation.
 
 Runtime owns plugin installations under its data directory. `plugin.json` uses Agent
 Plugins 1.0. Flame's `io.github.tangerg.flame` namespace contains one `declaration`
@@ -1228,9 +285,10 @@ URLs, HTTPS outside loopback). Package bytes are public content: static headers 
 environment values are never treated as secrets, so a credential reaches a server only
 through a declared input. Header and `authorization` inputs are admitted only as secrets;
 an environment input uses its declared `secret` flag.
-The Flame extension namespace supports `apiVersion`, `inputs` and `contributes`. Any other
-member, including capability `requests`, which this API version does not support, is reported as an `unknownField`
-diagnostic on its `extensionField` and ignored; it is never admitted or enforced.
+The Flame extension namespace names only its `declaration` resource. That file owns
+`protocol`, `inputs`, `contributions`, `contributes`, `points`, `pointValues` and
+`components`; presentation `contributes` admits themes. Unknown namespace fields
+are isolated as typed admission diagnostics, never interpreted as an older API.
 Relative source paths, absent or malformed mandatory manifests and unsafe or malformed archives
 return `invalid_params` without creating an installation. Filesystem and storage failures
 retain their own causes; component diagnostics continue to preserve valid siblings.
@@ -1372,7 +430,7 @@ Plugin and Skill read invalidations likewise follow the durable write, outside a
 and before realization. Withdrawal failure cannot suppress a committed change's notices;
 a refused write publishes none.
 
-Memory/Schedules human commands durably bind identity, method, admitted raw input and
+Installed commands durably bind identity, method, admitted raw input and
 original installation/release/server before network dispatch. The host records
 prepared, dispatch-admitted and observed evidence, never a business result. A
 dispatch admission is not proof that the backend received or committed the call.
@@ -1400,9 +458,9 @@ canonical identity. It imports no MCP transport or Runtime internals. The public
 `plugin` SDK, callbacks, actual feature bindings and generator consume that owner;
 installation domain code can admit a contract without activating a backend.
 Go API ownership changed without changing the backend protocol or wire identity.
-This storage shape requires a fresh Runtime directory; former digest-only command
-routing and private Memory/Schedules receipts are refused, as are bare-result receipts.
-Retain old directories separately; opening them performs no conversion or deletion.
+Core and private backend stores each admit their exact current schema and receipt
+contract. Preserve incompatible directories and use the owning binary to finish
+pending work; opening a directory never converts or deletes it.
 
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
@@ -1613,8 +671,7 @@ that is empty or holds exactly the current tables, indexes and triggers; any oth
 directory, such as one with former MCP, installation, OAuth or checkpoint shapes, is
 refused without modification, and no former shape is repaired in place. Pre-release
 storage compatibility follows
-[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). Continuation
-payloads no longer carry dependency bindings. Completed historical Tool content remains generic and readable.
+[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). Completed historical Tool content remains generic and readable.
 
 Stored current and historical Plans require a steps array; clearing a Plan records `[]`.
 Empty text and JSON `null` are invalid Plans. Run usage and frozen capabilities use
@@ -1865,7 +922,7 @@ not reclassified by inference. Explicit review can retain an existing pending co
 
 Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
 
-Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Telemetry retention depends on the configured exporter. Physical requests and known outcomes are separately recorded by the same endpoint observer used for Interaction, in the existing invocation journal. Session-associated records participate in trajectory/export and Session deletion; calls without that association are accessible by their original caller ancestry. Aggregate auxiliary accounting and unattached retention remain under development.
+Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Telemetry retention depends on the configured exporter. Physical requests and known outcomes are separately recorded by the same endpoint observer used for Interaction, in the existing invocation journal. Session-associated records participate in trajectory/export and Session deletion; calls without that association are accessible by their original caller ancestry. Physical evidence includes auxiliary consumption in public usage summaries; Run-linked calls accrue through the existing Run accounting owner, while unattached evidence is retained without automatic expiry.
 
 Auxiliary text generation uses Scope's `Client.Output` with its `Text` contract. Scope admits only naturally completed text and reasoning; refusals, media, and Tool calls cannot become summaries, memory, skill proposals, or titles by dropping their non-text parts. Runtime additionally rejects blank text and retains its resource limits and observation policy.
 
@@ -2537,221 +1594,43 @@ so the catalog is the same projection after restore or compaction. A layer with 
 deferred tools has neither `search_tools` nor the catalog message.
 
 
-## Physical model pricing and interrupted accounting
+## Physical model evidence and accounting
 
-Core 2026-10-14.26 adds optional `costUSD` to physical endpoint observations.
-The endpoint records the exact provider and served model's known price beside
-its response in the existing invocation journal. An absent price stays absent;
-reported zero remains zero. Interaction consumes this source price and no longer
-has an independent pricing callback. Auxiliary completions use the same recorder.
+The existing model invocation journal records each physical admission before
+provider I/O with original caller, origin, parent, exact provider/model/request,
+and captured Session/Run/Segment association where present. Logical conversation
+observations and physical endpoint attempts remain distinct. A selected-model
+child needs a separate call identity; raw ancestry cannot impersonate a Model or
+Tool owner. Reusing an admitted physical identity cannot dispatch again.
 
-Restart recovery may find a known physical result behind an open logical call.
-The existing recovery planner includes that immutable evidence, adds its previously
-uncommitted usage/call count/cost to the original Run and settles the logical call
-as failed with a known response. The logical settlement and Run replacement share
-one transaction and source identity/value checks. Failure rolls both back; a later
-pass cannot charge the settled call twice. No model request, Tool proposal or
-semantic response continuation is reconstructed from that evidence. Calls with
-no known result remain unknown. Missing reported usage and prices are not guessed
-or recalculated from the current catalog.
+Complete endpoint response, reported usage and captured per-call price survive an
+outer observer failure. Unknown or missing consumption stays unknown, including
+a valid provider that omits usage. Reported zero is distinct from absence. Partial
+output is retained as incomplete evidence and never becomes a successful response
+or executable Tool proposal. The provider request cannot be replayed from this
+journal; it is not a provider receipt.
 
-The SQLite endpoint price column changes the pre-release schema. Rebuild clients
-and use a fresh data directory; incompatible directories are refused and must be
-retained separately. There is no conversion, old-schema reader or dual write. Stored
-admission/response values use the existing canonical JSON input codec so exact
-recovery checks retain numeric evidence instead of re-encoding a read DTO.
+Run accounting consumes each original model-call fact once. Conversation calls
+may update primary context calibration and output; independent calls contribute
+consumption without modifying primary continuation or calibration. Live publication,
+terminal settlement and boot recovery use this same classification and source
+owner. Reconstruction verifies the complete retained source inside its existing
+atomic Run/Goal transition. It preserves known usage alongside outer failure and
+unknown prices alongside admitted work. Another restart cannot accrue it again.
 
-This covers current single-call Interaction accrual and boot loss recovery. Global/
-unattached retention and aggregation, auxiliary attribution to usage totals,
-multiple explicitly admitted requests, embedding metering and semantic model
-selection/input transformation contracts remain under development.
+Usage summaries scan retained physical source records, including auxiliary and
+unattached work. Attempt state, token coverage and priced coverage distinguish
+empty history, unreported usage and reported zero. Known token/cost subtotals do
+not establish an exact total while any selected attempt is unknown. Provider,
+served-model, UTC-day, origin and association buckets derive from those same
+records; no aggregate cache or Run-based substitute advances them. Corruption,
+invalid association or overflow refuses the whole report.
 
-
-## Retained physical usage reports
-
-Core 2026-10-14.27 replaces Run-derived `usage.session`/`usage.summary` folds with
-one snapshot of the existing physical model journal. Run accounting remains the
-execution and Goal projection; these reports never add it to the same endpoint
-consumption. Session reads include auxiliary calls bound to that Session without
-a Run. Global reads also include unattached attempts and active/unknown outcomes.
-
-Every report and bucket has `total`, `coverage` and optional `recordedCostUsd`.
-Coverage includes attempts, reported usage, priced attempts and the four observed
-states. Token fields are known reported subtotals. `recordedCostUsd` is the known
-priced subtotal; `total.costUsd` is available only when every selected retained
-attempt is priced. Empty, unreported and reported-zero evidence are distinguishable
-through coverage. Missing/deleted historical records cannot establish zero spend.
-
-Provider/model/day/origin/association buckets use the same source records. Model
-keys retain exact provider plus served model; timestamps come from admission,
-not Run completion. Recent windows subtract positive calendar days at one UTC
-observation. Runs/Sessions are distinct associated owners, including active Runs;
-bucket attempt counts reconcile, owner counts need not add across buckets.
-
-The source scan, Session existence and ownership checks share one transaction;
-only one source body is materialized at a time. Later corruption, invalid ownership
-or overflow refuses the entire report. No cached report, aggregate writer, Run
-fallback, legacy reader or inferred auxiliary Run association exists. Retention
-follows existing source deletion: Run-associated evidence ends with its Run,
-Session-only evidence ends with its Session, and unattached evidence remains in
-the journal. Automatic historical pruning and embedding/multi-call metering remain
-open. Rebuild Runtime/Go/TS/CLI and select rebuilt component bytes together.
-
-Primary Interaction now captures public `plugin.ModelContextContract` contributors
-before model-visible capacity admission. Their system material is measured and
-sent for one call; it never becomes authored conversation. Exact captured
-installation/release/order survives waiting recovery and holds the ordinary
-installation dependency. A missing `model_contexts` checkpoint field is refused
-as an incompatible pre-release payload. Auxiliary text use cases now capture the
-same context/observer order with their actual role identity and input-text/output
-budget; contributed context participates in the final byte check before dispatch.
-Memory extraction/curation retain one capture and separate original call identities.
-Release joins active calls before dropping their ordinary installation dependencies.
-Fresh Run and auxiliary capture selection now use the public model-selection
-boundary described below. Auxiliary capacity uses the captured selected-model
-envelope and final composed request; request transformation remains in development.
-
-The public `plugin.ModelSelectionContract` role chooses a route before a fresh
-Run accepts its exact provider/model/reasoning identity. Media and output capacity
-checks, executor construction and the original durable Run opening use that same
-selected value. Session preference remains the user's proposal/default source.
-Accepted Start retry and waiting Resume preserve the original Run/checkpoint and
-do not call the selector again. An explicitly selected unavailable publisher is
-an error; absence of a selected publisher preserves the proposal without discovery.
-
-Auxiliary role selection enters the same public query before provider construction.
-The input request is absent until the owning use case authors it; the captured
-selected model then supplies subsequent context, observation and pricing identity.
-Selection is per accepted execution/use-case capture; per-call routes for multiple
-independent invocations remain open. Auxiliary token admission now freezes selected
-catalog limits, reserves output and counts the fully composed request before
-provider dispatch. Provider counting is used when available, with errors/cancellation/
-non-positive results refusing; otherwise the shared request estimate is a local
-preflight approximation. Unknown catalog limits remain unknown, with the caller's
-existing byte/output envelope retained. Captured reasoning effort is applied before
-context, counting and provider I/O; original request/selection cannot be replaced.
-
-Auxiliary model-visible input can now be transformed through the public ordered
-`plugin.ModelInputContract` point. The captured selection, Tool contracts/choice and
-original output-envelope presence remain authoritative. Context precedes transforms;
-final byte/output/token capacity admission precedes observer/physical execution.
-Transform output never rewrites authored conversation, and transformer installations
-share the existing captured dependency/cancel/join lifetime. Primary Interaction
-now captures transform bindings with its configuration/checkpoint and hands the
-complete admitted request through one per-call record into Call/Stream. Original
-conversation/Options remain retained; final media/capacity and calibration see the
-actual transformed input. Checkpoints require model_inputs with no old-shape fallback.
-Core .29 moves selected-model media admission to the final transformed request.
-Start/Resume/Steer still reject structurally invalid input, but retain original
-well-formed source media even if the chosen model needs a converter. Unconverted
-unsupported input becomes an accepted execution failure before provider generation,
-with original transcript/command evidence retained. Canonical unsupported media is
-not sent to a provider counter. Full native acceptance remains open.
-
-## Protocol 2026-10-14.29
-
-Model-media admission belongs to the final reduced/transformed request, not the
-source input of Start/Resume/Steer. Source format/target/identity validation still
-precedes command acceptance. Model capability refusal occurs through the existing
-accepted execution failure path before the physical provider attempt; callers must
-observe the Run outcome rather than interpreting opening acceptance as media/model
-success. A converter may adapt the original image without changing its stored
-user Item or retry identity. No new receipt, compatibility branch or error fallback
-is introduced. Rebuild Runtime and clients together.
-
-## Independent plugin model exchanges
-
-Ordinary installed calls receive an RPC callback reference from their original
-calling context. Its one Runtime endpoint now also serves the public selected-model
-callbacks. `CallSelectedModel` and `StreamSelectedModel` accept a distinct invocation
-ID, exact provider/model proposal, complete Scope request and `ModelCallBudget`.
-Three or more separately admitted requests are allowed; Memory's private two-call
-rule still belongs to Memory. A missing owning invocation is refused.
-
-Each request resolves the explicitly installed selector before provider construction,
-then captures the context, input and transparent observer chains. Its caller-owned
-budget includes serialized request framing, options, Tools and media. Input conversion
-may alter the provider projection; final byte/output/media/token admission precedes
-the actual provider exchange. The original caller's request remains unchanged.
-Unary and lazy streaming use the same capture, cancellation/join and held-dependency
-owner. Streaming is advertised only when the exact provider instance supports it.
-
-The existing observed resolver journals each physical dispatch with its own caller
-ID, inherited origin/parent and final provider/model/request. Known response, usage
-and price survive outer failure. Reusing the same identity cannot dispatch again,
-even with changed input; transport loss remains uncertainty and does not authorize
-an automatic retry. Core operations continue through canonical Delivery RPC; these
-host model collaborators do not add a business receipt or a second provider journal.
-
-The new callback methods have independent exact descriptors. Core .29, backend .2
-and export schema 3 are unchanged: this is an additive host collaborator capability,
-not a change to an existing command, stored record or wire method. Public Go API
-inventory is regenerated. The variadic PublishRPC source signature requires external
-method-value consumers to update and rebuild; no old-signature wrapper remains. Independently compiled consumers that need this capability
-must rebuild from the current SDK and use a host that grants the selected methods.
-Native installed-process acceptance, general remote composition, descendant Run/Goal
-accounting, embedding evidence and full P01-P48 acceptance remain final-delivery work.
-
-Background SDK model calls also carry the original retained invocation through the
-existing activation-scoped projection. The shared unary/stream senders preserve
-this header; Runtime validates it before selected-call child identity is derived.
-The header cannot replace an ordinary captured call, continuation or actor.
-
-## Captured execution association for model endpoints
-
-Core 2026-10-14.30 adds optional `segmentId` to physical endpoint observations.
-Generated public Go/API/schema/TS contracts and canonical samples are current;
-external strict clients must regenerate/rebuild. Backend .2 and export schema 3
-are unchanged. Existing relational scope columns and retained endpoint JSON remain
-unchanged; this slice needs no storage conversion or inferred old-record rewrite.
-
-Primary Call/Stream and Tool admission boundaries now capture their original logical
-call owner in the immutable host context. The observed provider resolver passes it
-explicitly to the endpoint journal. Before generation, the journal validates the
-actual logical Model/Tool record, matching Session, running Run and original active
-Segment. Fresh child requests then retain that Run/Segment even when their call ID
-is different. Absent owner means standalone/Session-only work, without lookup by
-wire caller ID or parent. Foreign Session, missing owner, waiting Run and old resumed
-Segment refuse admission without fabricating a dispatched provider observation.
-
-The original Model/Tool call namespaces are protected. Only the actual captured
-Model owner can use its own ID as physical caller; an independent selected exchange
-cannot use that owner ID or relabel its calling operation. Raw ancestry never grants
-execution authority. Query/trajectory/export projections expose the original Segment;
-known endpoint recovery validates the same Segment before consuming source evidence.
-
-Boundary tests use actual admitted SQLite Model and Tool records, callback dispatch,
-reserved-ID refusal and waiting/resumed transitions. Session-only execution harnesses
-do not prove relational association. General remote policy grants, background execution
-restoration, total-work/Run/Goal budget and descendant crash accrual remain explicit
-integration work. Per-call resource capacity and provider-generation admission are
-not a claim that all optional counters or aggregate Goal budgets are now gated.
-
-## Independent model consumption during boot recovery
-
-Recovery now snapshots physical attempts owned by nonterminal Runs whose caller
-has no logical Model accounting record. Existing completed logical Models remain
-with their original accounting projection; the independent collection excludes them.
-Lost-tree planning accrues source-reported tokens and the captured price through the
-existing Run metrics/Goal recorder. The complete original source is checked inside
-the same transaction as the lost Run/Goal replacement, including raw JSON evidence,
-Session/Run/Segment, state, price, served model and reported usage. No response cache,
-replay authority, new invoice table or source-repricing path is added.
-
-The boot snapshot is ownership-filtered; preserved compatible waiting trees are not
-charged by a lost-tree replacement. An independent known response may coexist with
-outer failure. An unknown attempt preserves missing tokens/price, counts admitted
-work and makes exact aggregate price unknown. Its request never becomes continuation
-input. Independent consumption leaves the primary ContextTokens calibration intact.
-
-Actual SQLite/Goal regression proves large numeric token retention, completed-primary
-exclusion, known outer failure, unknown pricing, rejected typed usage/price changes,
-transaction rollback and no second accrual after reopening the database. Comparison
-uses canonical source JSON and billing-relevant projections rather than incidental
-nil/empty differences in Scope clones. Core .30/backend .2/export3 and storage remain
-unchanged; no public wire or persisted shape changes in this recovery slice.
-
-Live child accrual, normal-terminal closure and admission of aggregate Run/Goal budget
-remain incomplete. They must use the same logical/physical classification and atomic
-accounting owner before those requirements can close. This recovery proof is not
-qualification of all policy/background/native workflows or automatic retention.
+Primary and auxiliary calls capture selected routes, context/input/observer
+bindings and their actual resource budgets. Independent installed authors use
+`CallSelectedModel` or `StreamSelectedModel` with distinct identities and explicit
+`ModelCallBudget`. Unary and lazy streaming share final request admission,
+cancellation, join and held-dependency ownership. Scope's exact provider instance
+decides whether streaming/counting capabilities exist. No unavailable capability
+is fabricated, and an endpoint's accounting total does not invent a universal
+Run/Goal budget. Evidence deletion follows the retention rules above.

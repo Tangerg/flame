@@ -2149,8 +2149,20 @@
           "signature": "func(ctx context.Context) (ToolContext, error)"
         },
         {
+          "name": "ToolProposalContract",
+          "signature": "func() (*capability.Contract, error)"
+        },
+        {
+          "name": "ToolProposalMethod",
+          "signature": "func() (*Method[chat.ToolCall, chat.ToolCall], error)"
+        },
+        {
           "name": "ValidateModelInput",
           "signature": "func(original *chat.Request, transformed *chat.Request) error"
+        },
+        {
+          "name": "ValidateToolProposal",
+          "signature": "func(original chat.ToolCall, transformed chat.ToolCall) error"
         },
         {
           "name": "VerifyCapabilities",

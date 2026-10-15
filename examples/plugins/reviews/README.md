@@ -184,8 +184,9 @@ and preserves the Run's original uncertainty after restart. Its model is scripte
 the test needs no provider credentials or external service.
 
 This package's MCP tools execute through Session-owned Runs and the existing
-approval path. It has no review board, trusted tool-call form, or HTML bridge to
-backend operations. Diagnostic `tools.invoke` is not a plugin action entrance.
+approval path. Its ordinary Board calls the same published business operations
+through the public component SDK. Diagnostic `tools.invoke` is not a plugin action
+entrance.
 
 ## Ordinary component source
 

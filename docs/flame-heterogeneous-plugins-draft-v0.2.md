@@ -2,7 +2,11 @@
 
 ## Design proposal v0.2
 
-**Status:** Draft for architecture review. Not an implementation contract or a description of shipped behavior.  
+**Status:** Superseded historical design draft. Its provisional APIs and isolated-page
+architecture are not current implementation guidance. See the current
+[Runtime contract](../runtime/README.md#public-surfaces),
+[component SDK](../plugin-sdk/README.md) and
+[acceptance record](plugin-refactor-progress.md#proposal-acceptance-coverage).
 **Date:** 2026-10-01.  
 **Product baseline:** `Tangerg/flame@1083cab5794d6bcc252bdd27dac4b23ecb8a5940`.  
 **Audience:** Runtime, Scope, Desktop/Web, CLI, and plugin SDK maintainers.\
@@ -23,7 +27,7 @@ The first platform phase uses the production namespace `io.github.tangerg.flame`
 References to `org.example.flame` below remain illustrative proposal examples.
 [Runtime's plugin documentation](../runtime/README.md#portable-plugins) owns the
 implemented behavior and migration requirements; generated contracts own exact API shapes.
-First-party capability extraction remains a separate phase.
+The implementation reference below reflects that historical draft; current owner documentation supersedes it.
 
 ## Contents
 
@@ -1478,7 +1482,7 @@ The trusted host captures a settled transcript result and chooses only a unique
 matching contribution, preferring an exact name over a shape. The isolated page
 shares the read-only carrier and cannot invoke tools or advance stored outcomes.
 Generic recorded content remains available through absence, ambiguity, failure and
-withdrawal. [Runtime documentation](../runtime/README.md#protocol-2026-10-112) owns
+withdrawal. [Runtime documentation](../runtime/README.md#components) owns
 the implemented admission and migration requirements.
 
 The optional first-party File renderers package consumes complete file reads already
