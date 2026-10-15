@@ -2,12 +2,16 @@
 
 ## Current stage
 
-Original-proposal acceptance is **not complete** after the 2026-10-15 audit.
-The earlier overall completion wording conflated authorized backend/build work
-with the full P01-P48 and independent-review criteria and is withdrawn. The
-separate causal parallel-race repair remains verified. The original complete
-parallel command exits 0 with all 174 package results passing on frozen
-`981c4c915` source:
+P13 public installed Tool proposal transformation is implemented and verified
+in ordinary backend tests at `6a88bd45a`. Overall acceptance remains **incomplete**:
+**30 Evidenced / 17 Partial / 1 Open**. These are evidence counts, not an
+implementation percentage. P12/P16/P18/P41, P48, safe-steer causal investigation
+and the unexecuted graphical criteria remain. Current complete parallel/vet/native/
+standalone-artifact qualification is pending after this new product change.
+
+The following complete parallel result belongs to the preceding `981c4c915`
+source, not the new P13 source. Its causal fixes stand, but it is historical
+acceptance evidence until the final current-source sweep:
 
 ```sh
 go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
@@ -35,11 +39,58 @@ stash mutation or user-data conversion occurred. The private checkpoint format
 changes explicitly: preserve old data and finish old waiting work with its original
 binary. There is no compatibility reader, dual writer, silent fallback or replay.
 
+### Installed Tool proposal boundary (2026-10-15)
+
+- Product: `6a88bd45a`. `ToolProposalContract` and `ToolProposalMethod` expose an
+  ordinary ordered query through the existing backend binding. Only arguments
+  may change; execution owns call ID, Tool identity, final schema and approval.
+  Internal `CallComposition` replaces the former model-only name, with all callers
+  migrated and no alias. Bindings, activation identity and transitive dependencies
+  freeze with execution. Restored approval uses saved final arguments without
+  reentering contributors. Mutable proposal paths cannot claim an immutable
+  Tool concurrency key.
+- The actual public-SDK stdio author is built/installed beside Reviews. The
+  regression compares approval and executed/history arguments, private revision/
+  status, invalid-proposal refusal and one transformation across Runtime restart.
+  It loads no graphical module. SDK/service tests reject identity/Tool replacement,
+  withdrawn bindings and changed transformation order.
+- That real test exposes two production recovery assumptions. A connecting
+  contributor had no live activation during the cold probe, failing startup with
+  `mcp: exact backend connection is unavailable`. The probe now derives deferral
+  from its captured sources and the existing connection status owner, without
+  waiting or replay. A deterministic test refuses any assembly before that check.
+- A subsequent cold resume fails with `model calls have no per-model usage` when
+  the valid scripted provider omits usage. Recovery now reconstructs captured call
+  counts while preserving absent reported usage and price. The Run metrics owner
+  retains later known model breakdowns after an unreported call and keeps aggregate
+  prices unknown where prior attribution cannot establish them. Known usage and
+  count-mismatch/overflow assertions remain; mixed known/unreported regression
+  and real waiting restart pass. Original raw input/result facts remain owned.
+- New private checkpoints require `tool_proposals`; old captures are refused, not
+  read as an empty chain. Core/backend wire and private business receipts are
+  unchanged. Preserve old data and finish old waiting work with its original binary.
+- Passed: actual installed normal regression 17.117s; complete normal SDK,
+  pluginservices, execution, Run domain and Run application packages
+  1.019/5.330/56.266/0.215/1.523s; focused captured-handshake/frozen-input/unknown-
+  usage checks 1.677s; complete `internal/bootstrap` 107.508s, including all eight
+  Schedule SIGKILL cuts and existing recovery/steer/schedule tests.
+- Failed development iterations remain failures: initial fixture command/identity/
+  capability metadata errors were corrected; real cold startup and unknown-usage
+  resume failures led to the production repairs above. No assertion or existing
+  time limit was relaxed. Diagnostic resume output used an external overlay,
+  which was removed; no probe is in product code.
+- Not run on this new source: global normal/race/vet/generation/static closure,
+  native and standalone author artifact qualification. Retained earlier Runtime/
+  native binaries are not current P13 binaries. Failed/withdrawn captured
+  contributor startup and broader lifecycle combinations still need qualification
+  in the following real-process slices. UI/E2E/screenshot execution stays forbidden.
+
 ### Original-proposal acceptance audit (2026-10-15)
 
 The original proposal's 48 scenarios and the independent review were reread
 against current implementation, actual test bodies and recorded invocations.
-The individual table below now has **29 Evidenced, 18 Partial and 1 Open** rows.
+At that audit the table had **29 Evidenced, 18 Partial and 1 Open** rows. The
+subsequent P13 slice above supersedes its P13 finding and the current table count.
 These are acceptance-evidence counts, not an implementation percentage. A package
 pass, source-consumer count or native compilation cannot complete a different
 behavioral scenario. This audit runs no tests and changes no product code.
@@ -66,7 +117,7 @@ behavioral scenario. This audit runs no tests and changes no product code.
   include Reviews' "no review board", the SDK's "forthcoming" composition consumer,
   and Runtime's old "remain under development/open" claims for now implemented
   dependency, stream, accounting and model contracts. This audit records those
-  omissions; it does not claim to have cleaned those READMEs.
+  omissions; it does not claim to have cleaned those READMEs at the audit; the P13 slice subsequently updates the SDK README.
 - All four additional review cross-acceptance groups remain Partial: no-Run
   mutation recovery across actual UI/Runtime restart plus update/uninstall/selection;
   identical typed refusals through Tool/CLI/rendered UI; authenticated multi-resource
@@ -1716,15 +1767,15 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 18 Partial rows, P48 cleanup and
+Original-proposal acceptance remains incomplete: 17 Partial rows, P48 cleanup and
 the four review cross-scenarios above. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
 
 ## Next
 
-Resolve the public installed Tool-proposal boundary (P13), then qualify two actual
-installed decorator ordering (P12), durable inner-mutation/outer-failure recovery
+P13 is implemented and normal-verified. Next qualify two actual installed
+decorator ordering (P12), durable inner-mutation/outer-failure recovery
 (P16), actual post-output backend disconnection (P18) and a real CLI business
 command with a host callback (P41). Clean the stale active owner documentation
 and recheck the original replacement map for P48.
@@ -2023,7 +2074,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Origin, parent, target and lifetime | Installed operation, Tool preparation, background capture, model callback and active-member tests pass. Memory Search's detached embedding parent was RED/GREEN fixed in `6d3728a0c`; restored attribution never manufactures an execution publisher. |
 | Collection/selection/decoration and plugin points | Exact consumer contracts, immutable setup, cycle checks, explicit compositions and actual Reviews/analyzer process lifetimes pass. CLI `33696b3c2` adds real composition inspection/selection/resolution; transitive failures retain their complete consumer path. No second readiness ledger. |
 | Reentrant RPC, remote next and streams | Actual SDK/headless processes verify reentrancy, frozen remaining chains, lazy consumption, acknowledgement backpressure, cancellation, byte budgets and stale grant refusal. The first remote model observer is explicitly transparent; its once-through rule is not universal middleware policy. |
-| Final transformed Tool arguments | Partial: `TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution` and hook/authorization tests prove the execution invariant. The injected local model is not an installed plugin/public author path; P13 remains incomplete. |
+| Final transformed Tool arguments | `6a88bd45a` adds the public installed contract and actual stdio/Reviews normal proof across approval and Runtime restart. Final arguments, private mutation and canonical history agree; invalid proposals do not execute. Current global race/artifact requalification remains pending. |
 | Independent model work and accounting | Each physical exchange has its own identity, captured route, caller budget and durable source. Source/Run/Goal tests preserve known inner usage under outer failure and unknown consumption under restart/cancellation. Independent output cannot alter primary conversation/context. No invented universal Goal ceiling. |
 | Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
@@ -2056,16 +2107,17 @@ does not supply P12's two-installed-layer trace or P16's durable mutation case.
 
 ## Proposal acceptance coverage
 
-Audit date: 2026-10-15; product source: `981c4c915`. Scenario titles below are
+Audit date: 2026-10-15; P13 update: `6a88bd45a`. Scenario titles below are
 copied from the original proposal, rather than substituted with easier checks.
-**29 Evidenced / 18 Partial / 1 Open** is a count of evidence coverage, not a
+**30 Evidenced / 17 Partial / 1 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
 or test was checked in this audit. It does not mean a fresh invocation occurred
 in this audit. `Partial` means an original behavior is only partly demonstrated;
-`Open` identifies known unfinished work. Current full parallel race includes all
-174 selected packages; full normal and independent artifact/TS proofs have the
+`Open` identifies known unfinished work. The preceding full parallel race includes all
+174 selected packages at `981c4c915`; it has not rerun after P13. Earlier full
+normal and independent artifact/TS proofs have the
 freshness limits stated in Current stage. Platform/conditional test execution is
 not inferred from package summaries. UI/E2E/screenshot execution remains forbidden
 and unrun, so those requirements remain unverified rather than waived.
@@ -2084,7 +2136,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P10 | Host callback occurs during an outer backend request | Evidenced | `TestPublicCallbacksAreReentrantThroughARealHeadlessBackend` and installed observer callback tests exercise a host callback inside the outer backend request without a graphical client. |
 | P11 | Installed decorator wraps a real host model call | Evidenced | `TestExecutableBackendStreamsDecorationThroughOriginalModelNext` and installed observer/model-endpoint tests prove the public executable callback path and actual endpoint identity/evidence. |
 | P12 | Two decorators run | Partial | Frozen configuration/checkpoint order is tested by `TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers` and `TestCapturedModelObserversRetainIdentityOrderAndInstallationDependencies`. `TestExecutableConsumesFrozenRemainingModelStream` uses two local Scope wrappers behind a callback. Missing: observed before/after order of two installed remote decorators through the production binding. |
-| P13 | Decorator rewrites a Tool proposal | Partial | `TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution` uses an in-process `chat.ModelFunc`; final schema/approval/execution/history agree and invalid arguments are refused. Missing: a public installed-author transformation contract/binding and its real plugin proof. The shipped transparent observer deliberately rejects transformation; trusted workspace hooks do not establish the new path. |
+| P13 | Decorator rewrites a Tool proposal | Evidenced | `6a88bd45a` provides the public installed `ToolProposalContract`. `TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay` builds a real public-SDK stdio author, installs it beside Reviews, compares approval/execution/history, cold-restarts without another transformation, and checks private owner state and invalid-proposal refusal. Whole normal bootstrap and affected Go packages pass; current global race/artifact qualification is pending. |
 | P14 | A command continuation is redelivered | Evidenced | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. The final original 174-package parallel race and all eight crash cuts pass after immutable contract reuse and per-group MCP capture/restoration; earlier failures remain recorded in Current stage. |
 | P15 | A stale continuation is invoked | Evidenced | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
 | P16 | Inner mutation succeeds, outer decorator fails | Partial | `TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart` plus streaming/model-output tests retain known inner model result/usage. Missing: durable business mutation followed by outer decorator failure and original-receipt redelivery. Model completion is narrower than the original mutation scenario. |
@@ -2119,7 +2171,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P45 | Recover from a broken optional-plugin startup | Partial | Real never-handshaking backend restart/list/disable passes; independent CLI management does not evaluate component JS. No execution of recovery while an installed module blocks renderer startup is recorded; the review requires that stronger scenario. |
 | P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
-| P48 | Final source/API cutover review | Open | Major old service/view/carrier/feature-API paths are removed, including Core private feature build dependencies. Final cleanup is incomplete: `examples/plugins/reviews/README.md` still says no board, `runtime/plugin/README.md` says the composition consumer is forthcoming, and `runtime/README.md` retains contradictory open-stage claims. The final replacement-map review must also account for P13 before claiming complete cutover. |
+| P48 | Final source/API cutover review | Open | Major old service/view/carrier/feature-API paths are removed, including Core private feature build dependencies. Final cleanup is incomplete: `examples/plugins/reviews/README.md` still says no board, `runtime/README.md` retains contradictory open-stage claims. P13 is now implemented and normal-verified; final replacement-map cleanup and current global qualification remain. |
 
 ## Verification
 
@@ -3733,8 +3785,8 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-The public installed Tool-proposal path (P13), direct installed composition/inner
-mutation/disconnection/CLI-host proofs (P12/P16/P18/P41), active documentation
+P13 has current ordinary installed-process evidence. Direct installed composition/
+inner-mutation/disconnection/CLI-host proofs (P12/P16/P18/P41), active documentation
 cleanup (P48), 13 partially demonstrated graphical rows and all four review cross-scenarios remain
 open for acceptance. The user prohibition prevents graphical execution; it does
 not waive the original requirements. See the individual table for exact limits.

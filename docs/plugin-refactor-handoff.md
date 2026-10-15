@@ -1,8 +1,10 @@
 # Unified plugin refactor handoff
 
-Original-proposal acceptance is reopened by the 2026-10-15 audit: **29 Evidenced,
-18 Partial, 1 Open** across P01-P48. These are evidence counts, not implementation
-percentages. The whole-plugin-system 100% claim is withdrawn. The distinct causal
+Original-proposal acceptance is reopened by the 2026-10-15 audit: **30 Evidenced,
+17 Partial, 1 Open** across P01-P48. These are evidence counts, not implementation
+percentages. P13 is implemented and normal-verified at `6a88bd45a`; the global gates below
+precede that change and must not be relabeled as current. The whole-plugin-system
+100% claim remains withdrawn. The distinct causal
 parallel-race repair remains verified: the original full command passes all 174
 packages on frozen `981c4c915` source. Current repository state is authoritative;
 detailed failures, measurements, individual proposal rows and review reconciliation remain in
@@ -24,6 +26,21 @@ detailed failures, measurements, individual proposal rows and review reconciliat
   root/module instructions apply. No sub-agent delegation occurred.
 
 ## Current implementation
+
+`6a88bd45a` adds public ordered Tool proposal queries, preserving logical identity
+and Tool authority before final schema/approval. Bindings/activation/dependencies
+are captured; approval recovery does not transform again. The actual public-SDK
+stdio author plus Reviews validates private mutation and final history across
+Runtime restart and invalid input refusal. Whole normal bootstrap passes 107.508s
+including all eight crash cuts; five affected Go packages and focused recovery
+checks pass. This is not current global race/native/artifact qualification.
+
+The real test also fixes startup probing before a contributor connects and
+waiting recovery with omitted provider usage. Known model breakdowns survive
+unreported calls; missing tokens/prices remain unavailable. Required private
+`tool_proposals` captures replace implicit empty composition. Old waiting work
+requires its original binary; Core/backend wire and business receipts are unchanged.
+
 
 The original unavailable-source bootstrap failure is fixed in `8e32d9c35`.
 Captured receipt observation has its actual observer lifetime; source availability
@@ -140,7 +157,7 @@ and focused mode repetitions pass.
 
 Current Core is `2026-10-15.2`, backend protocol is
 `io.github.tangerg.flame/backend/2026-10-14.2`, and trajectory export schema is 3.
-The private checkpoint replaces flat `mcp_references` with required per-group
+The private checkpoint additionally requires `tool_proposals` after P13. It replaces flat `mcp_references` with required per-group
 `mcp_manifests`; old captures cannot reconstruct both groups and are not read as
 defaults. Preserve original data and finish old waiting work with its original
 binary. There is no compatibility reader, automatic migration, private copying,
@@ -162,12 +179,12 @@ external deployment, pushing/merging and user-data migration remain unauthorized
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`.
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`.
 
-Both original inputs are unchanged. This audit inspected source/test bodies and
-recorded invocations; it ran no tests and changed no product code. Remaining work:
+Both original inputs are unchanged. The earlier audit inspected source/test bodies
+and recorded invocations without running tests. P13 product changes and current
+normal verification are recorded above. Remaining work:
 
-- P13 has an implementation/proof gap: the local Tool rewrite regression does not
-  establish an ordinary installed author's public transformation boundary. The
-  installed transparent observer deliberately refuses transformation.
+- P13 is implemented and normal-verified. Its current global race/artifact and
+  broader failed/withdrawn-contributor lifecycle qualification remain pending.
 - P12 proves frozen order and a remote callback to local Scope wrappers, but lacks
   an observed before/after trace of two installed remote decorators.
 - P16 proves known inner model evidence under outer failure, not a durable private
@@ -176,7 +193,7 @@ recorded invocations; it ran no tests and changed no product code. Remaining wor
   actual backend disconnection after output begins has not been demonstrated.
 - P41 proves CLI history, adapters and headless callbacks separately, without the
   combined executable CLI business command -> installed backend -> host scenario.
-- P48 cleanup is incomplete: active Runtime/SDK READMEs retain obsolete open-stage
+- P48 cleanup is incomplete: active Runtime README retains obsolete open-stage
   claims; Reviews still says "no review board" beside its actual board source.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 retain graphical proof gaps. Do not write
   or execute UI/E2E/screenshot tests under the user's continuing prohibition.
@@ -186,8 +203,9 @@ recorded invocations; it ran no tests and changed no product code. Remaining wor
   authenticated remote multi-resource ESM in real Web/Wails with connection change;
   independent recovery from renderer-blocking module initialization.
 
-The complete current race/affected normal/vet/generation/static/build evidence
-stands. The full normal 174-package and shared TS/standalone artifacts are earlier
+The earlier complete race/vet/generation/static/build evidence belongs to
+`981c4c915`; after P13 only the affected normal Go/bootstrap and focused checks
+are current. Global final requalification remains pending. The full normal 174-package and shared TS/standalone artifacts are earlier
 runs; independent archives have not been requalified after the reopened SDK repair.
 Package summaries do not prove all conditional/platform cases executed. No other
 OS/architecture is qualified. The historical safe-steer timeout has no separately
