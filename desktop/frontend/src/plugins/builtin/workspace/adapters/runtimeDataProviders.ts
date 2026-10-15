@@ -5,19 +5,14 @@ import type {
   WorkspaceFileChange as RpcFileChange,
   WorkspaceSummary as RpcWorkspaceSummary,
 } from "@flame/runtime-contract/client";
-import { readInstalledMemory } from "../../../../../../../plugins/memory/src/client";
-import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
-import { agentMemoryEntry } from "./runtimeAgentMemoryGateway";
 import {
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
   type WorkspaceFileChangesQuery,
   type WorkspaceListFilesQuery,
   type WorkspaceReadFileQuery,
-  type AgentMemoryQuery,
   type WorkspaceFileChange as WorkspaceFileChangeSummary,
   type WorkspaceProjectSummary,
 } from "../application/workspaceQueries";
@@ -50,20 +45,6 @@ export function registerWorkspaceDataProviders(
         signal,
       );
       return (await pageData(resources.changes.list(signal))).map(toWorkspaceFileChangeSummary);
-    },
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: WORKSPACE_AGENT_MEMORY_KEY,
-    fetcher: async (params, signal) => {
-      const q = requiredParams<AgentMemoryQuery>(WORKSPACE_AGENT_MEMORY_KEY, params);
-      if (!runtimeCapability("plugins")) return [];
-      const client = runtimeClient();
-      const cwd =
-        q.scope === "project"
-          ? (await client.workspaces.open(q.cwd ? { path: q.cwd } : undefined, signal)).ref.path
-          : "";
-      const result = await readInstalledMemory(client, q.scope, cwd, signal);
-      return result.map(agentMemoryEntry);
     },
   });
   ctx.contribute(DATA_PROVIDER, {

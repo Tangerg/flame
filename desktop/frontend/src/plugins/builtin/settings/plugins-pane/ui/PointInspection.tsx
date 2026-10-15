@@ -104,7 +104,8 @@ function InspectPoint({
           {point.id} · {t("packages.points.title")}
         </h4>
         <Button
-          disabled={current?.pending || !reference || operations.signal.aborted}
+          pending={current?.pending}
+          disabled={!reference || operations.signal.aborted}
           onClick={() => void inspect()}
         >
           {t("packages.points.inspect")}

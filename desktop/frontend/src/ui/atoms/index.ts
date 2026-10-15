@@ -46,3 +46,4 @@ export { Switch } from "./switch";
 export { VerticalTabs } from "./vertical-tabs";
 export { Well } from "./well";
 export { InputDialog } from "./input-dialog";
+export { ContentDialog } from "./content-dialog";

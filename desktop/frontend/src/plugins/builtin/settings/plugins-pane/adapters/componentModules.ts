@@ -14,7 +14,7 @@ export interface LoadedComponent {
   signal: AbortSignal;
 }
 
-export class ModuleReloadRequired extends Error {
+class ModuleReloadRequired extends Error {
   constructor() {
     super("Reload this window to establish a clean plugin module generation.");
     this.name = "ModuleReloadRequired";

@@ -287,8 +287,8 @@ The browser/native isolated HTML guest, frame channel, appearance bootstrap, pag
 carrier probes and their exclusive qualification tests/build tasks are removed. Their
 old isolation results do not qualify trusted component loading. Package integrity,
 source authority, business receipts and independently accepted Runs retain their owners.
-Supported native component/lifecycle acceptance remains an explicit final obligation.
-Frontend UI/E2E/screenshot execution is excluded by the current development task.
+Browser and native component/lifecycle acceptance require actual host execution.
+Source checks and native packaging alone do not prove rendering or recovery.
 
 ## Shared presentation package
 
@@ -303,42 +303,26 @@ and prevents new submission until reconciliation. The former Memory HTML/carrier
 trusted private mutation controls are removed. Full graphical/cross-reload acceptance
 remains unclaimed in this refactor.
 
-The workspace Memory deletion gateway now uses the generated public operation.
-Its stable logical intent restores the original installed route from the existing
-Runtime mutation journal before any new selected-provider read, including after
-gateway/client generation replacement. The acknowledgement decoder precedes intent
-retirement. The cache rereads its current owner after acknowledgement; an original
-provider's receipt cannot directly remove a row in another provider's projection.
-Core deletion and its DTO are removed without an alias. Workspace review now also
-uses the generated installed operation and one item intent shared by approve/reject.
-Changed decision is refused before provider preparation while its original outcome
-is uncertain. The empty owner acknowledgement is validated before settlement and
-the current cache owner is reread. Core review/request/global decision enum and its
-invalid_params translation are removed; not_pending remains an explicit publisher
-refusal. Update now also uses the generated public operation. Content, pin and unpin
-share one item intent with frozen patch omission/value semantics; changed uncertain
-input is refused before provider preparation. A validated acknowledgement precedes
-retirement, and the cache rereads its current owner instead of copying a potentially
-different provider's item into it. Core update/DTO are removed. Add also uses the
-generated public operation and one authoring intent. Project additions require the
-caller's captured workspace; retries do not resolve the current default workspace.
-The existing journal restores the original route before provider selection and
-refuses changed scope/path/content. The backend owns root resolution and deduplication;
-validated Changed and item scope precede settlement, and the cache rereads its owner.
-Core add/DTO and the Memory-specific Core feature are removed without an alias.
-Core .17 removes Memory wire read models and enums. Workspace queries own their
-visible presentation vocabulary, while generated publisher snapshots own transport
-fields. Backend snapshot schemas carry identity/content admission, and the ordinary
-Memory ESM resource is rebuilt against that exact contract. Core .18 removes the
-Memory capacity export. Complete workspace reads use the publisher's schema-bound
-Capacity and reject capacity drift, cumulative overflow, empty continuation and
-repeated cursors under one captured binding. Workspace/ordinary-component page
-width uses the backend default. Notification migration and final process/lifecycle
-acceptance are open; no UI/E2E tests run here.
+The installed Memory component owns its local drafts, filters, captured targets,
+paging and command observation. Its backend alone advances Memory facts and private
+receipts. The public SDK retains the exact original route and raw input before
+command dispatch, validates acknowledgements before settlement and restores unknown
+commands from the existing Runtime mutation journal. Reading an original receipt
+cannot replace a newer business projection; the component rereads its captured
+owner. Project additions require a captured workspace, and the backend owns root
+resolution and deduplication. The unused workspace Memory gateway, publication slot,
+mutation cohort, read cache, DTOs and facade are removed with their exclusive tests
+and visual data-provider registration. Existing installed operations, shared
+command-generation coverage and real HTTP recovery/cold-read checks remain.
 
-Core .19 replaces agentMemory.changed and schedules.changed with the generic
-plugins.dataChanged topic. Workspace Memory and ordinary Memory/Schedules components
-reread their captured business owner on that signal or resync. Memory's external
-change subscription is owned by its component generation, tracked and aborted on
-retirement; a subscription failure remains visible without replacing accepted data.
-The event has no business records/IDs. Installation lifecycle stays plugins.changed.
+Generated publisher snapshots own transport fields and schema-bound capacity.
+Complete catalog traversal rejects capacity drift, cumulative overflow, empty
+continuations and repeated cursors under one captured binding. Page width uses the
+backend default. Core exposes generic plugin routing and invalidation without
+Memory read models, capacity, business enums or commands.
+
+The generic plugins.dataChanged signal and resync prompt Memory/Schedules
+components to reread their captured business owner. Each component generation owns
+its external change subscription and cancels it on retirement; subscription failure
+remains visible without replacing accepted data. The event carries no business
+records or IDs. Installation lifecycle uses plugins.changed.

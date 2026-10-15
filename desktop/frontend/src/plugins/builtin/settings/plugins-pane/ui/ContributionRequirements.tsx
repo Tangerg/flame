@@ -93,7 +93,8 @@ function RequirementBindings({
           {contribution.id} · {t("packages.requirements.title")}
         </h4>
         <Button
-          disabled={current?.pending || operations.signal.aborted}
+          pending={current?.pending}
+          disabled={operations.signal.aborted}
           onClick={() => void inspect()}
         >
           {t("packages.requirements.inspect")}

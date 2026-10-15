@@ -760,6 +760,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         installationId: installation.id,
         enabled: true,
       });
+    if (feature === "memory")
+      await client.plugins.selectProvider({
+        role: "memory",
+        installationId: installation.id,
+        contribution: "memory-provider",
+      });
     managedOwners.set(feature, installation);
     const server = {
       origin: { type: "installation" as const, installationId: installation.id },
@@ -2095,8 +2101,10 @@ for await (const line of lines) {
       const fault = faultUnaryResponse(method, "afterCommit");
       const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
         requestMeta,
+        capabilities: () => negotiated,
       });
       try {
+        await faultClient.runtime.discover();
         const value = await call(faultClient);
         expect(fault.attempts()).toBe(2);
         return value;
@@ -2463,8 +2471,14 @@ for await (const line of lines) {
       ]),
     });
     await expect(client.usage.session(asSessionId(session.id))).resolves.toMatchObject({
-      inputTokens: expect.any(Number),
-      outputTokens: expect.any(Number),
+      total: { inputTokens: 8, outputTokens: 4 },
+      coverage: { calls: 1, completedCalls: 1, reportedCalls: 1 },
+      byModel: [
+        expect.objectContaining({
+          key: "openai-compatible/e2e-model",
+          total: { inputTokens: 8, outputTokens: 4 },
+        }),
+      ],
     });
   }, 30_000);
 
@@ -4128,6 +4142,10 @@ for await (const line of lines) {
       content: "project memory marker",
     });
     expect(duplicate.id).toBe(project.id);
+    await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
+      type: "plugins.dataChanged",
+    });
+    await expect(readInstalledMemory(client, "project", workspaceRoot)).resolves.toEqual([project]);
 
     const orderingMarker = await client.sessions.create({
       workspace: { path: workspaceRoot },

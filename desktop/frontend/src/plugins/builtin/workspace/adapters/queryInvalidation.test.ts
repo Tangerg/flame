@@ -122,7 +122,6 @@ describe("workspace session projection invalidation", () => {
       "embedding-role",
       "approval-mode",
       "approval-rules",
-      "agent-memory",
     ]);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
   });
@@ -139,7 +138,6 @@ describe("workspace session projection invalidation", () => {
       "list-files",
       "read-file",
       "hooks",
-      "skills",
     ]);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
     expect(synchronizeMountedAgentSessions).not.toHaveBeenCalled();

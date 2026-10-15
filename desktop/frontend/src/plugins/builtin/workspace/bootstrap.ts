@@ -4,7 +4,6 @@ import { installLocalWorkspaceActions } from "./adapters/localWorkspaceActions";
 import { registerWorkspaceDataProviders } from "./adapters/runtimeDataProviders";
 import { definePlugin } from "@/plugins/sdk";
 import { installConversationArchiveGateway } from "./adapters/runtimeConversationArchiveGateway";
-import { installAgentMemoryGateway } from "./adapters/runtimeAgentMemoryGateway";
 import { installWorkspaceErrorClassifier } from "./adapters/runtimeWorkspaceErrorClassifier";
 import { installWorkspaceNavigationPort } from "./adapters/navigationStatePort";
 import {
@@ -32,8 +31,6 @@ export function createWorkspaceBootstrapPlugin(
     },
     setup(ctx) {
       registerWorkspaceDataProviders(ctx, runtimeClient);
-      const agentMemory = installAgentMemoryGateway(runtimeClient);
-      ctx.cleanup(() => agentMemory.dispose());
       const conversationArchive = installConversationArchiveGateway(runtimeClient);
       ctx.cleanup(() => conversationArchive.dispose());
       ctx.cleanup(installLocalWorkspaceActions(host, canAccessLocalWorkspace));
@@ -47,7 +44,6 @@ export function createWorkspaceBootstrapPlugin(
         },
         mutationLifecycle: {
           replaceRuntimeGeneration() {
-            agentMemory.replaceRuntimeGeneration();
             conversationArchive.replaceRuntimeGeneration();
           },
         },

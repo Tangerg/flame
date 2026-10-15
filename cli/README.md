@@ -291,7 +291,8 @@ ID or an unambiguous prefix among pending deletions; an invalid acknowledgement
 retains the original intent. Desktop deletion now also uses the installed operation
 and its existing client journal restores the original route before any new provider
 preparation. Core DeleteAgentMemory/agentMemory.delete and their DTO are removed.
-CLI/workspace review also uses the published operation. Approve and reject share
+CLI review also uses the published operation; the installed graphical component
+uses that same backend owner. Approve and reject share
 one logical intent per item; an unconfirmed decision must be reconciled before an
 opposite decision can be submitted. Pending full/prefix IDs resolve before current
 workspace/catalog reads, and original decision/request/key survive restart.

@@ -45,7 +45,7 @@ describe("workspace Runtime data providers", () => {
     try {
       await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx, () => client));
 
-      for (const key of ["agent-memory", "list-files", "read-file"]) {
+      for (const key of ["list-files", "read-file"]) {
         const fetcher = lookupDataProvider(key);
         expect(fetcher).toBeDefined();
         await expect(fetcher!()).rejects.toThrow(`Data provider "${key}" requires parameters`);

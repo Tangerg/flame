@@ -138,7 +138,11 @@ for (const consumerProject of [project, componentsProject]) {
         let wrapper;
         let target;
         if (declarationPath === METHODS_PATH) {
-          wrapper = wrapperPath(declaration, METHODS_PATH, new Set(["Methods", "WorkspaceMethods"]));
+          wrapper = wrapperPath(
+            declaration,
+            METHODS_PATH,
+            new Set(["Methods", "WorkspaceMethods"]),
+          );
           target = consumerCalls;
         } else if (declarationPath === SIDECAR_PATH) {
           wrapper = wrapperPath(declaration, SIDECAR_PATH, new Set(["SidecarClient"]));

@@ -53,7 +53,10 @@ const pluginThemeSchemas = [
           selected: {
             digest: "1".repeat(64),
             name: "sample",
-            services: [],
+            contributions: [],
+            points: [],
+            pointValues: [],
+            components: [],
             servers: [],
             inputs: [],
             themes: [theme],
@@ -96,6 +99,24 @@ describe.each(pluginThemeSchemas)("plugin theme schema $reference", ({ reference
   ])("refuses invalid portable colors: %j", (colors) => {
     expect(validate(project({ ...theme, colors }))).toBe(false);
   });
+});
+
+it("requires the current contribution evidence in a published installation", () => {
+  const fixture = pluginThemeSchemas[1]!.project({
+    id: "sample",
+    title: "Sample",
+    scheme: "dark",
+    colors: {
+      background: "#102030",
+      foreground: "#ABCDEF",
+      accent: "#102030",
+      muted: "#102030",
+      border: "#102030",
+    },
+  }) as { data: { selected: Record<string, unknown> }[] };
+  delete fixture.data[0]!.selected.contributions;
+  const validate = ajv.getSchema(pluginThemeSchemas[1]!.reference)!;
+  expect(validate(fixture)).toBe(false);
 });
 
 describe("the published OpenRPC request schemas", () => {

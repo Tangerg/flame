@@ -15,7 +15,3 @@ export function openSettingsView(): void {
 export function openDiffViewInDock(): void {
   openWorkspaceDiffForFile("");
 }
-
-export function openFileInWorkingTreeDiff(path: string): void {
-  openWorkspaceDiffForFile(path);
-}

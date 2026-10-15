@@ -4,16 +4,16 @@
 
 On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
 actual graphical qualification. Earlier no-UI statements retain their historical
-scope. The 13 graphical rows and four review scenarios stay Partial until their
+scope. Remaining graphical rows and four review scenarios stay Partial until their
 matching evidence exists. Use only isolated Runtime/data/browser/native resources;
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **38 Evidenced / 10 Partial / 0 Open**, not an
+The original P01-P48 audit is **39 Evidenced / 9 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
-P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup has earlier source evidence but now needs the frontend
-fixture migration exposed by newly authorized checks.
-Nine graphical rows, reopened P48 frontend cleanup and all four added
+P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
+evidence, including the newly authorized complete frontend gate.
+Nine graphical rows and all four added
 review cross-scenarios remain Partial.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
@@ -36,10 +36,16 @@ public-client regression fails before repair at its unchanged 5s limit and passe
 afterward; focused 80 tests and the complete 30-file/356-test shared-client check
 pass. The rebuilt production Web displays the existing explicit recovery boundary
 for the same dependency failure. Actual theme/font-scale interaction also passes.
-P30/P35 join P29/P32 as graphical evidence. P48 remains Partial: full frontend tests
-pass, but newly enabled dead-code/design-system gates expose a stranded old workspace
-Memory path and a Session dialog primitive bypass. Their end-to-end cleanup is in
-progress; a current complete gate and fresh native qualification are pending.
+P30/P35 join P29/P32 as graphical evidence. P48 source cut is now evidenced:
+the unused workspace Memory path is deleted end to end, the dialog uses the atom
+boundary and management controls use the shared pending contract. Complete frontend
+check passes all 355 files/2,418 tests plus every source/resource/bundle gate. Actual
+rebuilt Web Memory adds and refreshes its owner-backed task-only row. Fresh native
+execution after this cut remains pending because the Mac is locked; fresh task-local
+beta.29 macOS packaging passes. Earlier results retain their exact scope.
+The user requests a released Scope upgrade next. Official module metadata reports
+v0.51.1. Inspect and upgrade the full graph in this worktree; do not treat upgrade
+success as either historical timeout diagnosis.
 Bounded MCP controls now distinguish whole/fragmented frames, lease release and
 pre-transport EOF/SIGTERM, with package init traces. They do not reproduce or explain
 the historical MCP deadline; safe-steer also remains unresolved. Full details and
@@ -52,10 +58,11 @@ ESM. Web and an isolated Wails bundle render installed Reviews, save through its
 real backend and demonstrate stale-editor revision refusal (Web holds 3, Wails
 saves 4, Web refuses without overwriting 4). An executable CLI query agrees with
 revision 4. P29/P32 now have graphical evidence. Current native packaging and the
-public-module gate pass. The full frontend gate remains failed/unqualified:
-a clean focused run reproduces nine failures in five files (105 pass), including
+public-module gate pass. The first full frontend gate was failed/unqualified:
+a clean focused run reproduced nine failures in five files (105 pass), including
 obsolete service/Skill-cache fixtures and Memory raw-input/cache expectations.
-Reconcile these next, without restoring old APIs or relaxing assertions. See the
+The current migration and complete passing gate above supersede that failure
+without restoring old APIs or relaxing valid assertions. See the
 current graphical-acceptance section of the progress document for exact scope.
 
 The following test-only slice qualifies the actual CLI original-binding conflict:
@@ -551,9 +558,10 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
 
 ## Unexecuted scenarios and risks
 
-- P21/P26/P30-P31/P33/P35-P36/P39-P40/P45-P46 still need matching graphical
+- P21/P26/P31/P33/P36/P39-P40/P45-P46 still need matching graphical
   interaction. The user has authorized UI/E2E/screenshots; keep resources isolated.
-  P29/P32 have actual Web/Wails proof. P48 is reopened for frontend fixture closure.
+  P29/P32 have actual Web/Wails proof; P30/P35 have actual Web proof. P48 source
+  closure includes the complete current frontend gate.
 - All four review cross-scenarios remain Partial: no-Run mutation response loss
   across actual UI/Runtime restart plus update/uninstall/selection; equivalent
   typed refusal through Tool/CLI/rendered UI; authenticated remote multi-resource

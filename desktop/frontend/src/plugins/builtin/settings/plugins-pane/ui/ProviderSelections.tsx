@@ -34,7 +34,7 @@ export function ProviderSelections({
     <section aria-label={t("packages.providers.title")}>
       <Toolbar label={t("packages.providers.title")}>
         <h3>{t("packages.providers.title")}</h3>
-        <Button disabled={providers.isFetching} onClick={() => void providers.refetch()}>
+        <Button pending={providers.isFetching} onClick={() => void providers.refetch()}>
           {t("packages.providers.refresh")}
         </Button>
       </Toolbar>
@@ -194,7 +194,8 @@ function ProviderRole({
           disabled={busy || !!unknown}
         />
         <Button
-          disabled={!candidate || busy || !!unknown || operations.signal.aborted}
+          pending={busy}
+          disabled={!candidate || !!unknown || operations.signal.aborted}
           onClick={select}
         >
           {t("packages.providers.apply")}
@@ -205,7 +206,8 @@ function ProviderRole({
         <SystemMessage variant="warning">
           {t("packages.providers.unknown", { id: unknown.idempotencyKey })}
           <Button
-            disabled={busy || operations.signal.aborted}
+            pending={busy}
+            disabled={operations.signal.aborted}
             onClick={() => {
               try {
                 const signal = observationSignal();

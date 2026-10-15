@@ -16,9 +16,7 @@ describe("workspaceInvalidations", () => {
       "mcpExposure",
       "approvalRules",
     ]);
-    expect(workspaceInvalidations({ type: "plugins.dataChanged", sequence: 4 })).toEqual([
-      "agentMemory",
-    ]);
+    expect(workspaceInvalidations({ type: "plugins.dataChanged", sequence: 4 })).toEqual([]);
     expect(workspaceInvalidations({ type: "sessions.changed", sequence: 5 })).toEqual(["sessions"]);
     expect(workspaceInvalidations({ type: "hooks.changed", sequence: 7 })).toEqual(["hooks"]);
     expect(workspaceInvalidations({ type: "models.changed", sequence: 8 })).toEqual([
@@ -31,9 +29,7 @@ describe("workspaceInvalidations", () => {
       "approvalMode",
       "approvalRules",
     ]);
-    expect(workspaceInvalidations({ type: "plugins.dataChanged", sequence: 10 })).toEqual([
-      "agentMemory",
-    ]);
+    expect(workspaceInvalidations({ type: "plugins.dataChanged", sequence: 10 })).toEqual([]);
     expect(
       workspaceInvalidations({
         type: "resync",

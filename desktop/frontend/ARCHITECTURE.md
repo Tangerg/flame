@@ -57,7 +57,7 @@ without overriding the meaning of a global size token.
 | `providers/`            | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations                         |
 | `runtime/`              | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage installation          |
 | `navigation/`           | Work Index projections and working-directory selection                                                                                  |
-| `workspace/`            | Workspace materials, view navigation, file and review reads, skill/memory curation, conversation export, and subscription invalidation  |
+| `workspace/`            | Workspace materials, view navigation, file and review reads, conversation export, and subscription invalidation  |
 | `settings/` features    | Their own settings policies and presentation contributions                                                                              |
 | `shell/workbench/`      | Product composition of chat, sidebar, settings, and dock surfaces                                                                       |
 | Other `shell/` features | Native chrome, notifications, status, route, and overlay contributions                                                                  |
@@ -233,7 +233,7 @@ read models, fetchers, Runtime translation, and registration belong to the
 feature that understands the data:
 
 - Agent registers Session and model-invocation reads.
-- Workspace registers projects, files, memory and the Skill reads consumed by trusted selectors and curation forms. Optional package pages read canonical Skill catalogs and documents through release-bound plugin queries; the former compiled catalog pages and document cache are removed.
+- Workspace registers projects and files. Installed Memory and Skill components read their own generated publisher contracts through release-bound operations; drafts, pending command observation and accepted pages belong to those components. Workspace has no parallel business cache, mutation gateway or catalog page.
 - Providers registers provider/model catalogs, configuration, and role reads.
 - Hooks registers inspection and trust reads.
 - MCP registers its server and tool data through its own plugin.

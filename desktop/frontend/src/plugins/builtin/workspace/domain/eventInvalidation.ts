@@ -1,6 +1,5 @@
 export type WorkspaceInvalidationTarget =
   | "all"
-  | "agentMemory"
   | "agentSessionProjection"
   | "approvalMode"
   | "approvalRules"
@@ -160,7 +159,7 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "approvals.changed":
       return ["approvalMode", "approvalRules"];
     case "plugins.dataChanged":
-      return ["agentMemory"];
+      return [];
     case "resync": {
       if (!ev.topics?.length) return ["all"];
       const targets = new Set<WorkspaceInvalidationTarget>();

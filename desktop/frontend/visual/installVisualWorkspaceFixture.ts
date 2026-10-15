@@ -6,7 +6,7 @@ import type { Diff } from "@flame/runtime-contract/wire";
 import { UsageReport } from "../../../plugins/usage/src/component";
 import { MemoryReport } from "../../../plugins/memory/src/component";
 import { TrajectoryReport } from "../../../plugins/trajectory/src/component";
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
 import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
@@ -30,8 +30,6 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_AGENT_MEMORY_KEY,
-  type AgentMemoryEntry,
   type WorkspaceFileChange,
   type WorkspaceFileContent,
   type WorkspaceFileEntry,
@@ -263,28 +261,36 @@ function visualTrajectory(
   return entries.sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
 }
 
-const visualMemory: AgentMemoryEntry[] = [
+const visualMemory: ComponentProps<typeof MemoryReport>["page"]["Rows"] = [
   {
-    id: "mem_00000000000000000000000000000002",
-    scope: "project",
-    content: "Prefers the diff read worst-risk-first.",
-    origin: "auto",
-    status: "pending",
-    pinned: false,
-    sessionId: VISUAL_SESSION_ID,
-    createdAt: "2026-07-30T16:20:00Z",
-    updatedAt: "2026-07-30T16:20:00Z",
+    ID: "mem_00000000000000000000000000000002",
+    Scope: "project",
+    Day: "",
+    Project: "",
+    Embedding: [],
+    EmbeddingSpace: "",
+    Content: "Prefers the diff read worst-risk-first.",
+    Origin: "auto",
+    Status: "pending",
+    Pinned: false,
+    SessionID: VISUAL_SESSION_ID,
+    CreatedAt: "2026-07-30T16:20:00Z",
+    UpdatedAt: "2026-07-30T16:20:00Z",
   },
   {
-    id: "mem_00000000000000000000000000000001",
-    scope: "project",
-    content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
-    origin: "auto",
-    status: "active",
-    pinned: true,
-    sessionId: VISUAL_SESSION_ID,
-    createdAt: "2026-07-31T10:00:00Z",
-    updatedAt: "2026-07-31T10:00:00Z",
+    ID: "mem_00000000000000000000000000000001",
+    Scope: "project",
+    Day: "",
+    Project: "",
+    Embedding: [],
+    EmbeddingSpace: "",
+    Content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
+    Origin: "auto",
+    Status: "active",
+    Pinned: true,
+    SessionID: VISUAL_SESSION_ID,
+    CreatedAt: "2026-07-31T10:00:00Z",
+    UpdatedAt: "2026-07-31T10:00:00Z",
   },
 ];
 
@@ -364,21 +370,7 @@ function workspaceDataPlugin(
         component: () =>
           createElement(MemoryReport, {
             page: {
-              Rows: visualMemory.map((item) => ({
-                ID: item.id,
-                Content: item.content,
-                Scope: item.scope,
-                Origin: item.origin,
-                Status: item.status,
-                Pinned: item.pinned,
-                SessionID: item.sessionId ?? "",
-                Day: "",
-                CreatedAt: item.createdAt,
-                UpdatedAt: item.updatedAt,
-                Project: "",
-                Embedding: [],
-                EmbeddingSpace: "",
-              })),
+              Rows: visualMemory,
               NextCursor: "",
               Capacity: 512,
             },
@@ -407,11 +399,6 @@ function workspaceDataPlugin(
           ] satisfies WorkspaceFileChange[];
         },
       });
-      ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_AGENT_MEMORY_KEY,
-        fetcher: async (): Promise<AgentMemoryEntry[]> => visualMemory,
-      });
-
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_LIST_FILES_KEY,
         fetcher: async (params) =>

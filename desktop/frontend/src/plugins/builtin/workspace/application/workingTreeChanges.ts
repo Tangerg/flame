@@ -1,5 +1,5 @@
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
-import { useWorkspaceCapability } from "./workspaceCapabilities";
+import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { useMemo } from "react";
 import { type WorkspaceFileChange, useWorkspaceFileChanges } from "./workspaceQueries";
 
@@ -10,7 +10,7 @@ export interface WorkingTreeChanges {
 }
 
 function useChangedFiles(): WorkspaceFileChange[] | undefined {
-  const gitEnabled = useWorkspaceCapability("git");
+  const gitEnabled = useRuntimeCapability("git");
   const workspace = useActiveSessionWorkspace();
   return useWorkspaceFileChanges(
     gitEnabled && workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,

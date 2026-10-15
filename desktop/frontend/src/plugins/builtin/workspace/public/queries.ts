@@ -3,7 +3,6 @@ export {
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_AGENT_MEMORY_KEY,
   useWorkspaceFileChanges,
   useWorkspaceListFiles,
   useWorkspaceProjects,
