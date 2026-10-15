@@ -2,31 +2,50 @@
 
 ## Current stage
 
-Completed on 2026-10-15 within the user's authorized implementation and
-verification scope. The original worktree and `codex/unified-plugins` branch are
-retained; last integrated main is `7ba40c117` (Scope v0.50.0). No push, merge into
-main, primary-checkout edit or user-data conversion was performed. The user's
-original stash is preserved.
+Reopened on 2026-10-15: the parallel race deadline in
+`TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot` remains unresolved.
+The previous completion declaration was premature. Serial passes do not establish
+a cause or qualify the failed parallel invocation. Investigation retains every
+original assertion and the 10-second case deadline, and requires causal evidence
+plus verification of the original parallel scenario before acceptance can close.
 
-Implementation finishes at `03fb6eeb6`. Complete normal Go acceptance passes all
-174 packages; full-module vet, shared protocol 355 tests, current types/source
-boundaries, exact generation, independent public artifacts, Runtime distribution
-and signed native packaging pass. All modules also have passing race results.
-The full parallel race invocation is explicitly a failed run: 173 package results
-pass and one CLI delegated-approval case exceeds its original 10s deadline.
-The unchanged complete runtimebinding race suite then passes (67.710s), the exact
-case passes three repetitions (39.668s), and complete serial CLI race passes all
-33 packages (runtimebinding 67.414s, terminal 56.501s). No assertion, deadline,
-production Go source or test selection was changed to obtain those passes. This
-is module-isolated qualification, not a claim that the parallel aggregate passed
-or that its deadline was proved pre-existing.
+The original worktree and `codex/unified-plugins` branch are retained; last
+integrated main is `7ba40c117` (Scope v0.50.0). No push, main merge, primary-checkout
+edit or user-data conversion is authorized. Preserve the original stash.
 
-All 48 proposal requirements and review concerns are individually reconciled
-below. Graphical UI/E2E/screenshot execution is explicitly excluded: source,
-type, shared-client and native build evidence is never reported as rendered
-Hooks/provider identity, remote Web/Wails interaction or graphical reload proof.
-Registry publication and external deployment are also not claimed. No required
-implementation or authorized verification work remains.
+Existing normal Go, vet, shared protocol, generation, artifact and native results
+remain historical evidence. The full parallel race has 173 passing package
+results and one deadline failure. Independent package and serial CLI race passes
+are diagnostic results only. UI/E2E/screenshot execution remains excluded.
+
+### Parallel race deadline investigation (2026-10-15)
+
+- The original `-race -p 2` failure reproduces with only `./cli` and
+  `./cli/internal/adapter/runtimebinding`. Delegated approval exceeds its unchanged
+  10s context (10.403s Execute window, 11.31s whole case). The accepted-opening
+  recovery case also hits its original deadline in that run. This is production
+  work consuming the case budget, not a cause inferred from serial passes.
+- The traced path is `executorCheckpoint` -> `decodeInteractionCheckpointPayload`
+  -> published model observer/input/context factories -> typed schema generation
+  and capability admission. Every checkpoint recompiled all three fixed contracts.
+  One original exact-case run constructs them 36/38/38 times: 8.201s cumulative
+  constructor wall time, with a 9.808s Execute window. These constructor intervals
+  can overlap; they are not claimed as an exclusive critical-path sum.
+- A same-command race benchmark measures observer/input/context at
+  127.5/50.7/41.0ms and 20.4/7.9/6.5MB per lookup. The SDK now owns one immutable
+  admitted instance per fixed contract through `sync.OnceValues`. Warm lookups
+  allocate zero bytes. Dynamic/received contracts still undergo strict admission.
+- A current exact-case profiling run completes Execute in 2.391s. Concurrent
+  descriptor mutation/isolation and valid/invalid input admission pass race.
+  The original recovery test is restored byte-for-byte, with every assertion and
+  the 10s context unchanged. Temporary timestamps/stacks/counters are not product
+  code. Uninstrumented complete CLI root/runtimebinding at `-race -p 2` passes
+  (74.798/42.144s), including both previously failing cases.
+- The complete original 174-package parallel race command is running. A separate
+  profiling run also observed a refused waiting-tree Deployment validation; its
+  configuration/source evidence is being investigated rather than discarded.
+  Acceptance remains open until both the original parallel gate and this finding
+  are resolved. The earlier completion declaration remains withdrawn.
 
 ### Current native and standalone artifact qualification (2026-10-15)
 
@@ -1591,19 +1610,19 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-None within the authorized implementation and verification scope. Historical
-slice entries below retain the failures and pending work as they existed at each
-stage; Current stage, Review closure and Proposal acceptance coverage describe
-the final state. Excluded graphical tests and unauthorized publication are not
-pending actions for this goal.
+Parallel race acceptance is reopened. The delegated-approval deadline has a
+reproduced production cause: every Interaction checkpoint decode recompiled the
+three fixed published model contracts. The SDK now owns one immutable admitted
+instance of each. Full verification of the original parallel scenario is running.
+Original assertions and the 10-second case deadline remain unchanged.
 
 ## Next
 
-No further goal implementation is required. Keep the qualified source/artifacts
-on this worktree and branch. A future publication, push, merge, user-data migration
-or graphical test run requires a separately authorized scope. For future local
-race verification, isolate complete CLI packages with `-p 1`; retain original case
-assertions and deadlines, and preserve any failed parallel invocation as a failure.
+Finish the complete original `-race -p 2` sweep, including the entire bootstrap
+suite and all Schedule SIGKILL cuts. Investigate any failure instead of accepting
+serial reruns. Record current source validation and the causal measurements,
+review the diff, commit explicit paths and remove only owned scratch resources.
+Do not push, merge, edit the primary checkout or alter the user's stash.
 
 ## Decision ledger
 
@@ -1984,8 +2003,8 @@ Final current qualification (2026-10-15):
   unchanged exact-case repetitions pass (39.668s total). With all temporary
   diagnostics removed and source clean, `go test -race -p 1 ./cli/... -count=1
   -timeout=300s` passes all 33 CLI packages: root 70.686s, runtimebinding 67.414s,
-  command 7.890s and terminal 56.501s. This completes race coverage per module
-  without suppressing or relabeling the earlier failure.
+  command 7.890s and terminal 56.501s. These serial passes do not qualify the failed parallel
+  scenario. The completion declaration based on them was withdrawn.
 - `go vet -p 2` over all four module roots plus localruntime passes. Core/Memory/
   Schedules generation reproduces tracked artifacts exactly, including public
   Go API, all Go projections, feature JSON/TS and published caller policy.
@@ -3553,11 +3572,12 @@ evidence follows atomic Session deletion, and unattached evidence is retained.
 Pending/unknown commands never expire into replay permission. No new TTL or
 universal Goal cost/step ceiling was inferred from silence.
 
-One parallel race invocation hit the CLI recovery deadline. The unchanged
-complete failed package, three exact-case repetitions and entire serial CLI
-module pass; the original failed invocation remains explicit in Current stage.
-No production cause was inferred from inability to reproduce it in isolation,
-and no test was skipped or relaxed.
+The original parallel race deadline is reproduced with just the CLI root and
+runtimebinding packages at `-race -p 2`. Causal measurements identify repeated
+compilation of immutable model contracts; current parallel qualification follows
+the SDK fix. One profiling run also exposed a refused waiting-tree deployment
+validation; retain that failure and investigate it before closing acceptance.
+No test is skipped or relaxed.
 
 Graphical interaction remains unexecuted by user instruction. The earlier
 interrupted prohibited UI run is not current acceptance evidence and is not

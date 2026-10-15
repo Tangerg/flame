@@ -6,6 +6,12 @@ It lives in the existing Runtime module and imports no Runtime internal package.
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle.
 
+The fixed published model observer, input and context contracts are immutable
+process-wide values. Their schemas are compiled once by this package; checkpoint
+validation and callers share the admitted contract. `Descriptor` still returns
+owned schema bytes, so one consumer cannot alter another consumer's validation.
+Caller-authored and received contracts retain ordinary strict admission.
+
 `NewMethod[P, R]` is the authoring contract for typed feature methods. Its owner
 declares semantic identity, query/command kind, target meaning and description
 once. Scope derives immutable input/output schemas from the existing Go types.

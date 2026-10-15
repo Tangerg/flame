@@ -1,7 +1,7 @@
 # Unified plugin refactor handoff
 
-Completed on 2026-10-15 within the user's authorized implementation and
-verification scope. The detailed slice history, 48 individual acceptance rows,
+Reopened on 2026-10-15: parallel race acceptance remains unresolved. The earlier
+completion declaration was premature; serial passes do not establish the cause. The detailed slice history, 48 individual acceptance rows,
 review reconciliation and failure records remain in
 [plugin-refactor-progress.md](plugin-refactor-progress.md). Current repository
 state is authoritative.
@@ -76,8 +76,8 @@ The shared callback layer has no Memory domain or universal Memory work limit.
   Three exact-case repetitions pass (39.668s). After temporary diagnostics are
   removed, complete serial CLI race passes all 33 packages, including runtimebinding
   67.414s and terminal 56.501s. No source, assertion, timeout or test selection was
-  changed to obtain those passes. Future CLI race qualification uses `-p 1` to
-  isolate its real Runtime fixtures; do not silently erase a failed parallel run.
+  changed to obtain those passes. These passes do not qualify the failed parallel
+  scenario or establish its cause. Preserve the original assertions and 10s limit.
 - Shared contract checks: 30 files/355 tests plus types/lint/format/knip pass.
   SDK/Reviews/portable/Desktop typechecks and portable exact resources pass.
 - Static dependency/layer/public-boundary/context/port/API checks pass; 95/95 API
@@ -95,6 +95,29 @@ The first full acceptance run found genuine snapshot `SQLITE_BUSY` failures;
 174 packages. The failed/terminated earlier run and failed parallel race are
 preserved in the progress history, never counted as passes. No test was skipped,
 weakened or given a larger case deadline to manufacture a pass.
+
+## Reopened parallel race investigation
+
+The deadline reproduces with just CLI root/runtimebinding at `-race -p 2`.
+`executorCheckpoint` decodes its own payload, and every decode rebuilt the three
+fixed model contracts. One original case builds observer/input/context contracts
+36/38/38 times, with 8.201s cumulative constructor wall time and a 9.808s Execute
+window. Race benchmarks show 127.5/50.7/41.0ms and 20.4/7.9/6.5MB per lookup.
+This is a measured production cause; serial passes were insufficient evidence.
+
+The SDK owns one immutable admitted instance of each fixed contract through
+`sync.OnceValues`. Received/authored contracts retain ordinary strict admission;
+consumer descriptors still own their schema bytes. Race coverage exercises
+concurrent descriptor isolation and valid/invalid input admission. A diagnostic
+current Execute takes 2.391s. With all instrumentation removed and the original
+10s/assertions unchanged, complete CLI root/runtimebinding passes at `-race -p 2`
+(74.798/42.144s). The original full parallel gate is still running.
+
+One profiling run also observes a refused waiting-tree Deployment validation.
+Investigate the captured/current configuration and asynchronous backend catalog;
+do not erase that finding or close acceptance merely because the deadline fix
+passes. All diagnostic overlays/logs live in owned temporary storage, not the
+production tree, and must be removed after their evidence is recorded.
 
 ## Scope and data boundaries
 
@@ -122,6 +145,8 @@ pushing/merging and user-data migration require a separately authorized scope.
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`.
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`.
 
-Both original inputs are unchanged. No required implementation or authorized
-verification remains for this goal. Keep the reviewable Runtime and native build
-outputs, clean only owned scratch resources, confirm Git/stash state, and stop.
+Both original inputs are unchanged. Trace and reproduce the delegated-approval
+recovery timeout under parallel race, collect phase evidence, and repair the
+responsible production boundary if defective. Reverify the original parallel
+scenario and affected modules. Do not close acceptance on serial reruns alone.
+Keep reviewable Runtime/native outputs and remove only owned scratch resources.

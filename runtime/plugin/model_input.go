@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -24,13 +25,17 @@ func (r ModelInputRequest) Validate() error {
 func ModelInputMethod() (*Method[ModelInputRequest, chat.Request], error) {
 	return NewMethod[ModelInputRequest, chat.Request](MethodConfig{Name: "flame.model-input/transform.v1", Kind: capability.Query, Target: "call", Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
-func ModelInputContract() (*capability.Contract, error) {
+func ModelInputContract() (*capability.Contract, error) { return modelInputContract() }
+
+// The published contract is immutable. Checkpoint validation shares its compiled
+// schemas instead of repeating admission on every durable tree commit.
+var modelInputContract = sync.OnceValues(func() (*capability.Contract, error) {
 	method, err := ModelInputMethod()
 	if err != nil {
 		return nil, err
 	}
 	return capability.New(capability.Config{Reference: "flame.model-input.v1", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
-}
+})
 
 // ValidateModelInput preserves facts owned by selection, Tool preparation and
 // the caller's resource envelope. The owner admits transformed media/capacity.

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/scope/core/chat"
@@ -27,13 +28,17 @@ func ModelContextMethod() (*Method[ModelContextRequest, ModelContextResult], err
 
 // ModelContextContract orders independent context contributions before the final
 // request is admitted. It grants no next proxy, model call or route replacement.
-func ModelContextContract() (*capability.Contract, error) {
+func ModelContextContract() (*capability.Contract, error) { return modelContextContract() }
+
+// The published contract is immutable. Checkpoint validation shares its compiled
+// schemas instead of repeating admission on every durable tree commit.
+var modelContextContract = sync.OnceValues(func() (*capability.Contract, error) {
 	method, err := ModelContextMethod()
 	if err != nil {
 		return nil, err
 	}
 	return capability.New(capability.Config{Reference: "flame.model-context.v1", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
-}
+})
 
 func (r ModelContextResult) Validate() error {
 	for _, message := range r.Messages {
