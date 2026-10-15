@@ -3,11 +3,14 @@ package reviews
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -165,9 +168,61 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err != nil || identityConflict.Type != IdentityConflict {
 		t.Fatalf("identity conflict = %+v, %v", identityConflict, err)
 	}
+	assertToolOutcome := func(identity string, input Update, expected UpdateResult) {
+		t.Helper()
+		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: identity, Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}}})
+		if err != nil || result.IsError != (expected.Type != Updated) {
+			t.Fatalf("Tool refusal classification: %+v, %v", result, err)
+		}
+		encoded, err := json.Marshal(result.StructuredContent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		actual, err := jsoninput.Parse(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err := jsoninput.Encode(expected)
+		if err != nil || actual != want {
+			t.Fatalf("Tool changed the typed business result: %s, want %s, %v", actual.JSON(), want.JSON(), err)
+		}
+	}
+	assertToolOutcome("tool-stale", input, conflict)
+	assertToolOutcome("shared-command", changed, identityConflict)
+
+	missing := Update{ID: "capacity-missing", ExpectedRevision: 1, Status: Open}
+	admitted, err := jsoninput.Encode(missing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipts int
+	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil {
+		t.Fatal(err)
+	}
+	// Reach the real bound through the business owner, so the wire proof neither
+	// lowers the limit nor depends on fabricated private receipt rows.
+	for index := receipts; index < MaxReceipts; index++ {
+		result, err := store.Update(t.Context(), fmt.Sprintf("capacity-%d", index), missing, admitted)
+		if err != nil || result.Type != NotFound {
+			t.Fatalf("fill receipt capacity: %+v, %v", result, err)
+		}
+	}
+	changed.ExpectedRevision = accepted.Review.Revision
+	capacity, err := updateMethod.CallCommand(t.Context(), "typed-at-capacity", changed)
+	if err != nil || capacity.Type != Capacity || capacity.Review != nil {
+		t.Fatalf("typed capacity refusal = %+v, %v", capacity, err)
+	}
+	assertToolOutcome("tool-at-capacity", changed, capacity)
+	if recovered, err := updateMethod.CallCommand(t.Context(), "shared-command", input); err != nil || !reflect.DeepEqual(recovered, accepted) {
+		t.Fatalf("capacity changed original typed recovery: %+v, %v", recovered, err)
+	}
+	assertToolOutcome("shared-command", input, accepted)
 	listed, err := listMethod.Call(t.Context(), struct{}{})
 	if err != nil || len(listed.Reviews) != 1 || listed.Reviews[0] != *accepted.Review {
 		t.Fatalf("canonical typed read = %+v, %v", listed, err)
+	}
+	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != MaxReceipts {
+		t.Fatalf("refusal or recovery changed the retained receipt bound: %d, %v", receipts, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)

@@ -168,14 +168,27 @@ From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
 ownership. Use `GOWORK=off` for the same checks against this module's independent
 released dependency graph once its Runtime dependency names a release containing
 the new public SDK. Current workspace checks use the branch's SDK. An isolated
-offline author build of this source has also been verified with the current SDK's
-public files packaged as a temporary module archive, `GOWORK=off`, no local
-`replace`, and no Runtime internal source. That fixture is not a published release.
+offline author build of this source has also been verified with current Runtime
+and companion localruntime module archives, `GOWORK=off`, and no local `replace`.
+The archives include the actual implementation required by their public packages,
+including internal directories; author source imports only public APIs. A
+public-directories-only archive does not contain that implementation closure.
+The temporary offline proxy is not a published release.
+
+`TestTypedAndToolEntrancesShareTheBusinessReceipt` compares complete canonical
+results and the Tool error flag for revision conflict, invocation conflict and
+receipt-capacity refusal. It fills the existing 4,096-receipt bound through real
+Store updates, then verifies that both entrances still recover the original
+success and that refusals leave the review unchanged. This SDK/MCP test uses
+in-memory transport; it does not execute the CLI or board.
 
 From `runtime`, `go test ./internal/bootstrap -run TestReviewBackend -count=1`
 builds and installs the real stdio backend in temporary directories. It exercises
 approval, Runtime/backend restart, command replay, stale revisions, withdrawal,
-historical results, and a real CLI reading through HTTP. A transport probe drops
+historical results, and a real CLI querying and receiving revision-conflict
+results through authenticated HTTP. That CLI case compares the complete canonical
+results with the model Tool output, including same-command refusal redelivery;
+it does not claim CLI coverage of every refusal class. A transport probe drops
 an actual committed update's response: Runtime retains a lost Run and unresolved
 effect, the restarted backend recovers the original receipt through the public
 read-only query, and a replacement call returns the revision conflict. An absent

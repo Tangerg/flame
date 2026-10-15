@@ -7,6 +7,7 @@ implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup are complete.
 Thirteen graphical rows and all four added review cross-scenarios remain Partial.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
+The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. The latest test-only qualification
 also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
@@ -39,6 +40,11 @@ model Tool result through authenticated HTTP, including same-command redelivery.
 Plugin test Handlers and Endpoints now share the isolated store's namespace;
 the fixed conformance namespace remains confined to its matching test binding.
 There is no production timeout repair or completed graphical cross-scenario.
+Reviews' typed-operation/MCP Tool test now compares full canonical invocation-
+conflict and capacity outcomes as well as revision conflict. Setup fills the real
+4,096-receipt bound through the business owner; both entrances retain original
+recovery and unchanged private Review state. This is SDK/in-memory transport
+coverage, not new CLI/Run/stdio/UI qualification of those two refusal classes.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -76,6 +82,13 @@ Other completed contract/dependency/retention/model/feature ownership work remai
 recorded in progress rather than duplicated here.
 
 ## Actual current qualification
+
+The latest Reviews test/doc-only slice passes focused race 6.412s and module vet.
+Complete module race passes backend/analyzer 7.294/3.290s, with two no-test command
+packages; it predates only the final retained-count assertion covered by that
+focused run. Runtime/shared TS/native and standalone author archives are not
+newly run for this slice. The active author README now correctly distinguishes
+public author imports from the internal implementation required in module archives.
 
 The latest fixture/CLI slice passes both complete participating packages on clean
 `6b3a175e8`, without an overlay or changed assertion/deadline:
@@ -321,11 +334,15 @@ Next substantive unresolved work is to capture a real historical-class safe-stee
 deadline with phase/state/stack evidence. Determine whether execution is still
 live, where it stopped, and what the original owner retained; a terminal Run can
 also explain the caller's wait. Do not relax assertions or limits.
+The user confirms that the original failure artifacts are unavailable; do not
+keep searching for presumed retained logs or infer its cause from a passing run.
 The retained MCP connecting-deadline stacks stop in initial SDK discovery, before
 admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them;
 obtain a failing child/proxy snapshot before making a production repair.
 Do not substitute a later pass or build overlap for a cause of its failed gates.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
+Actual CLI invocation-conflict/capacity cross-entrance proof is still separate
+from the new SDK/Tool test; do not count the latter as execution of those CLI cases.
 Do not declare the whole plugin system 100%.
 
 Read-only original inputs:

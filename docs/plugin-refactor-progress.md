@@ -11,6 +11,8 @@ UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 The latest test-only qualification also retains unclassified MCP startup
 discovery deadlines; passing focused or complete reruns do not explain them.
+The user confirms no original safe-steer logs, goroutine dump or test data remain.
+The missing failure interval cannot be reconstructed from normal-path observations.
 
 The latest complete product qualification is frozen `b2dcbfbba`. Production Go
 remains unchanged. Later test-only slices add failure-only steer diagnostics,
@@ -89,6 +91,44 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Reviews SDK/Tool refusal parity at the real receipt bound (2026-10-15)
+
+Rechecking the original review identifies a still-useful non-graphical gap:
+the real CLI case compares revision conflict, while invocation conflict and
+capacity previously had narrower Store/typed-method coverage. The existing
+`TestTypedAndToolEntrancesShareTheBusinessReceipt` now compares complete canonical
+typed-operation/MCP Tool results for revision conflict, invocation conflict and
+receipt-capacity refusal, including the Tool's error flag. It preserves unexpected
+storage failure as a protocol error rather than a known capability refusal.
+
+Setup reaches the actual 4,096-receipt limit through `Store.Update` with unique
+identities and admitted inputs. No reduced limit or fabricated receipt rows are
+used. Both entrances recover the original success after capacity is full; fresh
+refusals leave the Review unchanged and the retained receipt count at the bound.
+This is an in-memory MCP/SDK transport proof, not a real CLI, model Run, stdio
+process or graphical execution of the newly added refusal classes. The existing
+actual CLI/Tool revision-conflict proof remains separate. CLI invocation-conflict/
+capacity and rendered refusal cross-scenarios are not newly qualified.
+
+The first focused race passes 6.686s. After strengthening comparison to the full
+canonical JSON, the complete Reviews module race passes (backend 7.294s,
+analyzer 3.290s; two commands have no tests). The final retained-count assertion
+then passes focused race 6.412s, and current module vet passes. The complete module
+result predates only that final assertion. Runtime/bootstrap/shared TS/native and
+independent offline archives are not rerun for this test/doc-only slice.
+No production schema, API, dependency, assertion or original deadline is relaxed.
+
+The active Reviews README also corrects a stale artifact claim: current
+independent author qualification packages the required internal implementation
+inside Runtime and companion localruntime archives, while author imports remain
+public. It cannot be described as a public-directories-only build or as a
+published release. No archive/publication is newly executed by this correction.
+
+Original P01-P48 stays 35 Evidenced/13 Partial, and all four added review groups
+stay Partial. The user confirms that original safe-steer failure artifacts are
+unavailable. Its historical cause and the separate captured initial-MCP-discovery
+deadline remain unresolved; neither is closed by this refusal coverage.
 
 ### Original-source process observation and current fixture qualification (2026-10-15)
 
@@ -2708,7 +2748,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
 | No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
 | One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the earlier shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. |
-| Typed refusal versus uncertainty | Public capability refusal and idempotency conflict owners work outside private import privilege; Tool, CLI and shared clients preserve known business failure versus absent/malformed/unreachable evidence. |
+| Typed refusal versus uncertainty | The real Tool/CLI case compares revision conflict. Reviews now also compares complete typed-operation/MCP Tool invocation-conflict and capacity results at its real 4,096-receipt bound, including recovery and unexpected storage-error classification. This SDK transport proof does not newly qualify those classes through CLI or rendered UI; the cross-scenario remains Partial. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
 | Management independent of failed optional UI | Partial: independent CLI and built-in metadata management exist; blocked-backend inspection/disable is tested. Recovery while module initialization blocks the actual renderer remains unexecuted. An error boundary or source separation does not complete that review scenario. |
 | Protocol and activation identity | Current protocol requirements, complete export sets and immutable same-release activation proofs are tested. SDK additions do not infer a new public wire epoch from internal build versions. Retired shapes are explicitly refused. |
