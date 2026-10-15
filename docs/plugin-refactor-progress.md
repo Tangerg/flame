@@ -3143,12 +3143,17 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 ## Review closure
 
 This is a reconciliation with the original review, not a blanket closure.
-Current complete normal/original parallel race, vet, shared TS, static checks,
-standalone author artifacts and Runtime/native builds pass on frozen Go source
-`b2dcbfbba` as recorded above. Packages without tests and guarded live/platform
-scenarios are distinguished from executed tests. Graphical proof remains unexecuted, not satisfied by exclusion,
-source checks or native compilation. The partial requirements below prevent
-whole-proposal completion and public-contract freeze qualification.
+Production implementation remains `9f5a66d51`; the diff through `cae633a29`
+contains only tests and documentation. Complete normal/original parallel race,
+vet, shared TS, standalone author artifacts and Runtime/native qualification
+retain the exact source and test scope recorded in Current stage. The later
+Core/private CLI identity cases have separately scoped focused proof; they are
+not an invented repeat of every gate. `b2dcbfbba` remains the earlier source/API
+closure milestone. Packages without tests and guarded live/platform scenarios
+are distinguished from executed tests. Graphical proof remains unexecuted, not
+satisfied by exclusion, source checks or native compilation. The partial
+requirements below prevent whole-proposal completion and public-contract freeze
+qualification.
 
 | Review requirement | Current implementation and evidence |
 | --- | --- |
@@ -3181,7 +3186,7 @@ The review's four extra cross-acceptance groups are independently tracked:
 | Review scenario | Status | Existing evidence | Missing proof |
 | --- | --- | --- | --- |
 | No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
-| Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; real CLI Core binding conflict with matching Go problem and immutable earlier receipt; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI; actual CLI projection of the private invocation-conflict value remains separate |
+| Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; actual model/CLI private invocation conflict preserves original private receipts and refuses different-input recovery; real CLI Core binding conflict with matching Go problem and immutable earlier receipt; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI |
 | Remote multi-resource ESM in Web and Wails | Partial | Exact-release resource/auth implementation, shared import map, independent component build, native compilation | Actual remote resource/assets/module identity, auth and connection replacement in both graphical environments |
 | Module initialization blocks renderer startup; independent recovery disables it | Partial | Independent management code/CLI plus real blocked stdio-backend recovery | Actual failed graphical module startup and disabling it through a functioning independent entrance |
 
@@ -3192,22 +3197,28 @@ Those proofs do not complete the excluded graphical feasibility gate.
 
 ## Proposal acceptance coverage
 
-Audit date: 2026-10-15; latest source closure: `b2dcbfbba`. Scenario titles below are
-copied from the original proposal, rather than substituted with easier checks.
+Audit date: 2026-10-15; production implementation: `9f5a66d51`; latest focused
+CLI proof: `cae633a29`; source/API closure milestone: `b2dcbfbba`. Scenario titles
+and expected behaviors are rechecked against the original proposal and review,
+rather than substituted with easier checks.
 **35 Evidenced / 13 Partial / 0 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
 or test was checked in this audit. It does not mean a fresh invocation occurred
 in this audit. `Partial` means an original behavior is only partly demonstrated;
-`Open` identifies known unfinished work. The earlier full parallel race includes all
-174 selected packages at `981c4c915`. Current complete normal and original parallel race finish all 174 selected
-packages at production `5ff75fffc`: 159 tested packages pass and fifteen have no
-tests, with seven existing paid/subprocess conditional skips. Current vet, shared
-TS, architecture, Runtime/native and independent Go author results are recorded in
-Current stage; packed Usage evidence remains an earlier unchanged-source pass. Platform/conditional test execution is
-not inferred from package summaries. UI/E2E/screenshot execution remains forbidden
-and unrun, so those requirements remain unverified rather than waived.
+`Open` identifies known unfinished work. The complete normal and original
+parallel-race selections recorded in Current stage each finish all 174 selected
+packages with unchanged production implementation `9f5a66d51`: 159 tested
+packages pass, fifteen have no tests, and seven existing paid/subprocess tests
+skip. The normal and race test sets differ, and later test-only additions have
+their own scoped qualification above. No full-selection rerun follows the
+private-conflict addition at `cae633a29`. Current-production vet, shared TS,
+architecture, Runtime/native, independent Go author and freshly packed Usage
+results are recorded in Current stage; `5ff75fffc` results retain their frozen
+earlier scope. Platform/conditional test execution is not inferred from package
+summaries. UI/E2E/screenshot execution remains forbidden and unrun, so those
+requirements remain unverified rather than waived.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
 | --- | --- | --- | --- |
@@ -3234,7 +3245,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P21 | A query is called through Tool, CLI, and UI | Partial | The installed Reviews case compares the complete real Tool/CLI query and revision-conflict results through authenticated HTTP, including same-command refusal redelivery and unchanged private state. The rendered UI entrance has not run; source counts do not prove it. |
 | P22 | Reviews mutation commits but reply is dropped | Evidenced | Public-SDK/private receipt and Run response-loss tests cover real committed reply loss, restart, original recovery and stale revision. `TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart` adds the installed Runtime no-Run path, exact read-only receipt, pending release holds and replacement-target conflict. The larger graphical review cross-scenario remains Partial. |
 | P23 | A command identity is reused with different input | Evidenced | Private receipt/public binding/shared-client conflict tests and `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` verify the real executable CLI's known Core conflict, matching Go problem, new-key progress and unchanged original receipt after another command advances private state. `TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` separately qualifies the private outcome, unchanged prior receipts, explicit unconfirmed recovery and fresh-key progress. |
-| P24 | Schedule dispatch acknowledgement is lost | Evidenced | The complete product parallel gate includes lost-Core-opening reconciliation in bootstrap and the eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. That parent passes separately again in the current slice (58.876s). Bootstrap alone does not execute it. Earlier repetitions remain historical runs. |
+| P24 | Schedule dispatch acknowledgement is lost | Evidenced | Current-production complete qualification includes lost-Core-opening reconciliation in bootstrap and all eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. The recorded complete parallel-race parent passes 112.75s; the later complete ordinary selection's parent passes 44.94s. Bootstrap alone does not execute those cuts. Subsequent CLI test-only slices do not rerun or extend this gate. |
 | P25 | Schedule is edited after work is captured | Evidenced | Verified by retained Schedule input after definition edit/deletion and negative receipt/capture cuts. |
 | P26 | UI closes during an accepted Run | Partial | Independent accepted Run and observation lifetimes have backend/shared-client evidence. Closing an actual installed view during that Run has not been executed. |
 | P27 | Memory provider is absent versus enabled but broken | Evidenced | Backend absence versus operational failure tests pass. The complete Memory consumer migration preserves this distinction in real installed checks. |

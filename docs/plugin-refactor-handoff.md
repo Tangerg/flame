@@ -588,6 +588,14 @@ selection and strengthens actual CLI original-binding conflict/recovery proof.
 The `Invalid` audit now has a causal public regression and production writer/
 reader/admission repairs. Its exact qualification is recorded above; do not
 extend that evidence to actual rendered UI or every CLI refusal class.
+The acceptance audit rechecks all 48 original scenario titles and expected
+behaviors against the original proposal and review. It repairs stale review-table
+claims about CLI private conflict and frozen qualification scope; the counts stay
+35 Evidenced / 13 Partial. Every Partial row requires graphical execution, and
+all four review cross-scenarios retain missing graphical proof. The full
+qualification retains its production/test scope rather than being attributed to
+the latest test-only commit. No new test or native/build invocation occurs in
+this documentation audit. No missing historical failure evidence is recovered.
 Do not declare the whole plugin system 100%.
 
 Read-only original inputs:
