@@ -9,14 +9,16 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 42 Evidenced / 6 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 43 Evidenced / 5 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
 source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
 renderer-blocking recovery evidence. P40 now has the matching Web/Wails resource,
 auth and connection-retirement proof. P21 now compares complete query and known
 revision-refusal results through an actual model Tool, executable CLI and rendered
-Reviews board. Six graphical rows and the no-Run recovery review remain Partial;
+Reviews board. P39 now proves generic historical inspection after renderer and
+producer withdrawal in a fresh window, without loading their modules. Five
+graphical rows and the no-Run recovery review remain Partial;
 the three other review cross-scenarios are Evidenced.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
@@ -32,6 +34,29 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: history without its optional renderer (2026-10-15)
+
+Open the completed model-query Session and expand search_tools. Its installed
+Tool-results component actually mounts, including its recorded-result filter.
+Independent CLI then disables that renderer and the Reviews producer. The existing
+view immediately preserves the search result through the generic inspector.
+
+Close that window and authenticate a fresh one with the same historical Session.
+Expand both Tools. The generic inspector still displays the complete original
+search text and Reviews JSON at open / revision 1, while current private state is
+resolved / revision 2. A complete, non-truncated 21-request network trace contains
+only Core RPC and health/info reads: no plugin resource request, plugin invocation,
+Run start or resume. An independent cold snapshot has exactly the original
+transcript and Runs, and the controlled provider's request sequence is unchanged.
+History neither rereads the former producer nor reexecutes the recorded work.
+
+This closes P39. Before/after and fresh-window screenshots, the sanitized request
+trace, canonical snapshot comparison and provider counters remain in private task
+evidence. Close the temporary window and restore both task installations to their
+earlier enabled state. No production source, assertion or deadline changes occur.
+P26/P31/P33/P36/P46, the no-Run recovery review and both historical timeout causes
+remain incomplete.
 
 ### Graphical acceptance: one Reviews owner through Tool, CLI and UI (2026-10-15)
 
@@ -3238,7 +3263,7 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 6 Partial rows and
+Original-proposal acceptance remains incomplete: 5 Partial rows and
 the no-Run recovery review cross-scenario. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
@@ -3271,7 +3296,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
-- P26/P31/P33/P36/P39/P46 and the no-Run recovery review still need
+- P26/P31/P33/P36/P46 and the no-Run recovery review still need
   matching graphical interaction. The user has lifted the prohibition; use isolated
   resources and do not substitute source/native builds for matching interactions.
 - The high and low dependency entries have source/exposure triage but remain
@@ -3594,7 +3619,7 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and six broader graphical rows remain unqualified. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and five broader graphical rows remain unqualified. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3680,7 +3705,7 @@ Other criteria retain their exact scope.
 | P36 | Entry or provider is replaced during pending async work | Partial | Backend/shared-client withdrawal, exact capture and late-response refusal are tested. Replacing a graphical entry/provider during its pending work has not run. |
 | P37 | Update is attempted with waiting execution dependencies | Evidenced | Backend waiting/checkpoint/pending-command dependencies retain exact activation/release identity and refuse unsafe replacement. |
 | P38 | Private data remains after disable/uninstall | Evidenced | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |
-| P39 | Open old result without its renderer | Partial | Current generic history/renderer selection and retained canonical evidence have source/backend proof. Opening an old result with its renderer absent in the graphical client has not run. |
+| P39 | Open old result without its renderer | Evidenced | The installed recorded-result filter mounts before CLI disables it and Reviews. A fresh actual Web window then displays original search text and complete revision-1 Reviews JSON through the generic inspector. Its complete 21-request trace contains no plugin resource/call or Run start/resume. Canonical cold transcript/Runs and provider request counters remain unchanged. Both task installations are restored after closing the window. |
 | P40 | Use a remote Runtime from Desktop/Web | Evidenced | Both actual clients render relative ESM through the standalone authenticated Runtime with shared React identity and a 0 -> 1 Hook update. Native address replacement and Web wrong-token/valid-token replacement retire the pending module generation; explicit reload and token reentry obtain a fresh resource lease and restore rendering. Exact original entry bytes match; old/new Web leases return specified HTTP 410 after connection/window retirement. This proves one independent loopback Runtime over HTTP, not a second physical host or TLS deployment. |
 | P41 | Use plugin business commands from CLI without a page | Evidenced | `TestExecutableCLIPluginCommandCallsTheHostWithoutAPage` builds/runs the actual CLI through authenticated HTTP to installed Schedules, creates private work and invokes its host callback to Core Run acceptance. Same-command redelivery retains the same accepted handle; no page or browser relay is involved. |
 | P42 | Load a purely portable Skill/MCP package | Evidenced | Portable Skill/MCP admission, independent failure and source semantics pass in the full backend suites. |

@@ -9,14 +9,15 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **42 Evidenced / 6 Partial / 0 Open**, not an
+The original P01-P48 audit is **43 Evidenced / 5 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
 P45 now has actual synchronous renderer-blocking recovery evidence; P40 has the
 matching Web/Wails resource, authentication and connection-retirement sequence.
 P21 now has complete same-owner query and revision-refusal comparisons through
-the actual model Tool, executable CLI and rendered Reviews board. Six graphical
+the actual model Tool, executable CLI and rendered Reviews board. P39 now proves
+fresh-window historical inspection without renderer/producer modules. Five graphical
 rows and one review cross-scenario remain Partial; the three other review groups
 are Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
@@ -31,6 +32,16 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+P39 now has actual renderer-present and renderer-absent controls. The installed
+recorded-result filter mounts before independent CLI disables it and Reviews.
+A fresh window then displays the old search text and revision-1 Reviews JSON in
+the generic inspector. Its complete 21-request trace has no plugin resource or
+invocation request and no Run start/resume. Canonical transcript/Runs and provider
+request counters remain exactly unchanged. Both task installations are restored
+enabled after closing that window. Screenshots and comparison evidence remain
+private; no source or assertion/deadline change occurs. Remaining graphical rows
+are P26/P31/P33/P36/P46; no-Run restart and historical timeout gaps remain open.
 
 The fresh installed Reviews UI reads revision 1 while executable CLI and actual
 model Tool return the same complete query. CLI advances private state to revision
