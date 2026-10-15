@@ -24,7 +24,9 @@ for actual contextual action visibility without menu I/O. P46 now has actual
 shutdown with an active backend/model callback and component teardown, including
 one cooperative session-resource close. All four review cross-scenarios are now
 Evidenced, including the actual no-Run loss/restart/provider-replacement controls
-below. Fresh final global gates remain pending.
+below. Current-source global Go, independent-author/distribution, production
+package and actual native original-command recovery gates now pass as scoped
+below; historical causes and dependency risks remain unresolved.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -32,11 +34,48 @@ also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
 Complete typed-input structural admission now has an actual installed CLI
 RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
-consumers. Current parallel race, native and independent-author qualification
-passes at `9f5a66d51`; these gates do not close the historical deadlines or
-other graphical scenarios. The following frontend change has its own qualification.
+consumers. The earlier `9f5a66d51` qualification retains its source scope; the
+current 6d5e2427d qualification is recorded next. Neither closes historical
+deadlines or extends to unexecuted scenarios.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+The corrected original four-module -json -race -p 2 gate at 6d5e2427d exits 0:
+174 packages finish, 159 tested packages pass, fifteen have no tests and 9,187
+unique test/subtest results pass. Six paid cases and their helper retain seven
+conditional skips. Complete bootstrap passes 375.810s; lost Core opening 4.46s,
+CLI delegated approval 3.03s, safe/yolo steer 2.82/2.72s and all eight execution
+SIGKILL cuts (parent 43.39s) pass under unchanged bounds. All five modules pass
+dependency verification/vet/build, Desktop Go race passes forty tests, Runtime
+and Reviews regeneration plus the existing formatter reproduces tracked bytes,
+and the Runtime/first-party distribution builds. No passing result erases the
+original introduced inventory failure recorded below or explains old timeouts.
+
+Fresh GOWORK=off/no-replace Go authors resolve thirty Scope modules at v0.51.1
+through isolated archives/cache; offline metadata/tidy/verify/race/vet/build and
+executable packaging pass. Fresh packed public component artifacts independently
+build Usage and match its bytes, including clean offline ci/typecheck/build.
+Temporary author sources/proxies/caches/dependencies are removed. These artifacts
+are not registry publications. Earlier shared/frontend gates retain their exact
+unchanged c44671017 source scope, including 364 shared tests and 357 frontend
+files/2,429 tests.
+
+The pinned private beta.29 Wails tool packages the unmodified arm64 production
+.app; strict/deep signature and macOS 13.0 floor checks pass. That daily-ID bundle
+is not launched. A separately identified native control changes only bootstrap
+17171 -> 57324 through a task-only overlay. Actual User Memory Save commits one
+private item and loses its backend reply. After both app and identical-binary/home
+Runtime restart, management retains UUID e5631d75-f798-4bd5-80ba-8e507e5ff8bb and
+its original installation/digest even with the original producer disabled.
+Disabled checking stays unknown. Explicit native reenable/public MCP connected
+observation permits the original receipt query; every displayed field equals the
+first private value. Private storage has one item/one receipt; the armed mutation
+redispatch trap is absent, with zero Sessions/model POSTs. Three screenshots and
+private original evidence are retained. The additional return to the Memory list
+is not run because the Mac relocks after the successful recovery screenshot.
+The app and Runtime join at 0, provider joins after SIGTERM, the task installation
+is uninstalled, copied source removed and listeners released. No product guard,
+assertion/deadline, primary source, daily app/Runtime or stash changes.
 
 The first current-source complete four-module parallel race at a857d264a exits 1
 on the single CLI inventory omission GetPluginCommand. Its 174-package result
@@ -49,12 +88,13 @@ RED/GREEN and focused plugin/inventory races pass; an actual new CLI executable
 reads the old uninstalled B request over authenticated HTTP and refuses another
 store namespace without output, mutation identity or provider/model execution.
 Its Runtime/provider lifetimes join and temporary CLI profile is removed. The
-corrected full/global/native/closure qualification remains next.
+corrected full/global/native/author qualification now passes as recorded above;
+historical timeout causes and dependency risks remain open.
 Fresh npm audits still exit 1: 4 high/4 low overall, 0 high/4 low production;
 all high fixes remain unavailable. Global Wails CLI beta.25 is preserved. A private
-beta.29 tool is built under task scratch. Native controls are not run yet; the
-prepared task-only overlay changes only its default bootstrap address to 57324,
-with product source unchanged and production packaging separately qualified.
+beta.29 tool is built under task scratch. The separately qualified production
+package and actual native control are recorded above; only the control uses the
+bootstrap-address overlay, with product source unchanged.
 
 The remaining no-Run review finds and repairs an actual client-recreation gap.
 Reviews' recovery control was tied to the mounted MutationPromise even though the
@@ -831,23 +871,19 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
 
 ## Unexecuted scenarios and risks
 
-- P21/P26/P31/P33/P36/P39-P40/P45-P46 still need matching graphical
-  interaction. The user has authorized UI/E2E/screenshots; keep resources isolated.
-  P29/P32 have actual Web/Wails proof; P30/P35 have actual Web proof. P48 source
-  closure includes the complete current frontend gate.
-- All four review cross-scenarios remain Partial: no-Run mutation response loss
-  across actual UI/Runtime restart plus update/uninstall/selection; equivalent
-  typed refusal through Tool/CLI/rendered UI; authenticated remote multi-resource
-  ESM/module identity/connection replacement in Web and Wails; independent recovery
-  while module initialization blocks the renderer.
-  Real Tool/CLI query and revision-conflict equivalence has stdio backend process
-  evidence. The corrected history scenario adds HTTP-process/model Run/executable
-  CLI missing-review refusal and original-receipt recovery beyond 4,096 historical
-  calls. The incorrect lifetime-quota outcome is removed rather than qualified.
-  The actual model/CLI private `invocationConflict` and Core binding-conflict
-  proofs are recorded above. The graphical entrance remains unqualified.
-- Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
-  alternate native execution and registry/deployment publication are not qualified.
+- All P01-P48 and review rows now have matching evidence with the scenario and
+  source scope recorded in progress. Current-source global Go, independent author,
+  production packaging and native original-command recovery are qualified; this
+  is not a percentage or a 100% claim.
+- Historical post-SDK safe-steer and initial MCP discovery deadlines remain
+  unclassified. The user has no original failed logs/dump/data. Later passing
+  parallel gates, Deployment repairs and normal phase traces do not establish
+  their historical cause. Keep failure-only diagnostics and unchanged limits.
+- Paid DeepSeek execution, other native platforms/architectures, registry/
+  deployment publication and real second-machine TLS are unqualified. The actual
+  native original receipt recovery passes; returning to the Memory list after
+  that success is not run because of a new lock screen. Do not infer additional
+  UI/refusal classes or platforms from another scenario.
 - Read-only npm audit exits 1 with eight alerts (four high/four low). All high
   entries share one unpatched advisory, GHSA-vfj7-8cjw-p6xm: StyleX PostCSS
   0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3. A bounded Node
@@ -879,45 +915,26 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
 
 ## Cleanup and next
 
-Temporary overlays, source snapshots, author archives/caches/kits and diagnostic
-resources are removed after inspection; formal code/docs and current ignored
-Runtime/native build outputs remain. All verification processes finish.
-Primary-checkout source and stash are preserved; the earlier shared hooksPath
-write is disclosed above and the current HUSKY=0 gate preserves its captured
-value. No push, merge, external publication or user-data change.
+All invoked qualification/process handles are terminal. Temporary author sources,
+file proxies, private module caches, external npm author dependencies and copied
+task installations are removed. Controlled Runtime/native/provider processes
+join, and private listeners are released. Retain formal ignored build outputs,
+private evidence/screenshots, the existing worktree/dependencies and the
+intentionally unknown uninstalled original Web command. Never delete unknown
+facts to manufacture a clean state. Primary-checkout source, daily app/Runtime,
+user stash and the captured shared hooksPath are preserved; task builds use
+HUSKY=0. No push, main merge, publication or user-data conversion occurs.
 
-Next substantive unresolved work is to capture a real historical-class safe-steer
-deadline with phase/state/stack evidence. Determine whether execution is still
-live, where it stopped, and what the original owner retained; a terminal Run can
-also explain the caller's wait. Do not relax assertions or limits.
-The user confirms that the original failure artifacts are unavailable; do not
-keep searching for presumed retained logs or infer its cause from a passing run.
-The retained MCP connecting-deadline stacks stop in initial SDK discovery, before
-admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them;
-obtain a failing child/proxy snapshot before making a production repair.
-Do not substitute a later pass or build overlap for a cause of its failed gates.
-Keep graphical criteria and dependency/live/platform/publication limits explicit.
-Actual CLI private `invocationConflict` and Core binding-conflict/recovery have
-separate proof above. Different-input private receipts remain explicitly
-unconfirmed rather than adopted. The previous capacity contract is removed without
-compatibility; do not cite its old fresh-response proof as current behavior.
-Current independent Go authors, packed Usage, complete parallel race, normal
-bootstrap, full vet/build and native checks pass for `9f5a66d51`, as scoped above.
-The real installed numeric-input regression and complete typed admission repair
-are committed. The later test-only slice also completes the whole ordinary
-selection and strengthens actual CLI original-binding conflict/recovery proof.
-The `Invalid` audit now has a causal public regression and production writer/
-reader/admission repairs. Its exact qualification is recorded above; do not
-extend that evidence to actual rendered UI or every CLI refusal class.
-The acceptance audit rechecks all 48 original scenario titles and expected
-behaviors against the original proposal and review. It repairs stale review-table
-claims about CLI private conflict and frozen qualification scope; the counts stay
-35 Evidenced / 13 Partial. Every Partial row requires graphical execution, and
-all four review cross-scenarios retain missing graphical proof. The full
-qualification retains its production/test scope rather than being attributed to
-the latest test-only commit. No new test or native/build invocation occurs in
-this documentation audit. No missing historical failure evidence is recovered.
-Do not declare the whole plugin system 100%.
+Product source 6d5e2427d now has its complete original parallel race, module/
+generation gates, independent Go/component archives and actual native original
+receipt recovery. This documentation-only reconciliation does not rerun or
+broaden those source-qualified gates. Historical timeout investigations and npm
+risks remain genuinely open. No original failure artifacts remain; the next useful
+causal input is an actual matching failed interval with stage/state/stack evidence,
+not another successful repeat or unrelated startup drift. A finished failed/lost
+Run can also yield the same caller timeout. Never relax limits or replay work.
+Keep paid/platform/publication/real-TLS and unexecuted navigation limits explicit.
+Do not declare the whole plugin system unconditionally 100%.
 
 Read-only original inputs:
 
