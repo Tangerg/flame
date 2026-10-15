@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"os"
 	"os/signal"
@@ -37,6 +38,12 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer backend.Close()
+	if mode == "outer" || mode == "inner" {
+		return runObserver(ctx, server, backend, mode, trace)
+	}
+	if mode == "stream-drop" || mode == "describe-stream-drop" {
+		return runDroppingStream(ctx, server, backend, mode, trace)
+	}
 	method, err := pluginsdk.ToolProposalMethod()
 	if err != nil {
 		return err
@@ -66,6 +73,123 @@ func run(ctx context.Context) error {
 			return chat.ToolCall{}, errors.New("contributor: unsupported mode")
 		}
 		return proposal, nil
+	}); err != nil {
+		return err
+	}
+	if err := backend.BindCapability("contributor", contract); err != nil {
+		return err
+	}
+	if err := backend.Publish(); err != nil {
+		return err
+	}
+	return server.Run(ctx, &sdk.StdioTransport{})
+}
+
+func runDroppingStream(ctx context.Context, server *sdk.Server, backend *pluginsdk.Backend, mode, trace string) error {
+	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "example.records/stream.v1", Kind: capability.Mutation, Target: "installation", Description: "Stream the captured command."})
+	if err != nil {
+		return err
+	}
+	contract, err := capability.New(capability.Config{Reference: "example.records/streaming.v1", Composition: capability.Selection, Scope: "installation"}, method.Descriptor())
+	if err != nil {
+		return err
+	}
+	if mode == "describe-stream-drop" {
+		_, err := fmt.Fprintln(os.Stdout, contract.Identity().String())
+		return err
+	}
+	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[struct{}]) iter.Seq2[pluginsdk.StreamValue[string, bool], error] {
+		return func(yield func(pluginsdk.StreamValue[string, bool], error) bool) {
+			if err := record(ctx, trace, map[string]string{"phase": "started", "id": command.ID}); err != nil {
+				yield(pluginsdk.StreamValue[string, bool]{}, err)
+				return
+			}
+			if yield(pluginsdk.StreamValue[string, bool]{Chunk: new("witnessed output")}, nil) {
+				os.Exit(29)
+			}
+		}
+	}); err != nil {
+		return err
+	}
+	if err := pluginsdk.RegisterServer(backend, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, request pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
+		if err := record(ctx, trace, map[string]string{"phase": "receipt", "id": request.ID}); err != nil {
+			return pluginsdk.Receipt{}, err
+		}
+		return pluginsdk.Receipt{}, nil
+	}); err != nil {
+		return err
+	}
+	if err := backend.BindCapability("contributor", contract); err != nil {
+		return err
+	}
+	if err := backend.Publish(); err != nil {
+		return err
+	}
+	return server.Run(ctx, &sdk.StdioTransport{})
+}
+
+func runObserver(ctx context.Context, server *sdk.Server, backend *pluginsdk.Backend, layer, trace string) error {
+	contract, err := pluginsdk.ModelObserverContract()
+	if err != nil {
+		return err
+	}
+	mark := func(ctx context.Context, command pluginsdk.Command[chat.Request], phase string) error {
+		if len(command.Input.Tools) == 0 {
+			return nil
+		}
+		owner, err := pluginsdk.InvocationFromContext(ctx)
+		if err != nil || owner.ID != command.ID || owner.Target.Reference != command.ID {
+			return errors.New("observer: original model identity was replaced")
+		}
+		return record(ctx, trace, map[string]string{"layer": layer, "phase": phase, "id": command.ID})
+	}
+	method, err := pluginsdk.ModelMethod()
+	if err != nil {
+		return err
+	}
+	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+		if err := mark(ctx, command, "before"); err != nil {
+			return pluginsdk.ModelResult{}, err
+		}
+		next, err := pluginsdk.CallbackFromContext(ctx)
+		if err != nil {
+			return pluginsdk.ModelResult{}, err
+		}
+		response, err := pluginsdk.CallModel(ctx, next, command.ID, command.Input.Clone())
+		if err != nil {
+			return pluginsdk.ModelResult{}, err
+		}
+		if err := mark(ctx, command, "after"); err != nil {
+			return pluginsdk.ModelResult{}, err
+		}
+		return pluginsdk.ModelResult{Response: response}, nil
+	}); err != nil {
+		return err
+	}
+	stream, err := pluginsdk.ModelStreamMethod()
+	if err != nil {
+		return err
+	}
+	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.Request]) iter.Seq2[pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
+		return func(yield func(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+			if err := mark(ctx, command, "before"); err != nil {
+				yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				return
+			}
+			next, err := pluginsdk.CallbackFromContext(ctx)
+			if err != nil {
+				yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				return
+			}
+			for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, command.Input.Clone()) {
+				if !yield(value, err) || err != nil {
+					return
+				}
+			}
+			if err := mark(ctx, command, "after"); err != nil {
+				yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+			}
+		}
 	}); err != nil {
 		return err
 	}

@@ -9,8 +9,21 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestBackendTransportErrorCannotBypassCoreProblemProjection(t *testing.T) {
+	failure := delivery.NewFailure(errors.Join(protocol.ErrInternalError, transport.NewError(0, "private downstream failure", nil)), "the runtime could not complete the request")
+	rpcErr := errorToRPC(failure)
+	if rpcErr.Code != codeInternalError || rpcErr.Message != protocol.ProblemInternalError {
+		t.Fatalf("backend transport replaced the Core error contract: %+v", rpcErr)
+	}
+	var problem protocol.ProblemData
+	if err := json.Unmarshal(rpcErr.Data, &problem); err != nil || problem.Type != protocol.ProblemInternalError || strings.Contains(problem.Detail, "private") {
+		t.Fatalf("backend details escaped Core projection: %+v, %v", problem, err)
+	}
+}
 
 func TestCancellationProjectionPreservesSafeWireProblem(t *testing.T) {
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded, errors.New("unknown failure")} {

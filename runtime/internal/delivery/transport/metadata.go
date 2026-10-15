@@ -18,9 +18,6 @@ type idempotencyNamespace struct{}
 
 // WithLastEventID returns ctx carrying the streaming reconnect cursor.
 func WithLastEventID(ctx context.Context, id string) context.Context {
-	if id == "" {
-		return ctx
-	}
 	return context.WithValue(ctx, lastEventIDKey{}, id)
 }
 
@@ -31,11 +28,9 @@ func LastEventIDFrom(ctx context.Context) string {
 }
 
 // WithIdempotencyKey carries the transport-level Idempotency-Key metadata to
-// the router without polluting business request DTOs.
+// the router without polluting business request DTOs. Empty values replace the
+// parent request's metadata because callbacks inherit their calling context.
 func WithIdempotencyKey(ctx context.Context, key string) context.Context {
-	if key == "" {
-		return ctx
-	}
 	return context.WithValue(ctx, idempotencyKey{}, key)
 }
 
@@ -47,9 +42,6 @@ func IdempotencyKeyFrom(ctx context.Context) string {
 // WithIdempotencyNamespace carries the caller's expected durable replay-store
 // identity beside its idempotency key.
 func WithIdempotencyNamespace(ctx context.Context, namespace string) context.Context {
-	if namespace == "" {
-		return ctx
-	}
 	return context.WithValue(ctx, idempotencyNamespace{}, namespace)
 }
 

@@ -2,7 +2,6 @@ package dispatch
 
 import (
 	json "encoding/json/v2"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -83,9 +82,8 @@ func errorToRPC(err error) *transport.Error {
 	if err == nil {
 		return nil
 	}
-	if rpcError, ok := errors.AsType[*transport.Error](err); ok {
-		return rpcError
-	}
+	// Nested transports may use the same JSON-RPC type with another vocabulary.
+	// Only Delivery's projected problem may define this Core response envelope.
 	return marshalFailure(delivery.ProjectError(err))
 }
 
