@@ -28,6 +28,66 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Released Scope v0.51.1 dependency qualification (2026-10-15)
+
+The user requests the newer released Scope graph. Official module metadata reports
+v0.51.1; all 28 direct Runtime Scope modules and both protocol modules now select
+that version. CLI and the independent Reviews module are updated in the same
+worktree, with go.work synchronization. The selected graph has 30 Scope modules,
+one version and no replacement. Runtime/CLI/Reviews/localruntime production builds
+pass without a compatibility adapter or Flame Go source change.
+
+Upstream evidence includes signal-commit scheduling fairness (`737f2fc24`), child
+attempt completion before durable publication (`a88753520`), retained-handle runtime/
+Deployment release (`18be58de5`) and complete history-response validation
+(`1744fab30`), plus provider SDK dependency migrations. The fairness regression
+requires continuously committed signals; the historical one-steer failure has no
+corresponding scheduler evidence. The initial MCP discovery transport still uses
+the same github.com/Tangerg/go-sdk v1.8.1-scope.1. Neither upstream change names nor
+passing qualification establishes either old timeout's cause.
+
+Runtime tidy passes. Ordinary CLI and Reviews tidy fail because their published
+Flame dependency lacks the new capability/jsoninput/plugin/point public packages;
+tidy does not substitute the workspace sources. This is the existing unreleased
+Flame artifact boundary, not a Scope API failure. No local replace, old API shim,
+publication or module-cache overwrite is used to conceal it. Workspace builds and
+synchronization pass; fresh independent unreleased archives remain separately
+unqualified for this Scope graph. The first configured-mirror attempt returns a
+new-version checksum-lookup 404; fetching through the official proxy succeeds with
+sum.golang.org verification still enabled.
+
+The complete original parallel race selection exits 1: all 174 packages finish,
+158 tested packages pass, one fails and fifteen have no tests. Top-level results
+are 5,195 pass, one fail and seven existing paid/helper skips. Execution/bootstrap/
+architecture/CLI/root-binding pass 258.262/382.859/84.022/69.555/38.816s. Both steer
+modes pass (safe 3.11s); all eight Schedule SIGKILL cuts pass (parent 43.82s).
+The four other formerly timed-out discovery cases pass 5.42/4.24/5.37/7.12s;
+lost-Core-opening reconciliation passes 4.32s. These are current passes, not old
+timeout diagnoses.
+
+The sole failure is TestConcurrentSchemaInitializationAdmitsOneOwnerFact:
+OpenSchema's physical connection returns immediate SQLITE_BUSY before schema
+inspection. A separate bounded 100-cold-open phase probe removes schema SQL and
+reproduces 72 failures in journal_mode=WAL itself, despite busy_timeout=5000.
+Driver source confirms busy_timeout already runs first; reordering is not a repair.
+SQLite's [busy-handler contract](https://www.sqlite.org/c3ref/busy_handler.html)
+permits immediate BUSY to break lock-upgrade deadlocks; its
+[WAL format](https://www.sqlite.org/walformat.html) requires an exclusive mode-change
+lock. This isolates the new SQLite failure, not either historical timeout.
+
+The working repair moves WAL acquisition out of implicit connection parameters
+into explicit, cancellable pre-schema admission. Only known BUSY for this idempotent
+configuration waits within the unchanged five-second budget; ordinary write
+contention retains its existing handler. No schema/business callback is replayed,
+no error is hidden and a non-WAL result is refused. A held rollback-mode reader
+gives a caller-cancellation RED/GREEN: original-owner overlay fails the one-second
+return assertion (1.06s); the repair settles under the same assertion. The complete
+SQLite race package passes 1.545s, and the unchanged original concurrent case
+passes 100 bounded repetitions in 2.030s. The initial classification-only check
+passed after 5.715s and did not expose cancellation latency; it is not a RED proof.
+An attempted driver-cache overlay is rejected by Go before tests and is not a
+product result. Complete post-repair race/vet/build/native qualification is pending.
+
 ### Graphical acceptance: shared React exports (2026-10-15)
 
 Actual isolated Web execution finds an installed Reviews page stuck at its loading

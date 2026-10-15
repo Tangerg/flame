@@ -28,6 +28,21 @@ other graphical scenarios. The following frontend change has its own qualificati
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
+The user-requested dependency cut now selects all 30 Scope modules at v0.51.1,
+without replace. Production builds and workspace synchronization pass. Runtime
+tidy passes; ordinary CLI/Reviews tidy still cannot resolve the unpublished Flame
+plugin APIs, so fresh independent archives are separately pending. The complete
+parallel race selection finishes all 174 packages but exits 1 on the existing
+concurrent SQLite initialization case (immediate SQLITE_BUSY before schema SQL).
+Every other tested package passes, including complete bootstrap, both steer modes,
+all eight SIGKILL cuts and the formerly timed-out discovery cases. Do not call this
+a passing whole gate or historical diagnosis. A bounded WAL-only probe and a new
+cancellation regression identify the SQLite opening boundary. Its working repair
+passes focused race and 100 original concurrent repetitions; complete post-repair
+qualification is next. The original five-second busy budget and existing test
+assertions remain intact. Current source, failed harness attempts and exact
+timings are recorded in Current stage of the progress document.
+
 A second actual Web failure is now causally fixed: an imported ESM dependency
 throws, but its resource close never settles because the HTTP transport suppresses
 stream termination on cancellation. Publish the terminal notice from reader cleanup,
