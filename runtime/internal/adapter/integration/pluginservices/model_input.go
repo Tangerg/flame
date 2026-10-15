@@ -10,21 +10,21 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func (o *ModelComposition) ResolveInput(ctx context.Context) ([]plugins.ContributionBinding, error) {
+func (o *CallComposition) ResolveInput(ctx context.Context) ([]plugins.ContributionBinding, error) {
 	contract, err := pluginsdk.ModelInputContract()
 	if err != nil {
 		return nil, err
 	}
 	return plugins.ResolveComposition(ctx, o.calls.installations, o.calls.compositions, contract)
 }
-func (o *ModelComposition) ValidateInput(ctx context.Context, bindings []plugins.ContributionBinding) error {
+func (o *CallComposition) ValidateInput(ctx context.Context, bindings []plugins.ContributionBinding) error {
 	contract, err := pluginsdk.ModelInputContract()
 	if err != nil {
 		return err
 	}
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
-func (o *ModelComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
+func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (o *ModelComposition) PrepareInput(ctx context.Context, bindings []plugins.
 	}
 	current := request.Clone()
 	for _, binding := range bindings {
-		calling, err := enterModelPhase(ctx, binding)
+		calling, err := enterContributionPhase(ctx, binding)
 		if err != nil {
 			return nil, err
 		}

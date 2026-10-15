@@ -30,18 +30,18 @@ func TestCapturedModelObserversRetainIdentityOrderAndInstallationDependencies(t 
 		{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release"), ContributionID: "outer", ServerID: id, ServerName: server, Export: "outer", Contract: contract.Identity()},
 		{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release"), ContributionID: "inner", ServerID: id, ServerName: server, Export: "inner", Contract: contract.Identity()},
 	}
-	frozen := modelBindingsWire(bindings)
+	frozen := contributionBindingsWire(bindings)
 	slices.Reverse(bindings)
-	restored, err := decodeModelBindings(frozen, contract)
+	restored, err := decodeContributionBindings(frozen, contract)
 	if err != nil || restored[0].ContributionID != "outer" || restored[1].ContributionID != "inner" || restored[0].ServerID != id {
 		t.Fatalf("restore changed captured chain: %+v, %v", restored, err)
 	}
-	session := &interactionSession{modelObservers: restored, modelActivations: []plugin.Activation{{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release")}}}}}
+	session := &interactionSession{modelObservers: restored, compositionActivations: []plugin.Activation{{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release")}}}}}
 	if actual := session.installationDependencies(); !reflect.DeepEqual(actual, []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("observer release")}}) {
 		t.Fatalf("observer release is not held: %+v", actual)
 	}
 	frozen[1] = frozen[0]
-	if _, err := decodeModelBindings(frozen, contract); err == nil {
+	if _, err := decodeContributionBindings(frozen, contract); err == nil {
 		t.Fatal("duplicate retained observer was accepted")
 	}
 }
@@ -65,21 +65,21 @@ func TestCapturedModelContextRetainsExactContractOrderAndRelease(t *testing.T) {
 		t.Fatal(err)
 	}
 	bindings := []plugins.ContributionBinding{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release"), ContributionID: "first", ServerID: id, ServerName: server, Export: "first", Contract: contextContract.Identity()}, {InstallationID: dependedInstallation, Digest: testsupport.Digest("context release"), ContributionID: "second", ServerID: id, ServerName: server, Export: "second", Contract: contextContract.Identity()}}
-	wire := modelBindingsWire(bindings)
-	restored, err := decodeModelBindings(wire, contextContract)
+	wire := contributionBindingsWire(bindings)
+	restored, err := decodeContributionBindings(wire, contextContract)
 	if err != nil || !reflect.DeepEqual(restored, bindings) {
 		t.Fatalf("captured context binding changed: %+v %v", restored, err)
 	}
-	if _, err := decodeModelBindings(wire, observerContract); err == nil {
+	if _, err := decodeContributionBindings(wire, observerContract); err == nil {
 		t.Fatal("context was reinterpreted as observer")
 	}
-	session := &interactionSession{modelContexts: restored, modelObservers: restored[:1], modelActivations: []plugin.Activation{{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release")}}}}}
+	session := &interactionSession{modelContexts: restored, modelObservers: restored[:1], compositionActivations: []plugin.Activation{{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release")}}}}}
 	want := []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("context release")}}
 	if actual := session.installationDependencies(); !reflect.DeepEqual(actual, want) {
 		t.Fatalf("context release not held once: %+v", actual)
 	}
 	wire[1] = wire[0]
-	if _, err := decodeModelBindings(wire, contextContract); err == nil {
+	if _, err := decodeContributionBindings(wire, contextContract); err == nil {
 		t.Fatal("duplicate context binding accepted")
 	}
 }

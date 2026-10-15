@@ -205,7 +205,7 @@ func TestStagedModelTransitiveDependenciesBlockReplacementUntilRelease(t *testin
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		t.Fatal("dependency admission invoked a provider")
 		return nil, nil
-	}), InteractionExecutorConfig{ModelComposition: owner, InstallationCheckpoints: pendingInstallationCheckpoints{}})
+	}), InteractionExecutorConfig{CallComposition: owner, InstallationCheckpoints: pendingInstallationCheckpoints{}})
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
 		t.Fatal(err)

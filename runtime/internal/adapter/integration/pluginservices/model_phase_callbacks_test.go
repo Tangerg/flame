@@ -51,7 +51,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					t.Fatal(err)
 				}
 				var store *toolInstallationStore
-				var composition *ModelComposition
+				var composition *CallComposition
 				var bindings []plugins.ContributionBinding
 				var hostCalls atomic.Int32
 				var backendCalls atomic.Int32
@@ -122,7 +122,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					}
 					return nil
 				}
-				installed, installation := installedModelCompositionFixture(t, contract, []string{"phase"}, func(backend *pluginsdk.Backend) {
+				installed, installation := installedCallCompositionFixture(t, contract, []string{"phase"}, func(backend *pluginsdk.Backend) {
 					switch phase {
 					case "selection":
 						method, err := pluginsdk.ModelSelectionMethod()

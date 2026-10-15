@@ -61,12 +61,12 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 				}
 				_, err = pluginsdk.CallSelectedModel(ctx, ref, "independent-from-observer", selectedCallInput("configured-model"))
 				failure, known := errors.AsType[*pluginsdk.ModelFailure](err)
-				if !known || failure.Code != pluginsdk.ModelFailed || failure.Message != plugin.ErrInvalid.Error()+": recursive model contributor observer" {
+				if !known || failure.Code != pluginsdk.ModelFailed || failure.Message != plugin.ErrInvalid.Error()+": recursive contribution observer" {
 					return ref, errors.Join(err, errors.New("independent exchange did not retain its explicit observer-cycle refusal"))
 				}
 				return ref, nil
 			}
-			composition, store := installedModelCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
 				call, _ := pluginsdk.ModelMethod()
 				if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.Command[chat.Request]) (pluginsdk.ModelResult, error) {
 					ref, err := beforeNext(ctx)

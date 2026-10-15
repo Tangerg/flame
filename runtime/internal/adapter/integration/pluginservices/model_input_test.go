@@ -24,7 +24,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			if err != nil {
 				t.Fatal(err)
 			}
-			composition, store := installedModelCompositionFixture(t, contract, []string{"first", "second"}, func(backend *pluginsdk.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"first", "second"}, func(backend *pluginsdk.Backend) {
 				method, err := pluginsdk.ModelInputMethod()
 				if err != nil {
 					t.Fatal(err)

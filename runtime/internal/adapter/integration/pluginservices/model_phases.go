@@ -9,17 +9,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type modelPhaseKey struct{}
+type contributionPhaseKey struct{}
 
 // A fresh nested exchange cannot reenter a contributor still handling its
 // ancestor. Keep the active path immutable across concurrent callback requests;
 // rejecting a cycle does not skip a contributor or change the selected chain.
-func enterModelPhase(ctx context.Context, binding plugins.ContributionBinding) (context.Context, error) {
-	active, _ := ctx.Value(modelPhaseKey{}).([]plugins.ContributionBinding)
+func enterContributionPhase(ctx context.Context, binding plugins.ContributionBinding) (context.Context, error) {
+	active, _ := ctx.Value(contributionPhaseKey{}).([]plugins.ContributionBinding)
 	if slices.Contains(active, binding) {
-		return nil, fmt.Errorf("%w: recursive model contributor %s", plugin.ErrInvalid, binding.ContributionID)
+		return nil, fmt.Errorf("%w: recursive contribution %s", plugin.ErrInvalid, binding.ContributionID)
 	}
-	return context.WithValue(ctx, modelPhaseKey{}, append(slices.Clone(active), binding)), nil
+	return context.WithValue(ctx, contributionPhaseKey{}, append(slices.Clone(active), binding)), nil
 }
 
 // RPC belongs to the receiving activation, but next keeps the original caller's

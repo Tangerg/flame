@@ -73,7 +73,7 @@ type InteractionExecutorConfig struct {
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
 	ModelEvidence             InteractionModelEvidence
-	ModelComposition          InteractionModelComposition
+	CallComposition           InteractionCallComposition
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
 	MaxConcurrentToolCalls    *int
@@ -136,7 +136,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		value any
 	}{
 		{name: "chat resolver", value: config.ChatResolver},
-		{name: "model composition", value: config.ModelComposition},
+		{name: "model composition", value: config.CallComposition},
 		{name: "original Tool results", value: config.OriginalToolResults},
 		{name: "Tool resolver", value: config.ToolResolver},
 		{name: "Tool interpreter", value: config.ToolInterpreter},
@@ -288,62 +288,78 @@ func (i *InteractionExecutor) assembleInteraction(
 	}()
 	if checkpoint != nil {
 		session.modelObservers = slices.Clone(checkpoint.modelObservers)
-	} else if i.config.ModelComposition != nil {
-		session.modelObservers, err = i.config.ModelComposition.Resolve(ctx)
+	} else if i.config.CallComposition != nil {
+		session.modelObservers, err = i.config.CallComposition.Resolve(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if checkpoint != nil {
 		session.modelContexts = slices.Clone(checkpoint.modelContexts)
-	} else if i.config.ModelComposition != nil {
-		session.modelContexts, err = i.config.ModelComposition.ResolveContext(ctx)
+	} else if i.config.CallComposition != nil {
+		session.modelContexts, err = i.config.CallComposition.ResolveContext(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if checkpoint != nil {
 		session.modelInputs = slices.Clone(checkpoint.modelInputs)
-	} else if i.config.ModelComposition != nil {
-		session.modelInputs, err = i.config.ModelComposition.ResolveInput(ctx)
+	} else if i.config.CallComposition != nil {
+		session.modelInputs, err = i.config.CallComposition.ResolveInput(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if i.config.ModelComposition != nil {
-		bindings := append(append(slices.Clone(session.modelObservers), session.modelContexts...), session.modelInputs...)
-		activations, err := i.config.ModelComposition.Activations(ctx, bindings)
+	if checkpoint != nil {
+		session.toolProposals = slices.Clone(checkpoint.toolProposals)
+	} else if i.config.CallComposition != nil {
+		session.toolProposals, err = i.config.CallComposition.ResolveToolProposals(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(session.toolProposals) > 0 {
+		if i.config.CallComposition == nil {
+			return nil, errors.New("execution: captured Tool proposal composition is unavailable")
+		}
+		if err := i.config.CallComposition.ValidateToolProposals(ctx, session.toolProposals); err != nil {
+			return nil, err
+		}
+	}
+	if i.config.CallComposition != nil {
+		bindings := session.compositionBindings()
+		activations, err := i.config.CallComposition.Activations(ctx, bindings)
 		if err != nil {
 			return nil, err
 		}
 		session.state.mu.Lock()
-		session.modelActivations = activations
+		session.compositionActivations = activations
 		session.state.mu.Unlock()
 	}
 	if len(session.modelInputs) > 0 {
-		if i.config.ModelComposition == nil {
+		if i.config.CallComposition == nil {
 			return nil, errors.New("execution: captured model input is unavailable")
 		}
-		if err := i.config.ModelComposition.ValidateInput(ctx, session.modelInputs); err != nil {
+		if err := i.config.CallComposition.ValidateInput(ctx, session.modelInputs); err != nil {
 			return nil, err
 		}
 	}
 	if len(session.modelContexts) > 0 {
-		if i.config.ModelComposition == nil {
+		if i.config.CallComposition == nil {
 			return nil, errors.New("execution: captured model context is unavailable")
 		}
-		if err := i.config.ModelComposition.ValidateContext(ctx, session.modelContexts); err != nil {
+		if err := i.config.CallComposition.ValidateContext(ctx, session.modelContexts); err != nil {
 			return nil, err
 		}
 	}
 	if len(session.modelObservers) > 0 {
-		if i.config.ModelComposition == nil {
+		if i.config.CallComposition == nil {
 			return nil, errors.New("execution: captured model observers are unavailable")
 		}
-		if err := i.config.ModelComposition.Validate(ctx, session.modelObservers); err != nil {
+		if err := i.config.CallComposition.Validate(ctx, session.modelObservers); err != nil {
 			return nil, err
 		}
-		model, streamer = i.config.ModelComposition.Bind(model, streamer, session.modelObservers)
+		model, streamer = i.config.CallComposition.Bind(model, streamer, session.modelObservers)
 	}
 	observed, err := newObservedInteractionModel(model, streamer, session)
 	if err != nil {
@@ -389,19 +405,20 @@ func (i *InteractionExecutor) interactionConfiguration(
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := agent.EncodePayload(struct {
-		Provider               string                  `json:"provider"`
-		Model                  string                  `json:"model"`
-		Streaming              bool                    `json:"streaming"`
-		MaxConcurrentToolCalls int                     `json:"maxConcurrentToolCalls"`
-		ContextCompaction      bool                    `json:"contextCompaction"`
-		Group                  domaintool.Group        `json:"group"`
-		Depth                  uint32                  `json:"depth"`
-		DelegateOptions        corechat.Options        `json:"delegateOptions"`
-		Instructions           []corechat.Message      `json:"instructions,omitempty"`
-		ModelObservers         []modelContributionWire `json:"modelObservers"`
-		ModelActivations       []string                `json:"modelActivations"`
-		ModelContexts          []modelContributionWire `json:"modelContexts"`
-		ModelInputs            []modelContributionWire `json:"modelInputs"`
+		Provider               string                    `json:"provider"`
+		Model                  string                    `json:"model"`
+		Streaming              bool                      `json:"streaming"`
+		MaxConcurrentToolCalls int                       `json:"maxConcurrentToolCalls"`
+		ContextCompaction      bool                      `json:"contextCompaction"`
+		Group                  domaintool.Group          `json:"group"`
+		Depth                  uint32                    `json:"depth"`
+		DelegateOptions        corechat.Options          `json:"delegateOptions"`
+		Instructions           []corechat.Message        `json:"instructions,omitempty"`
+		ModelObservers         []contributionBindingWire `json:"modelObservers"`
+		CompositionActivations []string                  `json:"compositionActivations"`
+		ModelContexts          []contributionBindingWire `json:"modelContexts"`
+		ModelInputs            []contributionBindingWire `json:"modelInputs"`
+		ToolProposals          []contributionBindingWire `json:"toolProposals"`
 	}{
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		Streaming:              i.config.StreamModelResponses,
@@ -409,10 +426,11 @@ func (i *InteractionExecutor) interactionConfiguration(
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
 		Group:                  group, Depth: depth,
 		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
-		ModelObservers:   modelBindingsWire(session.modelObservers),
-		ModelActivations: activationIdentities(session.modelActivations),
-		ModelContexts:    modelBindingsWire(session.modelContexts),
-		ModelInputs:      modelBindingsWire(session.modelInputs),
+		ModelObservers:         contributionBindingsWire(session.modelObservers),
+		CompositionActivations: activationIdentities(session.compositionActivations),
+		ModelContexts:          contributionBindingsWire(session.modelContexts),
+		ModelInputs:            contributionBindingsWire(session.modelInputs),
+		ToolProposals:          contributionBindingsWire(session.toolProposals),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction configuration identity: %w", err)

@@ -144,7 +144,10 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 	usage := accounting.Usage{Total: delta, ByModel: map[string]accounting.Totals{model: delta}}
 	if m.usage == nil && m.steps > 0 {
 		usage.Total.CostUSD = nil
-		usage.ByModel = nil
+		// Earlier unreported calls have no surviving model attribution here.
+		// Preserve this reported breakdown, but its aggregate price is unknown.
+		delta.CostUSD = nil
+		usage.ByModel[model] = delta
 	}
 	if m.usage != nil {
 		usage = m.usage.Clone()
@@ -158,6 +161,10 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 				if err != nil {
 					return Metrics{}, err
 				}
+			} else if m.usage.Total.CostUSD == nil {
+				// An unattributed earlier call may belong to this model. A later
+				// known price cannot make that model's aggregate price exact.
+				delta.CostUSD = nil
 			}
 			usage.ByModel[model] = delta
 		}

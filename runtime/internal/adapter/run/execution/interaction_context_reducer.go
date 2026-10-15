@@ -82,13 +82,13 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
 		return nil, errors.New("execution: model-context reduction requires an attributed Interaction request")
 	}
-	if i.session.modelComposition != nil {
-		bindings := append(append(slices.Clone(i.session.modelObservers), i.session.modelContexts...), i.session.modelInputs...)
-		activations, err := i.session.modelComposition.Activations(ctx, bindings)
+	if i.session.callComposition != nil {
+		bindings := i.session.compositionBindings()
+		activations, err := i.session.callComposition.Activations(ctx, bindings)
 		if err != nil {
 			return nil, err
 		}
-		if !slices.EqualFunc(activations, i.session.modelActivations, plugin.Activation.Equal) {
+		if !slices.EqualFunc(activations, i.session.compositionActivations, plugin.Activation.Equal) {
 			return nil, plugin.ErrStale
 		}
 	}
@@ -134,7 +134,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 			return nil, err
 		}
 		candidate.Messages = append(candidate.Messages, cloneChatMessages(tail)...)
-		material, err = i.session.modelComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate)
+		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate)
 		if err != nil {
 			return nil, err
 		}
@@ -351,7 +351,7 @@ func (i *interactionModelContextReducer) prepareInput(ctx context.Context, invoc
 	if err != nil {
 		return nil, err
 	}
-	transformed, err := i.session.modelComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
+	transformed, err := i.session.callComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
 	if err != nil {
 		return nil, err
 	}

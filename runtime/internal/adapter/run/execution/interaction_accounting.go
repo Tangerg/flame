@@ -246,6 +246,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		i.modelObservers,
 		i.modelContexts,
 		i.modelInputs,
+		i.toolProposals,
 	)
 }
 

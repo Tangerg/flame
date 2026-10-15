@@ -11,10 +11,53 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestWaitingAccountingRestoresUnreportedCallsWithoutInventingUsage(t *testing.T) {
+	for _, mixed := range []bool{false, true} {
+		t.Run(fmt.Sprint(mixed), func(t *testing.T) {
+			metrics, err := run.NewMetrics(nil, 0, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			metrics, err = metrics.AccrueModelCall("unreported", nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			counts := map[string]int{"unreported": 1}
+			if mixed {
+				metrics, err = metrics.AccrueModelCall("reported", &chat.Usage{InputTokens: 11, OutputTokens: 3}, new(1.25))
+				if err != nil {
+					t.Fatal(err)
+				}
+				counts["reported"] = 1
+			}
+			before, present := metrics.Usage()
+			restored, err := accountingFromRunMetrics(metrics, counts)
+			if err != nil || restored["unreported"].Calls != 1 || restored["unreported"].InputTokens != 0 {
+				t.Fatalf("unreported call cannot resume: %+v, %v", restored, err)
+			}
+			if _, known := restored["unreported"].Cost.USD(); known {
+				t.Fatal("missing usage acquired a known price")
+			}
+			after, afterPresent := metrics.Usage()
+			if present != mixed || present != afterPresent || !reflect.DeepEqual(before, after) {
+				t.Fatal("restoration originated a reported usage fact")
+			}
+			if mixed && (restored["reported"].InputTokens != 11 || restored["reported"].OutputTokens != 3) {
+				t.Fatal("known source usage was changed")
+			}
+			counts["unreported"] = 2
+			if _, err := accountingFromRunMetrics(metrics, counts); err == nil {
+				t.Fatal("mismatched checkpoint call counts were accepted")
+			}
+		})
+	}
+}
 
 func interactionTestCost(usd float64) accounting.Cost {
 	cost, err := accounting.NewCost(usd)

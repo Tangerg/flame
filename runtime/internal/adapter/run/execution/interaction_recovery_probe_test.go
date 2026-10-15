@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"testing"
 	"time"
@@ -9,13 +10,70 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+type pendingCallComposition struct {
+	contextCaptureComposition
+	t *testing.T
+}
+
+func (c *pendingCallComposition) Pending(bindings []plugins.ContributionBinding) bool {
+	if len(bindings) != 1 || bindings[0].ContributionID != "proposal" {
+		c.t.Fatalf("recovery did not inspect its captured contribution: %+v", bindings)
+	}
+	return true
+}
+
+func TestWaitingRecoveryDefersCapturedContributionBeforeRequiringALiveActivation(t *testing.T) {
+	workspace := t.TempDir()
+	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
+	var wire interactionCheckpointPayloadWire
+	if err := json.Unmarshal(checkpoint.Payload, &wire); err != nil {
+		t.Fatal(err)
+	}
+	contract, err := pluginsdk.ToolProposalContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin, err := mcpserver.InstallationOrigin(dependedInstallation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverName := testsupport.ServerName("proposal")
+	server, err := mcpserver.NewID(origin, serverName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire.ToolProposals = new(contributionBindingsWire([]plugins.ContributionBinding{{InstallationID: dependedInstallation, Digest: testsupport.Digest("proposal"), ContributionID: "proposal", ServerID: server, ServerName: serverName, Export: "proposal", Contract: contract.Identity()}}))
+	checkpoint.Payload, err = json.Marshal(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		t.Error("recovery called the model")
+		return nil, errors.New("unexpected model call")
+	}), InteractionExecutorConfig{CallComposition: &pendingCallComposition{t: t}})
+	executor.config.ChatResolver = interactionChatResolverFunc(func(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
+		t.Error("recovery required a live activation before checking the pending connection")
+		return modeladapter.ResolvedChat{}, errors.New("unexpected assembly")
+	})
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_pending", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+	verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	if err != nil || !verdict.Deferred() {
+		t.Fatalf("pending contribution became startup failure or lost state: %+v, %v", verdict, err)
+	}
+}
 
 func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 	for _, deadline := range []bool{false, true} {

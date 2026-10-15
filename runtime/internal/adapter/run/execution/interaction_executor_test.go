@@ -114,7 +114,7 @@ func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, _, _, err := wrapInteractionTools(t.Context(), manifest, nil, test.config, toolResultOffloadPolicy{}, runs.RootExecutionStart{})
+			_, _, _, err := wrapInteractionTools(t.Context(), manifest, &interactionSession{}, test.config, toolResultOffloadPolicy{}, runs.RootExecutionStart{})
 			if test.want == "" && err != nil {
 				t.Fatalf("validate complete Tool policy = %v", err)
 			}

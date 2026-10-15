@@ -15,7 +15,7 @@ import (
 
 // ModelCallbacks uses the existing observed provider resolver and retained chain.
 // Each request is independent; a continuation still refers to its frozen endpoint.
-func (o *ModelComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pluginsdk.Callback, error) {
+func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pluginsdk.Callback, error) {
 	if dependency.Missing(resolve) {
 		return nil, errors.New("model composition: selected model resolver is required")
 	}

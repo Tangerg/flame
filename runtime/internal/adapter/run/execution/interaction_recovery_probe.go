@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
@@ -88,6 +89,15 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint tree is not at a waiting boundary", nil)
 	}
 	start := state.restoredStart(continuation)
+	if i.config.CallComposition != nil {
+		bindings := slices.Clone(state.modelObservers)
+		bindings = append(bindings, state.modelContexts...)
+		bindings = append(bindings, state.modelInputs...)
+		bindings = append(bindings, state.toolProposals...)
+		if i.config.CallComposition.Pending(bindings) {
+			return runs.DeferredWaiting(), nil
+		}
+	}
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
 	assembled, err := i.assembleInteraction(ctx, ref, start, &state)
 	if err != nil {

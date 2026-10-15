@@ -146,7 +146,7 @@ func TestInstalledModelObserverConsumerStopJoinsOriginalProducer(t *testing.T) {
 	}
 }
 
-func installedPublishedObserverFixture(t *testing.T, mode string) (*ModelComposition, []plugins.ContributionBinding, *toolInstallationStore) {
+func installedPublishedObserverFixture(t *testing.T, mode string) (*CallComposition, []plugins.ContributionBinding, *toolInstallationStore) {
 	t.Helper()
 	composition, bindings, store := installedObserverFixture(t, mode)
 	if err := composition.callbacks.PublishRPC(http.NotFoundHandler()); err != nil {
@@ -155,13 +155,13 @@ func installedPublishedObserverFixture(t *testing.T, mode string) (*ModelComposi
 	return composition, bindings, store
 }
 
-func installedObserverFixture(t *testing.T, mode string) (*ModelComposition, []plugins.ContributionBinding, *toolInstallationStore) {
+func installedObserverFixture(t *testing.T, mode string) (*CallComposition, []plugins.ContributionBinding, *toolInstallationStore) {
 	t.Helper()
 	contract, err := pluginsdk.ModelObserverContract()
 	if err != nil {
 		t.Fatal(err)
 	}
-	observer, store := installedModelCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
+	observer, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
 		call, _ := pluginsdk.ModelMethod()
 		if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.Request]) (pluginsdk.ModelResult, error) {
 			next, err := pluginsdk.CallbackFromContext(ctx)

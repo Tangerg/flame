@@ -11,6 +11,7 @@ import (
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -19,7 +20,7 @@ import (
 
 // capture retains the exact contributions until all provider work has joined.
 // Admission policy belongs to the calling use case, not to this lifetime owner.
-func (o *ModelComposition) capture(ctx context.Context, resolved models.SelectedChat, release func(), admit func(*chat.Request) error) (models.SelectedChat, func(), error) {
+func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedChat, release func(), admit func(*chat.Request) error) (models.SelectedChat, func(), error) {
 	if release == nil {
 		return models.SelectedChat{}, nil, errors.New("model composition: model release is required")
 	}
@@ -70,7 +71,7 @@ func (o *ModelComposition) capture(ctx context.Context, resolved models.Selected
 	return result, capture.close, nil
 }
 
-func (o *ModelComposition) Activations(ctx context.Context, bindings []plugins.ContributionBinding) ([]plugin.Activation, error) {
+func (o *CallComposition) Activations(ctx context.Context, bindings []plugins.ContributionBinding) ([]plugin.Activation, error) {
 	var activations []plugin.Activation
 	for _, binding := range bindings {
 		activation, err := o.calls.pool.InstallationActivation(ctx, binding.ServerID)
@@ -85,7 +86,18 @@ func (o *ModelComposition) Activations(ctx context.Context, bindings []plugins.C
 	return activations, nil
 }
 
-func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
+// Recovery must not require a live session while its existing connection owner
+// is still admitting one. A blocked handshake cannot block Runtime management.
+func (o *CallComposition) Pending(bindings []plugins.ContributionBinding) bool {
+	for _, status := range o.calls.pool.Statuses() {
+		if status.State == mcpserver.ConnectionConnecting && slices.ContainsFunc(bindings, func(binding plugins.ContributionBinding) bool { return binding.ServerID == status.Server }) {
+			return true
+		}
+	}
+	return false
+}
+
+func (o *CallComposition) HeldDependencies() []plugin.Dependency {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	var values []plugin.Dependency
@@ -99,7 +111,7 @@ func (o *ModelComposition) HeldDependencies() []plugin.Dependency {
 
 type modelCapture struct {
 	activations []plugin.Activation
-	owner       *ModelComposition
+	owner       *CallComposition
 	bindings    []plugins.ContributionBinding
 	contexts    []plugins.ContributionBinding
 	inputs      []plugins.ContributionBinding

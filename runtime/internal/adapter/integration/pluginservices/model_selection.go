@@ -16,7 +16,7 @@ import (
 
 // SelectModel uses only the explicitly selected installed provider. An absent
 // choice preserves the caller's proposal; a withdrawn choice is a refusal.
-func (o *ModelComposition) SelectModel(ctx context.Context, proposed modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
+func (o *CallComposition) SelectModel(ctx context.Context, proposed modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
 	if err := proposed.ValidateExact(); err != nil {
 		return modelchoice.Selection{}, err
 	}
@@ -46,7 +46,7 @@ func (o *ModelComposition) SelectModel(ctx context.Context, proposed modelchoice
 	if !chosen {
 		return proposed, nil
 	}
-	ctx, err = enterModelPhase(ctx, binding)
+	ctx, err = enterContributionPhase(ctx, binding)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}

@@ -26,7 +26,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 				t.Fatal(err)
 			}
 			var calls atomic.Int32
-			composition, store := installedModelCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
 				method, err := pluginsdk.ModelSelectionMethod()
 				if err != nil {
 					t.Fatal(err)

@@ -35,27 +35,28 @@ type interactionSession struct {
 	input          agent.Payload
 	engine         *agent.Engine
 
-	lifetime            interactionLifetime
-	state               interactionState
-	childProjection     interactionChildProjection
-	accounting          interactionAccounting
-	material            requestMaterial
-	unknownPollInterval time.Duration
-	statePollInterval   time.Duration
-	maintenance         RunMaintenance
-	lifecycleHooks      InteractionLifecycleHooks
-	buildID             runtimeidentity.BuildID
-	start               runs.RootExecutionStart
-	modelFailures       interactionModelFailures
-	modelObservers      []plugins.ContributionBinding
-	modelActivations    []plugin.Activation
-	modelContexts       []plugins.ContributionBinding
-	modelInputs         []plugins.ContributionBinding
-	selectedChat        modeladapter.SelectedChat
-	modelEvidence       InteractionModelEvidence
-	modelComposition    InteractionModelComposition
-	effectFailures      interactionEffectFailures
-	segmentClock        interactionSegmentClock
+	lifetime               interactionLifetime
+	state                  interactionState
+	childProjection        interactionChildProjection
+	accounting             interactionAccounting
+	material               requestMaterial
+	unknownPollInterval    time.Duration
+	statePollInterval      time.Duration
+	maintenance            RunMaintenance
+	lifecycleHooks         InteractionLifecycleHooks
+	buildID                runtimeidentity.BuildID
+	start                  runs.RootExecutionStart
+	modelFailures          interactionModelFailures
+	modelObservers         []plugins.ContributionBinding
+	compositionActivations []plugin.Activation
+	modelContexts          []plugins.ContributionBinding
+	modelInputs            []plugins.ContributionBinding
+	toolProposals          []plugins.ContributionBinding
+	selectedChat           modeladapter.SelectedChat
+	modelEvidence          InteractionModelEvidence
+	callComposition        InteractionCallComposition
+	effectFailures         interactionEffectFailures
+	segmentClock           interactionSegmentClock
 	// telemetry observes Framework facts only. It owns Process, Step, and
 	// Effect spans plus the commit instruments, and must outlive the Engine it
 	// observes, so it closes after the Engine has drained.
@@ -150,7 +151,7 @@ func newInteractionSession(
 		},
 		modelFailures:       newInteractionModelFailures(),
 		modelEvidence:       config.ModelEvidence,
-		modelComposition:    config.ModelComposition,
+		callComposition:     config.CallComposition,
 		accounting:          newInteractionAccounting(start.ModelSelection),
 		material:            newRequestMaterial(),
 		unknownPollInterval: policy.unknownEffectPollInterval,

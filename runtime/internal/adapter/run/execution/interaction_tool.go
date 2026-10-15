@@ -15,10 +15,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -341,6 +343,31 @@ func (o *observedInteractionTool) prepare(
 	if resumed {
 		return o.resumePreparedTool(ctx, callID, name, continued)
 	}
+	if len(o.session.toolProposals) > 0 {
+		activations, err := o.session.callComposition.Activations(ctx, o.session.compositionBindings())
+		if err != nil {
+			return tool.Arguments{}, false, "", err
+		}
+		if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
+			return tool.Arguments{}, false, "", plugin.ErrStale
+		}
+		invocation, err := operation.Capture(ctx, capability.Target{Scope: "call", Reference: callID})
+		if err != nil {
+			return tool.Arguments{}, false, "", err
+		}
+		calling, err := pluginsdk.WithInvocation(ctx, invocation)
+		if err != nil {
+			return tool.Arguments{}, false, "", err
+		}
+		proposal, err := o.session.callComposition.PrepareToolProposal(calling, o.session.toolProposals, corechat.ToolCall{ID: callID, Name: name, Arguments: arguments.Canonical()})
+		if err != nil {
+			return tool.Arguments{}, false, "", err
+		}
+		arguments, err = tool.ParseArguments(proposal.Arguments)
+		if err != nil {
+			return tool.Arguments{}, false, "", err
+		}
+	}
 	request, decision, err := (toolAdmission{
 		binding: o.binding, executable: o.inner, ref: o.ref, fingerprint: o.sourceFingerprint,
 		interpreter: o.interpreter, authorizer: o.authorizer, hooks: o.hooks,
@@ -644,7 +671,7 @@ func wrapInteractionTools(
 					}
 				}
 			}
-			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
+			if config.ToolHooks == nil && len(session.toolProposals) == 0 && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
 				!slices.Contains(start.InterruptKinds, interrupt.Approval) {
 				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
 				if err != nil {

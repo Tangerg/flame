@@ -22,7 +22,7 @@ import (
 
 func TestExecutionContextRequiresFrozenInputs(t *testing.T) {
 	checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
-	for _, field := range []string{"options", "instructions", "mcp_manifests", "handoff"} {
+	for _, field := range []string{"options", "instructions", "mcp_manifests", "handoff", "tool_proposals"} {
 		for _, present := range []bool{false, true} {
 			t.Run(field+"/"+fmt.Sprint(present), func(t *testing.T) {
 				var document map[string]jsontext.Value

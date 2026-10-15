@@ -30,16 +30,16 @@ import (
 // connection adapter. Bootstrap is the composition root that joins them; the
 // generic toolset does not expose application integration ports.
 type toolEnvironment struct {
-	tools            toolset.Built
-	mcp              *mcpconnection.Pool
-	memory           *pluginservices.Memory
-	toolResults      *pluginservices.ToolResults
-	pluginCalls      *pluginservices.CommandCalls
-	modelComposition *pluginservices.ModelComposition
-	modelCallbacks   []pluginsdk.Callback
-	utilityModel     models.AuxiliaryResolver
-	closers          []*teardown.Step
-	admission        *plugins.Admission
+	tools           toolset.Built
+	mcp             *mcpconnection.Pool
+	memory          *pluginservices.Memory
+	toolResults     *pluginservices.ToolResults
+	pluginCalls     *pluginservices.CommandCalls
+	callComposition *pluginservices.CallComposition
+	modelCallbacks  []pluginsdk.Callback
+	utilityModel    models.AuxiliaryResolver
+	closers         []*teardown.Step
+	admission       *plugins.Admission
 }
 
 // toolEnvironmentDependencies is the complete construction contract for the
@@ -98,11 +98,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.pluginCalls = commandCalls
-	environment.modelComposition, err = pluginservices.NewModelComposition(commandCalls, deps.modelServices.callbacks, admission)
+	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, deps.modelServices.callbacks, admission)
 	if err != nil {
 		return environment, err
 	}
-	environment.modelCallbacks, err = environment.modelComposition.ModelCallbacks(deps.modelServices.chatResolver)
+	environment.modelCallbacks, err = environment.callComposition.ModelCallbacks(deps.modelServices.chatResolver)
 	if err != nil {
 		return environment, err
 	}
@@ -111,11 +111,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
-	utility, err := modeladapter.LiveUtilityModel(deps.modelServices.chatResolver, deps.modelServices.defaultSelection, deps.modelServices.utilityRoleState, environment.modelComposition)
+	utility, err := modeladapter.LiveUtilityModel(deps.modelServices.chatResolver, deps.modelServices.defaultSelection, deps.modelServices.utilityRoleState, environment.callComposition)
 	if err != nil {
 		return environment, err
 	}
-	environment.utilityModel = environment.modelComposition.Auxiliary(utility)
+	environment.utilityModel = environment.callComposition.Auxiliary(utility)
 	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err

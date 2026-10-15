@@ -115,7 +115,7 @@ func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 	}
 	visible, _, _, err := wrapInteractionTools(
 		t.Context(),
-		manifest, nil,
+		manifest, &interactionSession{},
 		InteractionExecutorConfig{ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}},
 		toolResultOffloadPolicy{}, runs.RootExecutionStart{},
 	)

@@ -129,7 +129,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	observers, err := NewModelComposition(calls, callbacks, admission)
+	observers, err := NewCallComposition(calls, callbacks, admission)
 	if err != nil {
 		t.Fatal(err)
 	}

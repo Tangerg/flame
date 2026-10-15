@@ -311,7 +311,7 @@ func TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce(t *testing.T) {
 		})
 	}
 
-	_, err := decodeInteractionCheckpointPayload([]byte(`{"model_observers":[],"model_contexts":[],"model_inputs":[],"mcp_manifests":{"root":[]},"options":{},"instructions":[],"handoff":{}}`))
+	_, err := decodeInteractionCheckpointPayload([]byte(`{"tool_proposals":[],"model_observers":[],"model_contexts":[],"model_inputs":[],"mcp_manifests":{"root":[]},"options":{},"instructions":[],"handoff":{}}`))
 	if err == nil {
 		t.Fatal("empty checkpoint handoff decoded")
 	}

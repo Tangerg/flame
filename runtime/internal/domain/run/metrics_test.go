@@ -81,6 +81,9 @@ func TestModelCallAccountingKeepsUnknownPriceAcrossCallOrder(t *testing.T) {
 			if unknown, present := usage.ByModel["unknown-model"]; present && unknown.CostUSD != nil {
 				t.Fatalf("later known response erased original unknown price: %+v", unknown)
 			}
+			if known := usage.ByModel["known-model"]; known.InputTokens != 7 || known.OutputTokens != 2 {
+				t.Fatalf("unreported calls erased a known model breakdown: %+v", usage.ByModel)
+			}
 		})
 	}
 }

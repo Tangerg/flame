@@ -308,9 +308,6 @@ func accountingFromRunMetrics(
 	if metrics.Steps() == 0 {
 		return emptyRunMetricsAccounting(reported, callsByModel)
 	}
-	if !reported || len(usage.ByModel) == 0 {
-		return nil, errors.New("model calls have no per-model usage")
-	}
 	result, err := modelUsageFromRunMetrics(usage.ByModel, callsByModel)
 	if err != nil {
 		return nil, err
@@ -319,7 +316,7 @@ func accountingFromRunMetrics(
 	if err != nil {
 		return nil, err
 	}
-	if total.Calls != metrics.Steps() || !sameTranscriptUsage(total, usage.Total) {
+	if total.Calls != metrics.Steps() || (reported && !sameTranscriptUsage(total, usage.Total)) {
 		return nil, errors.New("product metrics differ from reconstructed executor accounting")
 	}
 	return result, nil
@@ -339,12 +336,19 @@ func modelUsageFromRunMetrics(
 	byModel map[string]accounting.Totals,
 	callsByModel map[string]int,
 ) (map[string]accounting.ModelUsage, error) {
-	result := make(map[string]accounting.ModelUsage, len(byModel))
-	for model, value := range byModel {
-		calls := callsByModel[model]
+	for model := range byModel {
+		if callsByModel[model] <= 0 {
+			return nil, fmt.Errorf("model %q has no durable call count", model)
+		}
+	}
+	result := make(map[string]accounting.ModelUsage, len(callsByModel))
+	for model, calls := range callsByModel {
 		if calls <= 0 {
 			return nil, fmt.Errorf("model %q has no durable call count", model)
 		}
+		// Providers may omit usage. The checkpoint still owns the call count;
+		// zero executor calibration counters do not publish reported-zero usage.
+		value := byModel[model]
 		cost, err := accounting.CostFromOptional(value.CostUSD)
 		if err != nil {
 			return nil, fmt.Errorf("model %q cost: %w", model, err)
@@ -363,9 +367,6 @@ func modelUsageFromRunMetrics(
 			return nil, fmt.Errorf("model %q: %w", model, err)
 		}
 		result[model] = usage
-	}
-	if len(result) != len(callsByModel) {
-		return nil, errors.New("durable call counts name a model absent from product metrics")
 	}
 	return result, nil
 }

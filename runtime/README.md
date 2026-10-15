@@ -17,6 +17,28 @@ limits; no universal Run/Goal cost ceiling is inferred from accounting totals. T
 rows; old database shapes are refused unchanged by strict schema admission, without
 a migration or an old-row reader. Public wire/export epochs are unchanged.
 
+## Installed Tool proposals
+
+Ordinary installed authors can contribute the published `ToolProposalContract`
+through the existing ordered composition owner. Execution captures their exact
+bindings and transitive dependencies before starting a Run. The original Tool
+retains schema, approval and mutation authority: transformed arguments are
+admitted before approval, executed unchanged and retained as canonical history.
+Approval recovery consumes the saved final proposal without rerunning contributors.
+See [`plugin/README.md`](plugin/README.md#tool-proposal-transformation) for authoring.
+
+The private checkpoint now requires `tool_proposals`. Preserve earlier directories
+and finish old waiting work with its original binary; no compatibility reader or
+automatic conversion exists. Existing Core/backend wire versions and business
+receipt formats are unchanged. Startup defers an original waiting probe while a
+captured contributor's existing connection is still being admitted, without
+waiting for its handshake or replaying work.
+
+Waiting recovery also preserves calls whose provider omitted usage. Run metrics
+retain reported usage and unknown pricing; a later known report does not erase
+its model breakdown or turn aggregate uncertainty into an exact price. Execution
+restores its captured call counts without manufacturing reported-zero usage.
+
 ## Evidence retention
 
 Physical model evidence has one journal owner. Run-linked rows follow the Run's

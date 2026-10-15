@@ -71,8 +71,8 @@ func (i *InteractionExecutor) heldDependencies(ctx context.Context) ([]plugin.De
 		return nil, err
 	}
 	held = append(held, commands...)
-	if i.config.ModelComposition != nil {
-		held = append(held, i.config.ModelComposition.HeldDependencies()...)
+	if i.config.CallComposition != nil {
+		held = append(held, i.config.CallComposition.HeldDependencies()...)
 	}
 	for _, session := range i.sessions.snapshot() {
 		held = append(held, session.installationDependencies()...)
@@ -86,7 +86,7 @@ func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	var dependencies []plugin.Dependency
-	for _, activation := range i.modelActivations {
+	for _, activation := range i.compositionActivations {
 		dependencies = append(dependencies, activation.Dependencies...)
 	}
 	i.state.mu.Unlock()

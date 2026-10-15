@@ -71,7 +71,7 @@ func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	}
 }
 
-func installedContextFixture(t *testing.T, mode string) (*ModelComposition, []plugins.ContributionBinding, *toolInstallationStore) {
+func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plugins.ContributionBinding, *toolInstallationStore) {
 	t.Helper()
 	contract, err := pluginsdk.ModelContextContract()
 	if err != nil {
@@ -81,7 +81,7 @@ func installedContextFixture(t *testing.T, mode string) (*ModelComposition, []pl
 	if mode == "ordered" {
 		members = append(members, "second")
 	}
-	observer, store := installedModelCompositionFixture(t, contract, members, func(backend *pluginsdk.Backend) {
+	observer, store := installedCallCompositionFixture(t, contract, members, func(backend *pluginsdk.Backend) {
 		method, _ := pluginsdk.ModelContextMethod()
 		if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
 			invocation, err := pluginsdk.InvocationFromContext(ctx)

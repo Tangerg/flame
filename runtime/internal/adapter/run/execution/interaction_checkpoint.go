@@ -28,9 +28,10 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
-	ModelInputs         *[]modelContributionWire            `json:"model_inputs"`
-	ModelContexts       *[]modelContributionWire            `json:"model_contexts"`
-	ModelObservers      *[]modelContributionWire            `json:"model_observers"`
+	ToolProposals       *[]contributionBindingWire          `json:"tool_proposals"`
+	ModelInputs         *[]contributionBindingWire          `json:"model_inputs"`
+	ModelContexts       *[]contributionBindingWire          `json:"model_contexts"`
+	ModelObservers      *[]contributionBindingWire          `json:"model_observers"`
 	MCPManifests        *map[domaintool.Group][]string      `json:"mcp_manifests"`
 	Options             *corechat.Options                   `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
@@ -87,6 +88,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	toolProposals       []plugins.ContributionBinding
 	modelInputs         []plugins.ContributionBinding
 	modelContexts       []plugins.ContributionBinding
 	modelObservers      []plugins.ContributionBinding
@@ -154,6 +156,7 @@ func encodeInteractionCheckpointPayload(
 	observers []plugins.ContributionBinding,
 	contexts []plugins.ContributionBinding,
 	inputs []plugins.ContributionBinding,
+	toolProposals []plugins.ContributionBinding,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
@@ -163,9 +166,10 @@ func encodeInteractionCheckpointPayload(
 		frozenInstructions = []corechat.Message{}
 	}
 	wire := interactionCheckpointPayloadWire{
-		ModelObservers: new(modelBindingsWire(observers)),
-		ModelContexts:  new(modelBindingsWire(contexts)),
-		ModelInputs:    new(modelBindingsWire(inputs)),
+		ToolProposals:  new(contributionBindingsWire(toolProposals)),
+		ModelObservers: new(contributionBindingsWire(observers)),
+		ModelContexts:  new(contributionBindingsWire(contexts)),
+		ModelInputs:    new(contributionBindingsWire(inputs)),
 		MCPManifests:   new(mcpManifests),
 		ToolMetadata:   toolMetadata, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
@@ -381,6 +385,17 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
+	if wire.ToolProposals == nil {
+		return interactionCheckpointState{}, errors.New("execution: checkpoint Tool proposal bindings are required")
+	}
+	proposalContract, err := pluginsdk.ToolProposalContract()
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	proposals, err := decodeContributionBindings(*wire.ToolProposals, proposalContract)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
 	if wire.MCPManifests == nil {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP manifests are required")
 	}
@@ -391,7 +406,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	observers, err := decodeModelBindings(*wire.ModelObservers, observerContract)
+	observers, err := decodeContributionBindings(*wire.ModelObservers, observerContract)
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -412,7 +427,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	inputs, err := decodeModelBindings(*wire.ModelInputs, inputContract)
+	inputs, err := decodeContributionBindings(*wire.ModelInputs, inputContract)
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -423,7 +438,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	contexts, err := decodeModelBindings(*wire.ModelContexts, contextContract)
+	contexts, err := decodeContributionBindings(*wire.ModelContexts, contextContract)
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
@@ -458,6 +473,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	return interactionCheckpointState{
+		toolProposals:  proposals,
 		modelObservers: observers,
 		modelContexts:  contexts,
 		modelInputs:    inputs,

@@ -50,7 +50,7 @@ func selectedCallInput(model string) pluginsdk.ModelCallRequest {
 	request.Tools = []chat.ToolDefinition{{Name: "echo", Description: "Echo.", InputSchema: jsontext.Value(`{"type":"object"}`)}}
 	return pluginsdk.ModelCallRequest{Selection: pluginsdk.ModelSelection{Provider: "anthropic", Model: model}, Budget: pluginsdk.ModelCallBudget{MaxRequestBytes: 4096, MaxOutputTokens: 64}, Request: *request}
 }
-func selectedCallRef(t *testing.T, composition *ModelComposition, resolver models.ChatModelResolver) (pluginsdk.CallbackRef, func()) {
+func selectedCallRef(t *testing.T, composition *CallComposition, resolver models.ChatModelResolver) (pluginsdk.CallbackRef, func()) {
 	t.Helper()
 	callbacks, err := composition.ModelCallbacks(resolver)
 	if err != nil {
@@ -163,7 +163,7 @@ func TestSelectedModelFinalRequestBudgetRefusesBeforeProviderDispatch(t *testing
 			if err != nil {
 				t.Fatal(err)
 			}
-			composition, _ := installedModelCompositionFixture(t, contract, []string{"converter"}, func(backend *pluginsdk.Backend) {
+			composition, _ := installedCallCompositionFixture(t, contract, []string{"converter"}, func(backend *pluginsdk.Backend) {
 				method, _ := pluginsdk.ModelInputMethod()
 				err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
 					request := command.Input.Request.Clone()
@@ -295,7 +295,7 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 		t.Fatal(err)
 	}
 	var choices atomic.Int32
-	composition, _ := installedModelCompositionFixture(t, contract, []string{"selector"}, func(backend *pluginsdk.Backend) {
+	composition, _ := installedCallCompositionFixture(t, contract, []string{"selector"}, func(backend *pluginsdk.Backend) {
 		method, _ := pluginsdk.ModelSelectionMethod()
 		err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 			parent, err := pluginsdk.InvocationFromContext(ctx)

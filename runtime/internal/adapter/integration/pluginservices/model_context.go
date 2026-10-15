@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func (o *ModelComposition) ResolveContext(ctx context.Context) ([]plugins.ContributionBinding, error) {
+func (o *CallComposition) ResolveContext(ctx context.Context) ([]plugins.ContributionBinding, error) {
 	contract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func (o *ModelComposition) ResolveContext(ctx context.Context) ([]plugins.Contri
 	return plugins.ResolveComposition(ctx, o.calls.installations, o.calls.compositions, contract)
 }
 
-func (o *ModelComposition) ValidateContext(ctx context.Context, bindings []plugins.ContributionBinding) error {
+func (o *CallComposition) ValidateContext(ctx context.Context, bindings []plugins.ContributionBinding) error {
 	contract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		return err
@@ -30,7 +30,7 @@ func (o *ModelComposition) ValidateContext(ctx context.Context, bindings []plugi
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
 
-func (o *ModelComposition) validateCompositionBindings(ctx context.Context, contract *capability.Contract, bindings []plugins.ContributionBinding) error {
+func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *capability.Contract, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
 		captured, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 		if err != nil {
@@ -45,7 +45,7 @@ func (o *ModelComposition) validateCompositionBindings(ctx context.Context, cont
 
 // PrepareContext executes only captured input contributors. Their output remains
 // request context, never authored conversation, model selection or Tool identity.
-func (o *ModelComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) ([]chat.Message, error) {
+func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) ([]chat.Message, error) {
 	if request == nil {
 		return nil, errors.New("model context: request is required")
 	}
@@ -69,7 +69,7 @@ func (o *ModelComposition) PrepareContext(ctx context.Context, bindings []plugin
 	var material []chat.Message
 	frozen := request.Clone()
 	for _, binding := range bindings {
-		calling, err := enterModelPhase(ctx, binding)
+		calling, err := enterContributionPhase(ctx, binding)
 		if err != nil {
 			return nil, err
 		}

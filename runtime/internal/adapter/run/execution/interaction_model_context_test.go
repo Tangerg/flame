@@ -39,7 +39,7 @@ func TestInteractionContextContributionsAreMeasuredButNeverAdoptedAsConversation
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg := InteractionExecutorConfig{ModelComposition: owner, ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}}
+			cfg := InteractionExecutorConfig{CallComposition: owner, ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}}
 			if compact {
 				cfg.ModelContextCompactor = compactor
 				cfg.ModelContextState = emptyInteractionModelContextState{}
@@ -59,7 +59,7 @@ func TestInteractionContextFailureRefusesBeforeProviderDispatch(t *testing.T) {
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		calls++
 		return interactionUsageTextResponse("unexpected", 1, 1), nil
-	}), InteractionExecutorConfig{ModelComposition: owner})
+	}), InteractionExecutorConfig{CallComposition: owner})
 	runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 	if calls != 0 || owner.calls != 1 {
 		t.Fatalf("failed context dispatched model: provider=%d context=%d", calls, owner.calls)
@@ -146,6 +146,18 @@ func countContextMaterial(messages []chat.Message) int {
 
 func (*contextCaptureComposition) ResolveInput(context.Context) ([]plugins.ContributionBinding, error) {
 	return nil, nil
+}
+
+func (*contextCaptureComposition) ResolveToolProposals(context.Context) ([]plugins.ContributionBinding, error) {
+	return nil, nil
+}
+
+func (*contextCaptureComposition) Pending([]plugins.ContributionBinding) bool { return false }
+func (*contextCaptureComposition) ValidateToolProposals(context.Context, []plugins.ContributionBinding) error {
+	return nil
+}
+func (*contextCaptureComposition) PrepareToolProposal(_ context.Context, _ []plugins.ContributionBinding, proposal chat.ToolCall) (chat.ToolCall, error) {
+	return proposal, nil
 }
 func (*contextCaptureComposition) ValidateInput(context.Context, []plugins.ContributionBinding) error {
 	return nil

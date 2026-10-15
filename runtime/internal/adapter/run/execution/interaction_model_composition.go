@@ -15,7 +15,11 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type InteractionModelComposition interface {
+type InteractionCallComposition interface {
+	Pending([]plugins.ContributionBinding) bool
+	ResolveToolProposals(context.Context) ([]plugins.ContributionBinding, error)
+	ValidateToolProposals(context.Context, []plugins.ContributionBinding) error
+	PrepareToolProposal(context.Context, []plugins.ContributionBinding, chat.ToolCall) (chat.ToolCall, error)
 	Activations(context.Context, []plugins.ContributionBinding) ([]plugin.Activation, error)
 	ResolveInput(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateInput(context.Context, []plugins.ContributionBinding) error
@@ -29,7 +33,14 @@ type InteractionModelComposition interface {
 	Bind(chat.Model, chat.Streamer, []plugins.ContributionBinding) (chat.Model, chat.Streamer)
 }
 
-type modelContributionWire struct {
+func (i *interactionSession) compositionBindings() []plugins.ContributionBinding {
+	bindings := append([]plugins.ContributionBinding{}, i.modelObservers...)
+	bindings = append(bindings, i.modelContexts...)
+	bindings = append(bindings, i.modelInputs...)
+	return append(bindings, i.toolProposals...)
+}
+
+type contributionBindingWire struct {
 	Installation string `json:"installation"`
 	Digest       string `json:"digest"`
 	Contribution string `json:"contribution"`
@@ -38,15 +49,15 @@ type modelContributionWire struct {
 	Contract     string `json:"contract"`
 }
 
-func modelBindingsWire(bindings []plugins.ContributionBinding) []modelContributionWire {
-	values := make([]modelContributionWire, len(bindings))
+func contributionBindingsWire(bindings []plugins.ContributionBinding) []contributionBindingWire {
+	values := make([]contributionBindingWire, len(bindings))
 	for index, binding := range bindings {
-		values[index] = modelContributionWire{Installation: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Server: binding.ServerName.String(), Export: binding.Export, Contract: binding.Contract.String()}
+		values[index] = contributionBindingWire{Installation: binding.InstallationID.String(), Digest: binding.Digest.String(), Contribution: binding.ContributionID.String(), Server: binding.ServerName.String(), Export: binding.Export, Contract: binding.Contract.String()}
 	}
 	return values
 }
 
-func decodeModelBindings(values []modelContributionWire, contract *capability.Contract) ([]plugins.ContributionBinding, error) {
+func decodeContributionBindings(values []contributionBindingWire, contract *capability.Contract) ([]plugins.ContributionBinding, error) {
 	if contract == nil {
 		return nil, errors.New("execution: model composition contract is required")
 	}

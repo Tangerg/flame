@@ -18,7 +18,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func installedModelCompositionFixture(t *testing.T, contract *capability.Contract, members []string, register func(*pluginsdk.Backend), handlers ...http.Handler) (*ModelComposition, *toolInstallationStore) {
+func installedCallCompositionFixture(t *testing.T, contract *capability.Contract, members []string, register func(*pluginsdk.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
 	t.Helper()
 	name := testsupport.ServerName("observer")
 	contributions := make([]plugin.Contribution, len(members))
@@ -112,7 +112,7 @@ func installedModelCompositionFixture(t *testing.T, contract *capability.Contrac
 	if err != nil {
 		t.Fatal(err)
 	}
-	composition, err := NewModelComposition(calls, callbacks, plugins.NewAdmission())
+	composition, err := NewCallComposition(calls, callbacks, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}

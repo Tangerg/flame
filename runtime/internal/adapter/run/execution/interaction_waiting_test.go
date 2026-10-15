@@ -78,9 +78,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	})
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	executor := newObservedTestInteractionExecutor(t, recordingModel, InteractionExecutorConfig{
-		ModelComposition: inputOwner,
-		ToolResolver:     staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
-		ToolInterpreter:  testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		CallComposition: inputOwner,
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
 	start := interactionTestStart()

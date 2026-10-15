@@ -6,7 +6,7 @@ It lives in the existing Runtime module and imports no Runtime internal package.
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle.
 
-The fixed published model observer, input and context contracts are immutable
+The fixed published model observer, input, context and Tool proposal contracts are immutable
 process-wide values. Their schemas are compiled once by this package; checkpoint
 validation and callers share the admitted contract. `Descriptor` still returns
 owned schema bytes, so one consumer cannot alter another consumer's validation.
@@ -109,10 +109,10 @@ It cannot switch exports or invoke the mutation. The host must retain installati
 release and contribution bindings through its existing command routing owner;
 a direct backend session does not supply those installed guarantees.
 
-Composition and scope here describe the callable contract. This binding does not
-yet resolve collection membership, provider selections or remote decorator chains.
-Full point applicability, optionality and ordering still belong to the forthcoming
-point/composition consumer rather than being inferred from an export name.
+Composition and scope here describe the callable contract. The installed Runtime
+consumer resolves collection membership, explicit selections and ordered chains;
+the backend binding validates the resulting exact export rather than inferring
+membership or precedence from an export name.
 
 `RegisterServer[P, R]` binds a query and `RegisterCommand[P, R]` binds a command
 against the same backend. `NewMethod.RegisterServer` preserves its declared kind,
@@ -516,6 +516,39 @@ not proof of provider-exact tokenization. A catalog miss keeps capacity unknown;
 existing caller text-byte/output budgets still apply. Decorators preserve frozen
 limits, selection and counter, and capture release cancels/joins counting before
 releasing its dependencies. The counted composed request is the one dispatched.
+
+## Tool proposal transformation
+
+`ToolProposalContract` publishes `flame.tool-proposal.v1`, an ordered call-scoped
+decoration contract. Its `ToolProposalMethod` binds
+`flame.tool-proposal/transform.v1` as a typed query from `chat.ToolCall` to
+`chat.ToolCall`. An ordinary installed backend registers the method and binds the
+contract to its declared export. Configure its order with the existing composition
+operation; publisher origin supplies no special path.
+
+The input uses Runtime's logical Tool call identity, original model origin and
+parent Run. Contributors may change arguments, preserving call ID and Tool name.
+Their queries use the existing call-bound RPC link and captured installation
+authority. A failed or withdrawn contributor fails preparation; it is never
+silently skipped. After the ordered transformations, trusted workspace hooks and
+the original Tool owner admit final argument structure and approval policy.
+Approval, execution and history consume those same effective arguments.
+
+Execution freezes the bindings, activation identities and transitive release
+dependencies with its other call contributors. Approval restoration uses the
+stored final arguments and never reruns transformations. A pending backend
+handshake defers startup's read-only waiting probe instead of blocking management.
+The required private checkpoint field is now `tool_proposals`; earlier captures
+are refused, never interpreted as an empty chain. Preserve old data and finish
+old waiting executions with their original binary. This additive SDK contract
+does not change existing Core/backend wire epochs or private business receipts.
+
+`TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay`
+builds an independent public-SDK stdio author, installs it with Reviews, verifies
+rewritten approval/execution/history and the private owner after Runtime restart,
+and proves malformed arguments cannot reach approval or mutation. The test's
+provider omits usage: recovery preserves that absence instead of inventing tokens
+or a known price. No graphical component is loaded.
 
 ## Model input transformation
 

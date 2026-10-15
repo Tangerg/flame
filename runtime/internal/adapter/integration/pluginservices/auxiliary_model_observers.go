@@ -9,7 +9,7 @@ import (
 
 // Auxiliary freezes one selected model and its contributions for the use case.
 // Memory retains this capture across extraction and curation with its own envelope.
-func (o *ModelComposition) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
+func (o *CallComposition) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
 	return func(ctx context.Context, budget models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
 		if err := budget.Validate(); err != nil {
 			return models.SelectedChat{}, nil, err
