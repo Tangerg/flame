@@ -7,14 +7,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -87,15 +88,55 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
+	startedAt := time.Now()
+	type stageObservation struct {
+		name    string
+		elapsed time.Duration
+	}
+	var stages []stageObservation
+	mark := func(name string) {
+		stages = append(stages, stageObservation{name, time.Since(startedAt)})
+	}
+	defer func() {
+		if !t.Failed() || ctx.Err() != context.DeadlineExceeded {
+			return
+		}
+		for _, stage := range stages {
+			t.Logf("steer deadline: mode=%s stage=%s elapsed=%s", mode, stage.name, stage.elapsed)
+		}
+		for name, entered := range map[string]<-chan struct{}{"first": firstEntered, "second": secondEntered} {
+			select {
+			case <-entered:
+				t.Logf("steer deadline: %s provider entered", name)
+			default:
+				t.Logf("steer deadline: %s provider has not entered", name)
+			}
+		}
+		stack := make([]byte, 1<<20)
+		t.Logf("steer deadline goroutines:\n%s", stack[:runtime.Stack(stack, true)])
+		// Inspect after the original deadline fails; diagnostics never extend the
+		// success window or consume the stream that the model-boundary assertion tests.
+		inspection, stop := context.WithTimeout(context.WithoutCancel(t.Context()), 2*time.Second)
+		defer stop()
+		observed, err := connection.GetSession(inspection, session.ID)
+		t.Logf("steer deadline session: snapshot=%+v error=%v", observed, err)
+		for _, run := range observed.Runs {
+			t.Logf("steer deadline run: id=%s segment=%s status=%s outcome=%s explanation=%s",
+				run.ID, run.ActiveSegmentID, run.Status, run.Outcome.Status, run.Outcome.Explanation())
+		}
+	}()
+	mark("start requested")
 	opened, err := connection.StartRun(ctx, testStartRequest(session.ID, prompt.Message{Text: "steer admission probe"}))
 	if err != nil {
 		t.Fatal(err)
 	}
+	mark("start acknowledged; waiting for first provider")
 	select {
 	case <-firstEntered:
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+	mark("first provider entered; steer requested")
 	receipt, err := connection.SteerRun(ctx, prompt.SteerRun{
 		CommandID: "cli_77777777777777777777777777777777",
 		RunID:     opened.RunID, SegmentID: opened.SegmentID,
@@ -104,6 +145,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	if err != nil || receipt.UserItemID == "" {
 		t.Fatalf("accepted steer receipt = %+v, %v", receipt, err)
 	}
+	mark("steer acknowledged")
 	accepted, err := connection.GetSession(ctx, session.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +158,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	}
 	finishFirst.Do(func() { close(releaseFirst) })
 	if mode == protocol.ApprovalModeSafe {
+		mark("first provider released; waiting for approval stream")
 		for _, err := range opened.Events {
 			if err != nil {
 				t.Fatal(err)
@@ -131,18 +174,22 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			t.Fatalf("accepted steer crossed the model boundary before approval: %+v", waiting)
 		}
 		previousSegment := opened.SegmentID
+		mark("waiting snapshot validated; resume requested")
 		opened, err = connection.ResumeRun(ctx, conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
 			ItemID: conversation.InterruptItemID(waiting.Interrupts[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}}})
 		if err != nil || opened.SegmentID == previousSegment {
 			t.Fatalf("resume after accepted steer: segment=%s err=%v", opened.SegmentID, err)
 		}
+		mark("resume acknowledged")
 	}
+	mark("waiting for second provider")
 	select {
 	case <-secondEntered:
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+	mark("second provider entered")
 	applied, err := connection.GetSession(ctx, session.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -153,6 +200,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 		t.Fatalf("applied receipt Item %s is absent from the authoritative transcript", receipt.UserItemID)
 	}
 	finishSecond.Do(func() { close(releaseSecond) })
+	mark("second provider released; waiting for final stream")
 	for _, err := range opened.Events {
 		if err != nil {
 			t.Fatal(err)

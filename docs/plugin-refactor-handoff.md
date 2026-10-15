@@ -28,7 +28,8 @@ Detailed evidence and each row live in
 
 ## Current product changes
 
-Frozen current Go source is `b2dcbfbba`; later changes are documentation only.
+Production Go remains `b2dcbfbba`. The latest slice changes only the steer test's
+failure diagnostics and documentation; it is not a production timeout repair.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -80,8 +81,9 @@ go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples
   includes all eight Schedule SIGKILL cuts and existing recovery/steer/schedule cases.
 - Complete normal has the same 159 passes/fifteen no-test packages. Execution/
   bootstrap/CLI/runtimebinding/terminal pass 57.079/118.847/39.523/12.150/24.648s,
-  wall time 292.538s. Full-module vet passes. Original CLI root/recovery/steer
-  test files compare unchanged against `366ffff6a`.
+  wall time 292.538s. Full-module vet passes. At this qualification, original CLI
+  root/recovery/steer test files compare unchanged against `366ffff6a`; the later
+  steer change retains their assertions and adds failure-only diagnostics.
 - Core/Memory/Schedules/API regeneration and architecture pass. Shared TS check
   passes 30 files/355 tests plus type/lint/format/dead-code checks. Desktop,
   component SDK, Reviews and portable component types pass. Direct layer,
@@ -140,6 +142,39 @@ attempt is inconclusive because source-scanning tests read the physical tree and
 not every source was frozen. Successful-cancellation diagnostic stacks from that
 attempt are not timeout stacks. Failed iterations remain failed/inconclusive.
 
+## Current stage-level investigation
+
+A fully pinned `366ffff6a` overlay now observes background staging/activation,
+answer delivery/proof, resumed Processes, dispatch gates, Tool executable,
+tree/fact commits plus pump acknowledgement, next-model context, applied-steer
+commit, Model start and the provider iterator, with Go runtime traces. Complete
+historical CLI/root binding race passes 75.242/39.575s. After Resume, activation
+finishes at 35.9ms, Shell executes 54.3-59.7ms, post-Tool tree commits settle by
+126.1ms, context reduction ends 142.1ms, steer/Model-start commits end 146.3/148.4ms,
+and the second HTTP request arrives 173.4ms after acknowledgement. All post-Resume
+stages return normally. These are baseline observations, not the old failure.
+
+Current test-only diagnostics retain phases from Start, provider-entry facts,
+goroutine stacks and authoritative Run outcome/explanation when the original 10s
+assertion fails. Failure inspection has its own bounded 2s read after failure;
+assertions, the 10s success window and both original event loops stay unchanged.
+
+Four temporary owner-boundary fault controls (activation, Tool executable,
+steer commit and model pre-dispatch) all reproduce the same caller timeout while
+the Run has already ended in 0.44-1.05s as failed or lost. The diagnostic captures
+the exact retained outcome; all four commands intentionally exit 1. They prove
+that the old bare timeout could hide a completed backend failure, not that one of
+these injected causes occurred historically. No artificial timing/load, weaker
+assertion, retry, replay or compatibility path is introduced.
+
+Complete current CLI/root binding parallel race passes 74.927/40.261s without
+overlays or exclusions, including the final diagnostics. Whole Runtime/bootstrap,
+TS and native qualification is not rerun for this test-only slice. Temporary
+sources, traces, binaries and control resources are removed after inspection.
+
+The historical 10s root cause remains **unresolved**. Its exact phase/error/state
+is still unavailable. Do not call the diagnosis or overall refactor complete.
+
 ## Unexecuted scenarios and risks
 
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 need actual graphical interaction.
@@ -180,7 +215,9 @@ Runtime/native build outputs remain. All verification processes finish. Main and
 stash are preserved. No push, merge, external publication or user-data change.
 
 Next substantive unresolved work is to capture a real historical-class safe-steer
-deadline with phase/state/stack evidence, without relaxing assertions or limits.
+deadline with phase/state/stack evidence. Determine whether execution is still
+live, where it stopped, and what the original owner retained; a terminal Run can
+also explain the caller's wait. Do not relax assertions or limits.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
 Do not declare the whole plugin system 100%.
 

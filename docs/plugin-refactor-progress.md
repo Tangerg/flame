@@ -10,8 +10,11 @@ all four additional review cross-scenarios remain Partial under the continuing
 UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 
-Frozen current Go source is `b2dcbfbba`; later commits update documentation only.
-The original full parallel command passes without overlay or exclusions:
+The latest complete product qualification is frozen `b2dcbfbba`. Production Go
+remains unchanged. The current slice adds failure-only steer test diagnostics;
+current complete CLI/root binding race qualification is recorded below. The
+following full-product result predates that test-only change and is not a newly
+executed whole-product gate:
 
 ```sh
 go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
@@ -23,7 +26,9 @@ test files**. Race execution/bootstrap/SDK/CLI/runtimebinding/terminal pass
 all eight Schedule SIGKILL cuts. Complete current normal has the same 159 passes
 and 15 no-test packages; execution/bootstrap/CLI/runtimebinding/terminal pass
 57.079/118.847/39.523/12.150/24.648s (wall time 292.538s). Full-module vet passes.
-Original recovery/steer test files, assertions and 10s contexts are unchanged.
+Original recovery/steer assertions and 10s contexts remain unchanged. The steer
+test now adds failure-only phase/state/stack diagnostics; no stream is consumed
+ahead of its original loop.
 Conditional paid/live and platform cases are not inferred from package summaries.
 
 Core/Memory/Schedules/API generation and complete architecture checks pass.
@@ -65,6 +70,83 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Stage-level safe-steer evidence and retained failure context (2026-10-15)
+
+The historical post-SDK 10s case is still **unresolved**. The old line 144 proves
+only that the caller did not finish waiting for the second provider before its
+deadline; it does not prove that execution was still live or blocked there.
+
+A temporary overlay pins all 2,426 Go files to `366ffff6a` and records paired
+entry/exit/error observations at accepted-continuation staging, background
+activation, answer preparation/delivery/proof, paused-process resumption,
+dispatch gates, Tool approval/executable, tree/fact commits and pump receipt,
+next-model context reduction, applied-steer commit, Model start and the lazy
+provider iterator. Go runtime traces cover the safe/yolo cases. No assertion,
+10s context, stream consumption, return value or production state transition
+changes. No arbitrary delay, retry, synthetic load or production API is added.
+
+The initial single-case probe passes (wall 17.260s including fixture preparation).
+The complete historical CLI/root binding pair then runs once at `-race -p 2`,
+passes 75.242/39.575s (wall 81.162s), and retains this safe timeline. Times are
+milliseconds relative to the Resume acknowledgement, not exclusive CPU totals:
+
+| Observed boundary | Enter | Return |
+| --- | ---: | ---: |
+| Background activation / staging / Begin | -0.048 | 35.882 |
+| Deliver all paused answers | 12.479 | 21.286 |
+| Prove delivery | 21.310 | 26.914 |
+| Resume paused Processes | 26.925 | 35.846 |
+| Actual Shell executable | 54.308 | 59.708 |
+| Post-Tool tree commits (sequences 16-19) | 64.559 | 126.084 |
+| Next-model context reduction | 127.736 | 142.077 |
+| Commit applied steer | 144.101 | 146.329 |
+| Commit Model start | 146.339 | 148.359 |
+| Enter lazy provider iterator | 148.384 | 212.231 |
+| Second HTTP provider request reaches the fixture | 173.398 | — |
+
+All post-Resume boundaries return without error. Earlier `tool input required`
+returns are the expected safe approval boundary, not swallowed failures. There
+are no unmatched stage entries. The iterator interval includes the fixture's
+intentional response hold, so its full duration is not request-dispatch latency.
+Go trace synchronization/scheduling profiles are retained for inspection; their
+aggregate background waits are not a critical-path sum or a historical diagnosis.
+These successful timelines do **not** establish the old timeout's cause.
+
+The surviving test now retains client phase timestamps from Start onward, both
+provider-entry facts, a goroutine dump, the authoritative Session and each Run's
+outcome/explanation **only after a failed original deadline**. A separate 2s read
+bounds failure inspection after the assertion has already failed; it cannot make
+the 10s case pass. The original failure assertions, 10s context and both event
+loops compare unchanged. No data read or event consumption is added inside the
+wait for the second provider.
+
+Four temporary current-source fault controls verify that evidence rather than
+merely repeating success. Each deliberately returns an error at one real owner
+boundary; all test executions exit 1 at the original second-provider deadline.
+The controls are not committed, not acceptance passes, and not recreations of the
+historical error:
+
+| Controlled boundary | Authoritative result captured after the deadline | Run creation to terminal |
+| --- | --- | ---: |
+| Detached `BeginContinuation` | failed / internal_error / activation failure | 0.848065s |
+| Shell executable unexpected error | lost / run_lost / no provable external result | 1.045261s |
+| Applied-steer commit | failed / internal_error / original commit failure | 0.444679s |
+| Before second model provider dispatch | failed / provider_unavailable / original failure | 0.451421s |
+
+Every control acknowledges Resume, never reaches the second provider, and ends
+its Run long before the caller's 10s failure. This proves why a bare timeout can
+hide a completed background failure or explicit loss. It does not identify which,
+if any, occurred historically. No provider replay or replacement execution occurs.
+
+Without a fault overlay, complete current CLI/root binding race at `-p 2` passes
+74.927/40.261s, including the final failure diagnostics. `gofmt`, unchanged
+assertion/deadline/event-loop comparison and diff checks pass. No Runtime production
+source, schema, dependency or public API changes. Whole Runtime/bootstrap,
+shared TS and native gates are not rerun for this test-only change; their earlier
+qualification remains tied to `b2dcbfbba`. No UI/E2E/screenshot/aggregate Desktop
+check is added or run. Owned overlays, traces, binaries and control logs are
+inspected and removed; original main/stash are preserved.
 
 ### Historical deadline location and npm high-alert triage (2026-10-15)
 
@@ -2023,12 +2105,15 @@ close the other criteria. Historical slice entries retain their original evidenc
 
 ## Next
 
-The authorized source/backend/build work now has current full qualification.
+The production/source/backend/build baseline is qualified at `b2dcbfbba`; the
+subsequent test-only slice has complete current CLI/root binding race coverage.
 Preserve the remaining acceptance gaps instead of reporting 100%:
 
 - Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
-  Fully pinned old source reproduces a distinct 2.78s Deployment refusal; current
-  eight-round and original full parallel passes do not prove the 10s timeout cause.
+  Paired internal stage observations and Go traces now establish the normal
+  post-Resume sequence. Fault controls prove the same caller timeout can follow
+  already finished failed/lost Runs. Use retained failure phase/state/stack
+  evidence to distinguish those from live blocking; the old cause is unresolved.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
   actual graphical interaction. The user prohibition stays in force; do not add
   or execute UI/E2E/screenshot tests or substitute source/native builds for them.
@@ -4050,9 +4135,12 @@ The delegated-approval deadline and waiting-tree authority defect have causal
 production repairs and a passing original complete parallel gate. That result
 stands independently of the withdrawn overall completion claim. The post-SDK
 safe-steer timeout remains a historical failure without a separately established
-cause; current parallel verification and eight fully pinned safe/yolo repetitions pass. A passing
-rerun does not establish its independent cause, nor prove timing margin under
-other contention. No assertions or original deadlines were relaxed.
+cause. Stage observations cover normal activation, Tool, commits and dispatch;
+four negative controls show that distinct finished failures/losses can produce
+the same caller timeout. Current complete CLI/root binding race passes, with
+failure-only diagnostics retained. These observations do not establish which
+cause occurred historically or timing margin under other contention. No
+assertions, original deadlines or event-consumption order were relaxed.
 
 Retention remains conservative: Run-linked evidence follows its Run, Session-only
 evidence follows atomic Session deletion, and unattached evidence is retained.
